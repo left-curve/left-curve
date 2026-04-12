@@ -515,6 +515,7 @@
       "description": "No Passkey is found in your keychain, or you have rejected the operation. If you do not have an account yet, click the button below to create one."
     },
     "referralCode": "Referral code",
+    "referralCodePlaceholder": "Enter your friend's referral code",
     "errors": {
       "invalidVerificationCode": "Invalid verification code",
       "userNotFound": "This email account is not bound to any account",

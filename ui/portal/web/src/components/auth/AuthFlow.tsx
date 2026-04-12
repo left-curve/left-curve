@@ -305,6 +305,8 @@ const truncateIdentifier = (id: string) => {
 const CreateAccountScreen: React.FC = () => {
   const { createAccount, identifier, referrer, setReferrer, setScreen } = useAuth();
   const { settings, changeSettings } = useApp();
+  const urlReferrer = getReferrerFromQuery();
+  const isReferrerLocked = urlReferrer !== undefined;
 
   return (
     <>
@@ -328,9 +330,12 @@ const CreateAccountScreen: React.FC = () => {
         </Button>
         <Input
           fullWidth
-          placeholder={m["auth.referralCode"]()}
+          label={m["auth.referralCode"]()}
+          placeholder={m["auth.referralCodePlaceholder"]()}
           value={referrer?.toString() ?? ""}
+          isDisabled={isReferrerLocked}
           onChange={(e) => {
+            if (isReferrerLocked) return;
             const val = e.target.value;
             setReferrer(val ? Number.parseInt(val, 10) || undefined : undefined);
           }}
