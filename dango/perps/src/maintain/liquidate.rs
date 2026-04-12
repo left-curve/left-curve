@@ -318,9 +318,12 @@ fn _liquidate(
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
+    let (is_liquidatable, equity, maintenance_margin) =
+        is_liquidatable(oracle_querier, &perp_querier, &user_state)?;
+
     ensure!(
-        is_liquidatable(oracle_querier, &perp_querier, &user_state)?,
-        "user is not liquidatable"
+        is_liquidatable,
+        "user is not liquidatable! equity = {equity}, maintenance margin = {maintenance_margin}"
     );
 
     // ------------- Step 2: Compute close schedule (largest-MM-first) ---------
