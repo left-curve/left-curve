@@ -20,7 +20,7 @@ const REFERRERS: &[(Addr, Dimensionless)] = &[
     // Template: replace with actual data.
     (
         addr!("0000000000000000000000000000000000000000"),
-        Dimensionless::new_percent(30),
+        Dimensionless::new_percent(0),
     ),
 ];
 
@@ -46,6 +46,26 @@ impl dango_scripts::MessageBuilder for MessageBuilder {
                         anyhow!("failed to find user index for address {address}: {err}")
                     })?
                     .owner;
+
+                let current_commission_rate_override = client
+                    .query_wasm_smart(
+                        PERPS,
+                        perps::QueryCommissionRateOverrideRequest { user },
+                        None,
+                    )
+                    .await
+                    .map_err(|err| {
+                        anyhow!("failed to find the current commission rate override of user {user}: {err}")
+                    })?;
+
+                println!(
+                    "user: {user}, address: {address}, current commission rate: {}, setting to: {commission_rate}",
+                    if let Some(rate) = current_commission_rate_override {
+                        format!("Some({rate})")
+                    } else {
+                        "None".to_string()
+                    }
+                );
 
                 Ok(Message::execute(
                     PERPS,
