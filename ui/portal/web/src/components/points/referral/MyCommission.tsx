@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
 import {
   Cell,
   Pagination,
@@ -11,6 +12,7 @@ import {
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
 import { formatNumber } from "@left-curve/dango/utils";
+import { formatDate } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useAccount,
@@ -54,13 +56,7 @@ type RebateRow = {
   date: string;
 };
 
-const formatDate = (timestamp: number): string => {
-  return new Date(timestamp * 1000).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-};
+
 
 const ROWS_PER_PAGE = 10;
 const SECONDS_PER_DAY = 86_400;
@@ -146,7 +142,7 @@ const CommissionTable: React.FC = () => {
       const delta = diffReferralData(wider, narrower);
 
       const dayTs = boundaries[i + 1];
-      const dateStr = new Date(dayTs * 1000).toLocaleDateString("en-US");
+      const dateStr = formatDate(new Date(dayTs * 1000), settings.dateFormat);
 
       rows.push({
         myCommission: formatUSD(delta.commission),
@@ -231,7 +227,7 @@ const MyRefereesTable: React.FC = () => {
       userName: `#${referee.userIndex}`,
       totalVolume: formatUSD(referee.volume),
       totalCommission: formatUSD(referee.commissionEarned),
-      date: formatDate(referee.registeredAt),
+      date: formatDate(new Date(referee.registeredAt * 1000), settings.dateFormat),
     }));
   }, [referees]);
 
@@ -333,7 +329,7 @@ const RebateTable: React.FC = () => {
         {
           rebates: formatUSD(rebates),
           tradingVolume: formatUSD(volume),
-          date: new Date().toLocaleDateString("en-US"),
+          date: formatDate(new Date(), settings.dateFormat),
         },
       ];
     }
