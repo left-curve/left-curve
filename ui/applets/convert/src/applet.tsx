@@ -5,7 +5,7 @@ import {
   AssetInputWithRange,
   Button,
   FormattedNumber,
-  IconArrowDown,
+  IconConvert,
   Modals,
   PairStatValue,
   Skeleton,
@@ -185,7 +185,7 @@ const ConvertForm: React.FC = () => {
           revalidate();
         }}
       >
-        <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
+        <IconConvert className="h-3 w-3 text-primitives-gray-light-300" />
       </button>
       <AssetInputWithRange
         name="to"

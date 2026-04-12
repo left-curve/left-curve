@@ -96,6 +96,7 @@ export { IconFormatNumber } from "./icons/IconFormatNumber";
 export { IconLanguage } from "./icons/IconLanguage";
 export { IconSwitch } from "./icons/IconSwitch";
 export { IconArrowDown } from "./icons/IconArrowDown";
+export { IconConvert } from "./icons/IconConvert";
 export { IconInfo } from "./icons/IconInfo";
 export { IconUser } from "./icons/IconUser";
 export { IconUserCircle } from "./icons/IconUserCircle";
