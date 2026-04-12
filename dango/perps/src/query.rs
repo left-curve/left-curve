@@ -1,7 +1,7 @@
 use {
     crate::{
         core::{
-            compute_available_margin, compute_liquidation_price,
+            compute_available_margin, compute_liquidation_price, compute_maintenance_margin,
             compute_position_unrealized_funding, compute_position_unrealized_pnl,
             compute_user_equity,
         },
@@ -82,6 +82,7 @@ pub fn query_user_state_extended(
     user: Addr,
     include_equity: bool,
     include_available_margin: bool,
+    include_maintenance_margin: bool,
     include_unrealized_pnl: bool,
     include_unrealized_funding: bool,
     include_liquidation_price: bool,
@@ -104,6 +105,16 @@ pub fn query_user_state_extended(
 
     let available_margin = if include_all || include_available_margin {
         Some(compute_available_margin(
+            &mut oracle_querier,
+            &perp_querier,
+            &user_state,
+        )?)
+    } else {
+        None
+    };
+
+    let maintenance_margin = if include_all || include_maintenance_margin {
+        Some(compute_maintenance_margin(
             &mut oracle_querier,
             &perp_querier,
             &user_state,
@@ -157,6 +168,7 @@ pub fn query_user_state_extended(
         open_order_count: user_state.open_order_count,
         equity,
         available_margin,
+        maintenance_margin,
         positions,
     })
 }

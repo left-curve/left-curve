@@ -13,6 +13,7 @@ use {
 };
 
 /// Returns true if the user is eligible for liquidation.
+/// Also returns equity and maintenance margin for error logging purpose.
 ///
 /// A user is liquidatable when their equity (collateral + unrealized PnL
 /// - accrued funding) falls below their total maintenance margin.
@@ -22,15 +23,11 @@ pub fn is_liquidatable(
     oracle_querier: &mut OracleQuerier,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<bool> {
-    if user_state.positions.is_empty() {
-        return Ok(false);
-    }
-
+) -> anyhow::Result<(bool, UsdValue, UsdValue)> {
     let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
     let maintenance_margin = compute_maintenance_margin(oracle_querier, perp_querier, user_state)?;
 
-    Ok(equity < maintenance_margin)
+    Ok((equity < maintenance_margin, equity, maintenance_margin))
 }
 
 /// A policy for selecting which position(s) to close during liquidation.
@@ -225,7 +222,11 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
-        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // collateral=10000, ETH long 10 @ entry=2000, oracle=2500, mmr=5%
@@ -269,7 +270,11 @@ mod tests {
             ),
         });
 
-        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // equity exactly equals maintenance margin → not liquidatable (strict <)
@@ -313,7 +318,11 @@ mod tests {
             ),
         });
 
-        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // collateral=100, ETH long 10 @ entry=2000, oracle=1500, mmr=5%
@@ -357,7 +366,11 @@ mod tests {
             ),
         });
 
-        assert!(is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // Funding can push a user into liquidation territory.
@@ -413,11 +426,19 @@ mod tests {
 
         // Case 1: healthy despite funding
         let (us, pq, mut oq) = make_fixtures(10_000);
-        assert!(!is_liquidatable(&mut oq, &pq, &us).unwrap());
+        assert!(
+            !is_liquidatable(&mut oq, &pq, &us)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
 
         // Case 2: funding pushes equity below maintenance margin
         let (us, pq, mut oq) = make_fixtures(900);
-        assert!(is_liquidatable(&mut oq, &pq, &us).unwrap());
+        assert!(
+            is_liquidatable(&mut oq, &pq, &us)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // -------------------- `compute_close_schedule` tests ---------------------

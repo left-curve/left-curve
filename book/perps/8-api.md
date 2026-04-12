@@ -1405,7 +1405,7 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
 
 ### 5.6 Extended user state
 
-Query user state with additional computed fields (equity, available margin, and per-position unrealized PnL/funding):
+Query user state with additional computed fields (equity, available margin, maintenance margin, and per-position unrealized PnL/funding):
 
 ```graphql
 query {
@@ -1417,6 +1417,7 @@ query {
           user: "0x1234...abcd",
           include_equity: true,
           include_available_margin: true,
+          include_maintenance_margin: true,
           include_unrealized_pnl: true,
           include_unrealized_funding: true,
           include_liquidation_price: true
@@ -1432,6 +1433,7 @@ query {
 | `user`                       | `Addr` | Account address                                          |
 | `include_equity`             | `bool` | Compute and return the user's equity                     |
 | `include_available_margin`   | `bool` | Compute and return the user's free margin                |
+| `include_maintenance_margin` | `bool` | Compute and return the user's maintenance margin         |
 | `include_unrealized_pnl`     | `bool` | Compute and return per-position unrealized PnL           |
 | `include_unrealized_funding` | `bool` | Compute and return per-position unrealized funding costs |
 | `include_liquidation_price`  | `bool` | Compute and return per-position liquidation price        |
@@ -1447,6 +1449,7 @@ query {
   "open_order_count": 2,
   "equity": "10250.000000",
   "available_margin": "8625.000000",
+  "maintenance_margin": "1875.000000",
   "positions": {
     "perp/ethusd": {
       "size": "5.000000",
@@ -1462,16 +1465,17 @@ query {
 }
 ```
 
-| Field              | Type                            | Description                                                                     |
-| ------------------ | ------------------------------- | ------------------------------------------------------------------------------- |
-| `margin`           | `UsdValue`                      | The user's deposited margin                                                     |
-| `vault_shares`     | `Uint128`                       | Vault shares owned by this user                                                 |
-| `unlocks`          | `[Unlock]`                      | Pending vault withdrawal cooldowns                                              |
-| `reserved_margin`  | `UsdValue`                      | Margin reserved for resting limit orders                                        |
-| `open_order_count` | `usize`                         | Number of resting limit orders                                                  |
-| `equity`           | `UsdValue\|null`                | margin + unrealized PnL − unrealized funding; `null` if not requested           |
-| `available_margin` | `UsdValue\|null`                | margin − initial margin requirements − reserved margin; `null` if not requested |
-| `positions`        | `Map<PairId, PositionExtended>` | Open positions with optional computed data (see below)                          |
+| Field                | Type                            | Description                                                                                               |
+| -------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `margin`             | `UsdValue`                      | The user's deposited margin                                                                               |
+| `vault_shares`       | `Uint128`                       | Vault shares owned by this user                                                                           |
+| `unlocks`            | `[Unlock]`                      | Pending vault withdrawal cooldowns                                                                        |
+| `reserved_margin`    | `UsdValue`                      | Margin reserved for resting limit orders                                                                  |
+| `open_order_count`   | `usize`                         | Number of resting limit orders                                                                            |
+| `equity`             | `UsdValue\|null`                | margin + unrealized PnL − unrealized funding; `null` if not requested                                     |
+| `available_margin`   | `UsdValue\|null`                | margin − initial margin requirements − reserved margin; `null` if not requested                           |
+| `maintenance_margin` | `UsdValue\|null`                | sum of `\|size\| * oracle_price * maintenance_margin_ratio` across all positions; `null` if not requested |
+| `positions`          | `Map<PairId, PositionExtended>` | Open positions with optional computed data (see below)                                                    |
 
 **PositionExtended:**
 
@@ -1486,7 +1490,7 @@ query {
 | `unrealized_funding`      | `UsdValue\|null`         | `size * (current_funding_per_unit - entry_funding_per_unit)`; positive = cost; `null` if not requested                        |
 | `liquidation_price`       | `UsdPrice\|null`         | Oracle price that triggers account liquidation (other prices held constant); `null` if not requested or no valid price exists |
 
-`equity` reflects the total account value including unrealized positions. `available_margin` is the amount the user can withdraw or use for new orders.
+`equity` reflects the total account value including unrealized positions. `available_margin` is the amount the user can withdraw or use for new orders. `maintenance_margin` is the minimum equity required to keep positions open — if equity falls below this threshold the account becomes liquidatable.
 
 ## 6. Trading operations
 

@@ -40,6 +40,7 @@ export async function getPerpsVaultState<
       user: perpsContract,
       includeEquity: true,
       includeAvailableMargin: false,
+      includeMaintenanceMargin: false,
       includeUnrealizedPnl: false,
       includeUnrealizedFunding: false,
       includeLiquidationPrice: false,
