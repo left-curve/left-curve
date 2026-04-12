@@ -42,8 +42,8 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
   const exceedsMax = !isShareEmpty && parsedSharePercent > 50;
 
   const error = useMemo(() => {
-    if (canDecrease) return m["referral.editCommission.errorDecrease"]();
-    if (exceedsMax) return m["referral.editCommission.errorExceedsMax"]();
+    if (canDecrease) return m["referral.editFeeShare.errorDecrease"]();
+    if (exceedsMax) return m["referral.editFeeShare.errorExceedsMax"]();
     return null;
   }, [canDecrease, exceedsMax]);
 
@@ -68,10 +68,10 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
 
       <div className="flex flex-col gap-2">
         <h2 className="text-ink-primary-900 h4-bold w-full">
-          {m["referral.editCommission.title"]()}
+          {m["referral.editFeeShare.title"]()}
         </h2>
         <p className="text-ink-tertiary-500 diatype-sm-regular">
-          {m["referral.editCommission.description"]()}
+          {m["referral.editFeeShare.description"]()}
         </p>
       </div>
 
@@ -85,18 +85,18 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-ink-tertiary-500 diatype-m-regular">
-            {m["referral.editCommission.yourRate"]()}{" "}
+            {m["referral.editFeeShare.yourRate"]()}{" "}
             <span className="text-utility-success-500 font-bold">{commissionPercent}%</span>{" "}
           </p>
 
           <Input
-            label={m["referral.editCommission.commissionRateLabel"]()}
+            label={m["referral.editFeeShare.commissionRateLabel"]()}
             value={`${commissionPercent}%`}
             readOnly
           />
 
           <Input
-            label={m["referral.editCommission.refereeReceives"]()}
+            label={m["referral.editFeeShare.refereeReceives"]()}
             value={shareValue}
             onChange={(e) => setShareInput(e.target.value)}
             type="number"
@@ -112,7 +112,7 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
         onClick={handleSave}
         disabled={!!error || isPending || isLoading || !newShareRatio}
       >
-        {isPending ? m["referral.editCommission.saving"]() : m["referral.editCommission.save"]()}
+        {isPending ? m["referral.editFeeShare.saving"]() : m["referral.editFeeShare.save"]()}
       </Button>
     </div>
   );

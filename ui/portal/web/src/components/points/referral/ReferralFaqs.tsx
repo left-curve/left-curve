@@ -15,6 +15,19 @@ export const ReferralFaqs: React.FC = () => {
       question: m["points.referral.faqs.question3"](),
       answer: m["points.referral.faqs.answer3"](),
     },
+    {
+      question: m["points.referral.faqs.question4"](),
+      answer: m["points.referral.faqs.answer4"](),
+    },
+  ];
+
+  const answer5Steps = [
+    m["points.referral.faqs.answer5Step1"](),
+    m["points.referral.faqs.answer5Step2"](),
+    m["points.referral.faqs.answer5Step3"](),
+    m["points.referral.faqs.answer5Step4"](),
+    m["points.referral.faqs.answer5Step5"](),
+    m["points.referral.faqs.answer5Step6"](),
   ];
 
   return (
@@ -26,9 +39,25 @@ export const ReferralFaqs: React.FC = () => {
             <p className="text-ink-primary-900 diatype-m-bold">
               {index + 1}. {faq.question}
             </p>
-            <p className="text-ink-tertiary-500 diatype-m-regular">{faq.answer}</p>
+            <p className="text-ink-tertiary-500 diatype-m-regular whitespace-pre-line">{faq.answer}</p>
           </div>
         ))}
+        <div className="flex flex-col gap-1">
+          <p className="text-ink-primary-900 diatype-m-bold">
+            {faqs.length + 1}. {m["points.referral.faqs.question5"]()}
+          </p>
+          <p className="text-ink-tertiary-500 diatype-m-regular whitespace-pre-line">
+            {m["points.referral.faqs.answer5"]()}
+          </p>
+          <p className="text-ink-tertiary-500 diatype-m-bold mt-2">
+            {m["points.referral.faqs.answer5Example"]()}
+          </p>
+          <ul className="list-disc list-inside text-ink-tertiary-500 diatype-m-regular flex flex-col gap-1">
+            {answer5Steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
