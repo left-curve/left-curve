@@ -56,6 +56,7 @@ export type PerpsUserStateExtended = {
   openOrderCount: number;
   equity: string | null;
   availableMargin: string | null;
+  maintenanceMargin: string | null;
   positions: Record<string, PerpsPositionExtended>;
 };
 
@@ -168,6 +169,7 @@ export type PerpsQueryMsg =
         user: Address;
         includeEquity?: boolean;
         includeAvailableMargin?: boolean;
+        includeMaintenanceMargin?: boolean;
         includeUnrealizedPnl?: boolean;
         includeUnrealizedFunding?: boolean;
         includeLiquidationPrice?: boolean;

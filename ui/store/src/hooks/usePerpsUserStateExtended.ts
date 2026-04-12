@@ -19,6 +19,7 @@ export const perpsUserStateExtendedStore = createBlockStore({
   initialState: {
     equity: null as string | null,
     availableMargin: null as string | null,
+    maintenanceMargin: null as string | null,
     positions: {} as Record<string, PerpsPositionExtended>,
   },
 });
@@ -27,6 +28,7 @@ type UsePerpsUserStateExtendedParameters = {
   subscribe?: boolean;
   includeEquity?: boolean;
   includeAvailableMargin?: boolean;
+  includeMaintenanceMargin?: boolean;
   includeUnrealizedPnl?: boolean;
   includeUnrealizedFunding?: boolean;
   includeLiquidationPrice?: boolean;
@@ -38,6 +40,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
     subscribe = true,
     includeEquity = true,
     includeAvailableMargin = true,
+    includeMaintenanceMargin = true,
     includeUnrealizedPnl = true,
     includeUnrealizedFunding = true,
     includeLiquidationPrice = true,
@@ -64,6 +67,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
                 user: account.address,
                 includeEquity,
                 includeAvailableMargin,
+                includeMaintenanceMargin,
                 includeUnrealizedPnl,
                 includeUnrealizedFunding,
                 includeLiquidationPrice,
@@ -82,6 +86,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
         setState({
           equity: response.wasmSmart?.equity ?? null,
           availableMargin: response.wasmSmart?.availableMargin ?? null,
+          maintenanceMargin: response.wasmSmart?.maintenanceMargin ?? null,
           positions: response.wasmSmart?.positions ?? {},
           blockHeight,
         });
@@ -95,6 +100,7 @@ export function usePerpsUserStateExtended(parameters?: UsePerpsUserStateExtended
     account,
     includeEquity,
     includeAvailableMargin,
+    includeMaintenanceMargin,
     includeUnrealizedPnl,
     includeUnrealizedFunding,
     includeLiquidationPrice,

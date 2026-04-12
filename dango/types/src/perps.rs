@@ -553,6 +553,18 @@ pub struct UserStateExtended {
     /// `None` if the client elects not to compute this in `QueryMsg::UserStateExtended`.
     pub available_margin: Option<UsdValue>,
 
+    /// The user's maintenance margin.
+    ///
+    /// Defined as:
+    ///
+    /// ```plain
+    /// sum_all_pairs(|position.size| * oracle_price * maintenance_margin_ratio)
+    /// ```
+    ///
+    /// Used as liquidation trigger: if equity < maintenance margin, the user is
+    /// liquidatable.
+    pub maintenance_margin: Option<UsdValue>,
+
     /// The user's open positions, enriched with optional computed data.
     pub positions: BTreeMap<PairId, PositionExtended>,
 }
@@ -982,6 +994,9 @@ pub enum QueryMsg {
 
         #[serde(default)]
         include_available_margin: bool,
+
+        #[serde(default)]
+        include_maintenance_margin: bool,
 
         #[serde(default)]
         include_unrealized_pnl: bool,
