@@ -35,7 +35,7 @@ export async function setReferral<transport extends Transport>(
   const typedData: TypedDataParameter = {
     type: [{ name: "referral", type: "Referral" }],
     extraTypes: {
-      Referral: [{ name: "setReferral", type: "SetReferral" }],
+      Referral: [{ name: "set_referral", type: "SetReferral" }],
       SetReferral: [
         { name: "referrer", type: "uint32" },
         { name: "referee", type: "uint32" },

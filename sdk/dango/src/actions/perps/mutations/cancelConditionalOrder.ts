@@ -43,21 +43,21 @@ export async function cancelConditionalOrder<transport extends Transport>(
       return {
         CancelConditionalOrder: [{ name: "one", type: "One" }],
         One: [
-          { name: "pairId", type: "string" },
-          { name: "triggerDirection", type: "string" },
+          { name: "pair_id", type: "string" },
+          { name: "trigger_direction", type: "string" },
         ],
       };
     }
     return {
-      CancelConditionalOrder: [{ name: "allForPair", type: "AllForPair" }],
-      AllForPair: [{ name: "pairId", type: "string" }],
+      CancelConditionalOrder: [{ name: "all_for_pair", type: "AllForPair" }],
+      AllForPair: [{ name: "pair_id", type: "string" }],
     };
   })();
 
   const typedData: TypedDataParameter = {
     type: [{ name: "trade", type: "Trade" }],
     extraTypes: {
-      Trade: [{ name: "cancelConditionalOrder", type: "CancelConditionalOrder" }],
+      Trade: [{ name: "cancel_conditional_order", type: "CancelConditionalOrder" }],
       ...cancelConditionalOrderTypedData,
     },
   };

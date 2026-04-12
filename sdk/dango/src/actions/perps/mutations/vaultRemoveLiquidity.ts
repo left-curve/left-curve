@@ -39,8 +39,8 @@ export async function vaultRemoveLiquidity<transport extends Transport>(
   const typedData: TypedDataParameter = {
     type: [{ name: "vault", type: "Vault" }],
     extraTypes: {
-      Vault: [{ name: "removeLiquidity", type: "RemoveLiquidity" }],
-      RemoveLiquidity: [{ name: "sharesToBurn", type: "uint128" }],
+      Vault: [{ name: "remove_liquidity", type: "RemoveLiquidity" }],
+      RemoveLiquidity: [{ name: "shares_to_burn", type: "uint128" }],
     },
   };
 

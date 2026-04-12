@@ -44,7 +44,7 @@ export async function cancelPerpsOrder<transport extends Transport>(
   const typedData: TypedDataParameter = {
     type: [{ name: "trade", type: "Trade" }],
     extraTypes: {
-      Trade: [{ name: "cancelOrder", type: "CancelOrder" }],
+      Trade: [{ name: "cancel_order", type: "CancelOrder" }],
       ...cancelOrderTypedData,
     },
   };

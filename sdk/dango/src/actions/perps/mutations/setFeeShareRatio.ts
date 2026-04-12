@@ -33,8 +33,8 @@ export async function setFeeShareRatio<transport extends Transport>(
   const typedData: TypedDataParameter = {
     type: [{ name: "referral", type: "Referral" }],
     extraTypes: {
-      Referral: [{ name: "setFeeShareRatio", type: "SetFeeShareRatio" }],
-      SetFeeShareRatio: [{ name: "shareRatio", type: "string" }],
+      Referral: [{ name: "set_fee_share_ratio", type: "SetFeeShareRatio" }],
+      SetFeeShareRatio: [{ name: "share_ratio", type: "string" }],
     },
   };
 
