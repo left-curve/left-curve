@@ -62,7 +62,7 @@ const Container: React.FC = () => {
   const { account } = useAccount();
   const { calculateBalance } = usePrices();
   usePerpsUserState();
-  usePerpsUserStateExtended({ includeEquity: true });
+  usePerpsUserStateExtended();
   const perpsEquity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
   const { userSharesValue } = usePerpsVaultUserShares();
 

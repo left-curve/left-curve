@@ -550,7 +550,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             label={m["dex.protrade.perps.availableToTrade"]()}
             value={
               <>
-                <FormattedNumber number={availableMargin.toString()} as="span" /> USDC
+                <FormattedNumber number={availableMargin.toString()} as="span" /> USD
               </>
             }
           />

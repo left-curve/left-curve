@@ -2,7 +2,12 @@ import { forwardRef, useMemo, useState } from "react";
 
 import { Button, IconButton, IconClose, Input, Skeleton, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, useReferralSettings, useSetFeeShareRatio } from "@left-curve/store";
+import {
+  useAccount,
+  useCommissionRateOverride,
+  useReferralSettings,
+  useSetFeeShareRatio,
+} from "@left-curve/store";
 
 const formatPercent = (value: string | undefined): string => {
   if (!value) return "0";
@@ -15,10 +20,15 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
   const { hideModal } = useApp();
   const { userIndex } = useAccount();
 
-  const { settings, isLoading } = useReferralSettings({ userIndex });
+  const { settings, isLoading: settingsLoading } = useReferralSettings({ userIndex });
+  const { override, isLoading: overrideLoading } = useCommissionRateOverride({
+    userIndex,
+  });
+
+  const isLoading = settingsLoading || overrideLoading;
 
   const currentSharePercent = formatPercent(settings?.shareRatio);
-  const commissionPercent = formatPercent(settings?.commissionRate);
+  const commissionPercent = formatPercent(override ?? settings?.commissionRate);
 
   const [shareInput, setShareInput] = useState<string | null>(null);
 

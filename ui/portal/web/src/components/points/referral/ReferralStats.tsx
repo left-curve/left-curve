@@ -187,7 +187,7 @@ export const AffiliateStats: React.FC = () => {
     userIndex,
   });
   const { referralParams, isLoading: paramsLoading } = useReferralParams();
-  const { hasOverride, isLoading: overrideLoading } = useCommissionRateOverride({
+  const { hasOverride, override, isLoading: overrideLoading } = useCommissionRateOverride({
     userIndex,
     enabled: isConnected,
   });
@@ -260,7 +260,7 @@ export const AffiliateStats: React.FC = () => {
   const referralLink = getReferralLink(userIndex);
   const truncatedLink = truncateUrl(referralLink);
 
-  const commissionRate = settings?.commissionRate ?? "0";
+  const commissionRate = override ?? settings?.commissionRate ?? "0";
   const shareRatio = settings?.shareRatio ?? "0";
   const rateDisplay = isConnected
     ? `${formatPercent(commissionRate)} / ${formatPercent(shareRatio)}`
