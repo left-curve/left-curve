@@ -1,4 +1,4 @@
-import { useAuthState } from "@left-curve/store";
+import { useAuthState, useConnectors } from "@left-curve/store";
 import type { AuthScreen } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -46,7 +46,7 @@ const getReferrerFromQuery = (): number | undefined => {
 };
 
 export const AuthFlow: React.FC<AuthFlowProps> = ({ onFinish, referrer }) => {
-  const { settings, toast, changeSettings } = useApp();
+  const { settings, toast } = useApp();
 
   const state = useAuthState({
     expiration: DEFAULT_SESSION_EXPIRATION,
@@ -189,6 +189,9 @@ const EmailScreen: React.FC = () => {
 
 const WalletsScreen: React.FC = () => {
   const { setScreen, authenticate } = useAuth();
+  const connectors = useConnectors();
+  const hasWallets =
+    connectors.filter((c) => !["passkey", "session", "privy"].includes(c.type)).length > 0;
 
   return (
     <>
@@ -197,7 +200,7 @@ const WalletsScreen: React.FC = () => {
         <div className="flex flex-col gap-3">
           <h1 className="h2-heavy">{m["common.welcomeToDango"]()}</h1>
           <p className="text-ink-tertiary-500 diatype-m-medium">
-            {m["signin.connectWalletToContinue"]()}
+            {hasWallets ? m["signin.connectWalletToContinue"]() : m["common.notWalletDetected"]()}
           </p>
         </div>
       </div>
