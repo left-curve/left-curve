@@ -84,24 +84,25 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <p className="text-ink-tertiary-500 diatype-m-regular">
-            {m["referral.editFeeShare.yourRate"]()}{" "}
-            <span className="text-utility-success-500 font-bold">{commissionPercent}%</span>{" "}
-          </p>
-
           <Input
             label={m["referral.editFeeShare.commissionRateLabel"]()}
             value={`${commissionPercent}%`}
             readOnly
           />
 
-          <Input
-            label={m["referral.editFeeShare.refereeReceives"]()}
-            value={shareValue}
-            onChange={(e) => setShareInput(e.target.value)}
-            type="number"
-            endContent={<span className="text-ink-tertiary-500 diatype-m-medium">%</span>}
-          />
+          <div className="flex flex-col gap-1">
+            <Input
+              label={m["referral.editFeeShare.refereeReceives"]()}
+              value={shareValue}
+              onChange={(e) => setShareInput(e.target.value)}
+              type="number"
+              endContent={<span className="text-ink-tertiary-500 diatype-m-medium">%</span>}
+            />
+            <p className="diatype-sm-regular">
+              <span className="text-ink-tertiary-500">{m["referral.editFeeShare.current"]()}:</span>{" "}
+              <span className="text-utility-success-500">{currentSharePercent}%</span>
+            </p>
+          </div>
 
           {error && <p className="text-utility-error-500 diatype-sm-regular">{error}</p>}
         </div>
