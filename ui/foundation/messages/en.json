@@ -1344,7 +1344,8 @@
       "errorDecrease": "Share ratio can only be increased, not decreased.",
       "errorExceedsMax": "Cannot share more than 50% with referees.",
       "saving": "Saving...",
-      "save": "Save"
+      "save": "Save",
+      "current": "current"
     },
     "chart": {
       "loading": "Loading...",
