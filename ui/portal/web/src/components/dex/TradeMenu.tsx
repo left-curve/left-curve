@@ -13,6 +13,7 @@ import {
   perpsUserStateExtendedStore,
   perpsTradeSettingsStore,
   allPerpsPairStatsStore,
+  computeLiquidationPrice,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -348,6 +349,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const params = appConfig.perpsPairs[perpsPairId];
 
   const userState = perpsUserStateStore((s) => s.userState);
+  const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
 
   const equity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
   const availableMargin = Number(perpsUserStateExtendedStore((s) => s.availableMargin) ?? "0");
@@ -512,11 +514,34 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
       operation === "limit" && Number(priceValue) > 0 ? Number(priceValue) : currentPrice;
     if (entryPrice <= 0) return null;
 
-    const mmr = Number(params.maintenanceMarginRatio ?? 0);
-    return action === "buy"
-      ? (entryPrice * (1 - 1 / selectedLeverage)) / (1 - mmr)
-      : (entryPrice * (1 + 1 / selectedLeverage)) / (1 + mmr);
-  }, [size, selectedLeverage, action, operation, priceValue, currentPrice, params]);
+    const baseSize = isBaseSize ? s : currentPrice > 0 ? s / currentPrice : 0;
+    const newSize = action === "buy" ? baseSize : -baseSize;
+
+    return computeLiquidationPrice({
+      margin: Number(userState?.margin ?? 0),
+      size: newSize,
+      entryPrice,
+      mmr: Number(params.maintenanceMarginRatio ?? 0),
+      targetPairId: perpsPairId,
+      extendedPositions,
+      pairPrices: statsByPairId,
+      pairParams: appConfig.perpsPairs,
+    });
+  }, [
+    size,
+    selectedLeverage,
+    action,
+    operation,
+    priceValue,
+    currentPrice,
+    params,
+    isBaseSize,
+    userState?.margin,
+    extendedPositions,
+    statsByPairId,
+    perpsPairId,
+    appConfig.perpsPairs,
+  ]);
 
   const minSizeAmount = useMemo(() => {
     if (!params.minOrderSize) return 0;
