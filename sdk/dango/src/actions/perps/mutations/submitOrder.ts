@@ -56,27 +56,27 @@ export async function submitPerpsOrder<transport extends Transport>(
   const kindTypedData = "market" in kind
     ? {
         kind: [{ name: "market", type: "Market" }],
-        Market: [{ name: "maxSlippage", type: "string" }],
+        Market: [{ name: "max_slippage", type: "string" }],
       }
     : {
         kind: [{ name: "limit", type: "Limit" }],
         Limit: [
-          { name: "limitPrice", type: "string" },
-          { name: "timeInForce", type: "string" },
+          { name: "limit_price", type: "string" },
+          { name: "time_in_force", type: "string" },
         ],
       };
 
   const childOrderTypeFor = (child: ChildOrder) => [
-    { name: "triggerPrice", type: "string" },
-    { name: "maxSlippage", type: "string" },
+    { name: "trigger_price", type: "string" },
+    { name: "max_slippage", type: "string" },
     ...(child.size ? [{ name: "size", type: "string" }] : []),
   ];
 
   const submitOrderFields = [
-    { name: "pairId", type: "string" },
+    { name: "pair_id", type: "string" },
     { name: "size", type: "string" },
     { name: "kind", type: "Kind" },
-    { name: "reduceOnly", type: "bool" },
+    { name: "reduce_only", type: "bool" },
     ...(tp ? [{ name: "tp", type: "ChildOrderTp" }] : []),
     ...(sl ? [{ name: "sl", type: "ChildOrderSl" }] : []),
   ];
@@ -84,7 +84,7 @@ export async function submitPerpsOrder<transport extends Transport>(
   const typedData: TypedDataParameter = {
     type: [{ name: "trade", type: "Trade" }],
     extraTypes: {
-      Trade: [{ name: "submitOrder", type: "SubmitOrder" }],
+      Trade: [{ name: "submit_order", type: "SubmitOrder" }],
       SubmitOrder: submitOrderFields,
       Kind: kindTypedData.kind,
       ...(kindTypedData.Market ? { Market: kindTypedData.Market } : {}),

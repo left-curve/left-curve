@@ -56,17 +56,17 @@ export async function submitConditionalOrders<transport extends Transport>(
     };
 
     const submitConditionalOrderFields = [
-      { name: "pairId", type: "string" },
+      { name: "pair_id", type: "string" },
       ...(size !== undefined ? [{ name: "size", type: "string" }] : []),
-      { name: "triggerPrice", type: "string" },
-      { name: "triggerDirection", type: "string" },
-      { name: "maxSlippage", type: "string" },
+      { name: "trigger_price", type: "string" },
+      { name: "trigger_direction", type: "string" },
+      { name: "max_slippage", type: "string" },
     ];
 
     const typedData: TypedDataParameter = {
       type: [{ name: "trade", type: "Trade" }],
       extraTypes: {
-        Trade: [{ name: "submitConditionalOrder", type: "SubmitConditionalOrder" }],
+        Trade: [{ name: "submit_conditional_order", type: "SubmitConditionalOrder" }],
         SubmitConditionalOrder: submitConditionalOrderFields,
       },
     };
