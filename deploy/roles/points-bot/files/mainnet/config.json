@@ -57,7 +57,7 @@
       }
     },
     "oat_multiplier": "1",
-    "oat_window": "2weeks",
+    "oat_window": "4weeks",
     "perps_expression": "1 + max(0.0, math::log10(x))",
     "epoch_duration": "1week",
     "epoch_perps_share": "750000",

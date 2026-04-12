@@ -111,6 +111,8 @@ remove-deploy-lock-devnet:
       --limit 100.96.253.40,100.107.248.71 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-devnet.log
 
+# ---------------------------------- Points ------------------------------------
+
 deploy-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
     && ansible-playbook points-bot.yml \
@@ -144,6 +146,7 @@ delete-points-bot network:
     && ansible-playbook delete-points-bot.yml \
       -e '{"points_bot_networks": ["{{network}}"]}' \
       --limit points-bot-{{network}} \
+      -K \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-points-bot.log
 
 # -------------------------------- Perps Bot ----------------------------------

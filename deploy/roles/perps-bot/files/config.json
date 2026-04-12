@@ -1,6 +1,6 @@
 {
   "app_settings": {
-    "sleep": "10s",
+    "sleep": "25s",
     "max_slippage": "1%",
     "margin_usage": "50%",
     "liquidity_sleep": "5s",
