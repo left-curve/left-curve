@@ -134,12 +134,18 @@ fn register_user(
     referrer: Option<UserIndex>,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
+    // All registration parameters are bound in the signed data to prevent
+    // front-running attacks.
     verify_signature(
         ctx.api,
         key,
         signature,
         VerifyData::Onboard(RegisterUserData {
             chain_id: ctx.chain_id,
+            key,
+            key_hash,
+            seed,
+            referrer,
         }),
     )?;
 

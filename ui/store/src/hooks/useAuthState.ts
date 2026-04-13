@@ -217,10 +217,26 @@ export function useAuthState(parameters: UseAuthStateParameters) {
         }
       }
 
+      const seed = Math.floor(Math.random() * 0x100000000);
+
       const { credential } = await connector.signArbitrary({
         primaryType: "Message" as const,
-        message: { chain_id: config.chain.id },
-        types: { Message: [{ name: "chain_id", type: "string" }] },
+        message: {
+          chainId: config.chain.id,
+          key,
+          keyHash,
+          seed,
+          ...(referrer != null ? { referrer } : {}),
+        },
+        types: {
+          Message: [
+            { name: "chain_id", type: "string" },
+            { name: "key", type: "string" },
+            { name: "key_hash", type: "string" },
+            ...(referrer != null ? [{ name: "referrer", type: "uint32" }] : []),
+            { name: "seed", type: "uint32" },
+          ],
+        },
       });
 
       if (!("standard" in credential)) throw new Error("Signed with wrong credential");
@@ -228,7 +244,7 @@ export function useAuthState(parameters: UseAuthStateParameters) {
       await registerUser(publicClient, {
         key,
         keyHash,
-        seed: Math.floor(Math.random() * 0x100000000),
+        seed,
         signature: credential.standard.signature,
         referrer,
       });

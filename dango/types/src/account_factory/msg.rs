@@ -45,11 +45,18 @@ impl User {
     }
 }
 
-/// Data the user must sign when onboarding. Currently, this consists of only
-/// the chain ID.
+/// Data the user must sign when onboarding.
+///
+/// All fields from the `RegisterUser` message are included to prevent
+/// front-running attacks where an attacker could swap unsigned parameters
+/// (key, seed, referrer) while reusing the victim's signature.
 #[grug::derive(Serde)]
 pub struct RegisterUserData {
     pub chain_id: String,
+    pub key: Key,
+    pub key_hash: Hash256,
+    pub seed: u32,
+    pub referrer: Option<UserIndex>,
 }
 
 impl SignData for RegisterUserData {
