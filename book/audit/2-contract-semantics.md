@@ -409,15 +409,26 @@ that handles authentication.
 
 ### Nonce management
 
-Instead of a strictly incrementing nonce (which forces sequential tx ordering), Dango
-tracks the **most recent 20 nonces seen** (`SEEN_NONCES`). A new tx is accepted if:
+A naively incrementing nonce forces strict transaction ordering: if a user sends
+nonces 11 and 12 concurrently and 12 arrives first, 12 is rejected (the account
+expects 11). This is poor UX for high-frequency use cases like canceling multiple
+limit orders.
+
+Instead, Dango tracks the **most recent 20 nonces seen** (`SEEN_NONCES`). A new tx
+is accepted if:
 
 - Its nonce is not already in `SEEN_NONCES`.
 - Its nonce is greater than the smallest nonce in `SEEN_NONCES`.
-- Its nonce does not jump more than 100 from the current maximum.
+- Its nonce does not jump more than 100 from the current maximum (prevents a DoS
+  where an attacker fills the set with very large values).
 
-This allows concurrent, unordered transaction submission. See
-[Nonces and unordered transactions](../notes/nonces.md) for details.
+When a new nonce is inserted and the set exceeds 20 entries, the smallest is evicted.
+This means nonces older than the 20th-most-recent are permanently rejected, which
+also serves as an implicit **transaction expiry** (supplemented by an explicit
+`expiry` timestamp in the tx metadata).
+
+This design allows concurrent, unordered transaction submission while still preventing
+replay attacks.
 
 ### Account status
 
