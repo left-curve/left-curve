@@ -1,15 +1,25 @@
 use {
     dango_genesis::GenesisCodes,
-    dango_types::{UsdPrice, UsdValue, config::AppConfig, perps::UserState},
+    dango_types::{
+        UsdPrice, UsdValue,
+        account_factory::{self, UserIndex},
+        config::AppConfig,
+        perps::UserState,
+    },
     grug::{
         Addr, Borsh, Bound, Codec, Dec128_6, Dec128_24, Denom, JsonDeExt, JsonSerExt,
         MultiplyFraction, Number, NumberConst, PrimaryKey, Query, QueryAppConfigRequest, Signed,
-        Udec128_6, btree_map,
+        Udec128_6, Udec128_24, Uint128, addr, btree_map, btree_set,
     },
     grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_disk::DiskDb,
     grug_vm_rust::RustVm,
-    std::{collections::BTreeMap, path::PathBuf, str::FromStr, sync::LazyLock},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        path::PathBuf,
+        str::FromStr,
+        sync::LazyLock,
+    },
 };
 
 mod utils {
@@ -34,9 +44,10 @@ mod utils {
     }
 
     #[grug::derive(Serde)]
-    pub struct ShareCompensation {
-        pub shares: Udec128_6,
-        pub missing_gain: UsdValue,
+    #[derive(Default)]
+    pub struct ShareCompensation<V, U> {
+        pub vault: V,
+        pub unrealized: U,
     }
 
     #[macro_export]
@@ -74,9 +85,16 @@ const PRICES: LazyLock<BTreeMap<Denom, (UsdPrice, UsdPrice)>> = LazyLock::new(||
     }
 });
 
+const BLACKLISTED_ADDRESSES: LazyLock<BTreeSet<Addr>> = LazyLock::new(|| {
+    btree_set! {
+        addr!("40e296f81c0d2a2baaf60b3cfcd21f0a742a9a9b"),
+        addr!("88342ab46accd424252751f06fa2a5da0a0fa0d9"),
+    }
+});
 const BLOCK_HEIGHT: u64 = 17708991;
 
-const POINTS_TO_SHARE: u128 = 100_000;
+const POINTS_UNREALIZED: u128 = 100_000;
+const POINTS_VAULT: u128 = 35_000;
 
 // Chain health happens at Mon Apr 13 2026 10:32:21 GMT+0000
 #[tokio::main]
@@ -113,10 +131,6 @@ async fn main() -> anyhow::Result<()> {
         state.last_finalized_block.timestamp.into_seconds()
     );
 
-    for (p, (min, max)) in PRICES.iter() {
-        println!("{}: {} - {}", p, min, max);
-    }
-
     let cfg: AppConfig = app
         .do_query_app(Query::AppConfig(QueryAppConfigRequest {}), None, false)
         .unwrap()
@@ -146,9 +160,32 @@ async fn main() -> anyhow::Result<()> {
 
     let mut total_missing_gain = UsdValue::ZERO;
 
-    let mut missing_gain_per_user = BTreeMap::new();
+    let mut total_vault_shares = Uint128::ZERO;
+
+    let mut compensations: BTreeMap<UserIndex, ShareCompensation<Uint128, UsdValue>> =
+        BTreeMap::new();
 
     for (addr, state) in &users {
+        if addr == cfg.addresses.perps || BLACKLISTED_ADDRESSES.contains(addr) {
+            continue;
+        }
+
+        let user_index = {
+            app.do_query_app(
+                Query::wasm_smart(
+                    cfg.addresses.account_factory,
+                    &account_factory::QueryMsg::Account {
+                        address: addr.clone(),
+                    },
+                )?,
+                None,
+                false,
+            )?
+            .into_wasm_smart()
+            .deserialize_json::<account_factory::Account>()?
+            .owner
+        };
+
         for (pair_id, position) in &state.positions {
             let (min, max) = PRICES[pair_id];
 
@@ -157,7 +194,6 @@ async fn main() -> anyhow::Result<()> {
                 let delta = max.checked_sub(position.entry_price)?;
 
                 if delta.is_negative() {
-                    println!("delta is negative: {}", delta);
                     continue;
                 }
 
@@ -167,15 +203,15 @@ async fn main() -> anyhow::Result<()> {
 
                 total_missing_gain.checked_add_assign(pnl)?;
 
-                missing_gain_per_user
-                    .entry(addr)
-                    .or_insert(UsdValue::ZERO)
+                compensations
+                    .entry(user_index)
+                    .or_default()
+                    .unrealized
                     .checked_add_assign(pnl)?;
             } else {
                 let delta = position.entry_price.checked_sub(min)?;
 
                 if delta.is_negative() {
-                    println!("delta is negative: {}", delta);
                     continue;
                 }
 
@@ -185,42 +221,69 @@ async fn main() -> anyhow::Result<()> {
 
                 total_missing_gain.checked_add_assign(pnl)?;
 
-                missing_gain_per_user
-                    .entry(addr)
-                    .or_insert(UsdValue::ZERO)
+                compensations
+                    .entry(user_index)
+                    .or_default()
+                    .unrealized
                     .checked_add_assign(pnl)?;
             }
+        }
+
+        if state.vault_shares > Uint128::ZERO {
+            compensations
+                .entry(user_index)
+                .or_default()
+                .vault
+                .checked_add_assign(state.vault_shares)?;
+
+            total_vault_shares.checked_add_assign(state.vault_shares)?;
         }
     }
 
     println!("Total missing gain: {}", total_missing_gain);
 
-    let points_to_share = Udec128_6::new(POINTS_TO_SHARE);
+    let points_unrealized = Udec128_6::new(POINTS_UNREALIZED);
+    let points_vault = Udec128_6::new(POINTS_VAULT);
 
-    let mut computed_shares = Udec128_6::ZERO;
+    let mut computed_points_unrealized = Udec128_6::ZERO;
+    let mut computed_points_vault = Udec128_6::ZERO;
 
     let mut shares_per_user = BTreeMap::new();
 
-    for (addr, missing_gain) in missing_gain_per_user {
-        let ratio = Dec128_24::checked_from_ratio(
-            missing_gain.into_inner().0,
+    for (user_index, compensation) in compensations {
+        let ratio_unrealized = Dec128_24::checked_from_ratio(
+            compensation.unrealized.into_inner().0,
             total_missing_gain.into_inner().0,
         )?
         .checked_into_unsigned()?;
 
+        let points_unrealized = points_unrealized.checked_mul_dec(ratio_unrealized)?;
+        computed_points_unrealized.checked_add_assign(points_unrealized)?;
+
+        let ratio_vault = Udec128_24::checked_from_ratio(compensation.vault, total_vault_shares)?;
+
+        let points_vault = points_vault.checked_mul_dec(ratio_vault)?;
+        computed_points_vault.checked_add_assign(points_vault)?;
+
         println!(
-            "ratio: {}, missing gain: {} total missing gain: {}",
-            ratio, missing_gain, total_missing_gain
+            "User index: {}, points vault: {}, points unrealized: {} ratio unrealized: {} ratio vault: {} unrealized: {} vault: {}",
+            user_index,
+            points_vault,
+            points_unrealized,
+            ratio_unrealized,
+            ratio_vault,
+            compensation.unrealized,
+            compensation.vault
         );
 
-        let shares = points_to_share.checked_mul_dec(ratio)?;
-        computed_shares.checked_add_assign(shares)?;
-
-        shares_per_user.insert(addr, ShareCompensation {
-            shares,
-            missing_gain,
+        shares_per_user.insert(user_index, ShareCompensation {
+            vault: points_vault,
+            unrealized: points_unrealized,
         });
     }
+
+    println!("Computed points unrealized: {}", computed_points_unrealized);
+    println!("Computed points vault: {}", computed_points_vault);
 
     // save to json file
     let json = shares_per_user.to_json_string_pretty()?;
