@@ -22,6 +22,16 @@ pub fn submit_conditional_order(
 
     // -------------------------------- Checks ---------------------------------
 
+    ensure!(
+        trigger_price.is_positive(),
+        "price must be positive: {trigger_price}"
+    );
+
+    ensure!(
+        !max_slippage.is_negative(),
+        "max_slippage can't be negative: {max_slippage}"
+    );
+
     // 1. User must have an open position in this pair.
     // 2. If size is specified: sign must oppose position, |size| <= |position.size|.
     // 3. Must not already have a conditional order of the same direction for this pair.
@@ -474,5 +484,85 @@ mod tests {
         let below = position.conditional_order_below.as_ref().unwrap();
         assert_eq!(below.order_id, Uint64::new(2));
         assert_eq!(below.trigger_price, UsdPrice::new_int(1_800));
+    }
+
+    /// Conditional order with negative trigger_price must be rejected.
+    ///
+    /// Expected: error mentioning that trigger_price must be positive.
+    ///
+    /// Wrong behavior: accepting the order — a negative trigger price is
+    /// nonsensical and could never match a real oracle price.
+    #[test]
+    fn p9_reject_negative_trigger_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(-2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_percent(1),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// Conditional order with zero trigger_price must be rejected.
+    #[test]
+    fn p10_reject_zero_trigger_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::ZERO,
+            TriggerDirection::Below,
+            Dimensionless::new_percent(1),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// Conditional order with negative max_slippage must be rejected.
+    ///
+    /// Expected: error mentioning that max_slippage must be positive.
+    ///
+    /// Wrong behavior: accepting the order — a negative slippage inverts
+    /// the price constraint when the conditional order triggers, causing
+    /// fills at arbitrarily bad prices.
+    #[test]
+    fn p11_reject_negative_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_int(-1),
+        )
+        .should_fail_with_error("max_slippage can't be negative");
     }
 }

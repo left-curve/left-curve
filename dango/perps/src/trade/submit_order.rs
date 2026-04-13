@@ -307,6 +307,37 @@ pub(crate) fn _submit_order(
     let mut pair_state = pair_state.clone();
     let mut taker_state = taker_state.clone();
 
+    // -------------- Step 0. Validate prices and slippage --------------------
+
+    match &kind {
+        OrderKind::Market { max_slippage } => {
+            ensure!(
+                !max_slippage.is_negative(),
+                "max_slippage can't be negative: {max_slippage}"
+            );
+        },
+        OrderKind::Limit { limit_price, .. } => {
+            ensure!(
+                limit_price.is_positive(),
+                "limit price must be positive: {limit_price}"
+            );
+        },
+    }
+
+    for child_order in [&tp, &sl].into_iter().flatten() {
+        ensure!(
+            child_order.trigger_price.is_positive(),
+            "trigger price must be positive: {}",
+            child_order.trigger_price
+        );
+
+        ensure!(
+            !child_order.max_slippage.is_negative(),
+            "max slippage can't be negative: {}",
+            child_order.max_slippage
+        );
+    }
+
     // -------------- Step 1. Check minimum order size -------------------------
 
     if !reduce_only {
@@ -1323,7 +1354,7 @@ mod tests {
             oracle::PrecisionedPrice,
             perps::{Position, RateSchedule},
         },
-        grug::{Coins, MockContext, Timestamp, Udec128, Uint64, hash_map},
+        grug::{Coins, MockContext, ResultExt, Timestamp, Udec128, Uint64, hash_map},
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -4801,6 +4832,341 @@ mod tests {
         // SL is applied even though the trigger condition is already met.
         let below = pos.conditional_order_below.as_ref().unwrap();
         assert_eq!(below.trigger_price, UsdPrice::new_int(49_000));
+    }
+
+    // ========== Negative price / slippage rejection tests ==========
+
+    /// A market order with negative max_slippage must be rejected early
+    /// with a validation error mentioning "max_slippage".
+    ///
+    /// Wrong behavior: letting the negative slippage flow into target price
+    /// computation, where it silently corrupts the price constraint (e.g.
+    /// target_price becomes 0 or negative) and may or may not error later
+    /// for an unrelated reason.
+    #[test]
+    fn reject_market_order_negative_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 47_500, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(-50), // -5%
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("max_slippage can't be negative");
+    }
+
+    /// A limit order with a negative limit_price must be rejected.
+    ///
+    /// Wrong behavior: storing the order on the book with a negative price,
+    /// corrupting the order book invariant.
+    #[test]
+    fn reject_limit_order_negative_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(-1_000),
+                time_in_force: TimeInForce::PostOnly,
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// A limit order with zero limit_price must be rejected.
+    #[test]
+    fn reject_limit_order_zero_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::ZERO,
+                time_in_force: TimeInForce::PostOnly,
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// TP child order with negative trigger_price must be rejected.
+    #[test]
+    fn reject_tp_negative_trigger_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            Some(ChildOrder {
+                trigger_price: UsdPrice::new_int(-1_000),
+                max_slippage: Dimensionless::new_percent(1),
+                size: None,
+            }),
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// SL child order with negative trigger_price must be rejected.
+    #[test]
+    fn reject_sl_negative_trigger_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            Some(ChildOrder {
+                trigger_price: UsdPrice::new_int(-1_000),
+                max_slippage: Dimensionless::new_percent(1),
+                size: None,
+            }),
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// TP child order with negative max_slippage must be rejected.
+    #[test]
+    fn reject_tp_negative_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            Some(ChildOrder {
+                trigger_price: UsdPrice::new_int(60_000),
+                max_slippage: Dimensionless::new_int(-1),
+                size: None,
+            }),
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("max slippage can't be negative");
+    }
+
+    /// SL child order with negative max_slippage must be rejected.
+    #[test]
+    fn reject_sl_negative_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            Some(ChildOrder {
+                trigger_price: UsdPrice::new_int(40_000),
+                max_slippage: Dimensionless::new_int(-1),
+                size: None,
+            }),
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("max slippage can't be negative");
     }
 
     /// Helper: load taker state (returns default if missing).
