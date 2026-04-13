@@ -5,6 +5,7 @@
 .idea/
 .vscode/
 .claude/
+.superset/
 
 # macOS
 **/.DS_Store

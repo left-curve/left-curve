@@ -341,6 +341,25 @@ fn share_ratio_exceeds_max_fails() {
     .should_succeed();
 }
 
+/// A negative fee share ratio must be rejected.
+///
+/// Without this guard a malicious referrer could set e.g. -50%, causing
+/// `credit_commission(referee, negative)` on every trade — silently draining
+/// the referee's margin while inflating the referrer's commission.
+#[test]
+fn negative_share_ratio_fails() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // -1% should fail.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(-1),
+    )
+    .should_fail_with_error("fee share ratio cannot be negative");
+}
+
 /// Setting the fee share ratio requires sufficient perps trading volume
 /// when `volume_to_be_referrer` is non-zero.
 #[test]
