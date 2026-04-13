@@ -371,7 +371,8 @@ COMMISSION_RATE_OVERRIDES: Map<UserIndex, CommissionRate>
    (new risk).
 4. For opening portion: check OI constraints (`long_oi + size ≤ max_abs_oi`) and
    initial margin (`available_margin ≥ required`).
-5. Match against order book, fill from vault (counterparty AMM).
+5. Match against resting orders in the order book (which may include orders
+   placed by the vault or by other traders).
 6. For fills: compute trading fee (volume-tiered), apply funding
    (`entry_funding_per_unit = current`), settle PnL.
 7. Resting (unfilled) portion: reserve margin, place on book with TP/SL children.
