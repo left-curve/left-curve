@@ -22,10 +22,14 @@ pub fn submit_conditional_order(
 
     // -------------------------------- Checks ---------------------------------
 
-    ensure!(trigger_price.is_positive(), "price must be positive");
+    ensure!(
+        trigger_price.is_positive(),
+        "price must be positive: {trigger_price}"
+    );
+
     ensure!(
         !max_slippage.is_negative(),
-        "max_slippage can't be negative"
+        "max_slippage can't be negative: {max_slippage}"
     );
 
     // 1. User must have an open position in this pair.

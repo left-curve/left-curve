@@ -313,28 +313,31 @@ pub(crate) fn _submit_order(
         OrderKind::Market { max_slippage } => {
             ensure!(
                 !max_slippage.is_negative(),
-                "max_slippage can't be negative"
+                "max_slippage can't be negative: {max_slippage}"
             );
         },
         OrderKind::Limit { limit_price, .. } => {
-            ensure!(limit_price.is_positive(), "price must be positive");
+            ensure!(
+                limit_price.is_positive(),
+                "limit price must be positive: {limit_price}"
+            );
         },
     }
 
-    if let Some(tp) = &tp {
-        ensure!(tp.trigger_price.is_positive(), "price must be positive");
-        ensure!(
-            !tp.max_slippage.is_negative(),
-            "max_slippage can't be negative"
-        );
-    }
+    for child_order in [&tp, &sl] {
+        if let Some(co) = child_order {
+            ensure!(
+                co.trigger_price.is_positive(),
+                "trigger price must be positive: {}",
+                co.trigger_price
+            );
 
-    if let Some(sl) = &sl {
-        ensure!(sl.trigger_price.is_positive(), "price must be positive");
-        ensure!(
-            !sl.max_slippage.is_negative(),
-            "max_slippage can't be negative"
-        );
+            ensure!(
+                !co.max_slippage.is_negative(),
+                "max slippage can't be negative: {}",
+                co.max_slippage
+            );
+        }
     }
 
     // -------------- Step 1. Check minimum order size -------------------------
