@@ -1,7 +1,11 @@
 use {
     dango_bank::BALANCES,
     dango_perps::state::{ASKS, BIDS, DEPTHS, LONGS, PAIR_STATES, SHORTS, STATE, USER_STATES},
-    dango_types::{FundingRate, Quantity, UsdValue, constants::usdc},
+    dango_types::{
+        FundingRate, Quantity, UsdValue,
+        constants::usdc,
+        perps::{SETTLEMENT_CURRENCY_PRICE, settlement_currency},
+    },
     grug::{
         Addr, BlockInfo, Denom, Number, NumberConst, Order as IterationOrder, StdResult, Storage,
         Uint128, addr,
@@ -37,9 +41,17 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     }
 
     // Phase 2: Clear perps state (perps storage scope).
-    let mut perps_storage =
-        StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
-    let _total_liability = clear_perps_state(&mut perps_storage)?;
+    let total_liability = {
+        let mut perps_storage =
+            StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &perps_address]);
+        clear_perps_state(&mut perps_storage)?
+    };
+
+    // Phase 3: Calculate and log shortfall.
+    {
+        let bank_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &config.bank]);
+        log_shortfall(&bank_storage, &perps_address, &usdc_denom, total_liability)?;
+    }
 
     Ok(())
 }
@@ -68,7 +80,11 @@ fn claw_back_attacker_funds(
     let perps_bal = BALANCES
         .may_load(storage, (perps_address, usdc_denom))?
         .unwrap_or_default();
-    BALANCES.save(storage, (perps_address, usdc_denom), &perps_bal.checked_add(clawed_back)?)?;
+    BALANCES.save(
+        storage,
+        (perps_address, usdc_denom),
+        &perps_bal.checked_add(clawed_back)?,
+    )?;
 
     tracing::info!(
         attacker_1 = %bal1,
@@ -79,6 +95,48 @@ fn claw_back_attacker_funds(
     );
 
     Ok(clawed_back)
+}
+
+/// Read the perps contract's USDC balance, convert to UsdValue, and log the
+/// shortfall (liability minus asset). This is the amount that must be bridged
+/// back and donated to the perps contract to make users whole.
+fn log_shortfall(
+    storage: &dyn Storage,
+    perps_address: &Addr,
+    usdc_denom: &Denom,
+    total_liability: UsdValue,
+) -> StdResult<()> {
+    let perps_usdc_balance = BALANCES
+        .may_load(storage, (perps_address, usdc_denom))?
+        .unwrap_or_default();
+
+    // Convert raw USDC (base units) to UsdValue via the same path as deposit.rs:
+    // Quantity::from_base(amount, decimals) * SETTLEMENT_CURRENCY_PRICE
+    let asset = Quantity::from_base(perps_usdc_balance, settlement_currency::DECIMAL)?
+        .checked_mul(SETTLEMENT_CURRENCY_PRICE)?;
+
+    let shortfall = total_liability.checked_sub(asset)?;
+
+    if shortfall.is_positive() {
+        tracing::warn!(
+            %total_liability,
+            perps_usdc_balance = %perps_usdc_balance,
+            asset_usd = %asset,
+            %shortfall,
+            "!!! SHORTFALL: perps contract liabilities exceed assets. \
+             Bridge the returned funds back to dango and donate to the perps contract. !!!"
+        );
+    } else {
+        tracing::info!(
+            %total_liability,
+            perps_usdc_balance = %perps_usdc_balance,
+            asset_usd = %asset,
+            %shortfall,
+            "No shortfall"
+        );
+    }
+
+    Ok(())
 }
 
 /// Close all positions, cancel all orders, zero out OI/insurance fund.
