@@ -83,9 +83,7 @@ pub fn query_verify_ed25519(
 }
 
 macro_rules! slice_of_slices {
-    ($vec:expr) => {{
-        $vec.iter().map(|v| &v[..]).collect::<Vec<_>>()
-    }};
+    ($vec:expr) => {{ $vec.iter().map(|v| &v[..]).collect::<Vec<_>>() }};
 }
 
 pub fn query_verify_ed25519_batch(

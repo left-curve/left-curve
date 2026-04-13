@@ -140,10 +140,12 @@ fn is_proxy_hop_ip(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use actix_web::{
-        http::header::{HeaderName, HeaderValue},
-        test::TestRequest,
+    use {
+        super::*,
+        actix_web::{
+            http::header::{HeaderName, HeaderValue},
+            test::TestRequest,
+        },
     };
 
     #[test]

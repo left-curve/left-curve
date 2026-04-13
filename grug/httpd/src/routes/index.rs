@@ -1,6 +1,5 @@
 use {
-    crate::context::Context,
-    crate::request_ip::RequesterIp,
+    crate::{context::Context, request_ip::RequesterIp},
     actix_web::{
         Error, HttpRequest, HttpResponse, Responder, error::ErrorInternalServerError, get, web,
     },

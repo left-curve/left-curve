@@ -43,11 +43,10 @@ where
             );
         },
         "Failed to finalize fee",
-        trace_opt.error_level.into()
-        // `finalize_fee` is supposed to always succeed, so if it doesn't,
-        // we print a tracing log at ERROR level to highlight the seriousness.
-        // #[cfg(feature = "tracing")]
-        // tracing::error!(err = err.to_string(), "Failed to finalize fee")
+        trace_opt.error_level.into(), // `finalize_fee` is supposed to always succeed, so if it doesn't,
+                                      // we print a tracing log at ERROR level to highlight the seriousness.
+                                      // #[cfg(feature = "tracing")]
+                                      // tracing::error!(err = err.to_string(), "Failed to finalize fee")
     );
 
     evt
