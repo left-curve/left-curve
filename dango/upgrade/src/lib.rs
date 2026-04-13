@@ -31,8 +31,7 @@ use {
         perps::{SETTLEMENT_CURRENCY_PRICE, settlement_currency},
     },
     grug::{
-        Addr, BlockInfo, Denom, Number, NumberConst, Order as IterationOrder, StdResult, Storage,
-        Uint128, addr,
+        Addr, BlockInfo, Denom, Number, Order as IterationOrder, StdResult, Storage, Uint128, addr,
     },
     grug_app::{AppResult, CHAIN_ID, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
 };
@@ -97,8 +96,8 @@ fn claw_back_attacker_funds(
     let clawed_back = bal1.checked_add(bal2)?;
 
     // Zero attacker balances.
-    BALANCES.save(storage, (&ATTACKER_1, usdc_denom), &Uint128::ZERO)?;
-    BALANCES.save(storage, (&ATTACKER_2, usdc_denom), &Uint128::ZERO)?;
+    BALANCES.remove(storage, (&ATTACKER_1, usdc_denom));
+    BALANCES.remove(storage, (&ATTACKER_2, usdc_denom));
 
     // Credit the clawed-back amount to the perps contract.
     let perps_bal = BALANCES
