@@ -349,8 +349,8 @@ where
             ));
         }
 
-        // TODO: delete this hardfork block and uncomment the original upgrade
-        // logic below once the post-exploit upgrade has been completed.
+        // ============================= BEGIN ONE-OFF MAINNET UPGRADE =============================
+        // TODO: delete after mainnet upgrade is completed.
         {
             use grug_types::PastUpgrade;
 
@@ -413,6 +413,7 @@ where
                 }
             }
         }
+        // ============================== END ONE-OFF MAINNET UPGRADE ==============================
 
         // // If a planned upgrade exists and the block height is reached, then run
         // // the chain upgrade logic.
