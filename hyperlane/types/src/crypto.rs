@@ -1,7 +1,20 @@
 use {
     crate::{Addr32, mailbox::Domain},
     grug::{Hash256, HashExt, Inner},
+    hex_literal::hex,
 };
+
+/// Half the order of the secp256k1 curve (n/2). Signatures with `s > HALF_ORDER`
+/// are malleable: `(r, n - s, v ^ 1)` is an equally valid signature for the same
+/// message and signer. Rejecting high-s at the boundary eliminates this surface.
+const SECP256K1_HALF_ORDER: [u8; 32] =
+    hex!("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0");
+
+/// Returns `true` if the `s` component (bytes 32..64) of a 65-byte ECDSA
+/// signature is in canonical low-s form (`s <= n/2`).
+pub fn is_canonical_ecdsa_signature(signature: &[u8; 65]) -> bool {
+    signature[32..64] <= SECP256K1_HALF_ORDER[..]
+}
 
 pub fn domain_hash(domain: Domain, address: Addr32, key: &str) -> Hash256 {
     // domain: 4

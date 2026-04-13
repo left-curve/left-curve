@@ -2,11 +2,11 @@ use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
     grug::{
-        Bound, DEFAULT_PAGE_LIMIT, HashExt, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
-        StdResult,
+        Bound, DEFAULT_PAGE_LIMIT, HashExt, HexByteArray, ImmutableCtx, Inner, Json, JsonSerExt,
+        Order, StdResult,
     },
     hyperlane_types::{
-        domain_hash, eip191_hash,
+        domain_hash, eip191_hash, is_canonical_ecdsa_signature,
         isms::{
             HYPERLANE_DOMAIN_KEY, IsmQuery, IsmQueryResponse,
             multisig::{Metadata, QueryMsg, ValidatorSet},
@@ -104,6 +104,10 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
         .map(|signature| {
             let v = signature[64];
             ensure!(v == 27 || v == 28, "invalid recovery id: {v}");
+            ensure!(
+                is_canonical_ecdsa_signature(signature.inner()),
+                "non-canonical (high-s) signature"
+            );
 
             let pk = ctx.api.secp256k1_pubkey_recover(
                 &multisig_hash,

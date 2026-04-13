@@ -3,7 +3,7 @@ use {
     anyhow::ensure,
     grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier, Uint128},
     hyperlane_types::{
-        announcement_hash, domain_hash, eip191_hash,
+        announcement_hash, domain_hash, eip191_hash, is_canonical_ecdsa_signature,
         va::{Announce, ExecuteMsg, Initialize, InstantiateMsg, VA_DOMAIN_KEY},
     },
 };
@@ -67,6 +67,10 @@ fn announce(
     // of 0, 1 (EIP-155 https://eips.ethereum.org/EIPS/eip-155).
     let v = signature[64];
     ensure!(v == 27 || v == 28, "invalid recovery id: {v}");
+    ensure!(
+        is_canonical_ecdsa_signature(signature.inner()),
+        "non-canonical (high-s) signature"
+    );
 
     let pubkey =
         ctx.api
