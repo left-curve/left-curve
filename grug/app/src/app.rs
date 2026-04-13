@@ -7,14 +7,14 @@ use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
-        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
-        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
-        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
-        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
-        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
-        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer, NaiveQuerier,
+        NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl, TraceOption, Vm,
+        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
+        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
+        do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance, query_balances,
+        query_code, query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
+        query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -349,86 +349,151 @@ where
             ));
         }
 
-        // If a planned upgrade exists and the block height is reached, then run
-        // the chain upgrade logic.
-        if let Some(upgrade) = NEXT_UPGRADE.may_load(&buffer)?
-            && block.info.height >= upgrade.height
+        // TODO: delete this hardfork block and uncomment the original upgrade
+        // logic below once the post-exploit upgrade has been completed.
         {
-            // Current node software version doesn't match the upgrade version.
-            // Exit early, halt the chain, awaiting the node operator to deploy
-            // the right version.
-            //
-            // See the equivalent code is Cosmos SDK:
-            // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
-            if self.cargo_version != upgrade.cargo_version {
+            use grug_types::PastUpgrade;
+
+            const MAINNET_CHAIN_ID: &str = "dango-1";
+            const MAINNET_UPGRADE_HEIGHT: u64 = 17708992;
+            const MAINNET_UPGRADE_CARGO_VERSION: &str = "v0.12.0";
+
+            let chain_id = CHAIN_ID.load(&buffer)?;
+
+            if chain_id == MAINNET_CHAIN_ID && block.info.height == MAINNET_UPGRADE_HEIGHT {
+                assert_eq!(
+                    self.cargo_version, MAINNET_UPGRADE_CARGO_VERSION,
+                    "mainnet upgrade planned, but cargo version doesn't match"
+                );
+
+                let Some(handler) = self.upgrade_handler else {
+                    panic!("mainnet upgrade planned, but no upgrade handler not found!");
+                };
+
                 #[cfg(feature = "tracing")]
                 {
-                    tracing::warn!(
-                        last_finalized_height = last_finalized_block.height,
-                        current_version = self.cargo_version,
-                        upgrade_version = upgrade.cargo_version,
-                        "!!! PRE-PLANNED CHAIN HALT !!!"
-                    );
+                    tracing::info!(height = block.info.height, "Performing chain upgrade");
                 }
 
-                return Err(AppError::upgrade_incorrect_version(
-                    self.cargo_version.clone(),
-                    upgrade.cargo_version,
-                ));
-            }
-
-            // Now the current node software version matches the upgrade version.
-            // We can proceed with the upgrade.
-            //
-            // If an action is specified in the `upgrade_handler`, then execute it.
-            // This action MUST succeed. If not, it's considered a critical error.
-            // We halt the chain, awaiting a fix.
-            if let Some(handler) = self.upgrade_handler {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::info!(
-                        height = block.info.height,
-                        cargo_version = upgrade.cargo_version,
-                        "Performing chain upgrade"
-                    );
-                }
-
-                // If executing the action errors, an error is returned in the
-                // ABCI response, which leads to a chain halt (as intended).
-                (handler)(Box::new(buffer.clone()), self.vm.clone(), block.info).inspect_err(
-                    |_err| {
+                (handler)(Box::new(buffer.clone()), self.vm.clone(), block.info).unwrap_or_else(
+                    |err| {
                         #[cfg(feature = "tracing")]
                         {
-                            tracing::error!(reason = %_err, "!!! UPGRADE FAILED !!!");
+                            tracing::error!(reason = %err, "!!! UPGRADE FAILED !!!");
                         }
+
+                        panic!("upgrade failed: {}", err.to_string());
                     },
-                )?;
+                );
 
                 #[cfg(feature = "tracing")]
                 {
-                    tracing::info!(
-                        height = block.info.height,
-                        cargo_version = upgrade.cargo_version,
-                        "Completed chain upgrade"
-                    );
+                    tracing::info!(height = block.info.height, "Completed chain upgrade");
                 }
+
+                PAST_UPGRADES.save(&mut buffer, block.info.height, &PastUpgrade {
+                    cargo_version: self.cargo_version.clone(),
+                    git_tag: Some("v0.12.0".to_string()),
+                    url: Some(
+                        "https://github.com/left-curve/left-curve/releases/tag/v0.12.0".to_string(),
+                    ),
+                })?;
             } else {
                 #[cfg(feature = "tracing")]
                 {
                     tracing::info!(
+                        chain_id = chain_id,
+                        mainnet_chain_id = MAINNET_CHAIN_ID,
                         height = block.info.height,
-                        cargo_version = upgrade.cargo_version,
-                        "No handler specified for the chain upgrade. Skipping..."
+                        mainnet_upgrade_height = MAINNET_UPGRADE_HEIGHT,
+                        cargo_version = self.cargo_version,
+                        mainnet_upgrade_cargo_version = MAINNET_UPGRADE_CARGO_VERSION,
+                        "Current chain does not match mainnet upgrade plan. Upgrade is skipped"
                     );
                 }
             }
-
-            // Delete the scheduled upgrade, as it's already done.
-            NEXT_UPGRADE.remove(&mut buffer);
-
-            // Save the upgrade to the logs.
-            PAST_UPGRADES.save(&mut buffer, block.info.height, &upgrade.into())?;
         }
+
+        // // If a planned upgrade exists and the block height is reached, then run
+        // // the chain upgrade logic.
+        // if let Some(upgrade) = NEXT_UPGRADE.may_load(&buffer)?
+        //     && block.info.height >= upgrade.height
+        // {
+        //     // Current node software version doesn't match the upgrade version.
+        //     // Exit early, halt the chain, awaiting the node operator to deploy
+        //     // the right version.
+        //     //
+        //     // See the equivalent code is Cosmos SDK:
+        //     // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
+        //     if self.cargo_version != upgrade.cargo_version {
+        //         #[cfg(feature = "tracing")]
+        //         {
+        //             tracing::warn!(
+        //                 last_finalized_height = last_finalized_block.height,
+        //                 current_version = self.cargo_version,
+        //                 upgrade_version = upgrade.cargo_version,
+        //                 "!!! PRE-PLANNED CHAIN HALT !!!"
+        //             );
+        //         }
+        //
+        //         return Err(AppError::upgrade_incorrect_version(
+        //             self.cargo_version.clone(),
+        //             upgrade.cargo_version,
+        //         ));
+        //     }
+        //
+        //     // Now the current node software version matches the upgrade version.
+        //     // We can proceed with the upgrade.
+        //     //
+        //     // If an action is specified in the `upgrade_handler`, then execute it.
+        //     // This action MUST succeed. If not, it's considered a critical error.
+        //     // We halt the chain, awaiting a fix.
+        //     if let Some(handler) = self.upgrade_handler {
+        //         #[cfg(feature = "tracing")]
+        //         {
+        //             tracing::info!(
+        //                 height = block.info.height,
+        //                 cargo_version = upgrade.cargo_version,
+        //                 "Performing chain upgrade"
+        //             );
+        //         }
+        //
+        //         // If executing the action errors, an error is returned in the
+        //         // ABCI response, which leads to a chain halt (as intended).
+        //         (handler)(Box::new(buffer.clone()), self.vm.clone(), block.info).inspect_err(
+        //             |_err| {
+        //                 #[cfg(feature = "tracing")]
+        //                 {
+        //                     tracing::error!(reason = %_err, "!!! UPGRADE FAILED !!!");
+        //                 }
+        //             },
+        //         )?;
+        //
+        //         #[cfg(feature = "tracing")]
+        //         {
+        //             tracing::info!(
+        //                 height = block.info.height,
+        //                 cargo_version = upgrade.cargo_version,
+        //                 "Completed chain upgrade"
+        //             );
+        //         }
+        //     } else {
+        //         #[cfg(feature = "tracing")]
+        //         {
+        //             tracing::info!(
+        //                 height = block.info.height,
+        //                 cargo_version = upgrade.cargo_version,
+        //                 "No handler specified for the chain upgrade. Skipping..."
+        //             );
+        //         }
+        //     }
+        //
+        //     // Delete the scheduled upgrade, as it's already done.
+        //     NEXT_UPGRADE.remove(&mut buffer);
+        //
+        //     // Save the upgrade to the logs.
+        //     PAST_UPGRADES.save(&mut buffer, block.info.height, &upgrade.into())?;
+        // }
 
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
