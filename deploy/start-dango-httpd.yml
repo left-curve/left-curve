@@ -1,0 +1,38 @@
+---
+# Start only the dango container (HTTP server + indexer) without CometBFT.
+# Useful for querying blocks/state from the DB when the chain can't run.
+#
+# Usage:
+#   just start-dango-httpd mainnet 100.89.7.33
+- name: Start dango HTTP server (without CometBFT)
+  hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars:
+    system_wide_directories: true
+    reset_data: false
+  vars_files:
+    - roles/full-app/vars/main.yml
+  tasks:
+    - name: Read current deploy
+      include_role:
+        name: full-app
+        tasks_from: read_current_deploy.yml
+
+    - name: Set deployment_name
+      set_fact:
+        deployment_name: "{{ current_deployment }}"
+
+    - debug:
+        msg: "Starting dango (httpd only) for deployment {{ deployment_name }} at {{ deployment_dir }}"
+
+    - name: Start dango service
+      community.docker.docker_compose_v2:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ deployment_dir }}"
+        services:
+          - dango
+        state: present
+        recreate: always
+        wait: true
+        wait_timeout: 300

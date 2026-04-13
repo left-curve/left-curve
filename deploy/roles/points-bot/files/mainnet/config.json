@@ -5,7 +5,7 @@
     "timeout": "30s"
   },
   "bot": {
-    "event_duration": 24,
+    "event_duration": 38,
     "event_start": {
       "timestamp": "2026-04-13T12:00:00Z"
     },
