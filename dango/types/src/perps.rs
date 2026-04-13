@@ -1380,6 +1380,9 @@ pub struct FeeDistributed {
     /// User index of the fee payer.
     pub payer: UserIndex,
 
+    /// Address of the fee payer.
+    pub payer_addr: Addr,
+
     /// Protocol treasury portion of the fee.
     pub protocol_fee: UsdValue,
 
