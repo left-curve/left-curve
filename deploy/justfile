@@ -41,16 +41,16 @@ add-passwords:
 # ---------------------------------- Secrets -----------------------------------
 
 edit-secrets:
-  EDITOR="code --wait" ansible-vault edit group_vars/all/vault.yml
+  ansible-vault edit group_vars/all/vault.yml
 
 edit-hyperlane-secrets:
   ansible-vault edit group_vars/hyperlane/vault.yml
 
 edit-points-bot-secrets:
-  EDITOR="cursor --wait" ansible-vault edit group_vars/points-bot/vault.yml
+  ansible-vault edit group_vars/points-bot/vault.yml
 
 edit-perps-bot-secrets:
-  EDITOR="cursor --wait" ansible-vault edit group_vars/perps-bot/vault.yml
+  ansible-vault edit group_vars/perps-bot/vault.yml
 
 edit-root-key:
   ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
