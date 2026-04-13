@@ -37,9 +37,14 @@ impl Metadata {
 
     pub fn decode(buf: &[u8]) -> anyhow::Result<Self> {
         ensure!(
-            buf.len() > 68,
+            buf.len() >= 68,
             "multisig ISM metadata should be at least 68 bytes, got: {}",
             buf.len()
+        );
+
+        ensure!(
+            (buf.len() - 68) % 65 == 0,
+            "metadata has trailing bytes that don't form a complete signature"
         );
 
         let signatures = buf[68..]
