@@ -1,8 +1,12 @@
 use {
+    dango_bank::BALANCES,
     dango_perps::state::{ASKS, BIDS, DEPTHS, LONGS, PAIR_STATES, SHORTS, STATE, USER_STATES},
-    dango_types::{FundingRate, Quantity, UsdValue},
-    grug::{Addr, BlockInfo, Order as IterationOrder, StdResult, Storage, addr},
-    grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
+    dango_types::{FundingRate, Quantity, UsdValue, constants::usdc},
+    grug::{
+        Addr, BlockInfo, Denom, Number, NumberConst, Order as IterationOrder, StdResult, Storage,
+        Uint128, addr,
+    },
+    grug_app::{AppResult, CHAIN_ID, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
 };
 
 const MAINNET_CHAIN_ID: &str = "dango-1";
@@ -11,8 +15,12 @@ const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbe
 const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
 
+const ATTACKER_1: Addr = addr!("023ef9e3e20caca6ef3743cbfba6469d69978999");
+const ATTACKER_2: Addr = addr!("0e85f43a9e45a7c8835ded188890b7e57033b78f");
+
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
     let chain_id = CHAIN_ID.load(&*storage)?;
+    let config = CONFIG.load(&*storage)?;
 
     let perps_address = match chain_id.as_str() {
         MAINNET_CHAIN_ID => MAINNET_PERPS_ADDRESS,
@@ -20,12 +28,57 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
         _ => panic!("unknown chain id: {chain_id}"),
     };
 
+    // Phase 1: Claw back attacker funds (bank storage scope).
+    let usdc_denom = usdc::DENOM.clone();
+    {
+        let mut bank_storage =
+            StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &config.bank]);
+        claw_back_attacker_funds(&mut bank_storage, &perps_address, &usdc_denom)?;
+    }
+
+    // Phase 2: Clear perps state (perps storage scope).
     let mut perps_storage =
         StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
-
     let _total_liability = clear_perps_state(&mut perps_storage)?;
 
     Ok(())
+}
+
+/// Zero out USDC balances of the two attacker accounts and add the sum to
+/// the perps contract's balance. Operates on the bank contract's storage.
+fn claw_back_attacker_funds(
+    storage: &mut dyn Storage,
+    perps_address: &Addr,
+    usdc_denom: &Denom,
+) -> StdResult<Uint128> {
+    let bal1 = BALANCES
+        .may_load(storage, (&ATTACKER_1, usdc_denom))?
+        .unwrap_or_default();
+    let bal2 = BALANCES
+        .may_load(storage, (&ATTACKER_2, usdc_denom))?
+        .unwrap_or_default();
+
+    let clawed_back = bal1.checked_add(bal2)?;
+
+    // Zero attacker balances.
+    BALANCES.save(storage, (&ATTACKER_1, usdc_denom), &Uint128::ZERO)?;
+    BALANCES.save(storage, (&ATTACKER_2, usdc_denom), &Uint128::ZERO)?;
+
+    // Credit the clawed-back amount to the perps contract.
+    let perps_bal = BALANCES
+        .may_load(storage, (perps_address, usdc_denom))?
+        .unwrap_or_default();
+    BALANCES.save(storage, (perps_address, usdc_denom), &perps_bal.checked_add(clawed_back)?)?;
+
+    tracing::info!(
+        attacker_1 = %bal1,
+        attacker_2 = %bal2,
+        total_clawed_back = %clawed_back,
+        new_perps_balance = %(perps_bal.checked_add(clawed_back)?),
+        "Clawed back attacker USDC funds to perps contract"
+    );
+
+    Ok(clawed_back)
 }
 
 /// Close all positions, cancel all orders, zero out OI/insurance fund.

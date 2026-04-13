@@ -10,6 +10,7 @@ rust-version  = { workspace = true }
 
 [dependencies]
 borsh       = { workspace = true }
+dango-bank  = { workspace = true, features = ["library"] }
 dango-perps = { workspace = true, features = ["library"] }
 dango-types = { workspace = true }
 grug        = { workspace = true }
