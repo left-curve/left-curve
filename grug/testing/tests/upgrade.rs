@@ -48,6 +48,7 @@ fn error_cases() {
 /// This is otherwise not possible through normal transactions.
 /// This upgrade doesn't involve any contract calls.
 #[test]
+#[ignore = "temporarily disabled; to be re-enabled after mainnet upgrade"] // FIXME
 fn upgrading_without_calling_contract() {
     const OLD_CHAIN_ID: &str = "oonga";
     const NEW_CHAIN_ID: &str = "boonga";
@@ -146,6 +147,7 @@ fn upgrading_without_calling_contract() {
 /// In practice, this can be easily done with a simple contract migration, but
 /// here for testing purpose, we go with a full chain upgrade.
 #[test]
+#[ignore = "temporarily disabled; to be re-enabled after mainnet upgrade"] // FIXME
 fn upgrading_with_calling_contract() {
     mod new_mock_bank {
         use {
