@@ -540,15 +540,3 @@ Key interaction patterns:
 | Account Factory | -- | Accounts (for key lookups) |
 | Gateway | Hyperlane validators | Bank (for mint/burn) |
 
-### Key risk areas
-
-1. **Oracle manipulation.** A compromised Pyth signer can post favorable prices,
-   affecting all margin calculations, liquidations, and funding rates.
-2. **Funding rate extremes.** Funding can exceed a user's equity without triggering
-   auto-closeout, potentially creating bad debt.
-3. **ADL fairness.** Positions are selected for auto-deleveraging by entry price, not
-   current PnL. This may not reflect actual profitability.
-4. **Vault solvency.** If `insurance_fund` goes negative, vault LPs bear the loss.
-   There is no withdrawal restriction when the fund is negative.
-5. **Orphaned transfers.** Funds sent to non-existent contracts are stored
-   indefinitely with no governance recovery mechanism.
