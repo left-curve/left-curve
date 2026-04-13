@@ -18,12 +18,12 @@ pattern:
 Both stores are backed by a single RocksDB instance using separate column families
 (`grug/db/disk/src/db.rs`):
 
-| Column Family | Purpose |
-|---------------|---------|
-| `default` | Metadata (latest committed version) |
-| `state_commitment` | JMT nodes (hashed key-value pairs) |
-| `state_storage` | Chain-level state (non-contract keys) |
-| `wasm_storage` | Contract internal storage (see below) |
+| Column Family             | Purpose                                       |
+| ------------------------- | --------------------------------------------- |
+| `default`                 | Metadata (latest committed version)           |
+| `state_commitment`        | JMT nodes (hashed key-value pairs)            |
+| `state_storage`           | Chain-level state (non-contract keys)         |
+| `wasm_storage`            | Contract internal storage (see below)         |
 | `preimages` (IBC feature) | Key-hash to raw-key mapping for ICS-23 proofs |
 
 `state_storage` and `wasm_storage` together form the logical "state storage" layer.
@@ -42,10 +42,10 @@ fixed 24-byte prefix (`WASM_PREFIX_LEN`). Everything else goes to `state_storage
 
 The two CFs exist so that each can have **specialized RocksDB options**:
 
-| Option | `wasm_storage` | `state_storage` |
-|--------|----------------|-----------------|
-| Memtable size | 16 MiB (fewer flushes; contracts are less delete-heavy) | 2 MiB (frequent flushes; chain state is delete-heavy from cronjobs) |
-| Prefix extractor | 24 bytes (`b"wasm"` + 20-byte address) | 4 bytes (grug namespace length) |
+| Option           | `wasm_storage`                                          | `state_storage`                                                     |
+| ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------- |
+| Memtable size    | 16 MiB (fewer flushes; contracts are less delete-heavy) | 2 MiB (frequent flushes; chain state is delete-heavy from cronjobs) |
+| Prefix extractor | 24 bytes (`b"wasm"` + 20-byte address)                  | 4 bytes (grug namespace length)                                     |
 
 Both CFs share a common base configuration: 256 MiB LRU block cache, bloom filters
 (10 bits/key), L0 filter/index pinning, and level-style compaction.
@@ -193,13 +193,13 @@ storage.
 
 ### Abstractions
 
-| Type | Purpose | Key file |
-|------|---------|----------|
-| `Item<T>` | Single value | `storage/src/item.rs` |
-| `Map<K, T>` | Key-value mapping with iteration | `storage/src/map.rs` |
-| `Set<K>` | Membership set | `storage/src/set.rs` |
-| `Counter<T>` | Monotonic counter | `storage/src/counter.rs` |
-| `IndexedMap<K, T, I>` | Map with secondary indexes | `storage/src/index/map.rs` |
+| Type                  | Purpose                          | Key file                   |
+| --------------------- | -------------------------------- | -------------------------- |
+| `Item<T>`             | Single value                     | `storage/src/item.rs`      |
+| `Map<K, T>`           | Key-value mapping with iteration | `storage/src/map.rs`       |
+| `Set<K>`              | Membership set                   | `storage/src/set.rs`       |
+| `Counter<T>`          | Monotonic counter                | `storage/src/counter.rs`   |
+| `IndexedMap<K, T, I>` | Map with secondary indexes       | `storage/src/index/map.rs` |
 
 Usage example:
 
@@ -336,18 +336,18 @@ and aborts execution (state changes discarded, fee still collected).
 
 Gas costs (`grug/app/src/gas/costs.rs`):
 
-| Operation | Cost |
-|-----------|------|
-| `db_read` | 588 + 2/byte |
-| `db_write` | 1176 + 18/byte |
-| `db_scan` (setup) | 588 |
-| `db_next` (per iteration) | 18 |
-| `secp256k1_verify` | 770,000 |
-| `secp256r1_verify` | 1,880,000 |
-| `ed25519_verify` | 410,000 |
-| `ed25519_batch_verify` | 1,340,000 + 188,000/sig |
-| Hash functions | 0 base + 5--28/byte (varies) |
-| Wasmer operation | 1 gas/op |
+| Operation                 | Cost                         |
+| ------------------------- | ---------------------------- |
+| `db_read`                 | 588 + 2/byte                 |
+| `db_write`                | 1176 + 18/byte               |
+| `db_scan` (setup)         | 588                          |
+| `db_next` (per iteration) | 18                           |
+| `secp256k1_verify`        | 770,000                      |
+| `secp256r1_verify`        | 1,880,000                    |
+| `ed25519_verify`          | 410,000                      |
+| `ed25519_batch_verify`    | 1,340,000 + 188,000/sig      |
+| Hash functions            | 0 base + 5--28/byte (varies) |
+| Wasmer operation          | 1 gas/op                     |
 
 See [Gas](../notes/gas.md) for benchmark methodology.
 
@@ -410,14 +410,14 @@ Executes third-party WASM bytecode via the Wasmer runtime. Key protections:
 **Gatekeeper middleware** (`grug/vm/wasm/src/gatekeeper.rs`): Validates WASM
 modules at compilation time. Allowed/denied features:
 
-| Feature | Allowed | Rationale |
-|---------|---------|-----------|
-| Floats | Yes | Required for JSON deserialization |
-| Bulk memory ops | Yes | Required by Rust 1.87+ |
-| Reference types | **No** | Could enable memory leaks |
-| SIMD | **No** | Non-deterministic floats |
-| Threads | **No** | Non-deterministic |
-| Exception handling | **No** | Unstable WASM proposal |
+| Feature            | Allowed | Rationale                         |
+| ------------------ | ------- | --------------------------------- |
+| Floats             | Yes     | Required for JSON deserialization |
+| Bulk memory ops    | Yes     | Required by Rust 1.87+            |
+| Reference types    | **No**  | Could enable memory leaks         |
+| SIMD               | **No**  | Non-deterministic floats          |
+| Threads            | **No**  | Non-deterministic                 |
+| Exception handling | **No**  | Unstable WASM proposal            |
 
 **Metering middleware:** Injects gas tracking into every WASM operation (1 gas per
 Wasmer op).
@@ -438,6 +438,7 @@ host-provided functions:
 - Debug logging: `debug`
 
 Each host function call:
+
 1. Reads data from WASM linear memory.
 2. Charges gas (based on operation + data size).
 3. Enforces `state_mutable` -- writes rejected during query execution.

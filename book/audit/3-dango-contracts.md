@@ -32,13 +32,13 @@ The bank contract manages all token balances, transfers, mints, and burns.
 
 ### State layout
 
-| Storage | Key | Value | Purpose |
-|---------|-----|-------|---------|
-| `NAMESPACE_OWNERS` | `Part` (denom segment) | `Addr` | Who can mint/burn tokens under this namespace |
-| `METADATAS` | `Denom` | `Metadata` | Token name, symbol, decimals |
-| `SUPPLIES` | `Denom` | `Uint128` | Total supply per denom |
-| `BALANCES` | `(Addr, Denom)` | `Uint128` | Account balances |
-| `ORPHANED_TRANSFERS` | `(Addr, Addr)` | `Coins` | Dead-letter transfers to non-existent contracts |
+| Storage              | Key                    | Value      | Purpose                                         |
+| -------------------- | ---------------------- | ---------- | ----------------------------------------------- |
+| `NAMESPACE_OWNERS`   | `Part` (denom segment) | `Addr`     | Who can mint/burn tokens under this namespace   |
+| `METADATAS`          | `Denom`                | `Metadata` | Token name, symbol, decimals                    |
+| `SUPPLIES`           | `Denom`                | `Uint128`  | Total supply per denom                          |
+| `BALANCES`           | `(Addr, Denom)`        | `Uint128`  | Account balances                                |
+| `ORPHANED_TRANSFERS` | `(Addr, Addr)`         | `Coins`    | Dead-letter transfers to non-existent contracts |
 
 ### Operations
 
@@ -71,15 +71,15 @@ Creates and manages user accounts.
 
 ### State layout
 
-| Storage | Key | Value |
-|---------|-----|-------|
-| `CODE_HASH` | -- | `Hash256` (account contract code) |
-| `NEXT_USER_INDEX` | -- | `Counter<UserIndex>` |
-| `NEXT_ACCOUNT_INDEX` | -- | `Counter<AccountIndex>` |
-| `USERS` | `UserIndex` | `User { name, accounts, keys }` |
-| (Index) `by_key` | `Hash256` | → `UserIndex` (MultiIndex) |
-| (Index) `by_account` | `Addr` | → `UserIndex` (UniqueIndex) |
-| (Index) `by_name` | `Username` | → `UserIndex` (UniqueIndex) |
+| Storage              | Key         | Value                             |
+| -------------------- | ----------- | --------------------------------- |
+| `CODE_HASH`          | --          | `Hash256` (account contract code) |
+| `NEXT_USER_INDEX`    | --          | `Counter<UserIndex>`              |
+| `NEXT_ACCOUNT_INDEX` | --          | `Counter<AccountIndex>`           |
+| `USERS`              | `UserIndex` | `User { name, accounts, keys }`   |
+| (Index) `by_key`     | `Hash256`   | → `UserIndex` (MultiIndex)        |
+| (Index) `by_account` | `Addr`      | → `UserIndex` (UniqueIndex)       |
+| (Index) `by_name`    | `Username`  | → `UserIndex` (UniqueIndex)       |
 
 ### User structure
 
@@ -100,6 +100,7 @@ pub struct User {
    contract, and optionally registers a referrer with the perps contract.
 
 **Constraints:**
+
 - Exactly one message per registration tx (prevents batching attacks).
 - Username is immutable after being set.
 - Maximum 5 accounts per user.
@@ -111,10 +112,10 @@ Single-signature account contract, one instance per user account.
 
 ### State
 
-| Storage | Value |
-|---------|-------|
-| `STATUS` | `AccountStatus` (Inactive / Active / Frozen) |
-| `SEEN_NONCES` | `BTreeSet<Nonce>` (last 20 nonces) |
+| Storage       | Value                                        |
+| ------------- | -------------------------------------------- |
+| `STATUS`      | `AccountStatus` (Inactive / Active / Frozen) |
+| `SEEN_NONCES` | `BTreeSet<Nonce>` (last 20 nonces)           |
 
 ### Authentication flow
 
@@ -132,10 +133,10 @@ Handles gas fee collection.
 
 ### State
 
-| Storage | Key | Value |
-|---------|-----|-------|
-| `CONFIG` | -- | `Config { fee_denom, fee_rate }` |
-| `WITHHELD_FEE` | -- | `(Config, Uint128)` |
+| Storage        | Key | Value                            |
+| -------------- | --- | -------------------------------- |
+| `CONFIG`       | --  | `Config { fee_denom, fee_rate }` |
+| `WITHHELD_FEE` | --  | `(Config, Uint128)`              |
 
 ### Fee flow
 
@@ -151,11 +152,11 @@ Price feed aggregation for spot and derivatives trading.
 
 ### State
 
-| Storage | Key | Value |
-|---------|-----|-------|
-| `PRICE_SOURCES` | `Denom` | `PriceSource` |
+| Storage                | Key             | Value                |
+| ---------------------- | --------------- | -------------------- |
+| `PRICE_SOURCES`        | `Denom`         | `PriceSource`        |
 | `PYTH_TRUSTED_SIGNERS` | `[u8]` (pubkey) | `Timestamp` (expiry) |
-| `PYTH_PRICES` | `PythId` | `PrecisionlessPrice` |
+| `PYTH_PRICES`          | `PythId`        | `PrecisionlessPrice` |
 
 ### Price structure
 
@@ -182,14 +183,14 @@ AMM + order book hybrid spot trading exchange.
 
 ### State
 
-| Storage | Key | Value |
-|---------|-----|-------|
-| `PAUSED` | -- | `bool` |
-| `PAIRS` | `(Denom, Denom)` | `PairParams` |
-| `RESERVES` | `(Denom, Denom)` | `CoinPair` (pool reserves) |
-| `ORDERS` | `OrderKey` | `Order` (IndexedMap) |
-| `NEXT_ORDER_ID` | -- | `Counter<OrderId>` |
-| `DEPTHS` | `DepthKey` | `(Udec128_6, Udec128_6)` |
+| Storage         | Key              | Value                      |
+| --------------- | ---------------- | -------------------------- |
+| `PAUSED`        | --               | `bool`                     |
+| `PAIRS`         | `(Denom, Denom)` | `PairParams`               |
+| `RESERVES`      | `(Denom, Denom)` | `CoinPair` (pool reserves) |
+| `ORDERS`        | `OrderKey`       | `Order` (IndexedMap)       |
+| `NEXT_ORDER_ID` | --               | `Counter<OrderId>`         |
+| `DEPTHS`        | `DepthKey`       | `(Udec128_6, Udec128_6)`   |
 
 ### Pool types
 
@@ -424,13 +425,13 @@ skew = vault_inventory / vault_max_skew_size  [clamped to [-1, 1]]
 
 ### Access control
 
-| Operation | Who can call |
-|-----------|-------------|
-| `Configure` (params) | Chain owner only |
-| `SubmitOrder`, `Deposit`, `Withdraw` | Any active account |
-| `Liquidate` | Anyone (permissionless) |
-| `AddLiquidity`, `RemoveLiquidity` | Any active account |
-| `cron_execute` | Chain (automatic) |
+| Operation                            | Who can call            |
+| ------------------------------------ | ----------------------- |
+| `Configure` (params)                 | Chain owner only        |
+| `SubmitOrder`, `Deposit`, `Withdraw` | Any active account      |
+| `Liquidate`                          | Anyone (permissionless) |
+| `AddLiquidity`, `RemoveLiquidity`    | Any active account      |
+| `cron_execute`                       | Chain (automatic)       |
 
 ## 9. Gateway (`dango/gateway/`)
 
@@ -438,13 +439,13 @@ Bridge aggregator for cross-chain token transfers.
 
 ### State
 
-| Storage | Key | Value |
-|---------|-----|-------|
-| `ROUTES` | `(Addr, Remote)` | `Denom` |
-| `REVERSE_ROUTES` | `(Denom, Remote)` | `Addr` |
-| `RATE_LIMITS` | -- | `BTreeMap<Denom, RateLimit>` |
-| `WITHDRAWAL_FEES` | `(Denom, Remote)` | `Uint128` |
-| `OUTBOUND_QUOTAS` | `Denom` | `Uint128` |
+| Storage           | Key               | Value                        |
+| ----------------- | ----------------- | ---------------------------- |
+| `ROUTES`          | `(Addr, Remote)`  | `Denom`                      |
+| `REVERSE_ROUTES`  | `(Denom, Remote)` | `Addr`                       |
+| `RATE_LIMITS`     | --                | `BTreeMap<Denom, RateLimit>` |
+| `WITHDRAWAL_FEES` | `(Denom, Remote)` | `Uint128`                    |
+| `OUTBOUND_QUOTAS` | `Denom`           | `Uint128`                    |
 
 ### Cross-chain flow
 
@@ -472,10 +473,10 @@ Token vesting with linear schedules and optional cliffs.
 
 ### State
 
-| Storage | Key | Value |
-|---------|-----|-------|
-| `UNLOCKING_SCHEDULE` | -- | `Schedule` |
-| `POSITIONS` | `Addr` | `Position` |
+| Storage              | Key    | Value      |
+| -------------------- | ------ | ---------- |
+| `UNLOCKING_SCHEDULE` | --     | `Schedule` |
+| `POSITIONS`          | `Addr` | `Position` |
 
 ## 11. Upgrade (`dango/upgrade/`)
 
@@ -485,14 +486,14 @@ new vault skew fields with zero defaults.
 ## 12. Inter-Contract Interaction Map
 
 ```text
-┌──────────────┐  RegisterUser  ┌─────────┐  mint   ┌──────┐
+┌──────────────┐  RegisterUser ┌──────────┐  mint   ┌──────┐
 │ Account      │◄──────────────│ Account  │────────►│ Bank │
 │ (per user)   │               │ Factory  │         │      │
 └──────┬───────┘               └────┬─────┘         └──┬───┘
-       │ authenticate                │ referral          │
-       │                             ▼                   │
-       │                      ┌──────────┐               │
-       │                      │  Perps   │◄──────────────┘ force_transfer
+       │ authenticate               │ referral         │
+       │                            ▼                  │
+       │                      ┌──────────┐             │
+       │                      │  Perps   │◄────────────┘ force_transfer
        │                      │  DEX     │  (PnL settlement)
        │                      └────┬─────┘
        │                           │ query prices
@@ -531,12 +532,11 @@ Key interaction patterns:
 
 ### Trust boundaries within Dango
 
-| Contract | Trusts | Trusted by |
-|----------|--------|------------|
-| Bank | Namespace owners (unconditionally) | Everyone (for balance queries) |
-| Oracle | Pyth signers (governance-managed) | DEX, Perps (for price feeds) |
-| Taxman | -- | Accounts (for fee handling) |
-| Perps | Oracle (prices), Bank (balances) | Users (for margin custody) |
-| Account Factory | -- | Accounts (for key lookups) |
-| Gateway | Hyperlane validators | Bank (for mint/burn) |
-
+| Contract        | Trusts                             | Trusted by                     |
+| --------------- | ---------------------------------- | ------------------------------ |
+| Bank            | Namespace owners (unconditionally) | Everyone (for balance queries) |
+| Oracle          | Pyth signers (governance-managed)  | DEX, Perps (for price feeds)   |
+| Taxman          | --                                 | Accounts (for fee handling)    |
+| Perps           | Oracle (prices), Bank (balances)   | Users (for margin custody)     |
+| Account Factory | --                                 | Accounts (for key lookups)     |
+| Gateway         | Hyperlane validators               | Bank (for mint/burn)           |

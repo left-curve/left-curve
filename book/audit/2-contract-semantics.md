@@ -10,26 +10,26 @@ lifecycle. Each entry point receives a typed context and returns a typed respons
 
 ### Basic entry points
 
-| Entry Point | Context | Signature | Purpose |
-|-------------|---------|-----------|---------|
-| `instantiate` | `MutableCtx` | `fn(MutableCtx, M) -> Result<Response>` | One-time initialization on deploy |
-| `execute` | `MutableCtx` | `fn(MutableCtx, M) -> Result<Response>` | State-mutating operations |
-| `query` | `ImmutableCtx` | `fn(ImmutableCtx, M) -> Result<Binary>` | Read-only queries |
-| `migrate` | `SudoCtx` | `fn(SudoCtx, M) -> Result<Response>` | Code upgrade migration |
-| `receive` | `MutableCtx` | `fn(MutableCtx) -> Result<Response>` | Receive token transfers |
-| `reply` | `SudoCtx` | `fn(SudoCtx, M, SubMsgResult) -> Result<Response>` | Callback after submessage |
+| Entry Point   | Context        | Signature                                          | Purpose                           |
+| ------------- | -------------- | -------------------------------------------------- | --------------------------------- |
+| `instantiate` | `MutableCtx`   | `fn(MutableCtx, M) -> Result<Response>`            | One-time initialization on deploy |
+| `execute`     | `MutableCtx`   | `fn(MutableCtx, M) -> Result<Response>`            | State-mutating operations         |
+| `query`       | `ImmutableCtx` | `fn(ImmutableCtx, M) -> Result<Binary>`            | Read-only queries                 |
+| `migrate`     | `SudoCtx`      | `fn(SudoCtx, M) -> Result<Response>`               | Code upgrade migration            |
+| `receive`     | `MutableCtx`   | `fn(MutableCtx) -> Result<Response>`               | Receive token transfers           |
+| `reply`       | `SudoCtx`      | `fn(SudoCtx, M, SubMsgResult) -> Result<Response>` | Callback after submessage         |
 
 ### System entry points
 
-| Entry Point | Context | Signature | Purpose |
-|-------------|---------|-----------|---------|
-| `authenticate` | `AuthCtx` | `fn(AuthCtx, Tx) -> Result<AuthResponse>` | Tx authentication (account contracts) |
-| `backrun` | `AuthCtx` | `fn(AuthCtx, Tx) -> Result<Response>` | Post-tx hook (account contracts) |
-| `withhold_fee` | `AuthCtx` | `fn(AuthCtx, Tx) -> Result<Response>` | Fee withholding (taxman only) |
-| `finalize_fee` | `AuthCtx` | `fn(AuthCtx, Tx, TxOutcome) -> Result<Response>` | Fee settlement (taxman only) |
-| `bank_execute` | `SudoCtx` | `fn(SudoCtx, BankMsg) -> Result<Response>` | Token ops (bank only) |
-| `bank_query` | `ImmutableCtx` | `fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse>` | Balance queries (bank only) |
-| `cron_execute` | `SudoCtx` | `fn(SudoCtx) -> Result<Response>` | Periodic automation |
+| Entry Point    | Context        | Signature                                                  | Purpose                               |
+| -------------- | -------------- | ---------------------------------------------------------- | ------------------------------------- |
+| `authenticate` | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<AuthResponse>`                  | Tx authentication (account contracts) |
+| `backrun`      | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<Response>`                      | Post-tx hook (account contracts)      |
+| `withhold_fee` | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<Response>`                      | Fee withholding (taxman only)         |
+| `finalize_fee` | `AuthCtx`      | `fn(AuthCtx, Tx, TxOutcome) -> Result<Response>`           | Fee settlement (taxman only)          |
+| `bank_execute` | `SudoCtx`      | `fn(SudoCtx, BankMsg) -> Result<Response>`                 | Token ops (bank only)                 |
+| `bank_query`   | `ImmutableCtx` | `fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse>` | Balance queries (bank only)           |
+| `cron_execute` | `SudoCtx`      | `fn(SudoCtx) -> Result<Response>`                          | Periodic automation                   |
 
 Entry points are defined using the `#[grug::export]` attribute macro, which generates
 the WASM FFI boilerplate (extern C functions, memory marshaling via `Region` structs).
@@ -161,12 +161,12 @@ pub type SubMsgResult = Result<Event, String>;
 
 **Execution semantics:**
 
-| `reply_on` | Submsg succeeds | Submsg fails | Submsg state on failure |
-|------------|-----------------|--------------|-------------------------|
-| `Success` | Call `reply()` | **Abort entire tx** | **Reverted** (entire tx) |
-| `Error` | Do nothing | Call `reply()` | **Reverted** |
-| `Always` | Call `reply()` | Call `reply()` | **Reverted** |
-| `Never` | Do nothing | **Abort entire tx** | **Reverted** (entire tx) |
+| `reply_on` | Submsg succeeds | Submsg fails        | Submsg state on failure  |
+| ---------- | --------------- | ------------------- | ------------------------ |
+| `Success`  | Call `reply()`  | **Abort entire tx** | **Reverted** (entire tx) |
+| `Error`    | Do nothing      | Call `reply()`      | **Reverted**             |
+| `Always`   | Call `reply()`  | Call `reply()`      | **Reverted**             |
+| `Never`    | Do nothing      | **Abort entire tx** | **Reverted** (entire tx) |
 
 Each submessage executes in its own `Buffer`. On success, the buffer is committed to
 the parent. **On failure, the submessage's state changes are always reverted** (its
@@ -203,12 +203,12 @@ pub type Coins = BTreeMap<Denom, Uint128>;
 
 `grug/math/` provides overflow-safe fixed-point arithmetic:
 
-| Type | Description |
-|------|-------------|
-| `Uint128`, `Uint256` | Unsigned integers |
-| `Int128`, `Int256` | Signed integers |
+| Type                 | Description                           |
+| -------------------- | ------------------------------------- |
+| `Uint128`, `Uint256` | Unsigned integers                     |
+| `Int128`, `Int256`   | Signed integers                       |
 | `Udec128`, `Udec256` | Unsigned decimals (18 decimal places) |
-| `Dec128`, `Dec256` | Signed decimals (18 decimal places) |
+| `Dec128`, `Dec256`   | Signed decimals (18 decimal places)   |
 
 All arithmetic is checked. Overflow/underflow returns `StdError` instead of panicking.
 
@@ -238,15 +238,15 @@ fn checked_div<Q1, U1, D1>(self, rhs: Number<Q1, U1, D1>)
 
 Key type aliases used throughout the perps and DEX contracts:
 
-| Alias | Dimensions (Q, U, D) | Meaning |
-|-------|----------------------|---------|
-| `Dimensionless` | (0, 0, 0) | Pure scalar (ratios, rates) |
-| `Quantity` | (1, 0, 0) | Asset amount in human units |
-| `UsdValue` | (0, 1, 0) | Dollar amount |
-| `UsdPrice` | (-1, 1, 0) | Price (USD per unit of asset) |
-| `FundingPerUnit` | (-1, 1, 0) | Cumulative funding accumulator |
-| `FundingRate` | (0, 0, -1) | Funding rate (per day) |
-| `Days` | (0, 0, 1) | Time duration in days |
+| Alias            | Dimensions (Q, U, D) | Meaning                        |
+| ---------------- | -------------------- | ------------------------------ |
+| `Dimensionless`  | (0, 0, 0)            | Pure scalar (ratios, rates)    |
+| `Quantity`       | (1, 0, 0)            | Asset amount in human units    |
+| `UsdValue`       | (0, 1, 0)            | Dollar amount                  |
+| `UsdPrice`       | (-1, 1, 0)           | Price (USD per unit of asset)  |
+| `FundingPerUnit` | (-1, 1, 0)           | Cumulative funding accumulator |
+| `FundingRate`    | (0, 0, -1)           | Funding rate (per day)         |
+| `Days`           | (0, 0, 1)            | Time duration in days          |
 
 This type system is a key defense against unit-confusion bugs in margin, PnL, and
 funding calculations. A mismatched dimension is a compile-time error, not a runtime
@@ -334,6 +334,7 @@ USERS.idx.by_name.prefix(name).range(...)?;
 ```
 
 Index types:
+
 - `MultiIndex<PK, IK, T>` -- one primary key can map to many index keys (one-to-many).
 - `UniqueIndex<PK, IK, T>` -- one primary key maps to exactly one unique index key.
 
@@ -444,11 +445,11 @@ Inactive accounts are activated on sufficient deposit (≥ `min_deposit` from ap
 
 ### Signature types
 
-| Type | Curve | Use case |
-|------|-------|----------|
-| `Passkey` | Secp256r1 | WebAuthn / browser passkeys |
-| `Secp256k1` | Secp256k1 | Standard crypto wallets |
-| `Eip712` | Secp256k1 | Ethereum wallet compatibility |
+| Type        | Curve     | Use case                      |
+| ----------- | --------- | ----------------------------- |
+| `Passkey`   | Secp256r1 | WebAuthn / browser passkeys   |
+| `Secp256k1` | Secp256k1 | Standard crypto wallets       |
+| `Eip712`    | Secp256k1 | Ethereum wallet compatibility |
 
 ## 8. FFI Layer
 

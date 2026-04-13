@@ -38,6 +38,7 @@ pub trait Indexer {
 ```
 
 **Security properties:**
+
 - Pre-indexing runs before any state mutation -- indexer cannot influence tx execution.
 - State root is computed before `index_block()` -- indexer cannot affect `app_hash`.
 - Post-indexing is async and non-blocking -- indexer errors don't halt the chain.
@@ -61,12 +62,12 @@ by later ones.
 
 ### Schema
 
-| Table | Key Columns | Purpose |
-|-------|-------------|---------|
-| `blocks` | `height` (unique), `hash`, `app_hash` | Block headers |
-| `transactions` | `hash` (unique), `block_height`, `sender`, `status` | Tx metadata |
-| `messages` | `transaction_id`, `contract_addr`, `method_name` | Sub-tx messages |
-| `events` | `transaction_id`, `block_height`, `event_type`, `data` (JSON) | Emitted events |
+| Table          | Key Columns                                                   | Purpose         |
+| -------------- | ------------------------------------------------------------- | --------------- |
+| `blocks`       | `height` (unique), `hash`, `app_hash`                         | Block headers   |
+| `transactions` | `hash` (unique), `block_height`, `sender`, `status`           | Tx metadata     |
+| `messages`     | `transaction_id`, `contract_addr`, `method_name`              | Sub-tx messages |
+| `events`       | `transaction_id`, `block_height`, `event_type`, `data` (JSON) | Emitted events  |
 
 Indexes exist on `block_height`, `hash`, `sender`, `contract_addr`, and `events.data`
 (JSON).
@@ -120,6 +121,7 @@ let (transfers, accounts, perps) = tokio::join!(
 ```
 
 Extracts:
+
 - **Account events:** `UserRegistered`, `AccountRegistered`, `KeyOwned`, `KeyDisowned`
   → accounts, users, public_keys tables.
 - **Transfer events:** Bank transfer events → transfers table.
@@ -131,12 +133,12 @@ Only processes committed events from successful transactions.
 
 Actix-web HTTP server with async-graphql:
 
-| Parameter | Value |
-|-----------|-------|
-| Workers | 8 |
-| Max connections | 10,000 |
-| Backlog | 8,192 |
-| Max blocking threads | 16 |
+| Parameter            | Value  |
+| -------------------- | ------ |
+| Workers              | 8      |
+| Max connections      | 10,000 |
+| Backlog              | 8,192  |
+| Max blocking threads | 16     |
 
 ### Query types
 
@@ -149,6 +151,7 @@ Actix-web HTTP server with async-graphql:
 ### Subscriptions
 
 Real-time subscriptions via PostgreSQL LISTEN/NOTIFY:
+
 - `blockMinted` -- New blocks.
 - `transactionProcessed` -- New transactions.
 - `eventEmitted` -- New events.
@@ -156,6 +159,7 @@ Real-time subscriptions via PostgreSQL LISTEN/NOTIFY:
 ### Data loaders
 
 N+1 query prevention via dataloaders:
+
 - `BlockTransactionsDataLoader`, `BlockEventsDataLoader`
 - `TransactionEventsDataLoader`, `TransactionMessagesDataLoader`
 - `EventTransactionDataLoader`, `FileTransactionDataLoader`
@@ -187,6 +191,7 @@ The `dango start` command initializes and runs the full node:
 ### ABCI server split
 
 The app is split into four ABCI service components:
+
 - **Consensus:** FinalizeBlock, Commit
 - **Mempool:** CheckTx
 - **Snapshot:** State sync
@@ -205,36 +210,36 @@ The app is split into four ABCI service components:
 
 ```text
 ┌────────────────────────────────────────────────────────┐
-│ Consensus-Critical (ABCI)                               │
-│  App + DB + VM                                          │
-│  Indexer trait called but read-only                      │
-│  State root determined before indexer writes             │
+│ Consensus-Critical (ABCI)                              │
+│  App + DB + VM                                         │
+│  Indexer trait called but read-only                    │
+│  State root determined before indexer writes           │
 └────────────────── ▼ ───────────────────────────────────┘
                     │ Block + Outcome
 ┌───────────────────┴────────────────────────────────────┐
-│ Non-Consensus (Indexer Stack)                           │
-│  CacheIndexer → disk                                    │
-│  SqlIndexer → PostgreSQL                                │
-│  DangoIndexer → domain tables                           │
-│  ClickHouseIndexer → analytics DB                       │
+│ Non-Consensus (Indexer Stack)                          │
+│  CacheIndexer → disk                                   │
+│  SqlIndexer → PostgreSQL                               │
+│  DangoIndexer → domain tables                          │
+│  ClickHouseIndexer → analytics DB                      │
 └────────────────── ▼ ───────────────────────────────────┘
                     │
 ┌───────────────────┴────────────────────────────────────┐
-│ Public API (GraphQL/HTTP)                               │
-│  Read-only queries over indexed data                    │
-│  No state mutation capability                           │
+│ Public API (GraphQL/HTTP)                              │
+│  Read-only queries over indexed data                   │
+│  No state mutation capability                          │
 └────────────────────────────────────────────────────────┘
 ```
 
 ### Network exposure
 
-| Component | Default Port | Exposure |
-|-----------|-------------|----------|
-| CometBFT RPC | 26657 | Public (read-only) |
-| ABCI | 26658 | Localhost only (CometBFT ↔ App) |
-| Dango GraphQL | 8000 | Configurable |
-| Metrics | 8001 | Internal |
-| PostgreSQL | 5432 | Private |
+| Component     | Default Port | Exposure                        |
+| ------------- | ------------ | ------------------------------- |
+| CometBFT RPC  | 26657        | Public (read-only)              |
+| ABCI          | 26658        | Localhost only (CometBFT ↔ App) |
+| Dango GraphQL | 8000         | Configurable                    |
+| Metrics       | 8001         | Internal                        |
+| PostgreSQL    | 5432         | Private                         |
 
 ### Known gaps
 
