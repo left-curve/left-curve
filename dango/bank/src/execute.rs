@@ -229,10 +229,6 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
         })?)
 }
 
-pub fn bank_execute(_ctx: SudoCtx, _msg: BankMsg) -> anyhow::Result<Response> {
-    bail!("temporary transfer halt");
-}
-
 /// There are two major problems with existing blockchain systems related to
 /// token transfers:
 ///
@@ -259,7 +255,11 @@ pub fn bank_execute(_ctx: SudoCtx, _msg: BankMsg) -> anyhow::Result<Response> {
 ///    contract. Either the sender or the recipient (once it exists) can claim
 ///    the tokens by calling the `recover_transfer` method.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn _bank_execute(ctx: SudoCtx, msg: BankMsg) -> anyhow::Result<Response> {
+pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> anyhow::Result<Response> {
+    if ctx.chain_id == "dango-1" {
+        bail!("temporary transfer halt");
+    }
+
     let mut events = EventBuilder::with_capacity(msg.transfers.len() * 3);
 
     for (to, coins) in msg.transfers {
