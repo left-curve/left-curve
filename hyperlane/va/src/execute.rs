@@ -63,13 +63,14 @@ fn announce(
     ));
 
     // Recover pubkey from signature & verify.
-    let pubkey = ctx.api.secp256k1_pubkey_recover(
-        &message_hash,
-        &signature[..64],
-        // We subs 27 according to this - https://eips.ethereum.org/EIPS/eip-155
-        signature[64] - 27,
-        false,
-    )?;
+    // Ethereum uses recovery IDs 27, 28 instead
+    // of 0, 1 (EIP-155 https://eips.ethereum.org/EIPS/eip-155).
+    let v = signature[64];
+    ensure!(v == 27 || v == 28, "invalid recovery id: {v}");
+
+    let pubkey =
+        ctx.api
+            .secp256k1_pubkey_recover(&message_hash, &signature[..64], v - 27, false)?;
     let pk_hash = ctx.api.keccak256(&pubkey[1..]);
     let address = &pk_hash[12..];
 

@@ -102,18 +102,21 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
         .signatures
         .into_iter()
         .map(|signature| {
+            let v = signature[64];
+            ensure!(v == 27 || v == 28, "invalid recovery id: {v}");
+
             let pk = ctx.api.secp256k1_pubkey_recover(
                 &multisig_hash,
                 &signature[..64],
-                signature[64] - 27, // Ethereum uses recovery IDs 27, 28 instead of 0, 1.
-                false,              // We need the _uncompressed_ public key for deriving address!
+                v - 27, // Ethereum uses recovery IDs 27, 28 instead of 0, 1.
+                false,  // We need the _uncompressed_ public key for deriving address!
             )?;
             let pk_hash = ctx.api.keccak256(&pk[1..]);
             let address = &pk_hash[12..];
 
             Ok(HexByteArray::from_inner(address.try_into().unwrap()))
         })
-        .collect::<StdResult<BTreeSet<_>>>()?;
+        .collect::<anyhow::Result<BTreeSet<_>>>()?;
 
     // Ensure there are enough unique signers to meet the threshold.
     // This prevents signature malleability attacks where an attacker submits
