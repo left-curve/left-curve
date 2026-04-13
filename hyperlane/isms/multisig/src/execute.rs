@@ -16,12 +16,14 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
             validator_set.threshold > 0,
             "threshold must be greater than zero for domain {domain}"
         );
+
         ensure!(
             validator_set.validators.len() >= validator_set.threshold as usize,
             "not enough validators for domain {domain}! threshold: {}, validators: {}",
             validator_set.threshold,
             validator_set.validators.len()
         );
+
         VALIDATOR_SETS.save(ctx.storage, domain, &validator_set)?;
     }
 
