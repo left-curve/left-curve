@@ -259,6 +259,13 @@ fn clear_perps_state(storage: &mut dyn Storage) -> StdResult<UsdValue> {
 }
 
 fn assert_invariants(storage: &dyn Storage) -> StdResult<()> {
+    // The maps that have been cleared must be empty.
+    assert!(BIDS.is_empty(storage), "BIDS map isn't empty!");
+    assert!(ASKS.is_empty(storage), "ASKS map isn't empty!");
+    assert!(LONGS.is_empty(storage), "LONGS map isn't empty!");
+    assert!(SHORTS.is_empty(storage), "SHORTS map isn't empty!");
+    assert!(DEPTHS.is_empty(storage), "DEPTHS map isn't empty!");
+
     // All pair states must have zero OI.
     for entry in PAIR_STATES.range(storage, None, None, IterationOrder::Ascending) {
         let (pair_id, ps) = entry?;
