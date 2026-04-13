@@ -5,6 +5,14 @@ use {
     std::collections::BTreeMap,
 };
 
+/// Emitted by the oracle's reply handler when the perps vault refresh
+/// submessage fails, providing on-chain observability for monitors.
+#[grug::event("vault_refresh_failed")]
+#[grug::derive(Serde)]
+pub struct VaultRefreshFailed {
+    pub error: String,
+}
+
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub price_sources: BTreeMap<Denom, PriceSource>,

@@ -3,7 +3,10 @@ use {
     anyhow::{bail, ensure},
     dango_types::{
         DangoQuerier,
-        oracle::{ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource, ReplyMsg},
+        oracle::{
+            ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource, ReplyMsg,
+            VaultRefreshFailed,
+        },
         perps,
     },
     grug::{
@@ -81,18 +84,17 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, _res: SubMsgResult) -> StdResult<Response> {
+pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
     match msg {
         ReplyMsg::AfterOnOracleUpdate {} => {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(
-                    error = _res.unwrap_err(),
-                    "!!! PERPS VAULT REFRESH FAILED !!!"
-                );
-            }
+            let error = res.unwrap_err();
 
-            Ok(Response::new())
+            #[cfg(feature = "tracing")]
+            tracing::error!(error, "!!! PERPS VAULT REFRESH FAILED !!!");
+
+            Response::new().add_event(VaultRefreshFailed {
+                error,
+            })
         },
     }
 }

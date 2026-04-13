@@ -35,6 +35,16 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
+    // Only the oracle contract (after feeding fresh prices) or the perps
+    // contract itself may trigger a vault refresh.  Without this check any
+    // account could consume the once-per-block refresh token on stale prices,
+    // causing the oracle's legitimate refresh submessage to be rejected.
+    let oracle_addr = oracle(ctx.querier);
+    ensure!(
+        ctx.sender == oracle_addr,
+        "only the oracle contract may refresh vault orders"
+    );
+
     let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
 
     ensure!(
@@ -240,16 +250,46 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 mod tests {
     use {
         super::*,
-        grug::{Addr, Coins, MockContext},
+        dango_types::config::AppConfig,
+        grug::{Addr, Coins, MockContext, MockQuerier, ResultExt},
     };
 
     const CONTRACT: Addr = Addr::mock(0);
+    const ORACLE: Addr = Addr::mock(1);
+
+    /// Build a mock querier whose `AppConfig` returns `ORACLE` as the oracle address.
+    fn mock_querier() -> MockQuerier {
+        MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: dango_types::config::AppAddresses {
+                    oracle: ORACLE,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap()
+    }
+
+    #[test]
+    fn refresh_orders_rejects_unauthorized_sender() {
+        let mut ctx = MockContext::new()
+            .with_querier(mock_querier())
+            .with_contract(CONTRACT)
+            .with_sender(Addr::mock(99))
+            .with_funds(Coins::default())
+            .with_block_height(10);
+
+        refresh_orders(ctx.as_mutable())
+            .should_fail_with_error("only the oracle contract may refresh vault orders");
+    }
 
     #[test]
     fn refresh_orders_once_per_block() {
+        // Use the contract itself as sender (self-call path).
         let mut ctx = MockContext::new()
+            .with_querier(mock_querier())
             .with_contract(CONTRACT)
-            .with_sender(Addr::mock(99))
+            .with_sender(CONTRACT)
             .with_funds(Coins::default())
             .with_block_height(10);
 
