@@ -22,9 +22,39 @@ Both stores are backed by a single RocksDB instance using separate column famili
 |---------------|---------|
 | `default` | Metadata (latest committed version) |
 | `state_commitment` | JMT nodes (hashed key-value pairs) |
-| `state_storage` | Raw contract state (prehash) |
-| `wasm_storage` | Contract bytecode |
+| `state_storage` | Chain-level state (non-contract keys) |
+| `wasm_storage` | Contract internal storage (see below) |
 | `preimages` (IBC feature) | Key-hash to raw-key mapping for ICS-23 proofs |
+
+`state_storage` and `wasm_storage` together form the logical "state storage" layer.
+They share the same `Batch` of pending writes; the DB routes each key to the correct
+CF based on its prefix:
+
+```rust
+// grug/db/disk/src/db.rs
+fn is_wasm_key(key: &[u8]) -> bool {
+    key.starts_with(CONTRACT_NAMESPACE) && key.len() >= WASM_PREFIX_LEN
+}
+```
+
+A contract key has the format `b"wasm" | address (20 bytes) | sub_key`, giving a
+fixed 24-byte prefix (`WASM_PREFIX_LEN`). Everything else goes to `state_storage`.
+
+The two CFs exist so that each can have **specialized RocksDB options**:
+
+| Option | `wasm_storage` | `state_storage` |
+|--------|----------------|-----------------|
+| Memtable size | 16 MiB (fewer flushes; contracts are less delete-heavy) | 2 MiB (frequent flushes; chain state is delete-heavy from cronjobs) |
+| Prefix extractor | 24 bytes (`b"wasm"` + 20-byte address) | 4 bytes (grug namespace length) |
+
+Both CFs share a common base configuration: 256 MiB LRU block cache, bloom filters
+(10 bits/key), L0 filter/index pinning, and level-style compaction.
+
+During iteration, the DB detects whether the scan range falls entirely within the
+wasm range, entirely outside it, or spans both. In the spanning case, it creates a
+**merged iterator** over both CFs, preserving key ordering. When min/max share the
+same 24-byte contract prefix, RocksDB's `prefix_same_as_start` mode is enabled for
+faster prefix-scoped iteration.
 
 ### DiskDb
 
