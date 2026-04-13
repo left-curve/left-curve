@@ -382,7 +382,7 @@ where
                             tracing::error!(reason = %err, "!!! UPGRADE FAILED !!!");
                         }
 
-                        panic!("upgrade failed: {}", err.to_string());
+                        panic!("upgrade failed: {err}");
                     },
                 );
 
