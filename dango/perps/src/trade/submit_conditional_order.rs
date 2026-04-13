@@ -421,6 +421,121 @@ mod tests {
         );
     }
 
+    /// Conditional order with negative trigger_price must be rejected.
+    ///
+    /// Expected: error mentioning that trigger_price must be positive.
+    ///
+    /// Wrong behavior: accepting the order — a negative trigger price is
+    /// nonsensical and could never match a real oracle price.
+    #[test]
+    fn p9_reject_negative_trigger_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(-2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_percent(1),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// Conditional order with zero trigger_price must be rejected.
+    #[test]
+    fn p10_reject_zero_trigger_price() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::ZERO,
+            TriggerDirection::Below,
+            Dimensionless::new_percent(1),
+        )
+        .should_fail_with_error("price must be positive");
+    }
+
+    /// Conditional order with negative max_slippage must be rejected.
+    ///
+    /// Expected: error mentioning that max_slippage must be positive.
+    ///
+    /// Wrong behavior: accepting the order — a negative slippage inverts
+    /// the price constraint when the conditional order triggers, causing
+    /// fills at arbitrarily bad prices.
+    #[test]
+    fn p11_reject_negative_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        let result = submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_int(-1),
+        );
+
+        assert!(result.is_err(), "negative max_slippage should be rejected");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("max_slippage"),
+            "error should mention max_slippage, got: {err}"
+        );
+    }
+
+    /// Conditional order with zero max_slippage must be rejected.
+    #[test]
+    fn p12_reject_zero_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        let result = submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(2_500),
+            TriggerDirection::Above,
+            Dimensionless::ZERO,
+        );
+
+        assert!(result.is_err(), "zero max_slippage should be rejected");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("max_slippage"),
+            "error should mention max_slippage, got: {err}"
+        );
+    }
+
     /// A position can hold both an Above and a Below conditional order at
     /// the same time (TP + SL bracket).
     ///
