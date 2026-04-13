@@ -7,6 +7,7 @@
 - [Smart Contract Semantics](audit/2-contract-semantics.md)
 - [Dango Contract System](audit/3-dango-contracts.md)
 - [Indexer & Node](audit/4-indexer-and-node.md)
+- [Previous Audits](audit/5-previous-audits.md)
 
 ---
 
@@ -26,12 +27,6 @@
 # Spot DEX
 
 - [Passive liquidity](dex/passive-liquidity/README.md)
-
----
-
-# Audits
-
-- [List of audits completed](audits/README.md)
 
 ---
 
