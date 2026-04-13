@@ -324,20 +324,18 @@ pub(crate) fn _submit_order(
         },
     }
 
-    for child_order in [&tp, &sl] {
-        if let Some(co) = child_order {
-            ensure!(
-                co.trigger_price.is_positive(),
-                "trigger price must be positive: {}",
-                co.trigger_price
-            );
+    for child_order in [&tp, &sl].into_iter().flatten() {
+        ensure!(
+            child_order.trigger_price.is_positive(),
+            "trigger price must be positive: {}",
+            child_order.trigger_price
+        );
 
-            ensure!(
-                !co.max_slippage.is_negative(),
-                "max slippage can't be negative: {}",
-                co.max_slippage
-            );
-        }
+        ensure!(
+            !child_order.max_slippage.is_negative(),
+            "max slippage can't be negative: {}",
+            child_order.max_slippage
+        );
     }
 
     // -------------- Step 1. Check minimum order size -------------------------
