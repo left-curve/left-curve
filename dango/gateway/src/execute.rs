@@ -1,6 +1,6 @@
 use {
     crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
-    anyhow::{anyhow, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_types::{
         bank,
         gateway::{
@@ -190,7 +190,19 @@ fn receive_remote(
         .add_message(Message::transfer(recipient, coins! { denom => amount })?))
 }
 
-fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
+fn transfer_remote(
+    _ctx: MutableCtx,
+    _remote: Remote,
+    _recipient: Addr32,
+) -> anyhow::Result<Response> {
+    bail!("temporary bridge halt");
+}
+
+fn _transfer_remote(
+    ctx: MutableCtx,
+    remote: Remote,
+    recipient: Addr32,
+) -> anyhow::Result<Response> {
     // The user must have sent exactly one coin.
     let mut coin = ctx.funds.into_one_coin()?;
 

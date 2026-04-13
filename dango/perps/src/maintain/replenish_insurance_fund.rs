@@ -7,7 +7,7 @@ use {
 
 /// Replenish the insurance fund from the sender's margin.
 pub fn replenish_insurance_fund(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
-    ensure!(amount.is_non_zero(), "amount must be non-zero");
+    ensure!(amount.is_positive(), "amount must be positive");
 
     // Deduct the user's margin.
     {
