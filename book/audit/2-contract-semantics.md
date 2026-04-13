@@ -161,19 +161,21 @@ pub type SubMsgResult = Result<Event, String>;
 
 **Execution semantics:**
 
-| `reply_on` | Submsg succeeds | Submsg fails |
-|------------|-----------------|--------------|
-| `Success` | Call `reply()` | **Abort entire tx** |
-| `Error` | Do nothing | Call `reply()` |
-| `Always` | Call `reply()` | Call `reply()` |
-| `Never` | Do nothing | **Abort entire tx** |
+| `reply_on` | Submsg succeeds | Submsg fails | Submsg state on failure |
+|------------|-----------------|--------------|-------------------------|
+| `Success` | Call `reply()` | **Abort entire tx** | **Reverted** (entire tx) |
+| `Error` | Do nothing | Call `reply()` | **Reverted** |
+| `Always` | Call `reply()` | Call `reply()` | **Reverted** |
+| `Never` | Do nothing | **Abort entire tx** | **Reverted** (entire tx) |
 
 Each submessage executes in its own `Buffer`. On success, the buffer is committed to
-the parent. On failure with `reply_on: Error` or `Always`, the buffer is discarded but
-the parent continues.
+the parent. **On failure, the submessage's state changes are always reverted** (its
+buffer is discarded). If `reply_on` is `Error` or `Always`, the parent continues and
+`reply()` is called; otherwise, the entire transaction is aborted.
 
-**Security implication:** If a submessage fails and no reply handler catches it, the
-entire transaction is aborted. This prevents contracts from silently ignoring failures.
+**Security implication:** A failed submessage can never leave behind partial state
+changes. If no reply handler catches the failure, the entire transaction is aborted,
+preventing contracts from silently ignoring errors.
 
 ## 4. Core Types
 
