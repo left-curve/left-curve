@@ -128,7 +128,7 @@ When the host receives a transaction, it calls the sender account's `authenticat
 
 ## 5. Taxman (`dango/taxman/`)
 
-Handles gas fee collection and trading volume tracking.
+Handles gas fee collection.
 
 ### State
 
@@ -136,7 +136,6 @@ Handles gas fee collection and trading volume tracking.
 |---------|-----|-------|
 | `CONFIG` | -- | `Config { fee_denom, fee_rate }` |
 | `WITHHELD_FEE` | -- | `(Config, Uint128)` |
-| `VOLUMES_BY_USER` | `(UserIndex, Timestamp)` | `Udec128_6` (cumulative volume) |
 
 ### Fee flow
 
@@ -145,13 +144,6 @@ Handles gas fee collection and trading volume tracking.
 2. **`finalize_fee(tx, outcome)`** -- Called after execution. Computes actual fee
    based on `gas_used * fee_rate`, refunds the difference, and transfers the fee
    to the treasury.
-
-### Volume tracking
-
-DEX and perps contracts call taxman's `ReportVolumes` to record per-user trading
-volume. Volume is stored as cumulative values bucketed by day
-(`(user_index, day_timestamp) → cumulative_volume`). Fee tiers are resolved by
-computing `current_cumulative - cumulative_N_days_ago`.
 
 ## 6. Oracle (`dango/oracle/`)
 
@@ -504,16 +496,15 @@ new vault skew fields with zero defaults.
        │
        │ withhold/finalize fee
        ▼
-┌──────────┐  report volumes  ┌──────────┐
-│  Taxman  │◄────────────────│ Perps/DEX│
-└──────────┘                  └──────────┘
+┌──────────┐
+│  Taxman  │
+└──────────┘
 ```
 
 Key interaction patterns:
 
 - **Perps ↔ Bank:** Force-transfers for margin deposits/withdrawals and PnL settlement.
 - **Perps/DEX → Oracle:** Price queries with staleness checks.
-- **Perps/DEX → Taxman:** Volume reporting and fee payment.
 - **Account Factory → Perps:** Referral registration on user creation.
 - **Account → Factory:** Key and nonce lookups during authentication.
 
@@ -537,7 +528,7 @@ Key interaction patterns:
 |----------|--------|------------|
 | Bank | Namespace owners (unconditionally) | Everyone (for balance queries) |
 | Oracle | Pyth signers (governance-managed) | DEX, Perps (for price feeds) |
-| Taxman | DEX, Perps (for volume reports) | Accounts (for fee handling) |
+| Taxman | -- | Accounts (for fee handling) |
 | Perps | Oracle (prices), Bank (balances) | Users (for margin custody) |
 | Account Factory | -- | Accounts (for key lookups) |
 | Gateway | Hyperlane validators | Bank (for mint/burn) |
@@ -554,5 +545,3 @@ Key interaction patterns:
    There is no withdrawal restriction when the fund is negative.
 5. **Orphaned transfers.** Funds sent to non-existent contracts are stored
    indefinitely with no governance recovery mechanism.
-6. **Volume-based fee tiers.** Volume is tracked by timestamp-bucketed cumulative
-   values. Timestamp manipulation by block producers could affect fee tier calculations.
