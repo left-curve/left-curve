@@ -16,13 +16,13 @@ blockchain and DeFi experience. It covers:
 
 ## Repository layout
 
-| Directory | Contents |
-|-----------|----------|
-| `grug/` | State machine: `app`, `db/disk`, `db/memory`, `vm/rust`, `vm/wasm`, `types`, `storage`, `jellyfish-merkle`, `ffi`, `macros`, `crypto`, `math`, `std`, `testing` |
-| `dango/` | Smart contracts: `bank`, `account`, `account-factory`, `auth`, `oracle`, `dex`, `perps`, `taxman`, `gateway`, `vesting`, `warp`, `upgrade`, `types`, `cli` |
-| `indexer/` | Indexing: `hooked`, `sql`, `sql-migration`, `cache`, `httpd`, `client` |
-| `sdk/`, `ui/` | TypeScript frontend (out of scope for this guide) |
-| `deploy/` | Ansible playbooks (out of scope) |
+| Directory  | Contents                                                                                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `grug/`    | State machine: `app`, `db/disk`, `db/memory`, `vm/rust`, `vm/wasm`, `types`, `storage`, `jellyfish-merkle`, `ffi`, `macros`, `crypto`, `math`, `std`, `testing` |
+| `dango/`   | Smart contracts: `bank`, `account`, `account-factory`, `auth`, `oracle`, `dex`, `perps`, `taxman`, `gateway`, `vesting`, `warp`, `upgrade`, `types`, `cli`      |
+| `indexer/` | Indexing: `hooked`, `sql`, `sql-migration`, `cache`, `httpd`, `client`                                                                                          |
+| `ui/`      | TypeScript frontend (out of scope for this guide)                                                                                                               |
+| `deploy/`  | Ansible playbooks (out of scope)                                                                                                                                |
 
 ## Trust model at a glance
 
@@ -34,15 +34,15 @@ blockchain and DeFi experience. It covers:
 │   grug/vm/rust (native contract execution, no sandbox)       │
 │   grug/jellyfish-merkle (state commitment)                   │
 │   dango/* system contracts (bank, taxman, accounts, etc.)    │
-│   indexer/* (read-only; cannot affect consensus)              │
+│   indexer/* (read-only; cannot affect consensus)             │
 └────────────────────── ▼ ─────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
 │  UNTRUSTED: Third-Party WASM Contracts                       │
 │   Executed inside grug/vm/wasm (Wasmer sandbox)              │
-│   All storage access namespaced via StorageProvider           │
-│   All operations metered via gas tracker                      │
-│   Host function calls go through Gatekeeper middleware        │
+│   All storage access namespaced via StorageProvider          │
+│   All operations metered via gas tracker                     │
+│   Host function calls go through Gatekeeper middleware       │
 └──────────────────────────────────────────────────────────────┘
 ```
 

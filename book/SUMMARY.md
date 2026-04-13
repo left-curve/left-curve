@@ -2,12 +2,12 @@
 
 # Overview
 
-- [Overview](audit/README.md)
-- [Grug Architecture](audit/1-grug-architecture.md)
-- [Smart Contract Semantics](audit/2-contract-semantics.md)
-- [Dango Contract System](audit/3-dango-contracts.md)
-- [Indexer & Node](audit/4-indexer-and-node.md)
-- [Audits](audit/5-audits.md)
+- [Overview](overview/README.md)
+- [Grug Architecture](overview/1-grug-architecture.md)
+- [Smart Contract Semantics](overview/2-contract-semantics.md)
+- [Dango Contract System](overview/3-dango-contracts.md)
+- [Indexer & Node](overview/4-indexer-and-node.md)
+- [Audits](overview/5-audits.md)
 
 ---
 
