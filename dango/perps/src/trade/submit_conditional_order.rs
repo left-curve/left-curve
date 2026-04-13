@@ -22,6 +22,12 @@ pub fn submit_conditional_order(
 
     // -------------------------------- Checks ---------------------------------
 
+    ensure!(trigger_price.is_positive(), "price must be positive");
+    ensure!(
+        !max_slippage.is_negative(),
+        "max_slippage can't be negative"
+    );
+
     // 1. User must have an open position in this pair.
     // 2. If size is specified: sign must oppose position, |size| <= |position.size|.
     // 3. Must not already have a conditional order of the same direction for this pair.
@@ -421,6 +427,61 @@ mod tests {
         );
     }
 
+    /// A position can hold both an Above and a Below conditional order at
+    /// the same time (TP + SL bracket).
+    ///
+    /// Expected: after submitting TP @ $2,500 (Above) and SL @ $1,800
+    /// (Below), both are stored on the position with distinct order IDs
+    /// (1 and 2 respectively).
+    #[test]
+    fn p8_multiple_on_same_pair() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        // TP @ $2,500
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_percent(1),
+        )
+        .should_succeed();
+
+        // SL @ $1,800
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-10)),
+            UsdPrice::new_int(1_800),
+            TriggerDirection::Below,
+            Dimensionless::new_percent(2),
+        )
+        .should_succeed();
+
+        // Both orders exist on the position.
+        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+
+        let position = user_state.positions.get(&pair_id()).unwrap();
+        assert!(position.conditional_order_above.is_some());
+
+        let above = position.conditional_order_above.as_ref().unwrap();
+        assert_eq!(above.order_id, Uint64::ONE);
+        assert_eq!(above.trigger_price, UsdPrice::new_int(2_500));
+
+        assert!(position.conditional_order_below.is_some());
+        let below = position.conditional_order_below.as_ref().unwrap();
+        assert_eq!(below.order_id, Uint64::new(2));
+        assert_eq!(below.trigger_price, UsdPrice::new_int(1_800));
+    }
+
     /// Conditional order with negative trigger_price must be rejected.
     ///
     /// Expected: error mentioning that trigger_price must be positive.
@@ -490,104 +551,14 @@ mod tests {
             user_state_with_position(long_position(10)),
         );
 
-        let result = submit_conditional_order(
+        submit_conditional_order(
             ctx.as_mutable(),
             pair_id(),
             Some(Quantity::new_int(-5)),
             UsdPrice::new_int(2_500),
             TriggerDirection::Above,
             Dimensionless::new_int(-1),
-        );
-
-        assert!(result.is_err(), "negative max_slippage should be rejected");
-        let err = result.unwrap_err().to_string();
-        assert!(
-            err.contains("max_slippage"),
-            "error should mention max_slippage, got: {err}"
-        );
-    }
-
-    /// Conditional order with zero max_slippage must be rejected.
-    #[test]
-    fn p12_reject_zero_max_slippage() {
-        let mut ctx = MockContext::new()
-            .with_sender(USER)
-            .with_funds(Coins::default());
-
-        init_storage(
-            &mut ctx.storage,
-            user_state_with_position(long_position(10)),
-        );
-
-        let result = submit_conditional_order(
-            ctx.as_mutable(),
-            pair_id(),
-            Some(Quantity::new_int(-5)),
-            UsdPrice::new_int(2_500),
-            TriggerDirection::Above,
-            Dimensionless::ZERO,
-        );
-
-        assert!(result.is_err(), "zero max_slippage should be rejected");
-        let err = result.unwrap_err().to_string();
-        assert!(
-            err.contains("max_slippage"),
-            "error should mention max_slippage, got: {err}"
-        );
-    }
-
-    /// A position can hold both an Above and a Below conditional order at
-    /// the same time (TP + SL bracket).
-    ///
-    /// Expected: after submitting TP @ $2,500 (Above) and SL @ $1,800
-    /// (Below), both are stored on the position with distinct order IDs
-    /// (1 and 2 respectively).
-    #[test]
-    fn p8_multiple_on_same_pair() {
-        let mut ctx = MockContext::new()
-            .with_sender(USER)
-            .with_funds(Coins::default());
-
-        init_storage(
-            &mut ctx.storage,
-            user_state_with_position(long_position(10)),
-        );
-
-        // TP @ $2,500
-        submit_conditional_order(
-            ctx.as_mutable(),
-            pair_id(),
-            Some(Quantity::new_int(-5)),
-            UsdPrice::new_int(2_500),
-            TriggerDirection::Above,
-            Dimensionless::new_percent(1),
         )
-        .should_succeed();
-
-        // SL @ $1,800
-        submit_conditional_order(
-            ctx.as_mutable(),
-            pair_id(),
-            Some(Quantity::new_int(-10)),
-            UsdPrice::new_int(1_800),
-            TriggerDirection::Below,
-            Dimensionless::new_percent(2),
-        )
-        .should_succeed();
-
-        // Both orders exist on the position.
-        let user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-
-        let position = user_state.positions.get(&pair_id()).unwrap();
-        assert!(position.conditional_order_above.is_some());
-
-        let above = position.conditional_order_above.as_ref().unwrap();
-        assert_eq!(above.order_id, Uint64::ONE);
-        assert_eq!(above.trigger_price, UsdPrice::new_int(2_500));
-
-        assert!(position.conditional_order_below.is_some());
-        let below = position.conditional_order_below.as_ref().unwrap();
-        assert_eq!(below.order_id, Uint64::new(2));
-        assert_eq!(below.trigger_price, UsdPrice::new_int(1_800));
+        .should_fail_with_error("max_slippage can't be negative");
     }
 }

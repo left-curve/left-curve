@@ -307,6 +307,36 @@ pub(crate) fn _submit_order(
     let mut pair_state = pair_state.clone();
     let mut taker_state = taker_state.clone();
 
+    // -------------- Step 0. Validate prices and slippage --------------------
+
+    match &kind {
+        OrderKind::Market { max_slippage } => {
+            ensure!(
+                !max_slippage.is_negative(),
+                "max_slippage can't be negative"
+            );
+        },
+        OrderKind::Limit { limit_price, .. } => {
+            ensure!(limit_price.is_positive(), "price must be positive");
+        },
+    }
+
+    if let Some(tp) = &tp {
+        ensure!(tp.trigger_price.is_positive(), "price must be positive");
+        ensure!(
+            !tp.max_slippage.is_negative(),
+            "max_slippage can't be negative"
+        );
+    }
+
+    if let Some(sl) = &sl {
+        ensure!(sl.trigger_price.is_positive(), "price must be positive");
+        ensure!(
+            !sl.max_slippage.is_negative(),
+            "max_slippage can't be negative"
+        );
+    }
+
     // -------------- Step 1. Check minimum order size -------------------------
 
     if !reduce_only {
@@ -4852,7 +4882,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage must be positive");
+        .should_fail_with_error("max_slippage can't be negative");
     }
 
     /// A limit order with a negative limit_price must be rejected.
@@ -5087,7 +5117,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage must be positive");
+        .should_fail_with_error("max_slippage can't be negative");
     }
 
     /// SL child order with negative max_slippage must be rejected.
@@ -5135,7 +5165,7 @@ mod tests {
             }),
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage must be positive");
+        .should_fail_with_error("max_slippage can't be negative");
     }
 
     /// Helper: load taker state (returns default if missing).
