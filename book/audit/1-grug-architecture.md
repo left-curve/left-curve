@@ -445,15 +445,63 @@ Each host function call:
 
 ## 6. Chain Upgrades
 
-See [Chain upgrades](../notes/chain-upgrades.md) for the full procedure. Summary:
+There are three dimensions in which a change can be breaking:
 
-1. The chain owner sends a `Message::Upgrade` specifying a block height and cargo
-   version.
-2. At that height during `FinalizeBlock`, the App checks if the binary's cargo
-   version matches.
-3. **Mismatch → intentional halt.** The node operator must deploy the correct binary
-   and restart.
-4. **Match → run `upgrade_handler`** (if any), then resume normal operation.
+- **Consensus-breaking:** Given the same state and block, old and new software produce
+  different results, causing a consensus failure.
+- **State-breaking:** The format of data stored in the DB changes.
+- **API-breaking:** The transaction or query API changes.
 
-The upgrade handler can perform arbitrary state migrations (e.g., adding new fields
-to stored structs, rewriting storage layouts).
+Any breaking change requires a **coordinated upgrade**: all validators halt at the
+same block height, upgrade, and resume together.
+
+### Upgrade procedure
+
+1. The chain owner sends a `Message::Upgrade`:
+
+   ```json
+   {
+     "upgrade": {
+       "height": 12345,
+       "cargo_version": "1.2.3",
+       "git_tag": "v1.2.3",
+       "url": "https://github.com/left-curve/left-curve/releases/v1.2.3"
+     }
+   }
+   ```
+
+   This signals the upgrade height and target version. Node operators should **not**
+   upgrade yet.
+
+2. The chain finalizes block 12344 normally. At block 12345, during `FinalizeBlock`,
+   the App reads `NEXT_UPGRADE` from state and checks the binary's cargo version.
+
+3. **Version mismatch → intentional halt.** The App returns an error in
+   `FinalizeBlockResponse`. Block 12345 is not finalized; no state changes are
+   committed. This is safer than risking a fork.
+
+4. The node operator replaces the binary with version `1.2.3` and restarts.
+
+5. CometBFT retries `FinalizeBlock` for block 12345. The App sees the version now
+   matches, runs the **upgrade handler** (`App::upgrade_handler`) if one is registered,
+   clears `NEXT_UPGRADE`, records the upgrade in `PAST_UPGRADES`, and resumes normal
+   block processing.
+
+### Upgrade handler
+
+```rust
+type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>;
+```
+
+The handler receives mutable storage access and can perform arbitrary state
+migrations: adding fields to stored structs, rewriting storage layouts, deploying new
+contracts, or updating configuration. It runs exactly once at the upgrade height.
+
+### Security considerations
+
+- The upgrade height and version are stored on-chain (`NEXT_UPGRADE` item in app
+  state). Only the chain owner can schedule an upgrade.
+- A mismatch between the running binary and the scheduled version causes an
+  intentional halt rather than a silent fork -- this is the conservative choice.
+- There is no automated upgrade tool (like Cosmos SDK's cosmovisor) yet; operators
+  must manually replace the binary.
