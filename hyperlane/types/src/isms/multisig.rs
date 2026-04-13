@@ -43,7 +43,7 @@ impl Metadata {
         );
 
         ensure!(
-            (buf.len() - 68) % 65 == 0,
+            (buf.len() - 68).is_multiple_of(65),
             "metadata has trailing bytes that don't form a complete signature"
         );
 
