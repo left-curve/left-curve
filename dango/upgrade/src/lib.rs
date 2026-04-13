@@ -240,14 +240,15 @@ fn clear_perps_state(storage: &mut dyn Storage) -> StdResult<UsdValue> {
     tracing::info!(pair_count, "Zeroed pair state OI and funding rates");
 
     // -------------------------------------------------------------------------
-    // 4. Zero insurance fund
+    // 4. Zero treasury and insurance fund
     // -------------------------------------------------------------------------
 
     let mut state = STATE.load(storage)?;
     state.insurance_fund = UsdValue::ZERO;
+    state.treasury = UsdValue::ZERO;
     STATE.save(storage, &state)?;
 
-    tracing::info!("Zeroed insurance fund");
+    tracing::info!("Zeroed treasury and insurance fund");
 
     // -------------------------------------------------------------------------
     // 5. Assert invariants
@@ -277,9 +278,18 @@ fn assert_invariants(storage: &dyn Storage) -> StdResult<()> {
         );
     }
 
-    // Insurance fund must be zero.
+    // Trasury and insurance fund must be zero.
     let state = STATE.load(storage)?;
-    assert!(state.insurance_fund.is_zero(), "insurance fund not zero");
+    assert!(
+        state.treasury.is_zero(),
+        "treasury not zero: {}",
+        state.treasury
+    );
+    assert!(
+        state.insurance_fund.is_zero(),
+        "insurance fund not zero: {}",
+        state.insurance_fund
+    );
 
     // No user should have positions, reserved_margin, or open orders.
     // The attacker must additionally have the margin zeroed out.
