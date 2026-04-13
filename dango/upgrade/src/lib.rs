@@ -1,3 +1,27 @@
+//! Post-exploit chain upgrade handler (2026-04-13 insurance fund drain).
+//!
+//! The chain was halted after detection. During downtime, asset prices moved
+//! but users couldn't close positions, so the only fair restart is to
+//! close everything and let users re-enter at current prices.
+//!
+//! The upgrade runs in three phases:
+//!
+//! 1. **Claw back attacker funds.** Both attacker accounts still hold ~$1M
+//!    USDC on-chain (the rest was bridged to Ethereum). Zero their bank
+//!    balances and credit the sum to the perps contract.
+//!
+//! 2. **Clear all perps state.** Cancel every resting order (BIDS, ASKS,
+//!    DEPTHS), close every position (LONGS, SHORTS, USER_STATES.positions),
+//!    zero OI and funding rates on all pairs, and zero the insurance fund.
+//!    User margins, vault shares, and pending unlocks are preserved — those
+//!    are what users are owed.
+//!
+//! 3. **Log the shortfall.** After claw-back, the perps contract's USDC
+//!    balance is still less than total user liabilities (margin + unlocks)
+//!    by roughly the amount the attacker bridged off-chain. The shortfall
+//!    is logged via `tracing::warn!` so the team can bridge the returned
+//!    funds back and donate them through `MaintainerMsg::Donate`.
+
 use {
     dango_bank::BALANCES,
     dango_perps::state::{ASKS, BIDS, DEPTHS, LONGS, PAIR_STATES, SHORTS, STATE, USER_STATES},
