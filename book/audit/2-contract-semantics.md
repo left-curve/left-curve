@@ -212,6 +212,46 @@ pub type Coins = BTreeMap<Denom, Uint128>;
 
 All arithmetic is checked. Overflow/underflow returns `StdError` instead of panicking.
 
+### Dimensional Number type
+
+Dango extends the base math types with `Number<Q, U, D>`
+(`dango/types/src/typed_number.rs`), a **dimensionally-typed** signed fixed-point
+decimal (`Dec128_6` -- 6 decimal places). The three type parameters encode physical
+dimensions using `typenum` integers:
+
+- **Q** -- quantity (asset units)
+- **U** -- USD value
+- **D** -- time duration (days)
+
+Multiplication and division **propagate dimensions at the type level**, so the
+compiler rejects nonsensical operations (e.g., adding a price to a quantity):
+
+```rust
+// price × quantity = USD value  (Q: -1+1=0, U: 1+0=1, D: 0+0=0)
+fn checked_mul<Q1, U1, D1>(self, rhs: Number<Q1, U1, D1>)
+    -> MathResult<Number<Q + Q1, U + U1, D + D1>>;
+
+// USD value / price = quantity  (Q: 0-(-1)=1, U: 1-1=0, D: 0-0=0)
+fn checked_div<Q1, U1, D1>(self, rhs: Number<Q1, U1, D1>)
+    -> MathResult<Number<Q - Q1, U - U1, D - D1>>;
+```
+
+Key type aliases used throughout the perps and DEX contracts:
+
+| Alias | Dimensions (Q, U, D) | Meaning |
+|-------|----------------------|---------|
+| `Dimensionless` | (0, 0, 0) | Pure scalar (ratios, rates) |
+| `Quantity` | (1, 0, 0) | Asset amount in human units |
+| `UsdValue` | (0, 1, 0) | Dollar amount |
+| `UsdPrice` | (-1, 1, 0) | Price (USD per unit of asset) |
+| `FundingPerUnit` | (-1, 1, 0) | Cumulative funding accumulator |
+| `FundingRate` | (0, 0, -1) | Funding rate (per day) |
+| `Days` | (0, 0, 1) | Time duration in days |
+
+This type system is a key defense against unit-confusion bugs in margin, PnL, and
+funding calculations. A mismatched dimension is a compile-time error, not a runtime
+surprise.
+
 ### Bounded types
 
 Grug encourages declarative validation via `Bounded<T, B>` and `LengthBounded<T>`:
