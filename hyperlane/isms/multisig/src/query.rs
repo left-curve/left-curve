@@ -357,4 +357,140 @@ mod tests {
         )
         .should_fail_with_error("invalid number of signatures! expecting between 2 and 3, got 1");
     }
+
+    /// Test that signature malleability (Finding 1) is rejected.
+    ///
+    /// For any ECDSA signature (r, s, v), the variant (r, n-s, v^1) is
+    /// byte-distinct but recovers to the same signer. An attacker who
+    /// controls only one validator key could submit both variants to meet
+    /// a threshold > 1. The `signers.len() >= threshold` check after
+    /// recovery must catch this.
+    #[test]
+    fn rejecting_malleable_duplicate_signatures() {
+        let mut ctx = MockContext::new();
+
+        // ------------------------ 1. Prepare message -------------------------
+
+        let message = Message {
+            version: MAILBOX_VERSION,
+            nonce: 0,
+            origin_domain: 0,
+            sender: ZERO_ADDRESS,
+            destination_domain: 0,
+            recipient: ZERO_ADDRESS,
+            body: Vec::new().into(),
+        };
+
+        let raw_message = message.encode();
+        let message_id = raw_message.keccak256();
+
+        let mut merkle_tree = IncrementalMerkleTree::default();
+        merkle_tree.insert(message_id).unwrap();
+
+        let merkle_root = merkle_tree.root();
+        let merkle_index = (merkle_tree.count - 1) as u32;
+
+        let multisig_hash = eip191_hash(multisig_hash(
+            domain_hash(message.origin_domain, ZERO_ADDRESS, HYPERLANE_DOMAIN_KEY),
+            merkle_root,
+            merkle_index,
+            message_id,
+        ));
+
+        // --------------------- 2. Prepare validator set ----------------------
+
+        let validators = (0..3)
+            .map(|_| k256::ecdsa::SigningKey::random(&mut OsRng))
+            .collect::<Vec<_>>();
+
+        let validator_set = validators
+            .iter()
+            .map(|sk| {
+                let pk = k256::ecdsa::VerifyingKey::from(sk)
+                    .to_encoded_point(false)
+                    .to_bytes();
+                let pk_hash = (&pk[1..]).keccak256();
+                HexByteArray::from_inner(pk_hash[12..].try_into().unwrap())
+            })
+            .collect::<Vec<_>>();
+
+        // Validator 0 signs the message.
+        let (signature, recovery_id) = validators[0]
+            .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
+            .unwrap();
+
+        let v = recovery_id.to_byte() + 27;
+        let mut original = [0u8; 65];
+        original[..64].copy_from_slice(&signature.to_bytes());
+        original[64] = v;
+
+        // Construct the malleable variant: (r, n-s, flipped_v).
+        // Negating the scalar computes n - s (the high-s counterpart).
+        let neg_s = (-*signature.s()).to_bytes();
+        let mut malleable = [0u8; 65];
+        malleable[..32].copy_from_slice(&original[..32]); // same r
+        malleable[32..64].copy_from_slice(&neg_s); // n - s
+        malleable[64] = if v == 27 {
+            28
+        } else {
+            27
+        }; // flipped recovery id
+
+        // The two byte arrays must be distinct (otherwise BTreeSet dedupes them
+        // and the test wouldn't exercise the malleability path).
+        assert_ne!(original, malleable);
+
+        // Save with threshold = 2 so a single signer shouldn't suffice.
+        VALIDATOR_SETS
+            .save(&mut ctx.storage, message.origin_domain, &ValidatorSet {
+                threshold: 2,
+                validators: validator_set.iter().copied().collect(),
+            })
+            .unwrap();
+
+        // -------------------- 3. Malleability must fail ----------------------
+
+        // Two byte-distinct signatures from the same signer via malleability.
+        verify(
+            ctx.as_immutable(),
+            &raw_message,
+            &Metadata {
+                origin_merkle_tree: ZERO_ADDRESS,
+                merkle_root,
+                merkle_index,
+                signatures: btree_set! {
+                    HexByteArray::from_inner(original),
+                    HexByteArray::from_inner(malleable),
+                },
+            }
+            .encode(),
+        )
+        .should_fail_with_error("not enough unique signers");
+
+        // ------------------- 4. Sanity: two real signers ---------------------
+
+        // Two distinct validators should succeed (proves the test setup is valid).
+        let (sig1, rid1) = validators[1]
+            .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
+            .unwrap();
+        let mut packed1 = [0u8; 65];
+        packed1[..64].copy_from_slice(&sig1.to_bytes());
+        packed1[64] = rid1.to_byte() + 27;
+
+        verify(
+            ctx.as_immutable(),
+            &raw_message,
+            &Metadata {
+                origin_merkle_tree: ZERO_ADDRESS,
+                merkle_root,
+                merkle_index,
+                signatures: btree_set! {
+                    HexByteArray::from_inner(original),
+                    HexByteArray::from_inner(packed1),
+                },
+            }
+            .encode(),
+        )
+        .should_succeed();
+    }
 }
