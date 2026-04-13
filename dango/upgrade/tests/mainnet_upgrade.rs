@@ -8,6 +8,7 @@ use {
 };
 
 #[test]
+#[ignore = "requires mainnet rocksdb data which is not committed"]
 fn mainnet_upgrade_succeeds() {
     let db_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -15,11 +16,6 @@ fn mainnet_upgrade_succeeds() {
         .parent()
         .unwrap()
         .join("deploy/downloaded-db/mainnet/inter1/data");
-
-    if !db_path.exists() {
-        eprintln!("Skipping test: mainnet DB not found at {}", db_path.display());
-        return;
-    }
 
     // Register contract wrappers so the RustVm can resolve code hashes.
     let _codes = RustVm::genesis_codes();
