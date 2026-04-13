@@ -51,10 +51,7 @@ fn set_validators(
         "only the chain owner can call `set_validators`"
     );
 
-    ensure!(
-        threshold > 0,
-        "threshold must be greater than zero"
-    );
+    ensure!(threshold > 0, "threshold must be greater than zero");
 
     ensure!(
         validators.len() >= threshold as usize,
