@@ -33,6 +33,9 @@ lifecycle. Each entry point receives a typed context and returns a typed respons
 
 Entry points are defined using the `#[grug::export]` attribute macro, which generates
 the WASM FFI boilerplate (extern C functions, memory marshaling via `Region` structs).
+This macro is only necessary when building contracts for the **WasmVm**. Contracts
+targeting the **RustVm** (all first-party Dango contracts) do not need it -- they
+register their entry points directly as Rust function pointers.
 
 ## 2. Context Types
 
@@ -431,7 +434,8 @@ block. This enables end-to-end tests that exercise inter-contract interactions.
 
 `grug/macros/` provides:
 
-- **`#[grug::export]`** -- Generates WASM FFI wrappers for entry points.
+- **`#[grug::export]`** -- Generates WASM FFI wrappers for entry points. Only needed
+  for WasmVm contracts; RustVm contracts register entry points directly.
 - **`#[grug::derive(Serde, Borsh)]`** -- Derives standard traits (Serialize,
   Deserialize, BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq).
 - **`#[grug::event("name")]`** -- Registers an event type with a canonical name.
