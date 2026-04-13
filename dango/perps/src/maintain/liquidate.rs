@@ -1326,12 +1326,28 @@ mod tests {
     /// with NO portion leaking to the protocol treasury, even when
     /// `protocol_fee_rate` is non-zero.
     ///
+    /// Old behavior: the liq fee was added to `all_fees` and processed by
+    /// `settle_pnls`, which split it via `protocol_fee_rate`. With a 20%
+    /// protocol rate, `settle_pnls` sent $96 (20% of $480) to treasury and
+    /// $384 (80%) to vault. The post-settle code then subtracted the full
+    /// $480 from the vault and credited $480 to the insurance fund.
+    ///
+    /// Incorrect outcome: treasury gained $96 it should not have, and the
+    /// vault lost $96 (received $384 then had $480 subtracted). The
+    /// insurance fund got the right total ($480), but the vault silently
+    /// subsidized a phantom treasury cut on every liquidation.
+    ///
+    /// Correct behavior: the liq fee is deducted from `user_state.margin`
+    /// and credited to `insurance_fund` directly before `settle_pnls`,
+    /// bypassing the protocol/vault fee split entirely.
+    ///
+    /// Correct expected outcome: insurance_fund += $480, treasury unchanged,
+    /// vault margin unchanged.
+    ///
     /// Setup:
     ///   - User long 1 BTC @ $50,000, margin $2,000, oracle $48,000.
-    ///   - Equity = $2,000 + ($48,000 − $50,000) = $0. MM = $48,000 * 5% = $2,400.
-    ///   - Equity ($0) < MM ($2,400) → liquidatable.
-    ///   - Deficit = $2,400 − $0 = $2,400.
-    ///   - close_amount = ceil($2,400 / ($48,000 × 0.05)) = ceil(1) = 1 → full close.
+    ///   - Equity = $2,000 + ($48,000 − $50,000) = $0. MM = $48,000 × 5% = $2,400.
+    ///   - Equity ($0) < MM ($2,400) → liquidatable. Full close.
     ///   - `liquidation_fee_rate = 1%`, `protocol_fee_rate = 20%`.
     ///   - Book bid at $49,000 → fills at $49,000.
     ///
@@ -1341,7 +1357,7 @@ mod tests {
     ///   - fee_usd = $48,000 × 1% = $480.
     ///   - remaining_margin = max(0, $2,000 + (−$1,000)) = $1,000.
     ///   - liq_fee = min($480, $1,000) = $480.
-    ///   - insurance_fund = $480, treasury = $0.
+    ///   - insurance_fund += $480, treasury = $0, vault unchanged.
     #[test]
     fn liquidation_fee_no_treasury_leak() {
         let mut ctx = MockContext::new()
@@ -1458,6 +1474,309 @@ mod tests {
         assert_eq!(
             vault_margin_after, vault_margin_before,
             "vault margin must not change from liquidation fee routing"
+        );
+    }
+
+    /// Verifies that when the vault itself is liquidated (`user == contract`),
+    /// the liquidation fee is correctly deducted from the vault's own margin
+    /// and credited to the insurance fund.
+    ///
+    /// Old behavior: the liq fee was added to `all_fees` and processed by
+    /// `settle_pnls`, which split it between treasury and vault. For normal
+    /// users, the post-settle code reversed the vault credit. But when
+    /// `user == contract`, `settle_pnls` skipped the fee entirely (because
+    /// of the `user == contract` guard at line 1036 of submit_order.rs),
+    /// and the old post-settle code deducted the fee from `user_state.margin`
+    /// directly — which happened to produce the right result for the vault
+    /// case, but only by accident, relying on a fragile two-branch structure.
+    ///
+    /// Correct behavior: the liq fee is deducted from `user_state.margin`
+    /// and credited to `insurance_fund` directly before `settle_pnls`,
+    /// bypassing the fee split entirely. This works identically whether
+    /// the user is a normal account or the vault itself.
+    ///
+    /// Setup:
+    ///   - Vault (CONTRACT) long 1 BTC @ $50,000, margin $2,000, oracle $48,000.
+    ///   - Equity = $2,000 + ($48,000 − $50,000) = $0. MM = $48,000 × 5% = $2,400.
+    ///   - Equity ($0) < MM ($2,400) → liquidatable. Full close.
+    ///   - `liquidation_fee_rate = 1%`, `protocol_fee_rate = 0%`.
+    ///   - Book bid at $49,000 from MAKER → fills at $49,000.
+    ///
+    /// Expected:
+    ///   - PnL = ($49,000 − $50,000) × 1 = −$1,000.
+    ///   - closed_notional = 1 × $48,000 = $48,000.
+    ///   - remaining_margin = max(0, $2,000 + (−$1,000)) = $1,000.
+    ///   - liq_fee = min($480, $1,000) = $480.
+    ///   - insurance_fund += $480, treasury unchanged.
+    ///   - Vault margin = $2,000 − $480 (liq_fee) + (−$1,000) (PnL) = $520.
+    ///   - Vault must NOT appear in maker_states (it is the taker).
+    #[test]
+    fn vault_self_liquidation_fee_to_insurance() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = default_param();
+
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        // Vault (CONTRACT) long 1 BTC @ $50,000.
+        save_position(&mut ctx.storage, CONTRACT, &pair_btc(), 1, 50_000);
+
+        // Bid on book at $49,000 from MAKER.
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 1, 49_000);
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
+
+        let mut user_state = USER_STATES.load(&ctx.storage, CONTRACT).unwrap();
+        user_state.margin = UsdValue::new_int(2_000);
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let treasury_before = state.treasury;
+        let insurance_before = state.insurance_fund;
+
+        let LiquidateOutcome {
+            state,
+            user_state,
+            maker_states,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            CONTRACT, // vault is the user being liquidated
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        )
+        .expect("vault self-liquidation should succeed");
+
+        let expected_liq_fee = UsdValue::new_int(480);
+
+        assert_eq!(
+            state.insurance_fund,
+            insurance_before.checked_add(expected_liq_fee).unwrap(),
+            "insurance fund should increase by exactly the liquidation fee"
+        );
+
+        assert_eq!(
+            state.treasury, treasury_before,
+            "treasury must not change during vault self-liquidation"
+        );
+
+        // Vault margin: $2,000 - $480 (liq_fee) + (-$1,000) (PnL) = $520.
+        assert_eq!(
+            user_state.margin,
+            UsdValue::new_int(520),
+            "vault margin should reflect liq_fee deduction and PnL settlement"
+        );
+
+        // Vault must NOT appear in maker_states when it is the taker.
+        assert!(
+            !maker_states.contains_key(&CONTRACT),
+            "vault must not be in maker_states when it is the liquidated user"
+        );
+
+        // Position should be fully closed.
+        assert!(
+            user_state.positions.is_empty(),
+            "vault position should be fully closed after liquidation"
+        );
+    }
+
+    /// Verifies that when the uncapped liquidation fee exceeds the user's
+    /// remaining margin, the fee is capped at `remaining_margin` and the
+    /// capped amount goes entirely to the insurance fund with no treasury
+    /// leak, even when `protocol_fee_rate` is nonzero.
+    ///
+    /// Old behavior: the liq fee was added to `all_fees` and processed by
+    /// `settle_pnls`, which split it via `protocol_fee_rate`. With a 20%
+    /// protocol rate, `settle_pnls` sent 20% to treasury and 80% to vault.
+    /// The post-settle code then subtracted the full `liq_fee` from the
+    /// vault and credited it to the insurance fund. Result: treasury kept
+    /// `liq_fee × 20%` and the vault lost that same amount — a silent
+    /// leak from vault to treasury on every liquidation.
+    ///
+    /// Correct behavior: the liq fee is deducted from `user_state.margin`
+    /// and credited to `insurance_fund` directly before `settle_pnls`,
+    /// bypassing the protocol/vault fee split. Treasury and vault are
+    /// unaffected by the liquidation fee.
+    ///
+    /// Setup:
+    ///   - User long 1 BTC @ $50,000, margin $1,200, oracle $48,000.
+    ///   - Equity = $1,200 + ($48,000 − $50,000) = −$800. MM = $2,400.
+    ///   - Equity (−$800) < MM ($2,400) → liquidatable. Full close.
+    ///   - `liquidation_fee_rate = 1%`, `protocol_fee_rate = 20%`.
+    ///   - Book bid at $49,000 → fills at $49,000.
+    ///
+    /// Expected:
+    ///   - PnL = ($49,000 − $50,000) × 1 = −$1,000.
+    ///   - closed_notional = 1 × $48,000 = $48,000.
+    ///   - Uncapped fee = $48,000 × 1% = $480.
+    ///   - remaining_margin = max(0, $1,200 + (−$1,000)) = $200.
+    ///   - liq_fee = min($480, $200) = $200 (cap binds).
+    ///   - insurance_fund += $200, treasury unchanged, vault unchanged.
+    ///   - User margin = $1,200 − $200 (liq_fee) + (−$1,000) (PnL) = $0.
+    #[test]
+    fn liquidation_fee_capped_no_treasury_leak() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = Param {
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
+            protocol_fee_rate: Dimensionless::new_percent(20),     // 20%
+            max_open_orders: 100,
+            ..Default::default()
+        };
+
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        // User long 1 BTC @ $50,000, margin $1,200, oracle $48,000.
+        // Equity = -$800, deficit large → full position closed.
+        save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
+
+        // Bid on book at $49,000 from maker.
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 1, 49_000);
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(1_200);
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        // Snapshot pre-liquidation values.
+        let treasury_before = state.treasury;
+        let insurance_before = state.insurance_fund;
+        let vault_margin_before = USER_STATES
+            .may_load(&ctx.storage, CONTRACT)
+            .unwrap()
+            .unwrap_or_default()
+            .margin;
+
+        let LiquidateOutcome {
+            state,
+            user_state,
+            maker_states,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        )
+        .expect("liquidation should succeed");
+
+        // Uncapped fee = $480, remaining_margin = $200 → capped at $200.
+        let expected_liq_fee = UsdValue::new_int(200);
+
+        // Only the insurance fund should change — by the capped fee.
+        assert_eq!(
+            state.insurance_fund,
+            insurance_before.checked_add(expected_liq_fee).unwrap(),
+            "insurance fund should increase by the capped liquidation fee ($200, not $480)"
+        );
+
+        // Treasury must be unchanged despite 20% protocol_fee_rate.
+        assert_eq!(
+            state.treasury, treasury_before,
+            "treasury must not change — capped liquidation fee should not be split"
+        );
+
+        // Vault margin must be unchanged.
+        let vault_margin_after = maker_states
+            .get(&CONTRACT)
+            .map(|vs| vs.margin)
+            .unwrap_or(vault_margin_before);
+        assert_eq!(
+            vault_margin_after, vault_margin_before,
+            "vault margin must not change from liquidation fee routing"
+        );
+
+        // User margin: $1,200 - $200 (liq_fee) + (-$1,000) (PnL) = $0 exactly.
+        assert_eq!(
+            user_state.margin,
+            UsdValue::ZERO,
+            "user margin should be exactly zero — no bad debt"
+        );
+
+        // Position should be fully closed.
+        assert!(
+            user_state.positions.is_empty(),
+            "user position should be fully closed after liquidation"
         );
     }
 
