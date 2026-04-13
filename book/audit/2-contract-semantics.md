@@ -344,16 +344,38 @@ Index types:
 Contracts can query other contracts or chain state via the `QuerierWrapper`:
 
 ```rust
-// Query another contract's custom endpoint
+// Query another contract's custom endpoint (invokes the target's query() entry point)
 let result: R::Response = ctx.querier.query_wasm_smart(contract_addr, query_msg)?;
 
-// Query raw storage of another contract
+// Query raw storage of another contract (direct KV lookup, no entry point call)
 let raw: Option<Binary> = ctx.querier.query_wasm_raw(contract_addr, key)?;
 
 // Query bank balances
 let balance: Coin = ctx.querier.query_balance(addr, denom)?;
 let all: Coins = ctx.querier.query_balances(addr)?;
 ```
+
+There is also `StorageQuerier::query_wasm_path` (`grug/storage/src/querier.rs`), which
+combines the low gas cost of `query_wasm_raw` with the ergonomics of `query_wasm_smart`.
+It takes a typed storage `Path` (produced by `Item::path()` or `Map::path(key)`),
+performs a raw KV lookup, and automatically deserializes the result using the storage
+item's codec:
+
+```rust
+// Read another contract's CONFIG item -- raw lookup, typed result, no entry point call
+let cfg: Config = ctx.querier.query_wasm_path(other_contract, CONFIG.path())?;
+
+// Read a specific key from another contract's Map
+let user: User = ctx.querier.query_wasm_path(factory, &USERS.path(user_index))?;
+
+// Optional variant (returns None instead of error if key is missing)
+let maybe: Option<User> = ctx.querier.may_query_wasm_path(factory, &USERS.path(idx))?;
+```
+
+This is the preferred query method in Dango's inter-contract calls (e.g., the auth
+module reading user data from the account factory, or the oracle querier reading Pyth
+prices) because it avoids the overhead of invoking the target contract's `query()`
+entry point entirely.
 
 Queries are read-only and gas-metered. They cannot mutate state. Recursive queries
 are limited to depth 3 to prevent stack overflow.
