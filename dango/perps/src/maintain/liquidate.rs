@@ -1339,6 +1339,132 @@ mod tests {
         );
     }
 
+    /// Verifies that the liquidation fee goes entirely to the insurance fund
+    /// with NO portion leaking to the protocol treasury, even when
+    /// `protocol_fee_rate` is non-zero.
+    ///
+    /// Setup:
+    ///   - User long 1 BTC @ $50,000, margin $2,500, oracle $48,000.
+    ///   - Equity = $2,500 + ($48,000 − $50,000) = $500. MM = $48,000 * 5% = $2,400. Liquidatable.
+    ///   - `liquidation_fee_rate = 1%`, `protocol_fee_rate = 20%`.
+    ///   - Book bid at $49,000 → fills at $49,000.
+    ///
+    /// Expected:
+    ///   - closed_notional = 1 * $48,000 (oracle) = $48,000.
+    ///   - liq_fee = min($48,000 * 1%, max(0, $2,500 + (-$1,000))) = min($480, $1,500) = $480.
+    ///   - insurance_fund = $480, treasury = $0.
+    #[test]
+    fn liquidation_fee_no_treasury_leak() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = Param {
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
+            protocol_fee_rate: Dimensionless::new_percent(20),     // 20%
+            max_open_orders: 100,
+            ..Default::default()
+        };
+
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        // User long 1 BTC @ $50,000, margin $2,500, oracle $48,000.
+        save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
+
+        // Bid on book at $49,000 from maker.
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 1, 49_000);
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(2_500);
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let LiquidateOutcome {
+            state,
+            maker_states,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        )
+        .expect("liquidation should succeed");
+
+        // closed_notional = 1 * $48,000 = $48,000.
+        // liq_fee = min($48,000 * 1%, $1,500) = $480.
+        let expected_liq_fee = UsdValue::new_int(480);
+
+        // The full liquidation fee must land in the insurance fund.
+        assert_eq!(
+            state.insurance_fund, expected_liq_fee,
+            "insurance fund should equal the full liquidation fee"
+        );
+
+        // The protocol treasury must NOT receive any portion of the
+        // liquidation fee — it is reserved entirely for the insurance fund.
+        assert_eq!(
+            state.treasury,
+            UsdValue::ZERO,
+            "treasury must be zero — liquidation fee should not be split"
+        );
+
+        // The vault must not lose margin to subsidize a treasury leak.
+        // Before liquidation the vault had no margin; after, it should
+        // only reflect PnL from the fill (vault is the counter-party
+        // to the fee, but the fee goes to insurance, not vault).
+        let vault_state = maker_states.get(&CONTRACT);
+        if let Some(vs) = vault_state {
+            assert!(
+                vs.margin >= UsdValue::ZERO,
+                "vault margin must not go negative from liquidation fee routing"
+            );
+        }
+    }
+
     #[test]
     fn bad_debt_covered_by_insurance_fund() {
         let mut ctx = MockContext::new()
