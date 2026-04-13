@@ -88,7 +88,7 @@ pub struct AuthCtx<'a> {
 }
 
 pub enum AuthMode {
-    Simulate,   // Gas estimation -- skip expensive ops (e.g., sig verify)
+    Simulate,   // Gas estimation -- tx is unsigned (sig verify skipped)
     Check,      // CheckTx phase
     Finalize,   // FinalizeBlock phase
 }
@@ -96,8 +96,9 @@ pub enum AuthMode {
 
 **Security note:** `MutableCtx` is the only context with `sender` and `funds`. A
 `SudoCtx` entry point is called by the chain (no user sender). An `AuthCtx` entry
-point knows which ABCI phase it's in, allowing it to skip expensive operations during
-simulation.
+point knows which ABCI phase it's in, allowing it to skip signature verification
+during simulation (the tx is not yet signed at that point -- the user needs the gas
+estimate before they can sign).
 
 ## 3. Messages and Responses
 
