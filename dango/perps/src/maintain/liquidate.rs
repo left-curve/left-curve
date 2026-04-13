@@ -355,7 +355,7 @@ fn _liquidate(
 
     let (
         all_pnls,
-        mut all_fees,
+        all_fees,
         all_order_mutations,
         closed_notional,
         all_index_updates,
@@ -377,6 +377,9 @@ fn _liquidate(
 
     // -------------------- Step 4: Liquidation fee → insurance fund -----------
 
+    // Do NOT add liq_fee to all_fees — it must bypass settle_pnls entirely
+    // to avoid the protocol/vault fee split. The fee is routed directly
+    // from the user's margin to the insurance fund.
     let liq_fee = compute_liquidation_fee(
         &all_pnls,
         user,
@@ -386,10 +389,8 @@ fn _liquidate(
     )?;
 
     if liq_fee.is_non_zero() {
-        all_fees
-            .entry(user)
-            .or_default()
-            .checked_add_assign(liq_fee)?;
+        user_state.margin.checked_sub_assign(liq_fee)?;
+        state.insurance_fund.checked_add_assign(liq_fee)?;
     }
 
     // ----------------------- Step 5: Settle PnLs ------------------------------
@@ -408,8 +409,9 @@ fn _liquidate(
         });
     }
 
-    // Fee breakdowns are ignored during liquidation: trading fees are zero,
-    // and the liquidation fee is routed to the insurance fund separately.
+    // Fee breakdowns are ignored during liquidation: trading fees are zero
+    // (liq_param zeroes fee rates), and the liquidation fee is routed to
+    // the insurance fund directly below.
     let _ = settle_pnls(
         contract,
         param,
@@ -420,25 +422,6 @@ fn _liquidate(
         all_pnls,
         all_fees,
     )?;
-
-    // Route liquidation fee to the insurance fund.
-    if liq_fee.is_non_zero() {
-        if user == contract {
-            // Vault is being liquidated. settle_pnls skipped the fee
-            // (user == contract guard at line 917 of submit_order.rs),
-            // so deduct directly from the vault's taker state.
-            user_state.margin.checked_sub_assign(liq_fee)?;
-        } else {
-            // Normal user: settle_pnls credited the vault with the fee.
-            // Reverse the vault credit.
-            all_maker_states
-                .get_mut(&contract)
-                .unwrap()
-                .margin
-                .checked_sub_assign(liq_fee)?;
-        }
-        state.insurance_fund.checked_add_assign(liq_fee)?;
-    }
 
     // -------------------- Step 6: Bad debt → insurance fund ------------------
 
@@ -1344,14 +1327,20 @@ mod tests {
     /// `protocol_fee_rate` is non-zero.
     ///
     /// Setup:
-    ///   - User long 1 BTC @ $50,000, margin $2,500, oracle $48,000.
-    ///   - Equity = $2,500 + ($48,000 − $50,000) = $500. MM = $48,000 * 5% = $2,400. Liquidatable.
+    ///   - User long 1 BTC @ $50,000, margin $2,000, oracle $48,000.
+    ///   - Equity = $2,000 + ($48,000 − $50,000) = $0. MM = $48,000 * 5% = $2,400.
+    ///   - Equity ($0) < MM ($2,400) → liquidatable.
+    ///   - Deficit = $2,400 − $0 = $2,400.
+    ///   - close_amount = ceil($2,400 / ($48,000 × 0.05)) = ceil(1) = 1 → full close.
     ///   - `liquidation_fee_rate = 1%`, `protocol_fee_rate = 20%`.
     ///   - Book bid at $49,000 → fills at $49,000.
     ///
     /// Expected:
-    ///   - closed_notional = 1 * $48,000 (oracle) = $48,000.
-    ///   - liq_fee = min($48,000 * 1%, max(0, $2,500 + (-$1,000))) = min($480, $1,500) = $480.
+    ///   - PnL = ($49,000 − $50,000) × 1 = −$1,000.
+    ///   - closed_notional = 1 × $48,000 (oracle) = $48,000.
+    ///   - fee_usd = $48,000 × 1% = $480.
+    ///   - remaining_margin = max(0, $2,000 + (−$1,000)) = $1,000.
+    ///   - liq_fee = min($480, $1,000) = $480.
     ///   - insurance_fund = $480, treasury = $0.
     #[test]
     fn liquidation_fee_no_treasury_leak() {
@@ -1385,7 +1374,8 @@ mod tests {
             pair_state.clone(),
         )]);
 
-        // User long 1 BTC @ $50,000, margin $2,500, oracle $48,000.
+        // User long 1 BTC @ $50,000, margin $2,000, oracle $48,000.
+        // Equity = $0, deficit = $2,400 → full position closed.
         save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
 
         // Bid on book at $49,000 from maker.
@@ -1409,10 +1399,19 @@ mod tests {
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
 
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
-        user_state.margin = UsdValue::new_int(2_500);
+        user_state.margin = UsdValue::new_int(2_000);
 
         let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
         let state = STATE.load(&ctx.storage).unwrap();
+
+        // Snapshot pre-liquidation values.
+        let treasury_before = state.treasury;
+        let insurance_before = state.insurance_fund;
+        let vault_margin_before = USER_STATES
+            .may_load(&ctx.storage, CONTRACT)
+            .unwrap()
+            .unwrap_or_default()
+            .margin;
 
         let LiquidateOutcome {
             state,
@@ -1434,35 +1433,32 @@ mod tests {
         )
         .expect("liquidation should succeed");
 
-        // closed_notional = 1 * $48,000 = $48,000.
-        // liq_fee = min($48,000 * 1%, $1,500) = $480.
+        // closed_notional = 1 × $48,000 = $48,000.
+        // liq_fee = min($480, $1,000) = $480.
         let expected_liq_fee = UsdValue::new_int(480);
 
-        // The full liquidation fee must land in the insurance fund.
+        // Only the insurance fund should change — by exactly the liq fee.
         assert_eq!(
-            state.insurance_fund, expected_liq_fee,
-            "insurance fund should equal the full liquidation fee"
+            state.insurance_fund,
+            insurance_before.checked_add(expected_liq_fee).unwrap(),
+            "insurance fund should increase by exactly the liquidation fee"
         );
 
-        // The protocol treasury must NOT receive any portion of the
-        // liquidation fee — it is reserved entirely for the insurance fund.
+        // The protocol treasury must be unchanged.
         assert_eq!(
-            state.treasury,
-            UsdValue::ZERO,
-            "treasury must be zero — liquidation fee should not be split"
+            state.treasury, treasury_before,
+            "treasury must not change — liquidation fee should not be split"
         );
 
-        // The vault must not lose margin to subsidize a treasury leak.
-        // Before liquidation the vault had no margin; after, it should
-        // only reflect PnL from the fill (vault is the counter-party
-        // to the fee, but the fee goes to insurance, not vault).
-        let vault_state = maker_states.get(&CONTRACT);
-        if let Some(vs) = vault_state {
-            assert!(
-                vs.margin >= UsdValue::ZERO,
-                "vault margin must not go negative from liquidation fee routing"
-            );
-        }
+        // The vault margin must be unchanged.
+        let vault_margin_after = maker_states
+            .get(&CONTRACT)
+            .map(|vs| vs.margin)
+            .unwrap_or(vault_margin_before);
+        assert_eq!(
+            vault_margin_after, vault_margin_before,
+            "vault margin must not change from liquidation fee routing"
+        );
     }
 
     #[test]
