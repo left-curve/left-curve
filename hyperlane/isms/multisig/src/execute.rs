@@ -1,7 +1,7 @@
 use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
-    grug::{HexByteArray, MutableCtx, QuerierExt, Response, StdResult},
+    grug::{HexByteArray, MutableCtx, QuerierExt, Response},
     hyperlane_types::{
         isms::multisig::{ExecuteMsg, InstantiateMsg, ValidatorSet},
         mailbox::Domain,
@@ -10,8 +10,18 @@ use {
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     for (domain, validator_set) in msg.validator_sets {
+        ensure!(
+            validator_set.threshold > 0,
+            "threshold must be greater than zero for domain {domain}"
+        );
+        ensure!(
+            validator_set.validators.len() >= validator_set.threshold as usize,
+            "not enough validators for domain {domain}! threshold: {}, validators: {}",
+            validator_set.threshold,
+            validator_set.validators.len()
+        );
         VALIDATOR_SETS.save(ctx.storage, domain, &validator_set)?;
     }
 
@@ -39,6 +49,11 @@ fn set_validators(
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "only the chain owner can call `set_validators`"
+    );
+
+    ensure!(
+        threshold > 0,
+        "threshold must be greater than zero"
     );
 
     ensure!(
