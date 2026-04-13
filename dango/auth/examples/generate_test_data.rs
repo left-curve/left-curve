@@ -49,6 +49,7 @@ fn generate_secp256k1_session_test_data() -> anyhow::Result<()> {
     let sign_doc = generate_random_unsigned_transaction()?;
 
     let session_info = SessionInfo {
+        chain_id: MOCK_CHAIN_ID.to_string(),
         session_key: vk2.into(),
         expire_at: Timestamp::from_nanos(u128::MAX),
     };
