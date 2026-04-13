@@ -393,9 +393,15 @@ COMMISSION_RATE_OVERRIDES: Map<UserIndex, CommissionRate>
 2. Compute maintenance margin = `Σ(|size| × price × mm_ratio)`.
 3. If `equity < maintenance_margin`:
    a. Cancel all resting orders (refund reserved margin).
-   b. Close all positions via ADL (against profitable counter-parties) + vault fills.
-   c. Collect liquidation fee → insurance fund.
-   d. Cover bad debt from insurance fund.
+   b. Close **enough** of the user's positions to restore
+      `equity ≥ maintenance_margin` (with a buffer controlled by
+      `liquidation_buffer_ratio`). Not all positions are necessarily closed.
+   c. Positions are closed against resting orders in the book at the target
+      price. Only if there is insufficient book liquidity within the target
+      price does the engine resort to **auto-deleveraging (ADL)** against
+      profitable counter-parties.
+   d. Collect liquidation fee → insurance fund.
+   e. Cover any remaining bad debt from insurance fund.
 
 #### Vault (LP) system (`vault/`)
 
