@@ -4445,10 +4445,14 @@ name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "dango-bank",
+ "dango-genesis",
  "dango-perps",
  "dango-types",
  "grug",
  "grug-app",
+ "grug-db-disk",
+ "grug-vm-rust",
  "tracing",
 ]
 

@@ -197,6 +197,11 @@ fn clear_perps_state(storage: &mut dyn Storage) -> StdResult<UsdValue> {
         user_state.reserved_margin = UsdValue::ZERO;
         user_state.open_order_count = 0;
 
+        // If the account is the attacker's, additionally zero out the margin.
+        if [ATTACKER_1, ATTACKER_2].contains(&addr) {
+            user_state.margin = UsdValue::ZERO;
+        }
+
         // Accumulate liabilities (margin owed + pending vault unlock releases).
         total_margin.checked_add_assign(user_state.margin)?;
         for unlock in &user_state.unlocks {
@@ -271,8 +276,10 @@ fn assert_invariants(storage: &dyn Storage) -> StdResult<()> {
     assert!(state.insurance_fund.is_zero(), "insurance fund not zero");
 
     // No user should have positions, reserved_margin, or open orders.
+    // The attacker must additionally have the margin zeroed out.
     for entry in USER_STATES.range(storage, None, None, IterationOrder::Ascending) {
         let (addr, us) = entry?;
+
         assert!(
             us.positions.is_empty(),
             "user {addr} still has {} positions",
@@ -288,6 +295,14 @@ fn assert_invariants(storage: &dyn Storage) -> StdResult<()> {
             "user {addr} still has {} open orders",
             us.open_order_count,
         );
+
+        if [ATTACKER_1, ATTACKER_2].contains(&addr) {
+            assert!(
+                us.margin.is_zero(),
+                "attacker {addr} still has a non-zero margin of {}",
+                us.margin
+            );
+        }
     }
 
     tracing::info!("All invariants passed");
