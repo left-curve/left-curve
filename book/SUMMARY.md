@@ -1,5 +1,15 @@
 [Greeting](README.md)
 
+# Security Audit Guide
+
+- [Overview](audit/README.md)
+- [Grug Architecture](audit/1-grug-architecture.md)
+- [Smart Contract Semantics](audit/2-contract-semantics.md)
+- [Dango Contract System](audit/3-dango-contracts.md)
+- [Indexer & Node](audit/4-indexer-and-node.md)
+
+---
+
 # Perp DEX
 
 - [Margin](perps/1-margin.md)
