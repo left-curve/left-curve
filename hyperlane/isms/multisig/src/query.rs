@@ -363,8 +363,9 @@ mod tests {
     /// For any ECDSA signature (r, s, v), the variant (r, n-s, v^1) is
     /// byte-distinct but recovers to the same signer. An attacker who
     /// controls only one validator key could submit both variants to meet
-    /// a threshold > 1. The `signers.len() >= threshold` check after
-    /// recovery must catch this.
+    /// a threshold > 1. Two layers of defense catch this:
+    /// 1. `is_canonical_ecdsa_signature` rejects high-s signatures outright.
+    /// 2. `signers.len() >= threshold` as a backstop after recovery.
     #[test]
     fn rejecting_malleable_duplicate_signatures() {
         let mut ctx = MockContext::new();
@@ -450,7 +451,7 @@ mod tests {
 
         // -------------------- 3. Malleability must fail ----------------------
 
-        // Two byte-distinct signatures from the same signer via malleability.
+        // The high-s variant is rejected at the boundary before recovery.
         verify(
             ctx.as_immutable(),
             &raw_message,
@@ -465,7 +466,7 @@ mod tests {
             }
             .encode(),
         )
-        .should_fail_with_error("not enough unique signers");
+        .should_fail_with_error("non-canonical (high-s) signature");
 
         // ------------------- 4. Sanity: two real signers ---------------------
 
