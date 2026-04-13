@@ -17,7 +17,9 @@ use {
         Quantity, UsdValue,
         perps::{LimitOrder, ReasonForOrderRemoval},
     },
-    grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
+    grug::{
+        Duration, MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64,
+    },
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
@@ -59,7 +61,8 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(Duration::from_millis(500));
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
