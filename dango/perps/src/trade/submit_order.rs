@@ -5118,7 +5118,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage can't be negative");
+        .should_fail_with_error("max slippage can't be negative");
     }
 
     /// SL child order with negative max_slippage must be rejected.
@@ -5166,7 +5166,7 @@ mod tests {
             }),
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage can't be negative");
+        .should_fail_with_error("max slippage can't be negative");
     }
 
     /// Helper: load taker state (returns default if missing).
