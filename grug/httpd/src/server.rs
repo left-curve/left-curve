@@ -156,6 +156,7 @@ where
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
             .service(routes::index::up)
+            .service(routes::index::requester_ip)
             .service(routes::graphql::graphql_route::<
                 crate::graphql::query::Query,
                 async_graphql::EmptyMutation,

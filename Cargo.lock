@@ -7041,6 +7041,7 @@ dependencies = [
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
+ "reqwest 0.13.2",
  "sea-orm",
  "serde",
  "serde_json",

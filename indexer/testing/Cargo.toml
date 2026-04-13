@@ -43,3 +43,4 @@ graphql_client   = { workspace = true }
 grug             = { workspace = true }
 grug-storage     = { workspace = true }
 itertools        = { workspace = true }
+reqwest          = { workspace = true }
