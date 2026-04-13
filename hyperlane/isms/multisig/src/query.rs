@@ -115,6 +115,18 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
         })
         .collect::<StdResult<BTreeSet<_>>>()?;
 
+    // Ensure there are enough unique signers to meet the threshold.
+    // This prevents signature malleability attacks where an attacker submits
+    // multiple distinct signatures (e.g. (r, s, v) and (r, n-s, 1-v)) that
+    // recover to the same address, passing the raw count check above while
+    // only controlling fewer keys than the threshold requires.
+    ensure!(
+        signers.len() >= min,
+        "not enough unique signers! expecting at least {}, got {}",
+        min,
+        signers.len()
+    );
+
     // Ensure all signatures are from legit validators.
     ensure!(
         signers.is_subset(&validator_set.validators),
