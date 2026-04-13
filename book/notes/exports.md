@@ -85,24 +85,3 @@ The chain's owner can appoint a number of contracts to be automatically invoked 
 fn cron_execute(ctx: SudoCtx) -> Result<Response>;
 ```
 
-## IBC
-
-Contracts that are to be used as IBC light clients must implement the following entry point:
-
-```rust
-#[grug::export]
-fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQuery) -> Result<IbcClientQueryResponse>;
-```
-
-Contracts that are to be used as IBC applications must implement the following entry points:
-
-```rust
-#[grug::export]
-fn ibc_packet_receive(ctx: MutableCtx, msg: IbcPacketReceiveMsg) -> Result<Response>;
-
-#[grug::export]
-fn ibc_packet_ack(ctx: MutableCtx, msg: IbcPacketAckMsg) -> Result<Response>;
-
-#[grug::export]
-fn ibc_packet_timeout(ctx: MutableCtx, msg: IbcPacketTimeoutMsg) -> Result<Response>;
-```

@@ -31,15 +31,6 @@ lifecycle. Each entry point receives a typed context and returns a typed respons
 | `bank_query` | `ImmutableCtx` | `fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse>` | Balance queries (bank only) |
 | `cron_execute` | `SudoCtx` | `fn(SudoCtx) -> Result<Response>` | Periodic automation |
 
-### IBC entry points
-
-| Entry Point | Context | Signature |
-|-------------|---------|-----------|
-| `ibc_client_query` | `ImmutableCtx` | `fn(ImmutableCtx, IbcClientQuery) -> Result<IbcClientQueryResponse>` |
-| `ibc_packet_receive` | `MutableCtx` | `fn(MutableCtx, IbcPacketReceiveMsg) -> Result<Response>` |
-| `ibc_packet_ack` | `MutableCtx` | `fn(MutableCtx, IbcPacketAckMsg) -> Result<Response>` |
-| `ibc_packet_timeout` | `MutableCtx` | `fn(MutableCtx, IbcPacketTimeoutMsg) -> Result<Response>` |
-
 Entry points are defined using the `#[grug::export]` attribute macro, which generates
 the WASM FFI boilerplate (extern C functions, memory marshaling via `Region` structs).
 
