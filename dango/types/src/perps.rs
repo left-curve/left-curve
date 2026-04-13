@@ -809,9 +809,6 @@ pub enum MaintainerMsg {
     /// Unfilled positions are ADL'd against counter-parties at the bankruptcy
     /// price. Any remaining bad debt is absorbed by the insurance fund.
     Liquidate { user: Addr },
-
-    /// Replenish the insurance fund from the sender's margin.
-    ReplenishInsuranceFund { amount: UsdValue },
 }
 
 #[grug::derive(Serde)]
