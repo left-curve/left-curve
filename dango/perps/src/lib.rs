@@ -121,19 +121,19 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
-    // Only `Deposit` accepts attached funds (settlement currency). Every other
-    // endpoint must be called without funds — tokens sent here would otherwise
-    // be silently absorbed by the contract, lost to the sender.
-    if !matches!(
-        msg,
+    // Only `Deposit` and `Donate` methods accept attached funds (settlement currency).
+    // Every other endpoint must be called without funds — tokens sent here would
+    // otherwise be silently absorbed by the contract, lost to the sender.
+    match msg {
         ExecuteMsg::Trade(TraderMsg::Deposit { .. })
-            | ExecuteMsg::Maintain(MaintainerMsg::Donate {})
-    ) {
-        ensure!(
-            ctx.funds.is_empty(),
-            "unexpected funds sent to non-deposit endpoint: {}",
-            ctx.funds
-        );
+        | ExecuteMsg::Maintain(MaintainerMsg::Donate {}) => {},
+        _ => {
+            ensure!(
+                ctx.funds.is_empty(),
+                "unexpected funds sent to non-deposit endpoint: {}",
+                ctx.funds
+            );
+        },
     }
 
     match msg {
