@@ -1,6 +1,8 @@
 use {
-    crate::context::Context,
-    actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
+    crate::{context::Context, request_ip::RequesterIp},
+    actix_web::{
+        Error, HttpRequest, HttpResponse, Responder, error::ErrorInternalServerError, get, web,
+    },
     async_graphql::futures_util::TryFutureExt,
     chrono::{Duration, Utc},
     grug_types::{BlockInfo, GIT_COMMIT},
@@ -10,6 +12,11 @@ use {
 #[get("/")]
 pub async fn index() -> impl Responder {
     "OK"
+}
+
+#[get("/requester-ip")]
+pub async fn requester_ip(req: HttpRequest) -> impl Responder {
+    HttpResponse::Ok().json(RequesterIp::from_request(&req))
 }
 
 #[derive(serde::Serialize)]
