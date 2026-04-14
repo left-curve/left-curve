@@ -560,7 +560,7 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_int(-1),
         )
-        .should_fail_with_error("max_slippage can't be negative");
+        .should_fail_with_error("max slippage can't be negative");
     }
 
     #[test]
@@ -582,7 +582,7 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_percent(100),
         )
-        .should_fail_with_error("max_slippage must be less than 1, got");
+        .should_fail_with_error("max slippage must be less than 1, got");
     }
 
     #[test]
@@ -604,6 +604,6 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_percent(150),
         )
-        .should_fail_with_error("max_slippage must be less than 1, got");
+        .should_fail_with_error("max slippage must be less than 1, got");
     }
 }

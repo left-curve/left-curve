@@ -4,12 +4,14 @@ use {anyhow::ensure, dango_types::Dimensionless};
 pub fn validate_slippage(max_slippage: Dimensionless) -> anyhow::Result<()> {
     ensure!(
         !max_slippage.is_negative(),
-        "max_slippage can't be negative: {max_slippage}"
+        "max slippage can't be negative: {max_slippage}"
     );
+
     ensure!(
         max_slippage < Dimensionless::ONE,
-        "max_slippage must be less than 1, got {max_slippage}"
+        "max slippage must be less than 1, got {max_slippage}"
     );
+
     Ok(())
 }
 
@@ -32,18 +34,18 @@ mod tests {
     #[test]
     fn reject_negative_slippage() {
         validate_slippage(Dimensionless::new_int(-1))
-            .should_fail_with_error("max_slippage can't be negative");
+            .should_fail_with_error("max slippage can't be negative");
     }
 
     #[test]
     fn reject_100pct_slippage() {
         validate_slippage(Dimensionless::ONE)
-            .should_fail_with_error("max_slippage must be less than 1, got");
+            .should_fail_with_error("max slippage must be less than 1, got");
     }
 
     #[test]
     fn reject_150pct_slippage() {
         validate_slippage(Dimensionless::new_permille(1500))
-            .should_fail_with_error("max_slippage must be less than 1, got");
+            .should_fail_with_error("max slippage must be less than 1, got");
     }
 }

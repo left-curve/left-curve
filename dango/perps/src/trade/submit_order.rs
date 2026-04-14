@@ -4876,7 +4876,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage can't be negative");
+        .should_fail_with_error("max slippage can't be negative");
     }
 
     /// A limit order with a negative limit_price must be rejected.
@@ -5111,7 +5111,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage can't be negative");
+        .should_fail_with_error("max slippage can't be negative");
     }
 
     /// SL child order with negative max_slippage must be rejected.
@@ -5159,7 +5159,7 @@ mod tests {
             }),
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage can't be negative");
+        .should_fail_with_error("max slippage can't be negative");
     }
 
     /// TP child order with 100% max_slippage must be rejected.
@@ -5207,7 +5207,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage must be less than 1, got");
+        .should_fail_with_error("max slippage must be less than 1, got");
     }
 
     /// SL child order with 150% max_slippage must be rejected.
@@ -5255,7 +5255,7 @@ mod tests {
             }),
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage must be less than 1, got");
+        .should_fail_with_error("max slippage must be less than 1, got");
     }
 
     // ============ max_slippage >= 100% must be rejected =======================
@@ -5300,7 +5300,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage must be less than 1, got");
+        .should_fail_with_error("max slippage must be less than 1, got");
     }
 
     #[test]
@@ -5343,7 +5343,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("max_slippage must be less than 1, got");
+        .should_fail_with_error("max slippage must be less than 1, got");
     }
 
     /// Helper: load taker state (returns default if missing).
