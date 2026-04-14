@@ -4320,7 +4320,6 @@ dependencies = [
  "clap",
  "dango-client",
  "dango-genesis",
- "dango-perps",
  "dango-testing",
  "dango-types",
  "dialoguer",
