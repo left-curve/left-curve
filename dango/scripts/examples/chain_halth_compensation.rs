@@ -76,7 +76,7 @@ use utils::*;
 const LOWER_BOUND: &[u8] = ns_prefix!(b"us");
 const UPPER_BOUND: &[u8] = ns_prefix!(b"ut");
 
-const PRICES: LazyLock<BTreeMap<Denom, (UsdPrice, UsdPrice)>> = LazyLock::new(|| {
+static PRICES: LazyLock<BTreeMap<Denom, (UsdPrice, UsdPrice)>> = LazyLock::new(|| {
     btree_map! {
         denom("perp/btcusd") => prices("70685", "72602"),
         denom("perp/ethusd") => prices("2180", "2242"),
@@ -85,7 +85,7 @@ const PRICES: LazyLock<BTreeMap<Denom, (UsdPrice, UsdPrice)>> = LazyLock::new(||
     }
 });
 
-const BLACKLISTED_ADDRESSES: LazyLock<BTreeSet<Addr>> = LazyLock::new(|| {
+static BLACKLISTED_ADDRESSES: LazyLock<BTreeSet<Addr>> = LazyLock::new(|| {
     btree_set! {
         addr!("40e296f81c0d2a2baaf60b3cfcd21f0a742a9a9b"),
         addr!("88342ab46accd424252751f06fa2a5da0a0fa0d9"),
@@ -174,9 +174,7 @@ async fn main() -> anyhow::Result<()> {
             app.do_query_app(
                 Query::wasm_smart(
                     cfg.addresses.account_factory,
-                    &account_factory::QueryMsg::Account {
-                        address: addr.clone(),
-                    },
+                    &account_factory::QueryMsg::Account { address: *addr },
                 )?,
                 None,
                 false,
