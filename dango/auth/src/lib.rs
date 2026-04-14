@@ -1066,4 +1066,110 @@ mod tests {
         )
         .should_succeed();
     }
+
+    /// Regression test for security audit Finding 16:
+    /// `max + MAX_NONCE_INCREASE` overflows when `max > u32::MAX - 100`.
+    ///
+    /// In debug builds (wrapping arithmetic), the addition wraps to a small
+    /// number, causing valid nonces near `u32::MAX` to be incorrectly rejected
+    /// with "nonce is too far ahead". In release builds (`overflow-checks = true`),
+    /// the addition panics, permanently locking the account.
+    #[test]
+    fn nonce_near_u32_max_does_not_overflow() {
+        let user_address = addr!("843a9778a711d5474ef6efd65fca38731f281471");
+        let user_index = 231893934;
+        let user_keyhash =
+            hash!("94eb754d36ed86af6fc231eae13c78b4a298ed065f63eb8dac139b8b943b76da");
+        let user_key = Key::Secp256k1(
+            hex!("022e730b2e26c6e3ce78d28c3700da0a798d893a73ee15055baaaee1cf46db7a4a").into(),
+        );
+
+        // Pre-seed SEEN_NONCES with a value near u32::MAX.
+        // u32::MAX - 50 = 4294967245
+        let mut storage = MockStorage::new();
+        account::SEEN_NONCES
+            .save(&mut storage, &BTreeSet::from([u32::MAX - 50]))
+            .unwrap();
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                let user = User {
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
+            });
+
+        // Use nonce = u32::MAX - 49 which is within MAX_NONCE_INCREASE (100)
+        // of the max seen nonce (u32::MAX - 50).
+        //
+        // Before fix: (u32::MAX - 50) + 100 wraps to 49 in debug,
+        //   so u32::MAX - 49 <= 49 is false → "nonce is too far ahead".
+        // After fix: (u32::MAX - 50).saturating_add(100) = u32::MAX,
+        //   so u32::MAX - 49 <= u32::MAX is true → passes nonce check.
+        let nonce: u32 = u32::MAX - 49;
+        let tx = format!(
+            r#"{{
+              "sender": "0x843a9778a711d5474ef6efd65fca38731f281471",
+              "gas_limit": 1000000,
+              "msgs": [
+                {{
+                  "transfer": {{
+                    "0x836ca678a5afe736c6b64b2d5a6ee4bc85588cd8": {{
+                      "bridge/usdc": "100000000"
+                    }}
+                  }}
+                }}
+              ],
+              "data": {{
+                "chain_id": "dev-1",
+                "nonce": {nonce},
+                "user_index": 231893934
+              }},
+              "credential": {{
+                "standard": {{
+                  "key_hash": "94EB754D36ED86AF6FC231EAE13C78B4A298ED065F63EB8DAC139B8B943B76DA",
+                  "signature": {{
+                    "secp256k1": "LEohIzCuV3/MRLM/XvZNcxUdNp/Q811IsioZ3SEBbbRMvXlrvWi1v3+NYeZBYnALVtQzZcpO1E2wqiBd64lSdg=="
+                  }}
+                }}
+              }}
+            }}"#
+        );
+
+        let user = User {
+            index: user_index,
+            name: Username::default_for_index(user_index),
+            accounts: btree_map! { 0u32 => user_address },
+            keys: btree_map! { user_keyhash => user_key },
+        };
+
+        let mut ctx = MockContext::new()
+            .with_storage(storage)
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-1")
+            .with_mode(AuthMode::Finalize);
+
+        let result =
+            verify_nonce_and_signature(ctx.as_auth(), tx.deserialize_json().unwrap(), &user, None);
+
+        // The nonce check must NOT cause an overflow or reject the nonce.
+        // It may fail later (e.g., signature mismatch), but not here.
+        let err_str = result.unwrap_err().to_string();
+        assert!(
+            !err_str.contains("nonce is too far ahead"),
+            "nonce near u32::MAX caused overflow rejection: {err_str}"
+        );
+    }
 }
