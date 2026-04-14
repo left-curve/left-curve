@@ -22,6 +22,8 @@ use {
     },
 };
 
+const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
+
 /// Entry point for vault market-making, triggered at the beginning of each
 /// block after the oracle update.
 ///
@@ -37,11 +39,12 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
-    // Only the oracle contract (after feeding fresh prices) or the perps
-    // contract itself may trigger a vault refresh.  Without this check any
-    // account could consume the once-per-block refresh token on stale prices,
-    // causing the oracle's legitimate refresh submessage to be rejected.
     let oracle_addr = oracle(ctx.querier);
+
+    // Only the oracle contract (after feeding fresh prices) may trigger a vault
+    // refresh. Without this check any account could consume the once-per-block
+    // refresh token on stale prices, causing the oracle's legitimate refresh
+    // submessage to be rejected.
     ensure!(
         ctx.sender == oracle_addr,
         "only the oracle contract may refresh vault orders"
@@ -61,8 +64,11 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .with_no_older_than(Duration::from_millis(500));
+    // Important: when querying prices, assert they are not too old.
+    // The vault will refuse to place olders if it doesn't have the most up to
+    // date price data.
+    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier)
+        .with_no_older_than(MAX_ORACLE_STALENESS);
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 

@@ -1,6 +1,6 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::perps::pair_id,
+    dango_testing::{TestSuite, perps::pair_id},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
         constants::usdc,
@@ -11,6 +11,7 @@ use {
         Binary, ByteArray, Coins, Duration, NonEmpty, NumberConst, ResultExt, Timestamp, Udec128,
         btree_map,
     },
+    grug_app::NaiveProposalPreparer,
     pyth_types::LeEcdsaMessage,
     std::str::FromStr,
 };
@@ -86,8 +87,8 @@ pub fn register_oracle_prices(
 /// The Fixed price sources set by [`register_oracle_prices`] are unaffected —
 /// only the Pyth price store is touched.
 pub fn refresh_vault_orders(
-    suite: &mut dango_testing::TestSuite<grug_app::NaiveProposalPreparer>,
-    accounts: &mut dango_testing::TestAccounts,
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
     // A valid Pyth Lazer message signed by the genesis-trusted signer.

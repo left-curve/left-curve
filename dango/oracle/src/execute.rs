@@ -90,7 +90,9 @@ pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Respo
             let error = res.unwrap_err();
 
             #[cfg(feature = "tracing")]
-            tracing::error!(error, "!!! PERPS VAULT REFRESH FAILED !!!");
+            {
+                tracing::error!(error, "!!! PERPS VAULT REFRESH FAILED !!!");
+            }
 
             Response::new().add_event(VaultRefreshFailed { error })
         },
