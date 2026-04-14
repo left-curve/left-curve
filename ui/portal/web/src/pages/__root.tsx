@@ -56,7 +56,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     useEffect(() => {
       const intervalId = setInterval(() => {
         if (
-          (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
+          (!session || Date.now() > Number(session.sessionInfo.expireAt) * 1000) &&
           isConnected &&
           settings.useSessionKey &&
           connector &&
