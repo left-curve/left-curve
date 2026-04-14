@@ -4082,6 +4082,7 @@ dependencies = [
  "anyhow",
  "dango-types",
  "grug",
+ "metrics",
 ]
 
 [[package]]

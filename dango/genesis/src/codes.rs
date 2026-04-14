@@ -103,6 +103,7 @@ impl GenesisCodes for RustVm {
         #[cfg(feature = "metrics")]
         {
             dango_dex::metrics::init_metrics();
+            dango_gateway::metrics::init_metrics();
             dango_oracle::metrics::init_metrics();
             dango_perps::metrics::init_metrics();
             dango_taxman::metrics::init_metrics();
