@@ -23,9 +23,7 @@ macro_rules! catch_and_update_event {
             EventResult::Err { event, error } => {
                 $evt.$field = grug_types::EventStatus::Failed {
                     event,
-                    error: error_backtrace::Backtraceable::into_generic_backtraced_error(
-                        error.clone(),
-                    ),
+                    error: error_backtrace::Backtraceable::into_generic_backtraced_error(error.clone()),
                 };
 
                 return EventResult::NestedErr { event: $evt, error };
@@ -49,16 +47,13 @@ macro_rules! catch_and_push_event {
             EventResult::Err { event, error } => {
                 $evt.$field.push(grug_types::EventStatus::Failed {
                     event,
-                    error: error_backtrace::Backtraceable::into_generic_backtraced_error(
-                        error.clone(),
-                    ),
+                    error: error_backtrace::Backtraceable::into_generic_backtraced_error(error.clone()),
                 });
 
                 return EventResult::NestedErr { event: $evt, error };
             },
             EventResult::NestedErr { event, error } => {
-                $evt.$field
-                    .push(grug_types::EventStatus::NestedFailed(event));
+                $evt.$field.push(grug_types::EventStatus::NestedFailed(event));
 
                 return EventResult::NestedErr { event: $evt, error };
             },
@@ -74,21 +69,15 @@ macro_rules! catch_and_insert_event {
                 $evt.$field.insert($key, grug_types::EventStatus::Ok(i));
             },
             EventResult::Err { event, error } => {
-                $evt.$field.insert(
-                    $key,
-                    grug_types::EventStatus::Failed {
-                        event,
-                        error: error_backtrace::Backtraceable::into_generic_backtraced_error(
-                            error.clone(),
-                        ),
-                    },
-                );
+                $evt.$field.insert($key, grug_types::EventStatus::Failed {
+                    event,
+                    error: error_backtrace::Backtraceable::into_generic_backtraced_error(error.clone()),
+                });
 
                 return EventResult::NestedErr { event: $evt, error };
             },
             EventResult::NestedErr { event, error } => {
-                $evt.$field
-                    .insert($key, grug_types::EventStatus::NestedFailed(event));
+                $evt.$field.insert($key, grug_types::EventStatus::NestedFailed(event));
 
                 return EventResult::NestedErr { event: $evt, error };
             },

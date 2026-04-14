@@ -18,9 +18,7 @@ macro_rules! unwrap_into_generic_result {
         match $expr {
             Ok(val) => val,
             Err(err) => {
-                return GenericResult::Err(::error_backtrace::BacktracedError::new(
-                    err.to_string(),
-                ));
+                return GenericResult::Err(::error_backtrace::BacktracedError::new(err.to_string()));
             },
         }
     };
