@@ -290,7 +290,7 @@ pub fn verify_nonce_and_signature(
                 // See the documentation for `MAX_NONCE_INCREASE` for the rationale.
                 if let Some(max) = nonces.last() {
                     ensure!(
-                        metadata.nonce <= max + MAX_NONCE_INCREASE,
+                        metadata.nonce <= max.saturating_add(MAX_NONCE_INCREASE),
                         "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
                         metadata.nonce,
                         max,
@@ -334,6 +334,13 @@ pub fn verify_nonce_and_signature(
                     session.session_info.expire_at > ctx.block.timestamp,
                     "session expired at {:?}.",
                     session.session_info.expire_at
+                );
+
+                ensure!(
+                    session.session_info.chain_id == ctx.chain_id,
+                    "session chain_id mismatch: expecting `{}`, got `{}`",
+                    ctx.chain_id,
+                    session.session_info.chain_id
                 );
 
                 // Verify the `SessionInfo` signature.
@@ -512,6 +519,17 @@ impl SignData for VerifyData {
 
 // ----------------------------------- tests -----------------------------------
 
+/// Tests below use hardcoded cryptographic fixtures (signatures, typed data
+/// blobs, etc.) that are tied to the exact shape of the signed structs
+/// (`SignDoc`, `SessionInfo`, `RegisterUserData`).
+///
+/// If you change any of these structs, the fixtures must be regenerated:
+///
+/// ```bash
+/// cargo run --example generate_test_data -p dango-auth
+/// ```
+///
+/// Then paste the output into the corresponding test functions.
 #[cfg(test)]
 mod tests {
     use {
@@ -786,182 +804,17 @@ mod tests {
 
     #[test]
     fn session_key_with_passkey_authentication() {
-        let user_address = Addr::from_str("0xd7b73f486c66fa6daecd67d7aee46a26513b07c2").unwrap();
-        let user_index = 123;
+        let user_address = Addr::from_str("0xab2c9227569959eaa46b86c20eb2c3bcbb1c8873").unwrap();
+        let user_index = 558063273;
         let user_keyhash =
-            Hash256::from_str("244EA558C35EF9521EBA7418B72C94395235D678C6BDDD934EE514A6BC097FD8")
+            Hash256::from_str("5A014F459EC3D7EBC13904B7DCB3BFD4A923A7943F49ED435637C7AA16DF4F88")
                 .unwrap();
         let user_key = Key::Secp256r1(
             [
-                2, 69, 17, 109, 179, 224, 216, 88, 134, 155, 142, 29, 222, 224, 160, 235, 116, 12,
-                211, 16, 191, 65, 88, 180, 255, 202, 173, 80, 196, 146, 44, 111, 119,
+                2, 162, 95, 0, 60, 251, 195, 142, 6, 181, 226, 73, 162, 201, 50, 187, 102, 19, 163,
+                124, 96, 77, 19, 229, 197, 127, 146, 195, 177, 180, 186, 38, 243,
             ]
             .into(),
-        );
-
-        let mut storage = MockStorage::new();
-
-        account::STATUS
-            .save(&mut storage, &AccountStatus::Active)
-            .unwrap();
-
-        let querier = MockQuerier::new()
-            .with_app_config(AppConfig {
-                addresses: AppAddresses {
-                    account_factory: ACCOUNT_FACTORY,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .unwrap()
-            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                let user = User {
-                    index: user_index,
-                    name: Username::default_for_index(user_index),
-                    accounts: btree_map! { 0u32 => user_address },
-                    keys: btree_map! { user_keyhash => user_key },
-                };
-                USERS.save(storage, user_index, &user).unwrap();
-            });
-
-        let mut ctx = MockContext::new()
-            .with_storage(storage)
-            .with_querier(querier)
-            .with_contract(user_address)
-            .with_chain_id("dev-6")
-            .with_mode(AuthMode::Finalize);
-
-        let tx = r#"{
-        "sender": "0xd7b73f486c66fa6daecd67d7aee46a26513b07c2",
-        "credential": {
-            "session": {
-            "session_info": {
-                "session_key": "AhpEarfTNt2uMf9jddpvEE6mqDl8J0yS2CJOFkQU96sV",
-                "expire_at": "1764799201191"
-            },
-            "authorization": {
-                "key_hash": "244EA558C35EF9521EBA7418B72C94395235D678C6BDDD934EE514A6BC097FD8",
-                "signature": {
-                "passkey": {
-                    "sig": "CDy/TtzDxbAkMdHF1Zb1NwsRikbwDWt00Ck61zzDfwJnuAiYLVU6+JoSvGMgtqRxS4W0b551w1rC9kqSQ6mHXQ==",
-                    "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiam9CdUxqUDhzU0pJcnh1ZDNkWllrTE5XSFhuN1lQaDI1WmxkZk1xRUktayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
-                    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
-                }
-                }
-            },
-            "session_signature": "3h/hnILoPCfyyC7+qEWuku2tePMLrI7ksHI3D9hEIMFOPp9FAQB7coCmd2k12D8P7RrTOznNsDgVd2dkMebehQ=="
-            }
-        },
-        "data": {
-            "chain_id": "dev-6",
-            "user_index": 123,
-            "nonce": 0
-        },
-        "msgs": [
-            {
-            "transfer": {
-                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                "bridge/usdc": "1000000"
-                }
-            }
-            }
-        ],
-        "gas_limit": 2834
-        }"#;
-
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
-    }
-
-    #[test]
-    fn session_key_with_eip712_authentication() {
-        let user_address = Addr::from_str("0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8").unwrap();
-        let user_index = 123;
-        let user_keyhash =
-            Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
-                .unwrap();
-        let user_key =
-            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
-
-        let mut storage = MockStorage::new();
-
-        account::STATUS
-            .save(&mut storage, &AccountStatus::Active)
-            .unwrap();
-
-        let querier = MockQuerier::new()
-            .with_app_config(AppConfig {
-                addresses: AppAddresses {
-                    account_factory: ACCOUNT_FACTORY,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .unwrap()
-            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                let user = User {
-                    index: user_index,
-                    name: Username::default_for_index(user_index),
-                    accounts: btree_map! { 0u32 => user_address },
-                    keys: btree_map! { user_keyhash => user_key },
-                };
-                USERS.save(storage, user_index, &user).unwrap();
-            });
-
-        let mut ctx = MockContext::new()
-            .with_storage(storage)
-            .with_querier(querier)
-            .with_contract(user_address)
-            .with_chain_id("dev-6")
-            .with_mode(AuthMode::Finalize);
-
-        let tx = r#"{
-          "sender": "0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8",
-          "credential": {
-            "session": {
-              "session_info": {
-                "session_key": "A/+qq0IZ/nVmajLRoA3RBjKaWMDQ2TVnvGNZvPSFyf4m",
-                "expire_at": "1764699053993"
-              },
-              "authorization": {
-                "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
-                "signature": {
-                  "eip712": {
-                    "sig": "W9Wf2kO1RWcECwyf1vsZLbRLN9JZoMN/ca3DikEAtsI8+bWI3YCMRvhrJ18SOJ2K7B2pL5wjVBf/+EdUs5xRHBs=",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBLytxcTBJWi9uVm1hakxSb0EzUkJqS2FXTURRMlRWbnZHTlp2UFNGeWY0bSIsImV4cGlyZV9hdCI6IjE3NjQ2OTkwNTM5OTMifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
-                  }
-                }
-              },
-              "session_signature": "X9Npvv1WnUEbeTtrug5Zz6WSG8K2h73B/df3GHe6rkJ5UifGLK2oanHidKYyNeNY3OXxQjVzpvDRT7LbkAmczA=="
-            }
-          },
-          "data": {
-            "chain_id": "dev-6",
-            "user_index": 123,
-            "nonce": 0
-          },
-          "msgs": [
-            {
-              "transfer": {
-                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                  "bridge/usdc": "1000000"
-                }
-              }
-            }
-          ],
-          "gas_limit": 2834
-        }"#;
-
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
-    }
-
-    #[test]
-    fn session_key_with_secp256k1_authentication() {
-        let user_address = addr!("9117495f17163ec82e4ae424b7f2227dd21d3ce5");
-        let user_index = 1733837080;
-        let user_keyhash =
-            hash!("3378fadf5422e7e1cbe68fcac26e355238c437dc36139212bcdfe6fe00e4e96f");
-        let user_key = Key::Secp256k1(
-            hex!("035d1e23762e9436aaff9fd41322cf7ea3d6a5a282094f85d175035ae9ca1ea265").into(),
         );
 
         let mut storage = MockStorage::new();
@@ -997,37 +850,206 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-          "sender": "0x9117495f17163ec82e4ae424b7f2227dd21d3ce5",
-          "gas_limit": 6348334294010820860,
+          "sender": "0xab2c9227569959eaa46b86c20eb2c3bcbb1c8873",
+          "credential": {
+            "session": {
+              "authorization": {
+                "key_hash": "5A014F459EC3D7EBC13904B7DCB3BFD4A923A7943F49ED435637C7AA16DF4F88",
+                "signature": {
+                  "passkey": {
+                    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA==",
+                    "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYTFCT3IyYUlNWXVQb3pma2VXYzRiXzJrSGIxcE5jQUlPTXQ2djFOZlNMbyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                    "sig": "VWUJvzgahil1C98SrwoD0Wg0p+hEJaLggqeTqIJ45lY8CWDXXxfr8aJ2ArPAFjBLGTF2oG1G7pMRchPFSHEMnA=="
+                  }
+                }
+              },
+              "session_info": {
+                "chain_id": "dev-1",
+                "expire_at": "340282366920938463463374607431.768211455",
+                "session_key": "AmjeBj515CzO/hI/6bA2NPtENa/XgT3Hm+v9X4JS0ckd"
+              },
+              "session_signature": "e7OS4CMwKGFRUv70wreE1b/dAEaMvGfe77TDYsnAiMtRE6m/f3DcQ2IvcBIAZB0zB/EF71+U0YEiWsvu3ofiQQ=="
+            }
+          },
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 33,
+            "user_index": 558063273
+          },
           "msgs": [
             {
               "transfer": {
-                "0xe2a560440d34e43c1c02d7ce4f2ed2e86fa3367d": {
+                "0xd7639196e1b8156f4682c6d905dabf7b6acf3cee": {
                   "bridge/usdc": "100000000"
                 }
               }
             }
           ],
-          "data": {
-            "chain_id": "dev-1",
-            "nonce": 44,
-            "user_index": 1733837080
-          },
+          "gas_limit": 16132801695428362404
+        }"#;
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
+    }
+
+    #[test]
+    fn session_key_with_eip712_authentication() {
+        let user_address = Addr::from_str("0x95a85fe292991bfa52f81a15292f758cbc26669e").unwrap();
+        let user_index = 3253918834;
+        let user_keyhash =
+            Hash256::from_str("802C3DF10B0B24A63CD9B3B1D70B00D1574F04D9EE2C9DB1BAEBB2444579A204")
+                .unwrap();
+        let user_key =
+            Key::Ethereum(Addr::from_str("0x528b4cbc3c8f954b5aede2b90b5c69c796360e53").unwrap());
+
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                let user = User {
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
+            });
+
+        let mut ctx = MockContext::new()
+            .with_storage(storage)
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-1")
+            .with_mode(AuthMode::Finalize);
+
+        let tx = r#"{
+          "sender": "0x95a85fe292991bfa52f81a15292f758cbc26669e",
           "credential": {
             "session": {
               "authorization": {
-                "key_hash": "3378FADF5422E7E1CBE68FCAC26E355238C437DC36139212BCDFE6FE00E4E96F",
+                "key_hash": "802C3DF10B0B24A63CD9B3B1D70B00D1574F04D9EE2C9DB1BAEBB2444579A204",
                 "signature": {
-                  "secp256k1": "U0MuCfpy8xuLKFlpvP4byrSLUvRuf5QWBaVfSRd+KnEtKQmU+4zvVyWFRf9KFiq2oUObN8LuG3cY0TQIeNuSHQ=="
+                  "eip712": {
+                    "sig": "XZwKBnSP7AAWmLxWoEdnbkyGfbifT8eoFTc5ZMpEGTpHzsGugrRPLF+mNQxWWNT0aMQ9cRW1Wy0pgTFWmEHvZBw=",
+                    "typed_data": "eyJkb21haW4iOnsiY2hhaW5JZCI6MSwibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsiY2hhaW5faWQiOiJkZXYtMSIsImV4cGlyZV9hdCI6IjM0MDI4MjM2NjkyMDkzODQ2MzQ2MzM3NDYwNzQzMS43NjgyMTE0NTUiLCJzZXNzaW9uX2tleSI6IkFnYU5Va1kzdUdEdXFqR2puam8xRXFTb205RnFQaHArN3R2dld4NzVtRkVuIn0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5JZCIsInR5cGUiOiJ1aW50MjU2In0seyJuYW1lIjoidmVyaWZ5aW5nQ29udHJhY3QiLCJ0eXBlIjoiYWRkcmVzcyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6ImNoYWluX2lkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJzZXNzaW9uX2tleSIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+                  }
                 }
               },
               "session_info": {
+                "chain_id": "dev-1",
                 "expire_at": "340282366920938463463374607431.768211455",
-                "session_key": "Ax614yDvhtfapEA66dAM0QH6ZrXqwSWX3Xxy+mikaPgC"
+                "session_key": "AgaNUkY3uGDuqjGjnjo1EqSom9FqPhp+7tvvWx75mFEn"
               },
-              "session_signature": "HnhRpEQXcltog6DFNKq3u2wIjoYpOkjfeTMFvPmP2Styl6f8IZfHeOtGZgLgBj5U6NH1PObP6SRkVaPZE7hMgg=="
+              "session_signature": "/1+xBGwj+eXQ3/u8kPTVcEbgJrQ2unUwg1Bl5+d6bZQOsgemwzSmNm8lQMZaaePW1h7MCt3AQSfyirWW5F2/ZQ=="
             }
-          }
+          },
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 40,
+            "user_index": 3253918834
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "0x531806a49f59bf49f2eea445fe45aaee32eeca4d": {
+                  "bridge/usdc": "100000000"
+                }
+              }
+            }
+          ],
+          "gas_limit": 1324321884761996338
+        }"#;
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
+    }
+
+    #[test]
+    fn session_key_with_secp256k1_authentication() {
+        let user_address = Addr::from_str("0xa8a31f92f5895050b9a48f9f82a1192054e9e59d").unwrap();
+        let user_index = 3348916482;
+        let user_keyhash =
+            Hash256::from_str("A4F2CFCA9B9DE01FF4E8AD3B61FA5EBCC04B680720937362547FB9CCBEEE9DB1")
+                .unwrap();
+        let user_key = Key::Secp256k1(
+            hex!("03e4a017d370744f3ff60084ba7d2e96714186ee94c1a83c0ac07274ce9dc56825").into(),
+        );
+
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                let user = User {
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
+            });
+
+        let mut ctx = MockContext::new()
+            .with_storage(storage)
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-1")
+            .with_mode(AuthMode::Finalize);
+
+        let tx = r#"{
+          "sender": "0xa8a31f92f5895050b9a48f9f82a1192054e9e59d",
+          "credential": {
+            "session": {
+              "authorization": {
+                "key_hash": "A4F2CFCA9B9DE01FF4E8AD3B61FA5EBCC04B680720937362547FB9CCBEEE9DB1",
+                "signature": {
+                  "secp256k1": "gnb5QRTYT4uMzB5LwznXA3afdTIq+cBkzD79j/jwfpZGQHEDFEZUxGtOI0YFPsv5ux2ebqMhBFnKDd0Ui8aN+Q=="
+                }
+              },
+              "session_info": {
+                "chain_id": "dev-1",
+                "expire_at": "340282366920938463463374607431.768211455",
+                "session_key": "A+ySwgbcVSz4l7rvzXO99RUmVvr7TVMHhHKSxnglVOQF"
+              },
+              "session_signature": "FtBeEXcnTR+2qERjZCKFn1eBHKHcMtzCPBdOtHgaKn4AP4Qb4bsioDk5wK+6Luz9YYW0Zq61f5tSw6ZaxLtEnw=="
+            }
+          },
+          "data": {
+            "chain_id": "dev-1",
+            "nonce": 87,
+            "user_index": 3348916482
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "0x71434023c157ca7dc649d55464e440fcf8073d8d": {
+                  "bridge/usdc": "100000000"
+                }
+              }
+            }
+          ],
+          "gas_limit": 3167461209082021925
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -1036,7 +1058,10 @@ mod tests {
     #[test]
     fn authenticate_onboarding_eip712() {
         let user_key =
-            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
+            Key::Ethereum(Addr::from_str("0xefb2aa13efde345af9d1d952366d125d67d9e323").unwrap());
+        let key_hash =
+            Hash256::from_str("A3489E124277F4E5020596F6A9CEE0EC0A85AA28BEF2E0C126999CF1C639E8E1")
+                .unwrap();
 
         let mut storage = MockStorage::new();
 
@@ -1046,13 +1071,13 @@ mod tests {
 
         let ctx = MockContext::new()
             .with_storage(storage)
-            .with_chain_id("dev-6")
+            .with_chain_id("dev-1")
             .with_mode(AuthMode::Finalize);
 
         let signature = r#"{
           "eip712": {
-            "sig": "zHPA/hLrFD3BSaFBbbdygCwCsII6mVHbIRSQYpNcN01pL81Gi2n8xNe0OTinG749kZjq/xGZYcHdlKRq3YwDBRs=",
-            "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsiY2hhaW5faWQiOiJkZXYtNiJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+            "typed_data": "eyJkb21haW4iOnsiY2hhaW5JZCI6MSwibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsiY2hhaW5faWQiOiJkZXYtMSIsImtleSI6eyJldGhlcmV1bSI6IjB4ZWZiMmFhMTNlZmRlMzQ1YWY5ZDFkOTUyMzY2ZDEyNWQ2N2Q5ZTMyMyJ9LCJrZXlfaGFzaCI6IkEzNDg5RTEyNDI3N0Y0RTUwMjA1OTZGNkE5Q0VFMEVDMEE4NUFBMjhCRUYyRTBDMTI2OTk5Q0YxQzYzOUU4RTEiLCJzZWVkIjowfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJLZXkiOlt7Im5hbWUiOiJldGhlcmV1bSIsInR5cGUiOiJzdHJpbmcifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJrZXkiLCJ0eXBlIjoiS2V5In0seyJuYW1lIjoia2V5X2hhc2giLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoic2VlZCIsInR5cGUiOiJ1aW50MzIifV19fQ==",
+            "sig": "PNY87kaAoxSUJwjLsd27bwiaPcHBxkqdI8bSifnSWTsfBw/5g78yAZiKhePraXhv1vYW2yL9YS/MNYDXzMuXZhw="
           }
         }"#.deserialize_json::<Signature>().unwrap();
 
@@ -1061,9 +1086,119 @@ mod tests {
             user_key,
             signature,
             VerifyData::Onboard(RegisterUserData {
-                chain_id: "dev-6".into(),
+                chain_id: "dev-1".into(),
+                key: user_key,
+                key_hash,
+                seed: 0,
+                referrer: None,
             }),
         )
         .should_succeed();
+    }
+
+    /// Regression test for security audit Finding 16:
+    /// `max + MAX_NONCE_INCREASE` overflows when `max > u32::MAX - 100`.
+    ///
+    /// In debug builds (wrapping arithmetic), the addition wraps to a small
+    /// number, causing valid nonces near `u32::MAX` to be incorrectly rejected
+    /// with "nonce is too far ahead". In release builds (`overflow-checks = true`),
+    /// the addition panics, permanently locking the account.
+    #[test]
+    fn nonce_near_u32_max_does_not_overflow() {
+        let user_address = addr!("843a9778a711d5474ef6efd65fca38731f281471");
+        let user_index = 231893934;
+        let user_keyhash =
+            hash!("94eb754d36ed86af6fc231eae13c78b4a298ed065f63eb8dac139b8b943b76da");
+        let user_key = Key::Secp256k1(
+            hex!("022e730b2e26c6e3ce78d28c3700da0a798d893a73ee15055baaaee1cf46db7a4a").into(),
+        );
+
+        // Pre-seed SEEN_NONCES with a value near u32::MAX.
+        // u32::MAX - 50 = 4294967245
+        let mut storage = MockStorage::new();
+        account::SEEN_NONCES
+            .save(&mut storage, &BTreeSet::from([u32::MAX - 50]))
+            .unwrap();
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                let user = User {
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
+            });
+
+        // Use nonce = u32::MAX - 49 which is within MAX_NONCE_INCREASE (100)
+        // of the max seen nonce (u32::MAX - 50).
+        //
+        // Before fix: (u32::MAX - 50) + 100 wraps to 49 in debug,
+        //   so u32::MAX - 49 <= 49 is false → "nonce is too far ahead".
+        // After fix: (u32::MAX - 50).saturating_add(100) = u32::MAX,
+        //   so u32::MAX - 49 <= u32::MAX is true → passes nonce check.
+        let nonce: u32 = u32::MAX - 49;
+        let tx = format!(
+            r#"{{
+              "sender": "0x843a9778a711d5474ef6efd65fca38731f281471",
+              "gas_limit": 1000000,
+              "msgs": [
+                {{
+                  "transfer": {{
+                    "0x836ca678a5afe736c6b64b2d5a6ee4bc85588cd8": {{
+                      "bridge/usdc": "100000000"
+                    }}
+                  }}
+                }}
+              ],
+              "data": {{
+                "chain_id": "dev-1",
+                "nonce": {nonce},
+                "user_index": 231893934
+              }},
+              "credential": {{
+                "standard": {{
+                  "key_hash": "94EB754D36ED86AF6FC231EAE13C78B4A298ED065F63EB8DAC139B8B943B76DA",
+                  "signature": {{
+                    "secp256k1": "LEohIzCuV3/MRLM/XvZNcxUdNp/Q811IsioZ3SEBbbRMvXlrvWi1v3+NYeZBYnALVtQzZcpO1E2wqiBd64lSdg=="
+                  }}
+                }}
+              }}
+            }}"#
+        );
+
+        let user = User {
+            index: user_index,
+            name: Username::default_for_index(user_index),
+            accounts: btree_map! { 0u32 => user_address },
+            keys: btree_map! { user_keyhash => user_key },
+        };
+
+        let mut ctx = MockContext::new()
+            .with_storage(storage)
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-1")
+            .with_mode(AuthMode::Finalize);
+
+        let result =
+            verify_nonce_and_signature(ctx.as_auth(), tx.deserialize_json().unwrap(), &user, None);
+
+        // The nonce check must NOT cause an overflow or reject the nonce.
+        // It may fail later (e.g., signature mismatch), but not here.
+        let err_str = result.unwrap_err().to_string();
+        assert!(
+            !err_str.contains("nonce is too far ahead"),
+            "nonce near u32::MAX caused overflow rejection: {err_str}"
+        );
     }
 }

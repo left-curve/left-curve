@@ -133,6 +133,8 @@ pub struct SessionCredential {
 
 #[grug::derive(Serde)]
 pub struct SessionInfo {
+    /// Chain ID this session is authorized for, preventing cross-chain replay.
+    pub chain_id: String,
     /// Public key of the session key.
     pub session_key: ByteArray<33>,
     /// Expiry time of the session key.

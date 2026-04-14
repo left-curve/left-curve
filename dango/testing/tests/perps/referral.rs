@@ -61,6 +61,10 @@ fn referral_during_user_register() {
                 signature: user
                     .sign_arbitrary(RegisterUserData {
                         chain_id: chain_id.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 3,
+                        referrer: Some(1),
                     })
                     .unwrap(),
                 referrer: Some(1),

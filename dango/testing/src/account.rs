@@ -325,7 +325,15 @@ where
                     seed: 0,
                     key: self.first_key(),
                     key_hash: self.first_key_hash(),
-                    signature: self.sign_arbitrary(RegisterUserData { chain_id }).unwrap(),
+                    signature: self
+                        .sign_arbitrary(RegisterUserData {
+                            chain_id,
+                            key: self.first_key(),
+                            key_hash: self.first_key_hash(),
+                            seed: 0,
+                            referrer: None,
+                        })
+                        .unwrap(),
                     referrer: None,
                 },
                 funds,

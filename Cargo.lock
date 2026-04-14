@@ -3966,13 +3966,16 @@ dependencies = [
  "anyhow",
  "dango-types",
  "data-encoding",
+ "eth-utils",
  "grug",
  "hex",
  "hex-literal",
  "identity",
  "k256",
+ "p256 0.13.2",
  "rand 0.8.5",
  "serde",
+ "serde_json",
  "sha2 0.10.9",
 ]
 
