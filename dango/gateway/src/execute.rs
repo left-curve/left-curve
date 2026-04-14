@@ -1,5 +1,7 @@
 use {
-    crate::{OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES, WITHDRAWAL_FEES},
+    crate::{
+        INBOUND, OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES, WITHDRAWAL_FEES,
+    },
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
@@ -166,6 +168,15 @@ fn receive_remote(
         })?;
     }
 
+    // Track inbound for rate-limited denoms so that round-trip transfers
+    // (deposit followed by withdraw) don't consume other users' daily allowance.
+    if RATE_LIMITS.load(ctx.storage)?.contains_key(&denom) {
+        INBOUND.may_update(ctx.storage, &denom, |maybe_inbound| {
+            let inbound = maybe_inbound.unwrap_or(Uint128::ZERO);
+            Ok::<_, StdError>(inbound.checked_add(amount)?)
+        })?;
+    }
+
     // First,
     // - if the token is not native on Dango, mint it to the Gateway contract;
     // - otherwise, the token should already been in the Gateway contract, no need
@@ -231,10 +242,17 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
     // Check the rate limit. If a rate limit is configured for this denom,
     // verify that the total outbound for the current window (including this
-    // transfer) does not exceed `snapshotted_supply * rate_limit`.
+    // transfer) does not exceed `daily_allowance + inbound_credit`, where
+    // inbound_credit is capped at daily_allowance to bound damage from a
+    // compromised bridge (max withdrawal = 2x daily_allowance).
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
         let supply = SUPPLIES.load(ctx.storage, &coin.denom)?;
         let daily_allowance = supply.checked_mul_dec_floor(rate_limit.into_inner())?;
+
+        let inbound = INBOUND
+            .may_load(ctx.storage, &coin.denom)?
+            .unwrap_or(Uint128::ZERO);
+        let inbound_credit = inbound.min(daily_allowance);
 
         let outbound = OUTBOUND
             .may_load(ctx.storage, &coin.denom)?
@@ -242,10 +260,11 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         let new_outbound = outbound.checked_add(coin.amount)?;
 
         ensure!(
-            daily_allowance >= new_outbound,
-            "rate limit exceeded! denom: {}, daily_allowance: {}, outbound: {}",
+            daily_allowance.checked_add(inbound_credit)? >= new_outbound,
+            "rate limit exceeded! denom: {}, daily_allowance: {}, inbound_credit: {}, outbound: {}",
             coin.denom,
             daily_allowance,
+            inbound_credit,
             new_outbound
         );
 
@@ -297,8 +316,9 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    // Reset the outbound accumulators for the new 24-hour window.
+    // Reset the outbound and inbound accumulators for the new 24-hour window.
     OUTBOUND.clear(ctx.storage, None, None);
+    INBOUND.clear(ctx.storage, None, None);
 
     // Snapshot the current supply for each rate-limited denom so the daily
     // daily allowance (`supply * rate_limit`) is fixed for the entire window.

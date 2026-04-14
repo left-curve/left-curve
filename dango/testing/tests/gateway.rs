@@ -112,7 +112,8 @@ fn rate_limit() {
         .should_fail_with_error("rate limit exceeded!");
 
     // Receive more tokens. The supply snapshot is fixed for the current window,
-    // so this should NOT increase the withdrawal daily allowance.
+    // but the inbound credit (capped at daily allowance = 30) allows 30 more
+    // outbound, so round-trips don't block other users.
     suite
         .receive_warp_transfer(
             relayer,
@@ -123,8 +124,9 @@ fn rate_limit() {
         )
         .should_succeed();
 
-    // Supply = 300 - 30 + 100 = 370, but snapshot is still 300.
-    // Daily allowance remains 30, outbound is 30 — still can't withdraw.
+    // Supply = 300 - 30 + 100 = 370, snapshot still 300.
+    // inbound = 100, credit = min(100, 30) = 30. Effective limit = 30 + 30 = 60.
+    // Outbound is 30 — can withdraw 30 more thanks to inbound credit.
     {
         suite
             .query_supply(usdc::DENOM.clone())
@@ -135,6 +137,24 @@ fn rate_limit() {
         });
     }
 
+    // Withdraw 30 to ethereum — allowed by inbound credit.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
+                },
+                recipient: mock_eth_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_eth_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Inbound credit is capped at daily allowance (30). Outbound = 60, limit = 60.
+    // 1 more token exceeds the cap.
     suite
         .execute(
             receiver,
@@ -150,18 +170,18 @@ fn rate_limit() {
         )
         .should_fail_with_error("rate limit exceeded!");
 
-    // Make 1 day pass — cron snapshots supply = 370, resets outbound = 0.
+    // Make 1 day pass — cron snapshots supply = 340, resets outbound and inbound.
     advance_to_next_day(&mut suite);
 
-    // Daily allowance = 370 * 10% = 37.
-    // Reserves: ETH = 200, SOL = 170.
+    // Daily allowance = 340 * 10% = 34.
+    // Reserves: ETH = 200 - 30 = 170, SOL = 200 - 30 = 170.
     for (remote, amount) in [
         (
             Remote::Warp {
                 domain: mock_ethereum::DOMAIN,
                 contract: mock_ethereum::USDC_WARP,
             },
-            200_000_000,
+            170_000_000,
         ),
         (
             Remote::Warp {
@@ -179,7 +199,7 @@ fn rate_limit() {
             .should_succeed_and_equal(amount.into());
     }
 
-    // Withdraw 37 tokens to solana (the full daily allowance).
+    // Withdraw 34 tokens to solana (the full daily allowance).
     suite
         .execute(
             receiver,
@@ -191,7 +211,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 37_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 34_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
@@ -223,11 +243,11 @@ fn rate_limit() {
         )
         .should_succeed();
 
-    // Make 1 day pass — cron snapshots supply = 370 - 37 = 333, resets outbound.
+    // Make 1 day pass — cron snapshots supply = 340 - 34 = 306, resets outbound.
     advance_to_next_day(&mut suite);
 
-    // Daily allowance = 333 * 99% = 329 (floor).
-    // SOL reserve = 170 - 37 = 133.
+    // Daily allowance = 306 * 99% = 302 (floor).
+    // SOL reserve = 170 - 34 = 136.
 
     // Withdraw all remaining SOL reserve.
     suite
@@ -241,7 +261,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 133_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 136_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 

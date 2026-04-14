@@ -23,3 +23,9 @@ pub const SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 /// current rate-limit window. Incremented on every `transfer_remote`, reset to
 /// zero by `cron_execute`.
 pub const OUTBOUND: Map<&Denom, Uint128> = Map::new("outbound");
+
+/// Accumulator tracking how much of each denom has been received from remote
+/// chains in the current rate-limit window. Used as a credit (capped at
+/// `daily_allowance`) against the outbound rate limit so that round-trips
+/// don't consume other users' withdrawal capacity.
+pub const INBOUND: Map<&Denom, Uint128> = Map::new("inbound");
