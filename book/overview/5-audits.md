@@ -4,6 +4,7 @@ A list of audits we have completed so far:
 
 | Time       | Auditor                      | Subject                                       | Links                                                 |
 | ---------- | ---------------------------- | --------------------------------------------- | ----------------------------------------------------- |
+| 2025-09-29 | [Sherlock][sherlock]         | Audit contest on Dango spot DEX               | [contest][sherlock-spot-contest]                      |
 | 2025-04-07 | [Zellic][zellic]             | [Hyperlane][hyperlane]                        | [report][zellic-hyperlane]                            |
 | 2025-04-02 | [Zellic][zellic]             | Account and authentication system             | [report][zellic-auth]                                 |
 | 2024-10-25 | [Zellic][zellic]             | [Jellyfish Merkle Tree][diem-jmt-paper] (JMT) | [report][zellic-jmt]                                  |
@@ -15,6 +16,8 @@ A list of audits we have completed so far:
 [informal-jmt-blog]: https://informal.systems/blog/jellyfish-merkle-tree-quint-2025
 [informal-jmt-spec]: ../../grug/jellyfish-merkle/spec/
 [quint]: https://github.com/informalsystems/quint
+[sherlock]: https://sherlock.xyz/
+[sherlock-spot-contest]: https://audits.sherlock.xyz/contests/1066
 [zellic]: https://x.com/zellic_io
 [zellic-auth]: ./20250402-zellic-account-system-and-auth.pdf
 [zellic-hyperlane]: ./20250407-zellic-hyperlane.pdf
