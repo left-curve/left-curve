@@ -1,0 +1,184 @@
+---
+# download-db-dango.yml — Download Grug RocksDB to local
+#
+# Archives the dango data directory on the remote server and downloads the
+# archive locally. The dango service must be stopped before running this
+# playbook — it will abort if dango is still running to prevent inconsistent
+# snapshots.
+#
+# Usage:
+#   just download-db-dango testnet        # interactive host selection
+#
+#   # Direct with custom options:
+#   ansible-playbook download-db-dango.yml \
+#     -e dango_network=testnet \
+#     -e target_host=100.90.163.19
+#
+# Variables:
+#   dango_network    (required): devnet | testnet | mainnet
+#   target_host      (optional): skip prompt and use this host IP directly
+#   local_dest       (optional): local dir (default: ./downloaded-db/dango/<network>/<hostname>)
+
+# ── Play 1: select target host ────────────────────────────────────────────────
+- name: Select target host
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Build host list for network
+      set_fact:
+        _network_hosts: >-
+          {%- set result = [] -%}
+          {%- for host in groups['full-app'] -%}
+            {%- if dango_network in (hostvars[host]['dango_networks'] | default([])) -%}
+              {%- set _ = result.append(host) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result }}
+      when: target_host is not defined
+
+    - name: Select host
+      pause:
+        prompt: >-
+          {%- set ns = namespace(menu='') -%}
+          {%- for host in _network_hosts -%}
+            {%- set ns.menu = ns.menu ~ '\n  ' ~ loop.index ~ ') ' ~ hostvars[host]['hostname'] ~ ' (' ~ host ~ ')' -%}
+          {%- endfor -%}
+          Available hosts for {{ dango_network }}:{{ ns.menu }}
+
+          Enter host number [1-{{ _network_hosts | length }}]
+      register: _host_choice
+      when: target_host is not defined
+
+    - name: Set target from selection
+      set_fact:
+        _target_host: "{{ _network_hosts[_host_choice.user_input | int - 1] }}"
+      when: target_host is not defined
+
+    - name: Set target from extra var
+      set_fact:
+        _target_host: "{{ target_host }}"
+      when: target_host is defined
+
+    - name: Confirm selection
+      debug:
+        msg: "Selected: {{ hostvars[_target_host]['hostname'] }} ({{ _target_host }})"
+
+# ── Play 2: archive and download ──────────────────────────────────────────────
+- name: Download Grug RocksDB from remote
+  hosts: "{{ hostvars['localhost']['_target_host'] }}"
+  remote_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars:
+    system_wide_directories: true
+    reset_data: false
+  vars_files:
+    - roles/full-app/vars/main.yml
+  tasks:
+    # set_fact overrides role vars (which would reset system_wide_directories to false)
+    - name: Pin system_wide_directories before role include
+      set_fact:
+        system_wide_directories: true
+        reset_data: false
+
+    - name: Read current deploy
+      include_role:
+        name: full-app
+        tasks_from: read_current_deploy.yml
+
+    - name: Set deployment_name
+      set_fact:
+        deployment_name: "{{ current_deployment }}"
+
+    - name: Check if dango container is running
+      command: docker compose -p {{ deployment_name }} ps -q --status running dango
+      args:
+        chdir: "{{ deployment_dir }}"
+      register: _dango_running
+      changed_when: false
+      failed_when: false
+
+    - name: Abort if dango is running
+      fail:
+        msg: >-
+          The dango service is currently running. A running dango mutates the
+          database and would produce an inconsistent snapshot.
+          Stop services first:  just stop <network>
+      when: _dango_running.stdout | trim | length > 0
+
+    - name: Generate unique archive suffix
+      set_fact:
+        _archive_ts: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
+
+    - name: Resolve local destination
+      set_fact:
+        _local_dest: "{{ local_dest | default(playbook_dir ~ '/downloaded-db/dango/' ~ dango_network ~ '/' ~ hostname) }}"
+
+    - name: Verify dango data directory exists
+      stat:
+        path: "{{ dango_directory }}/data"
+      register: _data_stat
+
+    - name: Abort if data directory missing
+      fail:
+        msg: "Dango data not found at {{ dango_directory }}/data"
+      when: not _data_stat.stat.exists
+
+    - name: Get data directory size
+      command: du -sh {{ dango_directory }}/data
+      register: _data_size
+
+    - name: Show download plan
+      pause:
+        seconds: 1
+        prompt: |-
+          Download plan:
+            Network:    {{ dango_network }}
+            Host:       {{ hostname }} ({{ inventory_hostname }})
+            Deployment: {{ deployment_name }}
+            Data:       {{ dango_directory }}/data ({{ _data_size.stdout.split('\t')[0] }})
+            Local dest: {{ _local_dest }}
+
+    - name: Archive dango data
+      command: >-
+        tar czf {{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz
+        -C {{ dango_directory }} data
+
+    - name: Get archive size
+      command: du -sh {{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz
+      register: _archive_size
+
+    - name: Downloading archive
+      pause:
+        seconds: 1
+        prompt: |-
+          Downloading archive:
+            - dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz ({{ _archive_size.stdout.split('\t')[0] }})
+
+    - name: Ensure local directory exists
+      file:
+        path: "{{ _local_dest }}"
+        state: directory
+      delegate_to: localhost
+      become: false
+
+    - name: Fetch archive
+      fetch:
+        src: "{{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz"
+        dest: "{{ _local_dest }}/dango-data-{{ _archive_ts }}.tar.gz"
+        flat: true
+
+    - name: Clean up remote archive
+      file:
+        path: "{{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz"
+        state: absent
+      ignore_errors: true
+
+    - name: Download complete
+      pause:
+        seconds: 1
+        prompt: |-
+          Download complete:
+            {{ _local_dest }}/dango-data-{{ _archive_ts }}.tar.gz
+
+          Extract: tar xzf {{ _local_dest }}/dango-data-{{ _archive_ts }}.tar.gz -C ~/.dango/
