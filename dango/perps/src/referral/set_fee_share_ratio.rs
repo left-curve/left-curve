@@ -26,7 +26,7 @@ pub fn set_fee_share_ratio(
 ) -> anyhow::Result<Response> {
     // Share ratio must be non-negative.
     ensure!(
-        share_ratio.is_positive(),
+        !share_ratio.is_negative(),
         "fee share ratio cannot be negative"
     );
 

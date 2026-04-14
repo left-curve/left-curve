@@ -364,6 +364,20 @@ fn negative_share_ratio_fails() {
     .should_fail_with_error("fee share ratio cannot be negative");
 }
 
+/// Zero is a valid share ratio (referrer takes no commission from the referee).
+#[test]
+fn zero_share_ratio_accepted() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::ZERO,
+    )
+    .should_succeed();
+}
+
 /// Setting the fee share ratio requires sufficient perps trading volume
 /// when `volume_to_be_referrer` is non-zero.
 #[test]
