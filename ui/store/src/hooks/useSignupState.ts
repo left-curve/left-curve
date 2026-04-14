@@ -64,16 +64,21 @@ export function useSignupState(parameters: UseSignupStateParameters) {
 
       const seed = Math.floor(Math.random() * 0x100000000);
 
+      // Determine the EIP-712 sub-type for the Key enum variant.
+      const [keyVariant] = Object.keys(key);
+      const keyType = [{ name: keyVariant, type: "string" }];
+
       const { credential } = await connector.signArbitrary({
         primaryType: "Message" as const,
         message: { chainId: config.chain.id, key, keyHash, seed },
         types: {
           Message: [
             { name: "chain_id", type: "string" },
-            { name: "key", type: "string" },
+            { name: "key", type: "Key" },
             { name: "key_hash", type: "string" },
             { name: "seed", type: "uint32" },
           ],
+          Key: keyType,
         },
       });
 
