@@ -1,5 +1,5 @@
 use {
-    crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
+    crate::{OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES, WITHDRAWAL_FEES},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
@@ -90,6 +90,18 @@ fn set_rate_limits(
         "only the owner can set rate limits"
     );
 
+    // Snapshot the current supply for any denom that doesn't already have a
+    // snapshot, so newly added rate limits are enforced immediately without
+    // waiting for the next cron cycle. Existing snapshots (and outbound
+    // accumulators) are left untouched so that lowering a rate limit takes
+    // effect instantly.
+    for denom in rate_limits.keys() {
+        if !SUPPLIES.has(ctx.storage, denom) {
+            let supply = ctx.querier.query_supply(denom.clone())?;
+            SUPPLIES.save(ctx.storage, denom, &supply)?;
+        }
+    }
+
     _set_rate_limits(ctx.storage, rate_limits)?;
 
     Ok(Response::new())
@@ -154,15 +166,6 @@ fn receive_remote(
         })?;
     }
 
-    // Increase the outbound quota.
-    OUTBOUND_QUOTAS.may_modify(ctx.storage, &denom, |maybe_quota| {
-        let Some(quota) = maybe_quota else {
-            return Ok(None);
-        };
-
-        Ok::<_, StdError>(Some(quota.checked_add(amount)?))
-    })?;
-
     // First,
     // - if the token is not native on Dango, mint it to the Gateway contract;
     // - otherwise, the token should already been in the Gateway contract, no need
@@ -226,21 +229,28 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })?;
     }
 
-    // Reduce the outbound quota.
-    OUTBOUND_QUOTAS.may_modify(ctx.storage, &coin.denom, |maybe_quota| {
-        let Some(quota) = maybe_quota else {
-            return Ok(None);
-        };
+    // Check the rate limit. If a rate limit is configured for this denom,
+    // verify that the total outbound for the current window (including this
+    // transfer) does not exceed `snapshotted_supply * rate_limit`.
+    if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
+        let supply = SUPPLIES.load(ctx.storage, &coin.denom)?;
+        let daily_allowance = supply.checked_mul_dec_floor(rate_limit.into_inner())?;
 
-        Some(quota.checked_sub(coin.amount).map_err(|_| {
-            anyhow!(
-                "insufficient outbound quota! denom: {}, amount: {}",
-                coin.denom,
-                coin.amount
-            )
-        }))
-        .transpose()
-    })?;
+        let outbound = OUTBOUND
+            .may_load(ctx.storage, &coin.denom)?
+            .unwrap_or(Uint128::ZERO);
+        let new_outbound = outbound.checked_add(coin.amount)?;
+
+        ensure!(
+            daily_allowance >= new_outbound,
+            "rate limit exceeded! denom: {}, daily_allowance: {}, outbound: {}",
+            coin.denom,
+            daily_allowance,
+            new_outbound
+        );
+
+        OUTBOUND.save(ctx.storage, &coin.denom, &new_outbound)?;
+    }
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
 
@@ -287,15 +297,16 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    // Clear the quotas for the previous 24-hour window.
-    OUTBOUND_QUOTAS.clear(ctx.storage, None, None);
+    // Reset the outbound accumulators for the new 24-hour window.
+    OUTBOUND.clear(ctx.storage, None, None);
 
-    // Set quotes for the next 24-hour window.
-    for (denom, limit) in RATE_LIMITS.load(ctx.storage)? {
+    // Snapshot the current supply for each rate-limited denom so the daily
+    // daily allowance (`supply * rate_limit`) is fixed for the entire window.
+    SUPPLIES.clear(ctx.storage, None, None);
+
+    for (denom, _) in RATE_LIMITS.load(ctx.storage)? {
         let supply = ctx.querier.query_supply(denom.clone())?;
-        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
-
-        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
+        SUPPLIES.save(ctx.storage, &denom, &supply)?;
     }
 
     Ok(Response::new())

@@ -14,4 +14,12 @@ pub const WITHDRAWAL_FEES: Map<(&Denom, Remote), Uint128> = Map::new("withdrawal
 
 pub const RESERVES: Map<(Addr, Remote), Uint128> = Map::new("reserve");
 
-pub const OUTBOUND_QUOTAS: Map<&Denom, Uint128> = Map::new("outbound_quota");
+/// Snapshotted supply per denom, set at the start of each rate-limit window by
+/// `cron_execute`. Used to compute the daily allowance as
+/// `supply * rate_limit`.
+pub const SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
+
+/// Accumulator tracking how much of each denom has been withdrawn in the
+/// current rate-limit window. Incremented on every `transfer_remote`, reset to
+/// zero by `cron_execute`.
+pub const OUTBOUND: Map<&Denom, Uint128> = Map::new("outbound");
