@@ -125,7 +125,7 @@
       when: not _data_stat.stat.exists
 
     - name: Get data directory size
-      command: du -sh {{ dango_directory }}/data
+      command: du -sh "{{ dango_directory }}/data"
       register: _data_size
 
     - name: Show download plan
@@ -141,11 +141,11 @@
 
     - name: Archive dango data
       command: >-
-        tar czf {{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz
-        -C {{ dango_directory }} data
+        tar czf "{{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz"
+        -C "{{ dango_directory }}" data
 
     - name: Get archive size
-      command: du -sh {{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz
+      command: du -sh "{{ ansible_facts['env']['HOME'] }}/dango-data-{{ dango_network }}-{{ _archive_ts }}.tar.gz"
       register: _archive_size
 
     - name: Downloading archive
