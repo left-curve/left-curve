@@ -1,6 +1,6 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{TestSuite, perps::pair_id},
+    dango_testing::{TestAccounts, TestSuite, perps::pair_id},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
         constants::usdc,
