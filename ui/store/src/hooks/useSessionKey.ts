@@ -98,7 +98,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     const sessionInfo: SigningSessionInfo = {
       chainId: config.chain.id,
       sessionKey: encodeBase64(publicKey),
-      expireAt: expireAt.toString(),
+      expireAt: Math.floor(expireAt / 1000).toString(),
     };
 
     const { credential } = await c.signArbitrary({

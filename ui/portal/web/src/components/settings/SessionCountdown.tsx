@@ -15,7 +15,7 @@ export const SessionCountdown: React.FC = () => {
   const { session } = useSessionKey();
 
   const { hours, minutes, seconds } = useCountdown({
-    date: Number(session?.sessionInfo.expireAt || 0),
+    date: Number(session?.sessionInfo.expireAt || 0) * 1000,
     showLeadingZeros: true,
   });
 

@@ -29,7 +29,7 @@ export async function createSession<transport extends Transport>(
   const sessionInfo: SigningSessionInfo = {
     chainId: client.chain.id,
     sessionKey: encodeBase64(pubKey),
-    expireAt: expireAt.toString(),
+    expireAt: Math.floor(expireAt / 1000).toString(),
   };
 
   const { credential } = await client.signer.signArbitrary({
