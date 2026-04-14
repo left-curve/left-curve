@@ -3966,13 +3966,16 @@ dependencies = [
  "anyhow",
  "dango-types",
  "data-encoding",
+ "eth-utils",
  "grug",
  "hex",
  "hex-literal",
  "identity",
  "k256",
+ "p256 0.13.2",
  "rand 0.8.5",
  "serde",
+ "serde_json",
  "sha2 0.10.9",
 ]
 
@@ -3987,7 +3990,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "bip32",
@@ -4444,9 +4447,6 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "borsh",
- "dango-perps",
- "dango-types",
  "grug",
  "grug-app",
  "tracing",
@@ -6599,6 +6599,7 @@ dependencies = [
  "anyhow",
  "grug",
  "hex",
+ "hex-literal",
  "serde",
  "serde_json",
  "sha3",
@@ -7041,6 +7042,7 @@ dependencies = [
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
+ "reqwest 0.13.2",
  "sea-orm",
  "serde",
  "serde_json",

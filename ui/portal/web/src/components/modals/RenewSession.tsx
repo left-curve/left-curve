@@ -12,7 +12,7 @@ export const RenewSession = forwardRef<undefined>(() => {
   const { createSessionKey, session } = useSessionKey();
 
   useEffect(() => {
-    if (session && Date.now() < Number(session.sessionInfo.expireAt)) {
+    if (session && Date.now() < Number(session.sessionInfo.expireAt) * 1000) {
       hideModal();
     }
   }, [session]);

@@ -1,4 +1,5 @@
 mod configure;
+mod donate;
 mod liquidate;
 
-pub use {configure::*, liquidate::*};
+pub use {configure::*, donate::*, liquidate::*};

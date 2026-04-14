@@ -1,6 +1,9 @@
 use {
-    crate::graphql::types::{
-        query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
+    crate::{
+        graphql::types::{
+            query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
+        },
+        request_ip::RequesterIp,
     },
     async_graphql::*,
     grug_types::{Binary, Inner, QueryResponse, TxOutcome},
@@ -111,6 +114,12 @@ impl GrugQuery {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         Self::_query_status(app_ctx).await
+    }
+
+    async fn requester_ip(&self, ctx: &async_graphql::Context<'_>) -> Result<RequesterIp, Error> {
+        ctx.data::<RequesterIp>()
+            .cloned()
+            .map_err(|_| Error::new("requester_ip is only available on HTTP GraphQL requests"))
     }
 
     async fn simulate(

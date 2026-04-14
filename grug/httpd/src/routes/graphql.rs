@@ -1,8 +1,8 @@
 use {
+    crate::request_ip::RequesterIp,
     actix_web::{HttpRequest, HttpResponse, Resource, http::header, web},
     async_graphql::{Schema, http::GraphiQLSource},
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
-    grug_types::HttpRequestDetails,
 };
 
 pub fn graphql_route<Q, M, S>() -> Resource
@@ -32,16 +32,10 @@ where
     M: async_graphql::ObjectType + 'static,
     S: async_graphql::SubscriptionType + 'static,
 {
-    let remote_ip = req
-        .connection_info()
-        .realip_remote_addr()
-        .map(|ip| ip.to_string());
+    let requester_ip = RequesterIp::from_request(&req);
+    let details = requester_ip.clone().into_http_request_details();
 
-    let peer_ip = req.connection_info().peer_addr().map(|ip| ip.to_string());
-
-    let details = HttpRequestDetails::new(remote_ip, peer_ip);
-
-    let request = gql_request.into_inner().data(details);
+    let request = gql_request.into_inner().data(details).data(requester_ip);
 
     schema.execute_batch(request).await.into()
 }

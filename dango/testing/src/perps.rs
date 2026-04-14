@@ -92,7 +92,7 @@ pub fn create_perps_fill(
                 pair_id: pair_id.clone(),
                 size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,

@@ -103,13 +103,9 @@ macro_rules! impl_paginate {
                 let ctx = context.clone();
                 let app = $app_builder(ctx);
                 let query_body = <$query_type>::build_query(variables.clone());
-                let response = $crate::call_graphql_query::<
-                    _,
-                    $module::ResponseData,
-                    _,
-                    _,
-                    _,
-                >(app, query_body)
+                let response = $crate::call_graphql_query::<_, $module::ResponseData, _, _, _>(
+                    app, query_body,
+                )
                 .await?;
 
                 let data = response.data.expect("GraphQL response should have data");
@@ -455,6 +451,83 @@ where
     // println!("text response: \n{:#?}", str::from_utf8(&text_response)?);
 
     Ok(serde_json::from_slice(&text_response)?)
+}
+
+pub async fn call_api_with_headers<R>(
+    app: App<
+        impl ServiceFactory<
+            ServiceRequest,
+            Response = ServiceResponse<impl MessageBody>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
+    >,
+    uri: &str,
+    headers: &[(&str, &str)],
+) -> anyhow::Result<R>
+where
+    R: DeserializeOwned,
+{
+    let app = actix_web::test::init_service(app).await;
+
+    let mut request = actix_web::test::TestRequest::get()
+        .uri(uri)
+        .peer_addr("127.0.0.1:12345".parse().expect("valid socket address"));
+    for (name, value) in headers {
+        request = request.insert_header((*name, *value));
+    }
+    let request = request.to_request();
+
+    let res = try_call_service(&app, request)
+        .await
+        .map_err(|err| anyhow!("failed to call service: {err:?}"))?;
+
+    let text_response = read_body(res).await;
+
+    Ok(serde_json::from_slice(&text_response)?)
+}
+
+pub async fn call_graphql_with_headers<R, A, S, B>(
+    app: A,
+    request_body: GraphQLCustomRequest<'_>,
+    headers: &[(&str, &str)],
+) -> anyhow::Result<GraphQLCustomResponse<R>>
+where
+    R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
+    let app = actix_web::test::init_service(app).await;
+    let field_name = request_body.name;
+
+    let mut request = actix_web::test::TestRequest::post()
+        .uri("/graphql")
+        .peer_addr("127.0.0.1:12345".parse().expect("valid socket address"));
+    for (name, value) in headers {
+        request = request.insert_header((*name, *value));
+    }
+    let request = request.set_json(&request_body).to_request();
+
+    let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
+    let mut graphql_response: GraphQLResponse = serde_json::from_slice(&graphql_response)?;
+
+    let data = graphql_response
+        .data
+        .remove(field_name)
+        .ok_or_else(|| anyhow!("can't find {field_name} in response"))?;
+
+    Ok(GraphQLCustomResponse {
+        data: serde_json::from_value(data)?,
+        errors: graphql_response.errors,
+    })
 }
 
 /// Calls a GraphQL subscription and returns a stream

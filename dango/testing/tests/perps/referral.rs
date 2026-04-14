@@ -61,6 +61,10 @@ fn referral_during_user_register() {
                 signature: user
                     .sign_arbitrary(RegisterUserData {
                         chain_id: chain_id.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 3,
+                        referrer: Some(1),
                     })
                     .unwrap(),
                 referrer: Some(1),
@@ -358,6 +362,20 @@ fn negative_share_ratio_fails() {
         Dimensionless::new_percent(-1),
     )
     .should_fail_with_error("fee share ratio cannot be negative");
+}
+
+/// Zero is a valid share ratio (referrer takes no commission from the referee).
+#[test]
+fn zero_share_ratio_accepted() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::ZERO,
+    )
+    .should_succeed();
 }
 
 /// Setting the fee share ratio requires sufficient perps trading volume
@@ -1325,7 +1343,7 @@ fn place_market_buy(
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,

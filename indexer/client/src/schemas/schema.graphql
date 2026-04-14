@@ -679,6 +679,7 @@ type Query {
 		key: String!,		height: Int,		prove: Boolean! = false
 	): Store!
 	queryStatus: Status!
+	requesterIp: RequesterIp!
 	simulate(
 		"""
 		Transaction as Json
@@ -872,6 +873,16 @@ type Query {
 type QueryResponseWithBlockHeight {
 	response: JSON!
 	blockHeight: Int!
+}
+
+type RequesterIp {
+	remoteIp: String
+	peerIp: String
+	xForwardedFor: String
+	forwarded: String
+	cfConnectingIp: String
+	trueClientIp: String
+	xRealIp: String
 }
 
 type Status {

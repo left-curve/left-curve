@@ -20,7 +20,11 @@ serde         = { workspace = true }
 sha2          = { workspace = true }
 
 [dev-dependencies]
-hex-literal = { workspace = true }
-identity    = { workspace = true }
-k256        = { workspace = true }
-rand        = { workspace = true }
+data-encoding = { workspace = true }
+eth-utils     = { workspace = true }
+hex-literal   = { workspace = true }
+identity      = { workspace = true }
+k256          = { workspace = true }
+p256          = { workspace = true }
+rand          = { workspace = true }
+serde_json    = { workspace = true }

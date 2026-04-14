@@ -66,6 +66,10 @@ fn onboarding_without_deposit() {
                 signature: user
                     .sign_arbitrary(RegisterUserData {
                         chain_id: chain_id.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 3,
+                        referrer: None,
                     })
                     .unwrap(),
                 referrer: None,
@@ -168,7 +172,15 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
                 key: user.first_key(),
                 key_hash: user.first_key_hash(),
                 seed: 3,
-                signature: user.sign_arbitrary(RegisterUserData { chain_id }).unwrap(),
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        chain_id,
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 3,
+                        referrer: None,
+                    })
+                    .unwrap(),
                 referrer: None,
             },
             Coins::new(),
@@ -257,6 +269,10 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     let signature = user
         .sign_arbitrary(RegisterUserData {
             chain_id: suite.chain_id.clone(),
+            key: user.first_key(),
+            key_hash: user.first_key_hash(),
+            seed: 3,
+            referrer: None,
         })
         .unwrap();
 
@@ -327,6 +343,10 @@ fn update_key() {
                 signature: user
                     .sign_arbitrary(RegisterUserData {
                         chain_id: chain_id.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 0,
+                        referrer: None,
                     })
                     .unwrap(),
                 referrer: None,
@@ -490,6 +510,10 @@ fn new_user_gets_default_username() {
                 signature: user
                     .sign_arbitrary(RegisterUserData {
                         chain_id: chain_id.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 0,
+                        referrer: None,
                     })
                     .unwrap(),
                 referrer: None,
