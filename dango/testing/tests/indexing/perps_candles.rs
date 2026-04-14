@@ -72,7 +72,7 @@ fn market_buy(
                 pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,

@@ -1,5 +1,5 @@
 use {
-    crate::{NEXT_ORDER_ID, USER_STATES},
+    crate::{NEXT_ORDER_ID, USER_STATES, core::validate_slippage},
     anyhow::{anyhow, ensure},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
@@ -27,10 +27,7 @@ pub fn submit_conditional_order(
         "price must be positive: {trigger_price}"
     );
 
-    ensure!(
-        !max_slippage.is_negative(),
-        "max_slippage can't be negative: {max_slippage}"
-    );
+    validate_slippage(max_slippage)?;
 
     // 1. User must have an open position in this pair.
     // 2. If size is specified: sign must oppose position, |size| <= |position.size|.
@@ -563,6 +560,50 @@ mod tests {
             TriggerDirection::Above,
             Dimensionless::new_int(-1),
         )
-        .should_fail_with_error("max_slippage can't be negative");
+        .should_fail_with_error("max slippage can't be negative");
+    }
+
+    #[test]
+    fn p12_reject_100pct_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_percent(100),
+        )
+        .should_fail_with_error("max slippage must be less than 1, got");
+    }
+
+    #[test]
+    fn p13_reject_150pct_max_slippage() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_percent(150),
+        )
+        .should_fail_with_error("max slippage must be less than 1, got");
     }
 }

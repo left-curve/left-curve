@@ -67,7 +67,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -234,7 +234,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -396,7 +396,7 @@ fn conditional_orders_follow_price_time_priority() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -418,7 +418,7 @@ fn conditional_orders_follow_price_time_priority() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -657,7 +657,7 @@ fn conditional_order_failure_does_not_block_others() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -698,7 +698,7 @@ fn conditional_order_failure_does_not_block_others() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -932,7 +932,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -1068,7 +1068,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-1),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -1145,7 +1145,7 @@ fn child_order_market_with_tp_triggers() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: Some(perps::ChildOrder {
@@ -1263,7 +1263,7 @@ fn child_order_market_with_sl_triggers() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -1377,7 +1377,7 @@ fn child_order_ignored_when_position_closed() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -1415,7 +1415,7 @@ fn child_order_ignored_when_position_closed() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // close the long
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: Some(perps::ChildOrder {
@@ -1493,7 +1493,7 @@ fn child_order_overwrites_existing() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -1528,7 +1528,7 @@ fn child_order_overwrites_existing() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: Some(perps::ChildOrder {
@@ -1619,7 +1619,7 @@ fn conditional_order_overwrite_same_direction() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -1732,7 +1732,7 @@ fn conditional_order_size_exceeds_position_allowed() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(3),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
