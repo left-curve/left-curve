@@ -1,22 +1,20 @@
-use crate::NEXT_UPGRADE;
 #[cfg(all(feature = "abci", feature = "tracing"))]
 use data_encoding::BASE64;
 #[cfg(any(feature = "abci", feature = "tracing"))]
 use grug_types::JsonSerExt;
 #[cfg(feature = "abci")]
 use grug_types::{HashExt, JsonDeExt};
-
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer, NaiveQuerier,
-        NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl, TraceOption, Vm,
-        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
-        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
-        do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance, query_balances,
-        query_code, query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
-        query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_scan, query_wasm_smart,
+        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
+        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
+        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
+        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
+        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
+        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
+        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
+        query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
