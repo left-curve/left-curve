@@ -290,7 +290,7 @@ pub fn verify_nonce_and_signature(
                 // See the documentation for `MAX_NONCE_INCREASE` for the rationale.
                 if let Some(max) = nonces.last() {
                     ensure!(
-                        metadata.nonce <= max + MAX_NONCE_INCREASE,
+                        metadata.nonce <= max.saturating_add(MAX_NONCE_INCREASE),
                         "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
                         metadata.nonce,
                         max,
