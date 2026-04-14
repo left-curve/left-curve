@@ -125,7 +125,7 @@ fn adl_bug_absurd_book_price() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // ask (sell)
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::ONE,
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
