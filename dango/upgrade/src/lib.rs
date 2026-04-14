@@ -207,7 +207,11 @@ fn clear_perps_state(storage: &mut dyn Storage) -> StdResult<UsdValue> {
             total_unlocks.checked_add_assign(unlock.amount_to_release)?;
         }
 
-        USER_STATES.save(storage, addr, &user_state)?;
+        if user_state.is_empty() {
+            USER_STATES.remove(storage, addr)?;
+        } else {
+            USER_STATES.save(storage, addr, &user_state)?;
+        }
     }
 
     let total_liability = total_margin.checked_add(total_unlocks)?;
@@ -319,6 +323,11 @@ fn assert_invariants(storage: &dyn Storage) -> StdResult<()> {
                 us.margin
             );
         }
+
+        assert!(
+            !us.is_empty(),
+            "user {addr} has an empty state that should have been pruned",
+        );
     }
 
     tracing::info!("All invariants passed");
