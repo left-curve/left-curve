@@ -3,6 +3,8 @@ import type { StandardCredential } from "./credential.js";
 import type { KeyHash } from "./key.js";
 
 export type SigningSessionInfo = {
+  /** Chain ID this session is authorized for. */
+  chainId: string;
   /** Public key of the session key. */
   sessionKey: Base64;
   /** Expiry time of the session key. */

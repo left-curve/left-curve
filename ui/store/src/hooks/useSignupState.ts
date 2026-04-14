@@ -62,10 +62,24 @@ export function useSignupState(parameters: UseSignupStateParameters) {
         };
       })();
 
+      const seed = Math.floor(Math.random() * 0x100000000);
+
+      // Determine the EIP-712 sub-type for the Key enum variant.
+      const [keyVariant] = Object.keys(key);
+      const keyType = [{ name: keyVariant, type: "string" }];
+
       const { credential } = await connector.signArbitrary({
         primaryType: "Message" as const,
-        message: { chain_id: config.chain.id },
-        types: { Message: [{ name: "chain_id", type: "string" }] },
+        message: { chainId: config.chain.id, key, keyHash, seed },
+        types: {
+          Message: [
+            { name: "chain_id", type: "string" },
+            { name: "key", type: "Key" },
+            { name: "key_hash", type: "string" },
+            { name: "seed", type: "uint32" },
+          ],
+          Key: keyType,
+        },
       });
 
       if (!("standard" in credential)) throw new Error("Signed with wrong credential");
@@ -73,7 +87,7 @@ export function useSignupState(parameters: UseSignupStateParameters) {
       await registerUser(client, {
         key,
         keyHash,
-        seed: Math.floor(Math.random() * 0x100000000),
+        seed,
         signature: credential.standard.signature,
       });
       setScreen("login");
