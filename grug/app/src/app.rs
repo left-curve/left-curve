@@ -355,7 +355,7 @@ where
             use grug_types::PastUpgrade;
 
             const MAINNET_CHAIN_ID: &str = "dango-1";
-            const MAINNET_UPGRADE_HEIGHT: u64 = 17708992;
+            const MAINNET_UPGRADE_HEIGHT: u64 = 17709888;
             const MAINNET_UPGRADE_CARGO_VERSION: &str = "0.12.0";
 
             let chain_id = CHAIN_ID.load(&buffer)?;
