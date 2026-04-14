@@ -9,15 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 
 [dependencies]
-borsh       = { workspace = true }
-dango-bank  = { workspace = true, features = ["library"] }
-dango-perps = { workspace = true, features = ["library"] }
-dango-types = { workspace = true }
-grug        = { workspace = true }
-grug-app    = { workspace = true }
-tracing     = { workspace = true }
-
-[dev-dependencies]
-dango-genesis = { workspace = true }
-grug-db-disk  = { workspace = true }
-grug-vm-rust  = { workspace = true }
+grug     = { workspace = true }
+grug-app = { workspace = true }
+tracing  = { workspace = true }

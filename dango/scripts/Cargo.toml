@@ -23,6 +23,7 @@ tokio          = { workspace = true }
 chrono          = { workspace = true }
 clap            = { workspace = true }
 dango-genesis   = { workspace = true }
+dango-perps     = { workspace = true, features = ["library"] }
 dango-testing   = { workspace = true }
 dango-types     = { workspace = true }
 futures         = { workspace = true }
