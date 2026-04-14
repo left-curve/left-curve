@@ -409,9 +409,10 @@ b2-mark-bucket-deletable name:
 
 # Download Grug RocksDB — interactive host selection (no tee, prompt needs direct stdout)
 # Usage: just download-db testnet
-download-db network:
+download-db network reset_data="false":
   ansible-playbook download-db.yml \
-    -e dango_network={{network}}
+    -e dango_network={{network}} \
+    -e reset_data={{reset_data}}
 
 # Download Points Bot RocksDB — interactive host selection (no tee, prompt needs direct stdout)
 # Usage: just download-db-points-bot testnet
