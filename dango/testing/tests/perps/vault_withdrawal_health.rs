@@ -12,8 +12,8 @@ use {
     std::collections::BTreeMap,
 };
 
-/// Regression test: vault withdrawal at breakeven pushes vault below maintenance
-/// margin due to large open positions.
+/// Regression test: vault withdrawal pushes vault into liquidatable state
+/// due to maintenance margin requirement of large open positions.
 ///
 /// The vault does not need a negative PnL for this to happen. The withdrawer
 /// simply needs to withdraw such that remaining equity < maintenance margin.
