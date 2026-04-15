@@ -284,10 +284,15 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             OUTBOUND.save(ctx.storage, &coin.denom, &new_outbound)?;
         }
 
-        user_movement.current.credit_used =
-            user_movement.current.credit_used.checked_add(free_amount)?;
-        user_movement.current.withdrawn =
-            user_movement.current.withdrawn.checked_add(coin.amount)?;
+        user_movement
+            .current
+            .credit_used
+            .checked_add_assign(free_amount)?;
+        user_movement
+            .current
+            .withdrawn
+            .checked_add_assign(coin.amount)?;
+
         USER_MOVEMENTS.save(ctx.storage, user_index, &user_movement)?;
     }
 
