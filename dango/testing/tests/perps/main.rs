@@ -13,6 +13,7 @@ use {
 mod adl_bug_reproduction;
 mod conditional_orders;
 mod liquidation;
+mod margin_check;
 mod referral;
 mod trading;
 mod vault;
