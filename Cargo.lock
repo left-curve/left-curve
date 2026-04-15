@@ -4453,8 +4453,6 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
- "grug-db-disk",
- "grug-vm-rust",
  "tracing",
 ]
 

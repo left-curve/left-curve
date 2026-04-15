@@ -5,7 +5,45 @@
     state: stopped
     pull: never
 
+- name: "{{ network }} - Login to GHCR"
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ points_bot_ghcr_user }}"
+    password: "{{ points_bot_ghcr_token }}"
+  no_log: true
+
+- name: "{{ network }} - Pull points image"
+  command:
+    cmd: "docker pull {{ points_bot_image }}:{{ points_bot_tag }}"
+
 - name: "{{ network }} - Drop app database"
   command:
-    cmd: "docker compose run --rm --pull never points points drop-db{{ ' --full' if drop_db_full | default(false) | bool else '' }}"
-    chdir: "{{ points_bot_dir }}/{{ network }}"
+    cmd: >-
+      docker run --rm
+      -v {{ points_bot_dir }}/{{ network }}/db:/root/.dango-points/db
+      {{ points_bot_image }}:{{ points_bot_tag }}
+      points drop-app-db{{ ' --full' if drop_db_full | default(false) | bool else '' }}
+  when: drop_db_target | default('app') == 'app'
+
+- name: "{{ network }} - Drop httpd database"
+  command:
+    cmd: >-
+      docker run --rm
+      -v {{ points_bot_dir }}/{{ network }}/db:/root/.dango-points/db
+      {{ points_bot_image }}:{{ points_bot_tag }}
+      points drop-httpd-db
+  when: drop_db_target | default('app') == 'httpd'
+
+- name: "{{ network }} - Drop all databases"
+  command:
+    cmd: >-
+      docker run --rm
+      -v {{ points_bot_dir }}/{{ network }}/db:/root/.dango-points/db
+      {{ points_bot_image }}:{{ points_bot_tag }}
+      points drop-all
+  when: drop_db_target | default('app') == 'all'
+
+- name: "{{ network }} - Logout from GHCR"
+  community.docker.docker_login:
+    registry: ghcr.io
+    state: absent
