@@ -6,7 +6,7 @@ use {
 };
 use {
     crate::{
-        core::{compute_funding_delta, compute_impact_price, compute_premium},
+        core::{compute_funding_delta, compute_vault_premium},
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
         price::may_invert_price,
@@ -20,7 +20,7 @@ use {
     },
     dango_oracle::OracleQuerier,
     dango_types::{
-        Days, Dimensionless, UsdPrice, UsdValue,
+        Days, Quantity, UsdPrice, UsdValue,
         perps::{
             ConditionalOrderRemoved, ConditionalOrderTriggered, LiquidityReleased, OrderKind,
             PairId, PairParam, PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
@@ -128,11 +128,12 @@ fn process_unlock_for_user(
     })
 }
 
-/// Compute and apply funding deltas for each trading pair using a point-in-time
-/// premium snapshot from the order book.
+/// Compute and apply funding deltas for each trading pair using the vault's
+/// inventory-skew-derived premium.
 pub fn process_funding(
     storage: &mut dyn Storage,
     current_time: Timestamp,
+    contract: Addr,
     oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<()> {
     let param = PARAM.load(storage)?;
@@ -148,7 +149,7 @@ pub fn process_funding(
     let pair_ids = PAIR_IDS.load(storage)?;
 
     for pair_id in pair_ids {
-        process_funding_for_pair(storage, oracle_querier, interval, pair_id)?;
+        process_funding_for_pair(storage, contract, oracle_querier, interval, pair_id)?;
     }
 
     state.last_funding_time = current_time;
@@ -160,6 +161,7 @@ pub fn process_funding(
 
 fn process_funding_for_pair(
     storage: &mut dyn Storage,
+    contract: Addr,
     oracle_querier: &mut OracleQuerier,
     interval: Days,
     pair_id: PairId,
@@ -169,41 +171,45 @@ fn process_funding_for_pair(
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
 
-    // Walk the bid side: stored in ascending order of inverted price,
-    // so ascending iteration gives best-bid-first. Un-invert to get
-    // real prices. Bid order sizes are guaranteed positive.
-    let bid_iter = BIDS
-        .prefix(pair_id.clone())
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let ((stored_price, _), order) = res?;
-            let real_price = may_invert_price(stored_price, true);
-            Ok((real_price, order.size))
-        });
+    // Compute premium from the vault's inventory skew. When the vault is
+    // the dominant maker, its skew-aware pricing directly determines the
+    // mid-market price, yielding:
+    //   premium = -halfSpread × skew × spreadSkewFactor
+    let vault_position_size = USER_STATES
+        .may_load(storage, contract)?
+        .and_then(|vs| vs.positions.get(&pair_id).map(|p| p.size))
+        .unwrap_or(Quantity::ZERO);
 
-    // Walk the ask side: stored naturally in ascending price order,
-    // so ascending iteration gives best-ask-first.
-    let ask_iter = ASKS
-        .prefix(pair_id.clone())
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let ((stored_price, _), order) = res?;
-            Ok((stored_price, order.size.checked_abs()?))
-        });
+    let premium = compute_vault_premium(vault_position_size, &pair_param)?;
 
-    let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
-    let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
-
-    // Fall back to zero premium when either side of the book lacks the
-    // depth to compute an impact price. Matches the pre-change behavior:
-    // `funding_rate` is zeroed for this cycle and `funding_per_unit` is
-    // left unchanged.
-    let premium = match (impact_bid, impact_ask) {
-        (Some(impact_bid), Some(impact_ask)) => {
-            compute_premium(impact_bid, impact_ask, oracle_price)?
-        },
-        _ => Dimensionless::ZERO,
-    };
+    // --- Impact-price model (replaced by vault premium above) -----------
+    // let bid_iter = BIDS
+    //     .prefix(pair_id.clone())
+    //     .range(storage, None, None, IterationOrder::Ascending)
+    //     .map(|res| {
+    //         let ((stored_price, _), order) = res?;
+    //         let real_price = may_invert_price(stored_price, true);
+    //         Ok((real_price, order.size))
+    //     });
+    //
+    // let ask_iter = ASKS
+    //     .prefix(pair_id.clone())
+    //     .range(storage, None, None, IterationOrder::Ascending)
+    //     .map(|res| {
+    //         let ((stored_price, _), order) = res?;
+    //         Ok((stored_price, order.size.checked_abs()?))
+    //     });
+    //
+    // let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
+    // let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
+    //
+    // let premium = match (impact_bid, impact_ask) {
+    //     (Some(impact_bid), Some(impact_ask)) => {
+    //         compute_premium(impact_bid, impact_ask, oracle_price)?
+    //     },
+    //     _ => Dimensionless::ZERO,
+    // };
+    // -------------------------------------------------------------------
 
     let (funding_delta, funding_rate) = compute_funding_delta(
         premium,
@@ -724,17 +730,17 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            FundingPerUnit, FundingRate, Quantity, UsdPrice,
+            Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice,
             oracle::PrecisionedPrice,
-            perps::{LimitOrder, PairParam, PairState, Param, State, Unlock},
+            perps::{PairParam, PairState, Param, Position, State, Unlock},
         },
-        grug::{Duration, MockStorage, Udec128, Uint64, hash_map},
-        std::collections::{BTreeSet, VecDeque},
+        grug::{Duration, MockStorage, Udec128, hash_map},
+        std::collections::{BTreeMap, BTreeSet, VecDeque},
     };
 
     const USER_A: Addr = Addr::mock(1);
     const USER_B: Addr = Addr::mock(2);
-    const MAKER: Addr = Addr::mock(3);
+    const CONTRACT: Addr = Addr::mock(100);
 
     fn btc_pair_id() -> PairId {
         "perp/btcusd".parse().unwrap()
@@ -758,57 +764,25 @@ mod tests {
             .collect()
     }
 
-    /// Place a resting bid order into `BIDS` storage.
+    /// Store the vault's user state with a position for the given pair.
     ///
-    /// Mutates: writes to `storage`.
+    /// Mutates: writes to `USER_STATES` under `CONTRACT`.
     /// Returns: nothing.
-    fn place_bid_order(
-        storage: &mut dyn Storage,
-        pair_id: &PairId,
-        price: i128,
-        size: i128,
-        order_id: u64,
-    ) {
-        let inverted_price = !UsdPrice::new_int(price);
-        let key = (pair_id.clone(), inverted_price, Uint64::new(order_id));
-        let order = LimitOrder {
-            user: MAKER,
-            size: Quantity::new_int(size.abs()),
-            reduce_only: false,
-            reserved_margin: UsdValue::ZERO,
-            created_at: Timestamp::ZERO,
-            tp: None,
-            sl: None,
-        };
-        BIDS.save(storage, key, &order).unwrap();
-    }
-
-    /// Place a resting ask order into `ASKS` storage.
-    ///
-    /// Mutates: writes to `storage`.
-    /// Returns: nothing.
-    fn place_ask_order(
-        storage: &mut dyn Storage,
-        pair_id: &PairId,
-        price: i128,
-        size: i128,
-        order_id: u64,
-    ) {
-        let key = (
-            pair_id.clone(),
-            UsdPrice::new_int(price),
-            Uint64::new(order_id),
-        );
-        let order = LimitOrder {
-            user: MAKER,
-            size: Quantity::new_int(-size.abs()),
-            reduce_only: false,
-            reserved_margin: UsdValue::ZERO,
-            created_at: Timestamp::ZERO,
-            tp: None,
-            sl: None,
-        };
-        ASKS.save(storage, key, &order).unwrap();
+    fn set_vault_position(storage: &mut dyn Storage, pair_id: &PairId, size: i128) {
+        let mut positions = BTreeMap::new();
+        positions.insert(pair_id.clone(), Position {
+            size: Quantity::new_int(size),
+            entry_price: UsdPrice::ZERO,
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
+        });
+        USER_STATES
+            .save(storage, CONTRACT, &UserState {
+                positions,
+                ..Default::default()
+            })
+            .unwrap();
     }
 
     /// Save the common funding-related storage items for a single pair.
@@ -845,8 +819,10 @@ mod tests {
 
     fn default_funding_pair_param() -> PairParam {
         PairParam {
-            impact_size: UsdValue::new_int(10_000),
             max_abs_funding_rate: FundingRate::new_raw(50_000), // 0.05/day
+            vault_half_spread: Dimensionless::new_permille(10), // 1%
+            vault_spread_skew_factor: Dimensionless::new_permille(300), // 0.3
+            vault_max_skew_size: Quantity::new_int(100),
             ..Default::default()
         }
     }
@@ -1019,7 +995,13 @@ mod tests {
         });
 
         // Only 1800s elapsed, period is 3600s → funding skipped.
-        process_funding(&mut storage, Timestamp::from_seconds(1800), &mut oracle).unwrap();
+        process_funding(
+            &mut storage,
+            Timestamp::from_seconds(1800),
+            CONTRACT,
+            &mut oracle,
+        )
+        .unwrap();
 
         let state = STATE.load(&storage).unwrap();
         assert_eq!(state.last_funding_time, Timestamp::from_seconds(0));
@@ -1030,7 +1012,7 @@ mod tests {
     }
 
     #[test]
-    fn funding_applied_when_period_elapsed() {
+    fn funding_vault_long_produces_negative_rate() {
         let mut storage = MockStorage::new();
         let pair_id = btc_pair_id();
 
@@ -1043,10 +1025,9 @@ mod tests {
             0,
         );
 
-        // Bid $51,000 and ask $53,000 around oracle $50,000 → mid $52,000
-        // → positive premium.
-        place_bid_order(&mut storage, &pair_id, 51_000, 1, 1);
-        place_ask_order(&mut storage, &pair_id, 53_000, 1, 2);
+        // Vault is long 50 → skew = 0.5 → premium = -(0.01 * 0.5 * 0.3) = -0.0015
+        // → shorts pay longs.
+        set_vault_position(&mut storage, &pair_id, 50);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
             pair_id.clone() => PrecisionedPrice::new(
@@ -1056,18 +1037,24 @@ mod tests {
             ),
         });
 
-        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
+        process_funding(
+            &mut storage,
+            Timestamp::from_seconds(3600),
+            CONTRACT,
+            &mut oracle,
+        )
+        .unwrap();
 
         let state = STATE.load(&storage).unwrap();
         assert_eq!(state.last_funding_time, Timestamp::from_seconds(3600));
 
         let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
-        assert_ne!(pair_state.funding_per_unit, FundingPerUnit::ZERO);
-        assert_ne!(pair_state.funding_rate, FundingRate::ZERO);
+        assert!(pair_state.funding_per_unit < FundingPerUnit::ZERO);
+        assert!(pair_state.funding_rate < FundingRate::ZERO);
     }
 
     #[test]
-    fn funding_with_empty_order_book() {
+    fn funding_vault_short_produces_positive_rate() {
         let mut storage = MockStorage::new();
         let pair_id = btc_pair_id();
 
@@ -1080,6 +1067,46 @@ mod tests {
             0,
         );
 
+        // Vault is short 50 → skew = -0.5 → premium = 0.0015
+        // → longs pay shorts.
+        set_vault_position(&mut storage, &pair_id, -50);
+
+        let mut oracle = OracleQuerier::new_mock(hash_map! {
+            pair_id.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(5_000_000), // $50,000
+                Timestamp::from_seconds(0),
+                8,
+            ),
+        });
+
+        process_funding(
+            &mut storage,
+            Timestamp::from_seconds(3600),
+            CONTRACT,
+            &mut oracle,
+        )
+        .unwrap();
+
+        let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
+        assert!(pair_state.funding_per_unit > FundingPerUnit::ZERO);
+        assert!(pair_state.funding_rate > FundingRate::ZERO);
+    }
+
+    #[test]
+    fn funding_zero_vault_position_gives_zero_delta() {
+        let mut storage = MockStorage::new();
+        let pair_id = btc_pair_id();
+
+        init_funding_storage(
+            &mut storage,
+            &pair_id,
+            &default_funding_pair_param(),
+            &PairState::default(),
+            3600,
+            0,
+        );
+
+        // No vault state stored → position defaults to zero → premium = 0.
         let mut oracle = OracleQuerier::new_mock(hash_map! {
             pair_id.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(5_000_000),
@@ -1088,24 +1115,27 @@ mod tests {
             ),
         });
 
-        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
+        process_funding(
+            &mut storage,
+            Timestamp::from_seconds(3600),
+            CONTRACT,
+            &mut oracle,
+        )
+        .unwrap();
 
         let state = STATE.load(&storage).unwrap();
         assert_eq!(state.last_funding_time, Timestamp::from_seconds(3600));
 
-        // Empty book → premium = 0 → delta = 0.
         let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
         assert_eq!(pair_state.funding_per_unit, FundingPerUnit::ZERO);
         assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
     }
 
     #[test]
-    fn funding_empty_book_zeros_rate_and_preserves_accumulator() {
+    fn funding_zero_position_preserves_accumulator() {
         let mut storage = MockStorage::new();
         let pair_id = btc_pair_id();
 
-        // Seed non-zero initial state so the zero-out and preserve
-        // semantics of the `(None, None)` fallback arm are observable.
         let initial_funding_per_unit = FundingPerUnit::new_int(1_234);
         let initial_funding_rate = FundingRate::new_raw(42_000);
 
@@ -1130,92 +1160,16 @@ mod tests {
             ),
         });
 
-        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
-
-        // Empty book → premium = 0 → rate overwritten to zero; the
-        // accumulator receives a zero delta, so it is preserved.
-        let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
-        assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
-        assert_eq!(pair_state.funding_per_unit, initial_funding_per_unit);
-    }
-
-    #[test]
-    fn funding_one_sided_book_bid_only_zeros_rate() {
-        let mut storage = MockStorage::new();
-        let pair_id = btc_pair_id();
-
-        let initial_funding_per_unit = FundingPerUnit::new_int(1_234);
-        let initial_funding_rate = FundingRate::new_raw(42_000);
-
-        init_funding_storage(
+        process_funding(
             &mut storage,
-            &pair_id,
-            &default_funding_pair_param(),
-            &PairState {
-                funding_per_unit: initial_funding_per_unit,
-                funding_rate: initial_funding_rate,
-                ..Default::default()
-            },
-            3600,
-            0,
-        );
+            Timestamp::from_seconds(3600),
+            CONTRACT,
+            &mut oracle,
+        )
+        .unwrap();
 
-        // Only the bid side has depth. `compute_impact_price` returns
-        // `None` for the empty ask side, so the match falls into the
-        // `(Some, None)` arm → premium = 0.
-        place_bid_order(&mut storage, &pair_id, 51_000, 1, 1);
-
-        let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
-                Timestamp::from_seconds(0),
-                8,
-            ),
-        });
-
-        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
-
-        let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
-        assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
-        assert_eq!(pair_state.funding_per_unit, initial_funding_per_unit);
-    }
-
-    #[test]
-    fn funding_one_sided_book_ask_only_zeros_rate() {
-        let mut storage = MockStorage::new();
-        let pair_id = btc_pair_id();
-
-        let initial_funding_per_unit = FundingPerUnit::new_int(1_234);
-        let initial_funding_rate = FundingRate::new_raw(42_000);
-
-        init_funding_storage(
-            &mut storage,
-            &pair_id,
-            &default_funding_pair_param(),
-            &PairState {
-                funding_per_unit: initial_funding_per_unit,
-                funding_rate: initial_funding_rate,
-                ..Default::default()
-            },
-            3600,
-            0,
-        );
-
-        // Only the ask side has depth. `compute_impact_price` returns
-        // `None` for the empty bid side, so the match falls into the
-        // `(None, Some)` arm → premium = 0.
-        place_ask_order(&mut storage, &pair_id, 49_000, 1, 1);
-
-        let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
-                Timestamp::from_seconds(0),
-                8,
-            ),
-        });
-
-        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
-
+        // Zero vault position → premium = 0 → rate overwritten to zero;
+        // the accumulator receives a zero delta, so it is preserved.
         let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
         assert_eq!(pair_state.funding_rate, FundingRate::ZERO);
         assert_eq!(pair_state.funding_per_unit, initial_funding_per_unit);
@@ -1252,14 +1206,28 @@ mod tests {
             .save(&mut storage, &eth, &PairState::default())
             .unwrap();
 
-        // BTC: bid $51,000 and ask $53,000 around oracle $50,000 → mid
-        // $52,000 → positive premium.
-        place_bid_order(&mut storage, &btc, 51_000, 1, 1);
-        place_ask_order(&mut storage, &btc, 53_000, 1, 2);
-        // ETH: bid $2,800 and ask $2,900 below oracle $3,000 → mid $2,850
-        // → negative premium.
-        place_bid_order(&mut storage, &eth, 2_800, 10, 3);
-        place_ask_order(&mut storage, &eth, 2_900, 10, 4);
+        // Vault: long 50 BTC, short 50 ETH.
+        let mut positions = BTreeMap::new();
+        positions.insert(btc.clone(), Position {
+            size: Quantity::new_int(50),
+            entry_price: UsdPrice::ZERO,
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
+        });
+        positions.insert(eth.clone(), Position {
+            size: Quantity::new_int(-50),
+            entry_price: UsdPrice::ZERO,
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
+        });
+        USER_STATES
+            .save(&mut storage, CONTRACT, &UserState {
+                positions,
+                ..Default::default()
+            })
+            .unwrap();
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
             btc.clone() => PrecisionedPrice::new(
@@ -1274,20 +1242,26 @@ mod tests {
             ),
         });
 
-        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
+        process_funding(
+            &mut storage,
+            Timestamp::from_seconds(3600),
+            CONTRACT,
+            &mut oracle,
+        )
+        .unwrap();
 
         let state = STATE.load(&storage).unwrap();
         assert_eq!(state.last_funding_time, Timestamp::from_seconds(3600));
 
-        // BTC: mid $52,000 above oracle $50,000 → strictly positive.
+        // BTC: vault long → negative premium → shorts pay longs.
         let btc_state = PAIR_STATES.load(&storage, &btc).unwrap();
-        assert!(btc_state.funding_per_unit > FundingPerUnit::ZERO);
-        assert!(btc_state.funding_rate > FundingRate::ZERO);
+        assert!(btc_state.funding_per_unit < FundingPerUnit::ZERO);
+        assert!(btc_state.funding_rate < FundingRate::ZERO);
 
-        // ETH: mid $2,850 below oracle $3,000 → strictly negative.
+        // ETH: vault short → positive premium → longs pay shorts.
         let eth_state = PAIR_STATES.load(&storage, &eth).unwrap();
-        assert!(eth_state.funding_per_unit < FundingPerUnit::ZERO);
-        assert!(eth_state.funding_rate < FundingRate::ZERO);
+        assert!(eth_state.funding_per_unit > FundingPerUnit::ZERO);
+        assert!(eth_state.funding_rate > FundingRate::ZERO);
     }
 
     #[test]
@@ -1308,10 +1282,8 @@ mod tests {
             0,
         );
 
-        // Bid $51,000 and ask $53,000 around oracle $50,000 → mid $52,000
-        // → positive delta added to existing accumulator.
-        place_bid_order(&mut storage, &pair_id, 51_000, 1, 1);
-        place_ask_order(&mut storage, &pair_id, 53_000, 1, 2);
+        // Vault short → positive premium → positive delta added to accumulator.
+        set_vault_position(&mut storage, &pair_id, -50);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
             pair_id.clone() => PrecisionedPrice::new(
@@ -1321,7 +1293,13 @@ mod tests {
             ),
         });
 
-        process_funding(&mut storage, Timestamp::from_seconds(3600), &mut oracle).unwrap();
+        process_funding(
+            &mut storage,
+            Timestamp::from_seconds(3600),
+            CONTRACT,
+            &mut oracle,
+        )
+        .unwrap();
 
         let pair_state = PAIR_STATES.load(&storage, &pair_id).unwrap();
         // Accumulator = initial (100) + positive delta, so strictly greater.
