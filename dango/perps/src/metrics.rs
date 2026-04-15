@@ -10,6 +10,16 @@ pub const LABEL_VOLUME_PER_TRADE: &str = "dango.contract.perps.volume_per_trade"
 
 pub const LABEL_FEES_COLLECTED: &str = "dango.contract.perps.fees_collected";
 
+// ----------------------------- Deposit / Withdraw ----------------------------
+
+pub const LABEL_DEPOSITS: &str = "dango.contract.perps.deposits_count";
+
+pub const LABEL_WITHDRAWALS: &str = "dango.contract.perps.withdrawals_count";
+
+pub const LABEL_DEPOSIT_AMOUNT: &str = "dango.contract.perps.deposit_amount";
+
+pub const LABEL_WITHDRAWAL_AMOUNT: &str = "dango.contract.perps.withdrawal_amount";
+
 // ----------------------------- Liquidation -----------------------------------
 
 pub const LABEL_LIQUIDATIONS: &str = "dango.contract.perps.liquidations_count";
@@ -73,6 +83,12 @@ pub fn init_metrics() {
             LABEL_FEES_COLLECTED,
             "Trading fees collected per trade in USD"
         );
+
+        // Deposit / Withdraw
+        describe_counter!(LABEL_DEPOSITS, "Number of margin deposits");
+        describe_counter!(LABEL_WITHDRAWALS, "Number of margin withdrawals");
+        describe_histogram!(LABEL_DEPOSIT_AMOUNT, "Deposit amount in USD");
+        describe_histogram!(LABEL_WITHDRAWAL_AMOUNT, "Withdrawal amount in USD");
 
         // Liquidation
         describe_counter!(LABEL_LIQUIDATIONS, "Number of liquidations triggered");
