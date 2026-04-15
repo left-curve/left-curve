@@ -1,5 +1,6 @@
 use {
     crate::{
+        MAX_ORACLE_STALENESS,
         core::{compute_available_margin, compute_vault_quotes},
         liquidity_depth::increase_liquidity_depths,
         oracle,
@@ -49,7 +50,8 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
