@@ -1,12 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
-import { registerUser } from "../utils/registerUser";
+import {
+  dismissActivateAccountModal,
+  registerUser,
+} from "../utils/registerUser";
 import { waitForStorageHydration } from "../utils/indexeddb";
+
+async function gotoConvertPage(page: Page): Promise<void> {
+  await page.goto("/convert");
+  await waitForStorageHydration(page);
+  await dismissActivateAccountModal(page);
+}
 
 test.describe("Convert Applet", () => {
   test.describe("Not Authenticated", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/convert");
-      await waitForStorageHydration(page);
+      await gotoConvertPage(page);
     });
 
     test("Log In button is visible instead of Swap", async ({ page }) => {
@@ -103,8 +111,7 @@ test.describe("Convert Applet", () => {
     });
 
     test("Swap button is visible instead of Log In", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
+      await gotoConvertPage(sharedPage);
 
       const swapButton = sharedPage.getByRole("button", { name: /swap/i });
       await expect(swapButton.first()).toBeVisible();
@@ -117,8 +124,7 @@ test.describe("Convert Applet", () => {
     });
 
     test("Swap button is disabled when no amount entered", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
+      await gotoConvertPage(sharedPage);
 
       const swapButton = sharedPage.getByRole("button", { name: /swap/i });
       await expect(swapButton.first()).toBeVisible();
@@ -128,8 +134,7 @@ test.describe("Convert Applet", () => {
     });
 
     test("Swap button remains disabled with zero amount", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
+      await gotoConvertPage(sharedPage);
 
       const amountInput = sharedPage
         .locator('input[type="text"], input[type="number"]')
@@ -145,8 +150,7 @@ test.describe("Convert Applet", () => {
     });
 
     test("swap direction toggle switches inputs", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
+      await gotoConvertPage(sharedPage);
 
       const directionToggle = sharedPage
         .getByText("You swap")
@@ -170,8 +174,7 @@ test.describe("Convert Applet", () => {
     });
 
     test("entering amount triggers simulation", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
+      await gotoConvertPage(sharedPage);
 
       const amountInput = sharedPage
         .locator('input[type="text"], input[type="number"]')
@@ -193,8 +196,7 @@ test.describe("Convert Applet", () => {
     });
 
     test("convert details section shows fee information", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
+      await gotoConvertPage(sharedPage);
 
       const amountInput = sharedPage
         .locator('input[type="text"], input[type="number"]')
@@ -222,8 +224,7 @@ test.describe("Convert Applet", () => {
     });
 
     test("form is visible and interactive", async () => {
-      await sharedPage.goto("/convert");
-      await waitForStorageHydration(sharedPage);
+      await gotoConvertPage(sharedPage);
 
       const form = sharedPage.locator("#convert-form, form");
       await expect(form.first()).toBeVisible();
