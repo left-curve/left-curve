@@ -176,15 +176,21 @@ fn receive_remote(
 
     // Track the deposit in the recipient's per-user movement so they can
     // withdraw up to this amount without hitting the global rate limit.
-    let current_epoch = EPOCH.load(ctx.storage)?;
-    let user_index = resolve_user_index(ctx.querier, recipient)?;
-    let mut user_movement = load_user_movement(ctx.storage, user_index, current_epoch)?;
-    user_movement.current.deposited.checked_add_assign(amount)?;
-    USER_MOVEMENTS.save(ctx.storage, user_index, &user_movement)?;
+    {
+        let current_epoch = EPOCH.load(ctx.storage)?;
+        let user_index = resolve_user_index(ctx.querier, recipient)?;
+
+        let mut user_movement = load_user_movement(ctx.storage, user_index, current_epoch)?;
+        user_movement.current.deposited.checked_add_assign(amount)?;
+
+        USER_MOVEMENTS.save(ctx.storage, user_index, &user_movement)?;
+    }
 
     #[cfg(feature = "metrics")]
-    metrics::counter!(crate::metrics::LABEL_DEPOSITS, "denom" => denom.to_string())
-        .increment(amount.into_inner() as u64);
+    {
+        metrics::counter!(crate::metrics::LABEL_DEPOSITS, "denom" => denom.to_string())
+            .increment(amount.into_inner() as u64);
+    }
 
     // First,
     // - if the token is not native on Dango, mint it to the Gateway contract;
@@ -275,7 +281,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
             ensure!(
                 daily_allowance >= new_outbound,
-                "rate limit exceeded! denom: {}, daily_allowance: {}, outbound: {}",
+                "rate limit exceeded! denom: {}, daily allowance: {}, outbound: {}",
                 coin.denom,
                 daily_allowance,
                 new_outbound
@@ -297,8 +303,10 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     }
 
     #[cfg(feature = "metrics")]
-    metrics::counter!(crate::metrics::LABEL_WITHDRAWALS, "denom" => coin.denom.to_string())
-        .increment(coin.amount.into_inner() as u64);
+    {
+        metrics::counter!(crate::metrics::LABEL_WITHDRAWALS, "denom" => coin.denom.to_string())
+            .increment(coin.amount.into_inner() as u64);
+    }
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
 
@@ -364,11 +372,13 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 }
 
 /// Resolves an address to its owning user index via the account factory.
-fn resolve_user_index(querier: QuerierWrapper, address: Addr) -> anyhow::Result<UserIndex> {
+// TODO: optimization: define factory as a const; use raw query instead of smart.
+fn resolve_user_index(querier: QuerierWrapper, address: Addr) -> StdResult<UserIndex> {
     let factory = querier.query_account_factory()?;
-    let account =
-        querier.query_wasm_smart(factory, account_factory::QueryAccountRequest { address })?;
-    Ok(account.owner)
+
+    querier
+        .query_wasm_smart(factory, account_factory::QueryAccountRequest { address })
+        .map(|account| account.owner)
 }
 
 /// Loads (or creates) the user's movement record, rotating if the epoch has
