@@ -23,6 +23,7 @@ mod margin_check;
 mod referral;
 mod trading;
 mod vault;
+mod vault_withdrawal_health;
 
 /// Return the genesis-default global params (mirrors `PerpsOption::preset_test()`).
 pub fn default_param() -> Param {
