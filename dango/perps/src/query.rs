@@ -336,14 +336,23 @@ pub fn query_volume_by_user(
     since: Option<Timestamp>,
 ) -> anyhow::Result<UsdValue> {
     let account_factory = crate::account_factory(ctx.querier);
+    compute_user_volume(ctx.storage, ctx.querier, account_factory, user, since)
+}
 
-    let user_data = ctx
-        .querier
-        .query_wasm_path(account_factory, &dango_account_factory::USERS.path(user))?;
+/// Sum cumulative volume across all accounts belonging to a user.
+pub fn compute_user_volume(
+    storage: &dyn Storage,
+    querier: impl StorageQuerier,
+    account_factory: Addr,
+    user: UserIndex,
+    since: Option<Timestamp>,
+) -> anyhow::Result<UsdValue> {
+    let user_data =
+        querier.query_wasm_path(account_factory, &dango_account_factory::USERS.path(user))?;
 
     let mut total = UsdValue::ZERO;
     for addr in user_data.accounts.values() {
-        total = total.checked_add(query_volume(ctx.storage, *addr, since)?)?;
+        total = total.checked_add(query_volume(storage, *addr, since)?)?;
     }
 
     Ok(total)
