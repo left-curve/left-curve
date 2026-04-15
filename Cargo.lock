@@ -4448,10 +4448,8 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "borsh",
- "dango-bank",
+ "dango-gateway",
  "dango-genesis",
- "dango-perps",
  "dango-types",
  "grug",
  "grug-app",
