@@ -1,20 +1,24 @@
 use {
     crate::{
-        INBOUND, OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES, WITHDRAWAL_FEES,
+        EPOCH, OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES, USER_MOVEMENTS,
+        WITHDRAWAL_FEES,
     },
     anyhow::{anyhow, ensure},
     dango_types::{
+        DangoQuerier,
+        account_factory::{self, UserIndex},
         bank,
         gateway::{
             Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote, Traceable,
-            WithdrawalFee,
+            UserMovement, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
     },
     grug::{
         Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst, Op,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
+        QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+        btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -24,6 +28,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     _set_routes(ctx.storage, msg.routes)?;
     _set_rate_limits(ctx.storage, msg.rate_limits)?;
     _set_withdrawal_fees(ctx.storage, msg.withdrawal_fees)?;
+
+    EPOCH.save(ctx.storage, &0)?;
 
     Ok(Response::new())
 }
@@ -168,14 +174,13 @@ fn receive_remote(
         })?;
     }
 
-    // Track inbound for rate-limited denoms so that round-trip transfers
-    // (deposit followed by withdraw) don't consume other users' daily allowance.
-    if RATE_LIMITS.load(ctx.storage)?.contains_key(&denom) {
-        INBOUND.may_update(ctx.storage, &denom, |maybe_inbound| {
-            let inbound = maybe_inbound.unwrap_or(Uint128::ZERO);
-            Ok::<_, StdError>(inbound.checked_add(amount)?)
-        })?;
-    }
+    // Track the deposit in the recipient's per-user movement so they can
+    // withdraw up to this amount without hitting the global rate limit.
+    let current_epoch = EPOCH.load(ctx.storage)?;
+    let user_index = resolve_user_index(ctx.querier, recipient)?;
+    let mut user_movement = load_user_movement(ctx.storage, user_index, current_epoch)?;
+    user_movement.current.deposited.checked_add_assign(amount)?;
+    USER_MOVEMENTS.save(ctx.storage, user_index, &user_movement)?;
 
     #[cfg(feature = "metrics")]
     metrics::counter!(crate::metrics::LABEL_DEPOSITS, "denom" => denom.to_string())
@@ -244,35 +249,46 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })?;
     }
 
-    // Check the rate limit. If a rate limit is configured for this denom,
-    // verify that the total outbound for the current window (including this
-    // transfer) does not exceed `daily_allowance + inbound_credit`, where
-    // inbound_credit is capped at daily_allowance to bound damage from a
-    // compromised bridge (max withdrawal = 2x daily_allowance).
+    // Check the rate limit. If a rate limit is configured for this denom:
+    // 1. The user can freely withdraw up to their deposit credit (deposited -
+    //    withdrawn in the current epoch) without affecting the global limit.
+    // 2. Any excess beyond the deposit credit counts against the global
+    //    outbound, which must not exceed `supply * rate_limit`.
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
-        let supply = SUPPLIES.load(ctx.storage, &coin.denom)?;
-        let daily_allowance = supply.checked_mul_dec_floor(rate_limit.into_inner())?;
+        let current_epoch = EPOCH.load(ctx.storage)?;
+        let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
+        let mut user_movement = load_user_movement(ctx.storage, user_index, current_epoch)?;
 
-        let inbound = INBOUND
-            .may_load(ctx.storage, &coin.denom)?
-            .unwrap_or(Uint128::ZERO);
-        let inbound_credit = inbound.min(daily_allowance);
+        // How much deposit credit the user can still use.
+        let remaining_credit = user_movement.current.remaining_credit();
+        let free_amount = remaining_credit.min(coin.amount);
+        let excess = coin.amount.saturating_sub(free_amount);
 
-        let outbound = OUTBOUND
-            .may_load(ctx.storage, &coin.denom)?
-            .unwrap_or(Uint128::ZERO);
-        let new_outbound = outbound.checked_add(coin.amount)?;
+        if excess > Uint128::ZERO {
+            let supply = SUPPLIES.load(ctx.storage, &coin.denom)?;
+            let daily_allowance = supply.checked_mul_dec_floor(rate_limit.into_inner())?;
 
-        ensure!(
-            daily_allowance.checked_add(inbound_credit)? >= new_outbound,
-            "rate limit exceeded! denom: {}, daily_allowance: {}, inbound_credit: {}, outbound: {}",
-            coin.denom,
-            daily_allowance,
-            inbound_credit,
-            new_outbound
-        );
+            let outbound = OUTBOUND
+                .may_load(ctx.storage, &coin.denom)?
+                .unwrap_or(Uint128::ZERO);
+            let new_outbound = outbound.checked_add(excess)?;
 
-        OUTBOUND.save(ctx.storage, &coin.denom, &new_outbound)?;
+            ensure!(
+                daily_allowance >= new_outbound,
+                "rate limit exceeded! denom: {}, daily_allowance: {}, outbound: {}",
+                coin.denom,
+                daily_allowance,
+                new_outbound
+            );
+
+            OUTBOUND.save(ctx.storage, &coin.denom, &new_outbound)?;
+        }
+
+        user_movement.current.credit_used =
+            user_movement.current.credit_used.checked_add(free_amount)?;
+        user_movement.current.withdrawn =
+            user_movement.current.withdrawn.checked_add(coin.amount)?;
+        USER_MOVEMENTS.save(ctx.storage, user_index, &user_movement)?;
     }
 
     #[cfg(feature = "metrics")]
@@ -324,12 +340,14 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    // Reset the outbound and inbound accumulators for the new 24-hour window.
+    // Advance to the next epoch.
+    EPOCH.update(ctx.storage, |epoch| Ok::<_, StdError>(epoch + 1))?;
+
+    // Reset the global outbound accumulator for the new epoch.
     OUTBOUND.clear(ctx.storage, None, None);
-    INBOUND.clear(ctx.storage, None, None);
 
     // Snapshot the current supply for each rate-limited denom so the daily
-    // daily allowance (`supply * rate_limit`) is fixed for the entire window.
+    // allowance (`supply * rate_limit`) is fixed for the entire window.
     SUPPLIES.clear(ctx.storage, None, None);
 
     for (denom, _) in RATE_LIMITS.load(ctx.storage)? {
@@ -338,4 +356,28 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     }
 
     Ok(Response::new())
+}
+
+/// Resolves an address to its owning user index via the account factory.
+fn resolve_user_index(querier: QuerierWrapper, address: Addr) -> anyhow::Result<UserIndex> {
+    let factory = querier.query_account_factory()?;
+    let account =
+        querier.query_wasm_smart(factory, account_factory::QueryAccountRequest { address })?;
+    Ok(account.owner)
+}
+
+/// Loads (or creates) the user's movement record, rotating if the epoch has
+/// advanced since their last interaction.
+fn load_user_movement(
+    storage: &dyn Storage,
+    user_index: UserIndex,
+    current_epoch: u64,
+) -> StdResult<UserMovement> {
+    let mut movement = USER_MOVEMENTS
+        .may_load(storage, user_index)?
+        .unwrap_or_else(|| UserMovement::new(current_epoch));
+
+    movement.rotate_if_needed(current_epoch);
+
+    Ok(movement)
 }

@@ -17,272 +17,6 @@ use {
 };
 
 #[test]
-fn rate_limit() {
-    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
-        bridge_ops: |_| vec![],
-        ..TestOption::default()
-    });
-
-    suite.block_time = Duration::ZERO;
-
-    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
-
-    let receiver = &mut accounts.user2;
-    let relayer = &mut accounts.user1;
-    let owner = &mut accounts.owner;
-
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let mock_eth_recipient: Addr32 = Addr::mock(202).into();
-
-    let usdc_sol_fee = 10_000;
-    let usdc_eth_fee = 1_000_000;
-
-    suite.balances().record(receiver);
-
-    // Receive some tokens.
-    // eth_usdc => 100
-    // sol_usdc => 200
-    {
-        for (domain, origin_warp, amount) in [
-            (mock_ethereum::DOMAIN, mock_ethereum::USDC_WARP, 100_000_000),
-            (mock_solana::DOMAIN, mock_solana::USDC_WARP, 200_000_000),
-        ] {
-            suite
-                .receive_warp_transfer(relayer, domain, origin_warp, receiver, amount)
-                .should_succeed();
-        }
-
-        // Check balances.
-        suite.balances().should_change(receiver, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(300_000_000),
-        });
-    }
-
-    suite
-        .query_supply(usdc::DENOM.clone())
-        .should_succeed_and_equal(300_000_000.into());
-
-    // Total supply = 300 usdc
-    // Set rate limit to 10%. This snapshots supply = 300 for the new denom.
-    suite
-        .execute(
-            owner,
-            contracts.gateway,
-            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
-                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
-
-    // Make 1 day pass — cron snapshots supply = 300, resets outbound = 0.
-    advance_to_next_day(&mut suite);
-
-    // Daily allowance = 300 * 10% = 30.
-    // Send 30 alloy_usdc back to solana.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // Trigger the rate limit sending 1 more token.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
-        .should_fail_with_error("rate limit exceeded!");
-
-    // Receive more tokens. The supply snapshot is fixed for the current window,
-    // but the inbound credit (capped at daily allowance = 30) allows 30 more
-    // outbound, so round-trips don't block other users.
-    suite
-        .receive_warp_transfer(
-            relayer,
-            mock_ethereum::DOMAIN,
-            mock_ethereum::USDC_WARP,
-            receiver,
-            100_000_000,
-        )
-        .should_succeed();
-
-    // Supply = 300 - 30 + 100 = 370, snapshot still 300.
-    // inbound = 100, credit = min(100, 30) = 30. Effective limit = 30 + 30 = 60.
-    // Outbound is 30 — can withdraw 30 more thanks to inbound credit.
-    {
-        suite
-            .query_supply(usdc::DENOM.clone())
-            .should_succeed_and_equal(370_000_000.into());
-
-        suite.balances().should_change(receiver, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(369_990_000),
-        });
-    }
-
-    // Withdraw 30 to ethereum — allowed by inbound credit.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_ethereum::DOMAIN,
-                    contract: mock_ethereum::USDC_WARP,
-                },
-                recipient: mock_eth_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_eth_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // Inbound credit is capped at daily allowance (30). Outbound = 60, limit = 60.
-    // 1 more token exceeds the cap.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_ethereum::DOMAIN,
-                    contract: mock_ethereum::USDC_WARP,
-                },
-                recipient: mock_eth_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
-        )
-        .should_fail_with_error("rate limit exceeded!");
-
-    // Make 1 day pass — cron snapshots supply = 340, resets outbound and inbound.
-    advance_to_next_day(&mut suite);
-
-    // Daily allowance = 340 * 10% = 34.
-    // Reserves: ETH = 200 - 30 = 170, SOL = 200 - 30 = 170.
-    for (remote, amount) in [
-        (
-            Remote::Warp {
-                domain: mock_ethereum::DOMAIN,
-                contract: mock_ethereum::USDC_WARP,
-            },
-            170_000_000,
-        ),
-        (
-            Remote::Warp {
-                domain: mock_solana::DOMAIN,
-                contract: mock_solana::USDC_WARP,
-            },
-            170_000_000,
-        ),
-    ] {
-        suite
-            .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
-                bridge: contracts.warp,
-                remote,
-            })
-            .should_succeed_and_equal(amount.into());
-    }
-
-    // Withdraw 34 tokens to solana (the full daily allowance).
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 34_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // Try to withdraw 1 more token.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
-        .should_fail_with_error("rate limit exceeded!");
-
-    // Increase the rate limit to 99%.
-    suite
-        .execute(
-            owner,
-            contracts.gateway,
-            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
-                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(99)),
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
-
-    // Make 1 day pass — cron snapshots supply = 340 - 34 = 306, resets outbound.
-    advance_to_next_day(&mut suite);
-
-    // Daily allowance = 306 * 99% = 302 (floor).
-    // SOL reserve = 170 - 34 = 136.
-
-    // Withdraw all remaining SOL reserve.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 136_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // SOL reserve is now empty — should fail on reserve check.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
-        .should_fail_with_error("insufficient reserve!");
-}
-
-#[test]
 fn native_denom() {
     let (mut suite, mut accounts, _, contracts, mut valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
@@ -390,6 +124,772 @@ fn native_denom() {
     suite.balances().should_change(&accounts.user2, btree_map! {
         dango::DENOM.clone() => BalanceChange::Increased(100),
     });
+}
+
+/// Verify global rate limit enforcement: withdraw up to the max, then 1 more
+/// fails. After a deposit, the user can withdraw up to the deposited amount
+/// without hitting the global limit. After a new epoch, limits reset.
+#[test]
+fn rate_limit_global_enforcement() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Deposit 200 USDC from Solana.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            200_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit to 10%. Supply = 200, daily allowance = 20.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Advance to epoch 1 — deposits from epoch 0 rotate to cumulative,
+    // current epoch has no deposit credit.
+    advance_to_next_day(&mut suite);
+
+    // Withdraw the full daily allowance (20).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // 1 more fails — global limit reached.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // Deposit 50 more in this epoch — gives deposit credit.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            50_000_000,
+        )
+        .should_succeed();
+
+    // Deposited 50 this epoch. Previous 20 withdrawal was charged to global,
+    // NOT to credit. So remaining credit = 50. Withdraw all 50.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Credit exhausted (deposited 50, credit_used 50). 1 more is excess →
+    // global already at 20, so 20 + 1 > 20 → fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // Advance to epoch 2. Supply = 200 - 20 + 50 - 50 = 180. Allowance = 18.
+    advance_to_next_day(&mut suite);
+
+    // Fresh epoch — global outbound is 0 again. Withdraw 18 succeeds.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 18_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // 1 more fails again.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+}
+
+/// Verify per-user deposit credit: if one user exhausts the global limit,
+/// another user who deposited in the same epoch can still withdraw up to their
+/// deposit amount.
+#[test]
+fn rate_limit_per_user_deposit_credit() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let user_a = &mut accounts.user1;
+    let user_b = &mut accounts.user2;
+    let relayer = &mut accounts.user3;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Deposit 100 to user_a and 100 to user_b.
+    for user in [&*user_a, &*user_b] {
+        suite
+            .receive_warp_transfer(
+                relayer,
+                mock_solana::DOMAIN,
+                mock_solana::USDC_WARP,
+                user,
+                100_000_000,
+            )
+            .should_succeed();
+    }
+
+    // Set rate limit 10%. Supply = 200, daily allowance = 20.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    advance_to_next_day(&mut suite);
+
+    // Deposit 50 to user_b in the new epoch — gives user_b deposit credit.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            &*user_b,
+            50_000_000,
+        )
+        .should_succeed();
+
+    // user_a exhausts the global limit (20).
+    suite
+        .execute(
+            user_a,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // user_a can't withdraw any more.
+    suite
+        .execute(
+            user_a,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // user_b can still withdraw up to their deposit credit (50), even though
+    // the global limit is exhausted — deposit-backed withdrawals are free.
+    suite
+        .execute(
+            user_b,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // user_b's credit is exhausted. 1 more is excess → global already at 20 → fails.
+    suite
+        .execute(
+            user_b,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+}
+
+/// Verify deposit credit is denom-wide, not per-route: a deposit from ETH
+/// gives credit that can be used to withdraw via SOL, and vice versa.
+#[test]
+fn rate_limit_across_routes() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let mock_eth_recipient: Addr32 = Addr::mock(202).into();
+    let usdc_sol_fee = 10_000;
+    let usdc_eth_fee = 1_000_000;
+
+    // Deposit 60 from ETH and 40 from SOL = 100 total.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
+            receiver,
+            60_000_000,
+        )
+        .should_succeed();
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            40_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit 10%. Supply = 100, daily allowance = 10.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    advance_to_next_day(&mut suite);
+
+    // Deposit 20 from ETH in this epoch → credit = 20.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
+            receiver,
+            20_000_000,
+        )
+        .should_succeed();
+
+    // Withdraw 30 via SOL route — within credit (ETH deposit covers SOL
+    // withdrawal because credit is per-denom, not per-route). Credit = 0.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Credit exhausted. Global outbound is still 0 (all within credit).
+    // Withdraw 10 via SOL → excess = 10. Global: 0 + 10 = 10 ≤ 10. Succeeds.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // 1 more via either route → excess → global full → fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
+                },
+                recipient: mock_eth_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+}
+
+/// Verify that per-route reserves are respected: a user cannot withdraw more
+/// from a specific route than what was deposited through that route, even if
+/// they have deposit credit and global allowance available.
+#[test]
+fn rate_limit_reserve_enforcement() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let mock_eth_recipient: Addr32 = Addr::mock(202).into();
+    let usdc_sol_fee = 10_000;
+    let usdc_eth_fee = 1_000_000;
+
+    // Deposit 80 from ETH and 20 from SOL = 100 total.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
+            receiver,
+            80_000_000,
+        )
+        .should_succeed();
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            20_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit 99% so it doesn't interfere — we're testing reserves.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(99)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Check reserves: ETH = 80, SOL = 20.
+    for (remote, amount) in [
+        (
+            Remote::Warp {
+                domain: mock_ethereum::DOMAIN,
+                contract: mock_ethereum::USDC_WARP,
+            },
+            80_000_000,
+        ),
+        (
+            Remote::Warp {
+                domain: mock_solana::DOMAIN,
+                contract: mock_solana::USDC_WARP,
+            },
+            20_000_000,
+        ),
+    ] {
+        suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
+                bridge: contracts.warp,
+                remote,
+            })
+            .should_succeed_and_equal(amount.into());
+    }
+
+    // Withdraw all 20 from SOL reserve.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // SOL reserve is now 0. Trying to withdraw 1 more via SOL fails on reserve,
+    // even though the user has credit and ETH reserve is still 80.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient reserve!");
+
+    // Withdrawing via ETH still works — ETH reserve is 80.
+    // Withdraw 70 (balance is ~79.99 after SOL withdrawal fees).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::USDC_WARP,
+                },
+                recipient: mock_eth_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 70_000_000 + usdc_eth_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // ETH reserve = 80 - 70 = 10.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
+            bridge: contracts.warp,
+            remote: Remote::Warp {
+                domain: mock_ethereum::DOMAIN,
+                contract: mock_ethereum::USDC_WARP,
+            },
+        })
+        .should_succeed_and_equal(10_000_000.into());
+
+    // SOL reserve is still 0 — can't withdraw via SOL.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient reserve!");
+}
+
+/// Verify that changing the rate limit takes effect immediately: increase it to
+/// unlock more withdrawals, then decrease it to block them again.
+#[test]
+fn rate_limit_change() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Deposit 200 USDC.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            200_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit to 10%. Supply = 200, daily allowance = 20.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    advance_to_next_day(&mut suite);
+
+    // Exhaust the daily allowance (20).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // 1 more fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // --- Increase rate limit to 50%. ---
+    // Supply snapshot is still 200 (no cron), daily allowance = 200 * 50% = 100.
+    // Global outbound = 20 (from before). 100 - 20 = 80 remaining.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(50)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Now 80 more can be withdrawn. Withdraw 80.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 80_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Global outbound = 100. 1 more fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // --- Lower rate limit to 5%. ---
+    // Daily allowance = 200 * 5% = 10. But global outbound is already 100.
+    // 100 > 10 → all further withdrawals are blocked immediately.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(5)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Even 1 token fails — outbound (100) already far exceeds new allowance (10).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // After a new epoch, outbound resets and the lower limit applies.
+    // Supply = 200 - 20 - 80 = 100. Daily allowance = 100 * 5% = 5.
+    advance_to_next_day(&mut suite);
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 5_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
 }
 
 fn advance_to_next_day(suite: &mut TestSuite) {
