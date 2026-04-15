@@ -1014,6 +1014,34 @@ pub enum QueryMsg {
         include_all: bool,
     },
 
+    /// Enumeate the states of all users with additional data computed on-the-fly.
+    #[returns(BTreeMap<Addr, UserStateExtended>)]
+    UserStatesExtended {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+
+        #[serde(default)]
+        include_equity: bool,
+
+        #[serde(default)]
+        include_available_margin: bool,
+
+        #[serde(default)]
+        include_maintenance_margin: bool,
+
+        #[serde(default)]
+        include_unrealized_pnl: bool,
+
+        #[serde(default)]
+        include_unrealized_funding: bool,
+
+        #[serde(default)]
+        include_liquidation_price: bool,
+
+        #[serde(default)]
+        include_all: bool,
+    },
+
     /// Query a single limit order by ID.
     #[returns(Option<QueryOrderResponse>)]
     Order { order_id: OrderId },
