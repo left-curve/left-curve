@@ -1385,7 +1385,9 @@
       "referralPoints": {
         "title": "Referral Points",
         "description": "Points earned from referring other users"
-      }
+      },
+      "earnedLabel": "Earned",
+      "predictedLabel": "Predicted for current epoch"
     },
     "tabs": {
       "profile": "Profile",
@@ -1426,7 +1428,10 @@
         "trade": "Trade",
         "referral": "Referral"
       },
-      "xPoints": "{points} Points"
+      "xPoints": "{points} Points",
+      "compensation": "Attack Compensation",
+      "predicted": "Predicted",
+      "inProgress": "In progress"
     },
     "rewards": {
       "boxes": {

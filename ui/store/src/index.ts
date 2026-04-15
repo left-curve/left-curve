@@ -291,6 +291,8 @@ export {
   usePoints,
 } from "./hooks/usePoints.js";
 
+export type { AttackCompensation } from "./hooks/pointsApi.js";
+
 export {
   type UseLeaderboardParameters,
   type LeaderboardSort,
@@ -308,6 +310,11 @@ export {
   type UseCurrentEpochParameters,
   useCurrentEpoch,
 } from "./hooks/useCurrentEpoch.js";
+
+export {
+  type UsePredictPointsParameters,
+  usePredictPoints,
+} from "./hooks/usePredictPoints.js";
 
 export {
   type UseBoxesParameters,
