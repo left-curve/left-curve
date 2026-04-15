@@ -140,6 +140,32 @@ pub(super) fn compute_initial_margin(
     Ok(total)
 }
 
+/// Compute the total notional value of all open positions.
+///
+/// ```plain
+/// total_notional = Σ |position.size| * oracle_price
+/// ```
+///
+/// Used by the withdrawal leverage cap to measure total exposure without the
+/// IMR multiplier.
+pub fn compute_total_notional(
+    oracle_querier: &mut OracleQuerier,
+    _perp_querier: &NoCachePerpQuerier,
+    user_state: &UserState,
+) -> anyhow::Result<UsdValue> {
+    let mut total = UsdValue::ZERO;
+
+    for (pair_id, position) in &user_state.positions {
+        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+
+        let notional = position.size.checked_abs()?.checked_mul(oracle_price)?;
+
+        total.checked_add_assign(notional)?;
+    }
+
+    Ok(total)
+}
+
 /// Compute the margin required for the opening portion of a limit order.
 ///
 /// ```plain
@@ -1052,6 +1078,96 @@ mod tests {
         assert!(
             msg.contains("insufficient margin"),
             "expected margin error, got: {msg}"
+        );
+    }
+
+    // ---- compute_total_notional tests ----
+
+    #[test]
+    fn total_notional_no_positions() {
+        let user_state = UserState::default();
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
+        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+
+        assert_eq!(
+            compute_total_notional(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            UsdValue::ZERO,
+        );
+    }
+
+    // ETH long 10, oracle=$2000
+    // notional = |10| * 2000 = $20,000
+    #[test]
+    fn total_notional_single_position() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        assert_eq!(
+            compute_total_notional(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            UsdValue::new_int(20_000),
+        );
+    }
+
+    // ETH long 10 + BTC short 1
+    // ETH: |10| * $2000 = $20,000
+    // BTC: |-1| * $50,000 = $50,000
+    // Total = $70,000
+    #[test]
+    fn total_notional_multiple_positions() {
+        let user_state = UserState {
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+                btc::DENOM.clone() => Position {
+                    size: Quantity::new_int(-1),
+                    entry_price: UsdPrice::new_int(50000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+            btc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(5_000_000),
+                Timestamp::from_seconds(0),
+                8,
+            ),
+        });
+
+        assert_eq!(
+            compute_total_notional(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            UsdValue::new_int(70_000),
         );
     }
 }

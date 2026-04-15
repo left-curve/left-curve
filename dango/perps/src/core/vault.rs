@@ -69,10 +69,28 @@ pub fn compute_vault_quotes(
     // ask_size = base_size * (1 + skew * size_skew_factor)
     let skew_size_term = skew.checked_mul(pair_param.vault_size_skew_factor)?;
 
-    let bid_size = base_size.checked_mul(Dimensionless::ONE.checked_sub(skew_size_term)?)?;
-    let bid = compute_bid(oracle_price, pair_param, best_ask, bid_size, skew)?;
+    let mut bid_size = base_size.checked_mul(Dimensionless::ONE.checked_sub(skew_size_term)?)?;
+    let mut ask_size = base_size.checked_mul(Dimensionless::ONE.checked_add(skew_size_term)?)?;
 
-    let ask_size = base_size.checked_mul(Dimensionless::ONE.checked_add(skew_size_term)?)?;
+    // Apply per-pair leverage cap if configured.
+    // max_position = allocated_margin * vault_max_leverage / oracle_price.
+    // Each side is capped by remaining capacity toward max_position.
+    if let Some(max_leverage) = pair_param.vault_max_leverage {
+        let max_position = allocated_margin
+            .checked_mul(max_leverage)?
+            .checked_div(oracle_price)?;
+
+        // Remaining capacity to go more long.
+        let bid_capacity = max_position.checked_sub(position_size)?.max(Quantity::ZERO);
+
+        // Remaining capacity to go more short (as positive quantity).
+        let ask_capacity = max_position.checked_add(position_size)?.max(Quantity::ZERO);
+
+        bid_size = bid_size.min(bid_capacity);
+        ask_size = ask_size.min(ask_capacity);
+    }
+
+    let bid = compute_bid(oracle_price, pair_param, best_ask, bid_size, skew)?;
     let ask = compute_ask(oracle_price, pair_param, best_bid, ask_size, skew)?;
 
     Ok((bid, ask))
@@ -657,6 +675,148 @@ mod tests {
         // Bid side fully disabled (size = 0).
         assert!(bid.is_none());
         // Ask side still active.
+        assert!(ask.is_some());
+    }
+
+    // ----------------------- leverage cap tests -----------------------
+
+    /// Helper: pair param with leverage cap enabled.
+    /// base_size (without cap) = 5000 / (1000 * 0.1) / 2 = 25 per side.
+    /// vault_max_leverage = 2 → max_position = 10_000 / 1000 * 2 = 20.
+    fn leverage_cap_pair_param() -> PairParam {
+        PairParam {
+            vault_max_leverage: Some(Dimensionless::new_int(2)),
+            ..default_pair_param()
+        }
+    }
+
+    /// Flat position: both sides capped at max_position (20).
+    ///
+    /// base_size = 25 (from margin), but max_position = 20.
+    /// bid_capacity = 20 - 0 = 20. ask_capacity = 20 + 0 = 20.
+    /// Both sides: min(25, 20) = 20.
+    #[test]
+    fn leverage_cap_flat() {
+        let pair_param = leverage_cap_pair_param();
+        let oracle = UsdPrice::new_int(1000);
+        let margin = UsdValue::new_int(10_000);
+
+        let (bid, ask) =
+            compute_vault_quotes(oracle, &pair_param, None, None, margin, Quantity::ZERO).unwrap();
+
+        let bid = bid.unwrap();
+        let ask = ask.unwrap();
+
+        // Both capped to 20 (max_position).
+        assert_eq!(bid.size, Quantity::new_int(20));
+        assert_eq!(ask.size, Quantity::new_int(-20));
+    }
+
+    /// At max long (position = 20): bid disabled, ask active.
+    ///
+    /// bid_capacity = 20 - 20 = 0 → no bid.
+    /// ask_capacity = 20 + 20 = 40 → capped by base_size (25).
+    #[test]
+    fn leverage_cap_at_max_long() {
+        let pair_param = leverage_cap_pair_param();
+        let oracle = UsdPrice::new_int(1000);
+        let margin = UsdValue::new_int(10_000);
+
+        let (bid, ask) = compute_vault_quotes(
+            oracle,
+            &pair_param,
+            None,
+            None,
+            margin,
+            Quantity::new_int(20),
+        )
+        .unwrap();
+
+        // Bid fully disabled.
+        assert!(bid.is_none());
+        // Ask still active.
+        assert!(ask.is_some());
+    }
+
+    /// At max short (position = -20): ask disabled, bid active.
+    ///
+    /// bid_capacity = 20 - (-20) = 40 → capped by base_size (25).
+    /// ask_capacity = 20 + (-20) = 0 → no ask.
+    #[test]
+    fn leverage_cap_at_max_short() {
+        let pair_param = leverage_cap_pair_param();
+        let oracle = UsdPrice::new_int(1000);
+        let margin = UsdValue::new_int(10_000);
+
+        let (bid, ask) = compute_vault_quotes(
+            oracle,
+            &pair_param,
+            None,
+            None,
+            margin,
+            Quantity::new_int(-20),
+        )
+        .unwrap();
+
+        // Bid still active.
+        assert!(bid.is_some());
+        // Ask fully disabled.
+        assert!(ask.is_none());
+    }
+
+    /// Partial position (10 long, half-way to max 20).
+    ///
+    /// bid_capacity = 20 - 10 = 10. ask_capacity = 20 + 10 = 30.
+    /// Bid: bid < ask in absolute value (bid capped by leverage capacity).
+    /// Ask: not capped by leverage capacity (ask_capacity = 30 > ask_size).
+    #[test]
+    fn leverage_cap_partial_position() {
+        let pair_param = leverage_cap_pair_param();
+        let oracle = UsdPrice::new_int(1000);
+        let margin = UsdValue::new_int(10_000);
+
+        let (bid, ask) = compute_vault_quotes(
+            oracle,
+            &pair_param,
+            None,
+            None,
+            margin,
+            Quantity::new_int(10),
+        )
+        .unwrap();
+
+        let bid = bid.unwrap();
+        let ask = ask.unwrap();
+
+        // Bid capped at remaining long capacity (10).
+        assert_eq!(bid.size, Quantity::new_int(10));
+        // Ask larger than bid (leverage cap + skew both allow more selling).
+        assert!(ask.size.checked_abs().unwrap() > bid.size);
+    }
+
+    /// No cap (vault_max_leverage = None): same as uncapped behavior.
+    /// base_size = min(25, 100 max_quote) = 25 per side.
+    #[test]
+    fn leverage_cap_none_no_cap() {
+        let pair_param = PairParam {
+            vault_max_leverage: None,
+            ..default_pair_param()
+        };
+        let oracle = UsdPrice::new_int(1000);
+        let margin = UsdValue::new_int(10_000);
+
+        let (bid, ask) = compute_vault_quotes(
+            oracle,
+            &pair_param,
+            None,
+            None,
+            margin,
+            Quantity::new_int(50), // large position, no cap
+        )
+        .unwrap();
+
+        // Both sides active regardless of position size.
+        assert!(bid.is_some());
         assert!(ask.is_some());
     }
 }

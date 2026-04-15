@@ -303,6 +303,20 @@ pub struct Param {
     ///
     /// Bounds: if `Some`, `> 0`. Use `None` for unlimited.
     pub vault_deposit_cap: Option<UsdValue>,
+
+    /// Maximum overall leverage the vault may reach after a withdrawal.
+    /// Withdrawals are rejected if the post-withdrawal leverage would exceed
+    /// this limit:
+    ///
+    /// ```plain
+    /// total_notional / post_withdrawal_equity > vault_max_withdrawal_leverage
+    /// ```
+    ///
+    /// This prevents LPs from draining the vault to a leverage level where a
+    /// small price move triggers liquidation.
+    ///
+    /// Bounds: if `Some`, `> 0`. Use `None` for no withdrawal leverage cap.
+    pub vault_max_withdrawal_leverage: Option<Dimensionless>,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -436,6 +450,22 @@ pub struct PairParam {
     ///
     /// Bounds: `>= 0`. Zero disables inventory skew (skew always 0).
     pub vault_max_skew_size: Quantity,
+
+    /// Maximum leverage the vault may hold in this pair.
+    /// The vault's position size is capped so that:
+    ///
+    /// ```plain
+    /// |position_size| * oracle_price <= allocated_margin * vault_max_leverage
+    /// ```
+    ///
+    /// This prevents the vault from building excessive exposure in any single
+    /// pair. When the position reaches the cap on one side, the vault stops
+    /// placing orders in that direction but continues quoting the other side
+    /// to unwind.
+    ///
+    /// Bounds: if `Some`, `> 0`. Use `None` to disable (fall back to the
+    /// IMR-derived maximum).
+    pub vault_max_leverage: Option<Dimensionless>,
 
     /// Price bucket sizes for which aggregated order book depth is maintained.
     /// Each entry defines a granularity level for the depth query.

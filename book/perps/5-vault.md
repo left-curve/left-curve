@@ -47,6 +47,44 @@ $$
 \mathtt{releaseValue} = \mathtt{effectiveEquity} \times \frac{\mathtt{sharesToBurn}}{\mathtt{effectiveSupply}}
 $$
 
+### Margin check
+
+The release amount must not exceed the vault's available margin (equity minus initial margin consumed by open positions):
+
+$$
+\mathtt{releaseValue} \leq \mathtt{availableMargin}
+$$
+
+This prevents withdrawals from pushing the vault below initial margin requirements.
+
+### Withdrawal leverage check
+
+When $\mathtt{vaultMaxWithdrawalLeverage}$ is configured, withdrawals are further constrained so that the vault's post-withdrawal leverage does not exceed the limit.
+
+The total notional exposure across all vault positions is:
+
+$$
+\mathtt{totalNotional} = \sum |\mathtt{size}| \times \mathtt{oraclePrice}
+$$
+
+The minimum equity the vault must retain is:
+
+$$
+\mathtt{minEquity} = \frac{\mathtt{totalNotional}}{\mathtt{vaultMaxWithdrawalLeverage}}
+$$
+
+The maximum releasable amount is:
+
+$$
+\mathtt{maxRelease} = \max(0,\; \mathtt{vaultEquity} - \mathtt{minEquity})
+$$
+
+The withdrawal is rejected if $\mathtt{releaseValue} > \mathtt{maxRelease}$.
+
+If $\mathtt{vaultMaxWithdrawalLeverage}$ is not set, no leverage check is applied.
+
+### Cooldown
+
 The fund is not released immediately. A cooldown is initiated, with the ending time computed as:
 
 $$
@@ -75,13 +113,21 @@ The strategy uses **inventory skew** to reduce the vault's exposure to direction
 
 ### Margin allocation
 
-Total vault **available margin** is split across pairs by weight:
+Each pair receives an **isolated budget** derived from vault equity and its weight. Positions in one pair do not reduce another pair's available capital:
 
 $$
-\mathtt{pairMargin} = \mathtt{vaultAvailableMargin} \times \frac{\mathtt{vaultLiquidityWeight}}{\mathtt{vaultTotalWeight}}
+\mathtt{pairBudget} = \mathtt{vaultEquity} \times \frac{\mathtt{vaultLiquidityWeight}}{\mathtt{vaultTotalWeight}}
 $$
 
-where $\mathtt{vaultAvailableMargin} = \max(0,\; \mathtt{equity} - \mathtt{usedMargin})$ and $\mathtt{usedMargin}$ is the sum of initial margin across all vault positions (see [Margin §8](1-margin.md#8-available-margin)).
+$$
+\mathtt{pairUsed} = |\mathtt{positionSize}| \times \mathtt{oraclePrice} \times \mathtt{imr}
+$$
+
+$$
+\mathtt{pairMargin} = \max(0,\; \mathtt{pairBudget} - \mathtt{pairUsed})
+$$
+
+where $\mathtt{vaultEquity}$ is the vault's total equity (see [§4](#4-vault-equity)) and $\mathtt{pairUsed}$ is the initial margin consumed by this pair's position only.
 
 ### Skew ratio
 
@@ -118,6 +164,28 @@ $$
 where $\mathtt{imr}$ is the initial margin ratio and $\mathtt{sizeSkewFactor} \in [0, 1]$ controls skew intensity.
 
 When the vault is long ($\mathtt{skew} > 0$), bid size decreases and ask size increases — the vault offers more on the sell side to unwind. Total quoted size ($\mathtt{bidSize} + \mathtt{askSize} = 2 \times \mathtt{baseSize}$) is preserved.
+
+### Leverage cap
+
+An optional per-pair leverage cap limits the vault's maximum position in either direction:
+
+$$
+\mathtt{maxPosition} = \frac{\mathtt{pairMargin} \times \mathtt{vaultMaxLeverage}}{\mathtt{oraclePrice}}
+$$
+
+After computing the skew-adjusted sizes, each side is clamped by the remaining capacity:
+
+$$
+\mathtt{bidSize} = \min(\mathtt{bidSize},\; \max(0,\; \mathtt{maxPosition} - \mathtt{positionSize}))
+$$
+
+$$
+\mathtt{askSize} = \min(\mathtt{askSize},\; \max(0,\; \mathtt{maxPosition} + \mathtt{positionSize}))
+$$
+
+When the vault is at the leverage cap on one side, it stops placing orders in that direction but continues quoting the other side to unwind. When flat, both sides are capped symmetrically.
+
+If $\mathtt{vaultMaxLeverage}$ is not set, no cap is applied (fall back to the IMR-derived maximum).
 
 ### Bid price
 
@@ -171,17 +239,26 @@ The mirror applies when short.
 
 ### Per-pair parameters
 
-| Parameter                  | Role                                         |
-| -------------------------- | -------------------------------------------- |
-| `initial_margin_ratio`     | Used to compute margin-constrained size      |
-| `min_order_size`           | Minimum notional to place an order           |
-| `tick_size`                | Price granularity for snapping               |
-| `vault_half_spread`        | Base half bid-ask spread around oracle price |
-| `vault_liquidity_weight`   | Weight for margin allocation across pairs    |
-| `vault_max_quote_size`     | Maximum base size per side                   |
-| `vault_max_skew_size`      | Position size at which skew saturates        |
-| `vault_size_skew_factor`   | Size skew intensity ($[0, 1]$)               |
-| `vault_spread_skew_factor` | Spread skew intensity ($[0, 1)$)             |
+| Parameter                  | Role                                                     |
+| -------------------------- | -------------------------------------------------------- |
+| `initial_margin_ratio`     | Used to compute margin-constrained size                  |
+| `min_order_size`           | Minimum notional to place an order                       |
+| `tick_size`                | Price granularity for snapping                           |
+| `vault_half_spread`        | Base half bid-ask spread around oracle price             |
+| `vault_liquidity_weight`   | Weight for margin allocation across pairs                |
+| `vault_max_quote_size`     | Maximum base size per side                               |
+| `vault_max_skew_size`      | Position size at which skew saturates                    |
+| `vault_size_skew_factor`   | Size skew intensity ($[0, 1]$)                           |
+| `vault_spread_skew_factor` | Spread skew intensity ($[0, 1)$)                         |
+| `vault_max_leverage`       | Max vault leverage per pair; `None` for no cap (optional)|
+
+### Global parameters
+
+| Parameter                        | Role                                                   |
+| -------------------------------- | ------------------------------------------------------ |
+| `vault_cooldown_period`          | Time before a withdrawal unlock matures                |
+| `vault_deposit_cap`              | Max total vault margin; `None` for unlimited           |
+| `vault_max_withdrawal_leverage`  | Max leverage after a withdrawal; `None` for no cap     |
 
 If any of `vault_half_spread`, `vault_max_quote_size`, `vault_liquidity_weight`, `tick_size`, or the allocated margin is zero, the vault skips quoting for that pair.
 

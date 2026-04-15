@@ -1,7 +1,7 @@
 use {
     crate::{
         MAX_ORACLE_STALENESS,
-        core::{compute_available_margin, compute_vault_quotes},
+        core::{compute_user_equity, compute_vault_quotes},
         liquidity_depth::increase_liquidity_depths,
         oracle,
         price::may_invert_price,
@@ -78,18 +78,17 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     vault_state = updated_vault_state;
 
-    // ------------- Step 2: Compute the vault's available margin --------------
+    // --------------- Step 2: Compute the vault's equity -----------------------
 
-    // Compute available margin: equity minus margin consumed by existing
-    // positions. After cancellation reserved_margin is zero, so the formula
-    // simplifies to: max(0, equity - used_margin).
-    let vault_margin_value = {
+    // Compute vault equity (total account value). Per-pair available margin is
+    // derived inside the loop so that each pair's budget is isolated.
+    let vault_equity = {
         let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-        compute_available_margin(&mut oracle_querier, &perp_querier, &vault_state)?
+        compute_user_equity(&mut oracle_querier, &perp_querier, &vault_state)?
     };
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
-    if param.vault_total_weight.is_zero() || !vault_margin_value.is_positive() {
+    if param.vault_total_weight.is_zero() || !vault_equity.is_positive() {
         // Persist vault state (orders were cancelled).
         if vault_state.is_empty() {
             USER_STATES.remove(ctx.storage, ctx.contract)?;
@@ -116,10 +115,30 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
 
-        // Compute this pair's allocated margin.
-        let pair_margin = vault_margin_value
+        // Vault's current position for this pair (zero if none).
+        let position_size = vault_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or(Quantity::ZERO);
+
+        // Isolated per-pair budget: pair_budget = vault_equity * weight / total_weight.
+        // Subtract only this pair's used margin so that positions in other pairs
+        // do not reduce this pair's available capital.
+        let pair_budget = vault_equity
             .checked_mul(pair_param.vault_liquidity_weight)?
             .checked_div(param.vault_total_weight)?;
+
+        let pair_used = if position_size.is_zero() {
+            UsdValue::ZERO
+        } else {
+            position_size
+                .checked_abs()?
+                .checked_mul(oracle_price)?
+                .checked_mul(pair_param.initial_margin_ratio)?
+        };
+
+        let pair_margin = pair_budget.checked_sub(pair_used)?.max(UsdValue::ZERO);
 
         // Read best bid (un-inverted) and best ask from the book.
         let best_bid = BIDS
@@ -135,13 +154,6 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             .next()
             .transpose()?
             .map(|((stored_price, _), _)| stored_price);
-
-        // Vault's current position for this pair (zero if none).
-        let position_size = vault_state
-            .positions
-            .get(pair_id)
-            .map(|p| p.size)
-            .unwrap_or(Quantity::ZERO);
 
         // Compute vault quotes with inventory skew.
         let (bid, ask) = compute_vault_quotes(

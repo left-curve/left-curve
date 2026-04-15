@@ -157,6 +157,14 @@ fn validate_param(param: &Param) -> anyhow::Result<()> {
         );
     }
 
+    if let Some(max_lev) = param.vault_max_withdrawal_leverage {
+        ensure!(
+            max_lev > Dimensionless::ZERO,
+            "invalid `vault_max_withdrawal_leverage`! bounds: if Some, > 0, found: {}",
+            max_lev,
+        );
+    }
+
     Ok(())
 }
 
@@ -283,6 +291,15 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
         pair_param.vault_max_skew_size,
     );
 
+    if let Some(max_lev) = pair_param.vault_max_leverage {
+        ensure!(
+            max_lev > Dimensionless::ZERO,
+            "invalid `vault_max_leverage`! pair id: {}, bounds: if Some, > 0, found: {}",
+            pair_id,
+            max_lev,
+        );
+    }
+
     for bucket_size in &pair_param.bucket_sizes {
         ensure!(
             *bucket_size > UsdPrice::ZERO,
@@ -379,6 +396,7 @@ mod tests {
             min_referrer_volume: UsdValue::ZERO,
             referrer_commission_rates: RateSchedule::default(),
             vault_deposit_cap: None,
+            vault_max_withdrawal_leverage: None,
         }
     }
 
@@ -398,6 +416,7 @@ mod tests {
             vault_size_skew_factor: Dimensionless::ZERO,
             vault_spread_skew_factor: Dimensionless::ZERO,
             vault_max_skew_size: Quantity::ZERO,
+            vault_max_leverage: None,
             bucket_sizes: btree_set! {},
         }
     }
@@ -1199,5 +1218,65 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("`vault_total_weight`"), "{err}");
+    }
+
+    // ---- vault_max_withdrawal_leverage tests ----
+
+    #[test]
+    fn param_zero_vault_max_withdrawal_leverage_rejected() {
+        let param = Param {
+            vault_max_withdrawal_leverage: Some(Dimensionless::ZERO),
+            ..valid_param()
+        };
+        let err = validate_param(&param).unwrap_err().to_string();
+        assert!(err.contains("`vault_max_withdrawal_leverage`"), "{err}");
+    }
+
+    #[test]
+    fn param_positive_vault_max_withdrawal_leverage_accepted() {
+        let param = Param {
+            vault_max_withdrawal_leverage: Some(Dimensionless::new_int(4)),
+            ..valid_param()
+        };
+        validate_param(&param).unwrap();
+    }
+
+    #[test]
+    fn param_none_vault_max_withdrawal_leverage_accepted() {
+        let param = Param {
+            vault_max_withdrawal_leverage: None,
+            ..valid_param()
+        };
+        validate_param(&param).unwrap();
+    }
+
+    // ---- vault_max_leverage tests ----
+
+    #[test]
+    fn pair_param_zero_vault_max_leverage_rejected() {
+        let p = PairParam {
+            vault_max_leverage: Some(Dimensionless::ZERO),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`vault_max_leverage`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_positive_vault_max_leverage_accepted() {
+        let p = PairParam {
+            vault_max_leverage: Some(Dimensionless::new_int(2)),
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_none_vault_max_leverage_accepted() {
+        let p = PairParam {
+            vault_max_leverage: None,
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
     }
 }

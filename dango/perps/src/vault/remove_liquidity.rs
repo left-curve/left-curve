@@ -1,7 +1,7 @@
 use {
     crate::{
         MAX_ORACLE_STALENESS, VIRTUAL_ASSETS, VIRTUAL_SHARES,
-        core::{compute_available_margin, compute_user_equity},
+        core::{compute_available_margin, compute_total_notional, compute_user_equity},
         oracle,
         querier::NoCachePerpQuerier,
         state::{PARAM, STATE, USER_STATES},
@@ -164,6 +164,28 @@ fn _remove_liquidity(
         amount_to_release
     );
 
+    // -------------------- Step 4b. Withdrawal leverage check ------------------
+
+    if let Some(max_withdrawal_leverage) = param.vault_max_withdrawal_leverage {
+        let total_notional =
+            compute_total_notional(oracle_querier, perp_querier, vault_user_state)?;
+
+        if total_notional.is_positive() {
+            // min_equity = total_notional / max_withdrawal_leverage
+            let min_equity = total_notional.checked_div(max_withdrawal_leverage)?;
+
+            // max_release = vault_equity - min_equity (clamped to zero)
+            let max_release = vault_equity.checked_sub(min_equity)?.max(UsdValue::ZERO);
+
+            ensure!(
+                amount_to_release <= max_release,
+                "withdrawal would exceed max vault leverage: \
+                 release={amount_to_release}, max_release={max_release}, \
+                 notional={total_notional}, max_leverage={max_withdrawal_leverage}"
+            );
+        }
+    }
+
     // ---------------------- Step 5. Schedule the unlock ----------------------
 
     let end_time = current_time + param.vault_cooldown_period;
@@ -197,8 +219,13 @@ fn _remove_liquidity(
 mod tests {
     use {
         super::*,
-        dango_types::UsdValue,
-        grug::{Duration, MockStorage, Uint128, hash_map},
+        dango_types::{
+            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
+            constants::eth,
+            oracle::PrecisionedPrice,
+            perps::{PairParam, PairState, Position},
+        },
+        grug::{Duration, MockStorage, Udec128, Uint128, btree_map, hash_map},
         std::collections::VecDeque,
     };
 
@@ -433,5 +460,167 @@ mod tests {
 
         let unlock = user_state.unlocks.back().unwrap();
         assert_eq!(unlock.end_time, Timestamp::from_seconds(1_172_800));
+    }
+
+    // ---- Withdrawal leverage cap tests ----
+
+    // Vault: $10,000 margin, 10 ETH long @ $2,000 entry, oracle $2,000.
+    // Notional = 10 * $2,000 = $20,000. Current leverage = $20k / $10k = 2x.
+    // max_withdrawal_leverage = 4x → min_equity = $20k / 4 = $5,000.
+    // max_release = $10,000 - $5,000 = $5,000.
+    // Trying to withdraw $6,000 → rejected.
+    #[test]
+    fn withdrawal_leverage_cap_blocks_excessive() {
+        let param = Param {
+            vault_max_withdrawal_leverage: Some(Dimensionless::new_int(4)),
+            ..default_param()
+        };
+        let mut state = state_with_supply(10_000_000); // 10M shares
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(10_000_000),
+            ..Default::default()
+        };
+        // Vault: $10k margin + 10 ETH long (PnL = 0 at oracle = entry).
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(10_000),
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Dimensionless::new_permille(100),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState::default(),
+            },
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000), // $2,000
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        // Burn 6M of 10M shares → release ~$6,000 (> max_release of $5,000).
+        let err = _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &perp_querier,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(6_000_000),
+        )
+        .unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("withdrawal would exceed max vault leverage"),
+            "expected leverage cap error, got: {err}"
+        );
+    }
+
+    // Same setup, but withdraw $4,000 (within the $5,000 limit) → succeeds.
+    #[test]
+    fn withdrawal_leverage_cap_allows_safe() {
+        let param = Param {
+            vault_max_withdrawal_leverage: Some(Dimensionless::new_int(4)),
+            ..default_param()
+        };
+        let mut state = state_with_supply(10_000_000);
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(10_000_000),
+            ..Default::default()
+        };
+        let mut vault_user_state = UserState {
+            margin: UsdValue::new_int(10_000),
+            positions: btree_map! {
+                eth::DENOM.clone() => Position {
+                    size: Quantity::new_int(10),
+                    entry_price: UsdPrice::new_int(2000),
+                    entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Dimensionless::new_permille(100),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState::default(),
+            },
+        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(200_000),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+        });
+
+        // Burn 4M of 10M shares → release ~$4,000 (< max_release of $5,000).
+        _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &perp_querier,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(4_000_000),
+        )
+        .unwrap();
+
+        // Vault margin reduced.
+        assert!(vault_user_state.margin < UsdValue::new_int(10_000));
+    }
+
+    // No leverage cap (None) → large withdrawal limited only by available margin.
+    #[test]
+    fn withdrawal_leverage_cap_none_no_check() {
+        let storage = MockStorage::new();
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
+        let param = default_param(); // vault_max_withdrawal_leverage = None
+        let mut state = state_with_supply(1_000_000);
+        let mut user_state = UserState {
+            vault_shares: Uint128::new(1_000_000),
+            ..Default::default()
+        };
+        let mut vault_user_state = vault_state_with_margin(1);
+        let perp_querier = NoCachePerpQuerier::new_local(&storage);
+
+        // Full withdrawal succeeds (no positions, no leverage check).
+        _remove_liquidity(
+            Timestamp::from_seconds(0),
+            &perp_querier,
+            &mut oracle_querier,
+            &param,
+            &mut state,
+            &mut user_state,
+            &mut vault_user_state,
+            Uint128::new(1_000_000),
+        )
+        .unwrap();
     }
 }
