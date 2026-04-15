@@ -87,8 +87,14 @@ pub fn init_metrics() {
         // Deposit / Withdraw
         describe_histogram!(LABEL_DEPOSIT_AMOUNT, "Deposit amount in USD");
         describe_histogram!(LABEL_WITHDRAWAL_AMOUNT, "Withdrawal amount in USD");
-        describe_histogram!(LABEL_VAULT_DEPOSIT_AMOUNT, "Vault deposit (add liquidity) amount in USD");
-        describe_histogram!(LABEL_VAULT_WITHDRAWAL_AMOUNT, "Vault withdrawal (remove liquidity) amount in USD");
+        describe_histogram!(
+            LABEL_VAULT_DEPOSIT_AMOUNT,
+            "Vault deposit (add liquidity) amount in USD"
+        );
+        describe_histogram!(
+            LABEL_VAULT_WITHDRAWAL_AMOUNT,
+            "Vault withdrawal (remove liquidity) amount in USD"
+        );
 
         // Liquidation
         describe_counter!(LABEL_LIQUIDATIONS, "Number of liquidations triggered");
