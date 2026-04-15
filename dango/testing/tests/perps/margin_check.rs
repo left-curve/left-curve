@@ -90,7 +90,7 @@ fn reduce_only_market_sell_pushes_margin_negative() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -144,8 +144,7 @@ fn reduce_only_market_sell_pushes_margin_negative() {
         .should_succeed();
 
     // Step 4: User1 reduce-only market sells 10 ETH with 90% slippage.
-    // Target = $2,000 × 0.1 = $200. Fills against User3's bid at $200.
-    // PnL = 10 × ($200 − $2,000) = −$18,000. Fee = 10 × $200 × 0.1% = $2.
+    // Target = $2,000 × 0.1 = $200. Now rejected by the pre-fill margin check.
 
     suite
         .execute(
@@ -163,22 +162,17 @@ fn reduce_only_market_sell_pushes_margin_negative() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        .should_fail_with_error("insufficient margin");
 
-    // Step 5: Assert margin is deeply negative and position is gone.
-
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert!(
-        state.positions.is_empty(),
-        "position should be fully closed after reduce-only fill"
-    );
-    assert_eq!(state.margin, UsdValue::new_int(-8_022));
+    // Old behavior (before fix): order succeeded and pushed margin negative.
+    // let state: UserState = suite
+    //     .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+    //         user: accounts.user1.address(),
+    //     })
+    //     .should_succeed()
+    //     .unwrap();
+    // assert!(state.positions.is_empty());
+    // assert_eq!(state.margin, UsdValue::new_int(-8_022));
 }
 
 /// Reduce-only market buy closes a short at a catastrophically high price.
@@ -246,7 +240,7 @@ fn reduce_only_market_buy_pushes_margin_negative() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -300,8 +294,7 @@ fn reduce_only_market_buy_pushes_margin_negative() {
         .should_succeed();
 
     // Step 4: User1 reduce-only market buys 10 ETH with 90% slippage.
-    // Target = $2,000 × 1.9 = $3,800. Fills against User3's ask at $3,800.
-    // PnL = 10 × ($2,000 − $3,800) = −$18,000. Fee = 10 × $3,800 × 0.1% = $38.
+    // Target = $2,000 × 1.9 = $3,800. Now rejected by the pre-fill margin check.
 
     suite
         .execute(
@@ -319,22 +312,17 @@ fn reduce_only_market_buy_pushes_margin_negative() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        .should_fail_with_error("insufficient margin");
 
-    // Step 5: Assert margin is deeply negative and position is gone.
-
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert!(
-        state.positions.is_empty(),
-        "position should be fully closed after reduce-only fill"
-    );
-    assert_eq!(state.margin, UsdValue::new_int(-8_058));
+    // Old behavior (before fix): order succeeded and pushed margin negative.
+    // let state: UserState = suite
+    //     .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+    //         user: accounts.user1.address(),
+    //     })
+    //     .should_succeed()
+    //     .unwrap();
+    // assert!(state.positions.is_empty());
+    // assert_eq!(state.margin, UsdValue::new_int(-8_058));
 }
 
 /// Reduce-only GTC limit sell rests at a terrible price, then a taker fills it.
@@ -401,7 +389,7 @@ fn reduce_only_limit_sell_pushes_margin_negative() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -440,52 +428,18 @@ fn reduce_only_limit_sell_pushes_margin_negative() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        .should_fail_with_error("insufficient margin");
 
-    // Step 4: User3 market buys 10 ETH — fills against User1's resting ask at $200.
-    // User1 (maker, 0% maker fee): PnL = 10 × ($200 − $2,000) = −$18,000.
-
-    suite
-        .execute(
-            &mut accounts.user3,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
-            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
-        )
-        .should_succeed();
-
-    suite
-        .execute(
-            &mut accounts.user3,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(10),
-                kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
-                },
-                reduce_only: false,
-                tp: None,
-                sl: None,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Step 5: Assert User1's margin is deeply negative and position is gone.
-
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert!(
-        state.positions.is_empty(),
-        "position should be fully closed after reduce-only fill"
-    );
-    assert_eq!(state.margin, UsdValue::new_int(-8_020));
+    // Old behavior (before fix): order rested, then step 4 filled and pushed margin negative.
+    // Step 4 (User3 market buys) and step 5 assertions are now unreachable.
+    // let state: UserState = suite
+    //     .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+    //         user: accounts.user1.address(),
+    //     })
+    //     .should_succeed()
+    //     .unwrap();
+    // assert!(state.positions.is_empty());
+    // assert_eq!(state.margin, UsdValue::new_int(-8_020));
 }
 
 /// Reduce-only GTC limit buy rests at a terrible price, then a taker fills it.
@@ -494,9 +448,7 @@ fn reduce_only_limit_sell_pushes_margin_negative() {
 /// |------|------------------------------------------------------|-----------------------------------------------------------|
 /// | 1    | User2 deposits $100k; PostOnly buy 10 ETH @ $2,000   | provides opening-side liquidity                           |
 /// | 2    | User1 deposits $10k; market sells 10 ETH             | fee=$20; margin=$9,980; short 10 @ $2,000                 |
-/// | 3    | User1 places reduce-only GTC buy 10 ETH @ $3,800     | rests as bid; margin check skipped                        |
-/// | 4    | User3 deposits $100k; market sells 10 ETH            | fills against User1's bid @ $3,800; User1 PnL=−$18,000   |
-/// | 5    | Assert                                               | margin=−$8,020; position closed; account deeply negative  |
+/// | 3    | User1 places reduce-only GTC buy 10 ETH @ $3,800     | now rejected by margin check in store_limit_order         |
 #[test]
 fn reduce_only_limit_buy_pushes_margin_negative() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
@@ -553,7 +505,7 @@ fn reduce_only_limit_buy_pushes_margin_negative() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -596,52 +548,18 @@ fn reduce_only_limit_buy_pushes_margin_negative() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        .should_fail_with_error("insufficient margin");
 
-    // Step 4: User3 market sells 10 ETH — fills against User1's resting bid at $3,800.
-    // User1 (maker, 0% maker fee): PnL = 10 × ($2,000 − $3,800) = −$18,000.
-
-    suite
-        .execute(
-            &mut accounts.user3,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
-            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
-        )
-        .should_succeed();
-
-    suite
-        .execute(
-            &mut accounts.user3,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
-                },
-                reduce_only: false,
-                tp: None,
-                sl: None,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Step 5: Assert User1's margin is deeply negative and position is gone.
-
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert!(
-        state.positions.is_empty(),
-        "position should be fully closed after reduce-only fill"
-    );
-    assert_eq!(state.margin, UsdValue::new_int(-8_020));
+    // Old behavior (before fix): order rested, then step 4 filled and pushed margin negative.
+    // Step 4 (User3 market sells) and step 5 assertions are now unreachable.
+    // let state: UserState = suite
+    //     .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+    //         user: accounts.user1.address(),
+    //     })
+    //     .should_succeed()
+    //     .unwrap();
+    // assert!(state.positions.is_empty());
+    // assert_eq!(state.margin, UsdValue::new_int(-8_020));
 }
 
 // =============================================================================
@@ -649,11 +567,7 @@ fn reduce_only_limit_buy_pushes_margin_negative() {
 // =============================================================================
 
 /// Non-reduce-only sell partially closes a long at a bad price. The pre-fill
-/// check passes (projected IM shrinks with smaller position) but ignores that
-/// realized PnL at the fill price pushes margin deeply negative.
-///
-/// Pre-fill check: equity=$2,980, projIM=5×$2k×10%=$1,000, fee=$10.
-/// $2,980 ≥ $1,010 → passes. But fill at $200 realizes −$9,000 PnL.
+/// check now catches the catastrophic PnL at the target price and rejects.
 ///
 /// | Step | Action                                               | Key numbers                                               |
 /// |------|------------------------------------------------------|-----------------------------------------------------------|
@@ -719,7 +633,7 @@ fn partial_close_sell_at_bad_price_pushes_margin_negative() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -789,52 +703,24 @@ fn partial_close_sell_at_bad_price_pushes_margin_negative() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        .should_fail_with_error("insufficient margin");
 
-    // Step 5: Assert margin is deeply negative with a remaining position.
-
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert_eq!(state.margin, UsdValue::new_int(-6_021));
-
-    // Remaining long 5 @ $2,000 — account is immediately liquidatable.
-    let pos = state.positions.get(&pair).unwrap();
-    assert_eq!(pos.size, Quantity::new_int(5));
-    assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
-
-    // Equity (= margin + unrealized PnL at oracle) = −$6,021 + 0 = −$6,021.
-    // MM = 5 × $2,000 × 5% = $500. Equity ≪ MM.
-    let ext: perps::UserStateExtended = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateExtendedRequest {
-            user: accounts.user1.address(),
-            include_equity: true,
-            include_available_margin: false,
-            include_maintenance_margin: true,
-            include_unrealized_pnl: false,
-            include_unrealized_funding: false,
-            include_liquidation_price: false,
-            include_all: false,
-        })
-        .should_succeed();
-
-    let equity = ext.equity.unwrap();
-    let mm = ext.maintenance_margin.unwrap();
-    assert!(
-        equity < mm,
-        "account should be liquidatable: equity ({equity}) < MM ({mm})"
-    );
+    // Old behavior (before fix): order succeeded and pushed margin negative.
+    // let state: UserState = suite
+    //     .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+    //         user: accounts.user1.address(),
+    //     })
+    //     .should_succeed()
+    //     .unwrap();
+    // assert_eq!(state.margin, UsdValue::new_int(-6_021));
+    // let pos = state.positions.get(&pair).unwrap();
+    // assert_eq!(pos.size, Quantity::new_int(5));
+    // assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
+    // // Equity = −$6,021. MM = $500. Account immediately liquidatable.
 }
 
-/// Non-reduce-only buy partially closes a short at a bad price. Same mechanism
-/// as above but for the short side.
-///
-/// Pre-fill check: equity=$2,980, projIM=5×$2k×10%=$1,000, fee=$10.
-/// $2,980 ≥ $1,010 → passes. But fill at $3,800 realizes −$9,000 PnL.
+/// Non-reduce-only buy partially closes a short at a bad price. The pre-fill
+/// check now catches the catastrophic PnL at the target price and rejects.
 ///
 /// | Step | Action                                               | Key numbers                                               |
 /// |------|------------------------------------------------------|-----------------------------------------------------------|
@@ -899,7 +785,7 @@ fn partial_close_buy_at_bad_price_pushes_margin_negative() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -953,9 +839,8 @@ fn partial_close_buy_at_bad_price_pushes_margin_negative() {
         .should_succeed();
 
     // Step 4: User1 market buys 5 ETH (NOT reduce-only) with 90% slippage.
-    // Pre-fill check: equity=$2,980, projSize=-5, projIM=5×$2k×10%=$1,000,
-    //   fee=5×$2k×0.1%=$10, required=$1,010. $2,980 ≥ $1,010 → passes.
-    // Fills at $3,800: PnL = 5 × ($2,000 − $3,800) = −$9,000. Fee = $19.
+    // Now rejected: the pre-fill check simulates the fill at target=$3,800 and
+    // sees the resulting equity would be deeply negative.
 
     suite
         .execute(
@@ -973,42 +858,18 @@ fn partial_close_buy_at_bad_price_pushes_margin_negative() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        .should_fail_with_error("insufficient margin");
 
-    // Step 5: Assert margin is deeply negative with a remaining position.
-
-    let state: UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: accounts.user1.address(),
-        })
-        .should_succeed()
-        .unwrap();
-
-    assert_eq!(state.margin, UsdValue::new_int(-6_039));
-
-    // Remaining short 5 @ $2,000 — account is immediately liquidatable.
-    let pos = state.positions.get(&pair).unwrap();
-    assert_eq!(pos.size, Quantity::new_int(-5));
-    assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
-
-    // Equity = −$6,039. MM = 5 × $2,000 × 5% = $500. Equity ≪ MM.
-    let ext: perps::UserStateExtended = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateExtendedRequest {
-            user: accounts.user1.address(),
-            include_equity: true,
-            include_available_margin: false,
-            include_maintenance_margin: true,
-            include_unrealized_pnl: false,
-            include_unrealized_funding: false,
-            include_liquidation_price: false,
-            include_all: false,
-        })
-        .should_succeed();
-
-    let equity = ext.equity.unwrap();
-    let mm = ext.maintenance_margin.unwrap();
-    assert!(
-        equity < mm,
-        "account should be liquidatable: equity ({equity}) < MM ({mm})"
-    );
+    // Old behavior (before fix): order succeeded and pushed margin negative.
+    // let state: UserState = suite
+    //     .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+    //         user: accounts.user1.address(),
+    //     })
+    //     .should_succeed()
+    //     .unwrap();
+    // assert_eq!(state.margin, UsdValue::new_int(-6_039));
+    // let pos = state.positions.get(&pair).unwrap();
+    // assert_eq!(pos.size, Quantity::new_int(-5));
+    // assert_eq!(pos.entry_price, UsdPrice::new_int(2_000));
+    // // Equity = −$6,039. MM = $500. Account immediately liquidatable.
 }

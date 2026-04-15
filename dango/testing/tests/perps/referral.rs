@@ -1343,7 +1343,7 @@ fn place_market_buy(
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,

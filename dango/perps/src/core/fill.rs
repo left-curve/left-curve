@@ -157,7 +157,7 @@ fn update_oi(
 ///
 /// - Long positions: profit when exit > entry
 /// - Short positions: profit when entry > exit
-fn compute_pnl_to_realize(
+pub fn compute_pnl_to_realize(
     position: &Position,
     closing_size: Quantity,
     fill_price: UsdPrice,

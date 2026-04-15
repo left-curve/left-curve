@@ -1,5 +1,8 @@
 use {
-    crate::{core::compute_trading_fee, querier::NoCachePerpQuerier},
+    crate::{
+        core::{compute_trading_fee, execute_fill},
+        querier::NoCachePerpQuerier,
+    },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -227,9 +230,16 @@ pub fn compute_available_margin(
         .max(UsdValue::ZERO))
 }
 
-/// Ensure the user's collateral balance satisfies the 100%-fill scenario:
-/// user's equity must be no less than required initial margin + reserved
-/// margin for existing resting orders + fee.
+/// Ensure the user can afford the worst-case 100%-fill scenario.
+///
+/// Simulates the fill at `target_price` on a throwaway clone:
+///
+/// 1. Run `execute_fill` at `target_price` to realize PnL and update positions.
+/// 2. Settle PnL and fees into margin.
+/// 3. Verify post-fill equity ≥ post-fill initial margin + reserved margin.
+///
+/// This catches both bad-price closes (catastrophic realized PnL) and
+/// bad-price opens (immediate unrealized loss from entry far from oracle).
 ///
 /// The 0%-fill scenario (limit-order reservation) is checked separately
 /// inside `store_limit_order`.
@@ -237,43 +247,56 @@ pub fn check_margin(
     oracle_querier: &mut OracleQuerier,
     pair_id: &PairId,
     perp_querier: &NoCachePerpQuerier,
+    pair_state: &PairState,
     taker_state: &UserState,
     taker_fee_rate: Dimensionless,
-    oracle_price: UsdPrice,
-    size: Quantity,
+    target_price: UsdPrice,
+    closing_size: Quantity,
+    opening_size: Quantity,
 ) -> anyhow::Result<()> {
-    let equity = compute_user_equity(oracle_querier, perp_querier, taker_state)?;
+    // Simulate the fill at worst-case price on throwaway clones.
+    let mut projected = taker_state.clone();
+    let mut pair_state = pair_state.clone();
 
-    let projected_size = {
-        let current_position = taker_state
-            .positions
-            .get(pair_id)
-            .map(|p| p.size)
-            .unwrap_or_default();
-        current_position.checked_add(size)?
-    };
-
-    let projected_im = compute_initial_margin(
-        oracle_querier,
-        perp_querier,
-        taker_state,
+    let pnl = execute_fill(
         pair_id,
-        projected_size,
+        &mut pair_state,
+        &mut projected,
+        target_price,
+        closing_size,
+        opening_size,
     )?;
 
-    let projected_fee = compute_trading_fee(size, oracle_price, taker_fee_rate)?;
+    // Settle PnL and fee into margin (mirrors settle_pnls).
+    projected.margin.checked_add_assign(pnl)?;
 
-    let required_margin = projected_im
-        .checked_add(projected_fee)?
-        .checked_add(taker_state.reserved_margin)?;
+    let fillable_size = closing_size.checked_add(opening_size)?;
+    let fee = compute_trading_fee(fillable_size, target_price, taker_fee_rate)?;
+    projected.margin.checked_sub_assign(fee)?;
+
+    // Check post-fill health.
+    let equity = compute_user_equity(oracle_querier, perp_querier, &projected)?;
+
+    let post_fill_size = projected
+        .positions
+        .get(pair_id)
+        .map(|p| p.size)
+        .unwrap_or_default();
+
+    let im = compute_initial_margin(
+        oracle_querier,
+        perp_querier,
+        &projected,
+        pair_id,
+        post_fill_size,
+    )?;
+
+    let required = im.checked_add(projected.reserved_margin)?;
 
     ensure!(
-        equity >= required_margin,
-        "insufficient margin: equity ({}) < initial margin ({}) + fee ({}) + reserved ({})",
-        equity,
-        projected_im,
-        projected_fee,
-        taker_state.reserved_margin
+        equity >= required,
+        "insufficient margin: projected equity ({equity}) < initial margin ({im}) + reserved ({})",
+        projected.reserved_margin,
     );
 
     Ok(())
@@ -1137,14 +1160,16 @@ mod tests {
 
     // ---- check_margin tests ----
 
-    /// 100%-fill check fails: equity ($25,200) < IM ($25,000) + fee ($500) = $25,500
+    /// 100%-fill check fails for a pure opening order at oracle price.
     ///
     /// No existing position. oracle = $50,000, IMR = 5%, taker_fee = 0.1%
-    /// Buy 10 BTC
+    /// Buy 10 BTC (target = oracle = $50,000, pure opening).
     ///
+    ///   Post-fill: long 10 @ $50,000. Unrealized PnL = 0.
+    ///   margin after fee = $25,200 - $500 = $24,700
+    ///   equity = $24,700
     ///   projected_im = |10| * 50,000 * 0.05 = $25,000
-    ///   fee          = |10| * 50,000 * 0.001 = $500
-    ///   Need equity >= $25,500, but equity = $25,200 → FAILS
+    ///   $24,700 < $25,000 → FAILS
     #[test]
     fn margin_check_full_fill_fails() {
         let pair_id: PairId = "perp/btcusd".parse().unwrap();
@@ -1179,21 +1204,25 @@ mod tests {
             ),
         });
 
+        // Pure opening: closing_size = 0, opening_size = 10.
+        // target_price = oracle (no slippage).
         let result = check_margin(
             &mut oracle_querier,
             &pair_id,
             &perp_querier,
+            &PairState::default(),
             &taker_state,
             param.taker_fee_rates.base,
             UsdPrice::new_int(50_000),
+            Quantity::ZERO,
             Quantity::new_int(10),
         );
 
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
         assert!(
-            msg.contains("insufficient margin:"),
-            "expected 100%-fill margin error, got: {msg}"
+            msg.contains("insufficient margin"),
+            "expected margin error, got: {msg}"
         );
     }
 }
