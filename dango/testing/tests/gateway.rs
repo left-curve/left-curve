@@ -1050,8 +1050,139 @@ fn rate_limit_per_denom_isolation() {
         .should_succeed();
 }
 
+/// Verify the sliding window prevents the boundary double-dip attack: withdraw
+/// max at the end of one hour, advance one hourly epoch, then try again — the
+/// rolling 24h total still includes the previous withdrawal.
+#[test]
+fn rate_limit_boundary_attack() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Deposit 240 USDC.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            240_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit 10%. Supply = 240, daily allowance = 24.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    advance_to_next_day(&mut suite);
+
+    // Withdraw the full daily allowance (24).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 24_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Advance only 1 hourly epoch (not a full day).
+    advance_one_hour(&mut suite);
+
+    // The attacker tries to withdraw again. The sliding window still contains
+    // the previous 24 from the last hour. Rolling outbound = 24.
+    // Daily allowance = 24. So 24 + 1 > 24 → fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // After a full day (24 hours), the old withdrawal has fully dropped off.
+    // Advance remaining 23 hours.
+    for _ in 0..23 {
+        advance_one_hour(&mut suite);
+    }
+
+    // Now the rolling window is empty. Supply was recalculated at epoch 48
+    // (24 + 24). Supply = 240 - 24 = 216. Daily allowance = 216 * 10% = 21.6.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 21_600_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // 1 more fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+}
+
+/// Advance 24 hourly epochs (one full rate-limit day).
 fn advance_to_next_day(suite: &mut TestSuite) {
-    suite.block_time = Duration::from_days(1);
+    for _ in 0..24 {
+        advance_one_hour(suite);
+    }
+}
+
+/// Advance 1 hourly epoch (triggers cron_execute once).
+fn advance_one_hour(suite: &mut TestSuite) {
+    suite.block_time = Duration::from_hours(1);
     suite.make_empty_block();
     suite.block_time = Duration::ZERO;
 }

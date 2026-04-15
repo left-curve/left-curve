@@ -1,7 +1,7 @@
 use {
     dango_types::{
         account_factory::UserIndex,
-        gateway::{RateLimit, Remote, UserMovement},
+        gateway::{GlobalOutbound, RateLimit, Remote, UserMovement},
     },
     grug::{Addr, Denom, Item, Map, Uint128},
     std::collections::BTreeMap,
@@ -29,10 +29,9 @@ pub const EPOCH: Item<u64> = Item::new("epoch");
 /// `supply * rate_limit`.
 pub const SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 
-/// Global accumulator tracking how much non-deposit-backed outbound has
-/// occurred in the current epoch. Only the excess beyond each user's deposit
-/// credit is added here. Reset to zero by `cron_execute`.
-pub const OUTBOUND: Map<&Denom, Uint128> = Map::new("outbound");
+/// Global sliding window of non-deposit-backed outbound per denom.
+/// Each hourly cron rotates the window; the rolling 24h total is cached.
+pub const GLOBAL_OUTBOUND: Map<&Denom, GlobalOutbound> = Map::new("global_out");
 
 /// Per-user, per-denom deposit and withdrawal tracking.
-pub const USER_MOVEMENTS: Map<(UserIndex, &Denom), UserMovement> = Map::new("user_movement");
+pub const USER_MOVEMENTS: Map<(UserIndex, &Denom), UserMovement> = Map::new("user_mvmt");

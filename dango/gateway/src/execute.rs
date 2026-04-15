@@ -1,7 +1,7 @@
 use {
     crate::{
-        EPOCH, OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES, USER_MOVEMENTS,
-        WITHDRAWAL_FEES,
+        EPOCH, GLOBAL_OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES,
+        USER_MOVEMENTS, WITHDRAWAL_FEES,
     },
     anyhow::{anyhow, ensure},
     dango_types::{
@@ -10,7 +10,7 @@ use {
         bank,
         gateway::{
             Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote, Traceable,
-            UserMovement, WithdrawalFee,
+            UserMovement, WINDOW_SIZE, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
@@ -263,7 +263,8 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
         let current_epoch = EPOCH.load(ctx.storage)?;
         let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
-        let mut user_movement = load_user_movement(ctx.storage, user_index, &coin.denom, current_epoch)?;
+        let mut user_movement =
+            load_user_movement(ctx.storage, user_index, &coin.denom, current_epoch)?;
 
         // How much deposit credit the user can still use.
         let remaining_credit = user_movement.current.remaining_credit();
@@ -274,20 +275,22 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             let supply = SUPPLIES.load(ctx.storage, &coin.denom)?;
             let daily_allowance = supply.checked_mul_dec_floor(rate_limit.into_inner())?;
 
-            let outbound = OUTBOUND
+            let mut global = GLOBAL_OUTBOUND
                 .may_load(ctx.storage, &coin.denom)?
-                .unwrap_or(Uint128::ZERO);
-            let new_outbound = outbound.checked_add(excess)?;
+                .unwrap_or_default();
+
+            let new_rolling = global.rolling_outbound().checked_add(excess)?;
 
             ensure!(
-                daily_allowance >= new_outbound,
+                daily_allowance >= new_rolling,
                 "rate limit exceeded! denom: {}, daily allowance: {}, outbound: {}",
                 coin.denom,
                 daily_allowance,
-                new_outbound
+                new_rolling
             );
 
-            OUTBOUND.save(ctx.storage, &coin.denom, &new_outbound)?;
+            global.add_to_current(excess);
+            GLOBAL_OUTBOUND.save(ctx.storage, &coin.denom, &global)?;
         }
 
         user_movement
@@ -353,19 +356,32 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    // Advance to the next epoch.
-    EPOCH.update(ctx.storage, |epoch| Ok::<_, StdError>(epoch + 1))?;
+    // Advance to the next epoch (hourly).
+    let epoch = EPOCH.update(ctx.storage, |epoch| Ok::<_, StdError>(epoch + 1))?;
 
-    // Reset the global outbound accumulator for the new epoch.
-    OUTBOUND.clear(ctx.storage, None, None);
+    let rate_limits = RATE_LIMITS.load(ctx.storage)?;
 
-    // Snapshot the current supply for each rate-limited denom so the daily
-    // allowance (`supply * rate_limit`) is fixed for the entire window.
-    SUPPLIES.clear(ctx.storage, None, None);
+    // Rotate the sliding window for each rate-limited denom: pop the oldest
+    // hourly slot and push a fresh zero slot. O(1) per denom.
+    for denom in rate_limits.keys() {
+        let mut global = GLOBAL_OUTBOUND
+            .may_load(ctx.storage, denom)?
+            .unwrap_or_default();
 
-    for (denom, _) in RATE_LIMITS.load(ctx.storage)? {
-        let supply = ctx.querier.query_supply(denom.clone())?;
-        SUPPLIES.save(ctx.storage, &denom, &supply)?;
+        global.rotate();
+
+        GLOBAL_OUTBOUND.save(ctx.storage, denom, &global)?;
+    }
+
+    // Every WINDOW_SIZE epochs (once per day), re-snapshot the supply so the
+    // daily allowance reflects current on-chain balances.
+    if epoch % WINDOW_SIZE == 0 {
+        SUPPLIES.clear(ctx.storage, None, None);
+
+        for denom in rate_limits.keys() {
+            let supply = ctx.querier.query_supply(denom.clone())?;
+            SUPPLIES.save(ctx.storage, denom, &supply)?;
+        }
     }
 
     Ok(Response::new())

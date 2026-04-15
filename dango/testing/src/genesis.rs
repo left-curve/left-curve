@@ -586,7 +586,7 @@ impl Preset for GatewayOption {
                 eth::DENOM.clone()  => Bounded::new_unchecked(Udec128::new_percent(10)),
                 sol::DENOM.clone()  => Bounded::new_unchecked(Udec128::new_percent(10)),
             },
-            rate_limit_refresh_period: Duration::from_days(1),
+            rate_limit_refresh_period: Duration::from_hours(1),
         }
     }
 }
