@@ -112,56 +112,24 @@ pub fn compute_maintenance_margin(
     Ok(total)
 }
 
-/// Compute the margin required to open a new position, in USD.
-///
-/// For each position, the initial margin is:
+/// Compute the initial margin required across all of a user's open positions.
 ///
 /// ```plain
-/// |position.size| * oracle_price * initial_margin_ratio
+/// IM = Σ |position.size| * oracle_price * initial_margin_ratio
 /// ```
-///
-/// The total initial margin is the sum of that of all positions.
-/// One position's size is overriden by a "projected" value, reflecting the size
-/// if the order is executed.
-///
-/// When submitting an order, the user must have no less collateral than the
-/// initial margin, otherwise the order is rejected.
 pub(super) fn compute_initial_margin(
     oracle_querier: &mut OracleQuerier,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-    projected_pair_id: &PairId,
-    projected_size: Quantity,
 ) -> anyhow::Result<UsdValue> {
     let mut total = UsdValue::ZERO;
-    let mut projected_pair_seen = false;
 
     for (pair_id, position) in &user_state.positions {
         let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
 
-        let size = if pair_id == projected_pair_id {
-            projected_pair_seen = true;
-            projected_size
-        } else {
-            position.size
-        };
-
-        let margin = size
-            .checked_abs()?
-            .checked_mul(oracle_price)?
-            .checked_mul(pair_param.initial_margin_ratio)?;
-
-        total.checked_add_assign(margin)?;
-    }
-
-    // If the projected pair is not in existing positions and the projected size
-    // is non-zero, add its margin contribution.
-    if !projected_pair_seen && projected_size.is_non_zero() {
-        let oracle_price = oracle_querier.query_price_for_perps(projected_pair_id)?;
-        let pair_param = perp_querier.query_pair_param(projected_pair_id)?;
-
-        let margin = projected_size
+        let margin = position
+            .size
             .checked_abs()?
             .checked_mul(oracle_price)?
             .checked_mul(pair_param.initial_margin_ratio)?;
@@ -277,19 +245,7 @@ pub fn check_margin(
     // Check post-fill health.
     let equity = compute_user_equity(oracle_querier, perp_querier, &projected)?;
 
-    let post_fill_size = projected
-        .positions
-        .get(pair_id)
-        .map(|p| p.size)
-        .unwrap_or_default();
-
-    let im = compute_initial_margin(
-        oracle_querier,
-        perp_querier,
-        &projected,
-        pair_id,
-        post_fill_size,
-    )?;
+    let im = compute_initial_margin(oracle_querier, perp_querier, &projected)?;
 
     let required = im.checked_add(projected.reserved_margin)?;
 
@@ -686,93 +642,10 @@ mod tests {
 
     // ---- compute_initial_margin tests ----
 
-    // No existing positions; project 10 ETH @ $2000, 10% IMR
-    // margin = |10| * 2000 * 0.10 = $2000
+    // ETH long 10, oracle=$2000, IMR=10%
+    // IM = |10| * 2000 * 0.10 = $2000
     #[test]
-    fn initial_margin_no_existing_positions() {
-        let user_state = UserState::default();
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Dimensionless::new_permille(100),
-                    ..Default::default()
-                },
-            },
-            HashMap::new(),
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        assert_eq!(
-            compute_initial_margin(
-                &mut oracle_querier,
-                &perp_querier,
-                &user_state,
-                &eth::DENOM,
-                Quantity::new_int(10),
-            )
-            .unwrap(),
-            UsdValue::new_int(2000),
-        );
-    }
-
-    // Has 5 ETH position; project to 10 ETH → uses projected size (10)
-    // margin = |10| * 2000 * 0.10 = $2000
-    #[test]
-    fn initial_margin_projects_existing_position() {
-        let user_state = UserState {
-            positions: btree_map! {
-                eth::DENOM.clone() => Position {
-                    size: Quantity::new_int(5),
-                    entry_price: UsdPrice::new_int(2000),
-                    entry_funding_per_unit: FundingPerUnit::new_int(0),
-                    conditional_order_above: None,
-                    conditional_order_below: None,
-                },
-            },
-            ..Default::default()
-        };
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Dimensionless::new_permille(100),
-                    ..Default::default()
-                },
-            },
-            HashMap::new(),
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
-
-        assert_eq!(
-            compute_initial_margin(
-                &mut oracle_querier,
-                &perp_querier,
-                &user_state,
-                &eth::DENOM,
-                Quantity::new_int(10),
-            )
-            .unwrap(),
-            UsdValue::new_int(2000),
-        );
-    }
-
-    // Has ETH position; project BTC (not in positions)
-    // ETH: |10| * 2000 * 0.10 = $2000
-    // BTC: |1|  * 50000 * 0.10 = $5000
-    // Total = $7000
-    #[test]
-    fn initial_margin_adds_new_pair() {
+    fn initial_margin_single_position() {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
@@ -791,10 +664,6 @@ mod tests {
                     initial_margin_ratio: Dimensionless::new_permille(100),
                     ..Default::default()
                 },
-                btc::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Dimensionless::new_permille(100),
-                    ..Default::default()
-                },
             },
             HashMap::new(),
         );
@@ -804,66 +673,33 @@ mod tests {
                 Timestamp::from_seconds(0),
                 18,
             ),
-            btc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000),
-                Timestamp::from_seconds(0),
-                8,
-            ),
         });
 
         assert_eq!(
-            compute_initial_margin(
-                &mut oracle_querier,
-                &perp_querier,
-                &user_state,
-                &btc::DENOM,
-                Quantity::new_int(1),
-            )
-            .unwrap(),
-            UsdValue::new_int(7000),
+            compute_initial_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            UsdValue::new_int(2000),
         );
     }
 
-    // No positions; project 0 size → $0 (new pair with zero size not added)
+    // No positions → $0
     #[test]
-    fn initial_margin_zero_projected_size_skipped() {
+    fn initial_margin_no_positions() {
         let user_state = UserState::default();
-        let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! {
-                eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Dimensionless::new_permille(100),
-                    ..Default::default()
-                },
-            },
-            HashMap::new(),
-        );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                18,
-            ),
-        });
+        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
+        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         assert_eq!(
-            compute_initial_margin(
-                &mut oracle_querier,
-                &perp_querier,
-                &user_state,
-                &eth::DENOM,
-                Quantity::ZERO,
-            )
-            .unwrap(),
+            compute_initial_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
             UsdValue::ZERO,
         );
     }
 
-    // Has ETH + BTC; project ETH to 20
-    // ETH: |20| * 2000 * 0.10 = $4000 (projected)
-    // BTC: |1|  * 50000 * 0.05 = $2500 (existing)
-    // Total = $6500
+    // ETH long 10 + BTC short 1, different IMRs
+    // ETH: |10| * 2000 * 0.10 = $2000
+    // BTC: |-1| * 50000 * 0.05 = $2500
+    // Total = $4500
     #[test]
-    fn initial_margin_mixed() {
+    fn initial_margin_multiple_positions() {
         let user_state = UserState {
             positions: btree_map! {
                 eth::DENOM.clone() => Position {
@@ -910,15 +746,8 @@ mod tests {
         });
 
         assert_eq!(
-            compute_initial_margin(
-                &mut oracle_querier,
-                &perp_querier,
-                &user_state,
-                &eth::DENOM,
-                Quantity::new_int(20),
-            )
-            .unwrap(),
-            UsdValue::new_int(6500),
+            compute_initial_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            UsdValue::new_int(4500),
         );
     }
 
