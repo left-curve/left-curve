@@ -8,3 +8,4 @@ points_bot_metrics_ports:
   testnet: 9301
   mainnet: 9302
 points_bot_referral_boosts: {}
+points_bot_compensation: {}
