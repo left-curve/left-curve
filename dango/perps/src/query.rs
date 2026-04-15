@@ -19,7 +19,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         UsdPrice, UsdValue,
-        account_factory::{self, UserIndex},
+        account_factory::UserIndex,
         perps::{
             CommissionRate, LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId,
             PairParam, PairState, PositionExtended, QueryOrderResponse,
