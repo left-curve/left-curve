@@ -104,7 +104,12 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    cron::process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
+    cron::process_funding(
+        ctx.storage,
+        ctx.block.timestamp,
+        ctx.contract,
+        &mut oracle_querier,
+    )?;
 
     cron::process_conditional_orders(
         ctx.storage,

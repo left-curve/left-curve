@@ -10,8 +10,9 @@ mod oi;
 mod slippage;
 mod target_price;
 mod vault;
+mod vault_premium;
 
 pub use {
     closure::*, decompose::*, fees::*, fill::*, funding::*, liq_price::*, margin::*, min_size::*,
-    oi::*, slippage::*, target_price::*, vault::*,
+    oi::*, slippage::*, target_price::*, vault::*, vault_premium::*,
 };
