@@ -1063,6 +1063,14 @@
     "spotAccount": "Spot Account"
   },
   "dex": {
+    "feeTiers": {
+      "title": "Fee Tiers",
+      "description": "Your fee rate is based on total trading volume over the last 14 days.",
+      "tier": "Tier",
+      "volume14d": "14D Volume",
+      "perpsTaker": "Perps Taker",
+      "perpsMaker": "Perps Maker"
+    },
     "fee": "Fee",
     "apy": "APY",
     "tvl": "TVL",
@@ -1186,6 +1194,9 @@
         "estLiqPrice": "Est. Liq. Price",
         "slippage": "Slippage",
         "fees": "Fees",
+        "feesTooltipTaker": "Taker orders pay a {rate} fee.",
+        "feesTooltipMaker": "Maker orders pay a {rate} fee.",
+        "feesLearnMore": "Learn More",
         "accountEquity": "Account Equity",
         "maxLeverage": "Max Leverage",
         "unrealizedPnl": "Unrealized PnL",

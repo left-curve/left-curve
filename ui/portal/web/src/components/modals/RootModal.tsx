@@ -282,6 +282,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.FeeTiers]: {
+    component: lazy(() =>
+      import("./FeeTiers").then(({ FeeTiers }) => ({
+        default: FeeTiers,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

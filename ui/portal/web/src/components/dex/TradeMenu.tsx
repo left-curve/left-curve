@@ -33,6 +33,8 @@ import {
   Range,
   Select,
   Tabs,
+  Tooltip,
+  IconToastInfo,
   numberMask,
   twMerge,
   useApp,
@@ -317,7 +319,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
 const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { isConnected } = useAccount();
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const { data: appConfig } = useAppConfig();
@@ -772,7 +774,31 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           {operation === "market" ? (
             <InfoRow label={m["dex.protrade.perps.slippage"]()} value="Max: 0.1%" />
           ) : null}
-          <InfoRow label={m["dex.protrade.perps.fees"]()} value={feesDisplay} />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <p className="diatype-xs-regular text-ink-tertiary-500">
+                {m["dex.protrade.perps.fees"]()}
+              </p>
+              <Tooltip
+                title={
+                  <div className="flex flex-col gap-1">
+                    <p>{m["dex.protrade.perps.feesTooltipTaker"]({ rate: `${(resolveRateSchedule(appConfig.perpsParam.takerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
+                    <p>{m["dex.protrade.perps.feesTooltipMaker"]({ rate: `${(resolveRateSchedule(appConfig.perpsParam.makerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
+                    <button
+                      type="button"
+                      className="text-status-success diatype-xs-bold mt-1 text-left"
+                      onClick={() => showModal(Modals.FeeTiers)}
+                    >
+                      {m["dex.protrade.perps.feesLearnMore"]()}
+                    </button>
+                  </div>
+                }
+              >
+                <IconToastInfo className="w-4 h-4 text-ink-tertiary-500 cursor-help" />
+              </Tooltip>
+            </div>
+            <p className="diatype-xs-medium text-ink-secondary-700">{feesDisplay}</p>
+          </div>
         </div>
         <div className="flex flex-col gap-1 px-4 border-t border-outline-tertiary-rice pt-3">
           <InfoRow
