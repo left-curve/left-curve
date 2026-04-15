@@ -1,13 +1,13 @@
 use {
     dango_genesis::GenesisCodes,
     dango_types::{
-        UsdPrice, UsdValue,
+        Quantity, UsdPrice, UsdValue,
         account_factory::{self, UserIndex},
         config::AppConfig,
         perps::UserState,
     },
     grug::{
-        Addr, Borsh, Bound, Codec, Dec128_6, Dec128_24, Denom, JsonDeExt, JsonSerExt,
+        Addr, Borsh, Bound, Codec, Dec128_6, Dec128_24, Denom, IsZero, JsonDeExt, JsonSerExt,
         MultiplyFraction, Number, NumberConst, PrimaryKey, Query, QueryAppConfigRequest, Signed,
         Udec128_6, Udec128_24, Uint128, addr, btree_map, btree_set,
     },
@@ -23,6 +23,8 @@ use {
 };
 
 mod utils {
+
+    use dango_types::perps::PairId;
 
     use super::*;
 
@@ -44,10 +46,30 @@ mod utils {
     }
 
     #[grug::derive(Serde)]
-    #[derive(Default)]
-    pub struct ShareCompensation<V, U> {
-        pub vault: V,
-        pub unrealized: U,
+    pub struct Compensation {
+        pub vault: Udec128_6,
+        pub unrealized: Udec128_6,
+    }
+
+    #[grug::derive(Serde)]
+    pub struct PositionSnapshot {
+        pub size: Quantity,
+        pub entry_price: UsdPrice,
+        pub reference_price: UsdPrice,
+        pub unrealized_pnl: UsdValue,
+    }
+
+    #[grug::derive(Serde)]
+    pub struct UserSnapshot {
+        pub shares: Uint128,
+        pub positions: BTreeMap<PairId, PositionSnapshot>,
+        pub total_unrealized_pnl: UsdValue,
+    }
+
+    #[grug::derive(Serde)]
+    pub struct UsersStateOutput {
+        pub total_unrealized_pnl: UsdValue,
+        pub users: BTreeMap<UserIndex, UserSnapshot>,
     }
 
     #[macro_export]
@@ -78,10 +100,10 @@ const UPPER_BOUND: &[u8] = ns_prefix!(b"ut");
 
 static PRICES: LazyLock<BTreeMap<Denom, (UsdPrice, UsdPrice)>> = LazyLock::new(|| {
     btree_map! {
-        denom("perp/btcusd") => prices("70685", "72602"),
-        denom("perp/ethusd") => prices("2180", "2242"),
-        denom("perp/solusd") => prices("81.66", "83.83"),
-        denom("perp/hypeusd") => prices("41.4", "43.74"),
+        denom("perp/btcusd") => prices("70685", "76030"),
+        denom("perp/ethusd") => prices("2180", "2415"),
+        denom("perp/solusd") => prices("81.66", "87.66"),
+        denom("perp/hypeusd") => prices("41.4", "45.2"),
     }
 });
 
@@ -158,20 +180,21 @@ async fn main() -> anyhow::Result<()> {
         })
         .collect::<anyhow::Result<BTreeMap<Addr, UserState>>>()?;
 
+    // ------------------------------------------------------------------
+    // Pass 1: build per-user snapshots and accumulate totals
+    // ------------------------------------------------------------------
+
     let mut total_missing_gain = UsdValue::ZERO;
-
     let mut total_vault_shares = Uint128::ZERO;
-
-    let mut compensations: BTreeMap<UserIndex, ShareCompensation<Uint128, UsdValue>> =
-        BTreeMap::new();
+    let mut users_state: BTreeMap<UserIndex, UserSnapshot> = BTreeMap::new();
 
     for (addr, state) in &users {
         if addr == cfg.addresses.perps || BLACKLISTED_ADDRESSES.contains(addr) {
             continue;
         }
 
-        let user_index = {
-            app.do_query_app(
+        let user_index = app
+            .do_query_app(
                 Query::wasm_smart(
                     cfg.addresses.account_factory,
                     &account_factory::QueryMsg::Account { address: *addr },
@@ -181,111 +204,123 @@ async fn main() -> anyhow::Result<()> {
             )?
             .into_wasm_smart()
             .deserialize_json::<account_factory::Account>()?
-            .owner
+            .owner;
+
+        let mut snapshot = UserSnapshot {
+            shares: state.vault_shares,
+            positions: BTreeMap::new(),
+            total_unrealized_pnl: UsdValue::ZERO,
         };
 
         for (pair_id, position) in &state.positions {
             let (min, max) = PRICES[pair_id];
 
-            // Long
-            if position.size.is_positive() {
+            let (reference_price, pnl) = if position.size.is_positive() {
                 let delta = max.checked_sub(position.entry_price)?;
-
                 if delta.is_negative() {
-                    continue;
+                    (max, UsdValue::ZERO)
+                } else {
+                    let pnl = delta.checked_mul(position.size)?;
+                    assert!(pnl.is_positive());
+                    (max, pnl)
                 }
-
-                let pnl = delta.checked_mul(position.size)?;
-
-                assert!(pnl.is_positive());
-
-                total_missing_gain.checked_add_assign(pnl)?;
-
-                compensations
-                    .entry(user_index)
-                    .or_default()
-                    .unrealized
-                    .checked_add_assign(pnl)?;
             } else {
                 let delta = position.entry_price.checked_sub(min)?;
-
                 if delta.is_negative() {
-                    continue;
+                    (min, UsdValue::ZERO)
+                } else {
+                    let pnl = delta.checked_mul(position.size.checked_abs()?)?;
+                    assert!(pnl.is_positive());
+                    (min, pnl)
                 }
+            };
 
-                let pnl = delta.checked_mul(position.size.checked_abs()?)?;
-
-                assert!(pnl.is_positive());
-
-                total_missing_gain.checked_add_assign(pnl)?;
-
-                compensations
-                    .entry(user_index)
-                    .or_default()
-                    .unrealized
-                    .checked_add_assign(pnl)?;
-            }
+            snapshot
+                .positions
+                .insert(pair_id.clone(), PositionSnapshot {
+                    size: position.size,
+                    entry_price: position.entry_price,
+                    reference_price,
+                    unrealized_pnl: pnl,
+                });
+            snapshot.total_unrealized_pnl.checked_add_assign(pnl)?;
         }
 
-        if state.vault_shares > Uint128::ZERO {
-            compensations
-                .entry(user_index)
-                .or_default()
-                .vault
-                .checked_add_assign(state.vault_shares)?;
+        total_missing_gain.checked_add_assign(snapshot.total_unrealized_pnl)?;
+        total_vault_shares.checked_add_assign(state.vault_shares)?;
 
-            total_vault_shares.checked_add_assign(state.vault_shares)?;
+        if !snapshot.positions.is_empty() || snapshot.shares > Uint128::ZERO {
+            users_state.insert(user_index, snapshot);
         }
     }
 
     println!("Total missing gain: {}", total_missing_gain);
+    println!("Total vault shares: {}", total_vault_shares);
+
+    // ------------------------------------------------------------------
+    // Pass 2: compute compensation points from the snapshots
+    // ------------------------------------------------------------------
 
     let points_unrealized = Udec128_6::new(POINTS_UNREALIZED);
     let points_vault = Udec128_6::new(POINTS_VAULT);
 
     let mut computed_points_unrealized = Udec128_6::ZERO;
     let mut computed_points_vault = Udec128_6::ZERO;
+    let mut compensation = BTreeMap::new();
 
-    let mut shares_per_user = BTreeMap::new();
+    for (&user_index, snapshot) in &users_state {
+        if snapshot.total_unrealized_pnl.is_zero() && snapshot.shares.is_zero() {
+            continue;
+        }
 
-    for (user_index, compensation) in compensations {
         let ratio_unrealized = Dec128_24::checked_from_ratio(
-            compensation.unrealized.into_inner().0,
+            snapshot.total_unrealized_pnl.into_inner().0,
             total_missing_gain.into_inner().0,
         )?
         .checked_into_unsigned()?;
 
-        let points_unrealized = points_unrealized.checked_mul_dec(ratio_unrealized)?;
-        computed_points_unrealized.checked_add_assign(points_unrealized)?;
+        let user_points_unrealized = points_unrealized.checked_mul_dec(ratio_unrealized)?;
+        computed_points_unrealized.checked_add_assign(user_points_unrealized)?;
 
-        let ratio_vault = Udec128_24::checked_from_ratio(compensation.vault, total_vault_shares)?;
+        let ratio_vault = Udec128_24::checked_from_ratio(snapshot.shares, total_vault_shares)?;
 
-        let points_vault = points_vault.checked_mul_dec(ratio_vault)?;
-        computed_points_vault.checked_add_assign(points_vault)?;
+        let user_points_vault = points_vault.checked_mul_dec(ratio_vault)?;
+        computed_points_vault.checked_add_assign(user_points_vault)?;
 
         println!(
-            "User index: {}, points vault: {}, points unrealized: {} ratio unrealized: {} ratio vault: {} unrealized: {} vault: {}",
-            user_index,
-            points_vault,
-            points_unrealized,
-            ratio_unrealized,
-            ratio_vault,
-            compensation.unrealized,
-            compensation.vault
+            "User {}: vault={} unrealized={} ratio_unrealized={} ratio_vault={}",
+            user_index, user_points_vault, user_points_unrealized, ratio_unrealized, ratio_vault,
         );
 
-        shares_per_user.insert(user_index, ShareCompensation {
-            vault: points_vault,
-            unrealized: points_unrealized,
+        compensation.insert(user_index, Compensation {
+            vault: user_points_vault,
+            unrealized: user_points_unrealized,
         });
     }
 
     println!("Computed points unrealized: {}", computed_points_unrealized);
     println!("Computed points vault: {}", computed_points_vault);
 
-    // save to json file
-    let json = shares_per_user.to_json_string_pretty()?;
-    std::fs::write("compensation.json", json)?;
+    // ------------------------------------------------------------------
+    // Save outputs
+    // ------------------------------------------------------------------
+
+    let output_dir = PathBuf::from("compensation_output");
+    std::fs::create_dir_all(&output_dir)?;
+
+    std::fs::write(
+        output_dir.join("users_state.json"),
+        UsersStateOutput {
+            total_unrealized_pnl: total_missing_gain,
+            users: users_state,
+        }
+        .to_json_string_pretty()?,
+    )?;
+
+    std::fs::write(
+        output_dir.join("compensation.json"),
+        compensation.to_json_string_pretty()?,
+    )?;
 
     Ok(())
 }

@@ -74,6 +74,7 @@
   "log_level": "info",
   "referral": {
     "direct_share": "0.2",
-    "indirect_share": "0.05"
+    "indirect_share": "0.05",
+    "referral_boosts": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }}
   }
 }

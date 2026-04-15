@@ -100,5 +100,8 @@ docker/graphiql/dist
 # Hyperlane
 **/*_hyperlane_db
 
+# Chain health compensation output
+compensation_output/
+
 # Ansible
 .ansible
