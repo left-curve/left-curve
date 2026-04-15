@@ -23,6 +23,7 @@ mod events;
 mod ffi;
 mod git_info;
 mod hash;
+mod httpd;
 mod hashers;
 mod imports;
 mod indexer;
@@ -54,7 +55,7 @@ pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*, denom::*, empty::*,
     encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*, hash::*, hashers::*,
-    imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*,
+    httpd::*, imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*,
     metrics::*, non_zero::*, outcome::*, predicate::*, query::*, response::*, result::*,
     serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*, unique_vec::*,
     upgrade::*, utils::*,

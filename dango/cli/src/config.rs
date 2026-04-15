@@ -7,8 +7,8 @@ use {
 pub struct Config {
     pub grug: GrugConfig,
     pub indexer: IndexerConfig,
-    pub httpd: HttpdConfig,
-    pub metrics_httpd: HttpdConfig,
+    pub httpd: grug_types::HttpdConfig,
+    pub metrics_httpd: grug_types::HttpdConfig,
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
@@ -81,27 +81,6 @@ impl Default for IndexerDatabaseConfig {
         IndexerDatabaseConfig {
             url: "sqlite::memory:".to_string(),
             max_connections: 10,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct HttpdConfig {
-    pub enabled: bool,
-    pub ip: String,
-    pub port: u16,
-    pub cors_allowed_origin: Option<String>,
-    pub static_files_path: Option<String>,
-}
-
-impl Default for HttpdConfig {
-    fn default() -> Self {
-        HttpdConfig {
-            enabled: false,
-            ip: "127.0.0.1".to_string(),
-            port: 0,
-            cors_allowed_origin: None,
-            static_files_path: None,
         }
     }
 }

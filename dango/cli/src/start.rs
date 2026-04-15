@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
+        config::{Config, GrugConfig, PythLazerConfig, TendermintConfig},
         home_directory::HomeDirectory,
         telemetry,
     },
@@ -328,16 +328,12 @@ impl StartCmd {
     /// Run the minimal HTTP server (without indexer features)
     /// The shutdown flag should be set when signals are received to return 503 for new requests.
     async fn run_minimal_httpd_server(
-        cfg: &HttpdConfig,
+        cfg: &grug_types::HttpdConfig,
         context: HttpdContext,
         shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
-        tracing::info!(cfg.ip, cfg.port, "Starting minimal HTTP server");
-
         grug_httpd::server::run_server(
-            &cfg.ip,
-            cfg.port,
-            cfg.cors_allowed_origin.clone(),
+            cfg,
             context,
             grug_httpd::server::config_app,
             grug_httpd::graphql::build_schema,
@@ -361,7 +357,7 @@ impl StartCmd {
     /// ClickHouse / return empty state on a cache miss, so handlers reading
     /// during warm-up see the same state as a freshly indexed node.
     async fn run_dango_httpd_server(
-        cfg: &HttpdConfig,
+        cfg: &grug_types::HttpdConfig,
         dango_httpd_context: dango_httpd::context::Context,
         shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> anyhow::Result<()> {
@@ -414,9 +410,7 @@ impl StartCmd {
         });
 
         dango_httpd::server::run_server(
-            &cfg.ip,
-            cfg.port,
-            cfg.cors_allowed_origin.clone(),
+            cfg,
             dango_httpd_context,
             shutdown_flag,
             None,
@@ -430,7 +424,7 @@ impl StartCmd {
 
     /// Run the metrics HTTP server
     async fn run_metrics_httpd_server(
-        cfg: &HttpdConfig,
+        cfg: &grug_types::HttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
         indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
