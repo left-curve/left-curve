@@ -1058,11 +1058,21 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query a user's cumulative trading volume.
+    /// Query a user's cumulative trading volume by address.
     /// `since: None` -> lifetime volume. `since: Some(ts)` -> volume since ts.
     #[returns(UsdValue)]
     Volume {
         user: Addr,
+        since: Option<Timestamp>,
+    },
+
+    /// Query a user's cumulative trading volume by user index.
+    /// Resolves the `UserIndex` to the master account address via the account
+    /// factory, then returns cumulative volume.
+    /// `since: None` -> lifetime volume. `since: Some(ts)` -> volume since ts.
+    #[returns(UsdValue)]
+    VolumeByUser {
+        user: UserIndex,
         since: Option<Timestamp>,
     },
 
