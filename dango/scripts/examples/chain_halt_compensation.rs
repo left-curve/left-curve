@@ -136,7 +136,7 @@ async fn main() -> anyhow::Result<()> {
         NullIndexer,
         u64::MAX,
         None,
-        "pippo",
+        "dango-1", // chain-id unused for offline state reads
     );
 
     let state = app
