@@ -106,6 +106,7 @@ export type PerpsParam = {
   referralActive: boolean;
   minReferrerVolume: string;
   referrerCommissionRates: RateSchedule;
+  vaultDepositCap: string | null;
 };
 
 export type PerpsState = {
