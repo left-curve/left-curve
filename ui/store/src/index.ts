@@ -355,6 +355,7 @@ export {
 export {
   type UseReferrerParameters,
   type UseVolumeParameters,
+  type UseVolumeByUserParameters,
   type UseReferralDataParameters,
   type UseRefereeStatsParameters,
   type UseReferralSettingsParameters,
@@ -364,6 +365,7 @@ export {
   type UseCommissionRateOverrideParameters,
   useReferrer,
   useVolume,
+  useVolumeByUser,
   useReferralData,
   useRefereeStats,
   useReferralSettings,
@@ -389,6 +391,7 @@ export type {
 export {
   queryReferrer,
   queryVolume,
+  queryVolumeByUser,
   queryReferralData,
   queryRefereeStats,
   queryReferralSettings,

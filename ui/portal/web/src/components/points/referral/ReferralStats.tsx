@@ -28,7 +28,7 @@ import {
   useReferralSettings,
   useReferrer,
   useSetReferral,
-  useVolume,
+  useVolumeByUser,
   useCommissionRateOverride,
 } from "@left-curve/store";
 
@@ -160,14 +160,13 @@ export const AffiliateStats: React.FC = () => {
   const formatUSD = (value: number | string) =>
     formatNumber(value, { ...formatNumberOptions, currency: "USD" });
 
-  const { account, userIndex, isConnected } = useAccount();
-  const userAddress = account?.address;
+  const { userIndex, isConnected } = useAccount();
 
   const { referralData, isLoading: dataLoading } = useReferralData({
     userIndex,
   });
-  const { volume: perpsVolume, isLoading: volumeLoading } = useVolume({
-    userAddress,
+  const { volume: perpsVolume, isLoading: volumeLoading } = useVolumeByUser({
+    userIndex,
     since: undefined,
     enabled: isConnected,
   });

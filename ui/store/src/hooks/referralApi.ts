@@ -30,10 +30,8 @@ async function queryPerps<T>(client: PublicClient, perpsAddress: string, msg: Js
 }
 
 /**
- * Query a user's cumulative perps trading volume.
+ * Query a user's cumulative perps trading volume by address.
  * Returns lifetime volume if `since` is undefined, or volume since the given timestamp.
- * This is used to determine if a user has reached the minimum volume threshold
- * to become a referrer.
  */
 export async function queryVolume(
   client: PublicClient,
@@ -43,6 +41,22 @@ export async function queryVolume(
 ): Promise<string> {
   return queryPerps<string>(client, perpsAddress, {
     volume: { user: userAddress, since: since != null ? String(since) : undefined },
+  });
+}
+
+/**
+ * Query a user's cumulative perps trading volume by user index.
+ * Aggregates volume across all accounts belonging to the user.
+ * Returns lifetime volume if `since` is undefined, or volume since the given timestamp.
+ */
+export async function queryVolumeByUser(
+  client: PublicClient,
+  perpsAddress: string,
+  userIndex: number,
+  since?: number,
+): Promise<string> {
+  return queryPerps<string>(client, perpsAddress, {
+    volumeByUser: { user: userIndex, since: since != null ? String(since) : undefined },
   });
 }
 

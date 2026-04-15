@@ -8,6 +8,7 @@ import { useSubmitTx } from "./useSubmitTx.js";
 
 import {
   queryVolume,
+  queryVolumeByUser,
   queryReferrer,
   queryReferralData,
   queryRefereeStats,
@@ -56,11 +57,7 @@ export type UseVolumeParameters = {
 };
 
 /**
- * Hook to query a user's cumulative perps trading volume.
- * Returns lifetime volume if `since` is undefined, or volume since the given timestamp.
- *
- * This is used to determine if a user has reached the minimum volume threshold
- * to become a referrer (e.g., $10,000 lifetime volume).
+ * Hook to query a user's cumulative perps trading volume by address.
  */
 export function useVolume(parameters: UseVolumeParameters) {
   const { userAddress, since, enabled = true } = parameters;
@@ -73,6 +70,37 @@ export function useVolume(parameters: UseVolumeParameters) {
     queryKey: ["perpsVolume", userAddress, since],
     queryFn: () => queryVolume(client!, perpsAddress!, userAddress!, since),
     enabled: enabled && !!userAddress && !!client && !!perpsAddress,
+  });
+
+  return {
+    volume: data,
+    isLoading,
+    isError,
+    error,
+  };
+}
+
+export type UseVolumeByUserParameters = {
+  userIndex: number | undefined;
+  since?: number;
+  enabled?: boolean;
+};
+
+/**
+ * Hook to query a user's cumulative perps trading volume by user index.
+ * Aggregates volume across all accounts belonging to the user.
+ */
+export function useVolumeByUser(parameters: UseVolumeByUserParameters) {
+  const { userIndex, since, enabled = true } = parameters;
+  const client = usePublicClient();
+  const { data: appConfig } = useAppConfig();
+
+  const perpsAddress = appConfig?.addresses?.perps;
+
+  const { data, isLoading, isError, error } = useQuery<string>({
+    queryKey: ["perpsVolumeByUser", userIndex, since],
+    queryFn: () => queryVolumeByUser(client!, perpsAddress!, userIndex!, since),
+    enabled: enabled && !!userIndex && !!client && !!perpsAddress,
   });
 
   return {

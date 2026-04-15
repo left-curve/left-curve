@@ -187,6 +187,7 @@ export type PerpsQueryMsg =
   | { ordersByUser: { user: Address } }
   | { liquidityDepth: { pairId: string; bucketSize: string; limit?: number } }
   | { volume: { user: Address; since?: string } }
+  | { volumeByUser: { user: number; since?: string } }
   | { vaultState: Record<string, never> };
 
 export type GetPerpsQueryMsg<K extends KeyOfUnion<PerpsQueryMsg>> = ExtractFromUnion<
