@@ -14,6 +14,7 @@ import {
   perpsTradeSettingsStore,
   allPerpsPairStatsStore,
   computeLiquidationPrice,
+  useVolume,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,7 +41,8 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/dango/utils";
+import { FEE_VOLUME_LOOKBACK_SECONDS } from "~/constants";
 import type { PerpsTimeInForce } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
@@ -327,6 +329,18 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const { baseCoin, quoteCoin } = useTradeCoins();
   const { getPrice } = usePrices();
+  const { account } = useAccount();
+
+  const [volumeRefreshKey, setVolumeRefreshKey] = useState(0);
+  const feeLookbackSince = useMemo(
+    () => Math.floor(Date.now() / 1000) - FEE_VOLUME_LOOKBACK_SECONDS,
+    [volumeRefreshKey],
+  );
+  const { volume: userVolume } = useVolume({
+    userAddress: account?.address,
+    since: feeLookbackSince,
+    enabled: isConnected,
+  });
 
   const [sizeCoinDenom, setSizeCoinDenom] = useState("usd");
 
@@ -371,9 +385,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [storedLeverage, maxLeverage]);
 
   const takerFeeRate = useMemo(() => {
-    const rate = Number(appConfig?.perpsParam?.takerFeeRates?.base ?? 0);
+    const schedule = appConfig?.perpsParam?.takerFeeRates;
+    if (!schedule) return 0;
+    const rate = resolveRateSchedule(schedule, userVolume ?? "0");
     return Number.isFinite(rate) ? rate : 0;
-  }, [appConfig?.perpsParam]);
+  }, [appConfig?.perpsParam, userVolume]);
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
   const [reduceOnly, setReduceOnly] = useState(false);
@@ -474,7 +490,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [size, isBaseSize, currentPrice]);
 
   const queryClient = useQueryClient();
-  const { account } = useAccount();
 
   const submission = usePerpsSubmission({
     perpsPairId: getPerpsPairId(),
@@ -489,16 +504,19 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     controllers,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+      queryClient.invalidateQueries({ queryKey: ["perpsVolume", account?.address] });
+      setVolumeRefreshKey((k) => k + 1);
     },
   });
 
   const feesDisplay = useMemo(() => {
     const perpsParam = appConfig?.perpsParam;
     if (!perpsParam) return "-";
-    const taker = Number(perpsParam.takerFeeRates.base) * 100;
-    const maker = Number(perpsParam.makerFeeRates.base) * 100;
+    const vol = userVolume ?? "0";
+    const taker = resolveRateSchedule(perpsParam.takerFeeRates, vol) * 100;
+    const maker = resolveRateSchedule(perpsParam.makerFeeRates, vol) * 100;
     return `${taker}% / ${maker}%`;
-  }, [appConfig?.perpsParam]);
+  }, [appConfig?.perpsParam, userVolume]);
 
   const requiredMargin = useMemo(() => {
     const s = Number(size);
