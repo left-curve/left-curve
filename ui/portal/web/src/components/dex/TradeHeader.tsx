@@ -19,7 +19,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   useCurrentPrice,
-  usePrices,
+  oraclePricesStore,
   allPairStatsStore,
   allPerpsPairStatsStore,
   TradePairStore,
@@ -148,8 +148,8 @@ const HeaderPrice: React.FC = () => {
 };
 
 const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
-  const { getPrice } = usePrices();
-  const oraclePrice = getPrice(1, denom);
+  const prices = oraclePricesStore((s) => s.prices);
+  const oraclePrice = prices?.[denom]?.humanizedPrice ? Number(prices[denom].humanizedPrice) : null;
 
   return (
     <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
