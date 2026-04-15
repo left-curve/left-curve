@@ -6,37 +6,35 @@ use {
         constants::usdc,
         perps::{self, PairParam, Param, QueryOrdersByUserResponseItem},
     },
-    grug::{Addressable, Coins, NumberConst, QuerierExt, ResultExt, Uint128, btree_map},
+    grug::{
+        Addressable, Coins, MultiplyRatio, NumberConst, QuerierExt, ResultExt, Uint128, btree_map,
+    },
     std::collections::BTreeMap,
 };
 
-/// Regression test: vault liquidity withdrawal can push the vault below its
-/// maintenance margin, making it immediately liquidatable.
+/// Regression test: vault withdrawal at breakeven pushes vault below maintenance
+/// margin due to large open positions.
 ///
-/// The bug: `_remove_liquidity` checks `vault_user_state.margin >= amount_to_release`
-/// (raw margin only), but does NOT verify the vault remains above maintenance
-/// margin post-withdrawal. When the vault has unrealized losses, its raw margin
-/// is much higher than its equity. The withdrawal amount is based on equity
-/// (smaller), so the raw margin check passes -- but the margin deduction reduces
-/// equity below maintenance margin.
+/// The vault does not need a negative PnL for this to happen. The withdrawer
+/// simply needs to withdraw such that remaining equity < maintenance margin.
+/// This test demonstrates this when the vault's position is at break even
+/// (oracle = entry price, PnL = 0).
 ///
-/// This is the same class of bug that `add_liquidity` already fixed (see
-/// `add_liquidity_rejects_when_available_margin_insufficient` unit test in
-/// `dango/perps/src/vault/add_liquidity.rs`).
+/// The root cause is that the vault only asserts it has enough _raw_ margin to
+/// honor the withdrawal. This ignores that portions of the raw margin is used
+/// to maintain open positions and open orders. The correct approach is to assert
+/// the vault has sufficient _available_ margin instead.
 ///
-/// | Step | Action                                          | Key numbers                                                    | Assert                           |
-/// | ---- | ----------------------------------------------- | -------------------------------------------------------------- | -------------------------------- |
-/// | 1    | LP deposits $5k, adds $5k vault liquidity       | vault margin=$5,000; ~5B shares minted                         | shares > 0, vault margin = $5k   |
-/// | 2    | Configure vault MM (5% spread, max 2 ETH)       | bid=$1,900, ask=$2,100                                         | —                                |
-/// | 3    | Refresh vault orders                            | vault places bid + ask                                         | vault bid at $1,900              |
-/// | 4    | Taker sells 2 ETH into vault bid                | vault long 2 ETH @ $1,900; margin still $5,000                | vault has long position          |
-/// | 5    | Oracle drops to $1,500                          | PnL=−$800; equity=$4,200; MM=$150                              | vault healthy (equity > MM)      |
-/// | 6    | LP burns ALL shares                             | release~$4,200; margin check $5k>=$4.2k passes; equity→~$0    | should_succeed (the bug)         |
-/// | 7    | Assert vault is liquidatable                    | equity~$0 < MM=$150                                            | equity < MM                      |
-/// | 8    | Bidder places bid 2 ETH @ $1,500                | provides book liquidity for liquidation                        | —                                |
-/// | 9    | Liquidate vault                                 | closes vault's long against bidder                             | liquidation succeeds             |
+/// | Step | Action                                          | Key numbers                                                   | Assert                           |
+/// | ---- | ----------------------------------------------- | ------------------------------------------------------------- | -------------------------------- |
+/// | 1    | LP deposits $5k, adds $5k vault liquidity       | vault margin=$5,000; ~5B shares minted                        | shares > 0, vault margin = $5k   |
+/// | 2    | Configure vault MM (5% spread, max 20 ETH)      | bid=$1,900, ask=$2,100                                        | —                                |
+/// | 3    | Refresh vault orders                            | vault places bid + ask                                        | vault bid at $1,900              |
+/// | 4    | Taker sells into vault bid                      | vault goes long; margin ~$5,000                               | vault has long position          |
+/// | 5    | Oracle drops to $1,900 (breakeven)              | PnL=0; equity≈$5,000; MM≈$1,188                               | vault healthy (equity > MM)      |
+/// | 6    | LP burns ~85% of shares                         | release≈$4,250; old margin check passes; equity→≈$750         | withdraw rejected (fix)          |
 #[test]
-fn vault_withdrawal_makes_vault_liquidatable() {
+fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
     // ---- Step 0: Setup ----
 
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
@@ -78,20 +76,8 @@ fn vault_withdrawal_makes_vault_liquidatable() {
     let lp_shares = lp_state.vault_shares;
     assert!(lp_shares > Uint128::ZERO, "LP should have vault shares");
 
-    let vault_state: perps::UserState = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: contracts.perps,
-        })
-        .should_succeed()
-        .unwrap();
-    assert_eq!(
-        vault_state.margin,
-        UsdValue::new_int(5_000),
-        "vault margin should be $5,000"
-    );
-
     // -------------------------------------------------------------------------
-    // Step 2: Configure vault market-making: 5% half-spread, max 2 ETH per side.
+    // Step 2: Configure vault market-making: 5% half-spread, max 20 ETH per side.
     // -------------------------------------------------------------------------
 
     suite
@@ -107,7 +93,7 @@ fn vault_withdrawal_makes_vault_liquidatable() {
                     pair.clone() => PairParam {
                         vault_liquidity_weight: Dimensionless::new_int(1),
                         vault_half_spread: Dimensionless::new_permille(50), // 5%
-                        vault_max_quote_size: Quantity::new_int(2),
+                        vault_max_quote_size: Quantity::new_int(20),
                         ..default_pair_param()
                     },
                 },
@@ -148,8 +134,7 @@ fn vault_withdrawal_makes_vault_liquidatable() {
     // -------------------------------------------------------------------------
     // Step 4: Taker (user2) deposits $10,000 and market sells into vault's bid.
     //
-    // Vault goes long 2 ETH at $1,900. As maker, vault pays zero maker fee,
-    // so vault margin stays at $5,000.
+    // Vault goes long 20 ETH at $1,900.
     // -------------------------------------------------------------------------
 
     suite
@@ -179,7 +164,7 @@ fn vault_withdrawal_makes_vault_liquidatable() {
         )
         .should_succeed();
 
-    // Verify vault has a long position and margin is unchanged.
+    // Verify vault has a long position.
     let vault_state: perps::UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: contracts.perps,
@@ -191,24 +176,18 @@ fn vault_withdrawal_makes_vault_liquidatable() {
         .get(&pair)
         .expect("vault should have ETH position");
     assert!(vault_pos.size.is_positive(), "vault should be long ETH");
-    // Vault margin is $5,000 + taker fee received as maker.
-    // Exact value doesn't matter for this test; the key point is that raw
-    // margin is significantly higher than equity after the oracle drop.
-    assert!(
-        vault_state.margin >= UsdValue::new_int(5_000),
-        "vault margin should be at least $5,000"
-    );
 
     // -------------------------------------------------------------------------
-    // Step 5: Oracle drops to $1,500.
+    // Step 5: Oracle moves to $1,900 (= entry price → breakeven).
     //
-    // Unrealized PnL = 2 * ($1,500 - $1,900) = -$800
-    // Vault equity  = $5,000 + (-$800) = $4,200
-    // MM            = 2 * $1,500 * 5%  = $150
-    // Vault is healthy: $4,200 > $150.
+    // Unrealized PnL = 20 * ($1,900 - $1,900) = $0
+    // Vault equity  ≈ $5,000 (margin, no PnL)
+    // MM            = 20 * $1,900 * 5%  = $1,900
+    // IMR           = 20 * $1,900 * 10% = $3,800
+    // Vault is healthy: $5,000 > $1,900.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_500);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_900);
 
     let vault_ext: perps::UserStateExtended = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateExtendedRequest {
@@ -216,7 +195,7 @@ fn vault_withdrawal_makes_vault_liquidatable() {
             include_equity: true,
             include_maintenance_margin: true,
             include_available_margin: false,
-            include_unrealized_pnl: false,
+            include_unrealized_pnl: true,
             include_unrealized_funding: false,
             include_liquidation_price: false,
             include_all: false,
@@ -229,24 +208,36 @@ fn vault_withdrawal_makes_vault_liquidatable() {
         equity_before > mm_before,
         "vault should be healthy BEFORE withdrawal: equity={equity_before}, MM={mm_before}"
     );
+    // Confirm breakeven: equity ≈ margin (no unrealized PnL).
+    let vault_state_bev: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: contracts.perps,
+        })
+        .should_succeed()
+        .unwrap();
+    assert_eq!(
+        equity_before, vault_state_bev.margin,
+        "vault should be at breakeven (equity = margin)"
+    );
 
     // -------------------------------------------------------------------------
-    // Step 6: LP tries to burn ALL shares.
+    // Step 6: LP burns ~85% of shares.
     //
-    // amount_to_release ≈ $4,204 (equity-proportional, based on share ratio).
-    // Old raw-margin check would pass: $5,000 >= $4,204.
+    // amount_to_release ≈ 85% of equity.
+    // Old raw-margin check: margin >= amount → passes.
     //
-    // Fix: the available-margin check uses equity minus initial margin (IMR),
-    // which is ~$3,904 — less than the $4,204 release amount. Rejected.
+    // Post-withdrawal equity drops well below MM → vault is liquidatable.
     // -------------------------------------------------------------------------
+
+    let shares_to_burn = lp_shares
+        .checked_multiply_ratio_floor(Uint128::new(85), Uint128::new(100))
+        .unwrap();
 
     suite
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::RemoveLiquidity {
-                shares_to_burn: lp_shares,
-            }),
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::RemoveLiquidity { shares_to_burn }),
             Coins::new(),
         )
         .should_fail_with_error("insufficient vault available margin to cover withdrawal");
