@@ -5,7 +5,7 @@ use {
         setup_test,
     },
     dango_types::{
-        constants::{dango, usdc},
+        constants::{dango, eth, usdc},
         gateway::{self, Origin, RateLimit, Remote},
     },
     grug::{
@@ -890,6 +890,164 @@ fn rate_limit_change() {
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("rate limit exceeded!");
+}
+
+/// Verify that deposit credit is tracked independently per denom: depositing
+/// denom A does not grant credit for withdrawing denom B. Before the fix
+/// (keying `USER_MOVEMENTS` by `(UserIndex, &Denom)` instead of `UserIndex`),
+/// this test would fail because all deposit credit was pooled across denoms.
+#[test]
+fn rate_limit_per_denom_isolation() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_eth_recipient: Addr32 = Addr::mock(202).into();
+    let usdc_sol_fee = 10_000;
+    let eth_fee = 500_000_000_000_000_u128;
+
+    // Deposit 200 USDC and 10 ETH (10_000_000_000_000_000_000 = 10e18).
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            200_000_000,
+        )
+        .should_succeed();
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::ETH_WARP,
+            receiver,
+            10_000_000_000_000_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limits: USDC 10%, ETH 10%.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+                eth::DENOM.clone()  => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Advance to epoch 1 so the epoch-0 deposits rotate away — no credit
+    // from them in the new epoch.
+    advance_to_next_day(&mut suite);
+
+    // USDC: supply = 200, daily allowance = 20.
+    // ETH:  supply = 10 ETH, daily allowance = 1 ETH (1_000_000_000_000_000_000).
+
+    // Exhaust the USDC daily allowance (20).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: Addr::mock(201).into(),
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // USDC limit is exhausted — 1 more fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: Addr::mock(201).into(),
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // Now deposit 50 USDC in this epoch — gives USDC-specific credit of 50.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            50_000_000,
+        )
+        .should_succeed();
+
+    // The USDC credit must NOT help with ETH withdrawals.
+    // ETH daily allowance = 1 ETH. Withdraw 1 ETH (the full allowance).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::ETH_WARP,
+                },
+                recipient: mock_eth_recipient,
+            },
+            Coin::new(eth::DENOM.clone(), 1_000_000_000_000_000_000_u128 + eth_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // ETH global limit is exhausted. 1 more wei fails.
+    // With the old per-user-only key, the 50 USDC deposit credit would have
+    // been fungible and this withdrawal would have incorrectly succeeded.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_ethereum::DOMAIN,
+                    contract: mock_ethereum::ETH_WARP,
+                },
+                recipient: mock_eth_recipient,
+            },
+            Coin::new(eth::DENOM.clone(), 1_u128 + eth_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // Meanwhile the USDC credit is intact — can still withdraw 50 USDC.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: Addr::mock(201).into(),
+            },
+            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
 }
 
 fn advance_to_next_day(suite: &mut TestSuite) {
