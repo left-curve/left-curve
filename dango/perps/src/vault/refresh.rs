@@ -292,7 +292,7 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(mock_querier())
             .with_contract(CONTRACT)
-            .with_sender(CONTRACT)
+            .with_sender(ORACLE) // note: refreshing order is permissioned to only the oracle contract.
             .with_funds(Coins::default())
             .with_block_height(10);
 
