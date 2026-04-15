@@ -34,5 +34,5 @@ pub const SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 /// credit is added here. Reset to zero by `cron_execute`.
 pub const OUTBOUND: Map<&Denom, Uint128> = Map::new("outbound");
 
-/// Per-user deposit and withdrawal tracking. Keyed by user index.
-pub const USER_MOVEMENTS: Map<UserIndex, UserMovement> = Map::new("user_movement");
+/// Per-user, per-denom deposit and withdrawal tracking.
+pub const USER_MOVEMENTS: Map<(UserIndex, &Denom), UserMovement> = Map::new("user_movement");

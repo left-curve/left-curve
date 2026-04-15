@@ -180,10 +180,10 @@ fn receive_remote(
         let current_epoch = EPOCH.load(ctx.storage)?;
         let user_index = resolve_user_index(ctx.querier, recipient)?;
 
-        let mut user_movement = load_user_movement(ctx.storage, user_index, current_epoch)?;
+        let mut user_movement = load_user_movement(ctx.storage, user_index, &denom, current_epoch)?;
         user_movement.current.deposited.checked_add_assign(amount)?;
 
-        USER_MOVEMENTS.save(ctx.storage, user_index, &user_movement)?;
+        USER_MOVEMENTS.save(ctx.storage, (user_index, &denom), &user_movement)?;
     }
 
     #[cfg(feature = "metrics")]
@@ -263,7 +263,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
         let current_epoch = EPOCH.load(ctx.storage)?;
         let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
-        let mut user_movement = load_user_movement(ctx.storage, user_index, current_epoch)?;
+        let mut user_movement = load_user_movement(ctx.storage, user_index, &coin.denom, current_epoch)?;
 
         // How much deposit credit the user can still use.
         let remaining_credit = user_movement.current.remaining_credit();
@@ -299,7 +299,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             .withdrawn
             .checked_add_assign(coin.amount)?;
 
-        USER_MOVEMENTS.save(ctx.storage, user_index, &user_movement)?;
+        USER_MOVEMENTS.save(ctx.storage, (user_index, &coin.denom), &user_movement)?;
     }
 
     #[cfg(feature = "metrics")]
@@ -386,10 +386,11 @@ fn resolve_user_index(querier: QuerierWrapper, address: Addr) -> StdResult<UserI
 fn load_user_movement(
     storage: &dyn Storage,
     user_index: UserIndex,
+    denom: &Denom,
     current_epoch: u64,
 ) -> StdResult<UserMovement> {
     let mut movement = USER_MOVEMENTS
-        .may_load(storage, user_index)?
+        .may_load(storage, (user_index, denom))?
         .unwrap_or_else(|| UserMovement::new(current_epoch));
 
     movement.rotate_if_needed(current_epoch);
