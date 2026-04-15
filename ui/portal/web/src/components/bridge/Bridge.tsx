@@ -23,6 +23,7 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 
+import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 
@@ -34,6 +35,7 @@ import {
   ResizerContainer,
   NetworkSelector,
   Tabs,
+  WarningContainer,
 } from "@left-curve/applets-kit";
 
 import type React from "react";
@@ -100,6 +102,8 @@ const BridgeDeposit: React.FC = () => {
       {network === "bitcoin" && <BitcoinDeposit />}
 
       {network && !["bitcoin", "solana"].includes(network) && <EvmDeposit />}
+
+      <WarningContainer description={m["bridge.rateLimitWarning"]()} />
     </>
   );
 };
@@ -314,9 +318,26 @@ const BridgeWithdraw: React.FC = () => {
 
   if (action !== "withdraw") return null;
 
+  const withdrawHintParts = m["bridge.withdrawTransferHint"]({ app: "{app}" }).split("{app}");
+
   return (
     <>
       <BridgeSelectors />
+
+      <WarningContainer
+        description={
+          <ul className="list-disc pl-4 flex flex-col gap-1">
+            <li>
+              {withdrawHintParts[0]}
+              <Button as={Link} to="/transfer" variant="link" size="xs" className="p-0 h-fit m-0 inline">
+                {m["sendAndReceive.title"]()}
+              </Button>
+              {withdrawHintParts[1]}
+            </li>
+            <li>{m["bridge.rateLimitWarning"]()}</li>
+          </ul>
+        }
+      />
 
       {coin && network && (
         <div className="flex flex-col items-center justify-center gap-6">
