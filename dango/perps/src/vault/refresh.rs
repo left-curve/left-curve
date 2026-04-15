@@ -61,7 +61,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
