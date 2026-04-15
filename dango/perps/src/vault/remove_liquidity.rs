@@ -70,6 +70,9 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
         );
     }
 
+    #[cfg(feature = "metrics")]
+    metrics::histogram!(crate::metrics::LABEL_VAULT_WITHDRAWAL_AMOUNT).record(amount.to_f64());
+
     Ok(Response::new().add_event(LiquidityUnlocking {
         user: ctx.sender,
         amount,

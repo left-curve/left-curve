@@ -75,10 +75,7 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
     }
 
     #[cfg(feature = "metrics")]
-    {
-        metrics::counter!(crate::metrics::LABEL_WITHDRAWALS).increment(1);
-        metrics::histogram!(crate::metrics::LABEL_WITHDRAWAL_AMOUNT).record(amount.to_f64());
-    }
+    metrics::histogram!(crate::metrics::LABEL_WITHDRAWAL_AMOUNT).record(amount.to_f64());
 
     Ok(Response::new()
         .add_message(Message::transfer(

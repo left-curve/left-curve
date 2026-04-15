@@ -12,13 +12,13 @@ pub const LABEL_FEES_COLLECTED: &str = "dango.contract.perps.fees_collected";
 
 // ----------------------------- Deposit / Withdraw ----------------------------
 
-pub const LABEL_DEPOSITS: &str = "dango.contract.perps.deposits_count";
-
-pub const LABEL_WITHDRAWALS: &str = "dango.contract.perps.withdrawals_count";
-
 pub const LABEL_DEPOSIT_AMOUNT: &str = "dango.contract.perps.deposit_amount";
 
 pub const LABEL_WITHDRAWAL_AMOUNT: &str = "dango.contract.perps.withdrawal_amount";
+
+pub const LABEL_VAULT_DEPOSIT_AMOUNT: &str = "dango.contract.perps.vault_deposit_amount";
+
+pub const LABEL_VAULT_WITHDRAWAL_AMOUNT: &str = "dango.contract.perps.vault_withdrawal_amount";
 
 // ----------------------------- Liquidation -----------------------------------
 
@@ -85,10 +85,10 @@ pub fn init_metrics() {
         );
 
         // Deposit / Withdraw
-        describe_counter!(LABEL_DEPOSITS, "Number of margin deposits");
-        describe_counter!(LABEL_WITHDRAWALS, "Number of margin withdrawals");
         describe_histogram!(LABEL_DEPOSIT_AMOUNT, "Deposit amount in USD");
         describe_histogram!(LABEL_WITHDRAWAL_AMOUNT, "Withdrawal amount in USD");
+        describe_histogram!(LABEL_VAULT_DEPOSIT_AMOUNT, "Vault deposit (add liquidity) amount in USD");
+        describe_histogram!(LABEL_VAULT_WITHDRAWAL_AMOUNT, "Vault withdrawal (remove liquidity) amount in USD");
 
         // Liquidation
         describe_counter!(LABEL_LIQUIDATIONS, "Number of liquidations triggered");

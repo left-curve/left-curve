@@ -74,6 +74,9 @@ pub fn add_liquidity(
         );
     }
 
+    #[cfg(feature = "metrics")]
+    metrics::histogram!(crate::metrics::LABEL_VAULT_DEPOSIT_AMOUNT).record(amount.to_f64());
+
     Ok(Response::new().add_event(LiquidityAdded {
         user: ctx.sender,
         amount,
