@@ -1,5 +1,6 @@
 use {
     crate::{
+        MAX_ORACLE_STALENESS,
         core::{
             compute_available_margin, compute_liquidation_price, compute_maintenance_margin,
             compute_position_unrealized_funding, compute_position_unrealized_pnl,
@@ -30,7 +31,7 @@ use {
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, MultiIndex, Order as IterationOrder,
-        PrefixBound, PrimaryKey, StdResult, Storage, Timestamp,
+        PrefixBound, PrimaryKey, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -78,7 +79,9 @@ pub fn query_user_states(
 }
 
 pub fn query_user_state_extended(
-    ctx: ImmutableCtx,
+    storage: &dyn Storage,
+    querier: QuerierWrapper,
+    current_time: Timestamp,
     user: Addr,
     include_equity: bool,
     include_available_margin: bool,
@@ -88,10 +91,12 @@ pub fn query_user_state_extended(
     include_liquidation_price: bool,
     include_all: bool,
 ) -> anyhow::Result<UserStateExtended> {
-    let user_state = USER_STATES.load(ctx.storage, user)?;
+    let user_state = USER_STATES.load(storage, user)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
-    let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(querier), querier)
+        .with_no_older_than(current_time - MAX_ORACLE_STALENESS);
+
+    let perp_querier = NoCachePerpQuerier::new_local(storage);
 
     let equity = if include_all || include_equity {
         Some(compute_user_equity(
@@ -171,6 +176,46 @@ pub fn query_user_state_extended(
         maintenance_margin,
         positions,
     })
+}
+
+pub fn query_user_states_extended(
+    storage: &dyn Storage,
+    querier: QuerierWrapper,
+    current_time: Timestamp,
+    start_after: Option<Addr>,
+    limit: Option<u32>,
+    include_equity: bool,
+    include_available_margin: bool,
+    include_maintenance_margin: bool,
+    include_unrealized_pnl: bool,
+    include_unrealized_funding: bool,
+    include_liquidation_price: bool,
+    include_all: bool,
+) -> anyhow::Result<BTreeMap<Addr, UserStateExtended>> {
+    let start = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    USER_STATES
+        .keys(storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let user = res?;
+            let user_state = query_user_state_extended(
+                storage,
+                querier,
+                current_time,
+                user,
+                include_equity,
+                include_available_margin,
+                include_maintenance_margin,
+                include_unrealized_pnl,
+                include_unrealized_funding,
+                include_liquidation_price,
+                include_all,
+            )?;
+            Ok((user, user_state))
+        })
+        .collect()
 }
 
 /// Search `BIDS` and `ASKS` for an order with the given ID.
@@ -328,6 +373,34 @@ pub fn query_volume(
             Ok(latest.checked_sub(baseline)?)
         },
     }
+}
+
+pub fn query_volume_by_user(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+    since: Option<Timestamp>,
+) -> anyhow::Result<UsdValue> {
+    let account_factory = crate::account_factory(ctx.querier);
+    compute_user_volume(ctx.storage, ctx.querier, account_factory, user, since)
+}
+
+/// Sum cumulative volume across all accounts belonging to a user.
+pub fn compute_user_volume(
+    storage: &dyn Storage,
+    querier: impl StorageQuerier,
+    account_factory: Addr,
+    user: UserIndex,
+    since: Option<Timestamp>,
+) -> anyhow::Result<UsdValue> {
+    let user_data =
+        querier.query_wasm_path(account_factory, &dango_account_factory::USERS.path(user))?;
+
+    let mut total = UsdValue::ZERO;
+    for addr in user_data.accounts.values() {
+        total = total.checked_add(query_volume(storage, *addr, since)?)?;
+    }
+
+    Ok(total)
 }
 
 pub fn query_referrer(storage: &dyn Storage, referee: UserIndex) -> StdResult<Option<Referrer>> {

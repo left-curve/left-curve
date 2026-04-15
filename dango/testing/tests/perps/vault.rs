@@ -181,7 +181,7 @@ fn vault_lp_lifecycle() {
                 pair_id: pair.clone(),
                 size: vault_bid_size.checked_neg().unwrap(), // sell
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(10),
                 },
                 reduce_only: false,
                 tp: None,
@@ -235,7 +235,7 @@ fn vault_lp_lifecycle() {
                 pair_id: pair.clone(),
                 size: vault_long_size, // buy same amount (closes taker's short)
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(10),
                 },
                 reduce_only: false,
                 tp: None,
@@ -769,7 +769,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
                 pair_id: pair.clone(),
                 size: round1_bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -888,7 +888,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
                 pair_id: pair.clone(),
                 size: round1_bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useAccount } from "./useAccount.js";
+import { useAppConfig } from "./useAppConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
@@ -26,6 +27,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
   const { inputs } = controllers;
   const publicClient = usePublicClient();
   const { account } = useAccount();
+  const { data: appConfig } = useAppConfig();
 
   const { data: signingClient } = useSigningClient();
 
@@ -50,6 +52,10 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
   const shareSupply = vaultState.data?.shareSupply ?? "0";
   const equity = vaultState.data?.equity ?? "0";
   const isPaused = !(vaultState.data?.depositWithdrawalActive ?? true);
+
+  const vaultMargin = vaultState.data?.margin ?? "0";
+  const vaultDepositCap = appConfig.perpsParam.vaultDepositCap;
+  const isTvlCapReached = vaultDepositCap != null && Decimal(vaultMargin).gte(vaultDepositCap);
 
   const effectiveSupply = useMemo(
     () => Decimal(shareSupply).plus(VIRTUAL_SHARES).toString(),
@@ -132,6 +138,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
     action,
     onChangeAction,
     isPaused,
+    isTvlCapReached,
     vaultState: vaultState.data,
     isLoading: vaultState.isLoading,
     userVaultShares,

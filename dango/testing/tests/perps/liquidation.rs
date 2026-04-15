@@ -137,7 +137,7 @@ fn liquidation_on_order_book() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -423,7 +423,7 @@ fn liquidation_with_adl() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::ZERO,
                 },
                 reduce_only: false,
                 tp: None,
@@ -487,7 +487,7 @@ fn liquidation_with_adl() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -677,7 +677,7 @@ fn liquidation_cancels_conditional_orders() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,
@@ -934,7 +934,7 @@ fn vault_liquidation_on_order_book() {
                 pair_id: pair.clone(),
                 size: bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(50),
+                    max_slippage: Dimensionless::new_percent(1),
                 },
                 reduce_only: false,
                 tp: None,

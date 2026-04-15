@@ -1,5 +1,6 @@
 use {
     crate::{
+        MAX_ORACLE_STALENESS,
         core::{
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
             compute_user_equity, compute_user_equity_with_pnl, is_liquidatable,
@@ -58,7 +59,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let mut events = EventBuilder::new();
 

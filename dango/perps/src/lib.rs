@@ -26,8 +26,8 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst, Response,
-        SudoCtx, Uint128,
+        Addr, Duration, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst,
+        Response, SudoCtx, Uint128,
     },
 };
 
@@ -42,7 +42,10 @@ const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
 /// Lookback window for volume-tiered fee rate resolution.
-const VOLUME_LOOKBACK: grug::Duration = grug::Duration::from_days(14);
+const VOLUME_LOOKBACK: Duration = Duration::from_days(14);
+
+/// Reject oracle prices for being too old if older than this threshold.
+const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 
 /// Returns the oracle contract address.
 ///
@@ -98,7 +101,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     cron::process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
@@ -258,8 +262,37 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             include_all,
         } => {
             let res = query::query_user_state_extended(
-                ctx,
+                ctx.storage,
+                ctx.querier,
+                ctx.block.timestamp,
                 user,
+                include_equity,
+                include_available_margin,
+                include_maintenance_margin,
+                include_unrealized_pnl,
+                include_unrealized_funding,
+                include_liquidation_price,
+                include_all,
+            )?;
+            res.to_json_value()
+        },
+        QueryMsg::UserStatesExtended {
+            start_after,
+            limit,
+            include_equity,
+            include_available_margin,
+            include_maintenance_margin,
+            include_unrealized_pnl,
+            include_unrealized_funding,
+            include_liquidation_price,
+            include_all,
+        } => {
+            let res = query::query_user_states_extended(
+                ctx.storage,
+                ctx.querier,
+                ctx.block.timestamp,
+                start_after,
+                limit,
                 include_equity,
                 include_available_margin,
                 include_maintenance_margin,
@@ -288,6 +321,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Volume { user, since } => {
             let res = query::query_volume(ctx.storage, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VolumeByUser { user, since } => {
+            let res = query::query_volume_by_user(ctx, user, since)?;
             res.to_json_value()
         },
         QueryMsg::Referrer { referee } => {

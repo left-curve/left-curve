@@ -1,5 +1,6 @@
 use {
     crate::{
+        MAX_ORACLE_STALENESS,
         core::{compute_available_margin, compute_vault_quotes},
         liquidity_depth::increase_liquidity_depths,
         oracle,
@@ -21,8 +22,6 @@ use {
         Duration, MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64,
     },
 };
-
-const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 
 /// Entry point for vault market-making, triggered at the beginning of each
 /// block after the oracle update.
@@ -64,11 +63,8 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    // Important: when querying prices, assert they are not too old.
-    // The vault will refuse to place olders if it doesn't have the most up to
-    // date price data.
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier)
-        .with_no_older_than(MAX_ORACLE_STALENESS);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 

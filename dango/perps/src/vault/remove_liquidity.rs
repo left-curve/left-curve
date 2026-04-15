@@ -1,6 +1,6 @@
 use {
     crate::{
-        VIRTUAL_ASSETS, VIRTUAL_SHARES,
+        MAX_ORACLE_STALENESS, VIRTUAL_ASSETS, VIRTUAL_SHARES,
         core::compute_user_equity,
         oracle,
         querier::NoCachePerpQuerier,
@@ -39,7 +39,8 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // --------------------------- 2. Business logic ---------------------------
 
@@ -68,6 +69,11 @@ pub fn remove_liquidity(ctx: MutableCtx, shares_to_burn: Uint128) -> anyhow::Res
             %amount,
             "Liquidity removal queued"
         );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_VAULT_WITHDRAWAL_AMOUNT).record(amount.to_f64());
     }
 
     Ok(Response::new().add_event(LiquidityUnlocking {

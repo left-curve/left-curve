@@ -1,5 +1,5 @@
 import { createContext } from "@left-curve/applets-kit";
-import { useAccount, usePoints } from "@left-curve/store";
+import { type AttackCompensation, useAccount, usePoints } from "@left-curve/store";
 import type React from "react";
 import { type PropsWithChildren, useMemo } from "react";
 
@@ -61,6 +61,7 @@ type UserPointsData = {
   tradingPoints: number;
   lpPoints: number;
   referralPoints: number;
+  compensation: AttackCompensation | undefined;
 };
 
 type UserPointsContextValue = UserPointsData & {
@@ -85,6 +86,7 @@ export const UserPointsProvider: React.FC<PropsWithChildren> = ({ children }) =>
     pnl,
     rank,
     percentile,
+    compensation,
     isLoading,
   } = usePoints({ pointsUrl, userIndex });
 
@@ -105,10 +107,11 @@ export const UserPointsProvider: React.FC<PropsWithChildren> = ({ children }) =>
       tradingPoints,
       lpPoints,
       referralPoints,
+      compensation,
       isLoading,
       leagueList: LEAGUE_CONFIG,
     };
-  }, [points, lpPoints, tradingPoints, referralPoints, volume, pnl, rank, percentile, isLoading]);
+  }, [points, lpPoints, tradingPoints, referralPoints, volume, pnl, rank, percentile, compensation, isLoading]);
 
   return <UserPointsContextProvider value={value}>{children}</UserPointsContextProvider>;
 };

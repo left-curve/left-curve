@@ -783,7 +783,8 @@
       "receiveTitle": "This address can only receive funds from other Dango accounts",
       "receivePreMessage": "Funds sent from CEX or other blockchains, such as Ethereum, will be lost and cannot be recovered.",
       "receiveCex": "To fund your Dango address from a CEX or another blockchain such as Ethereum, use the {app} app.",
-      "sendNonDango": "This account does not exist on Dango. Are you attempting to withdraw funds to Ethereum? Use the {app} app instead. Ethereum addresses and Dango addresses have the same format, but they are not the same."
+      "sendNonDango": "This account does not exist on Dango. Are you attempting to withdraw funds to Ethereum? Use the {app} app instead. Ethereum addresses and Dango addresses have the same format, but they are not the same.",
+      "transferWithdrawHint": "Use this page to transfer funds between Dango accounts. To withdraw tokens to Ethereum or other chains, use the {app} app."
     }
   },
   "earn": {
@@ -828,6 +829,8 @@
     "riskWarning2Post": " or collateralize perp positions.",
     "riskWarning3Pre": "Withdrawals are subject to a ",
     "riskWarning3Bold": "3-day cooldown period.",
+    "tvlCapReached": "This vault has reached its TVL limit. Deposits are temporarily unavailable.",
+    "full": "Full",
     "paused": "This vault has paused activity due to abnormal risk conditions. Your funds remain safe.",
     "modal": {
       "addLiquidity": "Add Liquidity",
@@ -920,7 +923,9 @@
           "network=42161": "3-6 minutes"
         }
       }
-    ]
+    ],
+    "rateLimitWarning": "As a security measure, a rate limit exists to throttle token outflows. Each rolling 24h window, up to 10% of total bridged volume may be bridged out.",
+    "withdrawTransferHint": "Use this page to withdraw funds from Dango to Ethereum or other chains. To transfer funds between Dango accounts, use the {app} app."
   },
   "settings": {
     "title": "Settings",
@@ -1063,6 +1068,14 @@
     "spotAccount": "Spot Account"
   },
   "dex": {
+    "feeTiers": {
+      "title": "Fee Tiers",
+      "description": "Your fee rate is based on total trading volume over the last 14 days.",
+      "tier": "Tier",
+      "volume14d": "14D Volume",
+      "perpsTaker": "Perps Taker",
+      "perpsMaker": "Perps Maker"
+    },
     "fee": "Fee",
     "apy": "APY",
     "tvl": "TVL",
@@ -1186,6 +1199,9 @@
         "estLiqPrice": "Est. Liq. Price",
         "slippage": "Slippage",
         "fees": "Fees",
+        "feesTooltipTaker": "Taker orders pay a {rate} fee.",
+        "feesTooltipMaker": "Maker orders pay a {rate} fee.",
+        "feesLearnMore": "Learn More",
         "accountEquity": "Account Equity",
         "maxLeverage": "Max Leverage",
         "unrealizedPnl": "Unrealized PnL",
@@ -1383,7 +1399,9 @@
       "referralPoints": {
         "title": "Referral Points",
         "description": "Points earned from referring other users"
-      }
+      },
+      "earnedLabel": "Earned",
+      "predictedLabel": "Predicted for current epoch"
     },
     "tabs": {
       "profile": "Profile",
@@ -1424,7 +1442,10 @@
         "trade": "Trade",
         "referral": "Referral"
       },
-      "xPoints": "{points} Points"
+      "xPoints": "{points} Points",
+      "compensation": "Attack Compensation",
+      "predicted": "Predicted",
+      "inProgress": "In progress"
     },
     "rewards": {
       "boxes": {

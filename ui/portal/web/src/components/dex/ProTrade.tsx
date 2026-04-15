@@ -31,6 +31,7 @@ import {
   useAllPerpsPairStats,
   allPerpsPairStatsStore,
   useCurrentPrice,
+  useOraclePrices,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
@@ -102,6 +103,8 @@ const TradeSubscriptions: React.FC = () => {
   usePerpsUserStateExtended({ subscribe: mode === "perps" });
   usePerpsPairState({ subscribe: mode === "perps" });
   usePerpsOrdersByUser({ subscribe: mode === "perps" });
+
+  useOraclePrices({ subscribe: true });
 
   useAllPairStats();
   useAllPerpsPairStats();
