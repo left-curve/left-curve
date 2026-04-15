@@ -828,6 +828,8 @@
     "riskWarning2Post": " or collateralize perp positions.",
     "riskWarning3Pre": "Withdrawals are subject to a ",
     "riskWarning3Bold": "3-day cooldown period.",
+    "tvlCapReached": "This vault has reached its TVL limit. Deposits are temporarily unavailable.",
+    "full": "Full",
     "paused": "This vault has paused activity due to abnormal risk conditions. Your funds remain safe.",
     "modal": {
       "addLiquidity": "Add Liquidity",
