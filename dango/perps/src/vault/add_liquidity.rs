@@ -1,6 +1,6 @@
 use {
     crate::{
-        VIRTUAL_ASSETS, VIRTUAL_SHARES,
+        MAX_ORACLE_STALENESS, VIRTUAL_ASSETS, VIRTUAL_SHARES,
         core::{compute_available_margin, compute_user_equity},
         oracle,
         querier::NoCachePerpQuerier,
@@ -43,7 +43,8 @@ pub fn add_liquidity(
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // --------------------------- 2. Business logic ---------------------------
 

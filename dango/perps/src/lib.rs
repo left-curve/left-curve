@@ -26,8 +26,8 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst, Response,
-        SudoCtx, Uint128,
+        Addr, Duration, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst,
+        Response, SudoCtx, Uint128,
     },
 };
 
@@ -42,7 +42,10 @@ const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
 /// Lookback window for volume-tiered fee rate resolution.
-const VOLUME_LOOKBACK: grug::Duration = grug::Duration::from_days(14);
+const VOLUME_LOOKBACK: Duration = Duration::from_days(14);
+
+/// Reject oracle prices for being too old if older than this threshold.
+const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 
 /// Returns the oracle contract address.
 ///
@@ -98,7 +101,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     cron::process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
@@ -260,6 +264,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query::query_user_state_extended(
                 ctx.storage,
                 ctx.querier,
+                ctx.block.timestamp,
                 user,
                 include_equity,
                 include_available_margin,
@@ -285,6 +290,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query::query_user_states_extended(
                 ctx.storage,
                 ctx.querier,
+                ctx.block.timestamp,
                 start_after,
                 limit,
                 include_equity,

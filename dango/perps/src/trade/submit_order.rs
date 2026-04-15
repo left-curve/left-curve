@@ -1,6 +1,6 @@
 use {
     crate::{
-        VOLUME_LOOKBACK,
+        MAX_ORACLE_STALENESS, VOLUME_LOOKBACK,
         core::{
             check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
             compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
@@ -59,7 +59,8 @@ pub fn submit_order(
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
 

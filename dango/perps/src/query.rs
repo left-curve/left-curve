@@ -1,5 +1,6 @@
 use {
     crate::{
+        MAX_ORACLE_STALENESS,
         core::{
             compute_available_margin, compute_liquidation_price, compute_maintenance_margin,
             compute_position_unrealized_funding, compute_position_unrealized_pnl,
@@ -80,6 +81,7 @@ pub fn query_user_states(
 pub fn query_user_state_extended(
     storage: &dyn Storage,
     querier: QuerierWrapper,
+    current_time: Timestamp,
     user: Addr,
     include_equity: bool,
     include_available_margin: bool,
@@ -91,7 +93,9 @@ pub fn query_user_state_extended(
 ) -> anyhow::Result<UserStateExtended> {
     let user_state = USER_STATES.load(storage, user)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(querier), querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(querier), querier)
+        .with_no_older_than(current_time - MAX_ORACLE_STALENESS);
+
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
     let equity = if include_all || include_equity {
@@ -177,6 +181,7 @@ pub fn query_user_state_extended(
 pub fn query_user_states_extended(
     storage: &dyn Storage,
     querier: QuerierWrapper,
+    current_time: Timestamp,
     start_after: Option<Addr>,
     limit: Option<u32>,
     include_equity: bool,
@@ -198,6 +203,7 @@ pub fn query_user_states_extended(
             let user_state = query_user_state_extended(
                 storage,
                 querier,
+                current_time,
                 user,
                 include_equity,
                 include_available_margin,
