@@ -290,6 +290,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query::query_volume(ctx.storage, user, since)?;
             res.to_json_value()
         },
+        QueryMsg::VolumeByUser { user, since } => {
+            let res = query::query_volume_by_user(ctx, user, since)?;
+            res.to_json_value()
+        },
         QueryMsg::Referrer { referee } => {
             let res = query::query_referrer(ctx.storage, referee)?;
             res.to_json_value()

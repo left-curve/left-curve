@@ -19,7 +19,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         UsdPrice, UsdValue,
-        account_factory::UserIndex,
+        account_factory::{self, UserIndex},
         perps::{
             CommissionRate, LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId,
             PairParam, PairState, PositionExtended, QueryOrderResponse,
@@ -30,7 +30,7 @@ use {
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, MultiIndex, Order as IterationOrder,
-        PrefixBound, PrimaryKey, StdResult, Storage, Timestamp,
+        PrefixBound, PrimaryKey, StdResult, Storage, StorageQuerier, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -328,6 +328,25 @@ pub fn query_volume(
             Ok(latest.checked_sub(baseline)?)
         },
     }
+}
+
+pub fn query_volume_by_user(
+    ctx: ImmutableCtx,
+    user: UserIndex,
+    since: Option<Timestamp>,
+) -> anyhow::Result<UsdValue> {
+    let account_factory = crate::account_factory(ctx.querier);
+
+    let user_data = ctx
+        .querier
+        .query_wasm_path(account_factory, &dango_account_factory::USERS.path(user))?;
+
+    let mut total = UsdValue::ZERO;
+    for addr in user_data.accounts.values() {
+        total = total.checked_add(query_volume(ctx.storage, *addr, since)?)?;
+    }
+
+    Ok(total)
 }
 
 pub fn query_referrer(storage: &dyn Storage, referee: UserIndex) -> StdResult<Option<Referrer>> {
