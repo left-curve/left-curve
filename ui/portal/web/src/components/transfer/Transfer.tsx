@@ -1,7 +1,9 @@
 import {
   AssetInputWithRange,
+  Button,
   IconTwoArrows,
   Modals,
+  WarningContainer,
   createContext,
   useApp,
   useInputs,
@@ -22,13 +24,13 @@ import { useState } from "react";
 
 import {
   AccountSearchInput,
-  Button,
   CoinSelector,
   Input,
   ResizerContainer,
   Tab,
   Tabs,
 } from "@left-curve/applets-kit";
+import { Link } from "@tanstack/react-router";
 import type { Address } from "@left-curve/dango/types";
 import { isValidAddress } from "@left-curve/dango";
 import {
@@ -183,8 +185,21 @@ const TransferSend: React.FC = () => {
 
   if (action !== "send") return null;
 
+  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split("{app}");
+
   return (
     <div className="flex flex-col w-full gap-4">
+      <WarningContainer
+        description={
+          <p>
+            {transferHintParts[0]}
+            <Button as={Link} to="/bridge" search={{ action: "withdraw" }} variant="link" size="xs" className="p-0 h-fit m-0 inline">
+              {m["transfer.warning.withdraw"]()}
+            </Button>
+            {transferHintParts[1]}
+          </p>
+        }
+      />
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="flex flex-col w-full gap-4">
           <AssetInputWithRange

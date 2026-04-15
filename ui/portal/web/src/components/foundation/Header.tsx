@@ -37,10 +37,10 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   // TODO: Re-enable once the points service is ready.
   // const pointsUrl = window.dango.urls.pointsUrl;
   // const { isStarted, startsAt } = useCurrentEpoch({ pointsUrl, enabled: isMainnet });
-  const isStarted = false;
 
   // Fixed countdown target: 2026-04-15 12:00:00 UTC
   const startDate = new Date("2026-04-15T12:00:00Z");
+  const isStarted = new Date() >= startDate;
 
   const countdown = useCountdown({ date: startDate ?? undefined });
 
