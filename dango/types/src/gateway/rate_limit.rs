@@ -73,12 +73,20 @@ impl UserMovement {
 /// all slots so the rate-limit check is O(1). On each hourly cron, the oldest
 /// slot is popped (subtracted from `total_24h`) and a fresh zero slot is pushed.
 #[grug::derive(Serde, Borsh)]
-#[derive(Default)]
 pub struct GlobalOutbound {
     /// One slot per hourly epoch (index 0 = current hour).
     pub window: VecDeque<Uint128>,
     /// Cached sum of all slots in `window`.
     pub total_24h: Uint128,
+}
+
+impl Default for GlobalOutbound {
+    fn default() -> Self {
+        Self {
+            window: VecDeque::from([Uint128::ZERO]),
+            total_24h: Uint128::ZERO,
+        }
+    }
 }
 
 impl GlobalOutbound {
