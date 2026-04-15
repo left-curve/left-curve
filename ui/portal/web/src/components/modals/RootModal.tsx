@@ -263,9 +263,11 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   },
   [Modals.VaultWithdrawLiquidityWithPenalty]: {
     component: lazy(() =>
-      import("./VaultWithdrawLiquidityWithPenalty").then(({ VaultWithdrawLiquidityWithPenalty }) => ({
-        default: VaultWithdrawLiquidityWithPenalty,
-      })),
+      import("./VaultWithdrawLiquidityWithPenalty").then(
+        ({ VaultWithdrawLiquidityWithPenalty }) => ({
+          default: VaultWithdrawLiquidityWithPenalty,
+        }),
+      ),
     ),
   },
   [Modals.PerpsMarginMode]: {

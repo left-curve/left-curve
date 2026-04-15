@@ -780,6 +780,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 {m["dex.protrade.perps.fees"]()}
               </p>
               <Tooltip
+                trigger="click"
                 title={
                   <div className="flex flex-col gap-1">
                     <p>{m["dex.protrade.perps.feesTooltipTaker"]({ rate: `${(resolveRateSchedule(appConfig.perpsParam.takerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>

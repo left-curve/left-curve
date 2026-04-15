@@ -29,6 +29,8 @@ export interface TooltipProps extends Omit<VariantProps<typeof tooltipVariants>,
   onOpenChange?: (isOpen: boolean) => void;
   className?: string;
   showArrow?: boolean;
+  /** When true, the tooltip opens/closes on click instead of hover. */
+  trigger?: "hover" | "click";
 }
 
 interface TooltipPosition {
@@ -49,6 +51,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
   onOpenChange,
   className,
   showArrow = true,
+  trigger = "hover",
 }) => {
   const [isOpen, setIsOpen] = useControlledState(controlledIsOpen, onOpenChange, false);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
@@ -82,6 +85,22 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
       clearTimeout(closeTimeout.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (trigger !== "click" || !isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node) &&
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [trigger, isOpen]);
 
   const calculatePosition = useCallback(() => {
     if (!isOpen || placement === "auto" || !triggerRef.current || !panelRef.current) {
@@ -199,9 +218,10 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
   return (
     <div
       ref={triggerRef}
-      onMouseEnter={handleOpen}
-      onMouseLeave={handleClose}
-      onMouseMove={handleMouseMove}
+      onMouseEnter={trigger === "hover" ? handleOpen : undefined}
+      onMouseLeave={trigger === "hover" ? handleClose : undefined}
+      onMouseMove={trigger === "hover" ? handleMouseMove : undefined}
+      onClick={trigger === "click" ? () => setIsOpen((prev) => !prev) : undefined}
       className="relative w-fit cursor-pointer text-[0px]"
     >
       {children ? children : <IconInfo className="text-ink-tertiary-500" />}
