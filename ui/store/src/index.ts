@@ -276,6 +276,7 @@ export {
 export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
 export { usePerpsPairState, perpsPairStateStore } from "./hooks/usePerpsPairState.js";
 export { usePerpsState, perpsStateStore } from "./hooks/usePerpsState.js";
+export { useOraclePrices, oraclePricesStore } from "./hooks/useOraclePrices.js";
 export {
   type UsePerpsPairParamParameters,
   usePerpsPairParam,

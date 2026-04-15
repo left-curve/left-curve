@@ -292,12 +292,14 @@ export default defineConfig({
             clientsClaim: true,
             skipWaiting: true,
             cleanupOutdatedCaches: true,
+            navigationPreload: true,
             runtimeCaching: [
               {
                 urlPattern: ({ request }) => request.mode === "navigate",
                 handler: "NetworkFirst",
                 options: {
                   cacheName: "html-cache",
+                  networkTimeoutSeconds: 3,
                 },
               },
             ],

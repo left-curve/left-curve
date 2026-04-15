@@ -36,7 +36,11 @@ if (!window.location.origin.includes("localhost") && "serviceWorker" in navigato
     refreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("/service-worker.js");
+  navigator.serviceWorker.register("/service-worker.js").then((registration) => {
+    // Force an update check every time the page loads so returning users
+    // get the latest version as quickly as possible.
+    registration.update();
+  });
 }
 
 const container = document.getElementById("root");
