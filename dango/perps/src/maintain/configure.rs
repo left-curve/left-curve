@@ -129,9 +129,8 @@ fn validate_param(param: &Param) -> anyhow::Result<()> {
         param.funding_period,
     );
 
-    // `vault_total_weight` is cross-validated against the sum of per-pair
-    // weights in `validate_vault_total_weight`; no independent lower-bound
-    // check is needed here.
+    // `vault_total_weight` is cross-validated (>= sum of per-pair weights)
+    // in `validate_vault_total_weight`; no independent bound check needed here.
 
     ensure!(
         param.vault_cooldown_period > Duration::ZERO
@@ -153,6 +152,14 @@ fn validate_param(param: &Param) -> anyhow::Result<()> {
         ensure!(
             cap > UsdValue::ZERO,
             "invalid `vault_deposit_cap`! bounds: if Some, > 0, found: {}",
+            cap,
+        );
+    }
+
+    if let Some(cap) = param.vault_max_margin_usage {
+        ensure!(
+            cap > UsdValue::ZERO,
+            "invalid `vault_max_margin_usage`! bounds: if Some, > 0, found: {}",
             cap,
         );
     }
@@ -295,24 +302,24 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
     Ok(())
 }
 
-/// Cross-struct invariant: `param.vault_total_weight` must equal the sum of
-/// `vault_liquidity_weight` across all provided pairs. The sum is used as a
-/// divisor in `refresh_orders` when allocating vault margin across pairs;
-/// a drift between the precomputed total and the actual sum silently
-/// corrupts every subsequent allocation.
+/// Cross-struct invariant: `param.vault_total_weight` must be greater than or
+/// equal to the sum of `vault_liquidity_weight` across all provided pairs.
+/// The total is used as a divisor in `refresh_orders` when allocating vault
+/// margin across pairs. Setting `vault_total_weight` above the sum causes
+/// the vault to use only a fraction of its available margin for quoting.
 fn validate_vault_total_weight(
     param: &Param,
     pair_params: &BTreeMap<PairId, PairParam>,
 ) -> anyhow::Result<()> {
-    let mut expected = Dimensionless::ZERO;
+    let mut sum = Dimensionless::ZERO;
     for pair_param in pair_params.values() {
-        expected.checked_add_assign(pair_param.vault_liquidity_weight)?;
+        sum.checked_add_assign(pair_param.vault_liquidity_weight)?;
     }
 
     ensure!(
-        param.vault_total_weight == expected,
-        "invalid `vault_total_weight`! bounds: must equal sum of `vault_liquidity_weight` across all pairs, expected: {}, found: {}",
-        expected,
+        param.vault_total_weight >= sum,
+        "invalid `vault_total_weight`! bounds: must be >= sum of `vault_liquidity_weight` across all pairs, sum: {}, found: {}",
+        sum,
         param.vault_total_weight,
     );
 
@@ -379,6 +386,7 @@ mod tests {
             min_referrer_volume: UsdValue::ZERO,
             referrer_commission_rates: RateSchedule::default(),
             vault_deposit_cap: None,
+            vault_max_margin_usage: None,
         }
     }
 
@@ -1141,7 +1149,9 @@ mod tests {
     }
 
     #[test]
-    fn vault_total_weight_greater_than_sum_rejected() {
+    fn vault_total_weight_greater_than_sum_accepted() {
+        // total_weight > sum is valid — the vault uses only a fraction
+        // of its available margin (sum/total per pair).
         let param = Param {
             vault_total_weight: Dimensionless::new_int(2),
             ..valid_param()
@@ -1152,12 +1162,7 @@ mod tests {
                 ..valid_pair_param()
             },
         };
-        let err = validate_vault_total_weight(&param, &pp)
-            .unwrap_err()
-            .to_string();
-        assert!(err.contains("`vault_total_weight`"), "{err}");
-        assert!(err.contains("expected: 1"), "{err}");
-        assert!(err.contains("found: 2"), "{err}");
+        validate_vault_total_weight(&param, &pp).unwrap();
     }
 
     #[test]
@@ -1182,22 +1187,49 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("`vault_total_weight`"), "{err}");
-        assert!(err.contains("expected: 2"), "{err}");
+        assert!(err.contains("sum: 2"), "{err}");
         assert!(err.contains("found: 1"), "{err}");
     }
 
     #[test]
-    fn vault_total_weight_nonzero_with_empty_pairs_rejected() {
-        // If you bump the total but forget to supply any pair_params,
-        // the check catches it.
+    fn vault_total_weight_nonzero_with_empty_pairs_accepted() {
+        // total_weight > 0 with no pairs (sum = 0) is valid — the vault
+        // simply allocates zero margin to each (nonexistent) pair.
         let param = Param {
             vault_total_weight: Dimensionless::new_int(1),
             ..valid_param()
         };
         let pp: BTreeMap<PairId, PairParam> = BTreeMap::new();
-        let err = validate_vault_total_weight(&param, &pp)
-            .unwrap_err()
-            .to_string();
-        assert!(err.contains("`vault_total_weight`"), "{err}");
+        validate_vault_total_weight(&param, &pp).unwrap();
+    }
+
+    // --------------- validate vault_max_margin_usage --------------------------
+
+    #[test]
+    fn vault_max_margin_usage_none_accepted() {
+        let param = Param {
+            vault_max_margin_usage: None,
+            ..valid_param()
+        };
+        validate_param(&param).unwrap();
+    }
+
+    #[test]
+    fn vault_max_margin_usage_positive_accepted() {
+        let param = Param {
+            vault_max_margin_usage: Some(UsdValue::new_int(1_000)),
+            ..valid_param()
+        };
+        validate_param(&param).unwrap();
+    }
+
+    #[test]
+    fn vault_max_margin_usage_zero_rejected() {
+        let param = Param {
+            vault_max_margin_usage: Some(UsdValue::ZERO),
+            ..valid_param()
+        };
+        let err = validate_param(&param).unwrap_err().to_string();
+        assert!(err.contains("`vault_max_margin_usage`"), "{err}");
     }
 }

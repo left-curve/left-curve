@@ -88,6 +88,12 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         compute_available_margin(&mut oracle_querier, &perp_querier, &vault_state)?
     };
 
+    // Clamp to the configured maximum margin usage, if set.
+    let vault_margin_value = match param.vault_max_margin_usage {
+        Some(cap) => vault_margin_value.min(cap),
+        None => vault_margin_value,
+    };
+
     // If vault_total_weight is zero, no pairs have weights configured — skip.
     if param.vault_total_weight.is_zero() || !vault_margin_value.is_positive() {
         // Persist vault state (orders were cancelled).

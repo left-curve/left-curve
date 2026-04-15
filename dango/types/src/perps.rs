@@ -303,6 +303,13 @@ pub struct Param {
     ///
     /// Bounds: if `Some`, `> 0`. Use `None` for unlimited.
     pub vault_deposit_cap: Option<UsdValue>,
+
+    /// Maximum margin the vault may use for placing orders. If the vault's
+    /// available margin exceeds this value, it is clamped down before
+    /// allocation across pairs. `None` means no cap (use all available margin).
+    ///
+    /// Bounds: if `Some`, `> 0`. Use `None` for unlimited.
+    pub vault_max_margin_usage: Option<UsdValue>,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
