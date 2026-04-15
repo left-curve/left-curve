@@ -46,7 +46,9 @@ pub fn deposit(mut ctx: MutableCtx, to: Option<Addr>) -> anyhow::Result<Response
     }
 
     #[cfg(feature = "metrics")]
-    metrics::histogram!(crate::metrics::LABEL_DEPOSIT_AMOUNT).record(deposit_value.to_f64());
+    {
+        metrics::histogram!(crate::metrics::LABEL_DEPOSIT_AMOUNT).record(deposit_value.to_f64());
+    }
 
     Ok(Response::new().add_event(Deposited {
         user: to,
