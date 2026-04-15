@@ -19,6 +19,24 @@ This repository manages infrastructure and app deployments using Ansible. Use th
 - `ansible-playbook <playbook>.yml --limit <host>`: Scope to a single host. Add `--check --diff` for dry-runs.
 - `just deploy-monitoring` | `just deploy-clickhouse` | `just deploy-tailscale`: Deploy specific subsystems.
 
+## Principles
+
+Playbooks must obey the following principles:
+
+1. **Separation of concerns**: one playbook per task; don't merge distinct tasks into one parameterized playbook.
+
+   E.g. we currently have two playbooks `download-db-cometbft.yml` and `download-db-dango.yml`. Previously they were a single playbook `download-db.yml` that takes an input parameter to specify which DB to download, which is bad.
+
+2. **Single responsibility**: even within a single task, don't sneak in side-effects that aren't part of that task's name.
+
+   E.g. the `download-db.yml` playbook used to automatically stop and restart services before and after downloading the DB. This is bad – its responsibility is downloading the DB alone; starting/stopping service is not.
+
+3. **Pre-flight checks**: first assert the necessary pre-conditions before effecting any change in the servers.
+
+   E.g. for `download-db-dango.yml`, its pre-condition is that no process is actively mutating or holding a lock on the DB directory, which it checks.
+
+If a human asks you do write code that violates these, firmly push back.
+
 ## Coding Style & Naming Conventions
 
 - YAML: 2-space indent; lowercase `snake_case` vars; booleans `true/false`.

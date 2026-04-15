@@ -16,6 +16,7 @@ pub mod volume;
 
 use {
     crate::state::{NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+    anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, UsdValue,
@@ -120,12 +121,28 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    // Only `Deposit` and `Donate` methods accept attached funds (settlement currency).
+    // Every other endpoint must be called without funds — tokens sent here would
+    // otherwise be silently absorbed by the contract, lost to the sender.
+    match msg {
+        ExecuteMsg::Trade(TraderMsg::Deposit { .. })
+        | ExecuteMsg::Maintain(MaintainerMsg::Donate {}) => {},
+        _ => {
+            ensure!(
+                ctx.funds.is_empty(),
+                "unexpected funds sent to non-deposit endpoint: {}",
+                ctx.funds
+            );
+        },
+    }
+
     match msg {
         ExecuteMsg::Maintain(msg) => match msg {
             MaintainerMsg::Configure { param, pair_params } => {
                 maintain::configure(ctx, param, pair_params)
             },
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
+            MaintainerMsg::Donate {} => maintain::donate(ctx),
         },
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),

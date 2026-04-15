@@ -24,6 +24,12 @@ pub fn set_fee_share_ratio(
     ctx: MutableCtx,
     share_ratio: FeeShareRatio,
 ) -> anyhow::Result<Response> {
+    // Share ratio must be non-negative.
+    ensure!(
+        !share_ratio.is_negative(),
+        "fee share ratio cannot be negative"
+    );
+
     // Share ratio must not exceed the maximum.
     ensure!(
         share_ratio <= MAX_FEE_SHARE_RATIO,

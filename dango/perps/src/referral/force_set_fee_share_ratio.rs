@@ -20,6 +20,11 @@ pub fn force_set_fee_share_ratio(
         "you don't have the right, O you don't have the right"
     );
 
+    ensure!(
+        !share_ratio.is_negative(),
+        "fee share ratio cannot be negative, found: {share_ratio}"
+    );
+
     FEE_SHARE_RATIO.save(ctx.storage, user, &share_ratio)?;
 
     Ok(Response::new())
@@ -64,5 +69,38 @@ mod tests {
 
         force_set_fee_share_ratio(ctx.as_mutable(), 42, FeeShareRatio::new_percent(25))
             .should_fail_with_error("you don't have the right");
+    }
+
+    #[test]
+    fn negative_share_ratio_rejected() {
+        let mut ctx = MockContext::new()
+            .with_querier(MockQuerier::new().with_config(mock_config()))
+            .with_sender(OWNER)
+            .with_funds(Coins::default());
+
+        force_set_fee_share_ratio(ctx.as_mutable(), 42, FeeShareRatio::new_percent(-10))
+            .should_fail_with_error("fee share ratio cannot be negative");
+    }
+
+    #[test]
+    fn zero_share_ratio_accepted() {
+        let mut ctx = MockContext::new()
+            .with_querier(MockQuerier::new().with_config(mock_config()))
+            .with_sender(OWNER)
+            .with_funds(Coins::default());
+
+        force_set_fee_share_ratio(ctx.as_mutable(), 42, FeeShareRatio::ZERO).should_succeed();
+    }
+
+    /// The force path intentionally allows ratios above the normal 50% cap.
+    #[test]
+    fn above_normal_cap_accepted() {
+        let mut ctx = MockContext::new()
+            .with_querier(MockQuerier::new().with_config(mock_config()))
+            .with_sender(OWNER)
+            .with_funds(Coins::default());
+
+        force_set_fee_share_ratio(ctx.as_mutable(), 42, FeeShareRatio::new_percent(75))
+            .should_succeed();
     }
 }

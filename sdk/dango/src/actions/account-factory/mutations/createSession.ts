@@ -24,9 +24,12 @@ export async function createSession<transport extends Transport>(
 ): CreateSessionReturnType {
   const { expireAt, pubKey } = parameters;
 
+  if (!client.chain) throw new Error("chain is required for session creation");
+
   const sessionInfo: SigningSessionInfo = {
+    chainId: client.chain.id,
     sessionKey: encodeBase64(pubKey),
-    expireAt: expireAt.toString(),
+    expireAt: Math.floor(expireAt / 1000).toString(),
   };
 
   const { credential } = await client.signer.signArbitrary({
@@ -34,8 +37,9 @@ export async function createSession<transport extends Transport>(
     message: sessionInfo,
     types: {
       Message: [
-        { name: "session_key", type: "string" },
+        { name: "chain_id", type: "string" },
         { name: "expire_at", type: "string" },
+        { name: "session_key", type: "string" },
       ],
     },
   });

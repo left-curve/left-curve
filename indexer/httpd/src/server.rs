@@ -153,6 +153,7 @@ where
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(index)
             .service(routes::index::up)
+            .service(grug_httpd::routes::index::requester_ip)
             .service(routes::blocks::services())
             .service(graphql_route::<
                 crate::graphql::query::IndexerQuery,

@@ -27,6 +27,16 @@ entryPoints:
         requestAcceptGraceTimeout: 0s
       respondingTimeouts:
         readTimeout: 60s
+    forwardedHeaders:
+      trustedIPs:
+{% for cidr in cloudflare_ips %}
+        - {{ cidr }}
+{% endfor %}
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - fc00::/7
   websecure:
     address: :443
     reusePort: true
@@ -35,6 +45,16 @@ entryPoints:
         requestAcceptGraceTimeout: 0s
       respondingTimeouts:
         readTimeout: 60s
+    forwardedHeaders:
+      trustedIPs:
+{% for cidr in cloudflare_ips %}
+        - {{ cidr }}
+{% endfor %}
+        - 127.0.0.1/32
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - fc00::/7
   traefik:
     address: :8888
 
@@ -51,3 +71,10 @@ accessLog:
     names:
       RouterName: keep
       ServiceName: keep
+    headers:
+      defaultMode: drop
+      names:
+        CF-Connecting-IP: keep
+        X-Forwarded-For: keep
+        Forwarded: keep
+        Cf-Ray: keep

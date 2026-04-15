@@ -7,10 +7,11 @@ mod liq_price;
 mod margin;
 mod min_size;
 mod oi;
+mod slippage;
 mod target_price;
 mod vault;
 
 pub use {
     closure::*, decompose::*, fees::*, fill::*, funding::*, liq_price::*, margin::*, min_size::*,
-    oi::*, target_price::*, vault::*,
+    oi::*, slippage::*, target_price::*, vault::*,
 };

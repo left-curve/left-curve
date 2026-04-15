@@ -127,27 +127,34 @@ stop-points-bot network:
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-points-bot.log
 
-drop-db-points-bot network:
+drop-app-db-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
     && ansible-playbook drop-db-points-bot.yml \
-      -e '{"points_bot_networks": ["{{network}}"]}' \
+      -e '{"points_bot_networks": ["{{network}}"], "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
-      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-db-points-bot.log
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-app-db-points-bot.log
 
-drop-db-full-points-bot network:
+drop-app-db-full-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
     && ansible-playbook drop-db-points-bot.yml \
-      -e '{"points_bot_networks": ["{{network}}"], "drop_db_full": true}' \
+      -e '{"points_bot_networks": ["{{network}}"], "drop_db_full": true, "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
-      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-db-full-points-bot.log
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-app-db-full-points-bot.log
 
-delete-points-bot network:
+drop-httpd-db-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook delete-points-bot.yml \
-      -e '{"points_bot_networks": ["{{network}}"]}' \
+    && ansible-playbook drop-db-points-bot.yml \
+      -e '{"points_bot_networks": ["{{network}}"], "drop_db_target": "httpd", "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
-      -K \
-      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-points-bot.log
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-httpd-db-points-bot.log
+
+drop-all-dbs-points-bot network tag="latest":
+  mkdir -p {{justfile_directory()}}/logs \
+    && ansible-playbook drop-db-points-bot.yml \
+      -e '{"points_bot_networks": ["{{network}}"], "drop_db_target": "all", "points_bot_tag": "{{tag}}"}' \
+      --limit points-bot-{{network}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-all-dbs-points-bot.log
+
 
 # -------------------------------- Perps Bot ----------------------------------
 
@@ -408,7 +415,20 @@ b2-mark-bucket-deletable name:
 # ------------------------------ Database Download ------------------------------
 
 # Download Grug RocksDB — interactive host selection (no tee, prompt needs direct stdout)
-# Usage: just download-db testnet
-download-db network:
-  ansible-playbook download-db.yml \
+# Usage: just download-db-dango testnet
+download-db-dango network:
+  ansible-playbook download-db-dango.yml \
     -e dango_network={{network}}
+
+# Download CometBFT data — interactive host selection (no tee, prompt needs direct stdout)
+# Usage: just download-db-cometbft testnet
+download-db-cometbft network:
+  ansible-playbook download-db-cometbft.yml \
+    -e dango_network={{network}}
+
+# Download Points Bot RocksDB — interactive host selection (no tee, prompt needs direct stdout)
+# Usage: just download-db-points-bot testnet
+download-db-points-bot network restart_after="true":
+  ansible-playbook download-db-points-bot.yml \
+    -e network={{network}} \
+    -e restart_after={{restart_after}}

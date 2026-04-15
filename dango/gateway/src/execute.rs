@@ -191,10 +191,6 @@ fn receive_remote(
 }
 
 fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
-    if ctx.chain_id == "dango-1" {
-        anyhow::bail!("temporary bridge halt");
-    }
-
     // The user must have sent exactly one coin.
     let mut coin = ctx.funds.into_one_coin()?;
 

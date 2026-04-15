@@ -80,9 +80,11 @@ mod session_account {
         // Sign the `SessionInfo` with the username key.
         pub fn sign_session_key(
             self,
+            chain_id: &str,
             expire_at: Timestamp,
         ) -> anyhow::Result<SessionAccount<Defined<SessionInfoBuffer>>> {
             let session_info = SessionInfo {
+                chain_id: chain_id.to_string(),
                 session_key: self.session_pk,
                 expire_at,
             };
@@ -187,7 +189,10 @@ fn session_key() {
     suite.block_time = Duration::from_seconds(10);
 
     let mut owner = SessionAccount::new(accounts.owner)
-        .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+        .sign_session_key(
+            &suite.chain_id,
+            suite.block.timestamp + Duration::from_seconds(100),
+        )
         .unwrap();
 
     // Ok transfer
@@ -219,7 +224,10 @@ fn session_key() {
     // Sign the session key again refreshing the timestamp
     {
         owner = owner
-            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+            .sign_session_key(
+                &suite.chain_id,
+                suite.block.timestamp + Duration::from_seconds(100),
+            )
             .unwrap();
 
         suite
@@ -242,7 +250,10 @@ fn session_key() {
 
         // Refresh the session key signature
         owner = owner
-            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+            .sign_session_key(
+                &suite.chain_id,
+                suite.block.timestamp + Duration::from_seconds(100),
+            )
             .unwrap();
 
         // Create a SessionAccount from the new account
@@ -273,7 +284,10 @@ fn session_key() {
         owner = owner
             .refresh_session_key()
             .unwrap()
-            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+            .sign_session_key(
+                &suite.chain_id,
+                suite.block.timestamp + Duration::from_seconds(100),
+            )
             .unwrap();
 
         // Send some coins to the relayer

@@ -809,6 +809,10 @@ pub enum MaintainerMsg {
     /// Unfilled positions are ADL'd against counter-parties at the bankruptcy
     /// price. Any remaining bad debt is absorbed by the insurance fund.
     Liquidate { user: Addr },
+
+    /// Accept a USDC donation to the perps contract.
+    /// Only callable by the chain owner. Must attach exactly USDC, nonzero.
+    Donate {},
 }
 
 #[grug::derive(Serde)]
@@ -1379,6 +1383,9 @@ pub struct BadDebtCovered {
 pub struct FeeDistributed {
     /// User index of the fee payer.
     pub payer: UserIndex,
+
+    /// Address of the fee payer.
+    pub payer_addr: Addr,
 
     /// Protocol treasury portion of the fee.
     pub protocol_fee: UsdValue,

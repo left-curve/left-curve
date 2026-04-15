@@ -228,6 +228,7 @@ pub fn apply_fee_commissions(
 
         events.push(FeeDistributed {
             payer: payer_index,
+            payer_addr: payer,
             protocol_fee: fee_breakdown.protocol_fee,
             vault_fee,
             commissions,
