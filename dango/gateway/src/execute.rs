@@ -178,12 +178,16 @@ fn receive_remote(
     // withdraw up to this amount without hitting the global rate limit.
     {
         let current_epoch = EPOCH.load(ctx.storage)?;
-        let user_index = resolve_user_index(ctx.querier, recipient)?;
 
-        let mut user_movement = load_user_movement(ctx.storage, user_index, &denom, current_epoch)?;
-        user_movement.current.deposited.checked_add_assign(amount)?;
-
-        USER_MOVEMENTS.save(ctx.storage, (user_index, &denom), &user_movement)?;
+        // We allow deposit to an unexisting address.
+        // This deposit will be held inside the bank.
+        if let Ok(user_index) = resolve_user_index(ctx.querier, recipient) {
+            // Update the user movement.
+            let mut user_movement =
+                load_user_movement(ctx.storage, user_index, &denom, current_epoch)?;
+            user_movement.current.deposited.checked_add_assign(amount)?;
+            USER_MOVEMENTS.save(ctx.storage, (user_index, &denom), &user_movement)?;
+        };
     }
 
     #[cfg(feature = "metrics")]
