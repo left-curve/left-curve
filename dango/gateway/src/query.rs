@@ -1,8 +1,14 @@
 use {
-    crate::{RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
-    dango_types::gateway::{
-        QueryMsg, QueryReservesResponseItem, QueryRoutesResponseItem,
-        QueryWithdrawalFeesResponseItem, RateLimit, Remote,
+    crate::{
+        EPOCH, GLOBAL_OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES,
+        USER_MOVEMENTS, WITHDRAWAL_FEES,
+    },
+    dango_types::{
+        account_factory::UserIndex,
+        gateway::{
+            GlobalOutbound, QueryMsg, QueryReservesResponseItem, QueryRoutesResponseItem,
+            QueryWithdrawalFeesResponseItem, RateLimit, Remote, UserMovement,
+        },
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -44,6 +50,22 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::WithdrawalFees { start_after, limit } => {
             let res = query_withdrawal_fees(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::Epoch {} => {
+            let res = query_epoch(ctx)?;
+            res.to_json_value()
+        },
+        QueryMsg::Supply { denom } => {
+            let res = query_supply(ctx, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::GlobalOutbound { denom } => {
+            let res = query_global_outbound(ctx, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::UserMovement { user_index, denom } => {
+            let res = query_user_movement(ctx, user_index, denom)?;
             res.to_json_value()
         },
     }
@@ -131,4 +153,31 @@ fn query_withdrawal_fees(
         })
         .take(limit)
         .collect()
+}
+
+fn query_epoch(ctx: ImmutableCtx) -> StdResult<u64> {
+    EPOCH.load(ctx.storage)
+}
+
+fn query_supply(ctx: ImmutableCtx, denom: Denom) -> StdResult<Uint128> {
+    SUPPLIES.load(ctx.storage, &denom)
+}
+
+fn query_global_outbound(ctx: ImmutableCtx, denom: Denom) -> StdResult<GlobalOutbound> {
+    GLOBAL_OUTBOUND.load(ctx.storage, &denom)
+}
+
+fn query_user_movement(
+    ctx: ImmutableCtx,
+    user_index: UserIndex,
+    denom: Denom,
+) -> StdResult<UserMovement> {
+    let epoch = EPOCH.load(ctx.storage)?;
+    let mut movement = USER_MOVEMENTS
+        .may_load(ctx.storage, (user_index, &denom))?
+        .unwrap_or_else(|| UserMovement::new(epoch));
+
+    movement.rotate_if_needed(epoch);
+
+    Ok(movement)
 }

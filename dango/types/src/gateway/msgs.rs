@@ -1,5 +1,6 @@
 use {
-    super::{Addr32, Origin, RateLimit, Remote},
+    super::{Addr32, GlobalOutbound, Origin, RateLimit, Remote, UserMovement},
+    crate::account_factory::UserIndex,
     grug::{Addr, Denom, Op, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -82,6 +83,18 @@ pub enum QueryMsg {
         start_after: Option<(Denom, Remote)>,
         limit: Option<u32>,
     },
+    /// Query the current epoch counter.
+    #[returns(u64)]
+    Epoch {},
+    /// Query the snapshotted supply for a denom.
+    #[returns(Uint128)]
+    Supply { denom: Denom },
+    /// Query the global outbound sliding window for a denom.
+    #[returns(GlobalOutbound)]
+    GlobalOutbound { denom: Denom },
+    /// Query a user's movement history for a denom.
+    #[returns(UserMovement)]
+    UserMovement { user_index: UserIndex, denom: Denom },
 }
 
 #[grug::derive(Serde)]
