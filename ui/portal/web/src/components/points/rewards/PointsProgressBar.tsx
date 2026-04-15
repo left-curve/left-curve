@@ -2,7 +2,7 @@ import { formatNumber } from "@left-curve/dango/utils";
 import { twMerge, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount } from "@left-curve/store";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 
 type TierKey = "bronze" | "silver" | "gold" | "crystal";
@@ -74,9 +74,7 @@ const calculateSteps = (currentVolume: number): Step[] => {
   return steps;
 };
 
-const getNextMilestone = (
-  currentVolume: number,
-): { tier: TierKey; target: number } => {
+const getNextMilestone = (currentVolume: number): { tier: TierKey; target: number } => {
   const currentMs = Math.floor(Math.max(currentVolume, 0) / MILESTONE_STEP);
   const target = (currentMs + 1) * MILESTONE_STEP;
   return { tier: tierKeyForThreshold(target), target };
@@ -169,7 +167,7 @@ const ProgressThumb: React.FC<ProgressThumbProps> = ({ progress }) => (
 );
 
 const STEP_PX = 170;
-const EDGE_PX = 85;
+const EDGE_PX = 25;
 const BAR_LEFT_EXTEND = 24;
 const BAR_RIGHT_FADE = 60;
 
@@ -189,6 +187,7 @@ const HorizontalProgressBar: React.FC<HorizontalProgressBarProps> = ({
   const dragStartXRef = useRef(0);
   const dragStartScrollRef = useRef(0);
   const hasAutoCenteredRef = useRef(false);
+  const [isAtStart, setIsAtStart] = useState(true);
 
   const innerWidth = (steps.length - 1) * STEP_PX;
   const trackWidth = innerWidth + EDGE_PX * 2;
@@ -247,6 +246,12 @@ const HorizontalProgressBar: React.FC<HorizontalProgressBarProps> = ({
     };
   }, [centerOnThumb]);
 
+  const onScroll = () => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    setIsAtStart(viewport.scrollLeft <= 1);
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "mouse") return;
     const viewport = viewportRef.current;
@@ -278,12 +283,15 @@ const HorizontalProgressBar: React.FC<HorizontalProgressBarProps> = ({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       onPointerCancel={onPointerEnd}
+      onScroll={onScroll}
       className="w-full overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x select-none cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       style={{
-        maskImage:
-          "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
-        WebkitMaskImage:
-          "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
+        maskImage: isAtStart
+          ? "linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%)"
+          : "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
+        WebkitMaskImage: isAtStart
+          ? "linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%)"
+          : "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
       }}
     >
       <div className="relative pt-6" style={{ width: trackWidth }}>
