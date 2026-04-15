@@ -231,17 +231,13 @@ fn vault_withdrawal_makes_vault_liquidatable() {
     );
 
     // -------------------------------------------------------------------------
-    // Step 6: LP burns ALL shares.
+    // Step 6: LP tries to burn ALL shares.
     //
-    // amount_to_release ≈ $4,200 (equity-proportional, based on share ratio).
-    // Raw margin check: $5,000 >= $4,200 → passes.
+    // amount_to_release ≈ $4,204 (equity-proportional, based on share ratio).
+    // Old raw-margin check would pass: $5,000 >= $4,204.
     //
-    // Post-withdrawal:
-    //   margin ≈ $800, PnL = -$800, equity ≈ $0, MM = $150
-    //   $0 < $150 → vault is liquidatable.
-    //
-    // This is the bug: the withdrawal succeeds despite making the vault
-    // immediately liquidatable.
+    // Fix: the available-margin check uses equity minus initial margin (IMR),
+    // which is ~$3,904 — less than the $4,204 release amount. Rejected.
     // -------------------------------------------------------------------------
 
     suite
@@ -253,100 +249,5 @@ fn vault_withdrawal_makes_vault_liquidatable() {
             }),
             Coins::new(),
         )
-        .should_succeed();
-
-    // -------------------------------------------------------------------------
-    // Step 7: Assert vault is now liquidatable (equity < maintenance margin).
-    // -------------------------------------------------------------------------
-
-    let vault_ext_after: perps::UserStateExtended = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateExtendedRequest {
-            user: contracts.perps,
-            include_equity: true,
-            include_maintenance_margin: true,
-            include_available_margin: false,
-            include_unrealized_pnl: false,
-            include_unrealized_funding: false,
-            include_liquidation_price: false,
-            include_all: false,
-        })
-        .should_succeed();
-
-    let equity_after = vault_ext_after.equity.unwrap();
-    let mm_after = vault_ext_after.maintenance_margin.unwrap();
-    assert!(
-        equity_after < mm_after,
-        "vault should be liquidatable AFTER withdrawal: equity={equity_after}, MM={mm_after}"
-    );
-
-    // -------------------------------------------------------------------------
-    // Step 8: Bidder (user3) deposits $10,000 and places a bid at $1,500 for
-    // the vault's position size, providing book liquidity for the liquidation.
-    // -------------------------------------------------------------------------
-
-    suite
-        .execute(
-            &mut accounts.user3,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
-            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
-        )
-        .should_succeed();
-
-    suite
-        .execute(
-            &mut accounts.user3,
-            contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                pair_id: pair.clone(),
-                size: vault_bid_size, // buy same quantity the vault is long
-                kind: perps::OrderKind::Limit {
-                    limit_price: UsdPrice::new_int(1_500),
-                    time_in_force: perps::TimeInForce::PostOnly,
-                },
-                reduce_only: false,
-                tp: None,
-                sl: None,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // -------------------------------------------------------------------------
-    // Step 9: Liquidate the vault -- should succeed, confirming the vault was
-    // indeed pushed below its maintenance margin by the withdrawal.
-    // -------------------------------------------------------------------------
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.perps,
-            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
-                user: contracts.perps,
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Vault position should be reduced or eliminated after liquidation.
-    let vault_state_final: Option<perps::UserState> = suite
-        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
-            user: contracts.perps,
-        })
-        .should_succeed();
-
-    match vault_state_final {
-        Some(state) => {
-            // If the vault still has an ETH position, it should be smaller.
-            if let Some(pos) = state.positions.get(&pair) {
-                assert!(
-                    pos.size < vault_pos.size,
-                    "vault position should be reduced after liquidation"
-                );
-            }
-        },
-        None => {
-            // Vault state was deleted (fully cleared) — also valid.
-        },
-    }
+        .should_fail_with_error("insufficient vault available margin to cover withdrawal");
 }

@@ -1,7 +1,7 @@
 use {
     crate::{
         MAX_ORACLE_STALENESS, VIRTUAL_ASSETS, VIRTUAL_SHARES,
-        core::compute_user_equity,
+        core::{compute_available_margin, compute_user_equity},
         oracle,
         querier::NoCachePerpQuerier,
         state::{PARAM, STATE, USER_STATES},
@@ -152,12 +152,19 @@ fn _remove_liquidity(
         UsdValue::new(Dec128_6::raw(raw))
     };
 
+    // ------------------------- Step 4. Margin check --------------------------
+
+    let vault_available_margin =
+        compute_available_margin(oracle_querier, perp_querier, vault_user_state)?;
+
     ensure!(
-        vault_user_state.margin >= amount_to_release,
-        "insufficient vault margin to cover withdrawal: {} (margin) < {} (release)",
-        vault_user_state.margin,
+        vault_available_margin >= amount_to_release,
+        "insufficient vault available margin to cover withdrawal: {} (available) < {} (release)",
+        vault_available_margin,
         amount_to_release
     );
+
+    // ---------------------- Step 5. Schedule the unlock ----------------------
 
     let end_time = current_time + param.vault_cooldown_period;
     let unlock = Unlock {
