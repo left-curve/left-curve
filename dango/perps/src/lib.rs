@@ -15,7 +15,9 @@ pub mod vault;
 pub mod volume;
 
 use {
-    crate::state::{NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+    crate::state::{
+        FEE_RATE_OVERRIDES, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
+    },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -152,6 +154,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             },
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
             MaintainerMsg::Donate {} => maintain::donate(ctx),
+            MaintainerMsg::SetFeeRateOverride {
+                user,
+                maker_taker_fee_rates,
+            } => maintain::set_fee_rate_override(ctx, user, maker_taker_fee_rates),
         },
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),
@@ -362,6 +368,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::CommissionRateOverrides { start_after, limit } => {
             let res = query::query_commission_rate_overrides(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::FeeRateOverride { user } => {
+            let res = FEE_RATE_OVERRIDES.may_load(ctx.storage, user)?;
+            res.to_json_value()
+        },
+        QueryMsg::FeeRateOverrides { start_after, limit } => {
+            let res = query::query_fee_rate_overrides(ctx, start_after, limit)?;
             res.to_json_value()
         },
     }

@@ -813,6 +813,20 @@ pub enum MaintainerMsg {
     /// Accept a USDC donation to the perps contract.
     /// Only callable by the chain owner. Must attach exactly USDC, nonzero.
     Donate {},
+
+    /// Override a user's fee rate, overriding the tier-based fee rates derived
+    /// from the user's recent trading volume.
+    ///
+    /// Bounds:
+    ///
+    /// - `maker_fee_rate`: [-1, 1]. Note that negative maker rates are allowed.
+    /// - `taker_fee_rate`: [0, 1].
+    SetFeeRateOverride {
+        user: Addr,
+
+        /// First element is maker rate, second is taker rate.
+        maker_taker_fee_rates: Op<(Dimensionless, Dimensionless)>,
+    },
 }
 
 #[grug::derive(Serde)]
@@ -1121,6 +1135,19 @@ pub enum QueryMsg {
     #[returns(BTreeMap<UserIndex, CommissionRate>)]
     CommissionRateOverrides {
         start_after: Option<UserIndex>,
+        limit: Option<u32>,
+    },
+
+    /// Return the trading fee rate override for a user, if one exists.
+    /// Return value is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(Option<(Dimensionless, Dimensionless)>)]
+    FeeRateOverride { user: Addr },
+
+    /// Enumerate all trading fee overrides, with pagination.
+    /// Each value in the returned map is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(BTreeMap<Addr, (Dimensionless, Dimensionless)>)]
+    FeeRateOverrides {
+        start_after: Option<Addr>,
         limit: Option<u32>,
     },
 }

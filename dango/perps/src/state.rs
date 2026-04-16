@@ -1,6 +1,6 @@
 use {
     dango_types::{
-        Quantity, UsdPrice, UsdValue,
+        Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
             CommissionRate, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
@@ -57,6 +57,9 @@ pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 /// Cumulative trading volume per user, bucketed by day.
 /// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
 pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
+
+/// Address --> (maker_fee_rate, taker_fee_rate)
+pub const FEE_RATE_OVERRIDES: Map<Addr, (Dimensionless, Dimensionless)> = Map::new("fr_override");
 
 // --------------------------------- referral ----------------------------------
 

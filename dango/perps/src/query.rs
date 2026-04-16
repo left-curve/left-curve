@@ -10,16 +10,16 @@ use {
         querier::NoCachePerpQuerier,
         referral::calculate_commission_rate,
         state::{
-            ASKS, BIDS, COMMISSION_RATE_OVERRIDES, DEPTHS, FEE_SHARE_RATIO, PAIR_PARAMS,
-            PAIR_STATES, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA,
-            USER_STATES, VOLUMES,
+            ASKS, BIDS, COMMISSION_RATE_OVERRIDES, DEPTHS, FEE_RATE_OVERRIDES, FEE_SHARE_RATIO,
+            PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
+            USER_REFERRAL_DATA, USER_STATES, VOLUMES,
         },
         volume::round_to_day,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
-        UsdPrice, UsdValue,
+        Dimensionless, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
             CommissionRate, LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId,
@@ -558,4 +558,18 @@ pub fn query_referral_settings(
         commission_rate,
         share_ratio,
     }))
+}
+
+pub fn query_fee_rate_overrides(
+    ctx: ImmutableCtx,
+    start_after: Option<Addr>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Addr, (Dimensionless, Dimensionless)>> {
+    let start = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    FEE_RATE_OVERRIDES
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .collect()
 }
