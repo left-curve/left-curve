@@ -15,7 +15,10 @@ use {
         querier::NoCachePerpQuerier,
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
-        state::{ASKS, BIDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        state::{
+            ASKS, BIDS, FEE_RATE_OVERRIDES, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
+            USER_STATES,
+        },
         volume::flush_volumes,
     },
     anyhow::ensure,
@@ -377,27 +380,33 @@ pub(crate) fn _submit_order(
     // covers initial margin. Runs for all orders (including reduce-only and
     // post-only) before any matching or order storage.
 
+    let perp_querier = NoCachePerpQuerier::new_local(storage);
+
+    // Determine the taker's fee rate.
+    // If the admin has configured a fee rate override for the taker, then
+    // simply use it.
+    // Otherwise, resolve it based on recent volume.
+    let taker_fee_rate = if let Some((_maker_rate_override, taker_rate_override)) =
+        FEE_RATE_OVERRIDES.may_load(storage, taker)?
     {
-        let perp_querier = NoCachePerpQuerier::new_local(storage);
+        taker_rate_override
+    } else {
+        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+        let taker_volume = query_volume(storage, taker, volume_since)?;
+        param.taker_fee_rates.resolve(taker_volume)
+    };
 
-        let taker_fee_rate = {
-            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-            let taker_volume = query_volume(storage, taker, volume_since)?;
-            param.taker_fee_rates.resolve(taker_volume)
-        };
-
-        check_margin(
-            oracle_querier,
-            pair_id,
-            &perp_querier,
-            &pair_state,
-            &taker_state,
-            taker_fee_rate,
-            target_price,
-            closing_size,
-            opening_size,
-        )?;
-    }
+    check_margin(
+        oracle_querier,
+        pair_id,
+        &perp_querier,
+        &pair_state,
+        &taker_state,
+        taker_fee_rate,
+        target_price,
+        closing_size,
+        opening_size,
+    )?;
 
     // ---------------------- Step 6. Post-only fast path ----------------------
 
@@ -464,6 +473,7 @@ pub(crate) fn _submit_order(
         &taker_state,
         taker_is_bid,
         taker_order_id,
+        taker_fee_rate,
         &BTreeMap::new(),
         target_price,
         fillable_size,
@@ -629,6 +639,7 @@ pub fn match_order(
     taker_state: &UserState,
     taker_is_bid: bool,
     taker_order_id: OrderId,
+    taker_fee_rate: Dimensionless,
     maker_states: &BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
     mut remaining_size: Quantity,
@@ -646,13 +657,6 @@ pub fn match_order(
     let mut volumes = BTreeMap::new();
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
-
-    // Resolve taker's fee rate based on recent volume.
-    let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-    let taker_fee_rate = {
-        let taker_volume = query_volume(storage, taker, volume_since)?;
-        param.taker_fee_rates.resolve(taker_volume)
-    };
 
     // Create iterator over the maker side of the order book.
     // The iteration follows price-time priority.
@@ -761,8 +765,16 @@ pub fn match_order(
 
         let old_maker_pos = maker_state.positions.get(pair_id).cloned();
 
-        // Resolve maker's fee rate based on recent volume.
-        let maker_fee_rate = {
+        // Determine the maker's fee rate.
+        // If the admin has configured a fee rate override for the maker, then
+        // simply use it.
+        // Otherwise, resolve it based on recent volume.
+        let maker_fee_rate = if let Some((maker_rate_override, _taker_rate_override)) =
+            FEE_RATE_OVERRIDES.may_load(storage, maker_order.user)?
+        {
+            maker_rate_override
+        } else {
+            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
             let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
             param.maker_fee_rates.resolve(maker_volume)
         };

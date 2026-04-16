@@ -589,6 +589,7 @@ fn execute_close_schedule(
             user_state,
             taker_is_bid,
             OrderId::ZERO,
+            Dimensionless::ZERO, // zero trading fee rate for the taker during liquidation
             maker_states,
             target_price,
             *close_size,
