@@ -1218,6 +1218,8 @@
         ],
         "errors": {
           "exceedsMargin": "Exceeds available margin",
+          "exceedsClosable": "Exceeds closable position size",
+          "reduceOnlyNoPosition": "Reduce-only requires an opposing position",
           "minOrderSize": "Min order size: ${minOrderSize}",
           "tpAboveForLongs": "TP must be above reference price for longs",
           "tpBelowForShorts": "TP must be below reference price for shorts",
