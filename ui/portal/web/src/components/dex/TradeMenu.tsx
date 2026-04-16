@@ -1,3 +1,8 @@
+// The perps order-sizing maths (side-dependent "Available to trade",
+// slider max, reduce-only cap) is non-obvious because the on-chain
+// margin check treats closing and opening portions asymmetrically.
+// See `./max-size-math.md` for the formulas and worked examples.
+
 import {
   useAccount,
   useAppConfig,
