@@ -76,7 +76,7 @@ $$
 
 An order whose price falls outside this band is rejected at submission, before matching begins. The check is applied identically to GTC, IOC, and post-only limit orders.
 
-**Why.** Without banding, a user can rest a limit order at a pathological price far from oracle (e.g. an ask at 50× the oracle). Such an order becomes a trap for bad-price fills — a coordinated attacker can use it to create bad debt at the vault's expense (see `testdata/message.md` for the full attack shape). Banding prevents the trap from ever being set.
+**Why.** Without banding, a user can rest a limit order at a pathological price far from oracle (e.g. an ask at 50× the oracle). Such an order becomes a trap for bad-price fills — a coordinated attacker can use it to create bad debt at the vault's expense. Banding prevents the trap from ever being set.
 
 **Market orders are not banded.** They use `max_slippage` instead (see [§3](#3-target-price)). A per-pair cap on `max_slippage` provides the analogous submission-time bound for market orders — see [§3c](#3c-market-order-slippage-cap).
 
