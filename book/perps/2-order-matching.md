@@ -6,7 +6,7 @@ This chapter describes how orders are submitted, matched, filled, and settled in
 
 An order can be order:
 
-- **Market** — immediate-or-cancel (IOC). Specifies a `max_slippage` relative to the oracle price. Any unfilled remainder after matching is discarded (unless nothing filled at all, which is an error).
+- **Market** — immediate-or-cancel (IOC). Specifies a `max_slippage` relative to the oracle price, capped at the per-pair `max_market_slippage` (see [§3c](#3c-market-order-slippage-cap)). Any unfilled remainder after matching is discarded (unless nothing filled at all, which is an error).
 - **Limit** — specifies a `limit_price` and a `time_in_force`. The `limit_price` must satisfy the per-pair **price band** at submission time (see [§3a](#3a-price-banding-for-limit-orders)).
   - **GTC** (default): any unfilled remainder is stored as a resting order on the book.
   - **IOC**: fills as much as possible, then discards the unfilled remainder. Errors if nothing fills.
@@ -53,6 +53,8 @@ $$
 
 **Limit orders:** $\mathtt{targetPrice} = \mathtt{limitPrice}$ (oracle price is ignored).
 
+The user-supplied $\mathtt{maxSlippage}$ on a market order is bounded by the per-pair cap `max_market_slippage` — see [§3c](#3c-market-order-slippage-cap).
+
 A price constraint is **violated** when:
 
 - Bid: $\mathtt{execPrice} > \mathtt{targetPrice}$
@@ -76,11 +78,97 @@ An order whose price falls outside this band is rejected at submission, before m
 
 **Why.** Without banding, a user can rest a limit order at a pathological price far from oracle (e.g. an ask at 50× the oracle). Such an order becomes a trap for bad-price fills — a coordinated attacker can use it to create bad debt at the vault's expense (see `testdata/message.md` for the full attack shape). Banding prevents the trap from ever being set.
 
-**Market orders are not banded.** They use `max_slippage` instead (see [§3](#3-target-price)). A separate policy caps `max_slippage` at the per-pair protocol level — see the slippage-policy PR.
+**Market orders are not banded.** They use `max_slippage` instead (see [§3](#3-target-price)). A per-pair cap on `max_slippage` provides the analogous submission-time bound for market orders — see [§3c](#3c-market-order-slippage-cap).
 
-**The submission-time check does not cover resting-order drift.** An order placed within the band at time $T_1$ may fall outside the band at a later time $T_2$ after the oracle moves. A match-time re-check in the matching engine cancels such drifted orders; that logic is documented separately and accompanies this submission-time check in the same PR.
+**The submission-time check does not cover resting-order drift.** An order placed within the band at time $T_1$ may fall outside the band at a later time $T_2$ after the oracle moves. A match-time re-check (see [§3b](#3b-match-time-band-re-check-for-maker-orders)) cancels such drifted orders when the matching engine encounters them.
 
 **Zero and negative prices are rejected by the band.** For any $\mathtt{maxLimitPriceDeviation} < 1$ and positive oracle price, the lower bound is strictly positive, so the banding check subsumes a positivity check on the limit price.
+
+## 3b. Match-time band re-check for maker orders
+
+The submission-time band ([§3a](#3a-price-banding-for-limit-orders)) only
+inspects the price at the moment of placement. Between placement and
+matching, the oracle may move far enough that a previously in-band resting
+order is now outside the band relative to the current oracle. Without
+further handling, such drifted orders remain available as trap fills
+for coordinated self-match attacks.
+
+To close this, the matching engine applies a **band re-check on every
+resting maker** it walks. For each maker encountered during the walk —
+after the self-trade-prevention branch and before the fill computation —
+the engine evaluates the [§3a](#3a-price-banding-for-limit-orders) band
+against the *current* oracle price:
+
+- If the maker's resting price is **within** the band: proceed to the
+  normal fill-settlement logic.
+- If the maker's resting price is **outside** the band: cancel the maker
+  (release its `reserved_margin`, decrement its `open_order_count`, emit
+  an `OrderRemoved` event with `reason = PriceBandViolation`) and
+  continue walking to the next maker. The taker's remaining size is not
+  consumed by this cancellation.
+
+The shape of this branch parallels the existing self-trade-prevention
+(EXPIRE_MAKER) cancellation at the same point in the walk; the two
+branches handle two different reasons to skip-and-remove a resting order.
+
+**Vault exemption.** Orders belonging to the counterparty vault (i.e.,
+`maker.user == perps_contract_address`) skip the band re-check. Vault
+prices are produced by the vault's own bounded pricing formula —
+$\mathtt{oraclePrice} \times (1 \pm \mathtt{vaultHalfSpread} \times (1 + \mathtt{vaultSpreadSkewFactor}))$
+— and are refreshed on every oracle update. Cancelling the vault's own
+quotes during matching would cause continuous churn without providing
+any additional defense (the vault cannot be a party to an attacker's
+coordinated setup).
+
+**Continue vs break.** The walk uses `continue` rather than `break` after
+cancelling a drifted maker. The walk direction gives monotone *prices*,
+not monotone *in-band-ness*: a stale order can appear at the near end of
+the walk with in-band makers behind it (for example, when the oracle has
+risen, the walk of ascending asks encounters stale-low asks first, then
+in-band asks at higher prices). `continue` both removes the stale trap
+and allows the taker to fill against legitimate liquidity behind it.
+
+## 3c. Market-order slippage cap
+
+Market orders do not carry a `limit_price`, so the limit-order band
+([§3a](#3a-price-banding-for-limit-orders)) does not apply to them
+directly. Instead, the per-pair `max_market_slippage` parameter caps how
+far from the oracle a user's `max_slippage` may push the
+[target price](#3-target-price) at submission:
+
+$$
+\mathtt{maxSlippage} \leq \mathtt{maxMarketSlippage}
+$$
+
+where $\mathtt{maxMarketSlippage}$ is a per-pair parameter in $(0, 1)$.
+A market order whose `max_slippage` exceeds the cap is rejected at
+submission, before matching begins. The same cap applies to
+`max_slippage` on **TP/SL child orders** (attached to a parent submit
+order or placed as standalone conditional orders), which become market
+orders when triggered.
+
+**Why.** `max_slippage` controls how aggressively the walk traverses
+the book. An unbounded `max_slippage` lets a taker compute a
+`target_price` arbitrarily far from the oracle, which — combined with a
+widened or temporarily disabled band — would let market orders bypass
+the bad-price-fill protection that limit-order banding provides. The
+cap keeps market-order reach bounded to a per-pair ceiling.
+
+**Alignment with industry practice.** Every major venue caps market-
+order slippage: **dYdX v4** uses a flat 10 % across all markets;
+**Binance** uses a per-contract Market Order Price Cap/Floor Ratio that
+expires orders whose best ask/bid deviates more than the ratio from the
+mark price; **Hyperliquid** uses 10 % for TP/SL market orders and 3 %
+for TWAP sub-orders. Dango's per-pair cap is the per-pair configurable
+analogue of the same protection.
+
+**Conditional-order staleness.** Conditional orders (TP/SL) store their
+`max_slippage` at submission. When a conditional order triggers, the
+stored value is used without re-validating against the current cap. If
+governance tightens `max_market_slippage` between submission and
+trigger, an old conditional order may emit a market fill with slippage
+above the new cap — but the effective fill prices remain bounded by the
+match-time band re-check in [§3b](#3b-match-time-band-re-check-for-maker-orders).
 
 ## 4. Matching engine
 
