@@ -472,6 +472,7 @@ pub(crate) fn _submit_order(
         taker_is_bid,
         taker_order_id,
         taker_fee_rate,
+        None, // no forced maker fee; respect per-user overrides and tier schedule
         &BTreeMap::new(),
         target_price,
         fillable_size,
@@ -638,6 +639,7 @@ pub fn match_order(
     taker_is_bid: bool,
     taker_order_id: OrderId,
     taker_fee_rate: Dimensionless,
+    force_maker_fee_rate: Option<Dimensionless>,
     maker_states: &BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
     mut remaining_size: Quantity,
@@ -764,10 +766,15 @@ pub fn match_order(
         let old_maker_pos = maker_state.positions.get(pair_id).cloned();
 
         // Determine the maker's fee rate.
-        // If the admin has configured a fee rate override for the maker, then
-        // simply use it.
-        // Otherwise, resolve it based on recent volume.
-        let maker_fee_rate = if let Some((maker_rate_override, _taker_rate_override)) =
+        // - If the caller forces a rate (e.g. zero during liquidation), use it
+        //   and bypass both the override and the tier schedule so the
+        //   zero-fee invariant cannot be defeated by a pre-existing override.
+        // - Else if the admin has configured a fee rate override for the
+        //   maker, use it.
+        // - Otherwise, resolve it based on recent volume.
+        let maker_fee_rate = if let Some(forced) = force_maker_fee_rate {
+            forced
+        } else if let Some((maker_rate_override, _taker_rate_override)) =
             FEE_RATE_OVERRIDES.may_load(storage, maker_order.user)?
         {
             maker_rate_override
