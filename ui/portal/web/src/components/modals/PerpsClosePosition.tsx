@@ -1,6 +1,7 @@
 import { Button, FormattedNumber, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 
@@ -32,7 +33,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(
             sender: account!.address,
             pairId,
             size: closeSize,
-            kind: { market: { maxSlippage: "0.05" } },
+            kind: { market: { maxSlippage: PERPS_DEFAULT_SLIPPAGE } },
             reduceOnly: true,
           });
         },
