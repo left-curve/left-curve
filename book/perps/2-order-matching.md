@@ -87,18 +87,19 @@ After each fill the maker order is updated: reserved margin is released proporti
 
 ## 5. Pre-match margin check
 
-Before matching begins, the taker's margin is verified for **all** order types (including reduce-only and post-only). The check simulates the worst-case 100 % fill at the target price on a throwaway clone of the user's state:
-
-1. Run `execute_fill` at `target_price` to settle funding, realize closing PnL, and update positions.
-2. Settle the realized PnL and trading fee into the projected margin.
-3. Compute post-fill equity and initial margin on the projected state.
-4. Verify:
+Before matching begins, the taker's margin is verified (skipped for reduce-only orders). The check ensures the user can afford the **worst case** — a 100 % fill:
 
 $$
-\mathtt{postFillEquity} \geq \mathtt{postFillIM} + \mathtt{reservedMargin}
+\mathtt{equity} \geq \mathtt{projectedIM} + \mathtt{projectedFee} + \mathtt{reservedMargin}
 $$
 
-This catches both bad-price closes (catastrophic realized PnL when selling far below or buying far above entry) and bad-price opens (immediate unrealized loss when the entry price diverges significantly from the oracle price).
+where $\mathtt{projectedIM}$ is the initial margin assuming the full order fills (see [Margin §5](1-margin.md#5-initial-margin-im)) and $\mathtt{projectedFee}$ is
+
+$$
+|\mathtt{size}| \times \mathtt{oraclePrice} \times \mathtt{takerFeeRate}
+$$
+
+This prevents a taker from submitting orders they cannot collateralise.
 
 ## 6. Self-trade prevention
 

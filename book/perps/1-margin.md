@@ -61,8 +61,10 @@ $$
 
 where $\mathtt{imr}$ is the per-pair **initial margin ratio**. IM is the minimum equity required to **open or hold** positions. It is used in two places:
 
-- **Pre-match margin check** — the caller simulates the fill at the target price first, then computes IM on the resulting (post-fill) positions (see [Order matching §5](2-order-matching.md#5-pre-match-margin-check)).
+- **Pre-match margin check** — verifies the taker can afford the worst-case 100 % fill (see [Order matching §5](2-order-matching.md#5-pre-match-margin-check)).
 - **Available margin calculation** — determines how much can be withdrawn or committed to new limit orders (see [§8](#8-available-margin) below).
+
+When checking a new order the IM is computed with a **projected** size: the user's current position in that pair is replaced by the hypothetical post-fill position ($\mathtt{currentSize} + \mathtt{orderSize}$). Positions in other pairs use their actual sizes.
 
 ## 6. Maintenance margin (MM)
 
