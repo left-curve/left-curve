@@ -807,6 +807,7 @@
     "apy": "APY",
     "tvl": "TVL",
     "toDeposit": "To deposit",
+    "availableToDeposit": "Available to deposit",
     "toGet": "To get",
     "sharesToBurn": "Shares to burn",
     "usdToReceive": "USD to receive",

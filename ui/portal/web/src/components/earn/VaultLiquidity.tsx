@@ -192,7 +192,8 @@ const DepositForm: React.FC = () => {
                 <div className="flex flex-col w-full gap-3 pl-4 pr-4 pb-2">
                   <div className="flex items-center justify-between text-ink-tertiary-500 diatype-sm-regular">
                     <span>
-                      {formatNumber(userMargin, formatNumberOptions)} {perpsMarginAsset.symbol}
+                      {m["vaultLiquidity.availableToDeposit"]()}:{" "}
+                      {formatNumber(userMargin, { ...formatNumberOptions, currency: "USD" })}
                     </span>
                   </div>
                   <RangeWithButtons

@@ -6,6 +6,7 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { perpsUserStateStore } from "./usePerpsUserState.js";
+import { perpsUserStateExtendedStore } from "./usePerpsUserStateExtended.js";
 
 import { Decimal } from "@left-curve/dango/utils";
 
@@ -32,6 +33,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
   const { data: signingClient } = useSigningClient();
 
   const perpsUserState = perpsUserStateStore((s) => s.userState);
+  const availableMargin = perpsUserStateExtendedStore((s) => s.availableMargin);
 
   const depositAmount = Decimal(inputs.depositAmount?.value || "0").toFixed(6);
   const withdrawShares = Decimal(inputs.withdrawShares?.value || "0").toFixed(0);
@@ -45,7 +47,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
   });
 
   const userVaultShares = account ? (perpsUserState?.vaultShares ?? "0") : "0";
-  const userMargin = account ? (perpsUserState?.margin ?? "0") : "0";
+  const userMargin = account ? (availableMargin ?? "0") : "0";
   const userUnlocks = account ? (perpsUserState?.unlocks ?? []) : [];
   const userHasShares = account ? userVaultShares !== "0" : false;
 
@@ -62,10 +64,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
     [shareSupply],
   );
 
-  const effectiveEquity = useMemo(
-    () => Decimal(equity).plus(VIRTUAL_ASSETS).toString(),
-    [equity],
-  );
+  const effectiveEquity = useMemo(() => Decimal(equity).plus(VIRTUAL_ASSETS).toString(), [equity]);
 
   const sharePrice = useMemo(() => {
     if (shareSupply === "0") return "0";
@@ -74,26 +73,17 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
 
   const sharesToReceive = useMemo(() => {
     if (depositAmount === "0" || effectiveEquity === "0") return "0";
-    return Decimal(depositAmount)
-      .mul(effectiveSupply)
-      .div(effectiveEquity)
-      .toFixed(0);
+    return Decimal(depositAmount).mul(effectiveSupply).div(effectiveEquity).toFixed(0);
   }, [depositAmount, effectiveSupply, effectiveEquity]);
 
   const usdToReceive = useMemo(() => {
     if (withdrawShares === "0" || effectiveSupply === "0") return "0";
-    return Decimal(withdrawShares)
-      .mul(effectiveEquity)
-      .div(effectiveSupply)
-      .toString();
+    return Decimal(withdrawShares).mul(effectiveEquity).div(effectiveSupply).toString();
   }, [withdrawShares, effectiveEquity, effectiveSupply]);
 
   const userSharesValue = useMemo(() => {
     if (userVaultShares === "0" || effectiveSupply === "0") return "0";
-    return Decimal(userVaultShares)
-      .mul(effectiveEquity)
-      .div(effectiveSupply)
-      .toString();
+    return Decimal(userVaultShares).mul(effectiveEquity).div(effectiveSupply).toString();
   }, [userVaultShares, effectiveEquity, effectiveSupply]);
 
   const deposit = useSubmitTx({
