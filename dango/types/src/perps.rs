@@ -813,6 +813,15 @@ pub enum MaintainerMsg {
     /// Accept a USDC donation to the perps contract.
     /// Only callable by the chain owner. Must attach exactly USDC, nonzero.
     Donate {},
+
+    /// Override a user's fee rate, overriding the tier-based fee rates derived
+    /// from the user's recent trading volume.
+    SetFeeRateOverride {
+        user: Addr,
+
+        /// First element is maker rate, second is taker rate.
+        maker_taker_fee_rates: Op<(Dimensionless, Dimensionless)>,
+    },
 }
 
 #[grug::derive(Serde)]

@@ -152,6 +152,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             },
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
             MaintainerMsg::Donate {} => maintain::donate(ctx),
+            MaintainerMsg::SetFeeRateOverride {
+                user,
+                maker_taker_fee_rates,
+            } => maintain::set_fee_rate_override(ctx, user, maker_taker_fee_rates),
         },
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),
