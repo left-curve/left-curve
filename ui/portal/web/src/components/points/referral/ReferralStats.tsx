@@ -14,6 +14,8 @@ import {
   Tab,
   Tabs,
   TextCopy,
+  Tooltip,
+  IconInfo,
   twMerge,
   useApp,
 } from "@left-curve/applets-kit";
@@ -262,8 +264,11 @@ export const AffiliateStats: React.FC = () => {
 
   const commissionRate = override ?? settings?.commissionRate ?? "0";
   const shareRatio = settings?.shareRatio ?? "0";
+  const totalCommissionPct = (Number(commissionRate) * 100).toFixed(0);
+  const refereePct = (Number(commissionRate) * Number(shareRatio) * 100).toFixed(0);
+  const youPct = (Number(commissionRate) * (1 - Number(shareRatio)) * 100).toFixed(0);
   const rateDisplay = isConnected
-    ? `${formatPercent(commissionRate)} / ${formatPercent(shareRatio)}`
+    ? `${youPct}% / ${refereePct}%`
     : "-- / --";
 
   const totalCommission = referralData?.commissionEarnedFromReferees ?? "0";
@@ -306,9 +311,22 @@ export const AffiliateStats: React.FC = () => {
                 />
               )}
             </div>
-            <p className="text-ink-tertiary-500 diatype-m-medium">
-              {m["referral.stats.commissionRate"]()}
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-ink-tertiary-500 diatype-m-medium">
+                {m["referral.stats.commissionRate"]()}
+              </p>
+              <Tooltip
+                title={
+                  <div className="flex flex-col gap-1">
+                    <p>{m["referral.stats.commissionRateTooltipTotal"]({ rate: `${totalCommissionPct}%` })}</p>
+                    <p>{m["referral.stats.commissionRateTooltipYou"]({ rate: `${youPct}%` })}</p>
+                    <p>{m["referral.stats.commissionRateTooltipReferee"]({ rate: `${refereePct}%` })}</p>
+                  </div>
+                }
+              >
+                <IconInfo className="w-5 h-5 text-ink-tertiary-500" />
+              </Tooltip>
+            </div>
           </div>
           <div className="flex flex-col items-center">
             {isLoading ? (
@@ -326,9 +344,14 @@ export const AffiliateStats: React.FC = () => {
                 )}
               </p>
             )}
-            <p className="text-ink-tertiary-500 diatype-m-medium">
-              {m["referral.stats.totalCommission"]()}
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-ink-tertiary-500 diatype-m-medium">
+                {m["referral.stats.totalCommission"]()}
+              </p>
+              <Tooltip title={m["referral.stats.totalCommissionTooltip"]()}>
+                <IconInfo className="w-5 h-5 text-ink-tertiary-500" />
+              </Tooltip>
+            </div>
           </div>
           <div className="flex flex-col items-center lg:items-end">
             {isLoading ? (
@@ -346,9 +369,14 @@ export const AffiliateStats: React.FC = () => {
                 )}
               </p>
             )}
-            <p className="text-ink-tertiary-500 diatype-m-medium">
-              {m["referral.stats.totalReferralVolume"]()}
-            </p>
+            <div className="flex items-center gap-1">
+              <p className="text-ink-tertiary-500 diatype-m-medium">
+                {m["referral.stats.totalReferralVolume"]()}
+              </p>
+              <Tooltip title={m["referral.stats.totalReferralVolumeTooltip"]()}>
+                <IconInfo className="w-5 h-5 text-ink-tertiary-500" />
+              </Tooltip>
+            </div>
           </div>
         </div>
 
