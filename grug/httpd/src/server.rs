@@ -9,15 +9,13 @@ use {
     },
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
-    std::{
-        fmt::Display,
-        sync::{Arc, atomic::AtomicBool},
-    },
+    std::sync::{Arc, atomic::AtomicBool},
 };
 #[cfg(feature = "metrics")]
 use {
     actix_web_metrics::ActixWebMetricsBuilder,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
+    std::fmt::Display,
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.

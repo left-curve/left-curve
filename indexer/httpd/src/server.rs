@@ -10,13 +10,13 @@ use {
     grug_httpd::routes::{graphql::graphql_route, index::index},
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
-    std::fmt::Display,
 };
 #[cfg(feature = "metrics")]
 use {
     crate::middlewares::metrics::init_httpd_metrics,
     actix_web_metrics::ActixWebMetricsBuilder,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
+    std::fmt::Display,
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
