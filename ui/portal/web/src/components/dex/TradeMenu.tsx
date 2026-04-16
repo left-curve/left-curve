@@ -368,7 +368,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
 
   const equity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
-  const availableMargin = Number(perpsUserStateExtendedStore((s) => s.availableMargin) ?? "0");
 
   const position = useMemo(() => {
     if (!userState?.positions?.[getPerpsPairId()]) return null;
@@ -452,22 +451,28 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return null;
   }, [tpPrice, slPrice, action, referencePrice, tpslEnabled]);
 
+  const currentPositionSize = position?.size ?? "0";
+
   const changeSizeCoin = useCallback((denom: string) => {
     setSizeCoinDenom(denom);
     setValue("size", "");
   }, []);
 
-  const maxSizeAmount = usePerpsMaxSize({
-    availableMargin,
+  const { availToTrade, maxSize } = usePerpsMaxSize({
+    equity: Number(equity),
+    currentPositionSize: Number(currentPositionSize),
+    action,
     leverage: selectedLeverage,
     currentPrice,
     takerFeeRate,
+    reduceOnly,
     isBaseSize,
   });
+  const maxSizeAmount = maxSize;
 
   useEffect(() => {
     const currentSize = Number(size);
-    if (currentSize > maxSizeAmount && maxSizeAmount > 0) {
+    if (currentSize > maxSizeAmount) {
       setValue("size", maxSizeAmount.toString());
     }
   }, [maxSizeAmount]);
@@ -571,8 +576,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return isBaseSize ? minNotional / currentPrice : minNotional;
   }, [params, isBaseSize, currentPrice]);
 
-  const currentPositionSize = position?.size ?? "0";
-
   const sizeRangeValue = useMemo(() => {
     if (maxSizeAmount === 0) return 0;
     return Math.min(100, (Number(size) / maxSizeAmount) * 100);
@@ -596,7 +599,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             label={m["dex.protrade.perps.availableToTrade"]()}
             value={
               <>
-                <FormattedNumber number={availableMargin.toString()} as="span" /> USD
+                <FormattedNumber number={availToTrade.toString()} as="span" /> USD
               </>
             }
           />
@@ -615,7 +618,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           availableAmount={maxSizeAmount.toString()}
           register={register}
           setValue={setValue}
-          validationMessage={m["dex.protrade.perps.errors.exceedsMargin"]()}
+          validationMessage={reduceOnly ? m["dex.protrade.perps.errors.exceedsClosable"]() : m["dex.protrade.perps.errors.exceedsMargin"]()}
           label={m["dex.protrade.perps.size"]()}
           minSizeAmount={minSizeAmount}
           minSizeMessage={m["dex.protrade.perps.errors.minOrderSize"]({
@@ -684,6 +687,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           checked={reduceOnly}
           onChange={() => setReduceOnly((prev) => !prev)}
         />
+        {reduceOnly && maxSizeAmount === 0 ? (
+          <p className="diatype-xs-regular text-utility-warning-600">
+            {m["dex.protrade.perps.errors.reduceOnlyNoPosition"]()}
+          </p>
+        ) : null}
         <Checkbox
           radius="md"
           size="sm"
@@ -741,7 +749,8 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             Decimal(size).lte(0) ||
             (operation === "limit" && Decimal(priceValue).lte(0)) ||
             hasErrors ||
-            tpslError !== null
+            tpslError !== null ||
+            (reduceOnly && maxSizeAmount === 0)
           }
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
