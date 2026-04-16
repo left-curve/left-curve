@@ -33,6 +33,8 @@
     "qr": "QR",
     "width": "width",
     "error": "Error",
+    "retry": "Retry",
+    "failedToLoad": "Failed to load. Please try again.",
     "confirm": "Confirm",
     "signinWithDesktop": "Connect Desktop Session",
     "signinWithSession": "Log in with session key",
