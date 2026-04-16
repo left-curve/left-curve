@@ -1,5 +1,5 @@
 use {
-    grug_types::HexBinary,
+    grug_types::{HexBinary, HttpdConfig},
     serde::{Deserialize, Serialize},
 };
 
@@ -7,8 +7,8 @@ use {
 pub struct Config {
     pub grug: GrugConfig,
     pub indexer: IndexerConfig,
-    pub httpd: grug_types::HttpdConfig,
-    pub metrics_httpd: grug_types::HttpdConfig,
+    pub httpd: HttpdConfig,
+    pub metrics_httpd: HttpdConfig,
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
