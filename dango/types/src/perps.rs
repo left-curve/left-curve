@@ -816,6 +816,11 @@ pub enum MaintainerMsg {
 
     /// Override a user's fee rate, overriding the tier-based fee rates derived
     /// from the user's recent trading volume.
+    ///
+    /// Bounds:
+    ///
+    /// - `maker_fee_rate`: [-1, 1]. Note that negative maker rates are allowed.
+    /// - `taker_fee_rate`: [0, 1].
     SetFeeRateOverride {
         user: Addr,
 

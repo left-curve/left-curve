@@ -17,9 +17,12 @@ pub fn set_fee_rate_override(
 
     match maker_taker_fee_rates {
         Op::Insert((maker_fee_rate, taker_fee_rate)) => {
+            // Maker fees may be negative to express a rebate paid to the
+            // maker, matching the `[-1, 1]` bound used for the global maker
+            // fee tier schedule (see `configure.rs::validate_param`).
             ensure!(
-                (Dimensionless::ZERO..=Dimensionless::ONE).contains(&maker_fee_rate),
-                "invalid maker fee rate: {maker_fee_rate}! must be within [0, 1]"
+                (Dimensionless::new_int(-1)..=Dimensionless::ONE).contains(&maker_fee_rate),
+                "invalid maker fee rate: {maker_fee_rate}! must be within [-1, 1]"
             );
 
             ensure!(
@@ -187,7 +190,39 @@ mod tests {
     // ---------------------------- validation rejections ------------------------
 
     #[test]
-    fn negative_maker_fee_rejected() {
+    fn negative_maker_fee_accepted_as_rebate() {
+        // Negative maker rates encode rebates paid to the maker — the global
+        // tier schedule accepts them down to -1, and overrides must too, or
+        // the admin cannot grant a VIP maker a custom rebate.
+        let mut ctx = MockContext::new()
+            .with_querier(MockQuerier::new().with_config(mock_config()))
+            .with_sender(OWNER)
+            .with_funds(Coins::default());
+        let rates = (Dimensionless::new_raw(-100), Dimensionless::new_permille(5));
+
+        set_fee_rate_override(ctx.as_mutable(), USER, Op::Insert(rates)).should_succeed();
+
+        let stored = FEE_RATE_OVERRIDES.load(&ctx.storage, USER).unwrap();
+        assert_eq!(stored, rates);
+    }
+
+    #[test]
+    fn minus_one_maker_fee_accepted() {
+        // Inclusive lower boundary of [-1, 1].
+        let mut ctx = MockContext::new()
+            .with_querier(MockQuerier::new().with_config(mock_config()))
+            .with_sender(OWNER)
+            .with_funds(Coins::default());
+        let rates = (Dimensionless::new_int(-1), Dimensionless::ZERO);
+
+        set_fee_rate_override(ctx.as_mutable(), USER, Op::Insert(rates)).should_succeed();
+
+        let stored = FEE_RATE_OVERRIDES.load(&ctx.storage, USER).unwrap();
+        assert_eq!(stored, rates);
+    }
+
+    #[test]
+    fn maker_fee_below_minus_one_rejected() {
         let mut ctx = MockContext::new()
             .with_querier(MockQuerier::new().with_config(mock_config()))
             .with_sender(OWNER)
@@ -196,7 +231,10 @@ mod tests {
         set_fee_rate_override(
             ctx.as_mutable(),
             USER,
-            Op::Insert((Dimensionless::new_raw(-1), Dimensionless::new_permille(5))),
+            Op::Insert((
+                Dimensionless::new_raw(-1_000_001),
+                Dimensionless::new_permille(5),
+            )),
         )
         .should_fail_with_error("invalid maker fee rate");
     }
