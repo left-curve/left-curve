@@ -707,17 +707,18 @@ pub fn match_order(
         if maker_order.user == taker {
             let pre_fill_abs_size = maker_order.size.checked_abs()?;
 
-            taker_state.open_order_count -= 1;
-            (taker_state.reserved_margin).checked_sub_assign(maker_order.reserved_margin)?;
-
-            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
-
-            events.push(OrderRemoved {
-                order_id: maker_order_id,
-                pair_id: pair_id.clone(),
-                user: taker,
-                reason: ReasonForOrderRemoval::SelfTradePrevention,
-            })?;
+            remove_maker_order(
+                contract,
+                pair_id,
+                stored_price,
+                maker_order_id,
+                &maker_order,
+                pre_fill_abs_size,
+                ReasonForOrderRemoval::SelfTradePrevention,
+                &mut taker_state,
+                &mut order_mutations,
+                events,
+            )?;
 
             continue;
         }
@@ -747,19 +748,18 @@ pub fn match_order(
                 Entry::Occupied(e) => e.into_mut(),
             };
 
-            maker_state.open_order_count -= 1;
-            maker_state
-                .reserved_margin
-                .checked_sub_assign(maker_order.reserved_margin)?;
-
-            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
-
-            events.push(OrderRemoved {
-                order_id: maker_order_id,
-                pair_id: pair_id.clone(),
-                user: maker_order.user,
-                reason: ReasonForOrderRemoval::PriceBandViolation,
-            })?;
+            remove_maker_order(
+                contract,
+                pair_id,
+                stored_price,
+                maker_order_id,
+                &maker_order,
+                pre_fill_abs_size,
+                ReasonForOrderRemoval::PriceBandViolation,
+                maker_state,
+                &mut order_mutations,
+                events,
+            )?;
 
             continue;
         }
@@ -906,19 +906,18 @@ pub fn match_order(
         maker_order.size.checked_sub_assign(maker_fill_size)?;
 
         if maker_order.size.is_zero() {
-            maker_state.open_order_count -= 1;
-
-            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
-
-            // Vault order removal is internal churn — suppress the event.
-            if maker_order.user != contract {
-                events.push(OrderRemoved {
-                    order_id: maker_order_id,
-                    pair_id: pair_id.clone(),
-                    user: maker_order.user,
-                    reason: ReasonForOrderRemoval::Filled,
-                })?;
-            }
+            remove_maker_order(
+                contract,
+                pair_id,
+                stored_price,
+                maker_order_id,
+                &maker_order,
+                pre_fill_abs_size,
+                ReasonForOrderRemoval::Filled,
+                maker_state,
+                &mut order_mutations,
+                events,
+            )?;
 
             #[cfg(feature = "metrics")]
             {
@@ -952,6 +951,62 @@ pub fn match_order(
         index_updates,
         next_order_id,
     })
+}
+
+/// Remove a resting maker order from the book during a match.
+///
+/// Shared cleanup across three cancellation paths in `match_order`:
+/// self-trade prevention, price-band drift, and full fill. All three
+/// push a `None` mutation for this `(stored_price, maker_order_id)`,
+/// decrement the owner's `open_order_count`, release the order's
+/// remaining `reserved_margin` from the owner's state, and emit an
+/// `OrderRemoved` event.
+///
+/// The event is suppressed for vault-owned `Filled` removals — those
+/// are internal churn from the vault's refresh cycle and would flood
+/// the event stream. Non-filled vault cancellations (STP, drift) don't
+/// occur in practice (STP requires `user == taker`; drift skips the
+/// vault), but the suppression rule is keyed on `Filled` for safety
+/// regardless.
+///
+/// `user_state` is the state of the maker's owner — the taker for STP
+/// (where maker and taker are the same user), or the maker's cached
+/// `UserState` for drift / full-fill.
+///
+/// For the full-fill path, the fill loop has already released the
+/// order's reserved margin proportionally as the fills happened, so
+/// `maker_order.reserved_margin` is zero on entry and the release here
+/// is a no-op.
+fn remove_maker_order(
+    contract: Addr,
+    pair_id: &PairId,
+    stored_price: UsdPrice,
+    maker_order_id: OrderId,
+    maker_order: &LimitOrder,
+    pre_fill_abs_size: Quantity,
+    reason: ReasonForOrderRemoval,
+    user_state: &mut UserState,
+    order_mutations: &mut Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
+    user_state.open_order_count -= 1;
+
+    user_state
+        .reserved_margin
+        .checked_sub_assign(maker_order.reserved_margin)?;
+
+    order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
+
+    if reason != ReasonForOrderRemoval::Filled || maker_order.user != contract {
+        events.push(OrderRemoved {
+            order_id: maker_order_id,
+            pair_id: pair_id.clone(),
+            user: maker_order.user,
+            reason,
+        })?;
+    }
+
+    Ok(())
 }
 
 /// Mutates:
