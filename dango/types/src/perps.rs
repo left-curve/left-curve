@@ -359,6 +359,18 @@ pub struct PairParam {
     /// would be rejected.
     pub max_limit_price_deviation: Dimensionless,
 
+    /// Maximum slippage tolerance a user may specify on a market order or
+    /// a TP/SL child order in this pair. Market orders compute their
+    /// `target_price` as `oracle_price * (1 ± max_slippage)`; this field
+    /// caps how far the user may push that target at submission.
+    ///
+    /// Acts as the submission-time analogue of `max_limit_price_deviation`
+    /// for limit orders.
+    ///
+    /// Bounds: `(0, 1)`. Aligns with industry practice (dYdX 10% flat,
+    /// Hyperliquid 10% for TP/SL).
+    pub max_market_slippage: Dimensionless,
+
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
     ///
@@ -471,6 +483,7 @@ impl PairParam {
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_max_quote_size: Quantity::new_int(100),
             max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
     }

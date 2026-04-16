@@ -21,10 +21,17 @@ const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd31
 /// upgrade completes.
 const MIGRATION_MAX_LIMIT_PRICE_DEVIATION: Dimensionless = Dimensionless::new_percent(50);
 
+/// Default `max_market_slippage` applied to every pair during the
+/// migration. 10% matches dYdX's flat cap and Hyperliquid's TP/SL
+/// default. Governance tightens per-pair via `Configure` after the
+/// upgrade completes.
+const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(10);
+
 /// Legacy types matching the pre-upgrade Borsh layout.
 ///
 /// `PairParam` before this upgrade does not contain the
-/// `max_limit_price_deviation` field introduced by price banding.
+/// `max_limit_price_deviation` or `max_market_slippage` fields —
+/// both are introduced by the price-banding / slippage-policy PR.
 mod legacy {
     use super::*;
 
@@ -74,8 +81,9 @@ fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
         let new = perps::PairParam {
             tick_size: old.tick_size,
             min_order_size: old.min_order_size,
-            // New field — permissive default; governance tightens per-pair.
+            // New fields — permissive defaults; governance tightens per-pair.
             max_limit_price_deviation: MIGRATION_MAX_LIMIT_PRICE_DEVIATION,
+            max_market_slippage: MIGRATION_MAX_MARKET_SLIPPAGE,
             max_abs_oi: old.max_abs_oi,
             max_abs_funding_rate: old.max_abs_funding_rate,
             initial_margin_ratio: old.initial_margin_ratio,
@@ -94,7 +102,7 @@ fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
     }
 
     tracing::info!(
-        "Migrated {count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION})"
+        "Migrated {count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION}, max_market_slippage = {MIGRATION_MAX_MARKET_SLIPPAGE})"
     );
 
     Ok(())
@@ -187,7 +195,7 @@ mod tests {
         assert_eq!(migrated_eth.vault_max_skew_size, eth.vault_max_skew_size);
         assert_eq!(migrated_eth.bucket_sizes, eth.bucket_sizes);
 
-        // New field populated with the migration default for both pairs.
+        // New fields populated with the migration defaults for both pairs.
         assert_eq!(
             migrated_eth.max_limit_price_deviation,
             MIGRATION_MAX_LIMIT_PRICE_DEVIATION
@@ -195,6 +203,14 @@ mod tests {
         assert_eq!(
             migrated_btc.max_limit_price_deviation,
             MIGRATION_MAX_LIMIT_PRICE_DEVIATION
+        );
+        assert_eq!(
+            migrated_eth.max_market_slippage,
+            MIGRATION_MAX_MARKET_SLIPPAGE
+        );
+        assert_eq!(
+            migrated_btc.max_market_slippage,
+            MIGRATION_MAX_MARKET_SLIPPAGE
         );
         assert_eq!(migrated_btc.tick_size, btc.tick_size);
     }

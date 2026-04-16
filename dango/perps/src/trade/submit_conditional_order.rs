@@ -1,5 +1,5 @@
 use {
-    crate::{NEXT_ORDER_ID, USER_STATES, core::validate_slippage},
+    crate::{NEXT_ORDER_ID, PAIR_PARAMS, USER_STATES, core::validate_slippage},
     anyhow::{anyhow, ensure},
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
@@ -19,6 +19,7 @@ pub fn submit_conditional_order(
     max_slippage: Dimensionless,
 ) -> anyhow::Result<Response> {
     let mut user_state = USER_STATES.load(ctx.storage, ctx.sender)?;
+    let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
 
     // -------------------------------- Checks ---------------------------------
 
@@ -27,7 +28,7 @@ pub fn submit_conditional_order(
         "price must be positive: {trigger_price}"
     );
 
-    validate_slippage(max_slippage)?;
+    validate_slippage(max_slippage, pair_param.max_market_slippage)?;
 
     // 1. User must have an open position in this pair.
     // 2. If size is specified: sign must oppose position, |size| <= |position.size|.
@@ -88,10 +89,10 @@ pub fn submit_conditional_order(
 mod tests {
     use {
         super::*,
-        crate::{NEXT_ORDER_ID, PARAM, USER_STATES},
+        crate::{NEXT_ORDER_ID, PAIR_PARAMS, PARAM, USER_STATES},
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{OrderId, Param, Position, TriggerDirection, UserState},
+            perps::{OrderId, PairParam, Param, Position, TriggerDirection, UserState},
         },
         grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},
         std::collections::BTreeMap,
@@ -101,6 +102,13 @@ mod tests {
 
     fn pair_id() -> PairId {
         "perp/ethusd".parse().unwrap()
+    }
+
+    fn test_pair_param() -> PairParam {
+        PairParam {
+            max_market_slippage: Dimensionless::new_permille(100), // 10%
+            ..PairParam::new_mock()
+        }
     }
 
     fn long_position(size: i128) -> Position {
@@ -135,6 +143,9 @@ mod tests {
 
     fn init_storage(storage: &mut dyn Storage, user_state: UserState) {
         PARAM.save(storage, &Param::default()).unwrap();
+        PAIR_PARAMS
+            .save(storage, &pair_id(), &test_pair_param())
+            .unwrap();
         NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
         USER_STATES.save(storage, USER, &user_state).unwrap();
     }
@@ -605,5 +616,29 @@ mod tests {
             Dimensionless::new_percent(150),
         )
         .should_fail_with_error("max slippage must be less than 1, got");
+    }
+
+    /// Conditional order slippage exceeding the pair's `max_market_slippage`
+    /// cap is rejected. Test pair has `max_market_slippage = 10%`.
+    #[test]
+    fn p14_reject_max_slippage_above_pair_cap() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        init_storage(
+            &mut ctx.storage,
+            user_state_with_position(long_position(10)),
+        );
+
+        submit_conditional_order(
+            ctx.as_mutable(),
+            pair_id(),
+            Some(Quantity::new_int(-5)),
+            UsdPrice::new_int(2_500),
+            TriggerDirection::Above,
+            Dimensionless::new_permille(110), // 11% > 10% cap
+        )
+        .should_fail_with_error("exceeds the pair cap");
     }
 }

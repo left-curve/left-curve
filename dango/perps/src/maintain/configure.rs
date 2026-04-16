@@ -291,6 +291,14 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
         pair_param.max_limit_price_deviation,
     );
 
+    ensure!(
+        pair_param.max_market_slippage > Dimensionless::ZERO
+            && pair_param.max_market_slippage < Dimensionless::ONE,
+        "invalid `max_market_slippage`! pair id: {}, bounds: (0, 1), found: {}",
+        pair_id,
+        pair_param.max_market_slippage,
+    );
+
     for bucket_size in &pair_param.bucket_sizes {
         ensure!(
             *bucket_size > UsdPrice::ZERO,
@@ -396,6 +404,7 @@ mod tests {
             tick_size: UsdPrice::new_int(1),
             min_order_size: UsdValue::ZERO,
             max_limit_price_deviation: Dimensionless::new_permille(100), // 10%
+            max_market_slippage: Dimensionless::new_permille(100),       // 10%
             max_abs_oi: Quantity::new_int(1_000_000),
             max_abs_funding_rate: FundingRate::ZERO,
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
@@ -762,6 +771,47 @@ mod tests {
     fn pair_param_max_limit_price_deviation_just_below_one_accepted() {
         let p = PairParam {
             max_limit_price_deviation: Dimensionless::new_permille(999), // 99.9%
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_zero_max_market_slippage_rejected() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::ZERO,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_market_slippage`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_one_max_market_slippage_rejected() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::ONE,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_market_slippage`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_negative_max_market_slippage_rejected() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::new_raw(-1),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_market_slippage`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_max_market_slippage_just_below_one_accepted() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::new_permille(999), // 99.9%
             ..valid_pair_param()
         };
         validate_pair_param(&pair(), &p).unwrap();

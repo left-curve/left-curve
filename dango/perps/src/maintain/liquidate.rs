@@ -923,6 +923,7 @@ mod tests {
             maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
             max_abs_oi: Quantity::new_int(1_000_000),
             max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
     }

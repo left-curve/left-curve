@@ -316,7 +316,7 @@ pub(crate) fn _submit_order(
 
     match &kind {
         OrderKind::Market { max_slippage } => {
-            validate_slippage(*max_slippage)?;
+            validate_slippage(*max_slippage, pair_param.max_market_slippage)?;
         },
         OrderKind::Limit { limit_price, .. } => {
             // `check_price_band` subsumes the positivity check: any
@@ -338,7 +338,7 @@ pub(crate) fn _submit_order(
             child_order.trigger_price
         );
 
-        validate_slippage(child_order.max_slippage)?;
+        validate_slippage(child_order.max_slippage, pair_param.max_market_slippage)?;
     }
 
     // -------------- Step 1. Check minimum order size -------------------------
@@ -1464,6 +1464,10 @@ mod tests {
             initial_margin_ratio: Dimensionless::new_permille(50), // 5%
             maintenance_margin_ratio: Dimensionless::new_permille(25), // 2.5%
             max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            // 99.9% — permissive cap used by the drift-cancel tests, which
+            // need wide slippage so the walk reaches out-of-band makers
+            // before `target_price` would break.
+            max_market_slippage: Dimensionless::new_permille(999),
             ..Default::default()
         }
     }
