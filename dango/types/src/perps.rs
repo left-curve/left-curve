@@ -352,11 +352,14 @@ pub struct PairParam {
     /// (e.g. 99% below oracle) that could trap counterparties into bad-price
     /// fills.
     ///
-    /// Bounds: `(0, 1)`. Admin is responsible for picking a value that
-    /// accommodates the vault's own quote deviation
-    /// (`vault_half_spread * (1 + vault_spread_skew_factor)`) — otherwise
-    /// users' limit orders placed at prices the vault legitimately quotes
-    /// would be rejected.
+    /// Bounds: `(0, 1)`.
+    ///
+    /// Cross-field invariant:
+    /// `max_limit_price_deviation >= vault_half_spread * (1 + vault_spread_skew_factor)`.
+    /// The band must be at least as wide as the vault's widest quote
+    /// deviation under maximum skew, otherwise users' crossing limit
+    /// orders at the vault's legitimately-quoted edges would be rejected.
+    /// Enforced at `Configure` time.
     pub max_limit_price_deviation: Dimensionless,
 
     /// Maximum slippage tolerance a user may specify on a market order or
