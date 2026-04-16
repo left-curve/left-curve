@@ -15,17 +15,21 @@ const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
 
 /// Default `max_limit_price_deviation` applied to every pair during the
-/// migration. Conservative — blocks only extreme pathological orders while
-/// not disrupting any realistic trading on day one. Governance is expected
-/// to tighten this per-pair via a `Configure` message soon after the
-/// upgrade completes.
-const MIGRATION_MAX_LIMIT_PRICE_DEVIATION: Dimensionless = Dimensionless::new_percent(50);
+/// migration. 5% matches Binance USD-M futures' `PERCENT_PRICE` filter
+/// for BTCUSDT / ETHUSDT / SOLUSDT (multiplierUp 1.05, multiplierDown
+/// 0.95), and sits well above the vault's `vault_half_spread × (1 +
+/// vault_spread_skew_factor)` upper bound for any reasonable
+/// parameterization. Governance is expected to tighten this per-pair
+/// via `Configure` after the upgrade completes.
+const MIGRATION_MAX_LIMIT_PRICE_DEVIATION: Dimensionless = Dimensionless::new_percent(5);
 
 /// Default `max_market_slippage` applied to every pair during the
-/// migration. 10% matches dYdX's flat cap and Hyperliquid's TP/SL
-/// default. Governance tightens per-pair via `Configure` after the
-/// upgrade completes.
-const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(10);
+/// migration. 5% matches Binance USD-M futures' `marketTakeBound` for
+/// BTCUSDT / ETHUSDT / SOLUSDT, the largest centralized perp venue by
+/// volume. Tighter than dYdX v4 (10%) and Hyperliquid TP/SL (10%) but
+/// the symmetry with `max_limit_price_deviation` is intentional.
+/// Governance tightens per-pair via `Configure` after the upgrade.
+const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(5);
 
 /// Legacy types matching the pre-upgrade Borsh layout.
 ///
