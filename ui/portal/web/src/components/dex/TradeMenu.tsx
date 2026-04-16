@@ -44,7 +44,7 @@ import {
 import { Sheet } from "react-modal-sheet";
 
 import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/dango/utils";
-import { FEE_VOLUME_LOOKBACK_SECONDS } from "~/constants";
+import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import type { PerpsTimeInForce } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
@@ -499,6 +499,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     operation,
     sizeValue,
     priceValue,
+    maxSlippage: PERPS_DEFAULT_SLIPPAGE,
     tpPrice: tpslEnabled && Number(tpPrice) > 0 ? tpPrice : undefined,
     slPrice: tpslEnabled && Number(slPrice) > 0 ? slPrice : undefined,
     reduceOnly,
@@ -772,7 +773,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             />
           ) : null}
           {operation === "market" ? (
-            <InfoRow label={m["dex.protrade.perps.slippage"]()} value="Max: 0.1%" />
+            <InfoRow label={m["dex.protrade.perps.slippage"]()} value={m["dex.protrade.perps.slippageDefault"]()} />
           ) : null}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">

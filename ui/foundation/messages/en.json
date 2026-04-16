@@ -1198,6 +1198,7 @@
         "requiredMargin": "Required Margin",
         "estLiqPrice": "Est. Liq. Price",
         "slippage": "Slippage",
+        "slippageDefault": "Max: 0.5%",
         "fees": "Fees",
         "feesTooltipTaker": "Taker orders pay a {rate} fee.",
         "feesTooltipMaker": "Maker orders pay a {rate} fee.",
