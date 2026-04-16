@@ -32,7 +32,11 @@ where
     let graphql_schema = build_schema(context.clone());
 
     #[cfg(feature = "tracing")]
-    tracing::info!(httpd_config.ip, httpd_config.port, "Starting indexer httpd server");
+    tracing::info!(
+        httpd_config.ip,
+        httpd_config.port,
+        "Starting indexer httpd server"
+    );
 
     #[cfg(feature = "metrics")]
     let metrics = ActixWebMetricsBuilder::new().build();
@@ -75,9 +79,15 @@ where
     .workers(httpd_config.workers)
     .max_connections(httpd_config.max_connections)
     .backlog(httpd_config.backlog)
-    .keep_alive(actix_web::http::KeepAlive::Timeout(std::time::Duration::from_secs(httpd_config.keep_alive_secs)))
-    .client_request_timeout(std::time::Duration::from_secs(httpd_config.client_request_timeout_secs))
-    .client_disconnect_timeout(std::time::Duration::from_secs(httpd_config.client_disconnect_timeout_secs))
+    .keep_alive(actix_web::http::KeepAlive::Timeout(
+        std::time::Duration::from_secs(httpd_config.keep_alive_secs),
+    ))
+    .client_request_timeout(std::time::Duration::from_secs(
+        httpd_config.client_request_timeout_secs,
+    ))
+    .client_disconnect_timeout(std::time::Duration::from_secs(
+        httpd_config.client_disconnect_timeout_secs,
+    ))
     .worker_max_blocking_threads(httpd_config.worker_max_blocking_threads)
     .bind((&*httpd_config.ip, httpd_config.port))?
     .run()

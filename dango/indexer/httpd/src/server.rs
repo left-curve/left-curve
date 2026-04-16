@@ -90,12 +90,15 @@ pub async fn run_server(
     dango_httpd_context: crate::context::Context,
     shutdown_flag: Arc<AtomicBool>,
     port_sender: Option<mpsc::Sender<u16>>,
-) -> Result<(), indexer_httpd::error::Error>
-{
+) -> Result<(), indexer_httpd::error::Error> {
     let graphql_schema = crate::graphql::build_schema(dango_httpd_context.clone());
 
     #[cfg(feature = "tracing")]
-    tracing::info!(httpd_config.ip, httpd_config.port, "Starting dango httpd server");
+    tracing::info!(
+        httpd_config.ip,
+        httpd_config.port,
+        "Starting dango httpd server"
+    );
 
     #[cfg(feature = "metrics")]
     let metrics = actix_web_metrics::ActixWebMetricsBuilder::new().build();
@@ -143,9 +146,15 @@ pub async fn run_server(
     .workers(httpd_config.workers)
     .max_connections(httpd_config.max_connections)
     .backlog(httpd_config.backlog)
-    .keep_alive(actix_web::http::KeepAlive::Timeout(std::time::Duration::from_secs(httpd_config.keep_alive_secs)))
-    .client_request_timeout(std::time::Duration::from_secs(httpd_config.client_request_timeout_secs))
-    .client_disconnect_timeout(std::time::Duration::from_secs(httpd_config.client_disconnect_timeout_secs))
+    .keep_alive(actix_web::http::KeepAlive::Timeout(
+        std::time::Duration::from_secs(httpd_config.keep_alive_secs),
+    ))
+    .client_request_timeout(std::time::Duration::from_secs(
+        httpd_config.client_request_timeout_secs,
+    ))
+    .client_disconnect_timeout(std::time::Duration::from_secs(
+        httpd_config.client_disconnect_timeout_secs,
+    ))
     .worker_max_blocking_threads(httpd_config.worker_max_blocking_threads)
     .bind((&*httpd_config.ip, httpd_config.port))?;
 

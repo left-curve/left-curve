@@ -39,7 +39,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    println!("Starting HTTP server on {}:{}", httpd_config.ip, httpd_config.port);
+    println!(
+        "Starting HTTP server on {}:{}",
+        httpd_config.ip, httpd_config.port
+    );
 
     let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     server::run_server(

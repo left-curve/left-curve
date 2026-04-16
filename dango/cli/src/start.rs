@@ -409,17 +409,12 @@ impl StartCmd {
             );
         });
 
-        dango_httpd::server::run_server(
-            cfg,
-            dango_httpd_context,
-            shutdown_flag,
-            None,
-        )
-        .await
-        .map_err(|err| {
-            tracing::error!("Failed to run full-featured HTTP server: {err:?}");
-            err.into()
-        })
+        dango_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run full-featured HTTP server: {err:?}");
+                err.into()
+            })
     }
 
     /// Run the metrics HTTP server
