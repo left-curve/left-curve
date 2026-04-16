@@ -3106,6 +3106,328 @@ mod tests {
         assert_eq!(taker_pos.entry_price, UsdPrice::new_int(50_000));
     }
 
+    // =================== Fee rate overrides ==================================
+
+    /// Taker fills two consecutive orders. Between the fills, the admin sets
+    /// a lower taker-fee override on the taker. Fill #1 must be charged the
+    /// schedule rate (5 bps); fill #2 must be charged the override rate (1 bps).
+    #[test]
+    fn fee_override_taker_rate_applied() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Taker fee = 5 bps on the schedule; maker fee & protocol fee = 0
+        // so that fee flows land entirely on the taker/vault legs and the
+        // numbers are easy to reason about.
+        let param = Param {
+            max_open_orders: 10,
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(500), // 5 bps
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        // Two resting asks — one per phase.
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 101);
+
+        let pair_param = test_pair_param();
+
+        // ----------------- Phase 1: no override, schedule rate -----------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = 10 × $50,000 = $500,000. Taker fee = 5 bps × $500k = $250.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(250))
+                .unwrap()
+        );
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(250));
+
+        // Persist side effects so phase 3 sees the post-phase-1 state.
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // ------------------ Phase 2: apply the taker override ------------------
+
+        // 1 bps — lower than the 5 bps schedule rate, matching the realistic
+        // VIP-discount use case.
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                TAKER,
+                &(Dimensionless::ZERO, Dimensionless::new_raw(100)),
+            )
+            .unwrap();
+
+        // ------------------ Phase 3: override-branch fill ----------------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Fill #2 fee = 1 bps × $500k = $50 (override). Without the override,
+        // it would have been another $250 and the totals below would be $500.
+        //
+        // Cumulative: taker paid $250 + $50 = $300; vault received $300.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(300))
+                .unwrap()
+        );
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(300));
+    }
+
+    /// MAKER_A's two resting asks are each consumed by a taker market buy.
+    /// Between the fills, the admin sets a lower maker-fee override on
+    /// MAKER_A. Fill #1 must be charged the schedule rate (5 bps);
+    /// fill #2 must be charged the override rate (1 bps).
+    #[test]
+    fn fee_override_maker_rate_applied() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Maker fee = 5 bps on the schedule; taker fee & protocol fee = 0
+        // so the maker is the only party paying a fee and assertions isolate
+        // the maker-side override.
+        let param = Param {
+            max_open_orders: 10,
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(500), // 5 bps
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 101);
+
+        let pair_param = test_pair_param();
+
+        // ----------------- Phase 1: no override, schedule rate -----------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = $500,000. Maker fee = 5 bps × $500k = $250.
+        // MAKER_A starts at margin 0 (place_ask doesn't seed margin), so the
+        // post-fill margin is -$250.
+        assert_eq!(taker_state.margin, LARGE_COLLATERAL);
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(-250));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(250));
+
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // ------------------ Phase 2: apply the maker override ------------------
+
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                MAKER_A,
+                &(Dimensionless::new_raw(100), Dimensionless::ZERO), // 1 bps
+            )
+            .unwrap();
+
+        // ------------------ Phase 3: override-branch fill ----------------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Fill #2 maker fee = 1 bps × $500k = $50 (override). Without the
+        // override it would have been another $250, and MAKER_A's final
+        // margin would be -$500.
+        //
+        // Cumulative: MAKER_A paid $250 + $50 = $300; vault received $300.
+        assert_eq!(taker_state.margin, LARGE_COLLATERAL);
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(-300));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(300));
+    }
+
     // =================== Post-only order tests ===============================
 
     #[test]
