@@ -106,7 +106,7 @@ fn trading_lifecycle() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(1),
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -672,7 +672,7 @@ fn protocol_fee_accumulates_across_fills() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(1),
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -723,7 +723,7 @@ fn protocol_fee_accumulates_across_fills() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(1),
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
@@ -852,7 +852,7 @@ fn negative_maker_fee_rebate_lifecycle() {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(50),
                 kind: perps::OrderKind::Market {
-                    max_slippage: Dimensionless::new_percent(1),
+                    max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,

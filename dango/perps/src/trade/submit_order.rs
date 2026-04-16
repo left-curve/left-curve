@@ -369,46 +369,7 @@ pub(crate) fn _submit_order(
     let taker_order_id = NEXT_ORDER_ID.load(storage)?;
     let mut next_order_id = taker_order_id + OrderId::ONE;
 
-    // --------------------- Step 4. Compute target price -----------------------
-
-    let taker_is_bid = size.is_positive();
-    let target_price = compute_target_price(kind, oracle_price, taker_is_bid)?;
-
-    // ----------------- Step 5: Pre-match taker margin check ------------------
-    //
-    // Simulates the full fill at target_price and verifies post-fill equity
-    // covers initial margin. Runs for all orders (including reduce-only and
-    // post-only) before any matching or order storage.
-
-    let perp_querier = NoCachePerpQuerier::new_local(storage);
-
-    // Determine the taker's fee rate.
-    // If the admin has configured a fee rate override for the taker, then
-    // simply use it.
-    // Otherwise, resolve it based on recent volume.
-    let taker_fee_rate = if let Some((_maker_rate_override, taker_rate_override)) =
-        FEE_RATE_OVERRIDES.may_load(storage, taker)?
-    {
-        taker_rate_override
-    } else {
-        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-        let taker_volume = query_volume(storage, taker, volume_since)?;
-        param.taker_fee_rates.resolve(taker_volume)
-    };
-
-    check_margin(
-        oracle_querier,
-        pair_id,
-        &perp_querier,
-        &pair_state,
-        &taker_state,
-        taker_fee_rate,
-        target_price,
-        closing_size,
-        opening_size,
-    )?;
-
-    // ---------------------- Step 6. Post-only fast path ----------------------
+    // ---------------------- Step 4. Post-only fast path ----------------------
 
     if let Some(limit_price) = kind.post_only_price() {
         let StoreLimitOrderOutcome {
@@ -448,6 +409,43 @@ pub(crate) fn _submit_order(
             fee_breakdowns: BTreeMap::new(),
         });
     }
+
+    // ----------------- Step 5: Pre-match taker margin check ------------------
+    //
+    // Reduce-only orders only reduce exposure, so they skip the check.
+
+    // Determine the taker's fee rate.
+    // If the admin has configured a fee rate override for the taker, then
+    // simply use it.
+    // Otherwise, resolve it based on recent volume.
+    let taker_fee_rate = if let Some((_maker_rate_override, taker_rate_override)) =
+        FEE_RATE_OVERRIDES.may_load(storage, taker)?
+    {
+        taker_rate_override
+    } else {
+        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+        let taker_volume = query_volume(storage, taker, volume_since)?;
+        param.taker_fee_rates.resolve(taker_volume)
+    };
+
+    if !reduce_only {
+        let perp_querier = NoCachePerpQuerier::new_local(storage);
+
+        check_margin(
+            oracle_querier,
+            pair_id,
+            &perp_querier,
+            &taker_state,
+            taker_fee_rate,
+            oracle_price,
+            size,
+        )?;
+    }
+
+    // --------------------- Step 6. Compute target price ----------------------
+
+    let taker_is_bid = size.is_positive();
+    let target_price = compute_target_price(kind, oracle_price, taker_is_bid)?;
 
     // ---------------------- Step 7. Match against book -----------------------
 
@@ -1221,9 +1219,6 @@ fn store_limit_order(
     let margin_to_reserve = compute_required_margin(size, limit_price, pair_param)?;
 
     // 0%-fill margin check: verify the user can afford this reservation.
-    // Reduce-only orders skip this since they only close (no opening exposure).
-    // Solvency at fill price is already checked by the caller (step 5 in
-    // _submit_order) before we get here.
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
@@ -3856,8 +3851,8 @@ mod tests {
         assert!(err.is_err());
         let msg = err.unwrap_err().to_string();
         assert!(
-            msg.contains("insufficient margin"),
-            "expected margin error, got: {msg}"
+            msg.contains("insufficient margin for limit order"),
+            "expected limit-order margin error, got: {msg}"
         );
     }
 
