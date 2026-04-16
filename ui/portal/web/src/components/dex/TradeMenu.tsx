@@ -472,7 +472,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   useEffect(() => {
     const currentSize = Number(size);
-    if (currentSize > maxSizeAmount && maxSizeAmount > 0) {
+    if (currentSize > maxSizeAmount) {
       setValue("size", maxSizeAmount.toString());
     }
   }, [maxSizeAmount]);
