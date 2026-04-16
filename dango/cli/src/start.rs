@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::{Config, GrugConfig, PythLazerConfig, TendermintConfig},
+        config::{Config, GrugConfig, MetricsHttpdConfig, PythLazerConfig, TendermintConfig},
         home_directory::HomeDirectory,
         telemetry,
     },
@@ -419,7 +419,7 @@ impl StartCmd {
 
     /// Run the metrics HTTP server
     async fn run_metrics_httpd_server(
-        cfg: &HttpdConfig,
+        cfg: &MetricsHttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
         indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)

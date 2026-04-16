@@ -122,12 +122,6 @@ ip = "0.0.0.0"
 # Port to listen on.
 port = 9191
 
-# Allowed origin for CORS.
-#
-# Wildcards are not supported here. To allow all origins, simply comment out
-# this line.
-#cors_allowed_origin = "*"
-
 ################################################################################
 ###                         Tendermint Configuration                         ###
 ################################################################################
