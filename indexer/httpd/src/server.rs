@@ -8,6 +8,7 @@ use {
         web::{self, ServiceConfig},
     },
     grug_httpd::routes::{graphql::graphql_route, index::index},
+    grug_types::HttpdConfig,
     sentry_actix::Sentry,
     std::fmt::Display,
 };
@@ -20,7 +21,7 @@ use {
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
 pub async fn run_server<CA, GS>(
-    httpd_config: &grug_types::HttpdConfig,
+    httpd_config: &HttpdConfig,
     context: Context,
     config_app: CA,
     build_schema: fn(Context) -> GS,

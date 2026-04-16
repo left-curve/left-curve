@@ -13,7 +13,7 @@ use {
     grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
-    grug_types::GIT_COMMIT,
+    grug_types::{GIT_COMMIT, HttpdConfig},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
@@ -328,7 +328,7 @@ impl StartCmd {
     /// Run the minimal HTTP server (without indexer features)
     /// The shutdown flag should be set when signals are received to return 503 for new requests.
     async fn run_minimal_httpd_server(
-        cfg: &grug_types::HttpdConfig,
+        cfg: &HttpdConfig,
         context: HttpdContext,
         shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
@@ -357,7 +357,7 @@ impl StartCmd {
     /// ClickHouse / return empty state on a cache miss, so handlers reading
     /// during warm-up see the same state as a freshly indexed node.
     async fn run_dango_httpd_server(
-        cfg: &grug_types::HttpdConfig,
+        cfg: &HttpdConfig,
         dango_httpd_context: dango_httpd::context::Context,
         shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> anyhow::Result<()> {
@@ -419,7 +419,7 @@ impl StartCmd {
 
     /// Run the metrics HTTP server
     async fn run_metrics_httpd_server(
-        cfg: &grug_types::HttpdConfig,
+        cfg: &HttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
         indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)

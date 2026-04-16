@@ -11,6 +11,7 @@ use {
         middlewares::shutdown::ShutdownMiddleware,
         routes::{graphql::graphql_route, index::index},
     },
+    grug_types::HttpdConfig,
     indexer_httpd::routes,
     sentry_actix::Sentry,
     std::sync::{Arc, atomic::AtomicBool, mpsc},
@@ -86,7 +87,7 @@ where
 /// If `port_sender` is provided, the actual bound port will be sent via the channel after binding.
 /// Use port 0 to let the OS allocate an available port (useful for tests).
 pub async fn run_server(
-    httpd_config: &grug_httpd::server::HttpdConfig,
+    httpd_config: &HttpdConfig,
     dango_httpd_context: crate::context::Context,
     shutdown_flag: Arc<AtomicBool>,
     port_sender: Option<mpsc::Sender<u16>>,

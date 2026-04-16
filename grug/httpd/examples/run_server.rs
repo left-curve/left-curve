@@ -1,6 +1,7 @@
 use {
     clap::Parser,
     grug_httpd::{context::Context, graphql, server},
+    grug_types::HttpdConfig,
     std::sync::Arc,
 };
 
@@ -32,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grug_app = Arc::new(MockGrugApp);
     let context = Context::new(grug_app);
 
-    let httpd_config = server::HttpdConfig {
+    let httpd_config = HttpdConfig {
         ip: args.ip,
         port: args.port,
         cors_allowed_origin: args.cors_origin,

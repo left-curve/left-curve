@@ -6,6 +6,7 @@ use {
     grug_app::SimpleCommitment,
     grug_db_memory::MemDb,
     grug_testing::MockClient,
+    grug_types::HttpdConfig,
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
@@ -172,7 +173,7 @@ where
         None,
     );
 
-    let httpd_config = grug_types::HttpdConfig {
+    let httpd_config = HttpdConfig {
         ip: "127.0.0.1".to_string(),
         port,
         cors_allowed_origin,

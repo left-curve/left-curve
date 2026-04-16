@@ -7,6 +7,7 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    grug_types::HttpdConfig,
     sentry_actix::Sentry,
     std::{
         fmt::Display,
@@ -18,8 +19,6 @@ use {
     actix_web_metrics::ActixWebMetricsBuilder,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
 };
-
-pub use grug_types::HttpdConfig;
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
 /// The shutdown_flag should be set when signals are received to return 503 for new requests.
