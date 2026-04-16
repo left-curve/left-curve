@@ -7,7 +7,7 @@ This chapter describes how orders are submitted, matched, filled, and settled in
 An order can be order:
 
 - **Market** — immediate-or-cancel (IOC). Specifies a `max_slippage` relative to the oracle price. Any unfilled remainder after matching is discarded (unless nothing filled at all, which is an error).
-- **Limit** — specifies a `limit_price` and a `time_in_force`:
+- **Limit** — specifies a `limit_price` and a `time_in_force`. The `limit_price` must satisfy the per-pair **price band** at submission time (see [§3a](#3a-price-banding-for-limit-orders)).
   - **GTC** (default): any unfilled remainder is stored as a resting order on the book.
   - **IOC**: fills as much as possible, then discards the unfilled remainder. Errors if nothing fills.
   - **Post-only**: the order is to be inserted into the book without entering the matching engine. Reject if it would cross the best price on the opposite side.
@@ -57,6 +57,30 @@ A price constraint is **violated** when:
 
 - Bid: $\mathtt{execPrice} > \mathtt{targetPrice}$
 - Ask: $\mathtt{execPrice} < \mathtt{targetPrice}$
+
+## 3a. Price banding for limit orders
+
+Every limit order (GTC, IOC, or post-only) must have a `limit_price` within a per-pair symmetric deviation of the oracle price at submission. Concretely:
+
+$$
+\lvert \mathtt{limitPrice} - \mathtt{oraclePrice} \rvert \leq \mathtt{oraclePrice} \times \mathtt{maxLimitPriceDeviation}
+$$
+
+where $\mathtt{maxLimitPriceDeviation}$ is a per-pair parameter in $(0, 1)$. Equivalently, the limit price must fall inside
+
+$$
+\bigl[ \mathtt{oraclePrice} \times (1 - \mathtt{maxLimitPriceDeviation}),\; \mathtt{oraclePrice} \times (1 + \mathtt{maxLimitPriceDeviation}) \bigr].
+$$
+
+An order whose price falls outside this band is rejected at submission, before matching begins. The check is applied identically to GTC, IOC, and post-only limit orders.
+
+**Why.** Without banding, a user can rest a limit order at a pathological price far from oracle (e.g. an ask at 50× the oracle). Such an order becomes a trap for bad-price fills — a coordinated attacker can use it to create bad debt at the vault's expense (see `testdata/message.md` for the full attack shape). Banding prevents the trap from ever being set.
+
+**Market orders are not banded.** They use `max_slippage` instead (see [§3](#3-target-price)). A separate policy caps `max_slippage` at the per-pair protocol level — see the slippage-policy PR.
+
+**The submission-time check does not cover resting-order drift.** An order placed within the band at time $T_1$ may fall outside the band at a later time $T_2$ after the oracle moves. A match-time re-check in the matching engine cancels such drifted orders; that logic is documented separately and accompanies this submission-time check in the same PR.
+
+**Zero and negative prices are rejected by the band.** For any $\mathtt{maxLimitPriceDeviation} < 1$ and positive oracle price, the lower bound is strictly positive, so the banding check subsumes a positivity check on the limit price.
 
 ## 4. Matching engine
 

@@ -283,6 +283,14 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
         pair_param.vault_max_skew_size,
     );
 
+    ensure!(
+        pair_param.max_limit_price_deviation > Dimensionless::ZERO
+            && pair_param.max_limit_price_deviation < Dimensionless::ONE,
+        "invalid `max_limit_price_deviation`! pair id: {}, bounds: (0, 1), found: {}",
+        pair_id,
+        pair_param.max_limit_price_deviation,
+    );
+
     for bucket_size in &pair_param.bucket_sizes {
         ensure!(
             *bucket_size > UsdPrice::ZERO,
@@ -387,6 +395,7 @@ mod tests {
         PairParam {
             tick_size: UsdPrice::new_int(1),
             min_order_size: UsdValue::ZERO,
+            max_limit_price_deviation: Dimensionless::new_permille(100), // 10%
             max_abs_oi: Quantity::new_int(1_000_000),
             max_abs_funding_rate: FundingRate::ZERO,
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
@@ -715,6 +724,47 @@ mod tests {
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
         assert!(err.contains("`bucket_sizes`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_zero_max_limit_price_deviation_rejected() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::ZERO,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_limit_price_deviation`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_one_max_limit_price_deviation_rejected() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::ONE,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_limit_price_deviation`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_negative_max_limit_price_deviation_rejected() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::new_raw(-1),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_limit_price_deviation`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_max_limit_price_deviation_just_below_one_accepted() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::new_permille(999), // 99.9%
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
     }
 
     // --------------- validate_param — negative-value branches ------------------

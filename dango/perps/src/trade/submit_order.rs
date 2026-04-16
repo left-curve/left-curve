@@ -2,9 +2,10 @@ use {
     crate::{
         MAX_ORACLE_STALENESS, VOLUME_LOOKBACK,
         core::{
-            check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
-            compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated, validate_slippage,
+            check_margin, check_minimum_order_size, check_oi_constraint, check_price_band,
+            compute_available_margin, compute_notional, compute_required_margin,
+            compute_target_price, compute_trading_fee, decompose_fill, execute_fill,
+            is_price_constraint_violated, validate_slippage,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
@@ -318,10 +319,15 @@ pub(crate) fn _submit_order(
             validate_slippage(*max_slippage)?;
         },
         OrderKind::Limit { limit_price, .. } => {
-            ensure!(
-                limit_price.is_positive(),
-                "limit price must be positive: {limit_price}"
-            );
+            // `check_price_band` subsumes the positivity check: any
+            // `max_limit_price_deviation < 1` (enforced at configure time)
+            // makes the lower bound strictly positive, so zero or negative
+            // `limit_price` is rejected here too.
+            check_price_band(
+                *limit_price,
+                oracle_price,
+                pair_param.max_limit_price_deviation,
+            )?;
         },
     }
 
@@ -1411,6 +1417,7 @@ mod tests {
             tick_size: UsdPrice::new_int(1),
             initial_margin_ratio: Dimensionless::new_permille(50), // 5%
             maintenance_margin_ratio: Dimensionless::new_permille(25), // 2.5%
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
             ..Default::default()
         }
     }
@@ -5225,8 +5232,9 @@ mod tests {
 
     /// A limit order with a negative limit_price must be rejected.
     ///
-    /// Wrong behavior: storing the order on the book with a negative price,
-    /// corrupting the order book invariant.
+    /// The banding check at Step 0 subsumes the old positivity check: a
+    /// negative limit price is always outside any `max_deviation < 1` band
+    /// around a positive oracle price.
     #[test]
     fn reject_limit_order_negative_price() {
         let mut ctx = MockContext::new()
@@ -5267,10 +5275,13 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("price must be positive");
+        .should_fail_with_error("deviates too far");
     }
 
     /// A limit order with zero limit_price must be rejected.
+    ///
+    /// Same banding subsumption as the negative-price case: zero is outside
+    /// any legal band around a positive oracle price.
     #[test]
     fn reject_limit_order_zero_price() {
         let mut ctx = MockContext::new()
@@ -5311,7 +5322,7 @@ mod tests {
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("price must be positive");
+        .should_fail_with_error("deviates too far");
     }
 
     /// TP child order with negative trigger_price must be rejected.

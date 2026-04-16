@@ -341,6 +341,24 @@ pub struct PairParam {
     /// Bounds: `>= 0`. Zero disables the minimum.
     pub min_order_size: UsdValue,
 
+    /// Maximum deviation of a limit order's `limit_price` from the oracle
+    /// price, expressed as a fraction. A limit order is accepted only if
+    ///
+    /// ```plain
+    /// |limit_price - oracle_price| / oracle_price <= max_limit_price_deviation
+    /// ```
+    ///
+    /// This prevents users from placing resting orders at pathological prices
+    /// (e.g. 99% below oracle) that could trap counterparties into bad-price
+    /// fills.
+    ///
+    /// Bounds: `(0, 1)`. Admin is responsible for picking a value that
+    /// accommodates the vault's own quote deviation
+    /// (`vault_half_spread * (1 + vault_spread_skew_factor)`) — otherwise
+    /// users' limit orders placed at prices the vault legitimately quotes
+    /// would be rejected.
+    pub max_limit_price_deviation: Dimensionless,
+
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
     ///
@@ -452,6 +470,7 @@ impl PairParam {
             impact_size: UsdValue::new_int(10_000),
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_max_quote_size: Quantity::new_int(100),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
             ..Default::default()
         }
     }

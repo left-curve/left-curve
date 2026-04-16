@@ -1085,3 +1085,204 @@ fn ioc_limit_order_no_fill_rejected() {
         )
         .should_fail_with_error("no liquidity at acceptable price");
 }
+
+// ============================ price banding ===================================
+//
+// All band tests use a 10% band (`max_limit_price_deviation = 0.1`) with
+// oracle = $2,000. Allowed range is [$1,800, $2,200].
+
+/// Set up a test suite with oracle = $2,000, band = 10%, and user1 funded
+/// with $10,000 margin.
+macro_rules! setup_band_suite {
+    () => {{
+        let (mut suite, mut accounts, _, contracts, _) =
+            setup_test_naive(TestOption::default());
+        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+        let pair = pair_id();
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.perps,
+                &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                    param: default_param(),
+                    pair_params: btree_map! {
+                        pair.clone() => PairParam {
+                            max_limit_price_deviation: Dimensionless::new_permille(100), // 10%
+                            ..default_pair_param()
+                        },
+                    },
+                }),
+                Coins::new(),
+            )
+            .should_succeed();
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+
+        (suite, accounts, contracts, pair)
+    }};
+}
+
+/// Send a limit order from user1 at the given price and time-in-force.
+macro_rules! submit_limit {
+    ($suite:expr, $accounts:expr, $contracts:expr, $pair:expr, $size:expr, $price:expr, $tif:expr) => {
+        $suite.execute(
+            &mut $accounts.user1,
+            $contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: $pair.clone(),
+                size: Quantity::new_int($size),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int($price),
+                    time_in_force: $tif,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+    };
+}
+
+/// GTC limit buy exactly at the upper band bound is accepted.
+#[test]
+fn banding_gtc_at_upper_bound_accepted() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    // oracle * (1 + 10%) = $2,200.
+    submit_limit!(
+        suite,
+        accounts,
+        contracts,
+        pair,
+        1,
+        2_200,
+        perps::TimeInForce::GoodTilCanceled
+    )
+    .should_succeed();
+}
+
+/// GTC limit buy just above the upper bound is rejected.
+#[test]
+fn banding_gtc_just_above_upper_bound_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    submit_limit!(
+        suite,
+        accounts,
+        contracts,
+        pair,
+        1,
+        2_201,
+        perps::TimeInForce::GoodTilCanceled
+    )
+    .should_fail_with_error("deviates too far");
+}
+
+/// GTC limit sell below the lower bound is rejected.
+#[test]
+fn banding_gtc_below_lower_bound_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    submit_limit!(
+        suite,
+        accounts,
+        contracts,
+        pair,
+        -1,
+        1_799,
+        perps::TimeInForce::GoodTilCanceled
+    )
+    .should_fail_with_error("deviates too far");
+}
+
+/// IOC limit with out-of-band price is rejected before any fill is attempted.
+#[test]
+fn banding_ioc_out_of_band_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    submit_limit!(
+        suite,
+        accounts,
+        contracts,
+        pair,
+        1,
+        3_000,
+        perps::TimeInForce::ImmediateOrCancel
+    )
+    .should_fail_with_error("deviates too far");
+}
+
+/// PostOnly with out-of-band price is rejected at Step 0, never reaching the
+/// crossing check inside `store_post_only_limit_order`.
+#[test]
+fn banding_post_only_out_of_band_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    submit_limit!(
+        suite,
+        accounts,
+        contracts,
+        pair,
+        -1,
+        1_000,
+        perps::TimeInForce::PostOnly
+    )
+    .should_fail_with_error("deviates too far");
+}
+
+/// Market orders use `max_slippage`, not `limit_price`, so the band does not
+/// apply. A market order with wide slippage against an empty book fails only
+/// for lack of liquidity, not for banding reasons.
+#[test]
+fn banding_does_not_affect_market_orders() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(500), // 50%
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_fail_with_error("no liquidity at acceptable price");
+}
+
+/// Attack trap-setting regression. An attacker attempting to rest a PostOnly
+/// bid far below oracle — the precondition for the bad-debt-minting self-match
+/// attack — is rejected at submission. Without banding, this order would rest
+/// on the book and serve as the bad-price maker in the attack.
+#[test]
+fn banding_blocks_pathological_post_only_trap() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    // Oracle = $2,000, band = 10%. A PostOnly bid at $200 (90% below
+    // oracle) would be the trap leg of a bad-debt-minting attack.
+    submit_limit!(
+        suite,
+        accounts,
+        contracts,
+        pair,
+        1,
+        200,
+        perps::TimeInForce::PostOnly
+    )
+    .should_fail_with_error("deviates too far");
+}
