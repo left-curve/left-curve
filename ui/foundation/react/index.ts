@@ -57,4 +57,4 @@ export { mergeRefs } from "./utils/mergeRefs.js";
 export { forwardRefPolymorphic } from "./utils/polymorph.js";
 export { numberMask, ethAddressMask } from "./utils/masks.js";
 export { ensureErrorMessage } from "./utils/error.js";
-export { lazyWithRetry } from "./utils/lazyWithRetry.js";
+export { isChunkLoadError, reloadOnChunkError, lazyWithRetry } from "./utils/chunkError.js";
