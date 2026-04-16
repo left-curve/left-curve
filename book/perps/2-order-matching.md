@@ -164,11 +164,14 @@ analogue of the same protection.
 
 **Conditional-order staleness.** Conditional orders (TP/SL) store their
 `max_slippage` at submission. When a conditional order triggers, the
-stored value is used without re-validating against the current cap. If
-governance tightens `max_market_slippage` between submission and
-trigger, an old conditional order may emit a market fill with slippage
-above the new cap — but the effective fill prices remain bounded by the
-match-time band re-check in [§3b](#3b-match-time-band-re-check-for-maker-orders).
+cron path re-checks the stored value against the *current*
+`max_market_slippage`. If governance tightened the cap between
+submission and trigger so the stored value is now above it, the
+conditional order is cancelled before any fills are attempted and
+`ConditionalOrderRemoved` is emitted with
+`reason = SlippageCapTightened`. This distinct reason (vs. the
+book-insufficiency `SlippageExceeded`) lets the event stream tell a
+policy tightening apart from a liquidity shortfall.
 
 ## 4. Matching engine
 

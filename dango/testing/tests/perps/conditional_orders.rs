@@ -1,12 +1,12 @@
 use {
-    crate::register_oracle_prices,
+    crate::{default_pair_param, default_param, register_oracle_prices},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
-        perps::{self, UserState},
+        perps::{self, PairParam, UserState},
     },
-    grug::{Addressable, Coins, Duration, QuerierExt, ResultExt, Uint128},
+    grug::{Addressable, Coins, Duration, QuerierExt, ResultExt, Uint128, btree_map},
 };
 
 /// Full lifecycle: deposit → open position → place TP → oracle rises →
@@ -1769,4 +1769,176 @@ fn conditional_order_size_exceeds_position_allowed() {
     let pos = state.positions.get(&pair).unwrap();
     let above = pos.conditional_order_above.as_ref().unwrap();
     assert_eq!(above.size, Some(Quantity::new_int(-5)));
+}
+
+/// If governance tightens `max_market_slippage` after a conditional order
+/// is submitted, and the order's stored `max_slippage` now exceeds the
+/// cap, the cron trigger path cancels the order gracefully with
+/// `SlippageCapTightened` — distinct from `SlippageExceeded` which
+/// signals a book-liquidity shortfall. The position stays open; no
+/// market order is attempted.
+#[test]
+fn conditional_order_cancelled_when_slippage_cap_tightened() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Start with a permissive cap so the trader's 5% TP slippage is
+    // legal at submission.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        max_market_slippage: Dimensionless::new_permille(500), // 50%
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader deposits and opens a long via a market fill against a
+    // maker ask.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader places TP with 10% slippage — legal against the 50% cap.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Some(Quantity::new_int(-10)),
+                trigger_price: UsdPrice::new_int(2_500),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(10),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Governance tightens the cap to 5% — the stored 10% TP slippage
+    // now exceeds it.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        max_market_slippage: Dimensionless::new_permille(50), // 5%
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Provide a bid the TP could legally fill at, so the only reason
+    // for failure is the cap mismatch (not absent liquidity).
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_500),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Oracle rises to the TP trigger.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+
+    // Advance time so the perps cron fires.
+    suite.increase_time(Duration::from_minutes(2));
+
+    // Position is still open (TP was not executed; order was cancelled
+    // for cap tightening).
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("position should still be open — TP cancelled, not executed");
+    assert_eq!(pos.size, Quantity::new_int(10));
+    assert!(
+        pos.conditional_order_above.is_none(),
+        "conditional order should have been removed by the cap-tightened cancel"
+    );
 }

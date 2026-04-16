@@ -537,6 +537,44 @@ fn process_triggered_order(
         oracle_price,
     })?;
 
+    // If governance has tightened `max_market_slippage` since the order
+    // was submitted, the stored `order.max_slippage` may now exceed the
+    // cap. `_submit_order` would reject it with the same error as a
+    // book-insufficiency failure; catch it here so the event stream
+    // distinguishes the two. The order is cancelled rather than submitted
+    // — no fills attempted.
+    if order.max_slippage > pair_param.max_market_slippage {
+        events.push(ConditionalOrderRemoved {
+            pair_id: pair_id.clone(),
+            user,
+            trigger_direction,
+            reason: ReasonForOrderRemoval::SlippageCapTightened,
+        })?;
+
+        if user_state.is_empty() {
+            USER_STATES.remove(storage, user)?;
+        } else {
+            USER_STATES.save(storage, user, &user_state)?;
+        }
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                %pair_id,
+                %user,
+                ?trigger_direction,
+                stored_max_slippage = %order.max_slippage,
+                current_cap = %pair_param.max_market_slippage,
+                "Conditional order cancelled: slippage cap tightened"
+            );
+        }
+
+        return Ok(TriggeredOrderOutcome {
+            state: state.clone(),
+            pair_state: pair_state.clone(),
+        });
+    }
+
     // `_submit_order` is pure: takes `state` / `pair_state` / `user_state`
     // by `&` and returns updated copies in its outcome. On `Err`, the
     // caller's locals are untouched by construction, so the graceful-cancel

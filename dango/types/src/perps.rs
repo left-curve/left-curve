@@ -1426,6 +1426,14 @@ pub enum ReasonForOrderRemoval {
     /// (i.e. the oracle moved after the order was placed). The matching
     /// engine cancels such stale orders and walks deeper in the book.
     PriceBandViolation,
+
+    /// A conditional (TP/SL) order was triggered but its stored
+    /// `max_slippage` now exceeds the pair's `max_market_slippage` cap —
+    /// governance tightened the cap between the order's submission and
+    /// its trigger. The order is cancelled rather than submitted. Distinct
+    /// from `SlippageExceeded` so the event stream can tell a policy
+    /// tightening apart from a liquidity shortfall.
+    SlippageCapTightened,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.

@@ -2079,16 +2079,17 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### ReasonForOrderRemoval
 
-| Value                   | Description                                                    |
-| ----------------------- | -------------------------------------------------------------- |
-| `filled`                | Order fully filled                                             |
-| `canceled`              | User voluntarily canceled                                      |
-| `position_closed`       | Position was closed (conditional orders only)                  |
-| `self_trade_prevention` | Order crossed user's own order on the opposite side            |
-| `liquidated`            | User was liquidated                                            |
-| `deleveraged`           | User was hit by auto-deleveraging                              |
-| `slippage_exceeded`     | Conditional order triggered but could not fill within slippage |
-| `price_band_violation`  | Resting price drifted outside the per-pair band before match   |
+| Value                    | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `filled`                 | Order fully filled                                                           |
+| `canceled`               | User voluntarily canceled                                                    |
+| `position_closed`        | Position was closed (conditional orders only)                                |
+| `self_trade_prevention`  | Order crossed user's own order on the opposite side                          |
+| `liquidated`             | User was liquidated                                                          |
+| `deleveraged`            | User was hit by auto-deleveraging                                            |
+| `slippage_exceeded`      | Conditional order triggered but could not fill within slippage               |
+| `price_band_violation`   | Resting price drifted outside the per-pair band before match                 |
+| `slippage_cap_tightened` | Conditional order's stored max_slippage now exceeds the pair's tightened cap |
 
 For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl.md).
 
