@@ -19,6 +19,7 @@ use {
 mod adl_bug_reproduction;
 mod conditional_orders;
 mod liquidation;
+mod price_band;
 mod referral;
 mod trading;
 mod vault;
