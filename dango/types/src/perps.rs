@@ -1407,6 +1407,12 @@ pub enum ReasonForOrderRemoval {
     /// The conditional order was triggered but could not fill within the
     /// user's max_slippage tolerance (insufficient book liquidity).
     SlippageExceeded,
+
+    /// The resting order's price fell outside the pair's
+    /// `max_limit_price_deviation` band at the time it was about to match
+    /// (i.e. the oracle moved after the order was placed). The matching
+    /// engine cancels such stale orders and walks deeper in the book.
+    PriceBandViolation,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.

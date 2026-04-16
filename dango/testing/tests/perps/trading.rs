@@ -1286,3 +1286,127 @@ fn banding_blocks_pathological_post_only_trap() {
     )
     .should_fail_with_error("deviates too far");
 }
+
+/// Drift variant: a maker order placed within the band at T1 falls outside
+/// the band at T2 after the oracle moves. The match-time re-check cancels
+/// the stale order when another user tries to match against it.
+///
+/// Without this check, an attacker could place a legal PostOnly at T1 and
+/// wait for natural or nudged oracle drift to make the resting price
+/// pathological, reproducing the bad-debt attack despite submission-time
+/// banding.
+///
+/// Test shape: the walk encounters the stale maker first (near-end drift),
+/// cancels it, and then fills against an in-band maker deeper in the book.
+/// This verifies `continue` semantics (walk past the cancelled maker,
+/// rather than `break`-ing and leaving in-band liquidity unreached).
+#[test]
+fn banding_drift_maker_cancelled_at_match_time() {
+    let (mut suite, mut accounts, contracts, pair) = setup_band_suite!();
+
+    // Oracle at T1 = $2,000, band = 10% → allowed range [$1,800, $2,200].
+    //
+    // user1 (to-be-stale) places PostOnly ask at $2,199 (in-band at T1;
+    // will be below the lower bound after oracle moves up).
+    submit_limit!(
+        suite,
+        accounts,
+        contracts,
+        pair,
+        -1,
+        2_199,
+        perps::TimeInForce::PostOnly
+    )
+    .should_succeed();
+
+    // Oracle moves to $2,500 → new allowed range [$2,250, $2,750].
+    //   - user1's $2,199 ask: now below the lower bound ($2,199 < $2,250).
+    //     OUT of band.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+
+    // user3 deposits and (at T2, in the new band) places a PostOnly ask
+    // at $2,400 — this one stays in-band.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-1),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_400),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // user2 market-buys size 2 with wide slippage. Walks asks ascending:
+    //   1. user1 at $2,199 (out-of-band) → drift-cancel, continue.
+    //   2. user3 at $2,400 (in-band) → fills 1. remaining 1.
+    //   3. No more asks → partial fill; tx succeeds.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(2),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // user1's stale ask was cancelled by the match-time check.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    assert!(
+        orders.is_empty(),
+        "user1's stale ask should have been cancelled by the drift check"
+    );
+
+    // user2 filled 1 unit against user3 at $2,400. The stale $2,199 ask
+    // was cancelled without filling, so user2's size-2 order is only
+    // half-filled.
+    let user2_state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let pos = user2_state
+        .positions
+        .get(&pair)
+        .expect("user2 has a long position");
+    assert_eq!(pos.size, Quantity::new_int(1));
+    assert_eq!(pos.entry_price, UsdPrice::new_int(2_400));
+}

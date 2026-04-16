@@ -481,6 +481,8 @@ pub(crate) fn _submit_order(
         None, // no forced maker fee; respect per-user overrides and tier schedule
         &BTreeMap::new(),
         target_price,
+        oracle_price,
+        pair_param.max_limit_price_deviation,
         fillable_size,
         next_order_id,
         events,
@@ -648,6 +650,8 @@ pub fn match_order(
     force_maker_fee_rate: Option<Dimensionless>,
     maker_states: &BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
+    oracle_price: UsdPrice,
+    max_limit_price_deviation: Dimensionless,
     mut remaining_size: Quantity,
     mut next_order_id: OrderId,
     events: &mut EventBuilder,
@@ -713,6 +717,48 @@ pub fn match_order(
                 pair_id: pair_id.clone(),
                 user: taker,
                 reason: ReasonForOrderRemoval::SelfTradePrevention,
+            })?;
+
+            continue;
+        }
+
+        // ----------------------- Price-band re-check -------------------------
+
+        // The maker's price was within the band when placed, but the oracle
+        // may have drifted since. Cancel out-of-band makers and walk deeper.
+        //
+        // Vault quotes are exempt — their prices are algorithmically bounded
+        // by `vault_half_spread * (1 + vault_spread_skew_factor)` and are
+        // refreshed on every oracle update, so cancelling them during
+        // matching would cause continuous churn without security gain (the
+        // vault cannot be part of an attacker's coordinated setup).
+        if maker_order.user != contract
+            && check_price_band(resting_price, oracle_price, max_limit_price_deviation).is_err()
+        {
+            let pre_fill_abs_size = maker_order.size.checked_abs()?;
+
+            let maker_state = match maker_states.entry(maker_order.user) {
+                Entry::Vacant(e) => {
+                    let s = USER_STATES
+                        .may_load(storage, maker_order.user)?
+                        .unwrap_or_default();
+                    e.insert(s)
+                },
+                Entry::Occupied(e) => e.into_mut(),
+            };
+
+            maker_state.open_order_count -= 1;
+            maker_state
+                .reserved_margin
+                .checked_sub_assign(maker_order.reserved_margin)?;
+
+            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
+
+            events.push(OrderRemoved {
+                order_id: maker_order_id,
+                pair_id: pair_id.clone(),
+                user: maker_order.user,
+                reason: ReasonForOrderRemoval::PriceBandViolation,
             })?;
 
             continue;
@@ -3958,6 +4004,356 @@ mod tests {
             "MAKER_A's order should be fully filled"
         );
         assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+    }
+
+    // ======= Match-time price-band re-check ==============================
+
+    /// Far-end drift: a stale maker whose price is above the upper band
+    /// bound is encountered after in-band makers. The walk fills the
+    /// in-band maker first, then cancels the stale maker on encounter
+    /// and continues (terminating when it runs out of book).
+    #[test]
+    fn drift_cancel_far_end_out_of_band_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // MAKER_A at $35,000 (in-band at oracle=$30,000, 50% band → [15k, 45k]).
+        place_ask(&mut ctx.storage, MAKER_A, 35_000, 5, 100);
+        // MAKER_B at $50,000 (above upper band). Stale from when oracle was higher.
+        place_ask(&mut ctx.storage, MAKER_B, 50_000, 10, 101);
+
+        let maker_b_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_B)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            // Oracle at $30,000, band = 50% → allowed [$15k, $45k].
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                // Wide slippage so target_price doesn't terminate the walk
+                // before reaching the $50k maker: target = $30k * (1 + 0.99)
+                // = ~$59.7k > $50k.
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Two mutations: MAKER_A fully filled (None), MAKER_B cancelled (None).
+        assert_eq!(order_mutations.len(), 2);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A fully filled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B cancelled");
+
+        // MAKER_B's resting order was cancelled via the drift check.
+        assert_eq!(maker_states[&MAKER_B].open_order_count, 0);
+        assert!(
+            maker_b_reserved_before.is_non_zero()
+                && maker_states[&MAKER_B].reserved_margin < maker_b_reserved_before,
+            "MAKER_B's reserved margin should be fully released"
+        );
+
+        // Taker filled 5 @ $35,000 against MAKER_A only; MAKER_B was
+        // cancelled, not filled.
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(35_000));
+    }
+
+    /// Near-end drift: a stale maker whose price is below the lower band
+    /// bound is encountered *before* in-band makers. The walk cancels the
+    /// stale maker (rather than breaking) and proceeds to the in-band
+    /// maker behind it. This is the case `continue` handles correctly that
+    /// `break` would miss.
+    #[test]
+    fn drift_cancel_near_end_out_of_band_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // MAKER_A at $5,000 — below oracle's lower bound (stale from when
+        // oracle was much lower). Walked *first* in ascending order.
+        place_ask(&mut ctx.storage, MAKER_A, 5_000, 5, 100);
+        // MAKER_B at $35,000 — in-band at oracle=$30,000, 50% band.
+        place_ask(&mut ctx.storage, MAKER_B, 35_000, 10, 101);
+
+        let maker_a_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_A)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Two mutations: MAKER_A cancelled first, MAKER_B fully filled.
+        assert_eq!(order_mutations.len(), 2);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A cancelled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B fully filled");
+
+        // MAKER_A: cancelled, reserved released.
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        assert!(
+            maker_a_reserved_before.is_non_zero()
+                && maker_states[&MAKER_A].reserved_margin < maker_a_reserved_before,
+            "MAKER_A's reserved margin should be fully released"
+        );
+
+        // Taker filled 10 @ $35,000 against MAKER_B (walked past cancelled A).
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(10));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(35_000));
+    }
+
+    /// Vault exemption: a vault maker whose price is outside the band is
+    /// NOT cancelled by the match-time check. The vault's prices are
+    /// algorithmically bounded and auto-refresh; cancelling them on match
+    /// would cause churn without security gain.
+    #[test]
+    fn drift_cancel_skips_vault_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // Vault (CONTRACT) is the maker. Give it enough margin to take
+        // the other side of the taker's buy.
+        USER_STATES
+            .save(&mut ctx.storage, CONTRACT, &UserState {
+                margin: LARGE_COLLATERAL,
+                ..Default::default()
+            })
+            .unwrap();
+        // Vault ask at $50,000 — would be out-of-band at oracle=$30k.
+        place_ask(&mut ctx.storage, CONTRACT, 50_000, 5, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(5),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Vault maker was filled (not cancelled) despite being out-of-band.
+        assert_eq!(order_mutations.len(), 1);
+        assert!(order_mutations[0].2.is_none(), "vault maker fully filled");
+
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(
+            pos.entry_price,
+            UsdPrice::new_int(50_000),
+            "taker filled against the out-of-band vault price"
+        );
+    }
+
+    /// Cancel–fill–cancel across a single walk. The walk encounters:
+    ///
+    ///   1. An out-of-band maker at the near end (below lower bound) →
+    ///      drift-cancel, `continue`.
+    ///   2. An in-band maker → fill.
+    ///   3. Another out-of-band maker at the far end (above upper bound) →
+    ///      drift-cancel, `continue`.
+    ///
+    /// This exercises the `continue` semantics twice within one match and
+    /// confirms that a mid-walk fill does not mask subsequent drifted
+    /// makers. `break` would fail this test: stopping at step 1 would
+    /// leave no fill at all.
+    #[test]
+    fn drift_cancel_fill_cancel_within_one_walk() {
+        const MAKER_C: Addr = Addr::mock(4);
+
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // Oracle = $30,000, band = 50% → allowed range [$15,000, $45,000].
+        //
+        // MAKER_A ask at $5,000 — below lower bound (out-of-band, near end).
+        // MAKER_B ask at $40,000 — in-band.
+        // MAKER_C ask at $50,000 — above upper bound (out-of-band, far end).
+        place_ask(&mut ctx.storage, MAKER_A, 5_000, 5, 100);
+        place_ask(&mut ctx.storage, MAKER_B, 40_000, 5, 101);
+        place_ask(&mut ctx.storage, MAKER_C, 50_000, 5, 102);
+
+        let maker_a_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_A)
+            .unwrap()
+            .reserved_margin;
+        let maker_c_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_C)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                // 99% slippage → target ≈ $59.7k, covers all three asks
+                // so that none of them break the walk on target_price
+                // before the band check fires.
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Three order_mutations, all removals (None):
+        //   [0] MAKER_A cancelled (drift, near-end)
+        //   [1] MAKER_B fully filled
+        //   [2] MAKER_C cancelled (drift, far-end)
+        assert_eq!(order_mutations.len(), 3);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A cancelled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B fully filled");
+        assert!(order_mutations[2].2.is_none(), "MAKER_C cancelled");
+
+        // Both cancelled makers have their reserved margin released and
+        // open_order_count decremented.
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        assert!(
+            maker_a_reserved_before.is_non_zero()
+                && maker_states[&MAKER_A].reserved_margin < maker_a_reserved_before,
+            "MAKER_A reserved margin released"
+        );
+        assert_eq!(maker_states[&MAKER_C].open_order_count, 0);
+        assert!(
+            maker_c_reserved_before.is_non_zero()
+                && maker_states[&MAKER_C].reserved_margin < maker_c_reserved_before,
+            "MAKER_C reserved margin released"
+        );
+
+        // MAKER_B was filled normally.
+        assert_eq!(maker_states[&MAKER_B].open_order_count, 0);
+
+        // Taker filled exactly 5 @ $40,000 (the single in-band maker).
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(40_000));
     }
 
     // ======= Vault-as-maker PnL settlement ===================================
