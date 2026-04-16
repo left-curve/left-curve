@@ -1132,6 +1132,19 @@ pub enum QueryMsg {
         start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
+
+    /// Return the trading fee rate override for a user, if one exists.
+    /// Return value is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(Option<(Dimensionless, Dimensionless)>)]
+    FeeRateOverride { user: Addr },
+
+    /// Enumerate all trading fee overrides, with pagination.
+    /// Each value in the returned map is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(BTreeMap<Addr, (Dimensionless, Dimensionless)>)]
+    FeeRateOverrides {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde)]
