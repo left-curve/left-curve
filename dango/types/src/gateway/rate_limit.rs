@@ -61,7 +61,9 @@ impl UserMovement {
     }
 
     /// If at least `WINDOW_SIZE` epochs have passed since `last_epoch`, fold
-    /// `current` into `cumulative` and reset for the new window.
+    /// `current` into `cumulative` and reset for the new window. This handles
+    /// arbitrary gaps: if the user was inactive for multiple windows, `current`
+    /// is folded once (it already contains everything since `last_epoch`).
     pub fn rotate_if_needed(&mut self, current_epoch: u64) -> StdResult<()> {
         if current_epoch.saturating_sub(self.last_epoch) >= WINDOW_SIZE {
             self.cumulative.accumulate(&self.current)?;
