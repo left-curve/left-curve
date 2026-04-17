@@ -551,7 +551,46 @@ Create an additional account for an existing user (maximum 5 accounts per user):
 
 Must be sent from an existing account owned by the user.
 
-### 3.3 Update key
+### 3.3 Account address derivation
+
+#### 3.3.1 Master account
+
+The first account of a new user ([§3.1](#31-register-user)) is derived as:
+
+```plain
+address := ripemd160(sha256(deployer || code_hash || seed || key_hash || key_tag || key))
+```
+
+where `||` denotes byte concatenation.
+
+The preimage layout (122 bytes total):
+
+| Byte range  | Size | Field       | Description                                                                                                   |
+| ----------- | ---- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| `[0..20)`   | 20   | `deployer`  | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                                             |
+| `[20..52)`  | 32   | `code_hash` | The code hash of the Dango single-signature account contract (see [§11](#11-constants))                       |
+| `[52..56)`  | 4    | `seed`      | User-chosen `u32`, big-endian — arbitrary value for frontrunning protection                                   |
+| `[56..88)`  | 32   | `key_hash`  | Client-chosen 32-byte identifier for the key (see [§3.8](#38-query-users-by-key) for hashing rules)           |
+| `[88..89)`  | 1    | `key_tag`   | Key type: `0` = Secp256r1, `1` = Secp256k1, `2` = Ethereum                                                    |
+| `[89..122)` | 33   | `key`       | Secp256r1 / Secp256k1: 33-byte compressed public key. Ethereum: 13 zero bytes followed by the 20-byte address |
+
+#### 3.3.2 Subaccount
+
+```plain
+address := ripemd160(sha256(deployer || code_hash || account_index))
+```
+
+The preimage layout (56 bytes total):
+
+| Byte range | Size | Field           | Description                                                                             |
+| ---------- | ---- | --------------- | --------------------------------------------------------------------------------------- |
+| `[0..20)`  | 20   | `deployer`      | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                       |
+| `[20..52)` | 32   | `code_hash`     | The code hash of the Dango single-signature account contract (see [§11](#11-constants)) |
+| `[52..56)` | 4    | `account_index` | Global account index, `u32`, big-endian                                                 |
+
+The global account index is a chain-wide monotonic counter maintained by the account factory; it is incremented for every account created across all users, so every account has a unique index.
+
+### 3.4 Update key
 
 Associate or disassociate a key with the user profile.
 
@@ -593,7 +632,7 @@ Associate or disassociate a key with the user profile.
 }
 ```
 
-### 3.4 Update username
+### 3.5 Update username
 
 Set the user's human-readable username (one-time operation):
 
@@ -613,7 +652,7 @@ Username rules: 1–15 characters, lowercase `a-z`, digits `0-9`, and underscore
 
 The username is cosmetic only — used for human-readable display on the frontend. It is not used in any business logic of the exchange.
 
-### 3.5 Query user
+### 3.6 Query user
 
 ```graphql
 query {
@@ -640,7 +679,7 @@ query {
 
 The `keyType` enum values are: `SECP256R1`, `SECP256K1`, `ETHEREUM`.
 
-### 3.6 Query user by username
+### 3.7 Query user by username
 
 Look up a user by their username via a smart contract query against the account factory:
 
@@ -678,7 +717,7 @@ query {
 
 You can also look up by index: `{ "user": { "index": 42 } }`.
 
-### 3.7 Query users by key
+### 3.8 Query users by key
 
 Search for users by public key or key hash. Useful when you know a user's key but not their index or username.
 
@@ -722,7 +761,7 @@ Filter by `publicKeyHash` or by `publicKey` (the raw key value). The key hash is
 
 The resulting hash is hex-encoded in uppercase.
 
-### 3.8 Query accounts
+### 3.9 Query accounts
 
 ```graphql
 query {
@@ -2358,3 +2397,11 @@ Additional integer types:
 | `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
 | `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
 | `PERPS_CONTRACT`           | `0x90bc84df68d1aa59a857e04ed529e9a26edbea4f` | `0xf6344c5e2792e8f9202c58a2d88fbbde4cd3142f` |
+
+### Code hashes
+
+| Name                     | Value                                                              |
+| ------------------------ | ------------------------------------------------------------------ |
+| Single-signature account | `d86e8112f3c4c4442126f8e9f44f16867da487f29052bf91b810457db34209a4` |
+
+The code hash is the same on mainnet and testnet.
