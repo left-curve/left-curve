@@ -1,5 +1,6 @@
 import { Cell, FormattedNumber } from "@left-curve/applets-kit";
 import { usePublicClient, useAccount, useQueryWithPagination } from "@left-curve/store";
+import { Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TradeHistoryTable } from "./TradeHistoryTable";
 
@@ -91,6 +92,21 @@ export const PerpsTradeHistory: React.FC = () => {
         return (
           <Cell.Text
             text={<><FormattedNumber number={abs} as="span" /> {baseSymbol}</>}
+          />
+        );
+      },
+    },
+    {
+      header: m["dex.protrade.positions.notional"](),
+      cell: ({ row }) => {
+        const size = getPerpsEventSize(row.original.eventType, row.original.data);
+        const price = getPerpsEventPrice(row.original.eventType, row.original.data);
+        if (!size || !price) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        const absSize = size.startsWith("-") ? size.slice(1) : size;
+        const orderValue = Decimal(absSize).times(Decimal(price)).toFixed();
+        return (
+          <Cell.Text
+            text={<FormattedNumber number={orderValue} formatOptions={{ currency: "USD" }} as="span" />}
           />
         );
       },
