@@ -5,6 +5,7 @@ use {
         setup_test,
     },
     dango_types::{
+        bank,
         constants::{dango, eth, usdc},
         gateway::{self, Origin, RateLimit, Remote},
     },
@@ -1171,6 +1172,50 @@ fn rate_limit_boundary_attack() {
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("rate limit exceeded!");
+}
+
+/// Verify that depositing to an unregistered address succeeds — the funds are
+/// held as an orphan transfer in the bank.
+#[test]
+fn deposit_to_unregistered_address() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let relayer = &mut accounts.user1;
+
+    let unregistered = Addr::mock(250);
+
+    // Deposit 50 USDC to an unregistered address — should succeed.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            &unregistered,
+            50_000_000,
+        )
+        .should_succeed();
+
+    // The funds should be held as an orphan transfer in the bank, with the
+    // gateway contract as the sender.
+    suite
+        .query_wasm_smart(
+            contracts.bank,
+            bank::QueryOrphanedTransfersByRecipientRequest {
+                recipient: unregistered,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .should_succeed_and_equal(btree_map! {
+            contracts.gateway => coins! { usdc::DENOM.clone() => 50_000_000 },
+        });
 }
 
 /// Advance 24 hourly epochs (one full rate-limit day).
