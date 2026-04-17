@@ -362,6 +362,23 @@ const PerpsPositionsTable: React.FC = () => {
         ),
       },
       {
+        header: m["dex.protrade.positions.notional"](),
+        cell: ({ row }) => {
+          const notional = Decimal(row.original.size).abs().times(Decimal(row.original.entryPrice)).toFixed();
+          return (
+            <Cell.Text
+              text={
+                <FormattedNumber
+                  number={notional}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
+              }
+            />
+          );
+        },
+      },
+      {
         header: m["dex.protrade.positions.entryPrice"](),
         cell: ({ row }) => (
           <Cell.Text
@@ -541,6 +558,7 @@ type UnifiedOrder = {
   side: "buy" | "sell";
   type: "limit";
   price: string;
+  rawPrice: string;
   size: string;
   filled: string | null;
   reduceOnly: boolean;
@@ -583,6 +601,9 @@ const UnifiedOpenOrders: React.FC = () => {
           .minus(Decimal(order.remaining))
           .div(Decimal(10).pow(baseDecimals))
           .toFixed();
+        const spotPrice = Decimal(order.price)
+          .times(Decimal(10).pow(baseDecimals - quoteDecimals))
+          .toFixed();
 
         rows.push({
           id: order.id,
@@ -590,12 +611,8 @@ const UnifiedOpenOrders: React.FC = () => {
           pairDisplay: `${baseSymbol}/${quoteSymbol}`,
           side: order.direction === "bid" ? "buy" : "sell",
           type: "limit",
-          price: formatNumber(
-            Decimal(order.price)
-              .times(Decimal(10).pow(baseDecimals - quoteDecimals))
-              .toFixed(),
-            formatNumberOptions,
-          ),
+          price: formatNumber(spotPrice, formatNumberOptions),
+          rawPrice: spotPrice,
           size: originalSize,
           filled: filledQty,
           reduceOnly: false,
@@ -621,6 +638,7 @@ const UnifiedOpenOrders: React.FC = () => {
           side: isLong ? "buy" : "sell",
           type: "limit",
           price: `$${formatNumber(order.limitPrice, formatNumberOptions)}`,
+          rawPrice: order.limitPrice,
           size: Math.abs(Number(order.size)).toString(),
           filled: null,
           reduceOnly: order.reduceOnly,
@@ -694,6 +712,23 @@ const UnifiedOpenOrders: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Number formatOptions={formatNumberOptions} value={row.original.size} />
       ),
+    },
+    {
+      header: m["dex.protrade.orders.tradeValue"](),
+      cell: ({ row }) => {
+        const tradeValue = Decimal(row.original.size).times(Decimal(row.original.rawPrice)).toFixed();
+        return (
+          <Cell.Text
+            text={
+              <FormattedNumber
+                number={tradeValue}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+              />
+            }
+          />
+        );
+      },
     },
     {
       header: m["dex.protrade.orders.filled"](),
