@@ -83,7 +83,8 @@ impl UserMovement {
 pub struct GlobalOutbound {
     /// One slot per hourly epoch (index 0 = current hour).
     pub window: VecDeque<Uint128>,
-    /// Cached sum of all slots in `window`.
+    /// Cached sum of all slots in `window`. Mutate only via `add_to_current()`
+    /// and `rotate()` to keep it in sync.
     pub total_24h: Uint128,
 }
 
@@ -97,11 +98,6 @@ impl Default for GlobalOutbound {
 }
 
 impl GlobalOutbound {
-    /// Returns the rolling 24h outbound (cached total, always up-to-date).
-    pub fn rolling_outbound(&self) -> Uint128 {
-        self.total_24h
-    }
-
     /// Adds `amount` to the current hour's slot and updates the cached total.
     pub fn add_to_current(&mut self, amount: Uint128) {
         if let Some(current) = self.window.front_mut() {

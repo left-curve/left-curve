@@ -295,7 +295,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
                 .may_load(ctx.storage, &coin.denom)?
                 .unwrap_or_default();
 
-            let new_rolling = global.rolling_outbound().checked_add(excess)?;
+            let new_rolling = global.total_24h.checked_add(excess)?;
 
             ensure!(
                 daily_allowance >= new_rolling,
