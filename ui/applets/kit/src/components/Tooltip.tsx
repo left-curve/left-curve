@@ -37,6 +37,7 @@ interface TooltipPosition {
   top: number;
   left: number;
   arrowOffset?: number;
+  resolvedPlacement?: TooltipPlacement;
 }
 
 export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
@@ -111,7 +112,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     const panelEl = panelRef.current;
     const triggerRect = trigger.getBoundingClientRect();
     const panelRect = panelEl.getBoundingClientRect();
-    const gap = 16;
+    const gap = 10;
     const padding = 16;
     const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
     const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
@@ -122,7 +123,16 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     const triggerCenterX = triggerRect.left + triggerRect.width / 2;
     const triggerCenterY = triggerRect.top + triggerRect.height / 2;
 
-    switch (placement) {
+    let resolvedPlacement = placement;
+
+    // Auto-flip when there's not enough space
+    if (placement === "top" && triggerRect.top - panelRect.height - gap < padding) {
+      resolvedPlacement = "bottom";
+    } else if (placement === "bottom" && triggerRect.bottom + panelRect.height + gap > viewportHeight - padding) {
+      resolvedPlacement = "top";
+    }
+
+    switch (resolvedPlacement) {
       case "top":
         top = triggerRect.top - panelRect.height - gap;
         left = triggerCenterX - panelRect.width / 2;
@@ -158,7 +168,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     const maxOffset = panelRect.width / 2 - 20;
     const clampedOffset = Math.max(-maxOffset, Math.min(maxOffset, arrowOffset));
 
-    setPosition({ top, left, arrowOffset: clampedOffset !== 0 ? clampedOffset : undefined });
+    setPosition({ top, left, arrowOffset: clampedOffset !== 0 ? clampedOffset : undefined, resolvedPlacement });
   }, [isOpen, placement]);
 
   useLayoutEffect(() => {
@@ -201,7 +211,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
           )}
           {showArrow && placement !== "auto" ? (
             <span
-              className={arrow()}
+              className={arrow({ placement: position?.resolvedPlacement ?? placement })}
               style={
                 position?.arrowOffset !== undefined &&
                 (placement === "top" || placement === "bottom")
