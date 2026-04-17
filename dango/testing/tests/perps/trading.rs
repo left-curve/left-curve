@@ -1085,3 +1085,164 @@ fn ioc_limit_order_no_fill_rejected() {
         )
         .should_fail_with_error("no liquidity at acceptable price");
 }
+
+// ==================== market-order slippage cap ==============================
+//
+// Set up a pair with `max_market_slippage = 5%` and verify the cap is
+// enforced at submission for market orders and TP/SL child orders while
+// leaving limit orders untouched.
+
+/// Set up a suite with oracle = $2,000 and a pair configured with 5%
+/// `max_market_slippage`. user1 is funded with $10,000.
+macro_rules! setup_slippage_cap_suite {
+    () => {{
+        let (mut suite, mut accounts, _, contracts, _) =
+            setup_test_naive(TestOption::default());
+        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+        let pair = pair_id();
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.perps,
+                &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                    param: default_param(),
+                    pair_params: btree_map! {
+                        pair.clone() => PairParam {
+                            max_market_slippage: Dimensionless::new_permille(50), // 5%
+                            ..default_pair_param()
+                        },
+                    },
+                }),
+                Coins::new(),
+            )
+            .should_succeed();
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+
+        (suite, accounts, contracts, pair)
+    }};
+}
+
+/// Market order with slippage exactly at the pair cap is accepted at
+/// submission. (It fails later for lack of liquidity — that's fine; the
+/// point of the test is the submission-time check.)
+#[test]
+fn slippage_cap_market_at_cap_accepted_at_submission() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // max_slippage = 5% (exactly the cap). The order passes the cap
+    // check, then fails downstream because the book is empty.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_fail_with_error("no liquidity at acceptable price");
+}
+
+/// Market order with slippage just above the pair cap is rejected at
+/// submission with the cap error (not "no liquidity"). This proves the
+/// cap check runs before matching.
+#[test]
+fn slippage_cap_market_above_cap_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // max_slippage = 6% against 5% cap.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(60),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_fail_with_error("exceeds the pair cap");
+}
+
+/// TP/SL child order slippage is capped by the same per-pair parameter
+/// as the top-level market order.
+#[test]
+fn slippage_cap_tpsl_child_order_above_cap_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // Parent market order with slippage within cap, but the TP child
+    // order's slippage (6%) is above the cap.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(10), // 1%, within cap
+                },
+                reduce_only: false,
+                tp: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(2_500),
+                    max_slippage: Dimensionless::new_permille(60), // 6%, above cap
+                    size: None,
+                }),
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_fail_with_error("exceeds the pair cap");
+}
+
+/// Limit orders do not carry `max_slippage` and are unaffected by the
+/// market-order slippage cap. Their `limit_price` is bounded instead by
+/// `max_limit_price_deviation` (PR1 banding).
+#[test]
+fn slippage_cap_does_not_affect_limit_orders() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // Limit buy at oracle = $2,000. Always within the 10% band of
+    // default_pair_param (via new_mock → 50% band). Cap is irrelevant
+    // here because limit orders don't have a max_slippage field.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::GoodTilCanceled,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+}

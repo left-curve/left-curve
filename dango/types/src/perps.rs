@@ -341,6 +341,39 @@ pub struct PairParam {
     /// Bounds: `>= 0`. Zero disables the minimum.
     pub min_order_size: UsdValue,
 
+    /// Maximum deviation of a limit order's `limit_price` from the oracle
+    /// price, expressed as a fraction. A limit order is accepted only if
+    ///
+    /// ```plain
+    /// |limit_price - oracle_price| / oracle_price <= max_limit_price_deviation
+    /// ```
+    ///
+    /// This prevents users from placing resting orders at pathological prices
+    /// (e.g. 99% below oracle) that could trap counterparties into bad-price
+    /// fills.
+    ///
+    /// Bounds: `(0, 1)`.
+    ///
+    /// Cross-field invariant:
+    /// `max_limit_price_deviation >= vault_half_spread * (1 + vault_spread_skew_factor)`.
+    /// The band must be at least as wide as the vault's widest quote
+    /// deviation under maximum skew, otherwise users' crossing limit
+    /// orders at the vault's legitimately-quoted edges would be rejected.
+    /// Enforced at `Configure` time.
+    pub max_limit_price_deviation: Dimensionless,
+
+    /// Maximum slippage tolerance a user may specify on a market order or
+    /// a TP/SL child order in this pair. Market orders compute their
+    /// `target_price` as `oracle_price * (1 ± max_slippage)`; this field
+    /// caps how far the user may push that target at submission.
+    ///
+    /// Acts as the submission-time analogue of `max_limit_price_deviation`
+    /// for limit orders.
+    ///
+    /// Bounds: `(0, 1)`. Aligns with industry practice (dYdX 10% flat,
+    /// Hyperliquid 10% for TP/SL).
+    pub max_market_slippage: Dimensionless,
+
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
     ///
@@ -452,6 +485,8 @@ impl PairParam {
             impact_size: UsdValue::new_int(10_000),
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_max_quote_size: Quantity::new_int(100),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
     }
@@ -1388,6 +1423,20 @@ pub enum ReasonForOrderRemoval {
     /// The conditional order was triggered but could not fill within the
     /// user's max_slippage tolerance (insufficient book liquidity).
     SlippageExceeded,
+
+    /// The resting order's price fell outside the pair's
+    /// `max_limit_price_deviation` band at the time it was about to match
+    /// (i.e. the oracle moved after the order was placed). The matching
+    /// engine cancels such stale orders and walks deeper in the book.
+    PriceBandViolation,
+
+    /// A conditional (TP/SL) order was triggered but its stored
+    /// `max_slippage` now exceeds the pair's `max_market_slippage` cap —
+    /// governance tightened the cap between the order's submission and
+    /// its trigger. The order is cancelled rather than submitted. Distinct
+    /// from `SlippageExceeded` so the event stream can tell a policy
+    /// tightening apart from a liquidity shortfall.
+    SlippageCapTightened,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.

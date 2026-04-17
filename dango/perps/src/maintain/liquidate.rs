@@ -369,6 +369,7 @@ fn _liquidate(
         contract,
         current_time,
         param,
+        pair_params,
         &mut pair_states,
         &mut user_state,
         &mut all_maker_states,
@@ -482,6 +483,7 @@ fn execute_close_schedule(
     contract: Addr,
     current_time: Timestamp,
     param: &Param,
+    pair_params: &BTreeMap<PairId, PairParam>,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
@@ -593,6 +595,8 @@ fn execute_close_schedule(
             Some(Dimensionless::ZERO), // zero trading fee for makers, even if they have overrides
             maker_states,
             target_price,
+            oracle_price,
+            pair_params.get(pair_id).unwrap().max_limit_price_deviation,
             *close_size,
             next_order_id,
             events,
@@ -918,6 +922,8 @@ mod tests {
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
             maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
             max_abs_oi: Quantity::new_int(1_000_000),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
     }

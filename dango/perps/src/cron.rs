@@ -459,6 +459,8 @@ fn process_triggered_order(
         }
     }
 
+    // ------------- Pre-trigger check 1. position closed/flipped --------------
+
     let should_cancel = match (&order, position_size) {
         (Some(ord), Some(pos_size)) => {
             // If size is specified, check for position flip.
@@ -506,7 +508,47 @@ fn process_triggered_order(
         });
     }
 
+    // ------------------- Pre-trigger check 2. price banding ------------------
+
     let order = order.unwrap();
+
+    // If governance has tightened `max_market_slippage` since the order
+    // was submitted, the stored `order.max_slippage` may now exceed the
+    // cap. Cancel it here instead of submitting to the matching engine.
+    if order.max_slippage > pair_param.max_market_slippage {
+        events.push(ConditionalOrderRemoved {
+            pair_id: pair_id.clone(),
+            user,
+            trigger_direction,
+            reason: ReasonForOrderRemoval::SlippageCapTightened,
+        })?;
+
+        if user_state.is_empty() {
+            USER_STATES.remove(storage, user)?;
+        } else {
+            USER_STATES.save(storage, user, &user_state)?;
+        }
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                %pair_id,
+                %user,
+                ?trigger_direction,
+                stored_max_slippage = %order.max_slippage,
+                current_cap = %pair_param.max_market_slippage,
+                "Conditional order cancelled: slippage cap tightened"
+            );
+        }
+
+        return Ok(TriggeredOrderOutcome {
+            state: state.clone(),
+            pair_state: pair_state.clone(),
+        });
+    }
+
+    // ------------ Triggered: clamp size, send to matching engine -------------
+
     let position_size = position_size.unwrap();
 
     // Compute the closing size.

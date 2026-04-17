@@ -936,23 +936,27 @@ query {
   "vault_liquidity_weight": "1.000000",
   "vault_half_spread": "0.001000",
   "vault_max_quote_size": "50000.000000",
+  "max_limit_price_deviation": "0.100000",
+  "max_market_slippage": "0.100000",
   "bucket_sizes": ["1.000000", "5.000000", "10.000000"]
 }
 ```
 
-| Field                      | Type            | Description                                   |
-| -------------------------- | --------------- | --------------------------------------------- |
-| `tick_size`                | `UsdPrice`      | Minimum price increment for limit orders      |
-| `min_order_size`           | `UsdValue`      | Minimum notional value (reduce-only exempt)   |
-| `max_abs_oi`               | `Quantity`      | Maximum open interest per side                |
-| `max_abs_funding_rate`     | `FundingRate`   | Daily funding rate cap                        |
-| `initial_margin_ratio`     | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage) |
-| `maintenance_margin_ratio` | `Dimensionless` | Margin to stay open (liquidation threshold)   |
-| `impact_size`              | `UsdValue`      | Notional for impact price calculation         |
-| `vault_liquidity_weight`   | `Dimensionless` | Vault allocation weight for this pair         |
-| `vault_half_spread`        | `Dimensionless` | Half the vault's bid-ask spread               |
-| `vault_max_quote_size`     | `Quantity`      | Maximum vault resting size per side           |
-| `bucket_sizes`             | `[UsdPrice]`    | Price bucket granularities for depth queries  |
+| Field                       | Type            | Description                                                          |
+| --------------------------- | --------------- | -------------------------------------------------------------------- |
+| `tick_size`                 | `UsdPrice`      | Minimum price increment for limit orders                             |
+| `min_order_size`            | `UsdValue`      | Minimum notional value (reduce-only exempt)                          |
+| `max_abs_oi`                | `Quantity`      | Maximum open interest per side                                       |
+| `max_abs_funding_rate`      | `FundingRate`   | Daily funding rate cap                                               |
+| `initial_margin_ratio`      | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage)                        |
+| `maintenance_margin_ratio`  | `Dimensionless` | Margin to stay open (liquidation threshold)                          |
+| `impact_size`               | `UsdValue`      | Notional for impact price calculation                                |
+| `vault_liquidity_weight`    | `Dimensionless` | Vault allocation weight for this pair                                |
+| `vault_half_spread`         | `Dimensionless` | Half the vault's bid-ask spread                                      |
+| `vault_max_quote_size`      | `Quantity`      | Maximum vault resting size per side                                  |
+| `max_limit_price_deviation` | `Dimensionless` | Max symmetric deviation of a limit price from oracle at submission   |
+| `max_market_slippage`       | `Dimensionless` | Max `max_slippage` a user may set on a market or TP/SL child order   |
+| `bucket_sizes`              | `[UsdPrice]`    | Price bucket granularities for depth queries                         |
 
 For the relationship between margin ratios and leverage, see [Risk §2](6-risk.md).
 
@@ -2114,15 +2118,17 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### ReasonForOrderRemoval
 
-| Value                   | Description                                                    |
-| ----------------------- | -------------------------------------------------------------- |
-| `filled`                | Order fully filled                                             |
-| `canceled`              | User voluntarily canceled                                      |
-| `position_closed`       | Position was closed (conditional orders only)                  |
-| `self_trade_prevention` | Order crossed user's own order on the opposite side            |
-| `liquidated`            | User was liquidated                                            |
-| `deleveraged`           | User was hit by auto-deleveraging                              |
-| `slippage_exceeded`     | Conditional order triggered but could not fill within slippage |
+| Value                    | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `filled`                 | Order fully filled                                                           |
+| `canceled`               | User voluntarily canceled                                                    |
+| `position_closed`        | Position was closed (conditional orders only)                                |
+| `self_trade_prevention`  | Order crossed user's own order on the opposite side                          |
+| `liquidated`             | User was liquidated                                                          |
+| `deleveraged`            | User was hit by auto-deleveraging                                            |
+| `slippage_exceeded`      | Conditional order triggered but could not fill within slippage               |
+| `price_band_violation`   | Resting price drifted outside the per-pair band before match                 |
+| `slippage_cap_tightened` | Conditional order's stored max_slippage now exceeds the pair's tightened cap |
 
 For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl.md).
 

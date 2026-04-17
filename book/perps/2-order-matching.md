@@ -53,10 +53,40 @@ $$
 
 **Limit orders:** $\mathtt{targetPrice} = \mathtt{limitPrice}$ (oracle price is ignored).
 
+The user-supplied $\mathtt{maxSlippage}$ on a market order is bounded by the per-pair cap `max_market_slippage` — see [§3b](#3b-market-order-slippage-cap).
+
 A price constraint is **violated** when:
 
 - Bid: $\mathtt{execPrice} > \mathtt{targetPrice}$
 - Ask: $\mathtt{execPrice} < \mathtt{targetPrice}$
+
+## 3a. Price banding for limit orders
+
+Every limit order (GTC, IOC, or post-only) must have a `limit_price` within a per-pair symmetric deviation of the oracle price at submission. Concretely:
+
+$$
+\lvert \mathtt{limitPrice} - \mathtt{oraclePrice} \rvert \leq \mathtt{oraclePrice} \times \mathtt{maxLimitPriceDeviation}
+$$
+
+where $\mathtt{maxLimitPriceDeviation}$ is a per-pair parameter in $(0, 1)$. Equivalently, the limit price must fall inside
+
+$$
+\bigl[ \mathtt{oraclePrice} \times (1 - \mathtt{maxLimitPriceDeviation}),\; \mathtt{oraclePrice} \times (1 + \mathtt{maxLimitPriceDeviation}) \bigr]
+$$
+
+An order whose price falls outside this band is rejected at submission, before matching begins. The check is applied identically to GTC, IOC, and post-only limit orders.
+
+## 3b. Market-order slippage cap
+
+Each market order must have a `max_slippage` within a per-pair `max_market_slippage` constraint at submission:
+
+$$
+\mathtt{maxSlippage} \leq \mathtt{maxMarketSlippage}
+$$
+
+The same cap applies to `max_slippage` on **TP/SL child orders** (attached to a parent submit order or placed as standalone conditional orders), which become market orders when triggered.
+
+**Conditional-order staleness.** It is possible that when a conditional order is submitted, its `max_slippage` falls within the `max_market_slippage` constraint, but when triggered, governance has tightened the constaint such that it is no longer compliant. In this case, the conditional order is canceled with `reason = SlippageCapTightened`.
 
 ## 4. Matching engine
 
@@ -101,13 +131,30 @@ $$
 
 This prevents a taker from submitting orders they cannot collateralise.
 
-## 6. Self-trade prevention
+## Maker order re-checks
+
+When a maker order with an eligible price is encountered, the matching engine performs two check before executing filling:
+
+### 6a. Self-trade prevention
 
 The exchange uses [`EXPIRE_MAKER`](https://developers.binance.com/docs/derivatives/usds-margined-futures/faq/stp-faq) mode. When the taker encounters their own resting order on the opposite side:
 
 1. The maker (resting) order is **cancelled** (removed from the book).
 2. The taker's `open_order_count` and `reserved_margin` are decremented.
 3. The taker **continues matching deeper** in the book — no fill occurs for the self-matched order.
+
+### 6b. Price-banding
+
+The submission-time band ([§3a](#3a-price-banding-for-limit-orders)) only
+inspects the price at the moment of placement. Between placement and
+matching, the oracle may move far enough that a previously in-band resting
+order is now outside the band relative to the current oracle.
+
+To address this, the matching engine applies a **band re-check on every
+resting maker** it walks. For each maker encountered during the walk,
+the engine evaluates the [§3a](#3a-price-banding-for-limit-orders) band
+against the _current_ oracle price. If the maker's resting price is **outside**
+the band, it is canceled with `reason = PriceBandViolation`.
 
 ## 7. Fill execution
 
