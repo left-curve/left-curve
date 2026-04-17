@@ -164,6 +164,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
                 created_at: ctx.block.timestamp,
                 tp: None,
                 sl: None,
+                client_order_id: None,
             };
 
             BIDS.save(
@@ -195,6 +196,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
                 created_at: ctx.block.timestamp,
                 tp: None,
                 sl: None,
+                client_order_id: None,
             };
 
             ASKS.save(

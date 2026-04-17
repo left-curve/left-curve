@@ -66,6 +66,7 @@ macro_rules! submit_limit {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int($price),
                     time_in_force: $tif,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -268,6 +269,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_400),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,

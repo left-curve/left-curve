@@ -997,6 +997,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -1020,6 +1021,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         ASKS.save(storage, key, &order).unwrap();
     }
@@ -2205,6 +2207,7 @@ mod tests {
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
                 }),
+                client_order_id: None,
             };
             BIDS.save(&mut ctx.storage, key, &order).unwrap();
         }

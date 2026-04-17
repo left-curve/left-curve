@@ -270,6 +270,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
 
         BIDS.save(storage, key, &order).unwrap();
@@ -293,6 +294,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
 
         ASKS.save(storage, key, &order).unwrap();
