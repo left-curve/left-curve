@@ -16,6 +16,7 @@ type ChestOpeningOverlayProps = {
   currentFrame: number;
   animationFrames: string[] | null;
   onAnimationComplete: () => void;
+  onSpin?: () => void;
   isOpenAllMode?: boolean;
   isBulkMode?: boolean;
   currentBoxIndex?: number;
@@ -82,6 +83,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   currentFrame,
   animationFrames,
   onAnimationComplete,
+  onSpin,
   isOpenAllMode = false,
   isBulkMode = false,
   currentBoxIndex = 0,
@@ -132,9 +134,10 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   }, [phase, hasAnimation]);
 
   const handleSpin = useCallback(() => {
+    onSpin?.();
     setWinningNFT(targetNFT);
     setPhase("spinning");
-  }, [targetNFT]);
+  }, [targetNFT, onSpin]);
 
   const handleSpinComplete = useCallback(() => {
     setPhase(isBulkMode ? "bulk-result" : "result");
