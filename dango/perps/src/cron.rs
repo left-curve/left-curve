@@ -459,6 +459,8 @@ fn process_triggered_order(
         }
     }
 
+    // ------------- Pre-trigger check 1. position closed/flipped --------------
+
     let should_cancel = match (&order, position_size) {
         (Some(ord), Some(pos_size)) => {
             // If size is specified, check for position flip.
@@ -506,43 +508,13 @@ fn process_triggered_order(
         });
     }
 
+    // ------------------- Pre-trigger check 2. price banding ------------------
+
     let order = order.unwrap();
-    let position_size = position_size.unwrap();
-
-    // Compute the closing size.
-    // If size is None, close the entire position (negate position size).
-    // If size is Some, clamp |order.size| to |position.size|.
-    let clamped_size = match order.size {
-        None => position_size.checked_neg()?,
-        Some(size) => {
-            let abs_order_size = size.checked_abs()?;
-            let abs_pos_size = position_size.checked_abs()?;
-            if abs_order_size > abs_pos_size {
-                if size.is_negative() {
-                    abs_pos_size.checked_neg()?
-                } else {
-                    abs_pos_size
-                }
-            } else {
-                size
-            }
-        },
-    };
-
-    events.push(ConditionalOrderTriggered {
-        pair_id: pair_id.clone(),
-        user,
-        trigger_price: order.trigger_price,
-        trigger_direction,
-        oracle_price,
-    })?;
 
     // If governance has tightened `max_market_slippage` since the order
     // was submitted, the stored `order.max_slippage` may now exceed the
-    // cap. `_submit_order` would reject it with the same error as a
-    // book-insufficiency failure; catch it here so the event stream
-    // distinguishes the two. The order is cancelled rather than submitted
-    // — no fills attempted.
+    // cap. Cancel it here instead of submitting to the matching engine.
     if order.max_slippage > pair_param.max_market_slippage {
         events.push(ConditionalOrderRemoved {
             pair_id: pair_id.clone(),
@@ -574,6 +546,38 @@ fn process_triggered_order(
             pair_state: pair_state.clone(),
         });
     }
+
+    // ------------ Triggered: clamp size, send to matching engine -------------
+
+    let position_size = position_size.unwrap();
+
+    // Compute the closing size.
+    // If size is None, close the entire position (negate position size).
+    // If size is Some, clamp |order.size| to |position.size|.
+    let clamped_size = match order.size {
+        None => position_size.checked_neg()?,
+        Some(size) => {
+            let abs_order_size = size.checked_abs()?;
+            let abs_pos_size = position_size.checked_abs()?;
+            if abs_order_size > abs_pos_size {
+                if size.is_negative() {
+                    abs_pos_size.checked_neg()?
+                } else {
+                    abs_pos_size
+                }
+            } else {
+                size
+            }
+        },
+    };
+
+    events.push(ConditionalOrderTriggered {
+        pair_id: pair_id.clone(),
+        user,
+        trigger_price: order.trigger_price,
+        trigger_direction,
+        oracle_price,
+    })?;
 
     // `_submit_order` is pure: takes `state` / `pair_state` / `user_state`
     // by `&` and returns updated copies in its outcome. On `Err`, the
