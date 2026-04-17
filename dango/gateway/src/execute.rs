@@ -176,13 +176,19 @@ fn receive_remote(
 
     // Track the deposit in the recipient's per-user movement so they can
     // withdraw up to this amount without hitting the global rate limit.
+    //
+    // Deposits must always succeed regardless of the recipient's registration
+    // status. If the recipient is not registered in the account factory (e.g.
+    // an unknown address), the funds are still minted and
+    // transferred — they will be held as an orphan transfer in the bank until
+    // the address is claimed or the funds retrieved by the owner.
+    // In that case we simply skip credit tracking;
+    // the user will have no deposit credit but can still withdraw within the
+    // global allowance once they register.
     {
         let current_epoch = EPOCH.load(ctx.storage)?;
 
-        // We allow deposit to an unexisting address.
-        // This deposit will be held inside the bank.
         if let Ok(user_index) = resolve_user_index(ctx.querier, recipient) {
-            // Update the user movement.
             let mut user_movement =
                 load_user_movement(ctx.storage, user_index, &denom, current_epoch)?;
             user_movement.current.deposited.checked_add_assign(amount)?;
@@ -261,9 +267,15 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
     // Check the rate limit. If a rate limit is configured for this denom:
     // 1. The user can freely withdraw up to their deposit credit (deposited -
-    //    withdrawn in the current epoch) without affecting the global limit.
+    //    credit_used in the current window) without affecting the global limit.
     // 2. Any excess beyond the deposit credit counts against the global
     //    outbound, which must not exceed `supply * rate_limit`.
+    //
+    // Only account-factory-registered users can withdraw from rate-limited
+    // denoms. This is intentional: all legitimate users are registered, and
+    // contracts are not expected to call `transfer_remote` directly. If
+    // contract-initiated withdrawals are needed in the future, a whitelist
+    // mechanism should be added.
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
         let current_epoch = EPOCH.load(ctx.storage)?;
         let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
