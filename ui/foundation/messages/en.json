@@ -1077,7 +1077,9 @@
       "tier": "Tier",
       "volume14d": "14D Volume",
       "perpsTaker": "Perps Taker",
-      "perpsMaker": "Perps Maker"
+      "perpsMaker": "Perps Maker",
+      "customRate": "Custom Fee Rate",
+      "customRateDescription": "Your account has a custom fee rate that overrides the tier-based schedule."
     },
     "fee": "Fee",
     "apy": "APY",

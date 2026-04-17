@@ -119,6 +119,14 @@ export {
 } from "./queries/getVaultState.js";
 
 export {
+  type GetFeeRateOverrideParameters,
+  type GetFeeRateOverrideReturnType,
+  getFeeRateOverride,
+} from "./queries/getFeeRateOverride.js";
+
+export type { FeeRateOverride } from "../../types/perps.js";
+
+export {
   type VaultAddLiquidityParameters,
   type VaultAddLiquidityReturnType,
   vaultAddLiquidity,

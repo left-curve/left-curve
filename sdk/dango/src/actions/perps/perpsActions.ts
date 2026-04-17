@@ -116,6 +116,12 @@ import {
 } from "./queries/getVaultState.js";
 
 import {
+  type GetFeeRateOverrideParameters,
+  type GetFeeRateOverrideReturnType,
+  getFeeRateOverride,
+} from "./queries/getFeeRateOverride.js";
+
+import {
   type VaultAddLiquidityParameters,
   type VaultAddLiquidityReturnType,
   vaultAddLiquidity,
@@ -161,6 +167,7 @@ export type PerpsQueryActions = {
   getPerpsPairState: (args: GetPerpsPairStateParameters) => GetPerpsPairStateReturnType;
   getPerpsState: (args?: GetPerpsStateParameters) => GetPerpsStateReturnType;
   getPerpsVaultState: (args?: GetPerpsVaultStateParameters) => GetPerpsVaultStateReturnType;
+  getFeeRateOverride: (args: GetFeeRateOverrideParameters) => GetFeeRateOverrideReturnType;
 };
 
 export function perpsQueryActions<transport extends Transport = Transport>(
@@ -180,6 +187,7 @@ export function perpsQueryActions<transport extends Transport = Transport>(
     getPerpsPairState: (args) => getPerpsPairState(client, args),
     getPerpsState: (args) => getPerpsState(client, args),
     getPerpsVaultState: (args) => getPerpsVaultState(client, args),
+    getFeeRateOverride: (args) => getFeeRateOverride(client, args),
   };
 }
 

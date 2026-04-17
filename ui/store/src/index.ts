@@ -287,6 +287,11 @@ export {
 } from "./hooks/usePerpsParam.js";
 
 export {
+  type UseFeeRateOverrideParameters,
+  useFeeRateOverride,
+} from "./hooks/useFeeRateOverride.js";
+
+export {
   type UsePointsParameters,
   usePoints,
 } from "./hooks/usePoints.js";

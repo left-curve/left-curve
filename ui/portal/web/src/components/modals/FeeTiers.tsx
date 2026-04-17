@@ -4,7 +4,7 @@ import { Cell, IconButton, IconClose, Table, useApp } from "@left-curve/applets-
 import type { TableColumn } from "@left-curve/applets-kit";
 import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAppConfig } from "@left-curve/store";
+import { useAppConfig, useFeeRateOverride } from "@left-curve/store";
 
 type FeeTierRow = {
   tier: string;
@@ -17,6 +17,7 @@ export const FeeTiers = forwardRef((_props, _ref) => {
   const { hideModal, settings } = useApp();
   const { formatNumberOptions } = settings;
   const { data: appConfig } = useAppConfig();
+  const { override: feeRateOverride } = useFeeRateOverride();
 
   const rows = useMemo<FeeTierRow[]>(() => {
     const takerSchedule = appConfig?.perpsParam?.takerFeeRates;
@@ -102,6 +103,25 @@ export const FeeTiers = forwardRef((_props, _ref) => {
           {m["dex.feeTiers.description"]()}
         </p>
       </div>
+
+      {feeRateOverride ? (
+        <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary-rice p-3">
+          <p className="diatype-sm-medium text-ink-primary-900">
+            {m["dex.feeTiers.customRate"]()}
+          </p>
+          <p className="diatype-xs-regular text-ink-tertiary-500">
+            {m["dex.feeTiers.customRateDescription"]()}
+          </p>
+          <div className="flex items-center gap-4 mt-1">
+            <p className="diatype-xs-medium text-ink-secondary-700">
+              {m["dex.feeTiers.perpsTaker"]()}: {(Number(feeRateOverride.takerFeeRate) * 100).toFixed(3)}%
+            </p>
+            <p className="diatype-xs-medium text-ink-secondary-700">
+              {m["dex.feeTiers.perpsMaker"]()}: {(Number(feeRateOverride.makerFeeRate) * 100).toFixed(3)}%
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <Table
         data={rows}
