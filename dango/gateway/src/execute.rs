@@ -100,9 +100,10 @@ fn set_rate_limits(
 
     // Snapshot the current supply for any denom that doesn't already have a
     // snapshot, so newly added rate limits are enforced immediately without
-    // waiting for the next cron cycle. Existing snapshots (and outbound
-    // accumulators) are left untouched so that lowering a rate limit takes
-    // effect instantly.
+    // waiting for the next cron cycle. Existing snapshots and outbound windows
+    // are left untouched. The updated withdrawal rate takes effect immediately
+    // — both increases and decreases — because the check compares the new
+    // allowance against the current rolling outbound.
     for denom in rate_limits.keys() {
         if !SUPPLIES.has(ctx.storage, denom) {
             let supply = ctx.querier.query_supply(denom.clone())?;
