@@ -92,6 +92,11 @@ export type RateSchedule = {
   tiers: Record<string, string>;
 };
 
+export type FeeRateOverride = {
+  makerFeeRate: string;
+  takerFeeRate: string;
+};
+
 export type PerpsParam = {
   maxUnlocks: number;
   maxOpenOrders: number;
@@ -188,7 +193,8 @@ export type PerpsQueryMsg =
   | { ordersByUser: { user: Address } }
   | { liquidityDepth: { pairId: string; bucketSize: string; limit?: number } }
   | { volume: { user: Address; since?: string } }
-  | { vaultState: Record<string, never> };
+  | { vaultState: Record<string, never> }
+  | { feeRateOverride: { user: Address } };
 
 export type GetPerpsQueryMsg<K extends KeyOfUnion<PerpsQueryMsg>> = ExtractFromUnion<
   PerpsQueryMsg,

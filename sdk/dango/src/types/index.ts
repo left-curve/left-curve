@@ -172,6 +172,7 @@ export type {
   PerpsCancelConditionalOrderRequest,
   PerpsQueryMsg,
   GetPerpsQueryMsg,
+  FeeRateOverride,
   PerpsVaultState,
   TriggerDirection,
   ChildOrder,

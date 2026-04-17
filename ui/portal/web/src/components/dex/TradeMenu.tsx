@@ -20,6 +20,7 @@ import {
   allPerpsPairStatsStore,
   computeLiquidationPrice,
   useVolume,
+  useFeeRateOverride,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -349,6 +350,8 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     enabled: isConnected,
   });
 
+  const { override: feeRateOverride } = useFeeRateOverride({ enabled: isConnected });
+
   const [sizeCoinDenom, setSizeCoinDenom] = useState("usd");
 
   useEffect(() => {
@@ -391,11 +394,12 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [storedLeverage, maxLeverage]);
 
   const takerFeeRate = useMemo(() => {
+    if (feeRateOverride) return Number(feeRateOverride.takerFeeRate);
     const schedule = appConfig?.perpsParam?.takerFeeRates;
     if (!schedule) return 0;
     const rate = resolveRateSchedule(schedule, userVolume ?? "0");
     return Number.isFinite(rate) ? rate : 0;
-  }, [appConfig?.perpsParam, userVolume]);
+  }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
   const [reduceOnly, setReduceOnly] = useState(false);
@@ -523,13 +527,18 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   });
 
   const feesDisplay = useMemo(() => {
+    if (feeRateOverride) {
+      const maker = Number(feeRateOverride.makerFeeRate) * 100;
+      const taker = Number(feeRateOverride.takerFeeRate) * 100;
+      return `${taker}% / ${maker}%`;
+    }
     const perpsParam = appConfig?.perpsParam;
     if (!perpsParam) return "-";
     const vol = userVolume ?? "0";
     const taker = resolveRateSchedule(perpsParam.takerFeeRates, vol) * 100;
     const maker = resolveRateSchedule(perpsParam.makerFeeRates, vol) * 100;
     return `${taker}% / ${maker}%`;
-  }, [appConfig?.perpsParam, userVolume]);
+  }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 
   const requiredMargin = useMemo(() => {
     const s = Number(size);
@@ -798,8 +807,8 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 trigger="click"
                 title={
                   <div className="flex flex-col gap-1">
-                    <p>{m["dex.protrade.perps.feesTooltipTaker"]({ rate: `${(resolveRateSchedule(appConfig.perpsParam.takerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
-                    <p>{m["dex.protrade.perps.feesTooltipMaker"]({ rate: `${(resolveRateSchedule(appConfig.perpsParam.makerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
+                    <p>{m["dex.protrade.perps.feesTooltipTaker"]({ rate: `${(feeRateOverride ? Number(feeRateOverride.takerFeeRate) * 100 : resolveRateSchedule(appConfig.perpsParam.takerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
+                    <p>{m["dex.protrade.perps.feesTooltipMaker"]({ rate: `${(feeRateOverride ? Number(feeRateOverride.makerFeeRate) * 100 : resolveRateSchedule(appConfig.perpsParam.makerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
                     <button
                       type="button"
                       className="text-status-success diatype-xs-bold mt-1 text-left"
