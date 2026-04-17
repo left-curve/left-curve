@@ -44,6 +44,9 @@ impl Movement {
 #[grug::derive(Serde, Borsh)]
 pub struct UserMovement {
     pub last_epoch: u64,
+    /// Historical aggregate of all past windows. Currently observational only
+    /// (exposed via queries, not used in rate-limit checks). May be used in the
+    /// future for trust-tier logic based on long-term deposit/withdraw patterns.
     pub cumulative: Movement,
     pub current: Movement,
 }
