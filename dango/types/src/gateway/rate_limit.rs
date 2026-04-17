@@ -1,5 +1,5 @@
 use {
-    grug::{Number, NumberConst, Uint128},
+    grug::{Number, NumberConst, StdResult, Uint128},
     std::collections::VecDeque,
 };
 
@@ -29,10 +29,11 @@ impl Movement {
     }
 
     /// Merges `other` into `self` by adding all fields.
-    pub fn accumulate(&mut self, other: &Movement) {
-        self.deposited = self.deposited.saturating_add(other.deposited);
-        self.withdrawn = self.withdrawn.saturating_add(other.withdrawn);
-        self.credit_used = self.credit_used.saturating_add(other.credit_used);
+    pub fn accumulate(&mut self, other: &Movement) -> StdResult<()> {
+        self.deposited.checked_add_assign(other.deposited)?;
+        self.withdrawn.checked_add_assign(other.withdrawn)?;
+        self.credit_used.checked_add_assign(other.credit_used)?;
+        Ok(())
     }
 }
 
@@ -58,12 +59,13 @@ impl UserMovement {
 
     /// If at least `WINDOW_SIZE` epochs have passed since `last_epoch`, fold
     /// `current` into `cumulative` and reset for the new window.
-    pub fn rotate_if_needed(&mut self, current_epoch: u64) {
+    pub fn rotate_if_needed(&mut self, current_epoch: u64) -> StdResult<()> {
         if current_epoch.saturating_sub(self.last_epoch) >= WINDOW_SIZE {
-            self.cumulative.accumulate(&self.current);
+            self.cumulative.accumulate(&self.current)?;
             self.current = Movement::default();
             self.last_epoch = current_epoch;
         }
+        Ok(())
     }
 }
 

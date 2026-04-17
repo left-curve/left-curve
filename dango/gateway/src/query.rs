@@ -177,7 +177,7 @@ fn query_user_movement(
         .may_load(ctx.storage, (user_index, &denom))?
         .unwrap_or_else(|| UserMovement::new(epoch));
 
-    movement.rotate_if_needed(epoch);
+    movement.rotate_if_needed(epoch)?;
 
     Ok(movement)
 }

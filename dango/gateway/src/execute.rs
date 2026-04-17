@@ -425,7 +425,7 @@ fn load_user_movement(
         .may_load(storage, (user_index, denom))?
         .unwrap_or_else(|| UserMovement::new(current_epoch));
 
-    movement.rotate_if_needed(current_epoch);
+    movement.rotate_if_needed(current_epoch)?;
 
     Ok(movement)
 }
