@@ -190,10 +190,10 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
           {title || description ? (
             <div className="flex flex-col">
               {title ? (
-                <p className="diatype-xs-medium text-primitives-white-light-100">{title}</p>
+                <div className="diatype-xs-medium text-primitives-white-light-100">{title}</div>
               ) : null}
               {description ? (
-                <p className="diatype-xs-regular text-primitives-gray-dark-200">{description}</p>
+                <div className="diatype-xs-regular text-primitives-gray-dark-200">{description}</div>
               ) : null}
             </div>
           ) : (
