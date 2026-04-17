@@ -55,7 +55,9 @@ const formatPercent = (value: string | undefined): string => {
   if (!value) return "0%";
   const num = Number(value);
   if (Number.isNaN(num)) return "0%";
-  return `${(num * 100).toFixed(0)}%`;
+  const pct = num * 100;
+  const formatted = Number.isInteger(pct) ? pct.toString() : pct.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return `${formatted}%`;
 };
 
 const truncateUrl = (url: string, maxLength = 20): string => {
@@ -264,11 +266,11 @@ export const AffiliateStats: React.FC = () => {
 
   const commissionRate = override ?? settings?.commissionRate ?? "0";
   const shareRatio = settings?.shareRatio ?? "0";
-  const totalCommissionPct = (Number(commissionRate) * 100).toFixed(0);
-  const refereePct = (Number(commissionRate) * Number(shareRatio) * 100).toFixed(0);
-  const youPct = (Number(commissionRate) * (1 - Number(shareRatio)) * 100).toFixed(0);
+  const totalCommissionPct = formatPercent(commissionRate);
+  const youPct = formatPercent(String(Number(commissionRate) * (1 - Number(shareRatio))));
+  const refereePct = formatPercent(String(Number(commissionRate) * Number(shareRatio)));
   const rateDisplay = isConnected
-    ? `${youPct}% / ${refereePct}%`
+    ? `${youPct} / ${refereePct}`
     : "-- / --";
 
   const totalCommission = referralData?.commissionEarnedFromReferees ?? "0";
@@ -318,9 +320,9 @@ export const AffiliateStats: React.FC = () => {
               <Tooltip
                 title={
                   <div className="flex flex-col gap-1">
-                    <p>{m["referral.stats.commissionRateTooltipTotal"]({ rate: `${totalCommissionPct}%` })}</p>
-                    <p>{m["referral.stats.commissionRateTooltipYou"]({ rate: `${youPct}%` })}</p>
-                    <p>{m["referral.stats.commissionRateTooltipReferee"]({ rate: `${refereePct}%` })}</p>
+                    <p>{m["referral.stats.commissionRateTooltipTotal"]({ rate: totalCommissionPct })}</p>
+                    <p>{m["referral.stats.commissionRateTooltipYou"]({ rate: youPct })}</p>
+                    <p>{m["referral.stats.commissionRateTooltipReferee"]({ rate: refereePct })}</p>
                   </div>
                 }
               >
