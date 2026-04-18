@@ -7,7 +7,8 @@ use {
     },
     anyhow::{anyhow, ensure},
     dango_types::perps::{
-        LimitOrder, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval, UserState,
+        ClientOrderId, LimitOrder, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval,
+        UserState,
     },
     grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
@@ -109,6 +110,34 @@ where
     }
 
     Ok(())
+}
+
+/// Cancel one of the sender's resting limit orders, looked up by the
+/// `ClientOrderId` the sender assigned at submission time.
+///
+/// The `(sender, client_order_id)` index on `BIDS` / `ASKS` is consulted
+/// — that index is per-sender, so the lookup can only ever return orders
+/// owned by `ctx.sender`. The actual cancellation delegates to
+/// [`cancel_one_order`].
+pub fn cancel_one_order_by_client_order_id(
+    ctx: MutableCtx,
+    client_order_id: ClientOrderId,
+) -> anyhow::Result<Response> {
+    let key = (ctx.sender, client_order_id);
+
+    let (_, _, order_id) = BIDS
+        .idx
+        .client_order_id
+        .may_load_key(ctx.storage, key)?
+        .or(ASKS.idx.client_order_id.may_load_key(ctx.storage, key)?)
+        .ok_or_else(|| {
+            anyhow!(
+                "order not found with user {} and client_order_id {client_order_id}",
+                ctx.sender
+            )
+        })?;
+
+    cancel_one_order(ctx, order_id)
 }
 
 pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -295,6 +324,57 @@ mod tests {
             tp: None,
             sl: None,
             client_order_id: None,
+        };
+
+        ASKS.save(storage, key, &order).unwrap();
+    }
+
+    /// Save a bid carrying a `client_order_id` so the
+    /// `cancel_one_order_by_client_order_id` tests can resolve it.
+    fn save_bid_with_cid(
+        storage: &mut dyn Storage,
+        order_id: u64,
+        user: Addr,
+        size: i128,
+        reserved_margin: i128,
+        cid: u64,
+    ) {
+        ensure_pair_param(storage);
+        let key = order_key(order_id);
+        let order = LimitOrder {
+            user,
+            size: Quantity::new_int(size),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(reserved_margin),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(Uint64::new(cid)),
+        };
+
+        BIDS.save(storage, key, &order).unwrap();
+    }
+
+    /// Same as [`save_bid_with_cid`] but for asks.
+    fn save_ask_with_cid(
+        storage: &mut dyn Storage,
+        order_id: u64,
+        user: Addr,
+        size: i128,
+        reserved_margin: i128,
+        cid: u64,
+    ) {
+        ensure_pair_param(storage);
+        let key = order_key(order_id);
+        let order = LimitOrder {
+            user,
+            size: Quantity::new_int(size),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(reserved_margin),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(Uint64::new(cid)),
         };
 
         ASKS.save(storage, key, &order).unwrap();
@@ -640,5 +720,119 @@ mod tests {
         assert_eq!(state.open_order_count, 0);
         assert_eq!(state.reserved_margin, UsdValue::ZERO);
         assert!(!state.is_empty());
+    }
+
+    // ============== cancel_one_order_by_client_order_id tests ====================
+
+    #[test]
+    fn cancel_one_order_by_client_order_id_bid() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        save_bid_with_cid(&mut ctx.storage, 1, USER, 10, 100, 7);
+        save_user_state(&mut ctx.storage, USER, 1, 100, BTreeMap::new());
+
+        cancel_one_order_by_client_order_id(ctx.as_mutable(), Uint64::new(7)).should_succeed();
+
+        // Primary entry gone.
+        assert!(
+            BIDS.idx
+                .order_id
+                .may_load(&ctx.storage, Uint64::new(1))
+                .unwrap()
+                .is_none()
+        );
+
+        // Index entry gone — the same `cid` is reusable.
+        assert!(
+            BIDS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (USER, Uint64::new(7)))
+                .unwrap()
+                .is_none()
+        );
+
+        // User state cleaned up (was empty).
+        assert!(USER_STATES.may_load(&ctx.storage, USER).unwrap().is_none());
+    }
+
+    #[test]
+    fn cancel_one_order_by_client_order_id_ask() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        save_ask_with_cid(&mut ctx.storage, 1, USER, -10, 100, 7);
+        save_user_state(&mut ctx.storage, USER, 1, 100, BTreeMap::new());
+
+        cancel_one_order_by_client_order_id(ctx.as_mutable(), Uint64::new(7)).should_succeed();
+
+        assert!(
+            ASKS.idx
+                .order_id
+                .may_load(&ctx.storage, Uint64::new(1))
+                .unwrap()
+                .is_none()
+        );
+
+        assert!(
+            ASKS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (USER, Uint64::new(7)))
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn cancel_one_order_by_client_order_id_not_found() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        cancel_one_order_by_client_order_id(ctx.as_mutable(), Uint64::new(99))
+            .should_fail_with_error("order not found");
+    }
+
+    /// Two different users can independently use the same `client_order_id`
+    /// value; each can only cancel their own.
+    #[test]
+    fn cancel_one_order_by_client_order_id_other_user_isolated() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        // OTHER_USER also uses cid=7, on a separate order id.
+        save_bid_with_cid(&mut ctx.storage, 1, USER, 10, 100, 7);
+        save_bid_with_cid(&mut ctx.storage, 2, OTHER_USER, 5, 50, 7);
+        save_user_state(&mut ctx.storage, USER, 1, 100, BTreeMap::new());
+        save_user_state(&mut ctx.storage, OTHER_USER, 1, 50, BTreeMap::new());
+
+        // USER cancels by cid=7 — only USER's order should disappear.
+        cancel_one_order_by_client_order_id(ctx.as_mutable(), Uint64::new(7)).should_succeed();
+
+        assert!(
+            BIDS.idx
+                .order_id
+                .may_load(&ctx.storage, Uint64::new(1))
+                .unwrap()
+                .is_none()
+        );
+        // OTHER_USER's order with the same cid is untouched.
+        assert!(
+            BIDS.idx
+                .order_id
+                .may_load(&ctx.storage, Uint64::new(2))
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            BIDS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (OTHER_USER, Uint64::new(7)))
+                .unwrap()
+                .is_some()
+        );
     }
 }

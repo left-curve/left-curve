@@ -789,8 +789,13 @@ pub struct ChildOrder {
 
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
-    /// Cancel a single order by ID.
+    /// Cancel a single order by its system-assigned `OrderId`.
     One(OrderId),
+
+    /// Cancel a single order by its caller-assigned `ClientOrderId`.
+    /// Resolves to the active order owned by the sender that carries this
+    /// client id; bails if no such order exists.
+    OneByClientOrderId(ClientOrderId),
 
     /// Cancel all orders associated with the sender.
     All,
