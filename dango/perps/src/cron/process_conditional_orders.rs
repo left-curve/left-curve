@@ -5,8 +5,8 @@ use {
         price::may_invert_price,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{
-            ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-            USER_STATES,
+            ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM,
+            STATE, USER_STATES,
         },
         trade::{_submit_order, SubmitOrderOutcome},
         volume::flush_volumes,
@@ -367,6 +367,7 @@ fn process_triggered_order(
         order_mutations,
         order_to_store: _order_to_store,
         next_order_id,
+        next_fill_id,
         index_updates,
         volumes,
         fee_breakdowns,
@@ -447,6 +448,7 @@ fn process_triggered_order(
     maker_states = updated_maker_states;
 
     NEXT_ORDER_ID.save(storage, &next_order_id)?;
+    NEXT_FILL_ID.save(storage, &next_fill_id)?;
 
     for (addr, user_state) in &maker_states {
         USER_STATES.save(storage, *addr, user_state)?;

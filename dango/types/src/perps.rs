@@ -48,6 +48,15 @@ pub type OrderId = Uint64;
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
 
+/// Identifier for an order-book match. Both `OrderFilled` events emitted
+/// for a single match (taker side + maker side) carry the same `FillId`,
+/// so consumers can group the two sides by this field. Strictly
+/// increasing across matches.
+///
+/// Not assigned to ADL fills — those are emitted via the `Deleveraged`
+/// and `Liquidated` events, which have no `fill_id` field.
+pub type FillId = Uint64;
+
 /// Client-assigned order id. Lets a trader cancel an order in the same block
 /// it was submitted, without round-tripping through the server response to
 /// learn the system-assigned `OrderId`.
@@ -1356,6 +1365,23 @@ pub struct OrderFilled {
     /// Caller-assigned id from the originally-submitted order, or `None`
     /// if the order was submitted without one.
     pub client_order_id: Option<ClientOrderId>,
+    /// Identifier shared between the two `OrderFilled` events of a single
+    /// order-book match (taker + maker). Strictly increasing across
+    /// matches. `None` for trades executed before v0.15.0 — fill IDs
+    /// were not assigned prior to that release.
+    ///
+    /// Equivalents at other venues:
+    ///
+    /// - BitMEX — `trdMatchID`, shared across the two executions of a
+    ///   match; non-match `execType`s use an all-zeros placeholder:
+    ///   <https://support.bitmex.com/hc/en-gb/articles/6205689858077--execution-field-definitions>
+    /// - Hyperliquid — `tid`, a 50-bit hash of `(buyer_oid, seller_oid)`
+    ///   that both sides of a match emit:
+    ///   <https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/websocket/subscriptions>
+    /// - Binance USD-M Futures — trade `id` on `GET /fapi/v1/userTrades`;
+    ///   each side sees the same `id` per match:
+    ///   <https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Account-Trade-List>
+    pub fill_id: Option<FillId>,
 }
 
 /// Event indicating an order have been inserted into the order book.

@@ -77,6 +77,8 @@ Since equity is typically negative for liquidatable users, the bankruptcy price 
 
 Liquidation fills (both order-book and ADL) carry **zero trading fees** for both taker and maker.
 
+Order-book fills during liquidation emit `order_filled` events with a `fill_id` just like regular matches (see the [events reference](8-api.md#9-events-reference)); ADL fills do _not_ — they use the separate `deleveraged` and `liquidated` events, which carry no `fill_id`, because ADL is a position transfer at the bankruptcy price rather than an order-book match.
+
 ## 4. Liquidation fee
 
 After all positions in the schedule are closed, a one-time liquidation fee is charged:

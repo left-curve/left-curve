@@ -3,8 +3,8 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
-            ClientOrderId, CommissionRate, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId,
-            PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
+            ClientOrderId, CommissionRate, ConditionalOrderId, FeeShareRatio, FillId, LimitOrder,
+            OrderId, PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
             TriggerDirection, UserReferralData, UserState,
         },
     },
@@ -15,6 +15,8 @@ use {
 // --------------------------------- constants ---------------------------------
 
 pub const NEXT_ORDER_ID: Item<OrderId> = Item::new("next_order_id");
+
+pub const NEXT_FILL_ID: Item<FillId> = Item::new("next_fill_id");
 
 pub const LAST_VAULT_ORDERS_UPDATE: Item<u64> = Item::new("last_vault_orders_update");
 
