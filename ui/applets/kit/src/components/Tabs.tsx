@@ -205,7 +205,7 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
     isActive,
     fullWidth,
   });
-  return <span className={twMerge(styles)}>{children ? children : title}</span>;
+  return <span className={twMerge("exposure-sm-italic", styles)}>{children ? children : title}</span>;
 };
 
 const tabVariants = tv({
