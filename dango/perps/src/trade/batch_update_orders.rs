@@ -31,9 +31,9 @@ pub fn batch_update_orders(
     // Enforce the governance-tunable upper bound on batch size.
     ensure!(
         reqs.len() <= param.max_action_batch_size,
-        "batch size {} exceeds maximum {}",
-        reqs.len(),
+        "invalid batch size! bounds: <= `max_action_batch_size` ({}), found: {}",
         param.max_action_batch_size,
+        reqs.len(),
     );
 
     let mut events = EventBuilder::new();

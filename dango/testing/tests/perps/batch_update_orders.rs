@@ -585,7 +585,7 @@ fn batch_size_cap_enforced() {
             )),
             Coins::new(),
         )
-        .should_fail_with_error("exceeds maximum 3");
+        .should_fail_with_error("`max_action_batch_size` (3), found: 4");
 
     let state_after: perps::UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
