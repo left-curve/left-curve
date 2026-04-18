@@ -2266,7 +2266,9 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
     // events each, and the two values must be consecutive.
     let mut by_fill_id = BTreeMap::<_, usize>::new();
     for filled in &fills {
-        let id = filled.fill_id.expect("cron-triggered fill must carry a fill_id");
+        let id = filled
+            .fill_id
+            .expect("cron-triggered fill must carry a fill_id");
         *by_fill_id.entry(id).or_default() += 1;
     }
 
