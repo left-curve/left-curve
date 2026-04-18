@@ -199,8 +199,8 @@ fn receive_remote(
 
     #[cfg(feature = "metrics")]
     {
-        metrics::counter!(crate::metrics::LABEL_DEPOSITS, "denom" => denom.to_string())
-            .increment(amount.into_inner() as u64);
+        metrics::gauge!(crate::metrics::LABEL_DEPOSITS, "denom" => denom.to_string())
+            .increment(amount.into_inner() as f64);
     }
 
     // First,
@@ -324,8 +324,8 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
     #[cfg(feature = "metrics")]
     {
-        metrics::counter!(crate::metrics::LABEL_WITHDRAWALS, "denom" => coin.denom.to_string())
-            .increment(coin.amount.into_inner() as u64);
+        metrics::gauge!(crate::metrics::LABEL_WITHDRAWALS, "denom" => coin.denom.to_string())
+            .increment(coin.amount.into_inner() as f64);
     }
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
