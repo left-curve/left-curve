@@ -34,8 +34,8 @@ use {
         },
     },
     grug::{
-        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder, Response,
-        Storage, Timestamp,
+        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder,
+        QuerierWrapper, Response, Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -49,27 +49,67 @@ pub fn submit_order(
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
 ) -> anyhow::Result<Response> {
+    let mut events = EventBuilder::new();
+
+    _submit_order(
+        ctx.storage,
+        ctx.querier,
+        ctx.block.timestamp,
+        ctx.contract,
+        ctx.sender,
+        pair_id,
+        size,
+        kind,
+        reduce_only,
+        tp,
+        sl,
+        &mut events,
+    )?;
+
+    // No token transfers — all PnL/fees settled via user_state.margin.
+    Ok(Response::new().add_events(events)?)
+}
+
+/// Intermediate layer of `submit_order`: takes individual components of
+/// `MutableCtx` (so multiple invocations can share the same storage within
+/// a `batch_update_orders` loop), loads the contract state, delegates the
+/// pure decision-making to [`compute_submit_order_outcome`], then writes
+/// the resulting mutations back to storage.
+///
+/// Events are pushed into the caller-owned `events` builder; the caller
+/// assembles the `Response`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn _submit_order(
+    storage: &mut dyn Storage,
+    querier: QuerierWrapper,
+    current_time: Timestamp,
+    contract: Addr,
+    sender: Addr,
+    pair_id: PairId,
+    size: Quantity,
+    kind: OrderKind,
+    reduce_only: bool,
+    tp: Option<ChildOrder>,
+    sl: Option<ChildOrder>,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
     // ---------------------------- 1. Preparation -----------------------------
 
-    let param = PARAM.load(ctx.storage)?;
-    let state = STATE.load(ctx.storage)?;
+    let param = PARAM.load(storage)?;
+    let state = STATE.load(storage)?;
 
-    let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
-    let pair_state = PAIR_STATES.load(ctx.storage, &pair_id)?;
+    let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
+    let pair_state = PAIR_STATES.load(storage, &pair_id)?;
 
-    let taker_state = USER_STATES
-        .may_load(ctx.storage, ctx.sender)?
-        .unwrap_or_default();
+    let taker_state = USER_STATES.may_load(storage, sender)?.unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(querier), querier)
+        .with_no_older_than(current_time - MAX_ORACLE_STALENESS);
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
-
-    let mut events = EventBuilder::new();
 
     // --------------------------- 2. Business logic ---------------------------
 
@@ -85,11 +125,11 @@ pub fn submit_order(
         index_updates,
         volumes,
         fee_breakdowns,
-    } = _submit_order(
-        ctx.storage,
-        ctx.sender,
-        ctx.contract,
-        ctx.block.timestamp,
+    } = compute_submit_order_outcome(
+        storage,
+        sender,
+        contract,
+        current_time,
         &mut oracle_querier,
         &param,
         &state,
@@ -103,43 +143,43 @@ pub fn submit_order(
         reduce_only,
         tp,
         sl,
-        &mut events,
+        events,
     )?;
 
     // ------------------------ 3. Apply state changes -------------------------
 
-    flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
+    flush_volumes(storage, current_time, &volumes)?;
 
-    maker_states.insert(ctx.sender, taker_state);
+    maker_states.insert(sender, taker_state);
 
     let FeeCommissionsOutcome {
         user_states: updated_maker_states,
     } = apply_fee_commissions(
-        ctx.storage,
-        ctx.querier,
-        ctx.contract,
-        ctx.block.timestamp,
+        storage,
+        querier,
+        contract,
+        current_time,
         &param,
         &maker_states,
         fee_breakdowns,
         &volumes,
-        &mut events,
+        events,
     )?;
 
-    maker_states = updated_maker_states;
+    let maker_states = updated_maker_states;
 
-    NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
-    NEXT_FILL_ID.save(ctx.storage, &next_fill_id)?;
+    NEXT_ORDER_ID.save(storage, &next_order_id)?;
+    NEXT_FILL_ID.save(storage, &next_fill_id)?;
 
-    STATE.save(ctx.storage, &state)?;
+    STATE.save(storage, &state)?;
 
-    PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
+    PAIR_STATES.save(storage, &pair_id, &pair_state)?;
 
     for (addr, user_state) in &maker_states {
-        USER_STATES.save(ctx.storage, *addr, user_state)?;
+        USER_STATES.save(storage, *addr, user_state)?;
     }
 
-    apply_position_index_updates(ctx.storage, &index_updates)?;
+    apply_position_index_updates(storage, &index_updates)?;
 
     let (taker_book, maker_book) = if size.is_positive() {
         (BIDS, ASKS)
@@ -160,7 +200,7 @@ pub fn submit_order(
         // notional drift. See `../liquidity_depth.rs`, test function `partial_fill_no_residual_depth`
         // for detail.
         decrease_liquidity_depths(
-            ctx.storage,
+            storage,
             &pair_id,
             maker_is_bid,
             real_price,
@@ -171,7 +211,7 @@ pub fn submit_order(
         match mutation {
             Some(order) => {
                 increase_liquidity_depths(
-                    ctx.storage,
+                    storage,
                     &pair_id,
                     maker_is_bid,
                     real_price,
@@ -179,10 +219,10 @@ pub fn submit_order(
                     &pair_param.bucket_sizes,
                 )?;
 
-                maker_book.save(ctx.storage, order_key, &order)?;
+                maker_book.save(storage, order_key, &order)?;
             },
             None => {
-                maker_book.remove(ctx.storage, order_key)?;
+                maker_book.remove(storage, order_key)?;
             },
         }
     }
@@ -192,7 +232,7 @@ pub fn submit_order(
         let limit_price = may_invert_price(stored_price, is_bid);
 
         increase_liquidity_depths(
-            ctx.storage,
+            storage,
             &pair_id,
             is_bid,
             limit_price,
@@ -200,16 +240,12 @@ pub fn submit_order(
             &pair_param.bucket_sizes,
         )?;
 
-        taker_book.save(
-            ctx.storage,
-            (pair_id.clone(), stored_price, order_id),
-            &order,
-        )?;
+        taker_book.save(storage, (pair_id.clone(), stored_price, order_id), &order)?;
 
         events.push(OrderPersisted {
             order_id,
             pair_id: pair_id.clone(),
-            user: ctx.sender,
+            user: sender,
             limit_price,
             size: order.size,
             client_order_id: order.client_order_id,
@@ -219,7 +255,7 @@ pub fn submit_order(
     #[cfg(feature = "tracing")]
     {
         tracing::info!(
-            user = %ctx.sender,
+            user = %sender,
             %pair_id,
             %size,
             "Order submitted"
@@ -255,11 +291,10 @@ pub fn submit_order(
         .record(start.elapsed().as_secs_f64());
     }
 
-    // No token transfers — all PnL/fees settled via user_state.margin.
-    Ok(Response::new().add_events(events)?)
+    Ok(())
 }
 
-/// Owned outcome of a `_submit_order` call. Every piece of
+/// Owned outcome of a `compute_submit_order_outcome` call. Every piece of
 /// caller-persistable state that the call may have updated is returned in
 /// this struct, so that a failed call can discard everything at once
 /// simply by dropping the `Err` variant — no partial mutations can leak
@@ -291,7 +326,7 @@ pub struct SubmitOrderOutcome {
 /// returned `maker_states`; moving it inside is left as a follow-up
 /// since that requires lifting `&mut Storage` and `QuerierWrapper`
 /// into the signature and re-plumbing every test call site.
-pub(crate) fn _submit_order(
+pub(crate) fn compute_submit_order_outcome(
     storage: &dyn Storage,
     taker: Addr,
     contract: Addr,
@@ -1629,7 +1664,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1694,7 +1729,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1744,7 +1779,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1800,7 +1835,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1857,7 +1892,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1918,7 +1953,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1977,7 +2012,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2036,7 +2071,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2103,7 +2138,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2151,7 +2186,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2208,7 +2243,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2270,7 +2305,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2329,7 +2364,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2391,7 +2426,7 @@ mod tests {
         let mut oq = test_oracle_querier();
 
         // 50,100 is a valid multiple of tick size 100 — should succeed.
-        let result = _submit_order(
+        let result = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2441,7 +2476,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2501,7 +2536,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2568,7 +2603,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2621,7 +2656,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2675,7 +2710,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3130,7 +3165,7 @@ mod tests {
         assert_eq!(state.treasury, UsdValue::new_int(4));
     }
 
-    // ====== Negative maker fee: full _submit_order integration ===============
+    // ====== Negative maker fee: full compute_submit_order_outcome integration ===============
 
     #[test]
     fn negative_maker_fee_rebate_on_market_buy() {
@@ -3183,7 +3218,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3296,7 +3331,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3370,7 +3405,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3462,7 +3497,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3530,7 +3565,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3590,7 +3625,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3644,7 +3679,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3691,7 +3726,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3744,7 +3779,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3797,7 +3832,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3849,7 +3884,7 @@ mod tests {
             taker_state: _,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3912,7 +3947,7 @@ mod tests {
             taker_state: _,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3972,7 +4007,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4041,7 +4076,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4132,7 +4167,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4217,7 +4252,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4295,7 +4330,7 @@ mod tests {
             taker_state,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4385,7 +4420,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4496,7 +4531,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4556,7 +4591,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4689,7 +4724,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             MAKER_B,
             CONTRACT,
@@ -4730,7 +4765,7 @@ mod tests {
     /// was never actually consumed, so a subsequent order could reuse the
     /// same ID.
     ///
-    /// After the fix, `_submit_order` always increments the order ID counter,
+    /// After the fix, `compute_submit_order_outcome` always increments the order ID counter,
     /// regardless of whether the order enters the book.
     #[test]
     fn orders_not_entering_book_should_increment_next_order_id() {
@@ -4760,7 +4795,7 @@ mod tests {
                 order_to_store,
                 next_order_id,
                 ..
-            } = _submit_order(
+            } = compute_submit_order_outcome(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
@@ -4828,7 +4863,7 @@ mod tests {
                 order_to_store,
                 next_order_id,
                 ..
-            } = _submit_order(
+            } = compute_submit_order_outcome(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
@@ -4900,7 +4935,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4952,7 +4987,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5023,7 +5058,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5069,7 +5104,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5119,7 +5154,7 @@ mod tests {
             taker_state: ts,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5186,7 +5221,7 @@ mod tests {
             taker_state: ts,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5265,7 +5300,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5321,7 +5356,7 @@ mod tests {
             taker_state: _,
             next_order_id,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5389,7 +5424,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5469,7 +5504,7 @@ mod tests {
         // Buy 5 with TP/SL intended for a long.
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5561,7 +5596,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5636,7 +5671,7 @@ mod tests {
         // SL trigger ($49k), so the SL condition is already met.
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5695,7 +5730,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5742,7 +5777,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5790,7 +5825,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5836,7 +5871,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5884,7 +5919,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5932,7 +5967,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5980,7 +6015,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6028,7 +6063,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6076,7 +6111,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6125,7 +6160,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6168,7 +6203,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6232,7 +6267,7 @@ mod tests {
         let mut oq = test_oracle_querier();
         let cid = Uint64::new(7);
 
-        let SubmitOrderOutcome { order_to_store, .. } = _submit_order(
+        let SubmitOrderOutcome { order_to_store, .. } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6279,7 +6314,7 @@ mod tests {
     }
 
     /// IOC limit orders never enter the book, so a `client_order_id` is
-    /// meaningless — `_submit_order` rejects with a clear error.
+    /// meaningless — `compute_submit_order_outcome` rejects with a clear error.
     #[test]
     fn submit_ioc_with_client_order_id_rejects() {
         let mut ctx = MockContext::new()
@@ -6297,7 +6332,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6431,7 +6466,7 @@ mod tests {
         let mut events = EventBuilder::new();
 
         // Taker GTC limit buy carrying its own cid fully fills the maker.
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -6535,7 +6570,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             order_mutations, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,

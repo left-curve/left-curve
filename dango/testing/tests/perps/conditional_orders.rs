@@ -588,7 +588,7 @@ fn conditional_orders_follow_price_time_priority() {
     );
 }
 
-/// When a conditional order's `_submit_order` fails (e.g. no liquidity on the
+/// When a conditional order's `compute_submit_order_outcome` fails (e.g. no liquidity on the
 /// book for the order's side), the cron now gracefully cancels it with
 /// `SlippageExceeded` instead of propagating the error via `?`. Previously
 /// the error would abort the entire cron, leaving the failed order stuck
@@ -748,7 +748,7 @@ fn conditional_order_failure_does_not_block_others() {
 
     // -------------------------------------------------------------------------
     // Step 3: User1 places SL: BELOW $1,900, size -5 (sell). No bids will be
-    // on book at trigger time → _submit_order will fail.
+    // on book at trigger time → compute_submit_order_outcome will fail.
     // -------------------------------------------------------------------------
 
     suite
@@ -1972,7 +1972,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
 
 /// A TP that fires from cron and crosses a resting maker produces
 /// `OrderFilled` events carrying `Some(fill_id)` on both sides of the
-/// match. Verifies the cron path of `_submit_order` → `match_order` →
+/// match. Verifies the cron path of `compute_submit_order_outcome` → `match_order` →
 /// `settle_fill` correctly threads `next_fill_id` the same way the
 /// user-submitted path does.
 #[test]
