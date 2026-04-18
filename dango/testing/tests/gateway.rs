@@ -10,8 +10,8 @@ use {
         gateway::{self, Origin, RateLimit, Remote},
     },
     grug::{
-        Addr, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt, Udec128,
-        btree_map, btree_set, coins,
+        Addr, BalanceChange, Coin, Coins, Duration, MathError, NumberConst, QuerierExt, ResultExt,
+        Udec128, Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::MockValidatorSet,
     hyperlane_types::{Addr32, isms},
@@ -171,9 +171,41 @@ fn rate_limit_global_enforcement() {
         )
         .should_succeed();
 
-    // Advance to epoch 1 — deposits from epoch 0 rotate to cumulative,
+    // Verify initial state.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryEpochRequest {})
+        .should_succeed_and_equal(0_u64);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QuerySupplyRequest {
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(200_000_000.into());
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryAvailableWithdrawRequest {
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(Uint128::new(20_000_000)));
+
+    // Advance to epoch 24 — deposits from epoch 0 rotate to cumulative,
     // current epoch has no deposit credit.
     advance_to_next_day(&mut suite);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryEpochRequest {})
+        .should_succeed_and_equal(24_u64);
+
+    // User has no deposit credit this epoch, so available = global = 20.
+    suite
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryUserAvailableWithdrawRequest {
+                user_index: receiver.user_index(),
+                denom: usdc::DENOM.clone(),
+            },
+        )
+        .should_succeed_and_equal(Some(Uint128::new(20_000_000)));
 
     // Withdraw the full daily allowance (20).
     suite
@@ -190,6 +222,37 @@ fn rate_limit_global_enforcement() {
             Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
+
+    // Global available = 0 (20 - 20). User available = 0 (no credit).
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryAvailableWithdrawRequest {
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(Uint128::ZERO));
+
+    suite
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryUserAvailableWithdrawRequest {
+                user_index: receiver.user_index(),
+                denom: usdc::DENOM.clone(),
+            },
+        )
+        .should_succeed_and_equal(Some(Uint128::ZERO));
+
+    // Verify user movement state.
+    {
+        let user_mov: gateway::UserMovement = suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryUserMovementRequest {
+                user_index: receiver.user_index(),
+                denom: usdc::DENOM.clone(),
+            })
+            .unwrap();
+        assert_eq!(user_mov.current.deposited, Uint128::ZERO);
+        assert_eq!(user_mov.current.withdrawn, Uint128::new(20_000_000));
+        assert_eq!(user_mov.current.credit_used, Uint128::ZERO);
+        assert_eq!(user_mov.cumulative.deposited, Uint128::new(200_000_000));
+    }
 
     // 1 more fails — global limit reached.
     suite
@@ -218,6 +281,23 @@ fn rate_limit_global_enforcement() {
         )
         .should_succeed();
 
+    // Global still 0, but user now has 50 credit → user available = 50.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryAvailableWithdrawRequest {
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(Uint128::ZERO));
+
+    suite
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryUserAvailableWithdrawRequest {
+                user_index: receiver.user_index(),
+                denom: usdc::DENOM.clone(),
+            },
+        )
+        .should_succeed_and_equal(Some(Uint128::new(50_000_000)));
+
     // Deposited 50 this epoch. Previous 20 withdrawal was charged to global,
     // NOT to credit. So remaining credit = 50. Withdraw all 50.
     suite
@@ -235,8 +315,31 @@ fn rate_limit_global_enforcement() {
         )
         .should_succeed();
 
-    // Credit exhausted (deposited 50, credit_used 50). 1 more is excess →
-    // global already at 20, so 20 + 1 > 20 → fails.
+    // Credit exhausted. Verify state.
+    {
+        let user_mov: gateway::UserMovement = suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryUserMovementRequest {
+                user_index: receiver.user_index(),
+                denom: usdc::DENOM.clone(),
+            })
+            .unwrap();
+        assert_eq!(user_mov.current.deposited, Uint128::new(50_000_000));
+        assert_eq!(user_mov.current.withdrawn, Uint128::new(70_000_000));
+        assert_eq!(user_mov.current.credit_used, Uint128::new(50_000_000));
+    }
+
+    // Global still 20 (the 50 was within credit). User available = 0.
+    suite
+        .query_wasm_smart(
+            contracts.gateway,
+            gateway::QueryUserAvailableWithdrawRequest {
+                user_index: receiver.user_index(),
+                denom: usdc::DENOM.clone(),
+            },
+        )
+        .should_succeed_and_equal(Some(Uint128::ZERO));
+
+    // 1 more is excess → global already at 20, so 20 + 1 > 20 → fails.
     suite
         .execute(
             receiver,
@@ -252,8 +355,25 @@ fn rate_limit_global_enforcement() {
         )
         .should_fail_with_error("rate limit exceeded!");
 
-    // Advance to epoch 2. Supply = 200 - 20 + 50 - 50 = 180. Allowance = 18.
+    // Advance to epoch 48. Supply = 200 - 20 + 50 - 50 = 180. Allowance = 18.
     advance_to_next_day(&mut suite);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryEpochRequest {})
+        .should_succeed_and_equal(48_u64);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QuerySupplyRequest {
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(180_000_000.into());
+
+    // Global outbound rolled off — fresh window.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryAvailableWithdrawRequest {
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(Uint128::new(18_000_000)));
 
     // Fresh epoch — global outbound is 0 again. Withdraw 18 succeeds.
     suite
