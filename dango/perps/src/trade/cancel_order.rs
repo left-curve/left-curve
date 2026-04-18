@@ -118,27 +118,50 @@ where
 ///
 /// The `(sender, client_order_id)` index on `BIDS` / `ASKS` is consulted
 /// — that index is per-sender, so the lookup can only ever return orders
-/// owned by `ctx.sender`. The actual cancellation delegates to
-/// [`cancel_one_order`].
+/// owned by `ctx.sender`, which means no redundant ownership check is
+/// needed. The actual cancellation delegates to [`_cancel_one_order`]
+/// with the loaded `(order_key, order)` so we don't re-resolve through
+/// the `order_id` index.
 pub fn cancel_one_order_by_client_order_id(
     ctx: MutableCtx,
     client_order_id: ClientOrderId,
 ) -> anyhow::Result<Response> {
     let key = (ctx.sender, client_order_id);
 
-    let (_, _, order_id) = BIDS
+    // `or_else` is lazy: ASKS is only consulted on a BIDS miss.
+    let (order_key, order) = BIDS
         .idx
         .client_order_id
-        .may_load_key(ctx.storage, key)?
-        .or(ASKS.idx.client_order_id.may_load_key(ctx.storage, key)?)
+        .may_load(ctx.storage, key)
+        .transpose()
+        .or_else(|| {
+            ASKS.idx
+                .client_order_id
+                .may_load(ctx.storage, key)
+                .transpose()
+        })
         .ok_or_else(|| {
             anyhow!(
                 "order not found with user {} and client_order_id {client_order_id}",
                 ctx.sender
             )
-        })?;
+        })??;
 
-    cancel_one_order(ctx, order_id)
+    let mut events = EventBuilder::new();
+
+    update_user_state_with(ctx.storage, ctx.sender, |storage, user_state| {
+        _cancel_one_order(
+            storage,
+            user_state,
+            order_key,
+            order,
+            Some(&mut events),
+            ReasonForOrderRemoval::Canceled,
+            |storage, pair_id| PAIR_PARAMS.load(storage, pair_id),
+        )
+    })?;
+
+    Ok(Response::new().add_events(events)?)
 }
 
 pub fn cancel_all_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
