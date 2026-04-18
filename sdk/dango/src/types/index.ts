@@ -170,6 +170,8 @@ export type {
   PerpsLiquidityDepthResponse,
   PerpsCancelOrderRequest,
   PerpsCancelConditionalOrderRequest,
+  PerpsSubmitOrderRequest,
+  PerpsSubmitOrCancelOrderRequest,
   PerpsQueryMsg,
   GetPerpsQueryMsg,
   FeeRateOverride,

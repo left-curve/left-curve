@@ -98,6 +98,12 @@ import {
 } from "./mutations/cancelOrder.js";
 
 import {
+  type BatchUpdatePerpsOrdersParameters,
+  type BatchUpdatePerpsOrdersReturnType,
+  batchUpdatePerpsOrders,
+} from "./mutations/batchUpdateOrders.js";
+
+import {
   type SetReferralParameters,
   type SetReferralReturnType,
   setReferral,
@@ -196,6 +202,9 @@ export type PerpsMutationActions = {
   withdrawMargin: (args: WithdrawMarginParameters) => WithdrawMarginReturnType;
   submitPerpsOrder: (args: SubmitPerpsOrderParameters) => SubmitPerpsOrderReturnType;
   cancelPerpsOrder: (args: CancelPerpsOrderParameters) => CancelPerpsOrderReturnType;
+  batchUpdatePerpsOrders: (
+    args: BatchUpdatePerpsOrdersParameters,
+  ) => BatchUpdatePerpsOrdersReturnType;
   setReferral: (args: SetReferralParameters) => SetReferralReturnType;
   setFeeShareRatio: (args: SetFeeShareRatioParameters) => SetFeeShareRatioReturnType;
   vaultAddLiquidity: (args: VaultAddLiquidityParameters) => VaultAddLiquidityReturnType;
@@ -219,6 +228,7 @@ export function perpsMutationActions<transport extends Transport = Transport>(
     withdrawMargin: (args) => withdrawMargin(client, args),
     submitPerpsOrder: (args) => submitPerpsOrder(client, args),
     cancelPerpsOrder: (args) => cancelPerpsOrder(client, args),
+    batchUpdatePerpsOrders: (args) => batchUpdatePerpsOrders(client, args),
     setReferral: (args) => setReferral(client, args),
     setFeeShareRatio: (args) => setFeeShareRatio(client, args),
     vaultAddLiquidity: (args) => vaultAddLiquidity(client, args),
