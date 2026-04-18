@@ -1125,6 +1125,7 @@
         "type": "Type",
         "price": "Price",
         "size": "Size ({symbol})",
+        "tradeValue": "Trade Value",
         "dateAndTime": "Date & Time"
       },
       "history": {
@@ -1237,7 +1238,7 @@
         "pair": "Pair",
         "side": "Side",
         "size": "Size",
-        "notional": "Order Value",
+        "positionValue": "Position Value",
         "entryPrice": "Entry Price",
         "markPrice": "Mark Price",
         "pnl": "PnL",
@@ -1259,7 +1260,7 @@
         "type": "Type",
         "price": "Price",
         "size": "Size",
-        "tradeValue": "Trade Value",
+        "orderValue": "Order Value",
         "filled": "Filled",
         "reduceOnly": "Reduce Only",
         "tpsl": "TP/SL",
