@@ -501,7 +501,9 @@ pub(crate) fn _submit_order(
         // `OrderFilled` event so off-chain consumers can correlate fills
         // with the originally-submitted order.
         match kind {
-            OrderKind::Limit { client_order_id, .. } => client_order_id,
+            OrderKind::Limit {
+                client_order_id, ..
+            } => client_order_id,
             OrderKind::Market { .. } => None,
         },
         taker_fee_rate,
@@ -6385,16 +6387,12 @@ mod tests {
         )
         .unwrap();
         USER_STATES
-            .save(
-                &mut ctx.storage,
-                MAKER_A,
-                &UserState {
-                    margin: LARGE_COLLATERAL,
-                    open_order_count: 1,
-                    reserved_margin: UsdValue::new_int(25_000),
-                    ..Default::default()
-                },
-            )
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
             .unwrap();
 
         let param = test_param();
@@ -6440,11 +6438,7 @@ mod tests {
             .map(|e| e.data.deserialize_json().unwrap())
             .collect();
 
-        assert_eq!(
-            order_filleds.len(),
-            2,
-            "expected one OrderFilled per side"
-        );
+        assert_eq!(order_filleds.len(), 2, "expected one OrderFilled per side");
 
         let taker_filled = order_filleds
             .iter()
@@ -6484,18 +6478,15 @@ mod tests {
             client_order_id: Some(cid),
         };
         let maker_key = (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100));
-        ASKS.save(&mut ctx.storage, maker_key, &maker_order).unwrap();
+        ASKS.save(&mut ctx.storage, maker_key, &maker_order)
+            .unwrap();
         USER_STATES
-            .save(
-                &mut ctx.storage,
-                MAKER_A,
-                &UserState {
-                    margin: LARGE_COLLATERAL,
-                    open_order_count: 1,
-                    reserved_margin: UsdValue::new_int(25_000),
-                    ..Default::default()
-                },
-            )
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
             .unwrap();
 
         // Sanity: the alias is reachable before the fill.

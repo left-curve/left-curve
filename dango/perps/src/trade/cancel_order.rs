@@ -280,7 +280,9 @@ mod tests {
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{LimitOrder, PairId, PairParam, Position, UserState},
         },
-        grug::{Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp, Uint64},
+        grug::{
+            Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp, Uint64,
+        },
         std::collections::{BTreeMap, VecDeque},
     };
 
