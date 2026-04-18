@@ -2,11 +2,11 @@ use {
     dango_perps::state::OrderKey,
     dango_types::{
         Dimensionless, FundingRate, Quantity, UsdPrice, UsdValue,
-        perps::{self, ChildOrder, OrderId, PairId},
+        perps::{self, ChildOrder, FillId, OrderId, PairId},
     },
     grug::{
-        Addr, BlockInfo, IndexedMap, MultiIndex, Order as IterationOrder, StdResult, Storage,
-        Timestamp, UniqueIndex, addr,
+        Addr, BlockInfo, IndexedMap, MultiIndex, NumberConst, Order as IterationOrder, StdResult,
+        Storage, Timestamp, UniqueIndex, addr,
     },
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
     std::collections::BTreeSet,
@@ -125,6 +125,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     do_price_banding_upgrade(&mut storage)?;
     do_client_order_id_upgrade(&mut storage)?;
+    do_fill_id_upgrade(&mut storage)?;
 
     Ok(())
 }
@@ -192,6 +193,16 @@ fn do_client_order_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
         "Migrated {bid_count} resting bids and {ask_count} resting asks (added client_order_id = None)"
     );
 
+    Ok(())
+}
+
+/// Seed `NEXT_FILL_ID` with `FillId::ONE` so that the counter exists for
+/// post-upgrade `load` calls. Fills executed before the upgrade have no
+/// `fill_id` in their emitted `OrderFilled` events and are not backfilled —
+/// downstream consumers treat a missing field as "pre-v0.15.0".
+fn do_fill_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
+    dango_perps::state::NEXT_FILL_ID.save(storage, &FillId::ONE)?;
+    tracing::info!("Initialized NEXT_FILL_ID to 1");
     Ok(())
 }
 
@@ -452,11 +463,33 @@ mod tests {
         do_client_order_id_upgrade(&mut storage).unwrap();
     }
 
-    /// `do_upgrade` chains both migrations: legacy `PairParam`s are
-    /// rewritten *and* legacy resting orders are rewritten, all under
-    /// one upgrade boundary.
+    /// `do_fill_id_upgrade` seeds `NEXT_FILL_ID` to 1 so post-upgrade
+    /// `load` calls in the matching engine succeed.
     #[test]
-    fn do_upgrade_runs_both_migrations() {
+    fn fill_id_upgrade_initializes_counter_to_one() {
+        let mut storage = MockStorage::new();
+
+        // Before the upgrade, the counter does not exist.
+        assert!(
+            dango_perps::state::NEXT_FILL_ID
+                .may_load(&storage)
+                .unwrap()
+                .is_none()
+        );
+
+        do_fill_id_upgrade(&mut storage).unwrap();
+
+        assert_eq!(
+            dango_perps::state::NEXT_FILL_ID.load(&storage).unwrap(),
+            FillId::ONE
+        );
+    }
+
+    /// `do_upgrade` chains all three migrations: legacy `PairParam`s are
+    /// rewritten, legacy resting orders are rewritten, and the
+    /// `NEXT_FILL_ID` counter is seeded — all under one upgrade boundary.
+    #[test]
+    fn do_upgrade_runs_all_migrations() {
         let mut storage = MockStorage::new();
 
         // Seed legacy state for both migrations.
@@ -471,9 +504,10 @@ mod tests {
             )
             .unwrap();
 
-        // Run both migrations sequentially (mirrors `do_upgrade`).
+        // Run all migrations sequentially (mirrors `do_upgrade`).
         do_price_banding_upgrade(&mut storage).unwrap();
         do_client_order_id_upgrade(&mut storage).unwrap();
+        do_fill_id_upgrade(&mut storage).unwrap();
 
         // PairParam migrated.
         let pair = dango_perps::state::PAIR_PARAMS
@@ -494,5 +528,11 @@ mod tests {
             .unwrap();
         assert_eq!(order.user, USER_A);
         assert_eq!(order.client_order_id, None);
+
+        // NEXT_FILL_ID seeded.
+        assert_eq!(
+            dango_perps::state::NEXT_FILL_ID.load(&storage).unwrap(),
+            FillId::ONE
+        );
     }
 }

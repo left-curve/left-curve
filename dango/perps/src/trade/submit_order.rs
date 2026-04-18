@@ -17,8 +17,8 @@ use {
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{
-            ASKS, BIDS, FEE_RATE_OVERRIDES, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-            USER_STATES,
+            ASKS, BIDS, FEE_RATE_OVERRIDES, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES,
+            PARAM, STATE, USER_STATES,
         },
         volume::flush_volumes,
     },
@@ -27,10 +27,10 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, LimitOrder,
-            OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam,
-            PairState, Param, ReasonForOrderRemoval, State, TimeInForce, TriggerDirection,
-            UserState,
+            ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, FillId,
+            LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
+            PairParam, PairState, Param, ReasonForOrderRemoval, State, TimeInForce,
+            TriggerDirection, UserState,
         },
     },
     grug::{
@@ -81,6 +81,7 @@ pub fn submit_order(
         order_mutations,
         order_to_store,
         next_order_id,
+        next_fill_id,
         index_updates,
         volumes,
         fee_breakdowns,
@@ -128,6 +129,7 @@ pub fn submit_order(
     maker_states = updated_maker_states;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
+    NEXT_FILL_ID.save(ctx.storage, &next_fill_id)?;
 
     STATE.save(ctx.storage, &state)?;
 
@@ -272,6 +274,7 @@ pub struct SubmitOrderOutcome {
     pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
     pub order_to_store: Option<(UsdPrice, OrderId, LimitOrder)>,
     pub next_order_id: OrderId,
+    pub next_fill_id: FillId,
     pub index_updates: Vec<PositionIndexUpdate>,
     pub volumes: BTreeMap<Addr, UsdValue>,
     pub fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
@@ -388,6 +391,7 @@ pub(crate) fn _submit_order(
 
     let taker_order_id = NEXT_ORDER_ID.load(storage)?;
     let mut next_order_id = taker_order_id + OrderId::ONE;
+    let next_fill_id = NEXT_FILL_ID.load(storage)?;
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
@@ -430,6 +434,8 @@ pub(crate) fn _submit_order(
             order_mutations: Vec::new(),
             order_to_store: Some((stored_price, order_id, order)),
             next_order_id: taker_order_id + OrderId::ONE,
+            // Post-only orders cannot match, so no fill id is allocated.
+            next_fill_id,
             index_updates: Vec::new(),
             volumes: BTreeMap::new(),
             fee_breakdowns: BTreeMap::new(),
@@ -486,6 +492,7 @@ pub(crate) fn _submit_order(
         order_mutations,
         index_updates,
         next_order_id: updated_next_order_id,
+        next_fill_id: updated_next_fill_id,
     } = match_order(
         storage,
         taker,
@@ -514,12 +521,14 @@ pub(crate) fn _submit_order(
         pair_param.max_limit_price_deviation,
         fillable_size,
         next_order_id,
+        next_fill_id,
         events,
     )?;
 
     pair_state = updated_pair_state;
     taker_state = updated_taker_state;
     next_order_id = updated_next_order_id;
+    let next_fill_id = updated_next_fill_id;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
 
@@ -628,6 +637,7 @@ pub(crate) fn _submit_order(
         order_mutations,
         order_to_store,
         next_order_id,
+        next_fill_id,
         index_updates,
         volumes,
         fee_breakdowns,
@@ -651,6 +661,7 @@ pub struct MatchOrderOutcome {
     pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
     pub index_updates: Vec<PositionIndexUpdate>,
     pub next_order_id: OrderId,
+    pub next_fill_id: FillId,
 }
 
 /// Iterate the opposite-side order book in price-time priority and match
@@ -686,6 +697,7 @@ pub fn match_order(
     max_limit_price_deviation: Dimensionless,
     mut remaining_size: Quantity,
     mut next_order_id: OrderId,
+    mut next_fill_id: FillId,
     events: &mut EventBuilder,
 ) -> anyhow::Result<MatchOrderOutcome> {
     // Clone at entry and mutate locals freely. `events` is the one
@@ -810,6 +822,13 @@ pub fn match_order(
 
         let maker_fill_size = taker_fill_size.checked_neg()?;
 
+        // -------------------- Allocate a shared fill id ----------------------
+
+        // Both `OrderFilled` events below carry this `fill_id`, so downstream
+        // consumers can group the two sides of the match.
+        let fill_id = next_fill_id;
+        next_fill_id = next_fill_id.checked_add(FillId::ONE)?;
+
         // ------------------------ Settle taker's PnL -------------------------
 
         let old_taker_pos = taker_state.positions.get(pair_id).cloned();
@@ -826,7 +845,7 @@ pub fn match_order(
             &mut pnls,
             &mut fees,
             &mut volumes,
-            Some((events, taker_order_id, taker_client_order_id)),
+            Some((events, taker_order_id, taker_client_order_id, fill_id)),
         )?;
 
         if let Some(diff) = compute_position_diff(
@@ -882,7 +901,7 @@ pub fn match_order(
             &mut pnls,
             &mut fees,
             &mut volumes,
-            Some((events, maker_order_id, maker_order.client_order_id)),
+            Some((events, maker_order_id, maker_order.client_order_id, fill_id)),
         )?;
 
         if let Some(diff) = compute_position_diff(
@@ -986,6 +1005,7 @@ pub fn match_order(
         order_mutations,
         index_updates,
         next_order_id,
+        next_fill_id,
     })
 }
 
@@ -1008,7 +1028,7 @@ pub fn settle_fill(
     pnls: &mut BTreeMap<Addr, UsdValue>,
     fees: &mut BTreeMap<Addr, UsdValue>,
     volumes: &mut BTreeMap<Addr, UsdValue>,
-    events: Option<(&mut EventBuilder, OrderId, Option<ClientOrderId>)>,
+    events: Option<(&mut EventBuilder, OrderId, Option<ClientOrderId>, FillId)>,
 ) -> grug::StdResult<UsdValue> {
     let (closing, opening) = {
         let current_pos = user_state
@@ -1041,7 +1061,7 @@ pub fn settle_fill(
         .or_default()
         .checked_add_assign(volume)?;
 
-    if let Some((events, order_id, client_order_id)) = events {
+    if let Some((events, order_id, client_order_id, fill_id)) = events {
         events.push(OrderFilled {
             order_id,
             pair_id: pair_id.clone(),
@@ -1053,6 +1073,7 @@ pub fn settle_fill(
             realized_pnl: pnl,
             fee,
             client_order_id,
+            fill_id: Some(fill_id),
         })?;
     }
 
@@ -1524,6 +1545,7 @@ mod tests {
             .save(storage, &pair_id(), &PairState::default())
             .unwrap();
         NEXT_ORDER_ID.save(storage, &Uint64::new(1)).unwrap();
+        NEXT_FILL_ID.save(storage, &FillId::ONE).unwrap();
     }
 
     /// Place a resting ask (sell) order on the book.
@@ -3142,6 +3164,7 @@ mod tests {
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
             .unwrap();
+        NEXT_FILL_ID.save(&mut ctx.storage, &FillId::ONE).unwrap();
 
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
@@ -3250,6 +3273,7 @@ mod tests {
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
             .unwrap();
+        NEXT_FILL_ID.save(&mut ctx.storage, &FillId::ONE).unwrap();
 
         // Two resting asks — one per phase.
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
@@ -3416,6 +3440,7 @@ mod tests {
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
             .unwrap();
+        NEXT_FILL_ID.save(&mut ctx.storage, &FillId::ONE).unwrap();
 
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 101);

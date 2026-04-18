@@ -16,14 +16,15 @@ pub mod volume;
 
 use {
     crate::state::{
-        FEE_RATE_OVERRIDES, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
+        FEE_RATE_OVERRIDES, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
+        USER_STATES,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, UsdValue,
         perps::{
-            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
+            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, FillId, InstantiateMsg,
             MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, TraderMsg, VaultMsg,
         },
     },
@@ -90,6 +91,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     })?;
 
     NEXT_ORDER_ID.save(ctx.storage, &OrderId::ONE)?;
+    NEXT_FILL_ID.save(ctx.storage, &FillId::ONE)?;
 
     maintain::configure(ctx, msg.param, msg.pair_params)
 }
