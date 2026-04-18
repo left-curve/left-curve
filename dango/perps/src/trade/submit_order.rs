@@ -22,14 +22,15 @@ use {
         },
         volume::flush_volumes,
     },
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            ChildOrder, ConditionalOrder, ConditionalOrderPlaced, LimitOrder, OrderFilled, OrderId,
-            OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam, PairState, Param,
-            ReasonForOrderRemoval, State, TimeInForce, TriggerDirection, UserState,
+            ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, LimitOrder,
+            OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam,
+            PairState, Param, ReasonForOrderRemoval, State, TimeInForce, TriggerDirection,
+            UserState,
         },
     },
     grug::{
@@ -209,6 +210,7 @@ pub fn submit_order(
             user: ctx.sender,
             limit_price,
             size: order.size,
+            client_order_id: order.client_order_id,
         })?;
     }
 
@@ -331,6 +333,18 @@ pub(crate) fn _submit_order(
         },
     }
 
+    // IOC limit orders never enter the book, so a `client_order_id` would
+    // never be reachable for cancellation — disallow it to surface the
+    // misconfiguration loudly instead of silently dropping the id.
+    if let OrderKind::Limit {
+        time_in_force: TimeInForce::ImmediateOrCancel,
+        client_order_id: Some(_),
+        ..
+    } = &kind
+    {
+        bail!("client_order_id is not allowed with TimeInForce::ImmediateOrCancel");
+    }
+
     for child_order in [&tp, &sl].into_iter().flatten() {
         ensure!(
             child_order.trigger_price.is_positive(),
@@ -377,7 +391,12 @@ pub(crate) fn _submit_order(
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
-    if let Some(limit_price) = kind.post_only_price() {
+    if let OrderKind::Limit {
+        limit_price,
+        time_in_force: TimeInForce::PostOnly,
+        client_order_id,
+    } = kind
+    {
         let StoreLimitOrderOutcome {
             user_state: updated_taker_state,
             stored_price,
@@ -398,6 +417,7 @@ pub(crate) fn _submit_order(
             taker_order_id,
             tp,
             sl,
+            client_order_id,
         )?;
 
         taker_state = updated_taker_state;
@@ -477,6 +497,15 @@ pub(crate) fn _submit_order(
         &taker_state,
         taker_is_bid,
         taker_order_id,
+        // Surface the taker's `client_order_id` (if any) on the
+        // `OrderFilled` event so off-chain consumers can correlate fills
+        // with the originally-submitted order.
+        match kind {
+            OrderKind::Limit {
+                client_order_id, ..
+            } => client_order_id,
+            OrderKind::Market { .. } => None,
+        },
         taker_fee_rate,
         None, // no forced maker fee; respect per-user overrides and tier schedule
         &BTreeMap::new(),
@@ -512,6 +541,7 @@ pub(crate) fn _submit_order(
             OrderKind::Limit {
                 limit_price,
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id,
             } => {
                 let StoreLimitOrderOutcome {
                     user_state: updated_taker_state,
@@ -532,6 +562,7 @@ pub(crate) fn _submit_order(
                     taker_order_id,
                     tp.clone(),
                     sl.clone(),
+                    client_order_id,
                 )?;
 
                 taker_state = updated_taker_state;
@@ -646,6 +677,7 @@ pub fn match_order(
     taker_state: &UserState,
     taker_is_bid: bool,
     taker_order_id: OrderId,
+    taker_client_order_id: Option<ClientOrderId>,
     taker_fee_rate: Dimensionless,
     force_maker_fee_rate: Option<Dimensionless>,
     maker_states: &BTreeMap<Addr, UserState>,
@@ -717,6 +749,7 @@ pub fn match_order(
                 pair_id: pair_id.clone(),
                 user: taker,
                 reason: ReasonForOrderRemoval::SelfTradePrevention,
+                client_order_id: maker_order.client_order_id,
             })?;
 
             continue;
@@ -759,6 +792,7 @@ pub fn match_order(
                 pair_id: pair_id.clone(),
                 user: maker_order.user,
                 reason: ReasonForOrderRemoval::PriceBandViolation,
+                client_order_id: maker_order.client_order_id,
             })?;
 
             continue;
@@ -792,7 +826,7 @@ pub fn match_order(
             &mut pnls,
             &mut fees,
             &mut volumes,
-            Some((events, taker_order_id)),
+            Some((events, taker_order_id, taker_client_order_id)),
         )?;
 
         if let Some(diff) = compute_position_diff(
@@ -848,7 +882,7 @@ pub fn match_order(
             &mut pnls,
             &mut fees,
             &mut volumes,
-            Some((events, maker_order_id)),
+            Some((events, maker_order_id, maker_order.client_order_id)),
         )?;
 
         if let Some(diff) = compute_position_diff(
@@ -917,6 +951,7 @@ pub fn match_order(
                     pair_id: pair_id.clone(),
                     user: maker_order.user,
                     reason: ReasonForOrderRemoval::Filled,
+                    client_order_id: maker_order.client_order_id,
                 })?;
             }
 
@@ -973,7 +1008,7 @@ pub fn settle_fill(
     pnls: &mut BTreeMap<Addr, UsdValue>,
     fees: &mut BTreeMap<Addr, UsdValue>,
     volumes: &mut BTreeMap<Addr, UsdValue>,
-    events: Option<(&mut EventBuilder, OrderId)>,
+    events: Option<(&mut EventBuilder, OrderId, Option<ClientOrderId>)>,
 ) -> grug::StdResult<UsdValue> {
     let (closing, opening) = {
         let current_pos = user_state
@@ -1006,7 +1041,7 @@ pub fn settle_fill(
         .or_default()
         .checked_add_assign(volume)?;
 
-    if let Some((events, order_id)) = events {
+    if let Some((events, order_id, client_order_id)) = events {
         events.push(OrderFilled {
             order_id,
             pair_id: pair_id.clone(),
@@ -1017,6 +1052,7 @@ pub fn settle_fill(
             opening_size: opening,
             realized_pnl: pnl,
             fee,
+            client_order_id,
         })?;
     }
 
@@ -1175,6 +1211,7 @@ fn store_post_only_limit_order(
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
+    client_order_id: Option<ClientOrderId>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
@@ -1220,6 +1257,7 @@ fn store_post_only_limit_order(
         order_id,
         tp,
         sl,
+        client_order_id,
     )
 }
 
@@ -1257,6 +1295,7 @@ fn store_limit_order(
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
+    client_order_id: Option<ClientOrderId>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
@@ -1315,6 +1354,7 @@ fn store_limit_order(
             created_at: current_time,
             tp,
             sl,
+            client_order_id,
         },
     })
 }
@@ -1421,7 +1461,10 @@ mod tests {
             oracle::PrecisionedPrice,
             perps::{Position, RateSchedule},
         },
-        grug::{Coins, MockContext, ResultExt, Timestamp, Udec128, Uint64, hash_map},
+        grug::{
+            Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, Udec128, Uint64,
+            hash_map,
+        },
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -1494,6 +1537,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         ASKS.save(storage, key, &order).unwrap();
 
@@ -1521,6 +1565,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         BIDS.save(storage, key, &order).unwrap();
 
@@ -1750,6 +1795,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1806,6 +1852,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1866,6 +1913,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1924,6 +1972,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: None,
             },
             false,
             None,
@@ -1982,6 +2031,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: None,
             },
             false,
             None,
@@ -2336,6 +2386,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_100),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -2385,6 +2436,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_050),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -3530,6 +3582,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3583,6 +3636,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3629,6 +3683,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3681,6 +3736,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3733,6 +3789,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3784,6 +3841,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3846,6 +3904,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             true,
             None,
@@ -3905,6 +3964,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -4760,6 +4820,7 @@ mod tests {
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(50_000),
                     time_in_force: TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
                 },
                 false,
                 None,
@@ -5050,6 +5111,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),
@@ -5116,6 +5178,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),
@@ -5157,6 +5220,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: make_tp(45_000),
             sl: make_sl(55_000),
+            client_order_id: None,
         };
         ASKS.save(&mut ctx.storage, key, &order).unwrap();
 
@@ -5460,6 +5524,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: make_tp(55_000),
             sl: make_sl(45_000),
+            client_order_id: None,
         };
         BIDS.save(&mut ctx.storage, key, &order).unwrap();
 
@@ -5669,6 +5734,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(-1_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -5716,6 +5782,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::ZERO,
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -6115,5 +6182,374 @@ mod tests {
             ..Default::default()
         };
         USER_STATES.save(storage, TAKER, &ts).unwrap();
+    }
+
+    // ======================== client_order_id tests ==========================
+
+    /// A GTC limit order carrying a `client_order_id` is reachable via the
+    /// `(sender, cid)` index and the stored `LimitOrder.client_order_id`
+    /// matches the submitted value.
+    #[test]
+    fn submit_limit_with_client_order_id_indexes_it() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+        let cid = Uint64::new(7);
+
+        let SubmitOrderOutcome { order_to_store, .. } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: Some(cid),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let (stored_price, order_id, order) = order_to_store.unwrap();
+        assert_eq!(order.client_order_id, Some(cid));
+
+        // Apply the outcome: persist the resting order. The new
+        // `client_order_id` index entry is written by `IndexedMap::save`.
+        BIDS.save(
+            &mut ctx.storage,
+            (pair_id(), stored_price, order_id),
+            &order,
+        )
+        .unwrap();
+
+        let key = BIDS
+            .idx
+            .client_order_id
+            .may_load_key(&ctx.storage, (TAKER, cid))
+            .unwrap();
+        assert_eq!(key, Some((pair_id(), stored_price, order_id)));
+    }
+
+    /// IOC limit orders never enter the book, so a `client_order_id` is
+    /// meaningless — `_submit_order` rejects with a clear error.
+    #[test]
+    fn submit_ioc_with_client_order_id_rejects() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: Some(Uint64::new(7)),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("client_order_id is not allowed");
+    }
+
+    /// Submitting a second resting order with a `client_order_id` already
+    /// owned by the same sender is rejected by the `UniqueIndex` (returns
+    /// `StdError::duplicate_data`).
+    #[test]
+    fn submit_duplicate_client_order_id_rejects() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let cid = Uint64::new(7);
+
+        let order_a = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_int(5),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(12_500),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        BIDS.save(
+            &mut ctx.storage,
+            (pair_id(), !UsdPrice::new_int(49_000), Uint64::new(1)),
+            &order_a,
+        )
+        .unwrap();
+
+        // A second order with the same (TAKER, cid) — different price/id, so
+        // the primary key differs, but the `client_order_id` index collides.
+        let order_b = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_int(5),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(12_500),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        let err = BIDS
+            .save(
+                &mut ctx.storage,
+                (pair_id(), !UsdPrice::new_int(48_000), Uint64::new(2)),
+                &order_b,
+            )
+            .unwrap_err();
+        assert!(
+            format!("{err:?}").to_lowercase().contains("duplicate"),
+            "expected duplicate_data error, got: {err:?}"
+        );
+    }
+
+    /// On a fill, both the taker's and maker's `OrderFilled` events
+    /// surface the respective `client_order_id` from the originally
+    /// submitted order, so off-chain consumers can correlate fills with
+    /// the cid the trader assigned.
+    #[test]
+    fn order_filled_events_carry_client_order_ids() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let maker_cid = Uint64::new(11);
+        let taker_cid = Uint64::new(22);
+
+        // Maker ask carrying a cid.
+        let maker_order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(-10),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(25_000),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(maker_cid),
+        };
+        ASKS.save(
+            &mut ctx.storage,
+            (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100)),
+            &maker_order,
+        )
+        .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+        let mut events = EventBuilder::new();
+
+        // Taker GTC limit buy carrying its own cid fully fills the maker.
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: Some(taker_cid),
+            },
+            false,
+            None,
+            None,
+            &mut events,
+        )
+        .unwrap();
+
+        let order_filleds: Vec<OrderFilled> = events
+            .into_iter()
+            .filter(|e| e.ty == OrderFilled::EVENT_NAME)
+            .map(|e| e.data.deserialize_json().unwrap())
+            .collect();
+
+        assert_eq!(order_filleds.len(), 2, "expected one OrderFilled per side");
+
+        let taker_filled = order_filleds
+            .iter()
+            .find(|f| f.user == TAKER)
+            .expect("taker OrderFilled missing");
+        assert_eq!(taker_filled.client_order_id, Some(taker_cid));
+
+        let maker_filled = order_filleds
+            .iter()
+            .find(|f| f.user == MAKER_A)
+            .expect("maker OrderFilled missing");
+        assert_eq!(maker_filled.client_order_id, Some(maker_cid));
+    }
+
+    /// When a maker order with a `client_order_id` is fully filled and
+    /// removed from the book, the `(sender, cid)` index entry is cleared
+    /// automatically by `IndexedMap::remove`.
+    #[test]
+    fn client_order_id_alias_clears_on_fill() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let cid = Uint64::new(7);
+
+        // Place a maker ask owned by MAKER_A with cid=Some(7).
+        let maker_order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(-10),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(25_000),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        let maker_key = (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100));
+        ASKS.save(&mut ctx.storage, maker_key, &maker_order)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
+            .unwrap();
+
+        // Sanity: the alias is reachable before the fill.
+        assert!(
+            ASKS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (MAKER_A, cid))
+                .unwrap()
+                .is_some()
+        );
+
+        // Taker fully fills the maker.
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            order_mutations, ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(10),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Apply the order mutation: a `None` mutation removes the maker.
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(o) => ASKS.save(&mut ctx.storage, key, &o).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // After full fill, the alias is gone — same `cid` is reusable.
+        assert!(
+            ASKS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (MAKER_A, cid))
+                .unwrap()
+                .is_none()
+        );
     }
 }

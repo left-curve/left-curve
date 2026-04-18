@@ -591,7 +591,8 @@ fn execute_close_schedule(
             user_state,
             taker_is_bid,
             OrderId::ZERO,
-            Dimensionless::ZERO, // zero trading fee for the liquidated taker
+            None,                      // liquidation has no client_order_id
+            Dimensionless::ZERO,       // zero trading fee for the liquidated taker
             Some(Dimensionless::ZERO), // zero trading fee for makers, even if they have overrides
             maker_states,
             target_price,
@@ -997,6 +998,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -1020,6 +1022,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         ASKS.save(storage, key, &order).unwrap();
     }
@@ -2205,6 +2208,7 @@ mod tests {
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
                 }),
+                client_order_id: None,
             };
             BIDS.save(&mut ctx.storage, key, &order).unwrap();
         }

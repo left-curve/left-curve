@@ -48,6 +48,15 @@ pub type OrderId = Uint64;
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
 
+/// Client-assigned order id. Lets a trader cancel an order in the same block
+/// it was submitted, without round-tripping through the server response to
+/// learn the system-assigned `OrderId`.
+///
+/// Scope of uniqueness: per-sender, across the sender's *active* (resting)
+/// limit orders only. The contract does not remember client order ids of
+/// orders that have been canceled or filled, so they can be reused freely.
+pub type ClientOrderId = Uint64;
+
 /// Type alias for a referrer's user index.
 pub type Referrer = UserIndex;
 
@@ -102,21 +111,15 @@ pub enum OrderKind {
         ///   limit price crosses best offer).
         #[serde(default)]
         time_in_force: TimeInForce,
-    },
-}
 
-impl OrderKind {
-    /// If this is a post-only limit order, return the limit price.
-    /// Otherwise, return `None`.
-    pub fn post_only_price(self) -> Option<UsdPrice> {
-        match self {
-            OrderKind::Limit {
-                limit_price,
-                time_in_force: TimeInForce::PostOnly,
-            } => Some(limit_price),
-            _ => None,
-        }
-    }
+        /// Caller-assigned id used to cancel this order via
+        /// `CancelOrderRequest::OneByClientOrderId` before the system-assigned
+        /// `OrderId` is known. Must be unique across the sender's *active*
+        /// orders. Not allowed with `TimeInForce::ImmediateOrCancel`, which
+        /// never enters the book.
+        #[serde(default)]
+        client_order_id: Option<ClientOrderId>,
+    },
 }
 
 /// For a conditional (TP/SL) order, direction the oracle price must cross to
@@ -746,6 +749,10 @@ pub struct LimitOrder {
     pub tp: Option<ChildOrder>,
     /// Stop-loss child order to apply when this order fills.
     pub sl: Option<ChildOrder>,
+    /// Caller-assigned id used to look this order up via the
+    /// `client_order_id` index on `BIDS`/`ASKS`. `None` if the order was
+    /// submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// A conditional order stored off-book until triggered.
@@ -782,8 +789,13 @@ pub struct ChildOrder {
 
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
-    /// Cancel a single order by ID.
+    /// Cancel a single order by its system-assigned `OrderId`.
     One(OrderId),
+
+    /// Cancel a single order by its caller-assigned `ClientOrderId`.
+    /// Resolves to the active order owned by the sender that carries this
+    /// client id; bails if no such order exists.
+    OneByClientOrderId(ClientOrderId),
 
     /// Cancel all orders associated with the sender.
     All,
@@ -1341,6 +1353,9 @@ pub struct OrderFilled {
     pub opening_size: Quantity,
     pub realized_pnl: UsdValue,
     pub fee: UsdValue,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating an order have been inserted into the order book.
@@ -1352,6 +1367,9 @@ pub struct OrderPersisted {
     pub user: Addr,
     pub limit_price: UsdPrice,
     pub size: Quantity,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating an order has been removed from the order book.
@@ -1362,6 +1380,9 @@ pub struct OrderRemoved {
     pub pair_id: PairId,
     pub user: Addr,
     pub reason: ReasonForOrderRemoval,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating a conditional (TP/SL) order has been placed.

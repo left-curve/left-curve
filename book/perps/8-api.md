@@ -942,21 +942,21 @@ query {
 }
 ```
 
-| Field                       | Type            | Description                                                          |
-| --------------------------- | --------------- | -------------------------------------------------------------------- |
-| `tick_size`                 | `UsdPrice`      | Minimum price increment for limit orders                             |
-| `min_order_size`            | `UsdValue`      | Minimum notional value (reduce-only exempt)                          |
-| `max_abs_oi`                | `Quantity`      | Maximum open interest per side                                       |
-| `max_abs_funding_rate`      | `FundingRate`   | Daily funding rate cap                                               |
-| `initial_margin_ratio`      | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage)                        |
-| `maintenance_margin_ratio`  | `Dimensionless` | Margin to stay open (liquidation threshold)                          |
-| `impact_size`               | `UsdValue`      | Notional for impact price calculation                                |
-| `vault_liquidity_weight`    | `Dimensionless` | Vault allocation weight for this pair                                |
-| `vault_half_spread`         | `Dimensionless` | Half the vault's bid-ask spread                                      |
-| `vault_max_quote_size`      | `Quantity`      | Maximum vault resting size per side                                  |
-| `max_limit_price_deviation` | `Dimensionless` | Max symmetric deviation of a limit price from oracle at submission   |
-| `max_market_slippage`       | `Dimensionless` | Max `max_slippage` a user may set on a market or TP/SL child order   |
-| `bucket_sizes`              | `[UsdPrice]`    | Price bucket granularities for depth queries                         |
+| Field                       | Type            | Description                                                        |
+| --------------------------- | --------------- | ------------------------------------------------------------------ |
+| `tick_size`                 | `UsdPrice`      | Minimum price increment for limit orders                           |
+| `min_order_size`            | `UsdValue`      | Minimum notional value (reduce-only exempt)                        |
+| `max_abs_oi`                | `Quantity`      | Maximum open interest per side                                     |
+| `max_abs_funding_rate`      | `FundingRate`   | Daily funding rate cap                                             |
+| `initial_margin_ratio`      | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage)                      |
+| `maintenance_margin_ratio`  | `Dimensionless` | Margin to stay open (liquidation threshold)                        |
+| `impact_size`               | `UsdValue`      | Notional for impact price calculation                              |
+| `vault_liquidity_weight`    | `Dimensionless` | Vault allocation weight for this pair                              |
+| `vault_half_spread`         | `Dimensionless` | Half the vault's bid-ask spread                                    |
+| `vault_max_quote_size`      | `Quantity`      | Maximum vault resting size per side                                |
+| `max_limit_price_deviation` | `Dimensionless` | Max symmetric deviation of a limit price from oracle at submission |
+| `max_market_slippage`       | `Dimensionless` | Max `max_slippage` a user may set on a market or TP/SL child order |
+| `bucket_sizes`              | `[UsdPrice]`    | Price bucket granularities for depth queries                       |
 
 For the relationship between margin ratios and leverage, see [Risk §2](6-risk.md).
 
@@ -1666,7 +1666,8 @@ Place a resting order on the book:
           "kind": {
             "limit": {
               "limit_price": "65000.000000",
-              "time_in_force": "GTC"
+              "time_in_force": "GTC",
+              "client_order_id": "42"
             }
           },
           "reduce_only": false
@@ -1678,13 +1679,14 @@ Place a resting order on the book:
 }
 ```
 
-| Field           | Type          | Description                                                            |
-| --------------- | ------------- | ---------------------------------------------------------------------- |
-| `limit_price`   | `UsdPrice`    | Limit price — must be aligned to `tick_size`                           |
-| `time_in_force` | `TimeInForce` | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                    |
-| `reduce_only`   | `bool`        | If `true`, only position-closing portion is kept                       |
-| `tp`            | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
-| `sl`            | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
+| Field             | Type             | Description                                                            |
+| ----------------- | ---------------- | ---------------------------------------------------------------------- |
+| `limit_price`     | `UsdPrice`       | Limit price — must be aligned to `tick_size`                           |
+| `time_in_force`   | `TimeInForce`    | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                    |
+| `client_order_id` | `ClientOrderId?` | Optional caller-assigned id for in-flight cancel — see below           |
+| `reduce_only`     | `bool`           | If `true`, only position-closing portion is kept                       |
+| `tp`              | `ChildOrder?`    | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
+| `sl`              | `ChildOrder?`    | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
 
 **Time-in-force options:**
 
@@ -1692,9 +1694,17 @@ Place a resting order on the book:
 - **IOC** (Immediate-Or-Cancel): fills as much as possible against the book, then discards any unfilled remainder. Errors if nothing fills at all.
 - **POST** (Post-Only): the entire order is placed on the book without matching. Rejected if the limit price would cross the best offer on the opposite side.
 
+**Client order id:**
+
+`client_order_id` is a caller-assigned `Uint64` that lets an algo trader cancel an order in the same block it was submitted, without round-tripping through the server response to learn the system-assigned `OrderId`. Cancel via [`CancelOrderRequest::OneByClientOrderId`](#65-cancel-order).
+
+- Uniqueness scope: per-sender, across the sender's _active_ (resting) limit orders only. The contract does not remember client order ids of orders that have been canceled or filled, so they can be reused freely.
+- Submitting a second order with a `client_order_id` that the sender already has on the book fails with `duplicate_data`.
+- Not allowed with `time_in_force: "IOC"` — IOC never enters the book, so the alias would be unreachable. Submission is rejected with a clear error.
+
 ### 6.5 Cancel order
 
-**Cancel a single order:**
+**Cancel a single order by system-assigned `OrderId`:**
 
 ```json
 {
@@ -1711,6 +1721,28 @@ Place a resting order on the book:
   }
 }
 ```
+
+**Cancel a single order by caller-assigned `ClientOrderId`:**
+
+```json
+{
+  "execute": {
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "cancel_order": {
+          "one_by_client_order_id": "42"
+        }
+      }
+    },
+    "funds": {}
+  }
+}
+```
+
+This resolves to the active order owned by the sender that carries the given `client_order_id` (see [§6.4](#64-submit-limit-order)). It bails if no such order exists. The lookup is per-sender, so two traders can independently use the same `client_order_id` value without colliding.
+
+Pattern: an algo trader can submit and cancel in the same block by reusing the `client_order_id` they assigned at submission, without waiting for the server response.
 
 **Cancel all orders:**
 
@@ -2094,11 +2126,13 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                          | Description                     |
-| ----------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`                                                            | Limit order placed on book      |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`                                                                         | Order removed from book         |
+| Event             | Fields                                                                                                                              | Description                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?` | Order partially or fully filled |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                            | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                         | Order removed from book         |
+
+`client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
 
 ### Conditional order events
 
@@ -2162,6 +2196,7 @@ Additional integer types:
 | `PairId`             | `perp/<base><quote>`            | `"perp/btcusd"`, `"perp/ethusd"` |
 | `OrderId`            | `Uint64` (string)               | `"42"`                           |
 | `ConditionalOrderId` | `Uint64` (shared counter)       | `"43"`                           |
+| `ClientOrderId`      | `Uint64` (caller-assigned)      | `"42"`                           |
 | `Addr`               | Hex address                     | `"0x1234...abcd"`                |
 | `Hash256`            | 64-char hex                     | `"a1b2c3d4e5f6..."`              |
 | `UserIndex`          | `u32`                           | `0`                              |
@@ -2186,10 +2221,13 @@ Additional integer types:
 {
   "limit": {
     "limit_price": "65000.000000",
-    "time_in_force": "GTC"
+    "time_in_force": "GTC",
+    "client_order_id": "42"
   }
 }
 ```
+
+`client_order_id` is optional. Defaults to `null` when omitted; not allowed with `time_in_force: "IOC"`.
 
 **TimeInForce:** `"GTC"` | `"IOC"` | `"POST"` (defaults to `"GTC"` if omitted)
 
@@ -2208,6 +2246,12 @@ Additional integer types:
 ```json
 {
   "one": "42"
+}
+```
+
+```json
+{
+  "one_by_client_order_id": "42"
 }
 ```
 

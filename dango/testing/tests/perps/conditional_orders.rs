@@ -49,6 +49,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -133,6 +134,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -217,6 +219,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -271,6 +274,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -375,6 +379,7 @@ fn conditional_orders_follow_price_time_priority() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -482,6 +487,7 @@ fn conditional_orders_follow_price_time_priority() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_790),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -501,6 +507,7 @@ fn conditional_orders_follow_price_time_priority() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_770),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -640,6 +647,7 @@ fn conditional_order_failure_does_not_block_others() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -681,6 +689,7 @@ fn conditional_order_failure_does_not_block_others() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -788,6 +797,7 @@ fn conditional_order_failure_does_not_block_others() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -914,6 +924,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -954,6 +965,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_950),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1127,6 +1139,7 @@ fn child_order_market_with_tp_triggers() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1185,6 +1198,7 @@ fn child_order_market_with_tp_triggers() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1245,6 +1259,7 @@ fn child_order_market_with_sl_triggers() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1303,6 +1318,7 @@ fn child_order_market_with_sl_triggers() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1360,6 +1376,7 @@ fn child_order_ignored_when_position_closed() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1398,6 +1415,7 @@ fn child_order_ignored_when_position_closed() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1476,6 +1494,7 @@ fn child_order_overwrites_existing() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1602,6 +1621,7 @@ fn conditional_order_overwrite_same_direction() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1715,6 +1735,7 @@ fn conditional_order_size_exceeds_position_allowed() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1834,6 +1855,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -1908,6 +1930,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,

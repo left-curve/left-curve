@@ -173,6 +173,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             TraderMsg::CancelOrder(CancelOrderRequest::One(order_id)) => {
                 trade::cancel_one_order(ctx, order_id)
             },
+            TraderMsg::CancelOrder(CancelOrderRequest::OneByClientOrderId(cid)) => {
+                trade::cancel_one_order_by_client_order_id(ctx, cid)
+            },
             TraderMsg::CancelOrder(CancelOrderRequest::All) => trade::cancel_all_orders(ctx),
             TraderMsg::SubmitConditionalOrder {
                 pair_id,
