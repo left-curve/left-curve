@@ -1442,7 +1442,9 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
   "closing_size": "0.000000",
   "opening_size": "0.100000",
   "realized_pnl": "0.000000",
-  "fee": "6.500000"
+  "fee": "6.500000",
+  "client_order_id": "42",
+  "fill_id": "17"
 }
 ```
 
@@ -2126,13 +2128,15 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                                              | Description                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                            | Limit order placed on book      |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                         | Order removed from book         |
+| Event             | Fields                                                                                                                                          | Description                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?` | Order partially or fully filled |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                        | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                     | Order removed from book         |
 
 `client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
+
+`fill_id` groups the two sides of a single order-book match. When a taker crosses a resting maker, two `order_filled` events are emitted — one for each side — and both carry the same `fill_id`. Successive matches use consecutive ids (strictly increasing), so a taker that crosses two makers in the same transaction produces four events with two distinct `fill_id` values. `fill_id` is `null` for trades executed before v0.15.0 — fill IDs were not assigned prior to that release. Not emitted for ADL fills, which use the [`deleveraged` and `liquidated` events](#liquidation-events) instead.
 
 ### Conditional order events
 
@@ -2197,6 +2201,7 @@ Additional integer types:
 | `OrderId`            | `Uint64` (string)               | `"42"`                           |
 | `ConditionalOrderId` | `Uint64` (shared counter)       | `"43"`                           |
 | `ClientOrderId`      | `Uint64` (caller-assigned)      | `"42"`                           |
+| `FillId`             | `Uint64` (per-match identifier) | `"17"`                           |
 | `Addr`               | Hex address                     | `"0x1234...abcd"`                |
 | `Hash256`            | 64-char hex                     | `"a1b2c3d4e5f6..."`              |
 | `UserIndex`          | `u32`                           | `0`                              |
