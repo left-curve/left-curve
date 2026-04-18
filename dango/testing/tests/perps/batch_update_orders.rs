@@ -4,9 +4,16 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice,
         constants::usdc,
-        perps::{self, CancelOrderRequest, Param, SubmitOrCancelOrderRequest, SubmitOrderRequest},
+        oracle::{self, PriceSource},
+        perps::{
+            self, CancelOrderRequest, OrderRemoved, Param, SubmitOrCancelOrderRequest,
+            SubmitOrderRequest, UserReferralData,
+        },
     },
-    grug::{Addressable, Coins, NonEmpty, QuerierExt, ResultExt, Uint64, Uint128, btree_map},
+    grug::{
+        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, NumberConst,
+        QuerierExt, ResultExt, SearchEvent, Timestamp, Udec128, Uint64, Uint128, btree_map,
+    },
     std::collections::BTreeMap,
 };
 
@@ -604,4 +611,446 @@ fn batch_size_cap_enforced() {
             Coins::new(),
         )
         .should_succeed();
+}
+
+/// A batch that touches two pairs (ETH and BTC): post-only bid on
+/// ETH with `cid=1`, post-only bid on BTC, and a cancel by
+/// `client_order_id` referencing the ETH bid. The cancel only
+/// succeeds if the cid-index write from the first action is visible
+/// through the in-call `Buffer`, which proves cross-pair reads
+/// inside a batch see earlier in-batch writes.
+#[test]
+fn batch_across_two_pairs() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    let eth_pair = pair_id();
+    let btc_pair: Denom = "perp/btcusd".parse().unwrap();
+
+    // Register oracle prices for both pairs (plus USDC for settlement).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: usdc::DECIMAL as u8,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+                eth_pair.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(2_000),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+                btc_pair.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(60_000),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Add the BTC pair (the ETH pair is already configured at genesis;
+    // re-specifying it keeps it unchanged).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    eth_pair.clone() => default_pair_param(),
+                    btc_pair.clone() => default_pair_param(),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    let eth_cid = 1u64;
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
+                NonEmpty::new(vec![
+                    SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
+                        pair_id: eth_pair.clone(),
+                        size: Quantity::new_int(1),
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(1_900),
+                            time_in_force: perps::TimeInForce::PostOnly,
+                            client_order_id: Some(Uint64::new(eth_cid)),
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    }),
+                    SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
+                        pair_id: btc_pair.clone(),
+                        size: Quantity::new_int(1),
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(58_000),
+                            time_in_force: perps::TimeInForce::PostOnly,
+                            client_order_id: None,
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    }),
+                    SubmitOrCancelOrderRequest::Cancel(CancelOrderRequest::OneByClientOrderId(
+                        Uint64::new(eth_cid),
+                    )),
+                ])
+                .unwrap(),
+            )),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Only the BTC bid remains; the ETH bid was cancelled by its
+    // just-written cid.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    assert_eq!(orders.len(), 1, "only the BTC bid should remain");
+    let (_, order) = orders.iter().next().unwrap();
+    assert_eq!(order.pair_id, btc_pair);
+    assert_eq!(order.size, Quantity::new_int(1));
+    assert_eq!(order.limit_price, UsdPrice::new_int(58_000));
+}
+
+/// Self-trade prevention fires when a later batch action crosses a
+/// resting order submitted earlier in the same batch. The STP-
+/// cancelled order emits an `OrderRemoved` event with reason
+/// `SelfTradePrevention` carrying the original `client_order_id`.
+/// The taker's remaining GTC ask rests since no other makers exist.
+#[test]
+fn batch_stp_fires_for_self_match() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    let bid_cid = 42u64;
+
+    // Batch: rest a post-only bid at $1,900 with cid=42, then submit
+    // a GTC ask at $1,800. `match_order` iterates bids best-first,
+    // finds user1's just-placed bid, triggers STP (maker_order.user
+    // == taker), cancels the bid, and continues. No other bids →
+    // unfilled remainder rests as the taker's new ask.
+    let events = suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
+                NonEmpty::new(vec![
+                    SubmitOrCancelOrderRequest::Submit(limit_bid(1_900, 1, Some(bid_cid))),
+                    SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
+                        pair_id: pair_id(),
+                        size: Quantity::new_int(-1),
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(1_800),
+                            time_in_force: perps::TimeInForce::GoodTilCanceled,
+                            client_order_id: None,
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    }),
+                ])
+                .unwrap(),
+            )),
+            Coins::new(),
+        )
+        .should_succeed()
+        .events;
+
+    let removed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_removed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderRemoved>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(removed.len(), 1, "expected one OrderRemoved event from STP");
+    assert_eq!(
+        removed[0].reason,
+        perps::ReasonForOrderRemoval::SelfTradePrevention
+    );
+    assert_eq!(removed[0].user, accounts.user1.address());
+    assert_eq!(removed[0].client_order_id, Some(Uint64::new(bid_cid)));
+
+    // Post-batch: only the rested ask remains.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    assert_eq!(orders.len(), 1, "only the rested ask should remain");
+    let (_, order) = orders.iter().next().unwrap();
+    assert_eq!(order.size, Quantity::new_int(-1));
+    assert_eq!(order.limit_price, UsdPrice::new_int(1_800));
+}
+
+/// A batch containing `[Submit(GTC that fully fills),
+/// Cancel(OneByClientOrderId(same cid))]` reverts. The submit's cid
+/// is never persisted because unfilled=0 means no `order_to_store`,
+/// so the cancel's cid-index lookup returns "order not found".
+/// Both maker and taker state must be byte-identical to the
+/// pre-batch snapshot.
+#[test]
+fn batch_cancel_fails_for_filled_order() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    for user in [&mut accounts.user1, &mut accounts.user2] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // user2 rests a post-only ask at $2,000 for user1 to fully fill.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(limit_ask(2_000, 1, None))),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let user1_state_before: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let user2_state_before: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let user2_orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed();
+
+    let cid = 99u64;
+
+    // user1's GTC bid at $2,000 size=1 fully crosses user2's resting
+    // ask at $2,000 (unfilled=0, so no order_to_store). The later
+    // Cancel(OneByClientOrderId) can't resolve cid=99 → "order not
+    // found" → batch reverts.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
+                NonEmpty::new(vec![
+                    SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
+                        pair_id: pair_id(),
+                        size: Quantity::new_int(1),
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(2_000),
+                            time_in_force: perps::TimeInForce::GoodTilCanceled,
+                            client_order_id: Some(Uint64::new(cid)),
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    }),
+                    SubmitOrCancelOrderRequest::Cancel(CancelOrderRequest::OneByClientOrderId(
+                        Uint64::new(cid),
+                    )),
+                ])
+                .unwrap(),
+            )),
+            Coins::new(),
+        )
+        .should_fail_with_error("order not found");
+
+    // Full rollback: maker's resting ask and both users' states are
+    // byte-identical to the snapshot.
+    let user1_state_after: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let user2_state_after: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let user2_orders_after: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed();
+
+    assert_eq!(user1_state_before, user1_state_after);
+    assert_eq!(user2_state_before, user2_state_after);
+    assert_eq!(user2_orders_before, user2_orders_after);
+}
+
+/// A batch whose earlier action triggers `apply_fee_commissions`
+/// (a realized fill that writes to the referral tables) must roll
+/// back every referral-table write if a later action fails.
+///
+/// Setup: user1 becomes a referrer, user2 sets user1 as referrer,
+/// user3 rests an ask. user2 submits a batch `[market buy that
+/// fills user3's ask, post-only bid cid=7, post-only bid cid=7]`.
+/// The third action collides on the cid and fails → batch reverts.
+/// `USER_REFERRAL_DATA` for both referrer and referee must be
+/// unchanged.
+#[test]
+fn batch_referral_commissions_rollback() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    // user1 activates their referrer slot by setting a fee share
+    // ratio; user2 then points to user1 as their referrer.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetFeeShareRatio {
+                share_ratio: Dimensionless::new_percent(50),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // user2 (taker/payer) and user3 (maker/counterparty) deposit.
+    for user in [&mut accounts.user2, &mut accounts.user3] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(limit_ask(2_000, 1, None))),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Snapshot cumulative referral data for both referrer and referee
+    // before the failing batch.
+    let user1_data_before: UserReferralData = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferralDataRequest {
+            user: 1,
+            since: None,
+        })
+        .should_succeed();
+    let user2_data_before: UserReferralData = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferralDataRequest {
+            user: 2,
+            since: None,
+        })
+        .should_succeed();
+
+    let cid = 7u64;
+
+    // Action 1 fills user3's ask, which invokes apply_fee_commissions
+    // and writes to USER_REFERRAL_DATA for both user1 and user2.
+    // Action 2 rests a bid with cid=7. Action 3 tries to rest
+    // another bid with the same cid and fails the UniqueIndex check,
+    // reverting the entire batch.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
+                NonEmpty::new(vec![
+                    SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
+                        pair_id: pair_id(),
+                        size: Quantity::new_int(1),
+                        kind: perps::OrderKind::Market {
+                            max_slippage: Dimensionless::new_percent(10),
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    }),
+                    SubmitOrCancelOrderRequest::Submit(limit_bid(1_800, 1, Some(cid))),
+                    SubmitOrCancelOrderRequest::Submit(limit_bid(1_700, 1, Some(cid))),
+                ])
+                .unwrap(),
+            )),
+            Coins::new(),
+        )
+        .should_fail();
+
+    let user1_data_after: UserReferralData = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferralDataRequest {
+            user: 1,
+            since: None,
+        })
+        .should_succeed();
+    let user2_data_after: UserReferralData = suite
+        .query_wasm_smart(contracts.perps, perps::QueryReferralDataRequest {
+            user: 2,
+            since: None,
+        })
+        .should_succeed();
+
+    assert_eq!(
+        user1_data_before, user1_data_after,
+        "referrer's cumulative referral data must be unchanged after batch rollback"
+    );
+    assert_eq!(
+        user2_data_before, user2_data_after,
+        "referee's cumulative referral data must be unchanged after batch rollback"
+    );
 }
