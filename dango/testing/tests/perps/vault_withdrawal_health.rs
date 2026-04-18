@@ -150,7 +150,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: vault_bid_size.checked_neg().unwrap(), // sell
                 kind: perps::OrderKind::Market {
@@ -159,7 +159,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();

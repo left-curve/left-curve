@@ -1398,7 +1398,7 @@ fn place_ask_order(
         .execute(
             user,
             perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(-(size as i128)),
                 kind: perps::OrderKind::Limit {
@@ -1409,7 +1409,7 @@ fn place_ask_order(
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1425,7 +1425,7 @@ fn place_market_buy(
         .execute(
             user,
             perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
@@ -1434,7 +1434,7 @@ fn place_market_buy(
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();

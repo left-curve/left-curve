@@ -17,8 +17,8 @@ use {
             SHORTS, STATE, USER_STATES,
         },
         trade::{
-            _cancel_all_orders, CancelAllOrdersOutcome, MatchOrderOutcome, match_order,
-            settle_fill, settle_pnls,
+            CancelAllOrdersOutcome, MatchOrderOutcome, compute_cancel_all_orders_outcome,
+            match_order, settle_fill, settle_pnls,
         },
         volume::flush_volumes,
     },
@@ -66,7 +66,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    let CancelAllOrdersOutcome { mut user_state } = _cancel_all_orders(
+    let CancelAllOrdersOutcome { mut user_state } = compute_cancel_all_orders_outcome(
         ctx.storage,
         user,
         &user_state,
@@ -2092,7 +2092,7 @@ mod tests {
         let mut events = EventBuilder::new();
         let CancelAllOrdersOutcome {
             user_state: updated_user_state,
-        } = _cancel_all_orders(
+        } = compute_cancel_all_orders_outcome(
             &mut ctx.storage,
             USER,
             &user_state,

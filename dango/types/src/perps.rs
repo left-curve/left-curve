@@ -4,8 +4,8 @@ use {
         account_factory::UserIndex,
     },
     grug::{
-        Addr, Denom, Duration, MathResult, Op, Order as IterationOrder, Part, Timestamp, Uint64,
-        Uint128,
+        Addr, Denom, Duration, MathResult, NonEmpty, Op, Order as IterationOrder, Part, Timestamp,
+        Uint64, Uint128,
     },
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
@@ -315,6 +315,13 @@ pub struct Param {
     ///
     /// Bounds: if `Some`, `> 0`. Use `None` for unlimited.
     pub vault_deposit_cap: Option<UsdValue>,
+
+    /// Maximum number of actions allowed in a single
+    /// `TraderMsg::BatchUpdateOrders` message.
+    ///
+    /// Bounds: `>= 1`. Governance-tunable via `Configure`; no hard
+    /// upper bound is enforced.
+    pub max_action_batch_size: usize,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -796,6 +803,35 @@ pub struct ChildOrder {
     pub size: Option<Quantity>,
 }
 
+/// Parameters for submitting an order. Shared between
+/// `TraderMsg::SubmitOrder` and (upcoming) `TraderMsg::BatchUpdateOrders`
+/// so the two message variants carry exactly the same shape.
+#[grug::derive(Serde)]
+pub struct SubmitOrderRequest {
+    pub pair_id: PairId,
+
+    /// The amount of futures contract to buy or sell.
+    /// Positive indicates buy, negative indicates sell.
+    pub size: Quantity,
+
+    /// Order type: market, limit, etc.
+    pub kind: OrderKind,
+
+    /// If true, the opening portion of the order is discarded, while the
+    /// closing portion of the order is always executed, ignoring the risk
+    /// parameters such as maximum open interest (OI).
+    ///
+    /// If false, the order must be executed in full. If any of the risk
+    /// parameters is violated, the entire order is aborted.
+    pub reduce_only: bool,
+
+    /// Take-profit child order. Applied to the resulting position after fill.
+    pub tp: Option<ChildOrder>,
+
+    /// Stop-loss child order. Applied to the resulting position after fill.
+    pub sl: Option<ChildOrder>,
+}
+
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
     /// Cancel a single order by its system-assigned `OrderId`.
@@ -808,6 +844,17 @@ pub enum CancelOrderRequest {
 
     /// Cancel all orders associated with the sender.
     All,
+}
+
+/// One action inside a `TraderMsg::BatchUpdateOrders` list.
+///
+/// Conditional (TP/SL) orders are intentionally out of scope for
+/// batching — use `SubmitConditionalOrder` / `CancelConditionalOrder`.
+#[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
+pub enum SubmitOrCancelOrderRequest {
+    Submit(SubmitOrderRequest),
+    Cancel(CancelOrderRequest),
 }
 
 #[grug::derive(Serde)]
@@ -902,33 +949,23 @@ pub enum TraderMsg {
     Withdraw { amount: UsdValue },
 
     /// Submit an order.
-    SubmitOrder {
-        pair_id: PairId,
-
-        /// The amount of futures contract to buy or sell.
-        /// Positive indicates buy, negative indicates sell.
-        size: Quantity,
-
-        /// Order type: market, limit, etc.
-        kind: OrderKind,
-
-        /// If true, the opening portion of the order is discarded, while the
-        /// closing portion of the order is always executed, ignoring the risk
-        /// parameters such as maximum open interest (OI).
-        ///
-        /// If false, the order must be executed in full. If any of the risk
-        /// parameters is violated, the entire order is aborted.
-        reduce_only: bool,
-
-        /// Take-profit child order. Applied to the resulting position after fill.
-        tp: Option<ChildOrder>,
-
-        /// Stop-loss child order. Applied to the resulting position after fill.
-        sl: Option<ChildOrder>,
-    },
+    SubmitOrder(SubmitOrderRequest),
 
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
+
+    /// Execute a sequence of order actions atomically.
+    ///
+    /// Actions are applied sequentially — later actions observe the state
+    /// written by earlier ones — and the whole batch is atomic: if any
+    /// action fails the message reverts and no partial state is persisted.
+    ///
+    /// The list must be non-empty, and its length must not exceed
+    /// `Param::max_action_batch_size`.
+    ///
+    /// Conditional (TP/SL) orders are not supported in batches — use
+    /// `SubmitConditionalOrder` / `CancelConditionalOrder`.
+    BatchUpdateOrders(NonEmpty<Vec<SubmitOrCancelOrderRequest>>),
 
     /// Submit a conditional (TP/SL) order that triggers when the oracle price
     /// crosses the specified trigger price. Always reduce-only, executed as a
