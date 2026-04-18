@@ -106,6 +106,7 @@ where
             pair_id,
             user: order.user,
             reason,
+            client_order_id: order.client_order_id,
         })?;
     }
 
@@ -256,7 +257,7 @@ mod tests {
             FundingPerUnit, Quantity, UsdPrice, UsdValue,
             perps::{LimitOrder, PairId, PairParam, Position, UserState},
         },
-        grug::{Addr, Coins, MockContext, ResultExt, Storage, Timestamp, Uint64},
+        grug::{Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp, Uint64},
         std::collections::{BTreeMap, VecDeque},
     };
 
@@ -793,6 +794,30 @@ mod tests {
 
         cancel_one_order_by_client_order_id(ctx.as_mutable(), Uint64::new(99))
             .should_fail_with_error("order not found");
+    }
+
+    /// `OrderRemoved` events emitted by `cancel_one_order` carry the
+    /// resting order's `client_order_id`, so off-chain consumers can
+    /// correlate the cancellation with the originally-submitted cid.
+    #[test]
+    fn cancel_emits_order_removed_with_client_order_id() {
+        let mut ctx = MockContext::new()
+            .with_sender(USER)
+            .with_funds(Coins::default());
+
+        save_bid_with_cid(&mut ctx.storage, 1, USER, 10, 100, 7);
+        save_user_state(&mut ctx.storage, USER, 1, 100, BTreeMap::new());
+
+        let response = cancel_one_order(ctx.as_mutable(), Uint64::new(1)).unwrap();
+        let event = response
+            .subevents
+            .iter()
+            .find(|e| e.ty == OrderRemoved::EVENT_NAME)
+            .expect("OrderRemoved event missing");
+        let order_removed: OrderRemoved = event.data.clone().deserialize_json().unwrap();
+        assert_eq!(order_removed.order_id, Uint64::new(1));
+        assert_eq!(order_removed.user, USER);
+        assert_eq!(order_removed.client_order_id, Some(Uint64::new(7)));
     }
 
     /// Two different users can independently use the same `client_order_id`

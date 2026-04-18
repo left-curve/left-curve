@@ -591,6 +591,7 @@ fn execute_close_schedule(
             user_state,
             taker_is_bid,
             OrderId::ZERO,
+            None, // liquidation has no client_order_id
             Dimensionless::ZERO, // zero trading fee for the liquidated taker
             Some(Dimensionless::ZERO), // zero trading fee for makers, even if they have overrides
             maker_states,

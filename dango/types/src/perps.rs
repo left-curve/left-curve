@@ -1353,6 +1353,9 @@ pub struct OrderFilled {
     pub opening_size: Quantity,
     pub realized_pnl: UsdValue,
     pub fee: UsdValue,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating an order have been inserted into the order book.
@@ -1364,6 +1367,9 @@ pub struct OrderPersisted {
     pub user: Addr,
     pub limit_price: UsdPrice,
     pub size: Quantity,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating an order has been removed from the order book.
@@ -1374,6 +1380,9 @@ pub struct OrderRemoved {
     pub pair_id: PairId,
     pub user: Addr,
     pub reason: ReasonForOrderRemoval,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating a conditional (TP/SL) order has been placed.
