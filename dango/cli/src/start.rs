@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
+        config::{Config, GrugConfig, MetricsHttpdConfig, PythLazerConfig, TendermintConfig},
         home_directory::HomeDirectory,
         telemetry,
     },
@@ -13,7 +13,7 @@ use {
     grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
-    grug_types::GIT_COMMIT,
+    grug_types::{GIT_COMMIT, HttpdConfig},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
@@ -332,12 +332,8 @@ impl StartCmd {
         context: HttpdContext,
         shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
-        tracing::info!(cfg.ip, cfg.port, "Starting minimal HTTP server");
-
         grug_httpd::server::run_server(
-            &cfg.ip,
-            cfg.port,
-            cfg.cors_allowed_origin.clone(),
+            cfg,
             context,
             grug_httpd::server::config_app,
             grug_httpd::graphql::build_schema,
@@ -413,24 +409,17 @@ impl StartCmd {
             );
         });
 
-        dango_httpd::server::run_server(
-            &cfg.ip,
-            cfg.port,
-            cfg.cors_allowed_origin.clone(),
-            dango_httpd_context,
-            shutdown_flag,
-            None,
-        )
-        .await
-        .map_err(|err| {
-            tracing::error!("Failed to run full-featured HTTP server: {err:?}");
-            err.into()
-        })
+        dango_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run full-featured HTTP server: {err:?}");
+                err.into()
+            })
     }
 
     /// Run the metrics HTTP server
     async fn run_metrics_httpd_server(
-        cfg: &HttpdConfig,
+        cfg: &MetricsHttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
         indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)

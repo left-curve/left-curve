@@ -3,6 +3,11 @@ edge-ip-version: auto
 ha-connections: 12
 transport-loglevel: warn
 
+originRequest:
+  connectTimeout: 2s
+  keepAliveTimeout: 5s
+  keepAliveConnections: 16
+
 ingress:
   - hostname: api-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
     service: http://dango:8080

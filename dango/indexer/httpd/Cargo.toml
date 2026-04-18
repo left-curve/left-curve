@@ -32,6 +32,7 @@ dango-indexer-clickhouse = { workspace = true, features = ["async-graphql"] }
 dango-indexer-sql        = { workspace = true, features = ["async-graphql"] }
 dango-types              = { workspace = true, features = ["async-graphql"] }
 grug-httpd               = { workspace = true }
+grug-types               = { workspace = true }
 indexer-httpd            = { workspace = true, features = ["tracing"] }
 indexer-sql              = { workspace = true, features = ["async-graphql"] }
 itertools                = { workspace = true }

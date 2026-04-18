@@ -6,6 +6,7 @@ use {
     grug_app::SimpleCommitment,
     grug_db_memory::MemDb,
     grug_testing::MockClient,
+    grug_types::HttpdConfig,
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
@@ -172,11 +173,16 @@ where
         None,
     );
 
-    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    dango_httpd::server::run_server(
-        "127.0.0.1",
+    let httpd_config = HttpdConfig {
+        ip: "127.0.0.1".to_string(),
         port,
         cors_allowed_origin,
+        ..Default::default()
+    };
+
+    let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    dango_httpd::server::run_server(
+        &httpd_config,
         dango_httpd_context,
         shutdown_flag,
         port_sender,
