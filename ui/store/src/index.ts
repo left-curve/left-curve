@@ -276,6 +276,7 @@ export {
 export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
 export { usePerpsPairState, perpsPairStateStore } from "./hooks/usePerpsPairState.js";
 export { usePerpsState, perpsStateStore } from "./hooks/usePerpsState.js";
+export { useOraclePrices, oraclePricesStore } from "./hooks/useOraclePrices.js";
 export {
   type UsePerpsPairParamParameters,
   usePerpsPairParam,
@@ -286,9 +287,16 @@ export {
 } from "./hooks/usePerpsParam.js";
 
 export {
+  type UseFeeRateOverrideParameters,
+  useFeeRateOverride,
+} from "./hooks/useFeeRateOverride.js";
+
+export {
   type UsePointsParameters,
   usePoints,
 } from "./hooks/usePoints.js";
+
+export type { AttackCompensation } from "./hooks/pointsApi.js";
 
 export {
   type UseLeaderboardParameters,
@@ -307,6 +315,11 @@ export {
   type UseCurrentEpochParameters,
   useCurrentEpoch,
 } from "./hooks/useCurrentEpoch.js";
+
+export {
+  type UsePredictPointsParameters,
+  usePredictPoints,
+} from "./hooks/usePredictPoints.js";
 
 export {
   type UseBoxesParameters,

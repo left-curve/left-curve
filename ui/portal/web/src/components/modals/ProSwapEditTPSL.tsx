@@ -20,6 +20,7 @@ import {
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
+import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useEffect, useMemo, useState } from "react";
 
@@ -38,7 +39,6 @@ type ProSwapEditTPSLProps = {
   conditionalOrderBelow?: { triggerPrice: string; maxSlippage: string };
 };
 
-const DEFAULT_TPSL_SLIPPAGE = "0.05";
 
 export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
   ({
@@ -174,7 +174,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
               pairId,
               triggerPrice: tpPrice,
               triggerDirection: isLong ? "above" : "below",
-              maxSlippage: DEFAULT_TPSL_SLIPPAGE,
+              maxSlippage: PERPS_DEFAULT_SLIPPAGE,
               ...sizeField,
             });
           }
@@ -184,7 +184,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
               pairId,
               triggerPrice: slPrice,
               triggerDirection: isLong ? "below" : "above",
-              maxSlippage: DEFAULT_TPSL_SLIPPAGE,
+              maxSlippage: PERPS_DEFAULT_SLIPPAGE,
               ...sizeField,
             });
           }

@@ -42,13 +42,14 @@ fields each. The clone cost at function entry is negligible.
 
 ### Pure set (must be `&`-only for caller state)
 
-| File                                    | Function                                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------- |
-| `src/trade/submit_order.rs`             | `_submit_order`, `match_order`, `store_limit_order`, `store_post_only_limit_order` |
-| `src/trade/cancel_order.rs`             | `_cancel_all_orders`                                                               |
-| `src/maintain/liquidate.rs`             | `_liquidate`                                                                       |
-| `src/cron.rs`                           | `process_triggered_order`, `process_unlock_for_user`                               |
-| `src/referral/apply_fee_commissions.rs` | `apply_fee_commissions`                                                            |
+| File                                     | Function                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/trade/submit_order.rs`              | `_submit_order`, `match_order`, `store_limit_order`, `store_post_only_limit_order` |
+| `src/trade/cancel_order.rs`              | `_cancel_all_orders`                                                               |
+| `src/maintain/liquidate.rs`              | `_liquidate`                                                                       |
+| `src/cron/process_conditional_orders.rs` | `process_triggered_order`                                                          |
+| `src/cron/process_unlocks.rs`            | `process_unlock_for_user`                                                          |
+| `src/referral/apply_fee_commissions.rs`  | `apply_fee_commissions`                                                            |
 
 `refresh_orders` (in `src/vault/refresh.rs`) is not in the pure set: it's a
 simple entry point with a single read/mutate path and no post-mutation

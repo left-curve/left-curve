@@ -62,9 +62,27 @@ export type PerpsUserStateExtended = {
 
 export type PerpsTimeInForce = "GTC" | "IOC" | "POST";
 
+/**
+ * Caller-assigned id for a limit order, serialized as a `Uint64` string.
+ * Lets a trader cancel an order in the same block it was submitted, via
+ * `PerpsCancelOrderRequest.oneByClientOrderId`, without round-tripping
+ * through the server response to learn the system-assigned `OrderId`.
+ *
+ * Uniqueness is per-sender and applies only to the sender's *active*
+ * orders. Reusable once the prior order has been canceled or filled.
+ */
+export type PerpsClientOrderId = string;
+
 export type PerpsOrderKind =
   | { market: { maxSlippage: string } }
-  | { limit: { limitPrice: string; timeInForce: PerpsTimeInForce } };
+  | {
+      limit: {
+        limitPrice: string;
+        timeInForce: PerpsTimeInForce;
+        /** Optional. Not allowed with `timeInForce: "IOC"`. */
+        clientOrderId?: PerpsClientOrderId | null;
+      };
+    };
 
 export type PerpsPairParam = {
   tickSize: string;
@@ -92,6 +110,11 @@ export type RateSchedule = {
   tiers: Record<string, string>;
 };
 
+export type FeeRateOverride = {
+  makerFeeRate: string;
+  takerFeeRate: string;
+};
+
 export type PerpsParam = {
   maxUnlocks: number;
   maxOpenOrders: number;
@@ -106,6 +129,7 @@ export type PerpsParam = {
   referralActive: boolean;
   minReferrerVolume: string;
   referrerCommissionRates: RateSchedule;
+  vaultDepositCap: string | null;
 };
 
 export type PerpsState = {
@@ -155,7 +179,10 @@ export type PerpsLiquidityDepthResponse = {
   asks: Record<string, PerpsLiquidityDepth>;
 };
 
-export type PerpsCancelOrderRequest = { one: string } | "all";
+export type PerpsCancelOrderRequest =
+  | { one: string }
+  | { oneByClientOrderId: PerpsClientOrderId }
+  | "all";
 
 export type PerpsCancelConditionalOrderRequest =
   | { one: { pairId: string; triggerDirection: TriggerDirection } }
@@ -187,7 +214,8 @@ export type PerpsQueryMsg =
   | { ordersByUser: { user: Address } }
   | { liquidityDepth: { pairId: string; bucketSize: string; limit?: number } }
   | { volume: { user: Address; since?: string } }
-  | { vaultState: Record<string, never> };
+  | { vaultState: Record<string, never> }
+  | { feeRateOverride: { user: Address } };
 
 export type GetPerpsQueryMsg<K extends KeyOfUnion<PerpsQueryMsg>> = ExtractFromUnion<
   PerpsQueryMsg,

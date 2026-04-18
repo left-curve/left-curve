@@ -70,7 +70,7 @@ const ChestOpeningProviderWrapper: React.FC<PropsWithChildren<{ userIndex?: numb
   const { unopenedBoxes } = useBoxes({ pointsUrl, userIndex });
 
   return (
-    <ChestOpeningProvider userIndex={userIndex} unopenedBoxes={unopenedBoxes} >
+    <ChestOpeningProvider userIndex={userIndex} unopenedBoxes={unopenedBoxes}>
       {children}
     </ChestOpeningProvider>
   );
@@ -124,7 +124,7 @@ const RewardsLoot: React.FC = () => {
 
   return (
     <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
-      <div className="p-4 lg:px-8 bg-surface-disabled-gray rounded-xl shadow-account-card">
+      <div className="p-4 lg:px-4 bg-surface-disabled-gray rounded-xl shadow-account-card">
         <PointsProgressBar currentVolume={volume} />
       </div>
       <BoxesSection unopenedBoxes={unopenedCounts} />

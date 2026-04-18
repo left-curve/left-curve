@@ -15,6 +15,12 @@ export const PRIVY_ERRORS_MAPPING = {
 
 export const WS_URI = import.meta.env.PUBLIC_WS_URI;
 
+/** Default max slippage for perps market & TP/SL orders (0.5%). */
+export const PERPS_DEFAULT_SLIPPAGE = "0.005";
+
+/** 14-day lookback window (in seconds), matching the backend VOLUME_LOOKBACK. */
+export const FEE_VOLUME_LOOKBACK_SECONDS = 14 * 24 * 60 * 60;
+
 const translations = m as unknown as Record<string, () => string>;
 export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
   .filter((k) => /^applets\..*\.id$/.test(k))

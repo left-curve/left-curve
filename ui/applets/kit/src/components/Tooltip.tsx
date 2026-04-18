@@ -29,12 +29,15 @@ export interface TooltipProps extends Omit<VariantProps<typeof tooltipVariants>,
   onOpenChange?: (isOpen: boolean) => void;
   className?: string;
   showArrow?: boolean;
+  /** When true, the tooltip opens/closes on click instead of hover. */
+  trigger?: "hover" | "click";
 }
 
 interface TooltipPosition {
   top: number;
   left: number;
   arrowOffset?: number;
+  resolvedPlacement?: TooltipPlacement;
 }
 
 export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
@@ -49,6 +52,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
   onOpenChange,
   className,
   showArrow = true,
+  trigger = "hover",
 }) => {
   const [isOpen, setIsOpen] = useControlledState(controlledIsOpen, onOpenChange, false);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
@@ -83,6 +87,22 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (trigger !== "click" || !isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node) &&
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [trigger, isOpen]);
+
   const calculatePosition = useCallback(() => {
     if (!isOpen || placement === "auto" || !triggerRef.current || !panelRef.current) {
       return;
@@ -92,7 +112,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     const panelEl = panelRef.current;
     const triggerRect = trigger.getBoundingClientRect();
     const panelRect = panelEl.getBoundingClientRect();
-    const gap = 16;
+    const gap = 10;
     const padding = 16;
     const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
     const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
@@ -103,7 +123,16 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     const triggerCenterX = triggerRect.left + triggerRect.width / 2;
     const triggerCenterY = triggerRect.top + triggerRect.height / 2;
 
-    switch (placement) {
+    let resolvedPlacement = placement;
+
+    // Auto-flip when there's not enough space
+    if (placement === "top" && triggerRect.top - panelRect.height - gap < padding) {
+      resolvedPlacement = "bottom";
+    } else if (placement === "bottom" && triggerRect.bottom + panelRect.height + gap > viewportHeight - padding) {
+      resolvedPlacement = "top";
+    }
+
+    switch (resolvedPlacement) {
       case "top":
         top = triggerRect.top - panelRect.height - gap;
         left = triggerCenterX - panelRect.width / 2;
@@ -139,7 +168,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     const maxOffset = panelRect.width / 2 - 20;
     const clampedOffset = Math.max(-maxOffset, Math.min(maxOffset, arrowOffset));
 
-    setPosition({ top, left, arrowOffset: clampedOffset !== 0 ? clampedOffset : undefined });
+    setPosition({ top, left, arrowOffset: clampedOffset !== 0 ? clampedOffset : undefined, resolvedPlacement });
   }, [isOpen, placement]);
 
   useLayoutEffect(() => {
@@ -171,10 +200,10 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
           {title || description ? (
             <div className="flex flex-col">
               {title ? (
-                <p className="diatype-xs-medium text-primitives-white-light-100">{title}</p>
+                <div className="diatype-xs-medium text-primitives-white-light-100">{title}</div>
               ) : null}
               {description ? (
-                <p className="diatype-xs-regular text-primitives-gray-dark-200">{description}</p>
+                <div className="diatype-xs-regular text-primitives-gray-dark-200">{description}</div>
               ) : null}
             </div>
           ) : (
@@ -182,7 +211,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
           )}
           {showArrow && placement !== "auto" ? (
             <span
-              className={arrow()}
+              className={arrow({ placement: position?.resolvedPlacement ?? placement })}
               style={
                 position?.arrowOffset !== undefined &&
                 (placement === "top" || placement === "bottom")
@@ -199,9 +228,10 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
   return (
     <div
       ref={triggerRef}
-      onMouseEnter={handleOpen}
-      onMouseLeave={handleClose}
-      onMouseMove={handleMouseMove}
+      onMouseEnter={trigger === "hover" ? handleOpen : undefined}
+      onMouseLeave={trigger === "hover" ? handleClose : undefined}
+      onMouseMove={trigger === "hover" ? handleMouseMove : undefined}
+      onClick={trigger === "click" ? () => setIsOpen(!isOpen) : undefined}
       className="relative w-fit cursor-pointer text-[0px]"
     >
       {children ? children : <IconInfo className="text-ink-tertiary-500" />}

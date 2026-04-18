@@ -1,5 +1,5 @@
 use {
-    crate::{default_pair_param, register_oracle_prices},
+    crate::{default_pair_param, refresh_vault_orders, register_oracle_prices},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
@@ -115,6 +115,7 @@ fn liquidation_on_order_book() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -197,6 +198,7 @@ fn liquidation_on_order_book() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -401,6 +403,7 @@ fn liquidation_with_adl() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -466,6 +469,7 @@ fn liquidation_with_adl() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -659,6 +663,7 @@ fn liquidation_cancels_conditional_orders() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -758,6 +763,7 @@ fn liquidation_cancels_conditional_orders() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
@@ -897,14 +903,7 @@ fn vault_liquidation_on_order_book() {
     // Step 3: Refresh vault orders → vault places bid at $1,980 for 12.5 ETH.
     // -------------------------------------------------------------------------
 
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
-            Coins::new(),
-        )
-        .should_succeed();
+    refresh_vault_orders(&mut suite, &mut accounts, &contracts);
 
     let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
@@ -1037,6 +1036,7 @@ fn vault_liquidation_on_order_book() {
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_600),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,

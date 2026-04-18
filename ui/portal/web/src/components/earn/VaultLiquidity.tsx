@@ -65,7 +65,7 @@ const VaultLiquidityHeader: React.FC = () => {
   const { state } = useVaultLiquidity();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { isPaused, vaultState, isLoading } = state;
+  const { isPaused, isTvlCapReached, vaultState, isLoading } = state;
   const equity = vaultState?.equity ?? "0";
 
   return (
@@ -92,9 +92,16 @@ const VaultLiquidityHeader: React.FC = () => {
             {isLoading ? (
               <Skeleton className="w-16 h-5" />
             ) : (
-              <p className="text-ink-secondary-700 diatype-sm-bold">
-                {formatNumber(equity, { ...formatNumberOptions, currency: "USD" })}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-ink-secondary-700 diatype-sm-bold">
+                  {formatNumber(equity, { ...formatNumberOptions, currency: "USD" })}
+                </p>
+                {isTvlCapReached && (
+                  <span className="text-status-fail diatype-xs-bold">
+                    {m["vaultLiquidity.full"]()}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -136,7 +143,7 @@ const DepositForm: React.FC = () => {
   const { settings, showModal } = useApp();
   const { state, controllers } = useVaultLiquidity();
   const { formatNumberOptions } = settings;
-  const { isPaused, userMargin, sharesToReceive, deposit } = state;
+  const { isPaused, isTvlCapReached, userMargin, sharesToReceive, deposit } = state;
   const { register, setValue, errors } = controllers;
   const { account } = useAccount();
 
@@ -185,7 +192,8 @@ const DepositForm: React.FC = () => {
                 <div className="flex flex-col w-full gap-3 pl-4 pr-4 pb-2">
                   <div className="flex items-center justify-between text-ink-tertiary-500 diatype-sm-regular">
                     <span>
-                      {formatNumber(userMargin, formatNumberOptions)} {perpsMarginAsset.symbol}
+                      {m["vaultLiquidity.availableToDeposit"]()}:{" "}
+                      {formatNumber(userMargin, { ...formatNumberOptions, currency: "USD" })}
                     </span>
                   </div>
                   <RangeWithButtons
@@ -219,34 +227,42 @@ const DepositForm: React.FC = () => {
         </div>
       </div>
 
-      <WarningContainer
-        color="error"
-        className="border border-outline-primary-red"
-        description={
-          <ul className="list-disc pl-4 flex flex-col gap-1">
-            <li>
-              {m["vaultLiquidity.riskWarning1Pre"]()}
-              <strong>{m["vaultLiquidity.riskWarning1Bold"]()}</strong>
-              {m["vaultLiquidity.riskWarning1Post"]()}
-            </li>
-            <li>
-              {m["vaultLiquidity.riskWarning2Pre"]()}
-              <strong>{m["vaultLiquidity.riskWarning2Bold"]()}</strong>
-              {m["vaultLiquidity.riskWarning2Post"]()}
-            </li>
-            <li>
-              {m["vaultLiquidity.riskWarning3Pre"]()}
-              <strong>{m["vaultLiquidity.riskWarning3Bold"]()}</strong>
-            </li>
-          </ul>
-        }
-      />
+      {isTvlCapReached ? (
+        <WarningContainer
+          color="error"
+          className="border border-outline-primary-red"
+          description={m["vaultLiquidity.tvlCapReached"]()}
+        />
+      ) : (
+        <WarningContainer
+          color="error"
+          className="border border-outline-primary-red"
+          description={
+            <ul className="list-disc pl-4 flex flex-col gap-1">
+              <li>
+                {m["vaultLiquidity.riskWarning1Pre"]()}
+                <strong>{m["vaultLiquidity.riskWarning1Bold"]()}</strong>
+                {m["vaultLiquidity.riskWarning1Post"]()}
+              </li>
+              <li>
+                {m["vaultLiquidity.riskWarning2Pre"]()}
+                <strong>{m["vaultLiquidity.riskWarning2Bold"]()}</strong>
+                {m["vaultLiquidity.riskWarning2Post"]()}
+              </li>
+              <li>
+                {m["vaultLiquidity.riskWarning3Pre"]()}
+                <strong>{m["vaultLiquidity.riskWarning3Bold"]()}</strong>
+              </li>
+            </ul>
+          }
+        />
+      )}
 
       {isLoggedIn ? (
         <Button
           size="md"
           fullWidth
-          isDisabled={isPaused || Number(depositAmount) <= 0}
+          isDisabled={isPaused || isTvlCapReached || Number(depositAmount) <= 0}
           isLoading={deposit.isPending}
           onClick={() =>
             showModal(Modals.VaultAddLiquidity, {

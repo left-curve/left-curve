@@ -1,12 +1,14 @@
 import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
-import { Suspense, lazy, useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef } from "react";
 
-import { Button, Modals, twMerge, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { Button, Modals, lazyWithRetry, twMerge, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { ChunkErrorFallback } from "../foundation/ChunkErrorFallback";
 
 export type ModalRef = {
   triggerOnClose: () => void;
@@ -14,30 +16,34 @@ export type ModalRef = {
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.AddKey]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./AddKeyModal").then(({ AddKeyModal }) => ({ default: AddKeyModal })),
     ),
   },
   [Modals.RemoveKey]: {
-    component: lazy(() => import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey }))),
+    component: lazyWithRetry(() =>
+      import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey })),
+    ),
   },
   [Modals.QRConnect]: {
-    component: lazy(() => import("./QRConnect").then(({ QRConnect }) => ({ default: QRConnect }))),
+    component: lazyWithRetry(() =>
+      import("./QRConnect").then(({ QRConnect }) => ({ default: QRConnect })),
+    ),
   },
   [Modals.ConfirmSend]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ConfirmSend").then(({ ConfirmSend }) => ({ default: ConfirmSend })),
     ),
   },
   [Modals.ConfirmAccount]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ConfirmAccount").then(({ ConfirmAccount }) => ({
         default: ConfirmAccount,
       })),
     ),
   },
   [Modals.SignWithDesktop]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./SignWithDesktop").then(({ SignWithDesktop }) => ({
         default: SignWithDesktop,
       })),
@@ -47,7 +53,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.SignWithDesktopFromNativeCamera]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./SignWithDesktopFromNativeCamera").then(({ SignWithDesktopFromNativeCamera }) => ({
         default: SignWithDesktopFromNativeCamera,
       })),
@@ -57,7 +63,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.ConfirmSwap]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ConfirmSwap").then(({ ConfirmSwap }) => ({
         default: ConfirmSwap,
       })),
@@ -67,7 +73,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.RenewSession]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./RenewSession").then(({ RenewSession }) => ({
         default: RenewSession,
       })),
@@ -77,96 +83,96 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.ProTradeCloseAll]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ProTradeCloseAll").then(({ ProTradeCloseAll }) => ({ default: ProTradeCloseAll })),
     ),
   },
   [Modals.ProTradeCloseOrder]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ProTradeCloseOrder").then(({ ProTradeCloseOrder }) => ({
         default: ProTradeCloseOrder,
       })),
     ),
   },
   [Modals.ProTradeLimitClose]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ProTradeLimitClose").then(({ ProTradeLimitClose }) => ({
         default: ProTradeLimitClose,
       })),
     ),
   },
   [Modals.ProSwapMarketClose]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ProSwapMarketClose").then(({ ProSwapMarketClose }) => ({
         default: ProSwapMarketClose,
       })),
     ),
   },
   [Modals.ProSwapEditTPSL]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ProSwapEditTPSL").then(({ ProSwapEditTPSL }) => ({
         default: ProSwapEditTPSL,
       })),
     ),
   },
   [Modals.ProSwapEditedSL]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ProSwapEditedSL").then(({ ProSwapEditedSL }) => ({
         default: ProSwapEditedSL,
       })),
     ),
   },
   [Modals.PoolAddLiquidity]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./PoolAddLiquidity").then(({ PoolAddLiquidity }) => ({
         default: PoolAddLiquidity,
       })),
     ),
   },
   [Modals.PoolWithdrawLiquidity]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./PoolWithdrawLiquidity").then(({ PoolWithdrawLiquidity }) => ({
         default: PoolWithdrawLiquidity,
       })),
     ),
   },
   [Modals.ActivityTransfer]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./activities/ActivityTransferModal").then(({ ActivityTransferModal }) => ({
         default: ActivityTransferModal,
       })),
     ),
   },
   [Modals.ActivityConvert]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./activities/ActivityConvertModal").then(({ ActivityConvertModal }) => ({
         default: ActivityConvertModal,
       })),
     ),
   },
   [Modals.ActivitySpotOrder]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./activities/ActivitySpotOrderModal").then(({ ActivitySpotOrderModal }) => ({
         default: ActivitySpotOrderModal,
       })),
     ),
   },
   [Modals.SignupReminder]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./SignupReminder").then(({ SignupReminder }) => ({
         default: SignupReminder,
       })),
     ),
   },
   [Modals.WalletSelector]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./WalletSelector").then(({ WalletSelector }) => ({
         default: WalletSelector,
       })),
     ),
   },
   [Modals.Authenticate]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./Authenticate").then(({ Authenticate }) => ({
         default: Authenticate,
       })),
@@ -176,7 +182,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.EditUsername]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./EditUsername").then(({ EditUsername }) => ({
         default: EditUsername,
       })),
@@ -186,7 +192,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.BridgeWithdraw]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./BridgeWithdraw").then(({ BridgeWithdraw }) => ({
         default: BridgeWithdraw,
       })),
@@ -196,7 +202,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.BridgeDeposit]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./BridgeDeposit").then(({ BridgeDeposit }) => ({
         default: BridgeDeposit,
       })),
@@ -206,79 +212,88 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     },
   },
   [Modals.AddressWarning]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./AddressWarning").then(({ AddressWarning }) => ({
         default: AddressWarning,
       })),
     ),
   },
   [Modals.EditCommissionRate]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./EditCommissionRate").then(({ EditCommissionRate }) => ({
         default: EditCommissionRate,
       })),
     ),
   },
   [Modals.PerpsCloseOrder]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./PerpsCloseOrder").then(({ PerpsCloseOrder }) => ({
         default: PerpsCloseOrder,
       })),
     ),
   },
   [Modals.PerpsCloseAll]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./PerpsCloseAll").then(({ PerpsCloseAll }) => ({
         default: PerpsCloseAll,
       })),
     ),
   },
   [Modals.PerpsClosePosition]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./PerpsClosePosition").then(({ PerpsClosePosition }) => ({
         default: PerpsClosePosition,
       })),
     ),
   },
   [Modals.ActivateAccount]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./ActivateAccount").then(({ ActivateAccount }) => ({
         default: ActivateAccount,
       })),
     ),
   },
   [Modals.VaultAddLiquidity]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./VaultAddLiquidity").then(({ VaultAddLiquidity }) => ({
         default: VaultAddLiquidity,
       })),
     ),
   },
   [Modals.VaultWithdrawLiquidity]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./VaultWithdrawLiquidity").then(({ VaultWithdrawLiquidity }) => ({
         default: VaultWithdrawLiquidity,
       })),
     ),
   },
   [Modals.VaultWithdrawLiquidityWithPenalty]: {
-    component: lazy(() =>
-      import("./VaultWithdrawLiquidityWithPenalty").then(({ VaultWithdrawLiquidityWithPenalty }) => ({
-        default: VaultWithdrawLiquidityWithPenalty,
-      })),
+    component: lazyWithRetry(() =>
+      import("./VaultWithdrawLiquidityWithPenalty").then(
+        ({ VaultWithdrawLiquidityWithPenalty }) => ({
+          default: VaultWithdrawLiquidityWithPenalty,
+        }),
+      ),
     ),
   },
   [Modals.PerpsMarginMode]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./PerpsMarginMode").then(({ PerpsMarginMode }) => ({
         default: PerpsMarginMode,
       })),
     ),
   },
   [Modals.PerpsAdjustLeverage]: {
-    component: lazy(() =>
+    component: lazyWithRetry(() =>
       import("./PerpsAdjustLeverage").then(({ PerpsAdjustLeverage }) => ({
         default: PerpsAdjustLeverage,
+      })),
+    ),
+  },
+  [Modals.FeeTiers]: {
+    component: lazyWithRetry(() =>
+      import("./FeeTiers").then(({ FeeTiers }) => ({
+        default: FeeTiers,
       })),
     ),
   },
@@ -343,11 +358,13 @@ export const RootModal: React.FC = () => {
           </Sheet.Header>
           <Sheet.Content className="!overflow-y-auto">
             <Sheet.Scroller>
-              <Suspense>
-                <div className="pb-[env(safe-area-inset-bottom,20px)]">
-                  <Modal ref={modalRef} {...modalProps} />
-                </div>
-              </Suspense>
+              <ErrorBoundary FallbackComponent={ChunkErrorFallback} onReset={closeModal}>
+                <Suspense>
+                  <div className="pb-[env(safe-area-inset-bottom,20px)]">
+                    <Modal ref={modalRef} {...modalProps} />
+                  </div>
+                </Suspense>
+              </ErrorBoundary>
             </Sheet.Scroller>
           </Sheet.Content>
         </Sheet.Container>
@@ -368,9 +385,11 @@ export const RootModal: React.FC = () => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <Suspense>
-          <Modal ref={modalRef} {...modalProps} />
-        </Suspense>
+        <ErrorBoundary FallbackComponent={ChunkErrorFallback} onReset={closeModal}>
+          <Suspense>
+            <Modal ref={modalRef} {...modalProps} />
+          </Suspense>
+        </ErrorBoundary>
       </motion.div>
     </AnimatePresence>
   );

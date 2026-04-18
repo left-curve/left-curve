@@ -6,6 +6,25 @@ export interface RegisterUserOptions {
   privateKey?: Hex;
 }
 
+export async function dismissActivateAccountModal(
+  page: Page,
+  timeout = 2_000,
+): Promise<void> {
+  const heading = page.getByRole("heading", { name: "Activate Account" });
+
+  const isVisible = await heading
+    .waitFor({ state: "visible", timeout })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!isVisible) {
+    return;
+  }
+
+  await page.getByText("do this later", { exact: false }).click();
+  await heading.waitFor({ state: "hidden", timeout: 10_000 });
+}
+
 /**
  * Registers a new user using the Mock E2E Wallet.
  * This utility handles the full registration flow:
@@ -66,7 +85,7 @@ export async function registerUser(page: Page, options: RegisterUserOptions = {}
   await page.addLocatorHandler(
     page.getByRole("heading", { name: "Activate Account" }),
     async () => {
-      await page.getByText("do this later", { exact: false }).click();
+      await dismissActivateAccountModal(page, 10_000);
     },
   );
 }

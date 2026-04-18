@@ -1,10 +1,11 @@
 use {
     crate::{
-        VOLUME_LOOKBACK,
+        MAX_ORACLE_STALENESS, VOLUME_LOOKBACK,
         core::{
-            check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
-            compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated, validate_slippage,
+            check_margin, check_minimum_order_size, check_oi_constraint, check_price_band,
+            compute_available_margin, compute_notional, compute_required_margin,
+            compute_target_price, compute_trading_fee, decompose_fill, execute_fill,
+            is_price_constraint_violated, validate_slippage,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
@@ -15,17 +16,21 @@ use {
         querier::NoCachePerpQuerier,
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
-        state::{ASKS, BIDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        state::{
+            ASKS, BIDS, FEE_RATE_OVERRIDES, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
+            USER_STATES,
+        },
         volume::flush_volumes,
     },
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            ChildOrder, ConditionalOrder, ConditionalOrderPlaced, LimitOrder, OrderFilled, OrderId,
-            OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam, PairState, Param,
-            ReasonForOrderRemoval, State, TimeInForce, TriggerDirection, UserState,
+            ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, LimitOrder,
+            OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam,
+            PairState, Param, ReasonForOrderRemoval, State, TimeInForce, TriggerDirection,
+            UserState,
         },
     },
     grug::{
@@ -59,7 +64,8 @@ pub fn submit_order(
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
 
@@ -204,6 +210,7 @@ pub fn submit_order(
             user: ctx.sender,
             limit_price,
             size: order.size,
+            client_order_id: order.client_order_id,
         })?;
     }
 
@@ -311,14 +318,31 @@ pub(crate) fn _submit_order(
 
     match &kind {
         OrderKind::Market { max_slippage } => {
-            validate_slippage(*max_slippage)?;
+            validate_slippage(*max_slippage, pair_param.max_market_slippage)?;
         },
         OrderKind::Limit { limit_price, .. } => {
-            ensure!(
-                limit_price.is_positive(),
-                "limit price must be positive: {limit_price}"
-            );
+            // `check_price_band` subsumes the positivity check: any
+            // `max_limit_price_deviation < 1` (enforced at configure time)
+            // makes the lower bound strictly positive, so zero or negative
+            // `limit_price` is rejected here too.
+            check_price_band(
+                *limit_price,
+                oracle_price,
+                pair_param.max_limit_price_deviation,
+            )?;
         },
+    }
+
+    // IOC limit orders never enter the book, so a `client_order_id` would
+    // never be reachable for cancellation — disallow it to surface the
+    // misconfiguration loudly instead of silently dropping the id.
+    if let OrderKind::Limit {
+        time_in_force: TimeInForce::ImmediateOrCancel,
+        client_order_id: Some(_),
+        ..
+    } = &kind
+    {
+        bail!("client_order_id is not allowed with TimeInForce::ImmediateOrCancel");
     }
 
     for child_order in [&tp, &sl].into_iter().flatten() {
@@ -328,7 +352,7 @@ pub(crate) fn _submit_order(
             child_order.trigger_price
         );
 
-        validate_slippage(child_order.max_slippage)?;
+        validate_slippage(child_order.max_slippage, pair_param.max_market_slippage)?;
     }
 
     // -------------- Step 1. Check minimum order size -------------------------
@@ -367,7 +391,12 @@ pub(crate) fn _submit_order(
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
-    if let Some(limit_price) = kind.post_only_price() {
+    if let OrderKind::Limit {
+        limit_price,
+        time_in_force: TimeInForce::PostOnly,
+        client_order_id,
+    } = kind
+    {
         let StoreLimitOrderOutcome {
             user_state: updated_taker_state,
             stored_price,
@@ -388,6 +417,7 @@ pub(crate) fn _submit_order(
             taker_order_id,
             tp,
             sl,
+            client_order_id,
         )?;
 
         taker_state = updated_taker_state;
@@ -410,14 +440,22 @@ pub(crate) fn _submit_order(
     //
     // Reduce-only orders only reduce exposure, so they skip the check.
 
+    // Determine the taker's fee rate.
+    // If the admin has configured a fee rate override for the taker, then
+    // simply use it.
+    // Otherwise, resolve it based on recent volume.
+    let taker_fee_rate = if let Some((_maker_rate_override, taker_rate_override)) =
+        FEE_RATE_OVERRIDES.may_load(storage, taker)?
+    {
+        taker_rate_override
+    } else {
+        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+        let taker_volume = query_volume(storage, taker, volume_since)?;
+        param.taker_fee_rates.resolve(taker_volume)
+    };
+
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
-
-        let taker_fee_rate = {
-            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-            let taker_volume = query_volume(storage, taker, volume_since)?;
-            param.taker_fee_rates.resolve(taker_volume)
-        };
 
         check_margin(
             oracle_querier,
@@ -459,8 +497,21 @@ pub(crate) fn _submit_order(
         &taker_state,
         taker_is_bid,
         taker_order_id,
+        // Surface the taker's `client_order_id` (if any) on the
+        // `OrderFilled` event so off-chain consumers can correlate fills
+        // with the originally-submitted order.
+        match kind {
+            OrderKind::Limit {
+                client_order_id, ..
+            } => client_order_id,
+            OrderKind::Market { .. } => None,
+        },
+        taker_fee_rate,
+        None, // no forced maker fee; respect per-user overrides and tier schedule
         &BTreeMap::new(),
         target_price,
+        oracle_price,
+        pair_param.max_limit_price_deviation,
         fillable_size,
         next_order_id,
         events,
@@ -490,6 +541,7 @@ pub(crate) fn _submit_order(
             OrderKind::Limit {
                 limit_price,
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id,
             } => {
                 let StoreLimitOrderOutcome {
                     user_state: updated_taker_state,
@@ -510,6 +562,7 @@ pub(crate) fn _submit_order(
                     taker_order_id,
                     tp.clone(),
                     sl.clone(),
+                    client_order_id,
                 )?;
 
                 taker_state = updated_taker_state;
@@ -624,8 +677,13 @@ pub fn match_order(
     taker_state: &UserState,
     taker_is_bid: bool,
     taker_order_id: OrderId,
+    taker_client_order_id: Option<ClientOrderId>,
+    taker_fee_rate: Dimensionless,
+    force_maker_fee_rate: Option<Dimensionless>,
     maker_states: &BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
+    oracle_price: UsdPrice,
+    max_limit_price_deviation: Dimensionless,
     mut remaining_size: Quantity,
     mut next_order_id: OrderId,
     events: &mut EventBuilder,
@@ -641,13 +699,6 @@ pub fn match_order(
     let mut volumes = BTreeMap::new();
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
-
-    // Resolve taker's fee rate based on recent volume.
-    let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-    let taker_fee_rate = {
-        let taker_volume = query_volume(storage, taker, volume_since)?;
-        param.taker_fee_rates.resolve(taker_volume)
-    };
 
     // Create iterator over the maker side of the order book.
     // The iteration follows price-time priority.
@@ -698,6 +749,50 @@ pub fn match_order(
                 pair_id: pair_id.clone(),
                 user: taker,
                 reason: ReasonForOrderRemoval::SelfTradePrevention,
+                client_order_id: maker_order.client_order_id,
+            })?;
+
+            continue;
+        }
+
+        // ----------------------- Price-band re-check -------------------------
+
+        // The maker's price was within the band when placed, but the oracle
+        // may have drifted since. Cancel out-of-band makers and walk deeper.
+        //
+        // Vault quotes are exempt — their prices are algorithmically bounded
+        // by `vault_half_spread * (1 + vault_spread_skew_factor)` and are
+        // refreshed on every oracle update, so cancelling them during
+        // matching would cause continuous churn without security gain (the
+        // vault cannot be part of an attacker's coordinated setup).
+        if maker_order.user != contract
+            && check_price_band(resting_price, oracle_price, max_limit_price_deviation).is_err()
+        {
+            let pre_fill_abs_size = maker_order.size.checked_abs()?;
+
+            let maker_state = match maker_states.entry(maker_order.user) {
+                Entry::Vacant(e) => {
+                    let s = USER_STATES
+                        .may_load(storage, maker_order.user)?
+                        .unwrap_or_default();
+                    e.insert(s)
+                },
+                Entry::Occupied(e) => e.into_mut(),
+            };
+
+            maker_state.open_order_count -= 1;
+            maker_state
+                .reserved_margin
+                .checked_sub_assign(maker_order.reserved_margin)?;
+
+            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
+
+            events.push(OrderRemoved {
+                order_id: maker_order_id,
+                pair_id: pair_id.clone(),
+                user: maker_order.user,
+                reason: ReasonForOrderRemoval::PriceBandViolation,
+                client_order_id: maker_order.client_order_id,
             })?;
 
             continue;
@@ -731,7 +826,7 @@ pub fn match_order(
             &mut pnls,
             &mut fees,
             &mut volumes,
-            Some((events, taker_order_id)),
+            Some((events, taker_order_id, taker_client_order_id)),
         )?;
 
         if let Some(diff) = compute_position_diff(
@@ -756,8 +851,21 @@ pub fn match_order(
 
         let old_maker_pos = maker_state.positions.get(pair_id).cloned();
 
-        // Resolve maker's fee rate based on recent volume.
-        let maker_fee_rate = {
+        // Determine the maker's fee rate.
+        // - If the caller forces a rate (e.g. zero during liquidation), use it
+        //   and bypass both the override and the tier schedule so the
+        //   zero-fee invariant cannot be defeated by a pre-existing override.
+        // - Else if the admin has configured a fee rate override for the
+        //   maker, use it.
+        // - Otherwise, resolve it based on recent volume.
+        let maker_fee_rate = if let Some(forced) = force_maker_fee_rate {
+            forced
+        } else if let Some((maker_rate_override, _taker_rate_override)) =
+            FEE_RATE_OVERRIDES.may_load(storage, maker_order.user)?
+        {
+            maker_rate_override
+        } else {
+            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
             let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
             param.maker_fee_rates.resolve(maker_volume)
         };
@@ -774,7 +882,7 @@ pub fn match_order(
             &mut pnls,
             &mut fees,
             &mut volumes,
-            Some((events, maker_order_id)),
+            Some((events, maker_order_id, maker_order.client_order_id)),
         )?;
 
         if let Some(diff) = compute_position_diff(
@@ -843,6 +951,7 @@ pub fn match_order(
                     pair_id: pair_id.clone(),
                     user: maker_order.user,
                     reason: ReasonForOrderRemoval::Filled,
+                    client_order_id: maker_order.client_order_id,
                 })?;
             }
 
@@ -899,7 +1008,7 @@ pub fn settle_fill(
     pnls: &mut BTreeMap<Addr, UsdValue>,
     fees: &mut BTreeMap<Addr, UsdValue>,
     volumes: &mut BTreeMap<Addr, UsdValue>,
-    events: Option<(&mut EventBuilder, OrderId)>,
+    events: Option<(&mut EventBuilder, OrderId, Option<ClientOrderId>)>,
 ) -> grug::StdResult<UsdValue> {
     let (closing, opening) = {
         let current_pos = user_state
@@ -932,7 +1041,7 @@ pub fn settle_fill(
         .or_default()
         .checked_add_assign(volume)?;
 
-    if let Some((events, order_id)) = events {
+    if let Some((events, order_id, client_order_id)) = events {
         events.push(OrderFilled {
             order_id,
             pair_id: pair_id.clone(),
@@ -943,6 +1052,7 @@ pub fn settle_fill(
             opening_size: opening,
             realized_pnl: pnl,
             fee,
+            client_order_id,
         })?;
     }
 
@@ -1101,6 +1211,7 @@ fn store_post_only_limit_order(
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
+    client_order_id: Option<ClientOrderId>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
@@ -1146,6 +1257,7 @@ fn store_post_only_limit_order(
         order_id,
         tp,
         sl,
+        client_order_id,
     )
 }
 
@@ -1183,6 +1295,7 @@ fn store_limit_order(
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
+    client_order_id: Option<ClientOrderId>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
@@ -1241,6 +1354,7 @@ fn store_limit_order(
             created_at: current_time,
             tp,
             sl,
+            client_order_id,
         },
     })
 }
@@ -1347,7 +1461,10 @@ mod tests {
             oracle::PrecisionedPrice,
             perps::{Position, RateSchedule},
         },
-        grug::{Coins, MockContext, ResultExt, Timestamp, Udec128, Uint64, hash_map},
+        grug::{
+            Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, Udec128, Uint64,
+            hash_map,
+        },
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -1389,6 +1506,11 @@ mod tests {
             tick_size: UsdPrice::new_int(1),
             initial_margin_ratio: Dimensionless::new_permille(50), // 5%
             maintenance_margin_ratio: Dimensionless::new_permille(25), // 2.5%
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            // 99.9% — permissive cap used by the drift-cancel tests, which
+            // need wide slippage so the walk reaches out-of-band makers
+            // before `target_price` would break.
+            max_market_slippage: Dimensionless::new_permille(999),
             ..Default::default()
         }
     }
@@ -1415,6 +1537,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         ASKS.save(storage, key, &order).unwrap();
 
@@ -1442,6 +1565,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         BIDS.save(storage, key, &order).unwrap();
 
@@ -1671,6 +1795,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1727,6 +1852,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1787,6 +1913,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1845,6 +1972,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: None,
             },
             false,
             None,
@@ -1903,6 +2031,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: None,
             },
             false,
             None,
@@ -2257,6 +2386,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_100),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -2306,6 +2436,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_050),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -3086,6 +3217,328 @@ mod tests {
         assert_eq!(taker_pos.entry_price, UsdPrice::new_int(50_000));
     }
 
+    // =================== Fee rate overrides ==================================
+
+    /// Taker fills two consecutive orders. Between the fills, the admin sets
+    /// a lower taker-fee override on the taker. Fill #1 must be charged the
+    /// schedule rate (5 bps); fill #2 must be charged the override rate (1 bps).
+    #[test]
+    fn fee_override_taker_rate_applied() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Taker fee = 5 bps on the schedule; maker fee & protocol fee = 0
+        // so that fee flows land entirely on the taker/vault legs and the
+        // numbers are easy to reason about.
+        let param = Param {
+            max_open_orders: 10,
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(500), // 5 bps
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        // Two resting asks — one per phase.
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 101);
+
+        let pair_param = test_pair_param();
+
+        // ----------------- Phase 1: no override, schedule rate -----------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = 10 × $50,000 = $500,000. Taker fee = 5 bps × $500k = $250.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(250))
+                .unwrap()
+        );
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(250));
+
+        // Persist side effects so phase 3 sees the post-phase-1 state.
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // ------------------ Phase 2: apply the taker override ------------------
+
+        // 1 bps — lower than the 5 bps schedule rate, matching the realistic
+        // VIP-discount use case.
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                TAKER,
+                &(Dimensionless::ZERO, Dimensionless::new_raw(100)),
+            )
+            .unwrap();
+
+        // ------------------ Phase 3: override-branch fill ----------------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Fill #2 fee = 1 bps × $500k = $50 (override). Without the override,
+        // it would have been another $250 and the totals below would be $500.
+        //
+        // Cumulative: taker paid $250 + $50 = $300; vault received $300.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(300))
+                .unwrap()
+        );
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(300));
+    }
+
+    /// MAKER_A's two resting asks are each consumed by a taker market buy.
+    /// Between the fills, the admin sets a lower maker-fee override on
+    /// MAKER_A. Fill #1 must be charged the schedule rate (5 bps);
+    /// fill #2 must be charged the override rate (1 bps).
+    #[test]
+    fn fee_override_maker_rate_applied() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Maker fee = 5 bps on the schedule; taker fee & protocol fee = 0
+        // so the maker is the only party paying a fee and assertions isolate
+        // the maker-side override.
+        let param = Param {
+            max_open_orders: 10,
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(500), // 5 bps
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 101);
+
+        let pair_param = test_pair_param();
+
+        // ----------------- Phase 1: no override, schedule rate -----------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = $500,000. Maker fee = 5 bps × $500k = $250.
+        // MAKER_A starts at margin 0 (place_ask doesn't seed margin), so the
+        // post-fill margin is -$250.
+        assert_eq!(taker_state.margin, LARGE_COLLATERAL);
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(-250));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(250));
+
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // ------------------ Phase 2: apply the maker override ------------------
+
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                MAKER_A,
+                &(Dimensionless::new_raw(100), Dimensionless::ZERO), // 1 bps
+            )
+            .unwrap();
+
+        // ------------------ Phase 3: override-branch fill ----------------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Fill #2 maker fee = 1 bps × $500k = $50 (override). Without the
+        // override it would have been another $250, and MAKER_A's final
+        // margin would be -$500.
+        //
+        // Cumulative: MAKER_A paid $250 + $50 = $300; vault received $300.
+        assert_eq!(taker_state.margin, LARGE_COLLATERAL);
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(-300));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(300));
+    }
+
     // =================== Post-only order tests ===============================
 
     #[test]
@@ -3129,6 +3582,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3182,6 +3636,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3228,6 +3683,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3280,6 +3736,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3332,6 +3789,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3383,6 +3841,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3445,6 +3904,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             true,
             None,
@@ -3504,6 +3964,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3607,6 +4068,356 @@ mod tests {
             "MAKER_A's order should be fully filled"
         );
         assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+    }
+
+    // ======= Match-time price-band re-check ==============================
+
+    /// Far-end drift: a stale maker whose price is above the upper band
+    /// bound is encountered after in-band makers. The walk fills the
+    /// in-band maker first, then cancels the stale maker on encounter
+    /// and continues (terminating when it runs out of book).
+    #[test]
+    fn drift_cancel_far_end_out_of_band_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // MAKER_A at $35,000 (in-band at oracle=$30,000, 50% band → [15k, 45k]).
+        place_ask(&mut ctx.storage, MAKER_A, 35_000, 5, 100);
+        // MAKER_B at $50,000 (above upper band). Stale from when oracle was higher.
+        place_ask(&mut ctx.storage, MAKER_B, 50_000, 10, 101);
+
+        let maker_b_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_B)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            // Oracle at $30,000, band = 50% → allowed [$15k, $45k].
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                // Wide slippage so target_price doesn't terminate the walk
+                // before reaching the $50k maker: target = $30k * (1 + 0.99)
+                // = ~$59.7k > $50k.
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Two mutations: MAKER_A fully filled (None), MAKER_B cancelled (None).
+        assert_eq!(order_mutations.len(), 2);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A fully filled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B cancelled");
+
+        // MAKER_B's resting order was cancelled via the drift check.
+        assert_eq!(maker_states[&MAKER_B].open_order_count, 0);
+        assert!(
+            maker_b_reserved_before.is_non_zero()
+                && maker_states[&MAKER_B].reserved_margin < maker_b_reserved_before,
+            "MAKER_B's reserved margin should be fully released"
+        );
+
+        // Taker filled 5 @ $35,000 against MAKER_A only; MAKER_B was
+        // cancelled, not filled.
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(35_000));
+    }
+
+    /// Near-end drift: a stale maker whose price is below the lower band
+    /// bound is encountered *before* in-band makers. The walk cancels the
+    /// stale maker (rather than breaking) and proceeds to the in-band
+    /// maker behind it. This is the case `continue` handles correctly that
+    /// `break` would miss.
+    #[test]
+    fn drift_cancel_near_end_out_of_band_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // MAKER_A at $5,000 — below oracle's lower bound (stale from when
+        // oracle was much lower). Walked *first* in ascending order.
+        place_ask(&mut ctx.storage, MAKER_A, 5_000, 5, 100);
+        // MAKER_B at $35,000 — in-band at oracle=$30,000, 50% band.
+        place_ask(&mut ctx.storage, MAKER_B, 35_000, 10, 101);
+
+        let maker_a_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_A)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Two mutations: MAKER_A cancelled first, MAKER_B fully filled.
+        assert_eq!(order_mutations.len(), 2);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A cancelled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B fully filled");
+
+        // MAKER_A: cancelled, reserved released.
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        assert!(
+            maker_a_reserved_before.is_non_zero()
+                && maker_states[&MAKER_A].reserved_margin < maker_a_reserved_before,
+            "MAKER_A's reserved margin should be fully released"
+        );
+
+        // Taker filled 10 @ $35,000 against MAKER_B (walked past cancelled A).
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(10));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(35_000));
+    }
+
+    /// Vault exemption: a vault maker whose price is outside the band is
+    /// NOT cancelled by the match-time check. The vault's prices are
+    /// algorithmically bounded and auto-refresh; cancelling them on match
+    /// would cause churn without security gain.
+    #[test]
+    fn drift_cancel_skips_vault_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // Vault (CONTRACT) is the maker. Give it enough margin to take
+        // the other side of the taker's buy.
+        USER_STATES
+            .save(&mut ctx.storage, CONTRACT, &UserState {
+                margin: LARGE_COLLATERAL,
+                ..Default::default()
+            })
+            .unwrap();
+        // Vault ask at $50,000 — would be out-of-band at oracle=$30k.
+        place_ask(&mut ctx.storage, CONTRACT, 50_000, 5, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(5),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Vault maker was filled (not cancelled) despite being out-of-band.
+        assert_eq!(order_mutations.len(), 1);
+        assert!(order_mutations[0].2.is_none(), "vault maker fully filled");
+
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(
+            pos.entry_price,
+            UsdPrice::new_int(50_000),
+            "taker filled against the out-of-band vault price"
+        );
+    }
+
+    /// Cancel–fill–cancel across a single walk. The walk encounters:
+    ///
+    ///   1. An out-of-band maker at the near end (below lower bound) →
+    ///      drift-cancel, `continue`.
+    ///   2. An in-band maker → fill.
+    ///   3. Another out-of-band maker at the far end (above upper bound) →
+    ///      drift-cancel, `continue`.
+    ///
+    /// This exercises the `continue` semantics twice within one match and
+    /// confirms that a mid-walk fill does not mask subsequent drifted
+    /// makers. `break` would fail this test: stopping at step 1 would
+    /// leave no fill at all.
+    #[test]
+    fn drift_cancel_fill_cancel_within_one_walk() {
+        const MAKER_C: Addr = Addr::mock(4);
+
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // Oracle = $30,000, band = 50% → allowed range [$15,000, $45,000].
+        //
+        // MAKER_A ask at $5,000 — below lower bound (out-of-band, near end).
+        // MAKER_B ask at $40,000 — in-band.
+        // MAKER_C ask at $50,000 — above upper bound (out-of-band, far end).
+        place_ask(&mut ctx.storage, MAKER_A, 5_000, 5, 100);
+        place_ask(&mut ctx.storage, MAKER_B, 40_000, 5, 101);
+        place_ask(&mut ctx.storage, MAKER_C, 50_000, 5, 102);
+
+        let maker_a_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_A)
+            .unwrap()
+            .reserved_margin;
+        let maker_c_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_C)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                // 99% slippage → target ≈ $59.7k, covers all three asks
+                // so that none of them break the walk on target_price
+                // before the band check fires.
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Three order_mutations, all removals (None):
+        //   [0] MAKER_A cancelled (drift, near-end)
+        //   [1] MAKER_B fully filled
+        //   [2] MAKER_C cancelled (drift, far-end)
+        assert_eq!(order_mutations.len(), 3);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A cancelled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B fully filled");
+        assert!(order_mutations[2].2.is_none(), "MAKER_C cancelled");
+
+        // Both cancelled makers have their reserved margin released and
+        // open_order_count decremented.
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        assert!(
+            maker_a_reserved_before.is_non_zero()
+                && maker_states[&MAKER_A].reserved_margin < maker_a_reserved_before,
+            "MAKER_A reserved margin released"
+        );
+        assert_eq!(maker_states[&MAKER_C].open_order_count, 0);
+        assert!(
+            maker_c_reserved_before.is_non_zero()
+                && maker_states[&MAKER_C].reserved_margin < maker_c_reserved_before,
+            "MAKER_C reserved margin released"
+        );
+
+        // MAKER_B was filled normally.
+        assert_eq!(maker_states[&MAKER_B].open_order_count, 0);
+
+        // Taker filled exactly 5 @ $40,000 (the single in-band maker).
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(40_000));
     }
 
     // ======= Vault-as-maker PnL settlement ===================================
@@ -4009,6 +4820,7 @@ mod tests {
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(50_000),
                     time_in_force: TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
                 },
                 false,
                 None,
@@ -4299,6 +5111,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),
@@ -4365,6 +5178,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),
@@ -4406,6 +5220,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: make_tp(45_000),
             sl: make_sl(55_000),
+            client_order_id: None,
         };
         ASKS.save(&mut ctx.storage, key, &order).unwrap();
 
@@ -4709,6 +5524,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: make_tp(55_000),
             sl: make_sl(45_000),
+            client_order_id: None,
         };
         BIDS.save(&mut ctx.storage, key, &order).unwrap();
 
@@ -4881,8 +5697,9 @@ mod tests {
 
     /// A limit order with a negative limit_price must be rejected.
     ///
-    /// Wrong behavior: storing the order on the book with a negative price,
-    /// corrupting the order book invariant.
+    /// The banding check at Step 0 subsumes the old positivity check: a
+    /// negative limit price is always outside any `max_deviation < 1` band
+    /// around a positive oracle price.
     #[test]
     fn reject_limit_order_negative_price() {
         let mut ctx = MockContext::new()
@@ -4917,16 +5734,20 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(-1_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("price must be positive");
+        .should_fail_with_error("deviates too far");
     }
 
     /// A limit order with zero limit_price must be rejected.
+    ///
+    /// Same banding subsumption as the negative-price case: zero is outside
+    /// any legal band around a positive oracle price.
     #[test]
     fn reject_limit_order_zero_price() {
         let mut ctx = MockContext::new()
@@ -4961,13 +5782,14 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::ZERO,
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("price must be positive");
+        .should_fail_with_error("deviates too far");
     }
 
     /// TP child order with negative trigger_price must be rejected.
@@ -5360,5 +6182,374 @@ mod tests {
             ..Default::default()
         };
         USER_STATES.save(storage, TAKER, &ts).unwrap();
+    }
+
+    // ======================== client_order_id tests ==========================
+
+    /// A GTC limit order carrying a `client_order_id` is reachable via the
+    /// `(sender, cid)` index and the stored `LimitOrder.client_order_id`
+    /// matches the submitted value.
+    #[test]
+    fn submit_limit_with_client_order_id_indexes_it() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+        let cid = Uint64::new(7);
+
+        let SubmitOrderOutcome { order_to_store, .. } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: Some(cid),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let (stored_price, order_id, order) = order_to_store.unwrap();
+        assert_eq!(order.client_order_id, Some(cid));
+
+        // Apply the outcome: persist the resting order. The new
+        // `client_order_id` index entry is written by `IndexedMap::save`.
+        BIDS.save(
+            &mut ctx.storage,
+            (pair_id(), stored_price, order_id),
+            &order,
+        )
+        .unwrap();
+
+        let key = BIDS
+            .idx
+            .client_order_id
+            .may_load_key(&ctx.storage, (TAKER, cid))
+            .unwrap();
+        assert_eq!(key, Some((pair_id(), stored_price, order_id)));
+    }
+
+    /// IOC limit orders never enter the book, so a `client_order_id` is
+    /// meaningless — `_submit_order` rejects with a clear error.
+    #[test]
+    fn submit_ioc_with_client_order_id_rejects() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: Some(Uint64::new(7)),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("client_order_id is not allowed");
+    }
+
+    /// Submitting a second resting order with a `client_order_id` already
+    /// owned by the same sender is rejected by the `UniqueIndex` (returns
+    /// `StdError::duplicate_data`).
+    #[test]
+    fn submit_duplicate_client_order_id_rejects() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let cid = Uint64::new(7);
+
+        let order_a = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_int(5),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(12_500),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        BIDS.save(
+            &mut ctx.storage,
+            (pair_id(), !UsdPrice::new_int(49_000), Uint64::new(1)),
+            &order_a,
+        )
+        .unwrap();
+
+        // A second order with the same (TAKER, cid) — different price/id, so
+        // the primary key differs, but the `client_order_id` index collides.
+        let order_b = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_int(5),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(12_500),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        let err = BIDS
+            .save(
+                &mut ctx.storage,
+                (pair_id(), !UsdPrice::new_int(48_000), Uint64::new(2)),
+                &order_b,
+            )
+            .unwrap_err();
+        assert!(
+            format!("{err:?}").to_lowercase().contains("duplicate"),
+            "expected duplicate_data error, got: {err:?}"
+        );
+    }
+
+    /// On a fill, both the taker's and maker's `OrderFilled` events
+    /// surface the respective `client_order_id` from the originally
+    /// submitted order, so off-chain consumers can correlate fills with
+    /// the cid the trader assigned.
+    #[test]
+    fn order_filled_events_carry_client_order_ids() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let maker_cid = Uint64::new(11);
+        let taker_cid = Uint64::new(22);
+
+        // Maker ask carrying a cid.
+        let maker_order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(-10),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(25_000),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(maker_cid),
+        };
+        ASKS.save(
+            &mut ctx.storage,
+            (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100)),
+            &maker_order,
+        )
+        .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+        let mut events = EventBuilder::new();
+
+        // Taker GTC limit buy carrying its own cid fully fills the maker.
+        _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: Some(taker_cid),
+            },
+            false,
+            None,
+            None,
+            &mut events,
+        )
+        .unwrap();
+
+        let order_filleds: Vec<OrderFilled> = events
+            .into_iter()
+            .filter(|e| e.ty == OrderFilled::EVENT_NAME)
+            .map(|e| e.data.deserialize_json().unwrap())
+            .collect();
+
+        assert_eq!(order_filleds.len(), 2, "expected one OrderFilled per side");
+
+        let taker_filled = order_filleds
+            .iter()
+            .find(|f| f.user == TAKER)
+            .expect("taker OrderFilled missing");
+        assert_eq!(taker_filled.client_order_id, Some(taker_cid));
+
+        let maker_filled = order_filleds
+            .iter()
+            .find(|f| f.user == MAKER_A)
+            .expect("maker OrderFilled missing");
+        assert_eq!(maker_filled.client_order_id, Some(maker_cid));
+    }
+
+    /// When a maker order with a `client_order_id` is fully filled and
+    /// removed from the book, the `(sender, cid)` index entry is cleared
+    /// automatically by `IndexedMap::remove`.
+    #[test]
+    fn client_order_id_alias_clears_on_fill() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let cid = Uint64::new(7);
+
+        // Place a maker ask owned by MAKER_A with cid=Some(7).
+        let maker_order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(-10),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(25_000),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        let maker_key = (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100));
+        ASKS.save(&mut ctx.storage, maker_key, &maker_order)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
+            .unwrap();
+
+        // Sanity: the alias is reachable before the fill.
+        assert!(
+            ASKS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (MAKER_A, cid))
+                .unwrap()
+                .is_some()
+        );
+
+        // Taker fully fills the maker.
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            order_mutations, ..
+        } = _submit_order(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(10),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Apply the order mutation: a `None` mutation removes the maker.
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(o) => ASKS.save(&mut ctx.storage, key, &o).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // After full fill, the alias is gone — same `cid` is reusable.
+        assert!(
+            ASKS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (MAKER_A, cid))
+                .unwrap()
+                .is_none()
+        );
     }
 }

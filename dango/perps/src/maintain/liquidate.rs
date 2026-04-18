@@ -1,5 +1,6 @@
 use {
     crate::{
+        MAX_ORACLE_STALENESS,
         core::{
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
             compute_user_equity, compute_user_equity_with_pnl, is_liquidatable,
@@ -58,7 +59,8 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let mut events = EventBuilder::new();
 
@@ -367,6 +369,7 @@ fn _liquidate(
         contract,
         current_time,
         param,
+        pair_params,
         &mut pair_states,
         &mut user_state,
         &mut all_maker_states,
@@ -480,6 +483,7 @@ fn execute_close_schedule(
     contract: Addr,
     current_time: Timestamp,
     param: &Param,
+    pair_params: &BTreeMap<PairId, PairParam>,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
@@ -587,8 +591,13 @@ fn execute_close_schedule(
             user_state,
             taker_is_bid,
             OrderId::ZERO,
+            None,                      // liquidation has no client_order_id
+            Dimensionless::ZERO,       // zero trading fee for the liquidated taker
+            Some(Dimensionless::ZERO), // zero trading fee for makers, even if they have overrides
             maker_states,
             target_price,
+            oracle_price,
+            pair_params.get(pair_id).unwrap().max_limit_price_deviation,
             *close_size,
             next_order_id,
             events,
@@ -872,7 +881,7 @@ mod tests {
         super::*,
         crate::{
             PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
-            state::{LONGS, OrderKey, SHORTS},
+            state::{FEE_RATE_OVERRIDES, LONGS, OrderKey, SHORTS},
         },
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
@@ -914,6 +923,8 @@ mod tests {
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
             maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
             max_abs_oi: Quantity::new_int(1_000_000),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
     }
@@ -987,6 +998,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -1010,6 +1022,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         ASKS.save(storage, key, &order).unwrap();
     }
@@ -1474,6 +1487,153 @@ mod tests {
         assert_eq!(
             vault_margin_after, vault_margin_before,
             "vault margin must not change from liquidation fee routing"
+        );
+    }
+
+    /// Verifies the "liquidation fills are fee-free" invariant holds for a
+    /// maker that has an admin-configured fee rate override.
+    ///
+    /// `match_order` looks up `FEE_RATE_OVERRIDES` before falling back to
+    /// `param.maker_fee_rates`, so without the `force_maker_fee_rate`
+    /// argument, the override would defeat `liq_param`'s zero schedule and
+    /// the maker would be charged a trading fee during liquidation — a
+    /// regression against `book/perps/4-liquidation-and-adl.md §4`.
+    ///
+    /// Setup:
+    ///   - User long 1 BTC @ $50,000, margin $2,500, oracle $48,000.
+    ///   - Equity = $500. MM = $2,400. Equity < MM → liquidatable.
+    ///   - Book bid at $49,000 from MAKER, size 1.
+    ///   - MAKER has a fee rate override = (1% maker, 1% taker).
+    ///   - `protocol_fee_rate = 20%` so any leaked fee splits into both
+    ///     treasury and vault, making leakage maximally observable.
+    ///
+    /// Expected (with the fix):
+    ///   - MAKER's side of the fill is pure opening (PnL = 0).
+    ///   - Maker fee = 0 → MAKER.margin unchanged ($100,000).
+    ///   - Treasury unchanged (no protocol cut from a zero fee).
+    ///   - Vault margin unchanged (no vault cut from a zero fee).
+    ///
+    /// Without the fix, a nonzero maker fee leaks through regardless of
+    /// the exact close size, so MAKER.margin < $100,000 and the vault /
+    /// treasury pick up an 80/20 split of that fee. The equality asserts
+    /// below catch any nonzero leak.
+    #[test]
+    fn liquidation_respects_zero_fee_even_with_maker_override() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = Param {
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
+            protocol_fee_rate: Dimensionless::new_percent(20),     // 20%
+            max_open_orders: 100,
+            ..Default::default()
+        };
+
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
+
+        // MAKER has an active fee rate override — this is exactly the state
+        // the fix must tolerate during a liquidation.
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                MAKER,
+                &(
+                    Dimensionless::new_permille(10), // 1% maker
+                    Dimensionless::new_permille(10), // 1% taker (irrelevant here)
+                ),
+            )
+            .unwrap();
+
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 1, 49_000);
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(2_500);
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let treasury_before = state.treasury;
+        let vault_margin_before = USER_STATES
+            .may_load(&ctx.storage, CONTRACT)
+            .unwrap()
+            .unwrap_or_default()
+            .margin;
+
+        let LiquidateOutcome {
+            state,
+            maker_states,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        )
+        .expect("liquidation should succeed");
+
+        // MAKER opened a 1 BTC long at $49,000 (pure opening fill). With
+        // the override bypassed, there is no trading fee to deduct.
+        assert_eq!(
+            maker_states[&MAKER].margin,
+            UsdValue::new_int(100_000),
+            "maker margin must be unchanged — no trading fee during liquidation"
+        );
+
+        // No fee was charged, so neither the treasury nor the vault takes
+        // a cut. (The liq fee itself bypasses both and lands in the
+        // insurance fund.)
+        assert_eq!(
+            state.treasury, treasury_before,
+            "treasury must not receive a protocol cut — no maker fee was charged"
+        );
+        assert_eq!(
+            maker_states[&CONTRACT].margin, vault_margin_before,
+            "vault must not receive a maker-fee cut during liquidation"
         );
     }
 
@@ -2048,6 +2208,7 @@ mod tests {
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
                 }),
+                client_order_id: None,
             };
             BIDS.save(&mut ctx.storage, key, &order).unwrap();
         }

@@ -2,6 +2,7 @@ import { Direction } from "../types/dex.js";
 import { Decimal } from "@left-curve/sdk/utils";
 
 import type { Trade } from "../types/dex.js";
+import type { RateSchedule } from "../types/perps.js";
 import type { WithAmount, WithDecimals, WithPrice } from "../types/utils.js";
 import { formatNumber, type FormatNumberOptions, formatUnits, parseUnits } from "./formatters.js";
 
@@ -36,6 +37,24 @@ export function calculatePrice(
   options: FormatNumberOptions,
 ) {
   return formatNumber(parseUnits(price, decimals.base - decimals.quote), options);
+}
+
+/**
+ * Resolves the applicable rate from a RateSchedule given a user's volume.
+ * Mirrors the backend RateSchedule::resolve logic: finds the highest tier
+ * threshold that the volume meets or exceeds, falling back to the base rate.
+ */
+export function resolveRateSchedule(schedule: RateSchedule, volume: string): number {
+  const vol = Number(volume);
+  const applicableTier = Object.entries(schedule.tiers)
+    .map(([threshold, rate]) => [Number(threshold), Number(rate)] as const)
+    .filter(([threshold]) => !Number.isNaN(threshold) && vol >= threshold)
+    .reduce<readonly [number, number] | null>(
+      (highest, entry) => (!highest || entry[0] > highest[0] ? entry : highest),
+      null,
+    );
+
+  return applicableTier ? applicableTier[1] : Number(schedule.base);
 }
 
 export function adjustPrice(price: number, shifting = 6, min = 2) {

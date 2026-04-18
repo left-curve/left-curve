@@ -1,7 +1,7 @@
 use {
     crate::{
         account_factory,
-        query::query_volume,
+        query::compute_user_volume,
         state::{COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM},
     },
     anyhow::ensure,
@@ -49,10 +49,12 @@ pub fn set_fee_share_ratio(
     let user_index = account.owner;
 
     // Users with a commission rate override bypass the volume requirement.
-    // Otherwise, the caller must have enough lifetime perps volume.
+    // Otherwise, the caller must have enough lifetime perps volume across all
+    // accounts belonging to the user.
     if !COMMISSION_RATE_OVERRIDES.has(ctx.storage, user_index) {
         let param = PARAM.load(ctx.storage)?;
-        let volume = query_volume(ctx.storage, ctx.sender, None)?;
+        let volume =
+            compute_user_volume(ctx.storage, ctx.querier, account_factory, user_index, None)?;
 
         ensure!(
             volume >= param.min_referrer_volume,

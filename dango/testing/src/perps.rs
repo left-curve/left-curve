@@ -75,6 +75,7 @@ pub fn create_perps_fill(
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price as i128),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,

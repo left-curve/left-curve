@@ -48,6 +48,15 @@ pub type OrderId = Uint64;
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
 
+/// Client-assigned order id. Lets a trader cancel an order in the same block
+/// it was submitted, without round-tripping through the server response to
+/// learn the system-assigned `OrderId`.
+///
+/// Scope of uniqueness: per-sender, across the sender's *active* (resting)
+/// limit orders only. The contract does not remember client order ids of
+/// orders that have been canceled or filled, so they can be reused freely.
+pub type ClientOrderId = Uint64;
+
 /// Type alias for a referrer's user index.
 pub type Referrer = UserIndex;
 
@@ -102,21 +111,15 @@ pub enum OrderKind {
         ///   limit price crosses best offer).
         #[serde(default)]
         time_in_force: TimeInForce,
-    },
-}
 
-impl OrderKind {
-    /// If this is a post-only limit order, return the limit price.
-    /// Otherwise, return `None`.
-    pub fn post_only_price(self) -> Option<UsdPrice> {
-        match self {
-            OrderKind::Limit {
-                limit_price,
-                time_in_force: TimeInForce::PostOnly,
-            } => Some(limit_price),
-            _ => None,
-        }
-    }
+        /// Caller-assigned id used to cancel this order via
+        /// `CancelOrderRequest::OneByClientOrderId` before the system-assigned
+        /// `OrderId` is known. Must be unique across the sender's *active*
+        /// orders. Not allowed with `TimeInForce::ImmediateOrCancel`, which
+        /// never enters the book.
+        #[serde(default)]
+        client_order_id: Option<ClientOrderId>,
+    },
 }
 
 /// For a conditional (TP/SL) order, direction the oracle price must cross to
@@ -341,6 +344,39 @@ pub struct PairParam {
     /// Bounds: `>= 0`. Zero disables the minimum.
     pub min_order_size: UsdValue,
 
+    /// Maximum deviation of a limit order's `limit_price` from the oracle
+    /// price, expressed as a fraction. A limit order is accepted only if
+    ///
+    /// ```plain
+    /// |limit_price - oracle_price| / oracle_price <= max_limit_price_deviation
+    /// ```
+    ///
+    /// This prevents users from placing resting orders at pathological prices
+    /// (e.g. 99% below oracle) that could trap counterparties into bad-price
+    /// fills.
+    ///
+    /// Bounds: `(0, 1)`.
+    ///
+    /// Cross-field invariant:
+    /// `max_limit_price_deviation >= vault_half_spread * (1 + vault_spread_skew_factor)`.
+    /// The band must be at least as wide as the vault's widest quote
+    /// deviation under maximum skew, otherwise users' crossing limit
+    /// orders at the vault's legitimately-quoted edges would be rejected.
+    /// Enforced at `Configure` time.
+    pub max_limit_price_deviation: Dimensionless,
+
+    /// Maximum slippage tolerance a user may specify on a market order or
+    /// a TP/SL child order in this pair. Market orders compute their
+    /// `target_price` as `oracle_price * (1 ± max_slippage)`; this field
+    /// caps how far the user may push that target at submission.
+    ///
+    /// Acts as the submission-time analogue of `max_limit_price_deviation`
+    /// for limit orders.
+    ///
+    /// Bounds: `(0, 1)`. Aligns with industry practice (dYdX 10% flat,
+    /// Hyperliquid 10% for TP/SL).
+    pub max_market_slippage: Dimensionless,
+
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
     ///
@@ -452,6 +488,8 @@ impl PairParam {
             impact_size: UsdValue::new_int(10_000),
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_max_quote_size: Quantity::new_int(100),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
     }
@@ -711,6 +749,10 @@ pub struct LimitOrder {
     pub tp: Option<ChildOrder>,
     /// Stop-loss child order to apply when this order fills.
     pub sl: Option<ChildOrder>,
+    /// Caller-assigned id used to look this order up via the
+    /// `client_order_id` index on `BIDS`/`ASKS`. `None` if the order was
+    /// submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// A conditional order stored off-book until triggered.
@@ -747,8 +789,13 @@ pub struct ChildOrder {
 
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
-    /// Cancel a single order by ID.
+    /// Cancel a single order by its system-assigned `OrderId`.
     One(OrderId),
+
+    /// Cancel a single order by its caller-assigned `ClientOrderId`.
+    /// Resolves to the active order owned by the sender that carries this
+    /// client id; bails if no such order exists.
+    OneByClientOrderId(ClientOrderId),
 
     /// Cancel all orders associated with the sender.
     All,
@@ -813,6 +860,20 @@ pub enum MaintainerMsg {
     /// Accept a USDC donation to the perps contract.
     /// Only callable by the chain owner. Must attach exactly USDC, nonzero.
     Donate {},
+
+    /// Override a user's fee rate, overriding the tier-based fee rates derived
+    /// from the user's recent trading volume.
+    ///
+    /// Bounds:
+    ///
+    /// - `maker_fee_rate`: [-1, 1]. Note that negative maker rates are allowed.
+    /// - `taker_fee_rate`: [0, 1].
+    SetFeeRateOverride {
+        user: Addr,
+
+        /// First element is maker rate, second is taker rate.
+        maker_taker_fee_rates: Op<(Dimensionless, Dimensionless)>,
+    },
 }
 
 #[grug::derive(Serde)]
@@ -1014,6 +1075,34 @@ pub enum QueryMsg {
         include_all: bool,
     },
 
+    /// Enumeate the states of all users with additional data computed on-the-fly.
+    #[returns(BTreeMap<Addr, UserStateExtended>)]
+    UserStatesExtended {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+
+        #[serde(default)]
+        include_equity: bool,
+
+        #[serde(default)]
+        include_available_margin: bool,
+
+        #[serde(default)]
+        include_maintenance_margin: bool,
+
+        #[serde(default)]
+        include_unrealized_pnl: bool,
+
+        #[serde(default)]
+        include_unrealized_funding: bool,
+
+        #[serde(default)]
+        include_liquidation_price: bool,
+
+        #[serde(default)]
+        include_all: bool,
+    },
+
     /// Query a single limit order by ID.
     #[returns(Option<QueryOrderResponse>)]
     Order { order_id: OrderId },
@@ -1030,11 +1119,21 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query a user's cumulative trading volume.
+    /// Query a user's cumulative trading volume by address.
     /// `since: None` -> lifetime volume. `since: Some(ts)` -> volume since ts.
     #[returns(UsdValue)]
     Volume {
         user: Addr,
+        since: Option<Timestamp>,
+    },
+
+    /// Query a user's cumulative trading volume by user index.
+    /// Resolves the `UserIndex` to the master account address via the account
+    /// factory, then returns cumulative volume.
+    /// `since: None` -> lifetime volume. `since: Some(ts)` -> volume since ts.
+    #[returns(UsdValue)]
+    VolumeByUser {
+        user: UserIndex,
         since: Option<Timestamp>,
     },
 
@@ -1083,6 +1182,19 @@ pub enum QueryMsg {
     #[returns(BTreeMap<UserIndex, CommissionRate>)]
     CommissionRateOverrides {
         start_after: Option<UserIndex>,
+        limit: Option<u32>,
+    },
+
+    /// Return the trading fee rate override for a user, if one exists.
+    /// Return value is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(Option<(Dimensionless, Dimensionless)>)]
+    FeeRateOverride { user: Addr },
+
+    /// Enumerate all trading fee overrides, with pagination.
+    /// Each value in the returned map is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(BTreeMap<Addr, (Dimensionless, Dimensionless)>)]
+    FeeRateOverrides {
+        start_after: Option<Addr>,
         limit: Option<u32>,
     },
 }
@@ -1241,6 +1353,9 @@ pub struct OrderFilled {
     pub opening_size: Quantity,
     pub realized_pnl: UsdValue,
     pub fee: UsdValue,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating an order have been inserted into the order book.
@@ -1252,6 +1367,9 @@ pub struct OrderPersisted {
     pub user: Addr,
     pub limit_price: UsdPrice,
     pub size: Quantity,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating an order has been removed from the order book.
@@ -1262,6 +1380,9 @@ pub struct OrderRemoved {
     pub pair_id: PairId,
     pub user: Addr,
     pub reason: ReasonForOrderRemoval,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating a conditional (TP/SL) order has been placed.
@@ -1323,6 +1444,20 @@ pub enum ReasonForOrderRemoval {
     /// The conditional order was triggered but could not fill within the
     /// user's max_slippage tolerance (insufficient book liquidity).
     SlippageExceeded,
+
+    /// The resting order's price fell outside the pair's
+    /// `max_limit_price_deviation` band at the time it was about to match
+    /// (i.e. the oracle moved after the order was placed). The matching
+    /// engine cancels such stale orders and walks deeper in the book.
+    PriceBandViolation,
+
+    /// A conditional (TP/SL) order was triggered but its stored
+    /// `max_slippage` now exceeds the pair's `max_market_slippage` cap —
+    /// governance tightened the cap between the order's submission and
+    /// its trigger. The order is cancelled rather than submitted. Distinct
+    /// from `SlippageExceeded` so the event stream can tell a policy
+    /// tightening apart from a liquidity shortfall.
+    SlippageCapTightened,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.

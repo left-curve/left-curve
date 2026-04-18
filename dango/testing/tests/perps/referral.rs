@@ -270,7 +270,9 @@ fn referral_wrong_caller_fails() {
             }),
             Coins::new(),
         )
-        .should_fail_with_error("caller is not the account factory or the referee");
+        .should_fail_with_error(
+            "caller is not the account factory, chain owner, or an account owned by the referee",
+        );
 }
 
 /// The fee share ratio can only increase, never decrease.
@@ -412,6 +414,89 @@ fn set_share_ratio_requires_volume() {
         Dimensionless::new_percent(50),
     )
     .should_fail_with_error("insufficient perps volume to become a referrer");
+}
+
+/// Volume for referrer eligibility is aggregated across all accounts of a user.
+/// User1 has two accounts that each trade below the threshold individually,
+/// but together meet the $10,000 minimum.
+#[test]
+fn set_share_ratio_aggregates_volume_across_accounts() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // Configure the perps contract to require $10,000 volume to become a referrer.
+    let mut param: perps::Param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+
+    param.min_referrer_volume = UsdValue::new_int(10_000);
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Register oracle prices: ETH = $1,000.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_000);
+
+    // Create a second account for user1 (same user_index, different address).
+    let mut user1_account2 = accounts
+        .user1
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            Coins::one(usdc::DENOM.clone(), 50_000_000_000).unwrap(),
+        )
+        .unwrap();
+
+    // Deposit margin: user1 accounts and user2 (counterparty).
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 10_000);
+    deposit_margin(&mut suite, contracts.perps, &mut user1_account2, 10_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 50_000);
+
+    // Trade 1: user2 sells 7 ETH at $1,000, user1 account1 buys → $7,000 notional.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user2,
+        UsdPrice::new_int(1_000),
+        7,
+    );
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user1, 7);
+
+    // With only $7,000 volume, user1 cannot become a referrer.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(50),
+    )
+    .should_fail_with_error("insufficient perps volume to become a referrer");
+
+    // Trade 2: user2 sells 3 ETH at $1,000, user1 account2 buys → $3,000 notional.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user2,
+        UsdPrice::new_int(1_000),
+        3,
+    );
+    place_market_buy(&mut suite, contracts.perps, &mut user1_account2, 3);
+
+    // Now the combined volume across both accounts is $10,000 — should succeed.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(50),
+    )
+    .should_succeed();
 }
 
 /// When `referral.active` is false, no fee commissions are applied.
@@ -1319,6 +1404,7 @@ fn place_ask_order(
                 kind: perps::OrderKind::Limit {
                     limit_price: price,
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
