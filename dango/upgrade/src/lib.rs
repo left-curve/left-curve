@@ -1,9 +1,13 @@
 use {
+    dango_perps::state::OrderKey,
     dango_types::{
         Dimensionless, FundingRate, Quantity, UsdPrice, UsdValue,
-        perps::{self, PairId},
+        perps::{self, ChildOrder, OrderId, PairId},
     },
-    grug::{Addr, BlockInfo, Order as IterationOrder, StdResult, Storage, addr},
+    grug::{
+        Addr, BlockInfo, IndexedMap, MultiIndex, Order as IterationOrder, StdResult, Storage,
+        Timestamp, UniqueIndex, addr,
+    },
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
     std::collections::BTreeSet,
 };
@@ -34,8 +38,16 @@ const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(
 /// Legacy types matching the pre-upgrade Borsh layout.
 ///
 /// `PairParam` before this upgrade does not contain the
-/// `max_limit_price_deviation` or `max_market_slippage` fields —
-/// both are introduced by the price-banding / slippage-policy PR.
+/// `max_limit_price_deviation` or `max_market_slippage` fields — both
+/// are introduced by the price-banding / slippage-policy PR.
+///
+/// `LimitOrder` before this upgrade does not contain the
+/// `client_order_id` field, and `OrderIndexes` only had the `order_id`
+/// and `user` indexes (the `client_order_id` `UniqueIndex` is new).
+/// Both `BIDS` and `ASKS` mirror the pre-upgrade `IndexedMap` layout
+/// verbatim so `legacy::BIDS.clear_all` correctly wipes the legacy
+/// primary entries *and* the legacy index namespaces (`bid__id`,
+/// `bid__user`, etc.) before we re-save under the new shape.
 mod legacy {
     use super::*;
 
@@ -58,6 +70,46 @@ mod legacy {
         pub vault_max_skew_size: Quantity,
         pub bucket_sizes: BTreeSet<UsdPrice>,
     }
+
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct LimitOrder {
+        pub user: Addr,
+        pub size: Quantity,
+        pub reduce_only: bool,
+        pub reserved_margin: UsdValue,
+        pub created_at: Timestamp,
+        pub tp: Option<ChildOrder>,
+        pub sl: Option<ChildOrder>,
+    }
+
+    #[grug::index_list(OrderKey, LimitOrder)]
+    pub struct OrderIndexes<'a> {
+        pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
+        pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
+    }
+
+    impl OrderIndexes<'static> {
+        pub const fn new(
+            pk_namespace: &'static str,
+            order_id_namespace: &'static str,
+            user_namespace: &'static str,
+        ) -> Self {
+            OrderIndexes {
+                order_id: UniqueIndex::new(
+                    |(_, _, order_id), _| *order_id,
+                    pk_namespace,
+                    order_id_namespace,
+                ),
+                user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
+            }
+        }
+    }
+
+    pub const BIDS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
+        IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
+
+    pub const ASKS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
+        IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
 }
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
@@ -71,10 +123,13 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     let mut storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
 
-    Ok(_do_upgrade(&mut storage)?)
+    do_price_banding_upgrade(&mut storage)?;
+    do_client_order_id_upgrade(&mut storage)?;
+
+    Ok(())
 }
 
-fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
+fn do_price_banding_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
     let old_params: Vec<_> = legacy::PAIR_PARAMS
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<_>>()?;
@@ -112,14 +167,79 @@ fn _do_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
     Ok(())
 }
 
+/// Rewrite every resting `LimitOrder` in `BIDS` / `ASKS` from the
+/// pre-`client_order_id` Borsh layout to the new layout, with
+/// `client_order_id: None` for all migrated orders. Existing orders
+/// were submitted before the feature shipped, so none of them carry a
+/// client id; the new `client_order_id` index stays empty for them.
+///
+/// The pattern is **read-via-legacy → clear-via-legacy → save-via-new**:
+///
+/// 1. `legacy_map.range` deserializes the on-disk bytes through the
+///    old Borsh schema.
+/// 2. `legacy_map.clear_all` wipes the primary namespace *and* the
+///    legacy index namespaces (`bid__id`, `bid__user`, …). Without
+///    this, `IndexedMap::save` below would hit
+///    `StdError::duplicate_data` on the `order_id` `UniqueIndex` while
+///    rebuilding it.
+/// 3. `new_map.save` re-populates the primary entry and rebuilds all
+///    three new indexes (`order_id`, `user`, `client_order_id`).
+fn do_client_order_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
+    let bid_count = migrate_book(storage, &legacy::BIDS, &dango_perps::state::BIDS)?;
+    let ask_count = migrate_book(storage, &legacy::ASKS, &dango_perps::state::ASKS)?;
+
+    tracing::info!(
+        "Migrated {bid_count} resting bids and {ask_count} resting asks (added client_order_id = None)"
+    );
+
+    Ok(())
+}
+
+fn migrate_book(
+    storage: &mut dyn Storage,
+    legacy_map: &IndexedMap<OrderKey, legacy::LimitOrder, legacy::OrderIndexes>,
+    new_map: &IndexedMap<
+        OrderKey,
+        dango_types::perps::LimitOrder,
+        dango_perps::state::OrderIndexes,
+    >,
+) -> StdResult<usize> {
+    let entries: Vec<_> = legacy_map
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<_>>()?;
+
+    let count = entries.len();
+
+    legacy_map.clear_all(storage);
+
+    for (key, old) in entries {
+        let new = dango_types::perps::LimitOrder {
+            user: old.user,
+            size: old.size,
+            reduce_only: old.reduce_only,
+            reserved_margin: old.reserved_margin,
+            created_at: old.created_at,
+            tp: old.tp,
+            sl: old.sl,
+            client_order_id: None,
+        };
+        new_map.save(storage, key, &new)?;
+    }
+
+    Ok(count)
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use {
         super::*,
-        grug::{MockStorage, btree_set},
+        grug::{MockStorage, Uint64, addr, btree_set},
     };
+
+    const USER_A: Addr = addr!("000000000000000000000000000000000000aaaa");
+    const USER_B: Addr = addr!("000000000000000000000000000000000000bbbb");
 
     fn eth_pair() -> PairId {
         "perp/ethusd".parse().unwrap()
@@ -127,6 +247,18 @@ mod tests {
 
     fn btc_pair() -> PairId {
         "perp/btcusd".parse().unwrap()
+    }
+
+    fn legacy_limit_order(user: Addr, size: i128, reserved_margin: i128) -> legacy::LimitOrder {
+        legacy::LimitOrder {
+            user,
+            size: Quantity::new_int(size),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(reserved_margin),
+            created_at: Timestamp::from_nanos(123_000_000),
+            tp: None,
+            sl: None,
+        }
     }
 
     fn legacy_pair_param(tick_size_int: i128) -> legacy::PairParam {
@@ -162,7 +294,7 @@ mod tests {
             .save(&mut storage, &btc_pair(), &btc)
             .unwrap();
 
-        _do_upgrade(&mut storage).unwrap();
+        do_price_banding_upgrade(&mut storage).unwrap();
 
         let migrated_eth = dango_perps::state::PAIR_PARAMS
             .load(&storage, &eth_pair())
@@ -222,6 +354,144 @@ mod tests {
     #[test]
     fn migration_with_no_pairs_is_noop() {
         let mut storage = MockStorage::new();
-        _do_upgrade(&mut storage).unwrap();
+        do_price_banding_upgrade(&mut storage).unwrap();
+    }
+
+    /// `do_client_order_id_upgrade` rewrites every legacy resting order
+    /// into the new shape with `client_order_id == None`, preserves the
+    /// other fields verbatim, and leaves the `order_id` index pointing
+    /// at the new entry.
+    #[test]
+    fn client_order_id_migration_rewrites_legacy_orders() {
+        let mut storage = MockStorage::new();
+
+        // Two legacy bids and one legacy ask, spanning two users.
+        let bid_a = legacy_limit_order(USER_A, 10, 100);
+        let bid_b = legacy_limit_order(USER_B, 5, 50);
+        let ask_a = legacy_limit_order(USER_A, -7, 70);
+
+        legacy::BIDS
+            .save(
+                &mut storage,
+                (eth_pair(), UsdPrice::new_int(2_000), Uint64::new(1)),
+                &bid_a,
+            )
+            .unwrap();
+        legacy::BIDS
+            .save(
+                &mut storage,
+                (eth_pair(), UsdPrice::new_int(1_950), Uint64::new(2)),
+                &bid_b,
+            )
+            .unwrap();
+        legacy::ASKS
+            .save(
+                &mut storage,
+                (eth_pair(), UsdPrice::new_int(2_100), Uint64::new(3)),
+                &ask_a,
+            )
+            .unwrap();
+
+        do_client_order_id_upgrade(&mut storage).unwrap();
+
+        // All three orders are now reachable via the new `IndexedMap`.
+        for (book, order_id, expected_size, expected_user, expected_margin) in [
+            (
+                &dango_perps::state::BIDS,
+                Uint64::new(1),
+                Quantity::new_int(10),
+                USER_A,
+                UsdValue::new_int(100),
+            ),
+            (
+                &dango_perps::state::BIDS,
+                Uint64::new(2),
+                Quantity::new_int(5),
+                USER_B,
+                UsdValue::new_int(50),
+            ),
+        ] {
+            let (_key, order) = book
+                .idx
+                .order_id
+                .may_load(&storage, order_id)
+                .unwrap()
+                .expect("post-migration order missing from order_id index");
+            assert_eq!(order.user, expected_user);
+            assert_eq!(order.size, expected_size);
+            assert_eq!(order.reserved_margin, expected_margin);
+            assert_eq!(order.client_order_id, None);
+            assert_eq!(order.created_at, Timestamp::from_nanos(123_000_000));
+        }
+
+        let (_key, ask_order) = dango_perps::state::ASKS
+            .idx
+            .order_id
+            .may_load(&storage, Uint64::new(3))
+            .unwrap()
+            .unwrap();
+        assert_eq!(ask_order.user, USER_A);
+        assert_eq!(ask_order.size, Quantity::new_int(-7));
+        assert_eq!(ask_order.client_order_id, None);
+
+        // The new `client_order_id` index is empty for migrated orders.
+        let any_cid = dango_perps::state::BIDS
+            .idx
+            .client_order_id
+            .keys(
+                &storage,
+                None,
+                None,
+                grug::Order::Ascending,
+            )
+            .next();
+        assert!(any_cid.is_none(), "new client_order_id index should be empty");
+    }
+
+    #[test]
+    fn client_order_id_migration_no_orders_is_noop() {
+        let mut storage = MockStorage::new();
+        do_client_order_id_upgrade(&mut storage).unwrap();
+    }
+
+    /// `do_upgrade` chains both migrations: legacy `PairParam`s are
+    /// rewritten *and* legacy resting orders are rewritten, all under
+    /// one upgrade boundary.
+    #[test]
+    fn do_upgrade_runs_both_migrations() {
+        let mut storage = MockStorage::new();
+
+        // Seed legacy state for both migrations.
+        legacy::PAIR_PARAMS
+            .save(&mut storage, &eth_pair(), &legacy_pair_param(1))
+            .unwrap();
+        legacy::BIDS
+            .save(
+                &mut storage,
+                (eth_pair(), UsdPrice::new_int(2_000), Uint64::new(1)),
+                &legacy_limit_order(USER_A, 10, 100),
+            )
+            .unwrap();
+
+        // Run both migrations sequentially (mirrors `do_upgrade`).
+        do_price_banding_upgrade(&mut storage).unwrap();
+        do_client_order_id_upgrade(&mut storage).unwrap();
+
+        // PairParam migrated.
+        let pair = dango_perps::state::PAIR_PARAMS
+            .load(&storage, &eth_pair())
+            .unwrap();
+        assert_eq!(pair.max_limit_price_deviation, MIGRATION_MAX_LIMIT_PRICE_DEVIATION);
+        assert_eq!(pair.max_market_slippage, MIGRATION_MAX_MARKET_SLIPPAGE);
+
+        // Order migrated.
+        let (_key, order) = dango_perps::state::BIDS
+            .idx
+            .order_id
+            .may_load(&storage, Uint64::new(1))
+            .unwrap()
+            .unwrap();
+        assert_eq!(order.user, USER_A);
+        assert_eq!(order.client_order_id, None);
     }
 }
