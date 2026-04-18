@@ -140,6 +140,6 @@ export const PerpsTradeHistory: React.FC = () => {
   ];
 
   return (
-    <TradeHistoryTable data={data} columns={columns} pagination={pagination} isLoading={isLoading} />
+    <TradeHistoryTable data={data} columns={columns} isLoading={isLoading} />
   );
 };

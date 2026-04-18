@@ -205,11 +205,13 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
     isActive,
     fullWidth,
   });
-  return <span className={twMerge(styles)}>{children ? children : title}</span>;
+  return (
+    <span className={twMerge(styles, "exposure-sm-italic")}>{children ? children : title}</span>
+  );
 };
 
 const tabVariants = tv({
-  base: "transition-all relative z-10 whitespace-nowrap outline-none",
+  base: "transition-all relative z-10 whitespace-nowrap outline-none exposure-sm-italic",
   variants: {
     color: {
       green: "",

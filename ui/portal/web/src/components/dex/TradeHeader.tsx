@@ -88,7 +88,7 @@ export const TradeHeader: React.FC = () => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
-            className="gap-2 lg:gap-6 grid grid-cols-3 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
+            className="gap-2 xxl:gap-6 grid grid-cols-3 lg:flex lg:justify-end overflow-hidden diatype-xxs-medium lg:diatype-xs-medium"
           >
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice />
@@ -127,7 +127,7 @@ const HeaderPrice: React.FC = () => {
   return (
     <div className="flex gap-1 flex-col lg:w-[4.5rem] lg:shrink-0 items-start">
       <Tooltip title={m["dex.protrade.spot.lastPriceTooltip"]()}>
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+        <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.lastPrice"]()}
         </p>
       </Tooltip>
@@ -154,7 +154,7 @@ const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
   return (
     <div className="flex gap-1 flex-col lg:w-[4.5rem] lg:shrink-0 items-start">
       <Tooltip title={m["dex.protrade.spot.oraclePriceTooltip"]()}>
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+        <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.oraclePrice"]()}
         </p>
       </Tooltip>

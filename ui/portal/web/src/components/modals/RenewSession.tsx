@@ -18,7 +18,7 @@ export const RenewSession = forwardRef<undefined>(() => {
   }, [session]);
 
   return (
-    <div className="flex flex-col bg-surface-primary-rice rounded-xl relative max-w-[400px]">
+    <div className="flex flex-col bg-surface-primary-rice rounded-xl relative w-full md:max-w-[400px]">
       <div className="p-4 flex flex-col gap-4">
         <div className="w-12 h-12 rounded-full bg-surface-secondary-green flex items-center justify-center text-primitives-green-light-600">
           <IconKey />
