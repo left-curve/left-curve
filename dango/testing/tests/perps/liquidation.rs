@@ -115,7 +115,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask
                 kind: perps::OrderKind::Limit {
@@ -126,7 +126,7 @@ fn liquidation_on_order_book() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -140,7 +140,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy
                 kind: perps::OrderKind::Market {
@@ -149,7 +149,7 @@ fn liquidation_on_order_book() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -198,7 +198,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy / bid
                 kind: perps::OrderKind::Limit {
@@ -209,7 +209,7 @@ fn liquidation_on_order_book() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -403,7 +403,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
@@ -414,7 +414,7 @@ fn liquidation_with_adl() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -428,7 +428,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -437,7 +437,7 @@ fn liquidation_with_adl() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -469,7 +469,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
@@ -480,7 +480,7 @@ fn liquidation_with_adl() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -493,7 +493,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Market {
@@ -502,7 +502,7 @@ fn liquidation_with_adl() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -663,7 +663,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
@@ -674,7 +674,7 @@ fn liquidation_cancels_conditional_orders() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -684,7 +684,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -693,7 +693,7 @@ fn liquidation_cancels_conditional_orders() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -763,7 +763,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
@@ -774,7 +774,7 @@ fn liquidation_cancels_conditional_orders() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -942,7 +942,7 @@ fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
@@ -951,7 +951,7 @@ fn vault_liquidation_on_order_book() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1036,7 +1036,7 @@ fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: bid_size, // buy same size as vault's long
                 kind: perps::OrderKind::Limit {
@@ -1047,7 +1047,7 @@ fn vault_liquidation_on_order_book() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1208,7 +1208,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
@@ -1219,7 +1219,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1228,7 +1228,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -1237,7 +1237,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1258,7 +1258,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
@@ -1269,7 +1269,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1278,7 +1278,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Market {
@@ -1287,7 +1287,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1304,7 +1304,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(2),
                 kind: perps::OrderKind::Limit {
@@ -1315,7 +1315,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();

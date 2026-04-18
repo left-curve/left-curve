@@ -60,7 +60,7 @@ macro_rules! submit_limit {
         $suite.execute(
             &mut $accounts.user1,
             $contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: $pair.clone(),
                 size: Quantity::new_int($size),
                 kind: perps::OrderKind::Limit {
@@ -71,7 +71,7 @@ macro_rules! submit_limit {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
     };
@@ -175,7 +175,7 @@ fn banding_does_not_affect_market_orders() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
                 kind: perps::OrderKind::Market {
@@ -184,7 +184,7 @@ fn banding_does_not_affect_market_orders() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_fail_with_error("no liquidity at acceptable price");
@@ -263,7 +263,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-1),
                 kind: perps::OrderKind::Limit {
@@ -274,7 +274,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -295,7 +295,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(2),
                 kind: perps::OrderKind::Market {
@@ -304,7 +304,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();

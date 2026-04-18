@@ -72,7 +72,7 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10), // sell / ask
                 kind: perps::OrderKind::Limit {
@@ -83,7 +83,7 @@ fn trading_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -106,7 +106,7 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy
                 kind: perps::OrderKind::Market {
@@ -115,7 +115,7 @@ fn trading_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -242,7 +242,7 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask 5 ETH
                 kind: perps::OrderKind::Limit {
@@ -253,7 +253,7 @@ fn limit_order_partial_fill_and_cancel() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -268,7 +268,7 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy 10 ETH
                 kind: perps::OrderKind::Limit {
@@ -279,7 +279,7 @@ fn limit_order_partial_fill_and_cancel() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -449,7 +449,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-3),
                 kind: perps::OrderKind::Limit {
@@ -460,7 +460,7 @@ fn liquidity_depth_tracking() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -488,7 +488,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
@@ -499,7 +499,7 @@ fn liquidity_depth_tracking() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -531,7 +531,7 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
@@ -542,7 +542,7 @@ fn liquidity_depth_tracking() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -658,7 +658,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
@@ -669,7 +669,7 @@ fn protocol_fee_accumulates_across_fills() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -678,7 +678,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
@@ -687,7 +687,7 @@ fn protocol_fee_accumulates_across_fills() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -710,7 +710,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
@@ -721,7 +721,7 @@ fn protocol_fee_accumulates_across_fills() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -730,7 +730,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
@@ -739,7 +739,7 @@ fn protocol_fee_accumulates_across_fills() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -832,7 +832,7 @@ fn negative_maker_fee_rebate_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-50),
                 kind: perps::OrderKind::Limit {
@@ -843,7 +843,7 @@ fn negative_maker_fee_rebate_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -860,7 +860,7 @@ fn negative_maker_fee_rebate_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(50),
                 kind: perps::OrderKind::Market {
@@ -869,7 +869,7 @@ fn negative_maker_fee_rebate_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -971,7 +971,7 @@ fn ioc_limit_order_partial_fill() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
@@ -982,7 +982,7 @@ fn ioc_limit_order_partial_fill() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -997,7 +997,7 @@ fn ioc_limit_order_partial_fill() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
@@ -1008,7 +1008,7 @@ fn ioc_limit_order_partial_fill() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1084,7 +1084,7 @@ fn ioc_limit_order_no_fill_rejected() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
@@ -1095,7 +1095,7 @@ fn ioc_limit_order_no_fill_rejected() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_fail_with_error("no liquidity at acceptable price");
@@ -1159,7 +1159,7 @@ fn slippage_cap_market_at_cap_accepted_at_submission() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
                 kind: perps::OrderKind::Market {
@@ -1168,7 +1168,7 @@ fn slippage_cap_market_at_cap_accepted_at_submission() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_fail_with_error("no liquidity at acceptable price");
@@ -1186,7 +1186,7 @@ fn slippage_cap_market_above_cap_rejected() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
                 kind: perps::OrderKind::Market {
@@ -1195,7 +1195,7 @@ fn slippage_cap_market_above_cap_rejected() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_fail_with_error("exceeds the pair cap");
@@ -1213,7 +1213,7 @@ fn slippage_cap_tpsl_child_order_above_cap_rejected() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
                 kind: perps::OrderKind::Market {
@@ -1226,7 +1226,7 @@ fn slippage_cap_tpsl_child_order_above_cap_rejected() {
                     size: None,
                 }),
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_fail_with_error("exceeds the pair cap");
@@ -1246,7 +1246,7 @@ fn slippage_cap_does_not_affect_limit_orders() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
                 kind: perps::OrderKind::Limit {
@@ -1257,7 +1257,7 @@ fn slippage_cap_does_not_affect_limit_orders() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1303,18 +1303,20 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
             .execute(
                 maker,
                 contracts.perps,
-                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
-                    pair_id: pair.clone(),
-                    size: Quantity::new_int(-2), // ask
-                    kind: perps::OrderKind::Limit {
-                        limit_price: UsdPrice::new_int(price),
-                        time_in_force: perps::TimeInForce::PostOnly,
-                        client_order_id: None,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(
+                    perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(-2), // ask
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(price),
+                            time_in_force: perps::TimeInForce::PostOnly,
+                            client_order_id: None,
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
                     },
-                    reduce_only: false,
-                    tp: None,
-                    sl: None,
-                }),
+                )),
                 Coins::new(),
             )
             .should_succeed();
@@ -1325,7 +1327,7 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(4),
                 kind: perps::OrderKind::Market {
@@ -1334,7 +1336,7 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed()

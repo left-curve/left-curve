@@ -796,6 +796,35 @@ pub struct ChildOrder {
     pub size: Option<Quantity>,
 }
 
+/// Parameters for submitting an order. Shared between
+/// `TraderMsg::SubmitOrder` and (upcoming) `TraderMsg::BatchUpdateOrders`
+/// so the two message variants carry exactly the same shape.
+#[grug::derive(Serde)]
+pub struct SubmitOrderRequest {
+    pub pair_id: PairId,
+
+    /// The amount of futures contract to buy or sell.
+    /// Positive indicates buy, negative indicates sell.
+    pub size: Quantity,
+
+    /// Order type: market, limit, etc.
+    pub kind: OrderKind,
+
+    /// If true, the opening portion of the order is discarded, while the
+    /// closing portion of the order is always executed, ignoring the risk
+    /// parameters such as maximum open interest (OI).
+    ///
+    /// If false, the order must be executed in full. If any of the risk
+    /// parameters is violated, the entire order is aborted.
+    pub reduce_only: bool,
+
+    /// Take-profit child order. Applied to the resulting position after fill.
+    pub tp: Option<ChildOrder>,
+
+    /// Stop-loss child order. Applied to the resulting position after fill.
+    pub sl: Option<ChildOrder>,
+}
+
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
     /// Cancel a single order by its system-assigned `OrderId`.
@@ -902,30 +931,7 @@ pub enum TraderMsg {
     Withdraw { amount: UsdValue },
 
     /// Submit an order.
-    SubmitOrder {
-        pair_id: PairId,
-
-        /// The amount of futures contract to buy or sell.
-        /// Positive indicates buy, negative indicates sell.
-        size: Quantity,
-
-        /// Order type: market, limit, etc.
-        kind: OrderKind,
-
-        /// If true, the opening portion of the order is discarded, while the
-        /// closing portion of the order is always executed, ignoring the risk
-        /// parameters such as maximum open interest (OI).
-        ///
-        /// If false, the order must be executed in full. If any of the risk
-        /// parameters is violated, the entire order is aborted.
-        reduce_only: bool,
-
-        /// Take-profit child order. Applied to the resulting position after fill.
-        tp: Option<ChildOrder>,
-
-        /// Stop-loss child order. Applied to the resulting position after fill.
-        sl: Option<ChildOrder>,
-    },
+    SubmitOrder(SubmitOrderRequest),
 
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
