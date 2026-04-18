@@ -380,7 +380,10 @@ fn batch_fill_reverts_on_later_failure() {
         )
         .should_succeed();
 
-    // Snapshot user1's state and the order book before the batch.
+    // Snapshot maker (user1) and taker (user2) state plus their order books
+    // before the batch. The taker-side snapshot catches a future bug that
+    // would leak taker mutations (position, reserved_margin, unrested bids)
+    // past the rollback.
     let user1_state_before: perps::UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
@@ -390,6 +393,17 @@ fn batch_fill_reverts_on_later_failure() {
     let user1_orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
+        })
+        .should_succeed();
+    let user2_state_before: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let user2_orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
         })
         .should_succeed();
 
@@ -421,8 +435,10 @@ fn batch_fill_reverts_on_later_failure() {
         )
         .should_fail();
 
-    // user1's state must be byte-identical — the fill against user1's ask
-    // is rolled back along with the rest of the batch.
+    // Both maker and taker state must be byte-identical — the fill against
+    // user1's ask and any intermediate writes to user2 (margin reservation,
+    // a bid resting mid-batch under cid=99) are rolled back along with the
+    // rest of the batch.
     let user1_state_after: perps::UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
             user: accounts.user1.address(),
@@ -434,6 +450,17 @@ fn batch_fill_reverts_on_later_failure() {
             user: accounts.user1.address(),
         })
         .should_succeed();
+    let user2_state_after: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let user2_orders_after: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed();
 
     assert_eq!(
         user1_state_before, user1_state_after,
@@ -442,6 +469,16 @@ fn batch_fill_reverts_on_later_failure() {
     assert_eq!(
         user1_orders_before, user1_orders_after,
         "maker's resting ask must still be on the book"
+    );
+    assert_eq!(
+        user2_state_before, user2_state_after,
+        "taker UserState must be unchanged — no position, margin, or \
+         reserved_margin mutations may leak past the rollback"
+    );
+    assert_eq!(
+        user2_orders_before, user2_orders_after,
+        "taker must have no resting orders — the mid-batch bid at cid=99 \
+         is rolled back along with the rest"
     );
 }
 
