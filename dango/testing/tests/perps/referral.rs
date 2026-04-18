@@ -270,7 +270,9 @@ fn referral_wrong_caller_fails() {
             }),
             Coins::new(),
         )
-        .should_fail_with_error("caller is not the account factory or the referee");
+        .should_fail_with_error(
+            "caller is not the account factory, chain owner, or an account owned by the referee",
+        );
 }
 
 /// The fee share ratio can only increase, never decrease.
