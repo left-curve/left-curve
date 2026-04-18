@@ -185,32 +185,6 @@ export type PerpsCancelOrderRequest =
   | { oneByClientOrderId: PerpsClientOrderId }
   | "all";
 
-/**
- * Parameters for submitting an order. Shared between the single-order
- * `TraderMsg::SubmitOrder` and the `TraderMsg::BatchUpdateOrders`
- * entries so both carry exactly the same shape.
- */
-export type PerpsSubmitOrderRequest = {
-  pairId: string;
-  size: string;
-  kind: PerpsOrderKind;
-  reduceOnly: boolean;
-  tp?: ChildOrder;
-  sl?: ChildOrder;
-};
-
-/**
- * One action inside a `TraderMsg::BatchUpdateOrders` list. Actions
- * execute sequentially and atomically: a failure anywhere in the batch
- * reverts every prior action in the same message.
- *
- * Conditional (TP/SL) orders are not supported in batches — use
- * `submitConditionalOrder` / `cancelConditionalOrder`.
- */
-export type PerpsSubmitOrCancelOrderRequest =
-  | { submit: PerpsSubmitOrderRequest }
-  | { cancel: PerpsCancelOrderRequest };
-
 export type PerpsCancelConditionalOrderRequest =
   | { one: { pairId: string; triggerDirection: TriggerDirection } }
   | { allForPair: { pairId: string } }
