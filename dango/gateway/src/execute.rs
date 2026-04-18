@@ -178,6 +178,10 @@ fn receive_remote(
     // Track the deposit in the recipient's per-user movement so they can
     // withdraw up to this amount without hitting the global rate limit.
     //
+    // This runs for all denoms, not just rate-limited ones. The extra storage
+    // cost is intentional: we want historical deposit data available even for
+    // denoms that may become rate-limited in the future.
+    //
     // Deposits must always succeed regardless of the recipient's registration
     // status. If the recipient is not registered in the account factory (e.g.
     // an unknown address), the funds are still minted and
