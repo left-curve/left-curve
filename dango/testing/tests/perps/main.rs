@@ -17,6 +17,7 @@ use {
 };
 
 mod adl_bug_reproduction;
+mod batch_update_orders;
 mod client_order_id;
 mod conditional_orders;
 mod liquidation;
@@ -39,6 +40,7 @@ pub fn default_param() -> Param {
         max_unlocks: 10,
         max_open_orders: 100,
         funding_period: Duration::from_hours(1),
+        max_action_batch_size: 5,
         ..Default::default()
     }
 }

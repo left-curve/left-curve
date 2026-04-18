@@ -81,6 +81,12 @@ fn validate_param(param: &Param) -> anyhow::Result<()> {
         param.max_open_orders,
     );
 
+    ensure!(
+        param.max_action_batch_size > 0,
+        "invalid `max_action_batch_size`! bounds: > 0, found: {}",
+        param.max_action_batch_size,
+    );
+
     // Maker fees may be negative: a negative rate represents a rebate paid
     // to the maker. Taker fees and referrer commissions are always non-negative.
     validate_rate_schedule(
@@ -410,6 +416,7 @@ mod tests {
             min_referrer_volume: UsdValue::ZERO,
             referrer_commission_rates: RateSchedule::default(),
             vault_deposit_cap: None,
+            max_action_batch_size: 5,
         }
     }
 
@@ -465,6 +472,16 @@ mod tests {
         };
         let err = validate_param(&param).unwrap_err().to_string();
         assert!(err.contains("`max_open_orders`"), "{err}");
+    }
+
+    #[test]
+    fn param_zero_max_action_batch_size_rejected() {
+        let param = Param {
+            max_action_batch_size: 0,
+            ..valid_param()
+        };
+        let err = validate_param(&param).unwrap_err().to_string();
+        assert!(err.contains("`max_action_batch_size`"), "{err}");
     }
 
     #[test]

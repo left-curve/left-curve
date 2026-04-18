@@ -1,3 +1,4 @@
+mod batch_update_orders;
 mod cancel_conditional_order;
 mod cancel_order;
 mod deposit;
@@ -6,8 +7,8 @@ mod submit_order;
 mod withdraw;
 
 pub use {
-    cancel_conditional_order::*, cancel_order::*, deposit::*, submit_conditional_order::*,
-    submit_order::*, withdraw::*,
+    batch_update_orders::*, cancel_conditional_order::*, cancel_order::*, deposit::*,
+    submit_conditional_order::*, submit_order::*, withdraw::*,
 };
 
 use {

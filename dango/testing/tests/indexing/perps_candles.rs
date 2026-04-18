@@ -631,6 +631,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
                     max_unlocks: 10,
                     max_open_orders: 100,
                     funding_period: Duration::from_hours(1),
+                    max_action_batch_size: 5,
                     ..Default::default()
                 },
                 pair_params: btree_map! {

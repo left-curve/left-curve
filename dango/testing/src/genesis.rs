@@ -644,6 +644,7 @@ impl Preset for PerpsOption {
                 max_open_orders: 100,
                 funding_period: Duration::from_hours(1),
                 referral_active: true,
+                max_action_batch_size: 5,
                 ..Default::default()
             },
             pair_params: btree_map! {

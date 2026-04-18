@@ -36,6 +36,7 @@ fn default_param_no_liq_fee() -> Param {
         max_unlocks: 10,
         max_open_orders: 100,
         funding_period: Duration::from_hours(1),
+        max_action_batch_size: 5,
         ..Default::default()
     }
 }

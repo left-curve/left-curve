@@ -4,8 +4,8 @@ use {
         account_factory::UserIndex,
     },
     grug::{
-        Addr, Denom, Duration, MathResult, Op, Order as IterationOrder, Part, Timestamp, Uint64,
-        Uint128,
+        Addr, Denom, Duration, MathResult, NonEmpty, Op, Order as IterationOrder, Part, Timestamp,
+        Uint64, Uint128,
     },
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
@@ -315,6 +315,13 @@ pub struct Param {
     ///
     /// Bounds: if `Some`, `> 0`. Use `None` for unlimited.
     pub vault_deposit_cap: Option<UsdValue>,
+
+    /// Maximum number of actions allowed in a single
+    /// `TraderMsg::BatchUpdateOrders` message.
+    ///
+    /// Bounds: `>= 1`. Governance-tunable via `Configure`; no hard
+    /// upper bound is enforced.
+    pub max_action_batch_size: usize,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -839,6 +846,17 @@ pub enum CancelOrderRequest {
     All,
 }
 
+/// One action inside a `TraderMsg::BatchUpdateOrders` list.
+///
+/// Conditional (TP/SL) orders are intentionally out of scope for
+/// batching — use `SubmitConditionalOrder` / `CancelConditionalOrder`.
+#[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
+pub enum SubmitOrCancelOrderRequest {
+    Submit(SubmitOrderRequest),
+    Cancel(CancelOrderRequest),
+}
+
 #[grug::derive(Serde)]
 pub enum CancelConditionalOrderRequest {
     /// Cancel a single conditional order identified by pair and direction.
@@ -935,6 +953,19 @@ pub enum TraderMsg {
 
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
+
+    /// Execute a sequence of order actions atomically.
+    ///
+    /// Actions are applied sequentially — later actions observe the state
+    /// written by earlier ones — and the whole batch is atomic: if any
+    /// action fails the message reverts and no partial state is persisted.
+    ///
+    /// The list must be non-empty, and its length must not exceed
+    /// `Param::max_action_batch_size`.
+    ///
+    /// Conditional (TP/SL) orders are not supported in batches — use
+    /// `SubmitConditionalOrder` / `CancelConditionalOrder`.
+    BatchUpdateOrders(NonEmpty<Vec<SubmitOrCancelOrderRequest>>),
 
     /// Submit a conditional (TP/SL) order that triggers when the oracle price
     /// crosses the specified trigger price. Always reduce-only, executed as a
