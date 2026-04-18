@@ -49,9 +49,9 @@ export const OpenInterestDisplay: React.FC = () => {
   };
 
   return (
-    <div className="flex gap-1 flex-col items-start lg:w-[5.5rem] lg:shrink-0 col-span-3 lg:col-span-1">
+    <div className="flex gap-1 flex-col items-start lg:w-[5.5rem] lg:shrink-0">
       <Tooltip title="The sum of the notional values of all long and short positions.">
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+        <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.openInterest"]()}
         </p>
       </Tooltip>

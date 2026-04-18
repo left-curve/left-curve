@@ -58,7 +58,7 @@ export const FundingCountdown: React.FC = () => {
   return (
     <div className="flex gap-1 flex-col items-start lg:w-[8rem] lg:shrink-0">
       <Tooltip title="The hourly funding rate and the remaining time until the next funding collection. Positive rate means longs pay shorts; negative means shorts pay longs.">
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+        <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.funding"]()}
         </p>
       </Tooltip>
