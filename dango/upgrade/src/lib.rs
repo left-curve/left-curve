@@ -200,7 +200,20 @@ fn do_client_order_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
 /// post-upgrade `load` calls. Fills executed before the upgrade have no
 /// `fill_id` in their emitted `OrderFilled` events and are not backfilled —
 /// downstream consumers treat a missing field as "pre-v0.15.0".
+///
+/// Idempotency: this handler seeds a fresh counter. If it were ever rerun
+/// on a chain that already has `NEXT_FILL_ID` populated, blindly saving
+/// `FillId::ONE` would reset a live counter and cause duplicate fill ids
+/// to be emitted. The assertion below makes the invariant explicit —
+/// `assert!` is deliberate: the upgrade framework has no recovery path,
+/// and silently skipping would hide a serious control-flow bug.
 fn do_fill_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
+    assert!(
+        dango_perps::state::NEXT_FILL_ID
+            .may_load(storage)?
+            .is_none(),
+        "NEXT_FILL_ID already initialized — do_fill_id_upgrade must not run twice",
+    );
     dango_perps::state::NEXT_FILL_ID.save(storage, &FillId::ONE)?;
     tracing::info!("Initialized NEXT_FILL_ID to 1");
     Ok(())
@@ -483,6 +496,24 @@ mod tests {
             dango_perps::state::NEXT_FILL_ID.load(&storage).unwrap(),
             FillId::ONE
         );
+    }
+
+    /// Running `do_fill_id_upgrade` a second time on a chain that already
+    /// has a live `NEXT_FILL_ID` must panic rather than reset the counter.
+    /// A silent overwrite would cause the matching engine to emit fill
+    /// ids that collide with previously-emitted ones.
+    #[test]
+    #[should_panic(expected = "NEXT_FILL_ID already initialized")]
+    fn fill_id_upgrade_rejects_rerun() {
+        let mut storage = MockStorage::new();
+
+        // Simulate a chain that already has the counter advanced past 1.
+        dango_perps::state::NEXT_FILL_ID
+            .save(&mut storage, &Uint64::new(42))
+            .unwrap();
+
+        // A rerun must panic.
+        do_fill_id_upgrade(&mut storage).unwrap();
     }
 
     /// `do_upgrade` chains all three migrations: legacy `PairParam`s are
