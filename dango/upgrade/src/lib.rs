@@ -2,11 +2,11 @@ use {
     dango_perps::state::OrderKey,
     dango_types::{
         Dimensionless, FundingRate, Quantity, UsdPrice, UsdValue,
-        perps::{self, ChildOrder, FillId, OrderId, PairId},
+        perps::{self, ChildOrder, FillId, OrderId, PairId, RateSchedule},
     },
     grug::{
-        Addr, BlockInfo, IndexedMap, MultiIndex, NumberConst, Order as IterationOrder, StdResult,
-        Storage, Timestamp, UniqueIndex, addr,
+        Addr, BlockInfo, Duration, IndexedMap, MultiIndex, NumberConst, Order as IterationOrder,
+        StdResult, Storage, Timestamp, UniqueIndex, addr,
     },
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
     std::collections::BTreeSet,
@@ -35,6 +35,12 @@ const MIGRATION_MAX_LIMIT_PRICE_DEVIATION: Dimensionless = Dimensionless::new_pe
 /// Governance tightens per-pair via `Configure` after the upgrade.
 const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(5);
 
+/// Initial `max_action_batch_size` applied to the global `Param` during
+/// the migration. 5 matches Binance USD-M futures' `batchOrders` cap —
+/// conservative starting point; governance is expected to raise it via
+/// `Configure` once traffic patterns are understood.
+const MIGRATION_MAX_ACTION_BATCH_SIZE: usize = 5;
+
 /// Legacy types matching the pre-upgrade Borsh layout.
 ///
 /// `PairParam` before this upgrade does not contain the
@@ -51,7 +57,31 @@ const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(
 mod legacy {
     use super::*;
 
+    pub const PARAM: grug::Item<Param> = grug::Item::new("param");
+
     pub const PAIR_PARAMS: grug::Map<&PairId, PairParam> = grug::Map::new("pair_param");
+
+    /// Pre-upgrade layout of the global `Param`. Lacks the
+    /// `max_action_batch_size` field introduced by the batch-action PR;
+    /// order of the remaining fields must match the on-disk Borsh layout
+    /// exactly.
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct Param {
+        pub max_unlocks: usize,
+        pub max_open_orders: usize,
+        pub maker_fee_rates: RateSchedule,
+        pub taker_fee_rates: RateSchedule,
+        pub protocol_fee_rate: Dimensionless,
+        pub liquidation_fee_rate: Dimensionless,
+        pub liquidation_buffer_ratio: Dimensionless,
+        pub funding_period: Duration,
+        pub vault_total_weight: Dimensionless,
+        pub vault_cooldown_period: Duration,
+        pub referral_active: bool,
+        pub min_referrer_volume: UsdValue,
+        pub referrer_commission_rates: RateSchedule,
+        pub vault_deposit_cap: Option<UsdValue>,
+    }
 
     #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
     pub struct PairParam {
@@ -123,21 +153,32 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     let mut storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
 
-    do_price_banding_upgrade(&mut storage)?;
+    do_price_banding_and_batch_action_upgrades(&mut storage)?;
     do_client_order_id_upgrade(&mut storage)?;
     do_fill_id_upgrade(&mut storage)?;
 
     Ok(())
 }
 
-fn do_price_banding_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
-    let old_params: Vec<_> = legacy::PAIR_PARAMS
+/// Two Borsh-layout-breaking migrations bundled into one upgrade event:
+///
+/// 1. Price banding — adds `max_limit_price_deviation` and
+///    `max_market_slippage` to every `PairParam`.
+/// 2. Batch action size cap — adds `max_action_batch_size` to the
+///    global `Param`.
+///
+/// Both are pure additions at the end of their respective struct
+/// layouts, so the migration is a straightforward read-legacy /
+/// write-new roundtrip.
+fn do_price_banding_and_batch_action_upgrades(storage: &mut dyn Storage) -> StdResult<()> {
+    // 1. PairParam: add price-banding fields.
+    let old_pair_params: Vec<_> = legacy::PAIR_PARAMS
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<_>>()?;
 
-    let count = old_params.len();
+    let pair_count = old_pair_params.len();
 
-    for (pair_id, old) in old_params {
+    for (pair_id, old) in old_pair_params {
         let new = perps::PairParam {
             tick_size: old.tick_size,
             min_order_size: old.min_order_size,
@@ -162,7 +203,33 @@ fn do_price_banding_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
     }
 
     tracing::info!(
-        "Migrated {count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION}, max_market_slippage = {MIGRATION_MAX_MARKET_SLIPPAGE})"
+        "Migrated {pair_count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION}, max_market_slippage = {MIGRATION_MAX_MARKET_SLIPPAGE})"
+    );
+
+    // 2. Param: add `max_action_batch_size`.
+    let old_param = legacy::PARAM.load(storage)?;
+    let new_param = perps::Param {
+        max_unlocks: old_param.max_unlocks,
+        max_open_orders: old_param.max_open_orders,
+        maker_fee_rates: old_param.maker_fee_rates,
+        taker_fee_rates: old_param.taker_fee_rates,
+        protocol_fee_rate: old_param.protocol_fee_rate,
+        liquidation_fee_rate: old_param.liquidation_fee_rate,
+        liquidation_buffer_ratio: old_param.liquidation_buffer_ratio,
+        funding_period: old_param.funding_period,
+        vault_total_weight: old_param.vault_total_weight,
+        vault_cooldown_period: old_param.vault_cooldown_period,
+        referral_active: old_param.referral_active,
+        min_referrer_volume: old_param.min_referrer_volume,
+        referrer_commission_rates: old_param.referrer_commission_rates,
+        vault_deposit_cap: old_param.vault_deposit_cap,
+        // New field.
+        max_action_batch_size: MIGRATION_MAX_ACTION_BATCH_SIZE,
+    };
+    dango_perps::state::PARAM.save(storage, &new_param)?;
+
+    tracing::info!(
+        "Migrated global Param (added max_action_batch_size = {MIGRATION_MAX_ACTION_BATCH_SIZE})"
     );
 
     Ok(())
@@ -285,6 +352,25 @@ mod tests {
         }
     }
 
+    fn legacy_param() -> legacy::Param {
+        legacy::Param {
+            max_unlocks: 10,
+            max_open_orders: 100,
+            maker_fee_rates: RateSchedule::default(),
+            taker_fee_rates: RateSchedule::default(),
+            protocol_fee_rate: Dimensionless::ZERO,
+            liquidation_fee_rate: Dimensionless::new_permille(10),
+            liquidation_buffer_ratio: Dimensionless::ZERO,
+            funding_period: Duration::from_hours(1),
+            vault_total_weight: Dimensionless::ZERO,
+            vault_cooldown_period: Duration::from_days(1),
+            referral_active: true,
+            min_referrer_volume: UsdValue::ZERO,
+            referrer_commission_rates: RateSchedule::default(),
+            vault_deposit_cap: None,
+        }
+    }
+
     fn legacy_pair_param(tick_size_int: i128) -> legacy::PairParam {
         legacy::PairParam {
             tick_size: UsdPrice::new_int(tick_size_int),
@@ -310,6 +396,7 @@ mod tests {
 
         let eth = legacy_pair_param(1);
         let btc = legacy_pair_param(2);
+        let old_param = legacy_param();
 
         legacy::PAIR_PARAMS
             .save(&mut storage, &eth_pair(), &eth)
@@ -317,8 +404,9 @@ mod tests {
         legacy::PAIR_PARAMS
             .save(&mut storage, &btc_pair(), &btc)
             .unwrap();
+        legacy::PARAM.save(&mut storage, &old_param).unwrap();
 
-        do_price_banding_upgrade(&mut storage).unwrap();
+        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
 
         let migrated_eth = dango_perps::state::PAIR_PARAMS
             .load(&storage, &eth_pair())
@@ -373,12 +461,68 @@ mod tests {
             MIGRATION_MAX_MARKET_SLIPPAGE
         );
         assert_eq!(migrated_btc.tick_size, btc.tick_size);
+
+        // The global `Param` preserves every old field and gains
+        // `max_action_batch_size = MIGRATION_MAX_ACTION_BATCH_SIZE`.
+        let migrated_param = dango_perps::state::PARAM.load(&storage).unwrap();
+        assert_eq!(migrated_param.max_unlocks, old_param.max_unlocks);
+        assert_eq!(migrated_param.max_open_orders, old_param.max_open_orders);
+        assert_eq!(migrated_param.maker_fee_rates, old_param.maker_fee_rates);
+        assert_eq!(migrated_param.taker_fee_rates, old_param.taker_fee_rates);
+        assert_eq!(
+            migrated_param.protocol_fee_rate,
+            old_param.protocol_fee_rate
+        );
+        assert_eq!(
+            migrated_param.liquidation_fee_rate,
+            old_param.liquidation_fee_rate
+        );
+        assert_eq!(
+            migrated_param.liquidation_buffer_ratio,
+            old_param.liquidation_buffer_ratio
+        );
+        assert_eq!(migrated_param.funding_period, old_param.funding_period);
+        assert_eq!(
+            migrated_param.vault_total_weight,
+            old_param.vault_total_weight
+        );
+        assert_eq!(
+            migrated_param.vault_cooldown_period,
+            old_param.vault_cooldown_period
+        );
+        assert_eq!(migrated_param.referral_active, old_param.referral_active);
+        assert_eq!(
+            migrated_param.min_referrer_volume,
+            old_param.min_referrer_volume
+        );
+        assert_eq!(
+            migrated_param.referrer_commission_rates,
+            old_param.referrer_commission_rates
+        );
+        assert_eq!(
+            migrated_param.vault_deposit_cap,
+            old_param.vault_deposit_cap
+        );
+        assert_eq!(
+            migrated_param.max_action_batch_size,
+            MIGRATION_MAX_ACTION_BATCH_SIZE
+        );
     }
 
+    /// With no legacy pairs to migrate, the Param migration still runs
+    /// and backfills `max_action_batch_size`.
     #[test]
-    fn migration_with_no_pairs_is_noop() {
+    fn migration_with_no_pairs_still_migrates_param() {
         let mut storage = MockStorage::new();
-        do_price_banding_upgrade(&mut storage).unwrap();
+        legacy::PARAM.save(&mut storage, &legacy_param()).unwrap();
+        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
+        assert_eq!(
+            dango_perps::state::PARAM
+                .load(&storage)
+                .unwrap()
+                .max_action_batch_size,
+            MIGRATION_MAX_ACTION_BATCH_SIZE
+        );
     }
 
     /// `do_client_order_id_upgrade` rewrites every legacy resting order
@@ -516,17 +660,19 @@ mod tests {
         do_fill_id_upgrade(&mut storage).unwrap();
     }
 
-    /// `do_upgrade` chains all three migrations: legacy `PairParam`s are
-    /// rewritten, legacy resting orders are rewritten, and the
-    /// `NEXT_FILL_ID` counter is seeded — all under one upgrade boundary.
+    /// `do_upgrade` chains all migrations: legacy `PairParam`s are
+    /// rewritten, the global `Param` gains `max_action_batch_size`,
+    /// legacy resting orders are rewritten, and the `NEXT_FILL_ID`
+    /// counter is seeded — all under one upgrade boundary.
     #[test]
     fn do_upgrade_runs_all_migrations() {
         let mut storage = MockStorage::new();
 
-        // Seed legacy state for both migrations.
+        // Seed legacy state for every migration.
         legacy::PAIR_PARAMS
             .save(&mut storage, &eth_pair(), &legacy_pair_param(1))
             .unwrap();
+        legacy::PARAM.save(&mut storage, &legacy_param()).unwrap();
         legacy::BIDS
             .save(
                 &mut storage,
@@ -536,7 +682,7 @@ mod tests {
             .unwrap();
 
         // Run all migrations sequentially (mirrors `do_upgrade`).
-        do_price_banding_upgrade(&mut storage).unwrap();
+        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
         do_client_order_id_upgrade(&mut storage).unwrap();
         do_fill_id_upgrade(&mut storage).unwrap();
 
@@ -549,6 +695,15 @@ mod tests {
             MIGRATION_MAX_LIMIT_PRICE_DEVIATION
         );
         assert_eq!(pair.max_market_slippage, MIGRATION_MAX_MARKET_SLIPPAGE);
+
+        // Param migrated.
+        assert_eq!(
+            dango_perps::state::PARAM
+                .load(&storage)
+                .unwrap()
+                .max_action_batch_size,
+            MIGRATION_MAX_ACTION_BATCH_SIZE
+        );
 
         // Order migrated.
         let (_key, order) = dango_perps::state::BIDS
