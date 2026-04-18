@@ -438,14 +438,12 @@ mod tests {
         let any_cid = dango_perps::state::BIDS
             .idx
             .client_order_id
-            .keys(
-                &storage,
-                None,
-                None,
-                grug::Order::Ascending,
-            )
+            .keys(&storage, None, None, grug::Order::Ascending)
             .next();
-        assert!(any_cid.is_none(), "new client_order_id index should be empty");
+        assert!(
+            any_cid.is_none(),
+            "new client_order_id index should be empty"
+        );
     }
 
     #[test]
@@ -481,7 +479,10 @@ mod tests {
         let pair = dango_perps::state::PAIR_PARAMS
             .load(&storage, &eth_pair())
             .unwrap();
-        assert_eq!(pair.max_limit_price_deviation, MIGRATION_MAX_LIMIT_PRICE_DEVIATION);
+        assert_eq!(
+            pair.max_limit_price_deviation,
+            MIGRATION_MAX_LIMIT_PRICE_DEVIATION
+        );
         assert_eq!(pair.max_market_slippage, MIGRATION_MAX_MARKET_SLIPPAGE);
 
         // Order migrated.
