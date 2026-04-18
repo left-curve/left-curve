@@ -391,7 +391,7 @@ pub(crate) fn _submit_order(
 
     let taker_order_id = NEXT_ORDER_ID.load(storage)?;
     let mut next_order_id = taker_order_id + OrderId::ONE;
-    let next_fill_id = NEXT_FILL_ID.load(storage)?;
+    let mut next_fill_id = NEXT_FILL_ID.load(storage)?;
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
@@ -528,7 +528,7 @@ pub(crate) fn _submit_order(
     pair_state = updated_pair_state;
     taker_state = updated_taker_state;
     next_order_id = updated_next_order_id;
-    let next_fill_id = updated_next_fill_id;
+    next_fill_id = updated_next_fill_id;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
 
