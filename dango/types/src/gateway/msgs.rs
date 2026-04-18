@@ -95,6 +95,18 @@ pub enum QueryMsg {
     /// Query a user's movement history for a denom.
     #[returns(UserMovement)]
     UserMovement { user_index: UserIndex, denom: Denom },
+    /// Query the remaining global withdrawal allowance for a single denom.
+    /// Returns `None` if the denom has no rate limit configured.
+    #[returns(Option<Uint128>)]
+    AvailableWithdraw { denom: Denom },
+    /// Query the remaining global withdrawal allowance for all rate-limited denoms.
+    #[returns(BTreeMap<Denom, Uint128>)]
+    AvailableWithdraws {},
+    /// Query the total amount a user can withdraw for a denom (global allowance
+    /// remaining + personal deposit credit).
+    /// Returns `None` if the denom has no rate limit configured.
+    #[returns(Option<Uint128>)]
+    UserAvailableWithdraw { user_index: UserIndex, denom: Denom },
 }
 
 #[grug::derive(Serde)]

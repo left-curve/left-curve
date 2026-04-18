@@ -23,11 +23,6 @@ pub struct Movement {
 }
 
 impl Movement {
-    /// Returns how much deposit credit the user can still use.
-    pub fn remaining_credit(&self) -> Uint128 {
-        self.deposited.saturating_sub(self.credit_used)
-    }
-
     /// Merges `other` into `self` by adding all fields.
     pub fn accumulate(&mut self, other: &Movement) -> StdResult<()> {
         self.deposited.checked_add_assign(other.deposited)?;
@@ -72,6 +67,30 @@ impl UserMovement {
         }
         Ok(())
     }
+
+    /// Records a withdrawal: adds `credit_used` to the deposit credit consumed
+    /// and `total` to the total withdrawn for this epoch.
+    pub fn record_withdrawal(&mut self, credit_used: Uint128, total: Uint128) -> StdResult<()> {
+        self.current.credit_used.checked_add_assign(credit_used)?;
+        self.current.withdrawn.checked_add_assign(total)?;
+        Ok(())
+    }
+
+    /// Returns how much deposit credit the user can still use in this epoch.
+    pub fn remaining_credit(&self) -> Uint128 {
+        self.current
+            .deposited
+            .saturating_sub(self.current.credit_used)
+    }
+
+    /// Splits `amount` into the portion covered by the current epoch's deposit
+    /// credit and the excess that must be checked against the global rate limit.
+    pub fn compute_credit_coverage(&self, amount: Uint128) -> (Uint128, Uint128) {
+        let credit = self.remaining_credit();
+        let free_amount = credit.min(amount);
+        let excess = amount.saturating_sub(free_amount);
+        (free_amount, excess)
+    }
 }
 
 /// Global per-denom sliding window tracking non-deposit-backed outbound.
@@ -99,22 +118,24 @@ impl Default for GlobalOutbound {
 
 impl GlobalOutbound {
     /// Adds `amount` to the current hour's slot and updates the cached total.
-    pub fn add_to_current(&mut self, amount: Uint128) {
+    pub fn add_to_current(&mut self, amount: Uint128) -> StdResult<()> {
         if let Some(current) = self.window.front_mut() {
-            *current = current.saturating_add(amount);
+            current.checked_add_assign(amount)?;
         }
-        self.total_24h = self.total_24h.saturating_add(amount);
+        self.total_24h.checked_add_assign(amount)?;
+        Ok(())
     }
 
     /// Rotates the window: pushes a fresh zero slot for the new hour. Once the
     /// window has reached `WINDOW_SIZE`, the oldest slot is popped and its value
     /// subtracted from `total_24h`. O(1).
-    pub fn rotate(&mut self) {
+    pub fn rotate(&mut self) -> StdResult<()> {
         if self.window.len() >= WINDOW_SIZE as usize
             && let Some(oldest) = self.window.pop_back()
         {
-            self.total_24h = self.total_24h.saturating_sub(oldest);
+            self.total_24h.checked_sub_assign(oldest)?;
         }
         self.window.push_front(Uint128::ZERO);
+        Ok(())
     }
 }

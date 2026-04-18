@@ -11,8 +11,8 @@ use {
         },
     },
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
-        Uint128,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
+        MultiplyFraction, Number, NumberConst, Order, StdResult, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -66,6 +66,18 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::UserMovement { user_index, denom } => {
             let res = query_user_movement(ctx, user_index, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::AvailableWithdraw { denom } => {
+            let res = query_global_available_withdraw(ctx, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::AvailableWithdraws {} => {
+            let res = query_global_available_withdraws(ctx)?;
+            res.to_json_value()
+        },
+        QueryMsg::UserAvailableWithdraw { user_index, denom } => {
+            let res = query_user_available_withdraw(ctx, user_index, denom)?;
             res.to_json_value()
         },
     }
@@ -180,4 +192,82 @@ fn query_user_movement(
     movement.rotate_if_needed(epoch)?;
 
     Ok(movement)
+}
+
+/// Computes the remaining global withdrawal allowance for a denom:
+/// `supply * rate_limit - total_24h`, floored at zero.
+/// Loads the snapshotted supply from storage; `total_24h` is the cached
+/// rolling outbound from `GlobalOutbound`.
+pub(crate) fn compute_global_available_withdraw(
+    storage: &dyn grug::Storage,
+    denom: &Denom,
+    rate_limit: &RateLimit,
+    total_24h: Uint128,
+) -> StdResult<Uint128> {
+    let supply = SUPPLIES.load(storage, denom)?;
+    let daily_allowance = supply.checked_mul_dec_floor(rate_limit.into_inner())?;
+
+    Ok(daily_allowance.saturating_sub(total_24h))
+}
+
+fn query_global_available_withdraw(ctx: ImmutableCtx, denom: Denom) -> StdResult<Option<Uint128>> {
+    let rate_limits = RATE_LIMITS.load(ctx.storage)?;
+
+    match rate_limits.get(&denom) {
+        Some(rate_limit) => {
+            let rolling = GLOBAL_OUTBOUND
+                .may_load(ctx.storage, &denom)?
+                .map(|g| g.total_24h)
+                .unwrap_or(Uint128::ZERO);
+            compute_global_available_withdraw(ctx.storage, &denom, rate_limit, rolling).map(Some)
+        },
+        None => Ok(None),
+    }
+}
+
+fn query_global_available_withdraws(ctx: ImmutableCtx) -> StdResult<BTreeMap<Denom, Uint128>> {
+    let rate_limits = RATE_LIMITS.load(ctx.storage)?;
+
+    rate_limits
+        .iter()
+        .map(|(denom, rate_limit)| {
+            let rolling = GLOBAL_OUTBOUND
+                .may_load(ctx.storage, denom)?
+                .map(|g| g.total_24h)
+                .unwrap_or(Uint128::ZERO);
+            let available =
+                compute_global_available_withdraw(ctx.storage, denom, rate_limit, rolling)?;
+            Ok((denom.clone(), available))
+        })
+        .collect()
+}
+
+fn query_user_available_withdraw(
+    ctx: ImmutableCtx,
+    user_index: UserIndex,
+    denom: Denom,
+) -> StdResult<Option<Uint128>> {
+    let rate_limits = RATE_LIMITS.load(ctx.storage)?;
+
+    let global_available = match rate_limits.get(&denom) {
+        Some(rate_limit) => {
+            let rolling = GLOBAL_OUTBOUND
+                .may_load(ctx.storage, &denom)?
+                .map(|g| g.total_24h)
+                .unwrap_or(Uint128::ZERO);
+            compute_global_available_withdraw(ctx.storage, &denom, rate_limit, rolling)?
+        },
+        None => return Ok(None),
+    };
+
+    let epoch = EPOCH.load(ctx.storage)?;
+    let mut user_movement = USER_MOVEMENTS
+        .may_load(ctx.storage, (user_index, &denom))?
+        .unwrap_or_else(|| UserMovement::new(epoch));
+
+    user_movement.rotate_if_needed(epoch)?;
+
+    let deposit_credit = user_movement.remaining_credit();
+
+    Ok(Some(global_available.checked_add(deposit_credit)?))
 }

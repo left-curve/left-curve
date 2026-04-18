@@ -16,9 +16,8 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst, Op,
-        QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
-        btree_map, coins,
+        Addr, Coins, Denom, Inner, Message, MutableCtx, Number, NumberConst, Op, QuerierExt,
+        QuerierWrapper, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -287,41 +286,35 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         let mut user_movement =
             load_user_movement(ctx.storage, user_index, &coin.denom, current_epoch)?;
 
-        // How much deposit credit the user can still use.
-        let remaining_credit = user_movement.current.remaining_credit();
-        let free_amount = remaining_credit.min(coin.amount);
-        let excess = coin.amount.saturating_sub(free_amount);
+        // Split the withdrawal into the deposit-backed portion (covered, no
+        // global impact) and the excess that counts against the global limit.
+        let (covered, excess) = user_movement.compute_credit_coverage(coin.amount);
 
         if excess > Uint128::ZERO {
-            let supply = SUPPLIES.load(ctx.storage, &coin.denom)?;
-            let daily_allowance = supply.checked_mul_dec_floor(rate_limit.into_inner())?;
-
             let mut global = GLOBAL_OUTBOUND
                 .may_load(ctx.storage, &coin.denom)?
                 .unwrap_or_default();
 
-            let new_rolling = global.total_24h.checked_add(excess)?;
+            let global_available = crate::query::compute_global_available_withdraw(
+                ctx.storage,
+                &coin.denom,
+                rate_limit,
+                global.total_24h,
+            )?;
 
             ensure!(
-                daily_allowance >= new_rolling,
-                "rate limit exceeded! denom: {}, daily allowance: {}, outbound: {}",
+                global_available >= excess,
+                "rate limit exceeded! denom: {}, available: {}, excess: {}",
                 coin.denom,
-                daily_allowance,
-                new_rolling
+                global_available,
+                excess
             );
 
-            global.add_to_current(excess);
+            global.add_to_current(excess)?;
             GLOBAL_OUTBOUND.save(ctx.storage, &coin.denom, &global)?;
         }
 
-        user_movement
-            .current
-            .credit_used
-            .checked_add_assign(free_amount)?;
-        user_movement
-            .current
-            .withdrawn
-            .checked_add_assign(coin.amount)?;
+        user_movement.record_withdrawal(covered, coin.amount)?;
 
         USER_MOVEMENTS.save(ctx.storage, (user_index, &coin.denom), &user_movement)?;
     }
@@ -389,7 +382,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             .may_load(ctx.storage, denom)?
             .unwrap_or_default();
 
-        global.rotate();
+        global.rotate()?;
 
         GLOBAL_OUTBOUND.save(ctx.storage, denom, &global)?;
     }
