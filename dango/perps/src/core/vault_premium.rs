@@ -10,10 +10,12 @@ use {
 /// premium formula yields:
 ///
 /// ```text
-/// premium = -halfSpread × skew × spreadSkewFactor
+/// premium = -halfSpread × skew × spreadSkewFactor × fundingRateMultiplier
 /// ```
 ///
-/// where `skew = clamp(positionSize / maxSkewSize, -1, 1)`.
+/// where `skew = clamp(positionSize / maxSkewSize, -1, 1)`. The
+/// `fundingRateMultiplier` is a governance-tunable scale that lets admins
+/// dial funding up or down without altering the vault's quoting.
 ///
 /// **Sign convention:** a positive vault position (long) produces a negative
 /// premium, meaning shorts pay longs — crediting the vault for absorbed
@@ -30,11 +32,12 @@ pub fn compute_vault_premium(
             .clamp(Dimensionless::new_int(-1), Dimensionless::new_int(1))
     };
 
-    // premium = -(halfSpread * skew * spreadSkewFactor)
+    // premium = -(halfSpread * skew * spreadSkewFactor * fundingRateMultiplier)
     pair_param
         .vault_half_spread
         .checked_mul(skew)?
         .checked_mul(pair_param.vault_spread_skew_factor)?
+        .checked_mul(pair_param.funding_rate_multiplier)?
         .checked_neg()
 }
 
@@ -49,12 +52,14 @@ mod tests {
 
     /// Default pair param with vault skew enabled.
     ///
-    /// half_spread = 1% (0.01), spread_skew_factor = 0.3, max_skew_size = 100.
+    /// half_spread = 1% (0.01), spread_skew_factor = 0.3, max_skew_size = 100,
+    /// funding_rate_multiplier = 1 (identity).
     fn default_pair_param() -> PairParam {
         PairParam {
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_spread_skew_factor: Dimensionless::new_permille(300), // 0.3
             vault_max_skew_size: Quantity::new_int(100),
+            funding_rate_multiplier: Dimensionless::ONE,
             ..Default::default()
         }
     }
@@ -134,5 +139,57 @@ mod tests {
         };
         let premium = compute_vault_premium(Quantity::new_int(50), &param).unwrap();
         assert_eq!(premium, Dimensionless::ZERO);
+    }
+
+    #[test]
+    fn multiplier_two_doubles_premium() {
+        // Baseline premium with multiplier = 1 is -0.0015 (see
+        // `long_position_gives_negative_premium`). Doubling the multiplier
+        // should double the magnitude.
+        let param = PairParam {
+            funding_rate_multiplier: Dimensionless::new_int(2),
+            ..default_pair_param()
+        };
+        let premium = compute_vault_premium(Quantity::new_int(50), &param).unwrap();
+        // premium = -(0.01 * 0.5 * 0.3 * 2) = -0.003
+        assert_eq!(premium, Dimensionless::new_raw(-3_000));
+    }
+
+    #[test]
+    fn multiplier_half_halves_premium() {
+        let param = PairParam {
+            funding_rate_multiplier: Dimensionless::new_permille(500), // 0.5
+            ..default_pair_param()
+        };
+        let premium = compute_vault_premium(Quantity::new_int(50), &param).unwrap();
+        // premium = -(0.01 * 0.5 * 0.3 * 0.5) = -0.00075
+        assert_eq!(premium, Dimensionless::new_raw(-750));
+    }
+
+    #[test]
+    fn zero_funding_rate_multiplier_gives_zero_premium() {
+        // With the multiplier at zero, the premium is zero regardless of skew
+        // or spread. Lets governance disable funding without touching the
+        // vault's quoting parameters.
+        let param = PairParam {
+            funding_rate_multiplier: Dimensionless::ZERO,
+            ..default_pair_param()
+        };
+        let premium = compute_vault_premium(Quantity::new_int(50), &param).unwrap();
+        assert_eq!(premium, Dimensionless::ZERO);
+    }
+
+    #[test]
+    fn large_multiplier_amplifies_premium() {
+        // Multipliers above 1 amplify funding. Upstream clamping by
+        // `max_abs_funding_rate` happens in `compute_funding_delta`, so
+        // `compute_vault_premium` is free to return large magnitudes.
+        let param = PairParam {
+            funding_rate_multiplier: Dimensionless::new_int(100),
+            ..default_pair_param()
+        };
+        let premium = compute_vault_premium(Quantity::new_int(50), &param).unwrap();
+        // premium = -(0.01 * 0.5 * 0.3 * 100) = -0.15
+        assert_eq!(premium, Dimensionless::new_raw(-150_000));
     }
 }

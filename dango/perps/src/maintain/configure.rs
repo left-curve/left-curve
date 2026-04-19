@@ -290,6 +290,13 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
     );
 
     ensure!(
+        !pair_param.funding_rate_multiplier.is_negative(),
+        "invalid `funding_rate_multiplier`! pair id: {}, bounds: >= 0, found: {}",
+        pair_id,
+        pair_param.funding_rate_multiplier,
+    );
+
+    ensure!(
         pair_param.max_limit_price_deviation > Dimensionless::ZERO
             && pair_param.max_limit_price_deviation < Dimensionless::ONE,
         "invalid `max_limit_price_deviation`! pair id: {}, bounds: (0, 1), found: {}",
@@ -438,6 +445,7 @@ mod tests {
             vault_size_skew_factor: Dimensionless::ZERO,
             vault_spread_skew_factor: Dimensionless::ZERO,
             vault_max_skew_size: Quantity::ZERO,
+            funding_rate_multiplier: Dimensionless::ONE,
             bucket_sizes: btree_set! {},
         }
     }
@@ -755,6 +763,38 @@ mod tests {
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
         assert!(err.contains("`vault_max_skew_size`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_negative_funding_rate_multiplier_rejected() {
+        let p = PairParam {
+            funding_rate_multiplier: Dimensionless::new_raw(-1),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`funding_rate_multiplier`"), "{err}");
+        assert!(err.contains(">= 0"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_zero_funding_rate_multiplier_accepted() {
+        // Zero is in range — lets governance disable funding for a pair
+        // without touching the vault's quoting.
+        let p = PairParam {
+            funding_rate_multiplier: Dimensionless::ZERO,
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_large_funding_rate_multiplier_accepted() {
+        // No upper bound on the multiplier.
+        let p = PairParam {
+            funding_rate_multiplier: Dimensionless::new_int(1_000),
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
     }
 
     #[test]

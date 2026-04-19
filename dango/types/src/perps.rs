@@ -489,6 +489,21 @@ pub struct PairParam {
     /// Bounds: `>= 0`. Zero disables inventory skew (skew always 0).
     pub vault_max_skew_size: Quantity,
 
+    /// Multiplier applied to the funding-rate premium so governance can tune
+    /// funding independently of the vault's quoting parameters. The full
+    /// formula is:
+    ///
+    /// ```plain
+    /// premium = -halfSpread × skew × spreadSkewFactor × fundingRateMultiplier
+    /// ```
+    ///
+    /// `1` reproduces the pre-multiplier behavior; `0` disables funding
+    /// without touching the vault's quoting; values `> 1` amplify funding.
+    ///
+    /// Bounds: `>= 0`. Negative values would flip the funding sign and
+    /// invert the economic incentive.
+    pub funding_rate_multiplier: Dimensionless,
+
     /// Price bucket sizes for which aggregated order book depth is maintained.
     /// Each entry defines a granularity level for the depth query.
     ///
@@ -506,6 +521,7 @@ impl PairParam {
             vault_max_quote_size: Quantity::new_int(100),
             max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
             max_market_slippage: Dimensionless::new_permille(500),       // 50%
+            funding_rate_multiplier: Dimensionless::ONE,
             ..Default::default()
         }
     }
