@@ -62,7 +62,7 @@ pub fn compute_close_schedule(
     }
 
     // Sort by MM contribution descending.
-    mm_entries.sort_by(|a, b| b.0.cmp(&a.0));
+    mm_entries.sort_by_key(|(a, _)| std::cmp::Reverse(*a));
 
     // Build the close schedule.
     let mut schedule = Vec::new();

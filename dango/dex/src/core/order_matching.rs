@@ -44,19 +44,10 @@ where
     let mut ask_volume = Udec128_6::ZERO;
     let mut range = None;
 
-    loop {
-        let Some(bid_order) = bid else {
-            break;
-        };
-
-        let Some(ask_order) = ask else {
-            break;
-        };
-
-        if bid_order.price < ask_order.price {
-            break;
-        }
-
+    while let Some(bid_order) = bid
+        && let Some(ask_order) = ask
+        && bid_order.price >= ask_order.price
+    {
         range = Some((ask_order.price, bid_order.price));
 
         if bid_is_new {
