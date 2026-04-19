@@ -172,21 +172,13 @@ mod tests {
     /// Static inputs shared by every test case. Chosen so that every
     /// test case's `availToTrade` stays comfortably positive and the
     /// `×1.001` bump is well above `Dec128_6` rounding noise.
-    const USER_MARGIN: i128 = 20_000;
-    const CURRENT_PRICE: i128 = 2_000; // ETH = $2000
-    const OTHER_PRICE: i128 = 50_000; // BTC = $50_000
-    const CURRENT_IMR_PERMILLE: i128 = 100; // 10%
-    const OTHER_IMR_PERMILLE: i128 = 50; // 5%
-    const FEE_RAW: i128 = 450; // 0.045% = 450 × 10^-6 in Dec128_6 raw form
-    const RESERVED_WHEN_SET: i128 = 500; // $500 reserved when `has_orders`
-
-    fn fee() -> Dimensionless {
-        Dimensionless::new_raw(FEE_RAW)
-    }
-
-    fn oracle_price_current() -> UsdPrice {
-        UsdPrice::new_int(CURRENT_PRICE)
-    }
+    const USER_MARGIN: UsdValue = UsdValue::new_int(20_000);
+    const CURRENT_PRICE: UsdPrice = UsdPrice::new_int(2_000); // ETH = $2000
+    const OTHER_PRICE: UsdPrice = UsdPrice::new_int(50_000); // BTC = $50_000
+    const CURRENT_IMR: Dimensionless = Dimensionless::new_percent(10);
+    const OTHER_IMR: Dimensionless = Dimensionless::new_percent(5);
+    const FEE: Dimensionless = Dimensionless::new_raw(450); // 0.045%
+    const RESERVED_WHEN_SET: UsdValue = UsdValue::new_int(500); // when `has_orders`
 
     fn build_setup(
         current_pos: i128,
@@ -202,7 +194,7 @@ mod tests {
             positions.insert(eth::DENOM.clone(), Position {
                 size: Quantity::new_int(current_pos),
                 // entry_price = oracle so unrealized pnl is zero
-                entry_price: UsdPrice::new_int(CURRENT_PRICE),
+                entry_price: CURRENT_PRICE,
                 entry_funding_per_unit: FundingPerUnit::new_int(0),
                 conditional_order_above: None,
                 conditional_order_below: None,
@@ -211,7 +203,7 @@ mod tests {
         if other_pos != 0 {
             positions.insert(btc::DENOM.clone(), Position {
                 size: Quantity::new_int(other_pos),
-                entry_price: UsdPrice::new_int(OTHER_PRICE),
+                entry_price: OTHER_PRICE,
                 entry_funding_per_unit: FundingPerUnit::new_int(0),
                 conditional_order_above: None,
                 conditional_order_below: None,
@@ -219,13 +211,13 @@ mod tests {
         }
 
         let reserved = if has_orders {
-            UsdValue::new_int(RESERVED_WHEN_SET)
+            RESERVED_WHEN_SET
         } else {
             UsdValue::ZERO
         };
 
         let user_state = UserState {
-            margin: UsdValue::new_int(USER_MARGIN),
+            margin: USER_MARGIN,
             positions,
             reserved_margin: reserved,
             ..Default::default()
@@ -234,11 +226,11 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
                 eth::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Dimensionless::new_permille(CURRENT_IMR_PERMILLE),
+                    initial_margin_ratio: CURRENT_IMR,
                     ..Default::default()
                 },
                 btc::DENOM.clone() => PairParam {
-                    initial_margin_ratio: Dimensionless::new_permille(OTHER_IMR_PERMILLE),
+                    initial_margin_ratio: OTHER_IMR,
                     ..Default::default()
                 },
             },
@@ -254,14 +246,18 @@ mod tests {
             },
         );
 
+        // The oracle stores prices as `Udec128` (18 decimals), whereas
+        // `UsdPrice` is `Dec128_6`. The numeric values (2_000 and 50_000)
+        // must match the `CURRENT_PRICE` and `OTHER_PRICE` consts above
+        // so unrealized pnl stays zero at entry.
         let oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(CURRENT_PRICE as u128 * 100),
+                Udec128::new(2_000),
                 Timestamp::from_seconds(0),
                 18,
             ),
             btc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(OTHER_PRICE as u128 * 100),
+                Udec128::new(50_000),
                 Timestamp::from_seconds(0),
                 8,
             ),
@@ -327,8 +323,6 @@ mod tests {
         let (user_state, mut oracle_querier, perp_querier) =
             build_setup(current_pos, other_pos, has_orders);
         let current_pair_id = eth::DENOM.clone();
-        let oracle_price = oracle_price_current();
-        let fee = fee();
 
         // 1. Available to trade, then max notional, then max base size.
         let avail = compute_available_to_trade(
@@ -347,12 +341,12 @@ mod tests {
         );
 
         let pair_param = perp_querier.query_pair_param(&current_pair_id).unwrap();
-        let max_notional = compute_max_order_notional(avail, pair_param.initial_margin_ratio, fee)
+        let max_notional = compute_max_order_notional(avail, pair_param.initial_margin_ratio, FEE)
             .expect("max notional should compute");
 
         // max_notional (USD) / oracle_price (USD/unit) = |size| (units)
         let max_size_abs: Quantity = max_notional
-            .checked_div(oracle_price)
+            .checked_div(CURRENT_PRICE)
             .expect("max size should compute");
 
         assert!(
@@ -371,8 +365,8 @@ mod tests {
             &current_pair_id,
             &perp_querier,
             &user_state,
-            fee,
-            oracle_price,
+            FEE,
+            CURRENT_PRICE,
             max_size_signed,
         )
         .expect("check_margin should accept the boundary order");
@@ -389,8 +383,8 @@ mod tests {
             &current_pair_id,
             &perp_querier,
             &user_state,
-            fee,
-            oracle_price,
+            FEE,
+            CURRENT_PRICE,
             bumped,
         );
 
