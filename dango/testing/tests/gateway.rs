@@ -1338,6 +1338,96 @@ fn deposit_to_unregistered_address() {
         });
 }
 
+/// Verify that a zero rate limit acts as an emergency freeze: all withdrawals
+/// are blocked, even deposit-credited ones. Unfreezing (setting a non-zero
+/// rate limit) re-enables withdrawals.
+#[test]
+fn rate_limit_zero_freeze() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Deposit 100 USDC.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit to 0% — emergency freeze.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::ZERO),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Even though the user has 100 of deposit credit in the same epoch,
+    // a zero rate limit blocks everything.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("withdrawals are frozen");
+
+    // Unfreeze by setting a non-zero rate limit.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Withdrawals work again — deposit credit covers this.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+}
+
 /// Advance 24 hourly epochs (one full rate-limit day).
 fn advance_to_next_day(suite: &mut TestSuite) {
     for _ in 0..24 {

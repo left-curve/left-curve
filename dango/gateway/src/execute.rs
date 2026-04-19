@@ -17,7 +17,8 @@ use {
     },
     grug::{
         Addr, Coins, Denom, Inner, Message, MutableCtx, Number, NumberConst, Op, QuerierExt,
-        QuerierWrapper, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
+        QuerierWrapper, Response, StdError, StdResult, Storage, SudoCtx, Udec128, Uint128,
+        btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -281,6 +282,15 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     // contract-initiated withdrawals are needed in the future, a whitelist
     // mechanism should be added.
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
+        // A zero rate limit acts as an emergency freeze — all withdrawals are
+        // blocked, including deposit-credited ones. This lets the owner halt
+        // outflows immediately in response to a bridge exploit.
+        ensure!(
+            rate_limit.into_inner() > Udec128::ZERO,
+            "withdrawals are frozen for denom: {}",
+            coin.denom
+        );
+
         let current_epoch = EPOCH.load(ctx.storage)?;
         let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
         let mut user_movement =
