@@ -1,0 +1,402 @@
+//! Chain-exact rewrite of the frontend `usePerpsMaxSize` formula, used
+//! purely for test verification that the frontend math lines up exactly
+//! with `check_margin`'s acceptance boundary.
+//!
+//! The frontend version in `ui/store/src/hooks/usePerpsMaxSize.ts` takes a
+//! user-selected UI `leverage` and uses `1/L` for the *current* pair's IM
+//! term. When `L = L_max = 1 / IMR_pair`, that coincides with `IMR_pair`
+//! and the formulas agree. This module uses `IMR_pair` directly (i.e.
+//! always the `L = L_max` case) so the `×1.001` boundary test is clean.
+
+use {
+    crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
+    dango_oracle::OracleQuerier,
+    dango_types::{
+        Dimensionless, Quantity, UsdValue,
+        perps::{PairId, UserState},
+    },
+};
+
+/// Order side entering the trade form.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Side {
+    Buy,
+    Sell,
+}
+
+/// Computing the "available to trade" amount on the frontend.
+///
+/// This logic is not used in the contract at all -- only in the frontend,
+/// implemented in TypeScript. This function is for verifying the correctness
+/// of the logic.
+///
+/// Variables used below:
+///
+/// - `equity`: the user's equity across all open positions, as returned by
+///   [`compute_user_equity`]. Equals
+///   `user_state.margin + Σ unrealized_pnl − Σ accrued_funding`.
+/// - `pos_j`: the user's signed base-unit position in pair `j`, i.e.
+///   `user_state.positions[j].size`. Positive = long, negative = short.
+/// - `pos_current`: shorthand for `pos_j` where `j == current_pair_id`.
+///   Treated as zero when the user has no position in the traded pair.
+/// - `price_j`: the **oracle price** for pair `j`, as returned by
+///   [`OracleQuerier::query_price_for_perps`]. Dango uses the oracle price
+///   as the mark price, so this is the same number the frontend reads off
+///   `allPerpsPairStatsStore[pid].currentPrice`. It is neither the
+///   orderbook best-bid/ask nor the position's entry price.
+/// - `price`: shorthand for `price_j` where `j == current_pair_id`.
+/// - `IMR_pair_j`: the **fixed** initial-margin ratio for pair `j` from
+///   [`PairParam::initial_margin_ratio`]. It is a per-pair chain constant
+///   (equal to `1 / max_leverage_for_pair`) and does **not** depend on any
+///   UI leverage slider.
+/// - `IMR_pair`: shorthand for `IMR_pair_j` where `j == current_pair_id`.
+/// - `reserved_margin`: the user's total margin locked by open GTC limit
+///   orders across all pairs and both sides, `user_state.reserved_margin`.
+/// - "order opposes the position": the order side differs from the sign
+///   of `pos_current` (buy against a short, sell against a long).
+///   Otherwise the order adds to the position (same side).
+///
+/// ```plain
+/// otherIM = Σ(j ≠ current_pair_id) |pos_j| · price_j · IMR_pair_j
+///
+/// currentTerm =
+///   0                                         if pos_current = 0
+///   + |pos_current| · price · IMR_pair        if order opposes the position
+///   − |pos_current| · price · IMR_pair        if order adds to the position
+///
+/// availToTrade = equity + currentTerm − otherIM − reserved_margin
+/// ```
+///
+/// Clamping is deliberately skipped here (the caller can clamp) so callers
+/// that want to reason about the raw signed value can do so.
+pub fn compute_available_to_trade(
+    oracle_querier: &mut OracleQuerier,
+    perp_querier: &NoCachePerpQuerier,
+    user_state: &UserState,
+    current_pair_id: &PairId,
+    action: Side,
+) -> anyhow::Result<UsdValue> {
+    let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
+
+    let mut other_im = UsdValue::ZERO;
+    for (pair_id, position) in &user_state.positions {
+        if pair_id == current_pair_id {
+            continue;
+        }
+        if position.size.is_zero() {
+            continue;
+        }
+        let price = oracle_querier.query_price_for_perps(pair_id)?;
+        let pair_param = perp_querier.query_pair_param(pair_id)?;
+        let im = position
+            .size
+            .checked_abs()?
+            .checked_mul(price)?
+            .checked_mul(pair_param.initial_margin_ratio)?;
+        other_im.checked_add_assign(im)?;
+    }
+
+    let current_pos = user_state
+        .positions
+        .get(current_pair_id)
+        .map(|p| p.size)
+        .unwrap_or(Quantity::ZERO);
+
+    let current_term = if current_pos.is_zero() {
+        UsdValue::ZERO
+    } else {
+        let price = oracle_querier.query_price_for_perps(current_pair_id)?;
+        let pair_param = perp_querier.query_pair_param(current_pair_id)?;
+        let abs_im = current_pos
+            .checked_abs()?
+            .checked_mul(price)?
+            .checked_mul(pair_param.initial_margin_ratio)?;
+
+        let pos_is_long = current_pos.is_positive();
+        let order_is_buy = matches!(action, Side::Buy);
+        let is_opposing = pos_is_long != order_is_buy;
+
+        if is_opposing {
+            abs_im
+        } else {
+            abs_im.checked_neg()?
+        }
+    };
+
+    Ok(equity
+        .checked_add(current_term)?
+        .checked_sub(other_im)?
+        .checked_sub(user_state.reserved_margin)?)
+}
+
+/// ```plain
+/// max_notional = max(availToTrade, 0) / (IMR_pair + fee)
+/// ```
+pub fn compute_max_order_notional(
+    avail_to_trade: UsdValue,
+    pair_imr: Dimensionless,
+    fee: Dimensionless,
+) -> anyhow::Result<UsdValue> {
+    let avail_clamped = if avail_to_trade.is_negative() {
+        UsdValue::ZERO
+    } else {
+        avail_to_trade
+    };
+    let denom = pair_imr.checked_add(fee)?;
+    Ok(avail_clamped.checked_div(denom)?)
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::core::check_margin,
+        dango_types::{
+            FundingPerUnit, UsdPrice,
+            constants::{btc, eth},
+            oracle::PrecisionedPrice,
+            perps::{PairParam, PairState, Position},
+        },
+        grug::{Timestamp, Udec128, btree_map, hash_map},
+        test_case::test_case,
+    };
+
+    /// Static inputs shared by every test case. Chosen so that every
+    /// test case's `availToTrade` stays comfortably positive and the
+    /// `×1.001` bump is well above `Dec128_6` rounding noise.
+    const USER_MARGIN: i128 = 20_000;
+    const CURRENT_PRICE: i128 = 2_000; // ETH = $2000
+    const OTHER_PRICE: i128 = 50_000; // BTC = $50_000
+    const CURRENT_IMR_PERMILLE: i128 = 100; // 10%
+    const OTHER_IMR_PERMILLE: i128 = 50; // 5%
+    const FEE_BPS: i128 = 45; // 0.045% → 45 × 10^-6 as raw micro-pct
+    const RESERVED_WHEN_SET: i128 = 500; // $500 reserved when `has_orders`
+
+    fn fee() -> Dimensionless {
+        // 0.045% = 45 / 10^6 in Dec128_6 raw form.
+        Dimensionless::new_raw(FEE_BPS)
+    }
+
+    fn oracle_price_current() -> UsdPrice {
+        UsdPrice::new_int(CURRENT_PRICE)
+    }
+
+    fn build_setup(
+        current_pos: i128,
+        other_pos: i128,
+        has_orders: bool,
+    ) -> (
+        UserState,
+        OracleQuerier<'static>,
+        NoCachePerpQuerier<'static>,
+    ) {
+        let mut positions = btree_map! {};
+        if current_pos != 0 {
+            positions.insert(eth::DENOM.clone(), Position {
+                size: Quantity::new_int(current_pos),
+                // entry_price = oracle so unrealized pnl is zero
+                entry_price: UsdPrice::new_int(CURRENT_PRICE),
+                entry_funding_per_unit: FundingPerUnit::new_int(0),
+                conditional_order_above: None,
+                conditional_order_below: None,
+            });
+        }
+        if other_pos != 0 {
+            positions.insert(btc::DENOM.clone(), Position {
+                size: Quantity::new_int(other_pos),
+                entry_price: UsdPrice::new_int(OTHER_PRICE),
+                entry_funding_per_unit: FundingPerUnit::new_int(0),
+                conditional_order_above: None,
+                conditional_order_below: None,
+            });
+        }
+
+        let reserved = if has_orders {
+            UsdValue::new_int(RESERVED_WHEN_SET)
+        } else {
+            UsdValue::ZERO
+        };
+
+        let user_state = UserState {
+            margin: UsdValue::new_int(USER_MARGIN),
+            positions,
+            reserved_margin: reserved,
+            ..Default::default()
+        };
+
+        let perp_querier = NoCachePerpQuerier::new_mock(
+            hash_map! {
+                eth::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Dimensionless::new_permille(CURRENT_IMR_PERMILLE),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairParam {
+                    initial_margin_ratio: Dimensionless::new_permille(OTHER_IMR_PERMILLE),
+                    ..Default::default()
+                },
+            },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairState {
+                    funding_per_unit: FundingPerUnit::new_int(0),
+                    ..Default::default()
+                },
+            },
+        );
+
+        let oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(CURRENT_PRICE as u128 * 100),
+                Timestamp::from_seconds(0),
+                18,
+            ),
+            btc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(OTHER_PRICE as u128 * 100),
+                Timestamp::from_seconds(0),
+                8,
+            ),
+        });
+
+        (user_state, oracle_querier, perp_querier)
+    }
+
+    /// Full cartesian matrix — 2 × 3 × 3 × 2 = **36** cases — covering
+    /// buy/sell × {no / long / short in current pair} × {no / long / short
+    /// in other pair} × {no / with open orders}.
+    ///
+    /// For each case, solve `compute_max_order_notional` at exactly the
+    /// boundary and prove:
+    ///
+    /// 1. `check_margin(size)` accepts.
+    /// 2. `check_margin(size × 1.001)` rejects.
+    ///
+    /// Reduce-only is deliberately omitted: `check_margin` is skipped for
+    /// reduce-only on-chain, so the boundary paradigm doesn't apply.
+    #[test_case(Side::Buy,   0,  0, false ; "buy  | no pos    | no other    | no orders")]
+    #[test_case(Side::Buy,   0,  0, true  ; "buy  | no pos    | no other    | with orders")]
+    #[test_case(Side::Buy,   0,  1, false ; "buy  | no pos    | long other  | no orders")]
+    #[test_case(Side::Buy,   0,  1, true  ; "buy  | no pos    | long other  | with orders")]
+    #[test_case(Side::Buy,   0, -1, false ; "buy  | no pos    | short other | no orders")]
+    #[test_case(Side::Buy,   0, -1, true  ; "buy  | no pos    | short other | with orders")]
+    #[test_case(Side::Buy,   1,  0, false ; "buy  | long pos  | no other    | no orders")]
+    #[test_case(Side::Buy,   1,  0, true  ; "buy  | long pos  | no other    | with orders")]
+    #[test_case(Side::Buy,   1,  1, false ; "buy  | long pos  | long other  | no orders")]
+    #[test_case(Side::Buy,   1,  1, true  ; "buy  | long pos  | long other  | with orders")]
+    #[test_case(Side::Buy,   1, -1, false ; "buy  | long pos  | short other | no orders")]
+    #[test_case(Side::Buy,   1, -1, true  ; "buy  | long pos  | short other | with orders")]
+    #[test_case(Side::Buy,  -1,  0, false ; "buy  | short pos | no other    | no orders")]
+    #[test_case(Side::Buy,  -1,  0, true  ; "buy  | short pos | no other    | with orders")]
+    #[test_case(Side::Buy,  -1,  1, false ; "buy  | short pos | long other  | no orders")]
+    #[test_case(Side::Buy,  -1,  1, true  ; "buy  | short pos | long other  | with orders")]
+    #[test_case(Side::Buy,  -1, -1, false ; "buy  | short pos | short other | no orders")]
+    #[test_case(Side::Buy,  -1, -1, true  ; "buy  | short pos | short other | with orders")]
+    #[test_case(Side::Sell,  0,  0, false ; "sell | no pos    | no other    | no orders")]
+    #[test_case(Side::Sell,  0,  0, true  ; "sell | no pos    | no other    | with orders")]
+    #[test_case(Side::Sell,  0,  1, false ; "sell | no pos    | long other  | no orders")]
+    #[test_case(Side::Sell,  0,  1, true  ; "sell | no pos    | long other  | with orders")]
+    #[test_case(Side::Sell,  0, -1, false ; "sell | no pos    | short other | no orders")]
+    #[test_case(Side::Sell,  0, -1, true  ; "sell | no pos    | short other | with orders")]
+    #[test_case(Side::Sell,  1,  0, false ; "sell | long pos  | no other    | no orders")]
+    #[test_case(Side::Sell,  1,  0, true  ; "sell | long pos  | no other    | with orders")]
+    #[test_case(Side::Sell,  1,  1, false ; "sell | long pos  | long other  | no orders")]
+    #[test_case(Side::Sell,  1,  1, true  ; "sell | long pos  | long other  | with orders")]
+    #[test_case(Side::Sell,  1, -1, false ; "sell | long pos  | short other | no orders")]
+    #[test_case(Side::Sell,  1, -1, true  ; "sell | long pos  | short other | with orders")]
+    #[test_case(Side::Sell, -1,  0, false ; "sell | short pos | no other    | no orders")]
+    #[test_case(Side::Sell, -1,  0, true  ; "sell | short pos | no other    | with orders")]
+    #[test_case(Side::Sell, -1,  1, false ; "sell | short pos | long other  | no orders")]
+    #[test_case(Side::Sell, -1,  1, true  ; "sell | short pos | long other  | with orders")]
+    #[test_case(Side::Sell, -1, -1, false ; "sell | short pos | short other | no orders")]
+    #[test_case(Side::Sell, -1, -1, true  ; "sell | short pos | short other | with orders")]
+    fn max_size_is_at_check_margin_boundary(
+        order_side: Side,
+        current_pos: i128,
+        other_pos: i128,
+        has_orders: bool,
+    ) {
+        let (user_state, mut oracle_querier, perp_querier) =
+            build_setup(current_pos, other_pos, has_orders);
+        let current_pair_id = eth::DENOM.clone();
+        let oracle_price = oracle_price_current();
+        let fee = fee();
+
+        // 1. Available to trade, then max notional, then max base size.
+        let avail = compute_available_to_trade(
+            &mut oracle_querier,
+            &perp_querier,
+            &user_state,
+            &current_pair_id,
+            order_side,
+        )
+        .expect("avail should compute");
+
+        assert!(
+            !avail.is_negative(),
+            "avail should stay non-negative for chosen test parameters; got {}",
+            avail,
+        );
+
+        let pair_param = perp_querier.query_pair_param(&current_pair_id).unwrap();
+        let max_notional = compute_max_order_notional(avail, pair_param.initial_margin_ratio, fee)
+            .expect("max notional should compute");
+
+        // max_notional (USD) / oracle_price (USD/unit) = |size| (units)
+        let max_size_abs: Quantity = max_notional
+            .checked_div(oracle_price)
+            .expect("max size should compute");
+
+        assert!(
+            !max_size_abs.is_zero(),
+            "boundary case should have non-zero max size",
+        );
+
+        let max_size_signed = match order_side {
+            Side::Buy => max_size_abs,
+            Side::Sell => max_size_abs.checked_neg().unwrap(),
+        };
+
+        // 2. Boundary order: check_margin should accept.
+        check_margin(
+            &mut oracle_querier,
+            &current_pair_id,
+            &perp_querier,
+            &user_state,
+            fee,
+            oracle_price,
+            max_size_signed,
+        )
+        .expect("check_margin should accept the boundary order");
+
+        // 3. Bump the order size by 0.1% (via permille multiplier); check_margin
+        //    should reject.
+        let bump = Dimensionless::new_permille(1_001);
+        let bumped = max_size_signed
+            .checked_mul(bump)
+            .expect("bumped size should compute");
+
+        let bumped_res = check_margin(
+            &mut oracle_querier,
+            &current_pair_id,
+            &perp_querier,
+            &user_state,
+            fee,
+            oracle_price,
+            bumped,
+        );
+
+        assert!(
+            bumped_res.is_err(),
+            "check_margin should reject the bumped (×1.001) order; got Ok. \
+             avail={} max_notional={} max_size={} bumped={}",
+            avail,
+            max_notional,
+            max_size_signed,
+            bumped,
+        );
+    }
+}
