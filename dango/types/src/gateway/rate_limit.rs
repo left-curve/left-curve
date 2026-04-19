@@ -118,10 +118,13 @@ impl Default for GlobalOutbound {
 
 impl GlobalOutbound {
     /// Adds `amount` to the current hour's slot and updates the cached total.
+    ///
+    /// Invariant: `window` always has at least one slot — `Default` starts
+    /// with `[0]` and `rotate` always pushes before (optionally) popping.
+    /// Indexing with `[0]` so a violated invariant panics rather than
+    /// silently desynchronising `total_24h` from the window contents.
     pub fn add_to_current(&mut self, amount: Uint128) -> StdResult<()> {
-        if let Some(current) = self.window.front_mut() {
-            current.checked_add_assign(amount)?;
-        }
+        self.window[0].checked_add_assign(amount)?;
         self.total_24h.checked_add_assign(amount)?;
         Ok(())
     }
