@@ -190,10 +190,10 @@ that the chain would then reject.
 
 ### Multi-pair example
 
-Starting point: `equity = $91.96`, user has a long BTC position of
-`0.0005 BTC` at BTC price `$75,686` and no HYPE position or HYPE
-resting orders. The HYPE pair is the one currently being traded, so
-the BTC position contributes to `otherIM`:
+Starting point: `equity = $91.96`, `fee = 0.00038`, user has a long
+BTC position of `0.0005 BTC` at BTC price `$75,686` and no HYPE
+position or HYPE resting orders. The HYPE pair is the one currently
+being traded, so the BTC position contributes to `otherIM`:
 
 ```plain
 otherIM = 0.0005 · 75686 · IMR_BTC_pair
@@ -201,8 +201,8 @@ otherIM = 0.0005 · 75686 · IMR_BTC_pair
 
 | `IMR_BTC_pair` | `otherIM` | Avail to trade | Slider 100% (1×) | Slider 100% (3×) |
 | -------------- | --------- | -------------- | ---------------- | ---------------- |
-| 1.00           | $37.84    | $54.12         | ≈ $54.10         | ≈ $162.06        |
-| 0.05           | $1.89     | $90.07         | ≈ $90.03         | ≈ $270.03        |
+| 1.00           | $37.84    | $54.12         | ≈ $54.10         | ≈ $162.17        |
+| 0.05           | $1.89     | $90.07         | ≈ $90.03         | ≈ $269.90        |
 
 Hyperliquid reports `Avail to trade = $54.10` for this exact scenario
 because it uses a per-user per-pair leverage setting and the BTC
