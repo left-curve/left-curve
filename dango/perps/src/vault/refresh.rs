@@ -322,7 +322,9 @@ mod tests {
             .with_block_height(10);
 
         PARAM.save(&mut ctx.storage, &Default::default()).unwrap();
-        PAIR_IDS.save(&mut ctx.storage, &Default::default()).unwrap();
+        PAIR_IDS
+            .save(&mut ctx.storage, &Default::default())
+            .unwrap();
 
         refresh_orders(ctx.as_mutable()).should_succeed();
     }
