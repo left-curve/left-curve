@@ -69,7 +69,7 @@ pub fn create_perps_fill(
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id.clone(),
                 size: Quantity::new_int(-(size as i128)),
                 kind: perps::OrderKind::Limit {
@@ -80,7 +80,7 @@ pub fn create_perps_fill(
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -89,7 +89,7 @@ pub fn create_perps_fill(
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id.clone(),
                 size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
@@ -98,7 +98,7 @@ pub fn create_perps_fill(
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();

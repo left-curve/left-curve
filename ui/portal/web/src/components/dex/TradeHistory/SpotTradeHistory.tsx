@@ -114,7 +114,6 @@ export const SpotTradeHistory: React.FC = () => {
     <TradeHistoryTable
       data={data}
       columns={columns}
-      pagination={pagination}
       isLoading={isLoading}
     />
   );

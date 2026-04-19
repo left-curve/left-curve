@@ -16,15 +16,17 @@ pub mod volume;
 
 use {
     crate::state::{
-        FEE_RATE_OVERRIDES, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
+        FEE_RATE_OVERRIDES, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
+        USER_STATES,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, UsdValue,
         perps::{
-            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
-            MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, TraderMsg, VaultMsg,
+            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, FillId, InstantiateMsg,
+            MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg,
+            VaultMsg,
         },
     },
     grug::{
@@ -90,6 +92,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     })?;
 
     NEXT_ORDER_ID.save(ctx.storage, &OrderId::ONE)?;
+    NEXT_FILL_ID.save(ctx.storage, &FillId::ONE)?;
 
     maintain::configure(ctx, msg.param, msg.pair_params)
 }
@@ -162,14 +165,14 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),
             TraderMsg::Withdraw { amount } => trade::withdraw(ctx, amount),
-            TraderMsg::SubmitOrder {
+            TraderMsg::SubmitOrder(SubmitOrderRequest {
                 pair_id,
                 size,
                 kind,
                 reduce_only,
                 tp,
                 sl,
-            } => trade::submit_order(ctx, pair_id, size, kind, reduce_only, tp, sl),
+            }) => trade::submit_order(ctx, pair_id, size, kind, reduce_only, tp, sl),
             TraderMsg::CancelOrder(CancelOrderRequest::One(order_id)) => {
                 trade::cancel_one_order(ctx, order_id)
             },
@@ -177,6 +180,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 trade::cancel_one_order_by_client_order_id(ctx, cid)
             },
             TraderMsg::CancelOrder(CancelOrderRequest::All) => trade::cancel_all_orders(ctx),
+            TraderMsg::BatchUpdateOrders(reqs) => trade::batch_update_orders(ctx, reqs),
             TraderMsg::SubmitConditionalOrder {
                 pair_id,
                 size,

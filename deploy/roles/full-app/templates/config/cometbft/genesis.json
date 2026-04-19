@@ -930,6 +930,7 @@
                 "base": "0",
                 "tiers": {}
               },
+              "max_action_batch_size": 5,
               "max_open_orders": 100,
               "max_unlocks": 10,
               "min_referrer_volume": "0",

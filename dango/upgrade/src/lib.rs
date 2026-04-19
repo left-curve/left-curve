@@ -9,11 +9,11 @@ use {
     dango_types::{
         Dimensionless, FundingRate, Quantity, UsdPrice, UsdValue,
         config::AppConfig,
-        perps::{self, ChildOrder, OrderId, PairId},
+        perps::{self, ChildOrder, FillId, OrderId, PairId, RateSchedule},
     },
     grug::{
-        Addr, BlockInfo, Denom, IndexedMap, JsonDeExt, Map, MultiIndex, Order as IterationOrder,
-        StdResult, Storage, Timestamp, Uint128, UniqueIndex, addr,
+        Addr, BlockInfo, Denom, Duration, IndexedMap, JsonDeExt, Map, MultiIndex, NumberConst,
+        Order as IterationOrder, StdResult, Storage, Timestamp, Uint128, UniqueIndex, addr,
     },
     grug_app::{APP_CONFIG, AppResult, CHAIN_ID, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
     std::collections::BTreeSet,
@@ -24,6 +24,12 @@ const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbe
 
 const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
+
+/// Old gateway storage key from the previous rate-limit implementation.
+const OLD_OUTBOUND_QUOTAS: Map<&Denom, Uint128> = Map::new("outbound_quota");
+
+/// Bank contract's supply map (same key as `dango_bank::SUPPLIES`).
+const BANK_SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 
 /// Default `max_limit_price_deviation` applied to every pair during the
 /// migration. 5% matches Binance USD-M futures' `PERCENT_PRICE` filter
@@ -42,11 +48,11 @@ const MIGRATION_MAX_LIMIT_PRICE_DEVIATION: Dimensionless = Dimensionless::new_pe
 /// Governance tightens per-pair via `Configure` after the upgrade.
 const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(5);
 
-/// Old gateway storage key from the previous rate-limit implementation.
-const OLD_OUTBOUND_QUOTAS: Map<&Denom, Uint128> = Map::new("outbound_quota");
-
-/// Bank contract's supply map (same key as `dango_bank::SUPPLIES`).
-const BANK_SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
+/// Initial `max_action_batch_size` applied to the global `Param` during
+/// the migration. 5 matches Binance USD-M futures' `batchOrders` cap —
+/// conservative starting point; governance is expected to raise it via
+/// `Configure` once traffic patterns are understood.
+const MIGRATION_MAX_ACTION_BATCH_SIZE: usize = 5;
 
 /// Legacy types matching the pre-upgrade Borsh layout.
 ///
@@ -64,7 +70,31 @@ const BANK_SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 mod legacy {
     use super::*;
 
+    pub const PARAM: grug::Item<Param> = grug::Item::new("param");
+
     pub const PAIR_PARAMS: grug::Map<&PairId, PairParam> = grug::Map::new("pair_param");
+
+    /// Pre-upgrade layout of the global `Param`. Lacks the
+    /// `max_action_batch_size` field introduced by the batch-action PR;
+    /// order of the remaining fields must match the on-disk Borsh layout
+    /// exactly.
+    #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
+    pub struct Param {
+        pub max_unlocks: usize,
+        pub max_open_orders: usize,
+        pub maker_fee_rates: RateSchedule,
+        pub taker_fee_rates: RateSchedule,
+        pub protocol_fee_rate: Dimensionless,
+        pub liquidation_fee_rate: Dimensionless,
+        pub liquidation_buffer_ratio: Dimensionless,
+        pub funding_period: Duration,
+        pub vault_total_weight: Dimensionless,
+        pub vault_cooldown_period: Duration,
+        pub referral_active: bool,
+        pub min_referrer_volume: UsdValue,
+        pub referrer_commission_rates: RateSchedule,
+        pub vault_deposit_cap: Option<UsdValue>,
+    }
 
     #[derive(borsh::BorshDeserialize, borsh::BorshSerialize)]
     pub struct PairParam {
@@ -139,8 +169,9 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
         let mut perps_storage =
             StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &perps_address]);
 
-        do_price_banding_upgrade(&mut perps_storage)?;
+        do_price_banding_and_batch_action_upgrades(&mut perps_storage)?;
         do_client_order_id_upgrade(&mut perps_storage)?;
+        do_fill_id_upgrade(&mut perps_storage)?;
     }
 
     // Gateway migration.
@@ -195,14 +226,25 @@ fn do_gateway_migration(storage: Box<dyn Storage>) -> AppResult<()> {
 
 // ----------------------------- perps migrations ------------------------------
 
-fn do_price_banding_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
-    let old_params: Vec<_> = legacy::PAIR_PARAMS
+/// Two Borsh-layout-breaking migrations bundled into one upgrade event:
+///
+/// 1. Price banding — adds `max_limit_price_deviation` and
+///    `max_market_slippage` to every `PairParam`.
+/// 2. Batch action size cap — adds `max_action_batch_size` to the
+///    global `Param`.
+///
+/// Both are pure additions at the end of their respective struct
+/// layouts, so the migration is a straightforward read-legacy /
+/// write-new roundtrip.
+fn do_price_banding_and_batch_action_upgrades(storage: &mut dyn Storage) -> StdResult<()> {
+    // 1. PairParam: add price-banding fields.
+    let old_pair_params: Vec<_> = legacy::PAIR_PARAMS
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<_>>()?;
 
-    let count = old_params.len();
+    let pair_count = old_pair_params.len();
 
-    for (pair_id, old) in old_params {
+    for (pair_id, old) in old_pair_params {
         let new = perps::PairParam {
             tick_size: old.tick_size,
             min_order_size: old.min_order_size,
@@ -227,7 +269,33 @@ fn do_price_banding_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
     }
 
     tracing::info!(
-        "Migrated {count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION}, max_market_slippage = {MIGRATION_MAX_MARKET_SLIPPAGE})"
+        "Migrated {pair_count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION}, max_market_slippage = {MIGRATION_MAX_MARKET_SLIPPAGE})"
+    );
+
+    // 2. Param: add `max_action_batch_size`.
+    let old_param = legacy::PARAM.load(storage)?;
+    let new_param = perps::Param {
+        max_unlocks: old_param.max_unlocks,
+        max_open_orders: old_param.max_open_orders,
+        maker_fee_rates: old_param.maker_fee_rates,
+        taker_fee_rates: old_param.taker_fee_rates,
+        protocol_fee_rate: old_param.protocol_fee_rate,
+        liquidation_fee_rate: old_param.liquidation_fee_rate,
+        liquidation_buffer_ratio: old_param.liquidation_buffer_ratio,
+        funding_period: old_param.funding_period,
+        vault_total_weight: old_param.vault_total_weight,
+        vault_cooldown_period: old_param.vault_cooldown_period,
+        referral_active: old_param.referral_active,
+        min_referrer_volume: old_param.min_referrer_volume,
+        referrer_commission_rates: old_param.referrer_commission_rates,
+        vault_deposit_cap: old_param.vault_deposit_cap,
+        // New field.
+        max_action_batch_size: MIGRATION_MAX_ACTION_BATCH_SIZE,
+    };
+    dango_perps::state::PARAM.save(storage, &new_param)?;
+
+    tracing::info!(
+        "Migrated global Param (added max_action_batch_size = {MIGRATION_MAX_ACTION_BATCH_SIZE})"
     );
 
     Ok(())
@@ -258,6 +326,29 @@ fn do_client_order_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
         "Migrated {bid_count} resting bids and {ask_count} resting asks (added client_order_id = None)"
     );
 
+    Ok(())
+}
+
+/// Seed `NEXT_FILL_ID` with `FillId::ONE` so that the counter exists for
+/// post-upgrade `load` calls. Fills executed before the upgrade have no
+/// `fill_id` in their emitted `OrderFilled` events and are not backfilled —
+/// downstream consumers treat a missing field as "pre-v0.15.0".
+///
+/// Idempotency: this handler seeds a fresh counter. If it were ever rerun
+/// on a chain that already has `NEXT_FILL_ID` populated, blindly saving
+/// `FillId::ONE` would reset a live counter and cause duplicate fill ids
+/// to be emitted. The assertion below makes the invariant explicit —
+/// `assert!` is deliberate: the upgrade framework has no recovery path,
+/// and silently skipping would hide a serious control-flow bug.
+fn do_fill_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
+    assert!(
+        dango_perps::state::NEXT_FILL_ID
+            .may_load(storage)?
+            .is_none(),
+        "NEXT_FILL_ID already initialized — do_fill_id_upgrade must not run twice",
+    );
+    dango_perps::state::NEXT_FILL_ID.save(storage, &FillId::ONE)?;
+    tracing::info!("Initialized NEXT_FILL_ID to 1");
     Ok(())
 }
 
@@ -327,6 +418,25 @@ mod tests {
         }
     }
 
+    fn legacy_param() -> legacy::Param {
+        legacy::Param {
+            max_unlocks: 10,
+            max_open_orders: 100,
+            maker_fee_rates: RateSchedule::default(),
+            taker_fee_rates: RateSchedule::default(),
+            protocol_fee_rate: Dimensionless::ZERO,
+            liquidation_fee_rate: Dimensionless::new_permille(10),
+            liquidation_buffer_ratio: Dimensionless::ZERO,
+            funding_period: Duration::from_hours(1),
+            vault_total_weight: Dimensionless::ZERO,
+            vault_cooldown_period: Duration::from_days(1),
+            referral_active: true,
+            min_referrer_volume: UsdValue::ZERO,
+            referrer_commission_rates: RateSchedule::default(),
+            vault_deposit_cap: None,
+        }
+    }
+
     fn legacy_pair_param(tick_size_int: i128) -> legacy::PairParam {
         legacy::PairParam {
             tick_size: UsdPrice::new_int(tick_size_int),
@@ -352,6 +462,7 @@ mod tests {
 
         let eth = legacy_pair_param(1);
         let btc = legacy_pair_param(2);
+        let old_param = legacy_param();
 
         legacy::PAIR_PARAMS
             .save(&mut storage, &eth_pair(), &eth)
@@ -359,8 +470,9 @@ mod tests {
         legacy::PAIR_PARAMS
             .save(&mut storage, &btc_pair(), &btc)
             .unwrap();
+        legacy::PARAM.save(&mut storage, &old_param).unwrap();
 
-        do_price_banding_upgrade(&mut storage).unwrap();
+        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
 
         let migrated_eth = dango_perps::state::PAIR_PARAMS
             .load(&storage, &eth_pair())
@@ -415,12 +527,68 @@ mod tests {
             MIGRATION_MAX_MARKET_SLIPPAGE
         );
         assert_eq!(migrated_btc.tick_size, btc.tick_size);
+
+        // The global `Param` preserves every old field and gains
+        // `max_action_batch_size = MIGRATION_MAX_ACTION_BATCH_SIZE`.
+        let migrated_param = dango_perps::state::PARAM.load(&storage).unwrap();
+        assert_eq!(migrated_param.max_unlocks, old_param.max_unlocks);
+        assert_eq!(migrated_param.max_open_orders, old_param.max_open_orders);
+        assert_eq!(migrated_param.maker_fee_rates, old_param.maker_fee_rates);
+        assert_eq!(migrated_param.taker_fee_rates, old_param.taker_fee_rates);
+        assert_eq!(
+            migrated_param.protocol_fee_rate,
+            old_param.protocol_fee_rate
+        );
+        assert_eq!(
+            migrated_param.liquidation_fee_rate,
+            old_param.liquidation_fee_rate
+        );
+        assert_eq!(
+            migrated_param.liquidation_buffer_ratio,
+            old_param.liquidation_buffer_ratio
+        );
+        assert_eq!(migrated_param.funding_period, old_param.funding_period);
+        assert_eq!(
+            migrated_param.vault_total_weight,
+            old_param.vault_total_weight
+        );
+        assert_eq!(
+            migrated_param.vault_cooldown_period,
+            old_param.vault_cooldown_period
+        );
+        assert_eq!(migrated_param.referral_active, old_param.referral_active);
+        assert_eq!(
+            migrated_param.min_referrer_volume,
+            old_param.min_referrer_volume
+        );
+        assert_eq!(
+            migrated_param.referrer_commission_rates,
+            old_param.referrer_commission_rates
+        );
+        assert_eq!(
+            migrated_param.vault_deposit_cap,
+            old_param.vault_deposit_cap
+        );
+        assert_eq!(
+            migrated_param.max_action_batch_size,
+            MIGRATION_MAX_ACTION_BATCH_SIZE
+        );
     }
 
+    /// With no legacy pairs to migrate, the Param migration still runs
+    /// and backfills `max_action_batch_size`.
     #[test]
-    fn migration_with_no_pairs_is_noop() {
+    fn migration_with_no_pairs_still_migrates_param() {
         let mut storage = MockStorage::new();
-        do_price_banding_upgrade(&mut storage).unwrap();
+        legacy::PARAM.save(&mut storage, &legacy_param()).unwrap();
+        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
+        assert_eq!(
+            dango_perps::state::PARAM
+                .load(&storage)
+                .unwrap()
+                .max_action_batch_size,
+            MIGRATION_MAX_ACTION_BATCH_SIZE
+        );
     }
 
     /// `do_client_order_id_upgrade` rewrites every legacy resting order
@@ -518,17 +686,59 @@ mod tests {
         do_client_order_id_upgrade(&mut storage).unwrap();
     }
 
-    /// `do_upgrade` chains both migrations: legacy `PairParam`s are
-    /// rewritten *and* legacy resting orders are rewritten, all under
-    /// one upgrade boundary.
+    /// `do_fill_id_upgrade` seeds `NEXT_FILL_ID` to 1 so post-upgrade
+    /// `load` calls in the matching engine succeed.
     #[test]
-    fn do_upgrade_runs_both_migrations() {
+    fn fill_id_upgrade_initializes_counter_to_one() {
         let mut storage = MockStorage::new();
 
-        // Seed legacy state for both migrations.
+        // Before the upgrade, the counter does not exist.
+        assert!(
+            dango_perps::state::NEXT_FILL_ID
+                .may_load(&storage)
+                .unwrap()
+                .is_none()
+        );
+
+        do_fill_id_upgrade(&mut storage).unwrap();
+
+        assert_eq!(
+            dango_perps::state::NEXT_FILL_ID.load(&storage).unwrap(),
+            FillId::ONE
+        );
+    }
+
+    /// Running `do_fill_id_upgrade` a second time on a chain that already
+    /// has a live `NEXT_FILL_ID` must panic rather than reset the counter.
+    /// A silent overwrite would cause the matching engine to emit fill
+    /// ids that collide with previously-emitted ones.
+    #[test]
+    #[should_panic(expected = "NEXT_FILL_ID already initialized")]
+    fn fill_id_upgrade_rejects_rerun() {
+        let mut storage = MockStorage::new();
+
+        // Simulate a chain that already has the counter advanced past 1.
+        dango_perps::state::NEXT_FILL_ID
+            .save(&mut storage, &Uint64::new(42))
+            .unwrap();
+
+        // A rerun must panic.
+        do_fill_id_upgrade(&mut storage).unwrap();
+    }
+
+    /// `do_upgrade` chains all migrations: legacy `PairParam`s are
+    /// rewritten, the global `Param` gains `max_action_batch_size`,
+    /// legacy resting orders are rewritten, and the `NEXT_FILL_ID`
+    /// counter is seeded — all under one upgrade boundary.
+    #[test]
+    fn do_upgrade_runs_all_migrations() {
+        let mut storage = MockStorage::new();
+
+        // Seed legacy state for every migration.
         legacy::PAIR_PARAMS
             .save(&mut storage, &eth_pair(), &legacy_pair_param(1))
             .unwrap();
+        legacy::PARAM.save(&mut storage, &legacy_param()).unwrap();
         legacy::BIDS
             .save(
                 &mut storage,
@@ -537,9 +747,10 @@ mod tests {
             )
             .unwrap();
 
-        // Run both migrations sequentially (mirrors `do_upgrade`).
-        do_price_banding_upgrade(&mut storage).unwrap();
+        // Run all migrations sequentially (mirrors `do_upgrade`).
+        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
         do_client_order_id_upgrade(&mut storage).unwrap();
+        do_fill_id_upgrade(&mut storage).unwrap();
 
         // PairParam migrated.
         let pair = dango_perps::state::PAIR_PARAMS
@@ -551,6 +762,15 @@ mod tests {
         );
         assert_eq!(pair.max_market_slippage, MIGRATION_MAX_MARKET_SLIPPAGE);
 
+        // Param migrated.
+        assert_eq!(
+            dango_perps::state::PARAM
+                .load(&storage)
+                .unwrap()
+                .max_action_batch_size,
+            MIGRATION_MAX_ACTION_BATCH_SIZE
+        );
+
         // Order migrated.
         let (_key, order) = dango_perps::state::BIDS
             .idx
@@ -560,5 +780,11 @@ mod tests {
             .unwrap();
         assert_eq!(order.user, USER_A);
         assert_eq!(order.client_order_id, None);
+
+        // NEXT_FILL_ID seeded.
+        assert_eq!(
+            dango_perps::state::NEXT_FILL_ID.load(&storage).unwrap(),
+            FillId::ONE
+        );
     }
 }

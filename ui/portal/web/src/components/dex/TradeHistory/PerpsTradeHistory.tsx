@@ -97,7 +97,7 @@ export const PerpsTradeHistory: React.FC = () => {
       },
     },
     {
-      header: m["dex.protrade.positions.notional"](),
+      header: m["dex.protrade.tradeHistory.tradeValue"](),
       cell: ({ row }) => {
         const size = getPerpsEventSize(row.original.eventType, row.original.data);
         const price = getPerpsEventPrice(row.original.eventType, row.original.data);
@@ -140,6 +140,6 @@ export const PerpsTradeHistory: React.FC = () => {
   ];
 
   return (
-    <TradeHistoryTable data={data} columns={columns} pagination={pagination} isLoading={isLoading} />
+    <TradeHistoryTable data={data} columns={columns} isLoading={isLoading} />
   );
 };

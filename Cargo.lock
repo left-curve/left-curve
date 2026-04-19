@@ -4127,6 +4127,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-types",
  "grug-httpd",
+ "grug-types",
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
