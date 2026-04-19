@@ -79,7 +79,7 @@ impl Commitment for MerkleTree {
             .collect();
 
         // Sort by key hashes ascendingly
-        batch.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+        batch.sort_by_key(|(k1, _)| *k1);
 
         // Apply the hashed keys and values
         apply(storage, old_version, new_version, batch)
