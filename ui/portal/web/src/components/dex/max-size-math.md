@@ -14,15 +14,20 @@ A closing order behaves very differently from an opening order on-chain:
 
   ```plain
   equity ≥ |current_position + order_size|·oracle·IMR
-           + |order_size|·oracle·fee`.
+           + |order_size|·oracle·fee
+           + reserved_margin.
   ```
 
   When the order opposes the existing position, the projected IM term
   _shrinks_ (partial close) or goes to zero (full close), so large
   sells against a long pass even when `availableMargin` is at zero.
+  `reserved_margin` is the total IM locked up by the user's open GTC
+  limit orders (both sides), held on `userState.reservedMargin`; it
+  reduces the headroom available for a new market order.
 - For **reduce-only** orders, the chain skips the margin check entirely
   and forces the opening portion to zero — the only requirement is
-  that the fillable closing size is positive.
+  that the fillable closing size is positive. Reserved margin is
+  irrelevant in this branch.
 
 Naïvely using `availableMargin / (1/L + fee) / price` for every order
 would lock users out of closing a position once margin is tied up,
@@ -32,14 +37,15 @@ presentation.
 
 ## Variables
 
-| Symbol        | Meaning                                                         |
-| ------------- | --------------------------------------------------------------- |
-| `equity`      | Total user equity (from the extended perps user-state).         |
-| `pos`         | Signed base-unit size of the position in the traded pair.       |
-| `mark`        | Mark price (pair stats first, oracle fallback).                 |
-| `L`           | User-selected leverage in the UI (not the pair's max).          |
-| `fee`         | Taker fee rate as a decimal (e.g. `0.00038` for 0.038%).        |
-| `IM_pos_at_L` | `abs(pos) · mark / L` — the position's IM at selected leverage. |
+| Symbol        | Meaning                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| `equity`      | Total user equity (from the extended perps user-state).                   |
+| `reserved`    | USD margin locked by the user's open GTC limit orders (`userState.reservedMargin`, summed across both sides). Clamped ≥ 0. |
+| `pos`         | Signed base-unit size of the position in the traded pair.                 |
+| `mark`        | Mark price (pair stats first, oracle fallback).                           |
+| `L`           | User-selected leverage in the UI (not the pair's max).                    |
+| `fee`         | Taker fee rate as a decimal (e.g. `0.00038` for 0.038%).                  |
+| `IM_pos_at_L` | `abs(pos) · mark / L` — the position's IM at selected leverage.           |
 
 An order is **opposing** iff `sign(pos) ≠ sign(orderDirection)` and
 `pos ≠ 0`. Otherwise it's **same-side** (or there's no position).
@@ -48,9 +54,9 @@ An order is **opposing** iff `sign(pos) ≠ sign(orderDirection)` and
 
 ```plain
 availToTrade =
-    equity                           when |pos| = 0
-    equity − IM_pos_at_L             when same-side (buying more long, selling more short)
-    equity + IM_pos_at_L             when opposing (selling a long, buying a short)
+    equity − reserved                       when |pos| = 0
+    equity − IM_pos_at_L − reserved         when same-side (buying more long, selling more short)
+    equity + IM_pos_at_L − reserved         when opposing (selling a long, buying a short)
 
 # Non-reduce-only
 max_notional = availToTrade / (1/L + fee)
@@ -65,37 +71,44 @@ max = 0                              # slider + submit disabled
 ```
 
 `availToTrade` is clamped at zero before dividing. Reduce-only skips
-leverage and fee because the chain doesn't check margin for reduce-only
-orders — the only sensible cap is the position itself.
+leverage, fee, and `reserved` because the chain doesn't check margin for
+reduce-only orders — the only sensible cap is the position itself.
 
 ## Why the formula matches the chain
 
 Solving the chain's pre-match check
-`equity ≥ |pos + X_signed|·mark·IMR + |X|·mark·fee` for the largest
-`X` with `IMR = 1/L` yields:
+`equity ≥ |pos + X_signed|·mark·IMR + |X|·mark·fee + reserved` for the
+largest `X` with `IMR = 1/L` yields:
 
 ```plain
-max_notional = (equity + |pos|·mark·IMR) / (IMR + fee)     # opposing
+max_notional = (equity + |pos|·mark·IMR − reserved) / (IMR + fee)     # opposing
              = availToTrade / (1/L + fee)
 ```
 
 so the Hyperliquid framing and the on-chain constraint are the same
 expression. The UI uses the user-selected `L` (not the pair's fixed
 IMR), which makes the slider conservative relative to what the chain
-would accept — a safety margin, not a rejection risk.
+would accept — a safety margin, not a rejection risk. `reserved` comes
+straight from `userState.reservedMargin`; the chain sums it across all
+resting orders (both sides) regardless of direction, so we do the
+same.
 
 ## Worked examples (24 rows)
 
 Inputs used across all three sections:
 
 ```plain
-equity = $500
-mark   = $75,000
-fee    = 0.00038 (0.038%)
+equity   = $500
+mark     = $75,000
+fee      = 0.00038 (0.038%)
+reserved = 0
 ```
 
 Each section treats equity as $500 (independent starting points, not a
-continuous sequence).
+continuous sequence). `reserved = 0` across all 24 rows; when a user
+has resting limit orders, subtract `reserved` from every
+`Avail to trade` entry. See `Reserved-margin example` below for a
+worked illustration.
 
 ### A. No position (rows 1–8)
 
@@ -144,11 +157,30 @@ is same-side.
 | 23  | 2×       | sell   | off         | $375.00        | $749.43       | adds to short                       |
 | 24  | 2×       | sell   | **on**      | $375.00        | $0 (disabled) | same-side; RO requires opposing     |
 
+### Reserved-margin example
+
+Starting point: `equity = $100`, `pos = 0`, `fee = 0.00045`, the user
+has a resting limit BUY for `1 HYPE @ $40` (reserves
+`1 · $40 · IMR_pair` on-chain). Suppose the pair's IMR reserves
+`reserved = $40` and current mark price is $43.513.
+
+| Leverage | Action | Avail to trade | Slider 100%  | Notes                                      |
+| -------- | ------ | -------------- | ------------ | ------------------------------------------ |
+| 1×       | buy    | $60.00         | ≈ $59.97     | `100 − 40 = 60`; `60 / (1 + 0.00045)`.     |
+| 1×       | sell   | $60.00         | ≈ $59.97     | Same formula; `reserved` subtracted either way (unlike Hyperliquid). |
+| 3×       | buy    | $60.00         | ≈ $179.76    | `60 / (1/3 + 0.00045)`.                    |
+| 3×       | sell   | $60.00         | ≈ $179.76    | Symmetric with the buy side.               |
+
+On Hyperliquid the sell rows would show `Avail to trade = $100`
+because Hyperliquid reserves per-side. Dango's chain reserves
+cumulatively, so the UI does too — users never see an inflated slider
+that the chain would then reject.
+
 ## Code pointers
 
 - Hook: `ui/store/src/hooks/usePerpsMaxSize.ts` — the entire formula
-  lives here; takes `equity`, `currentPositionSize`, `action`,
-  `leverage`, `currentPrice`, `takerFeeRate`, `reduceOnly`,
+  lives here; takes `equity`, `reservedMargin`, `currentPositionSize`,
+  `action`, `leverage`, `currentPrice`, `takerFeeRate`, `reduceOnly`,
   `isBaseSize` and returns `{ availToTrade, maxSize }`.
 - Consumer: `TradeMenu.tsx` `PerpsTradeMenu` — reads the hook once,
   feeds `availToTrade` into the "Available to trade" row and

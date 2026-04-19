@@ -376,6 +376,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
 
   const equity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
+  const reservedMargin = userState?.reservedMargin ?? "0";
 
   const position = useMemo(() => {
     if (!userState?.positions?.[getPerpsPairId()]) return null;
@@ -469,6 +470,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const { availToTrade, maxSize } = usePerpsMaxSize({
     equity: Number(equity),
+    reservedMargin: Number(reservedMargin),
     currentPositionSize: Number(currentPositionSize),
     action,
     leverage: selectedLeverage,

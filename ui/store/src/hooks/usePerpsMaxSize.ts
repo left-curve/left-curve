@@ -3,6 +3,8 @@ import { useMemo } from "react";
 type UsePerpsMaxSizeParameters = {
   /** User's total equity across all positions. */
   equity: number;
+  /** USD margin locked up as collateral for the user's open GTC limit orders (`userState.reservedMargin`). */
+  reservedMargin: number;
   /** Signed base-unit size of the current position in this pair. Positive = long, negative = short, 0 = no position. */
   currentPositionSize: number;
   /** Order direction. */
@@ -28,25 +30,27 @@ type UsePerpsMaxSizeResult = {
 
 /**
  * Compute the maximum order size for a perps trade, accounting for the user's
- * existing position and direction.
+ * existing position, direction, and margin locked by open limit orders.
  *
  * Three regimes:
  *
  * 1. **Same-side (adding to position):** available margin shrinks because the
  *    existing position already locks up IM at the selected leverage.
- *    `availToTrade = equity − |pos|·mark/L`
+ *    `availToTrade = equity − |pos|·mark/L − reserved`
  *
  * 2. **Opposing (closing / flipping):** available margin grows because closing
  *    releases the IM locked by the existing position.
- *    `availToTrade = equity + |pos|·mark/L`
+ *    `availToTrade = equity + |pos|·mark/L − reserved`
  *
  * 3. **Reduce-only:** max is capped at the closable portion of the position
- *    (`|pos|` in base, `|pos|·mark` in notional). Leverage and fees are
- *    irrelevant — the chain skips the margin check for reduce-only orders.
+ *    (`|pos|` in base, `|pos|·mark` in notional). Leverage, fees, and reserved
+ *    margin are irrelevant — the chain skips the margin check for reduce-only
+ *    orders.
  */
 export function usePerpsMaxSize(parameters: UsePerpsMaxSizeParameters): UsePerpsMaxSizeResult {
   const {
     equity,
+    reservedMargin,
     currentPositionSize,
     action,
     leverage,
@@ -67,13 +71,14 @@ export function usePerpsMaxSize(parameters: UsePerpsMaxSizeParameters): UsePerps
       currentPositionSize !== 0 && Math.sign(currentPositionSize) !== orderSign;
 
     const imPosAtL = (positionBase * currentPrice) / leverage;
+    const reserved = Math.max(reservedMargin, 0);
 
     const availToTrade =
       positionBase === 0
-        ? equity
+        ? equity - reserved
         : isOpposing
-          ? equity + imPosAtL
-          : equity - imPosAtL;
+          ? equity + imPosAtL - reserved
+          : equity - imPosAtL - reserved;
 
     if (reduceOnly) {
       const maxBase = isOpposing ? positionBase : 0;
@@ -92,5 +97,15 @@ export function usePerpsMaxSize(parameters: UsePerpsMaxSizeParameters): UsePerps
       availToTrade,
       maxSize: isBaseSize ? maxNotional / currentPrice : maxNotional,
     };
-  }, [equity, currentPositionSize, action, leverage, currentPrice, takerFeeRate, reduceOnly, isBaseSize]);
+  }, [
+    equity,
+    reservedMargin,
+    currentPositionSize,
+    action,
+    leverage,
+    currentPrice,
+    takerFeeRate,
+    reduceOnly,
+    isBaseSize,
+  ]);
 }
