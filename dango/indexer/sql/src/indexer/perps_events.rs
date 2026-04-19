@@ -233,6 +233,7 @@ fn try_build_perps_trade(
         block_height,
         trade_idx,
         fill_id: order_filled.fill_id.as_ref().map(ToString::to_string),
+        is_maker: order_filled.is_maker,
     })
 }
 

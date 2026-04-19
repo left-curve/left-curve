@@ -47,4 +47,10 @@ pub struct PerpsTrade {
     /// IDs were not assigned prior to that release.
     #[cfg_attr(feature = "async-graphql", graphql(name = "fillId"))]
     pub fill_id: Option<String>,
+
+    /// `Some(true)` for the maker side of a match, `Some(false)` for the
+    /// taker side. `None` for trades executed before v0.16.0 — the
+    /// maker/taker flag was not recorded prior to that release.
+    #[cfg_attr(feature = "async-graphql", graphql(name = "isMaker"))]
+    pub is_maker: Option<bool>,
 }
