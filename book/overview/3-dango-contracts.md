@@ -439,28 +439,47 @@ Bridge aggregator for cross-chain token transfers.
 
 ### State
 
-| Storage           | Key               | Value                        |
-| ----------------- | ----------------- | ---------------------------- |
-| `ROUTES`          | `(Addr, Remote)`  | `Denom`                      |
-| `REVERSE_ROUTES`  | `(Denom, Remote)` | `Addr`                       |
-| `RATE_LIMITS`     | --                | `BTreeMap<Denom, RateLimit>` |
-| `WITHDRAWAL_FEES` | `(Denom, Remote)` | `Uint128`                    |
-| `OUTBOUND_QUOTAS` | `Denom`           | `Uint128`                    |
+| Storage            | Key                      | Value                        |
+| ------------------ | ------------------------ | ---------------------------- |
+| `ROUTES`           | `(Addr, Remote)`         | `Denom`                      |
+| `REVERSE_ROUTES`   | `(Denom, Remote)`        | `Addr`                       |
+| `RATE_LIMITS`      | --                       | `BTreeMap<Denom, RateLimit>` |
+| `WITHDRAWAL_FEES`  | `(Denom, Remote)`        | `Uint128`                    |
+| `EPOCH`            | --                       | `u64`                        |
+| `SUPPLIES`         | `Denom`                  | `Uint128`                    |
+| `GLOBAL_OUTBOUND`  | `Denom`                  | `GlobalOutbound`             |
+| `USER_MOVEMENTS`   | `(UserIndex, Denom)`     | `UserMovement`               |
 
 ### Cross-chain flow
 
 **Inbound:** Remote bridge delivers tokens → gateway mints wrapped tokens → transfers
-to recipient (or orphaned transfer if contract not deployed).
+to recipient (or orphaned transfer if address not registered). The deposit is recorded
+in the recipient's `UserMovement` for deposit credit tracking.
 
-**Outbound:** User sends tokens to gateway → rate limit check → withdrawal fee deducted
-→ local tokens burned → cross-chain message sent.
+**Outbound:** User sends tokens to gateway → deposit credit check → excess checked
+against global rate limit → withdrawal fee deducted → local tokens burned →
+cross-chain message sent.
 
 ### Rate limiting
 
-```rust
-RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>
-// e.g., 0.1 = max 10% of supply per period
+The rate limit uses a 24-slot hourly sliding window (`GlobalOutbound`) to prevent
+boundary exploitation. The cron job runs every hour, rotating the window and
+advancing `EPOCH`. Supply is re-snapshotted every 24 epochs (once per day).
+
+The core invariant for non-deposit-backed withdrawals:
+
 ```
+total_24h + excess <= supply_snapshot * rate_limit
+```
+
+**Per-user deposit credit:** Each user's deposits are tracked per denom via
+`UserMovement`. When withdrawing, the user can freely withdraw up to their
+deposit credit (`deposited - credit_used`) without affecting the global limit.
+Only the excess beyond deposit credit counts against the global `total_24h`.
+This prevents round-trip griefing where a deposit-then-withdraw would otherwise
+consume the global allowance.
+
+Rate limit changes (both increases and decreases) take effect immediately.
 
 ### Trust model
 
