@@ -2690,6 +2690,107 @@ mod tests {
         );
     }
 
+    // ======= Maker reserved margin release: full fill, truncation-prone =====
+
+    /// Regression test for a rounding leak in the proportional
+    /// margin-release formula on a full fill.
+    ///
+    /// The maker's order is planted directly with values chosen so that
+    /// `R * S` is not a multiple of `PRECISION` (1e6):
+    ///
+    /// - `R` (reserved_margin) = 21.406601 USD → inner = 21_406_601
+    /// - `S` (|size|)          = 0.182946 qty  → inner =    182_946
+    /// - `R.inner * S.inner mod 1_000_000 = 26_546 ≠ 0`
+    ///
+    /// On a single full fill, the proportional formula
+    /// `floor(floor(R·S / 1e6) · 1e6 / S)` yields 21_406_600 — one ULP
+    /// short of `R`. The order is removed with a residual ULP still in
+    /// `maker_order.reserved_margin`; that residual is dropped from the
+    /// order but orphaned in `maker_state.reserved_margin`, breaking the
+    /// invariant `user_state.reserved_margin == sum(open orders'
+    /// reserved_margin)`.
+    ///
+    /// After the fix this test must pass: on a full fill, everything
+    /// left in the order's reserved_margin is released to the user, so
+    /// the user's reserved_margin goes to zero once the only order is
+    /// removed.
+    #[test]
+    fn maker_reserved_margin_no_orphan_on_full_fill_with_truncation() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // Plant a resting ask directly (can't reuse `place_ask` because it
+        // hardcodes integer price/size and computes reserved_margin as
+        // `size * price / 20`; we need fractional inner values).
+        let price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946; // 0.182946
+        let reserved_inner: i128 = 21_406_601; // 21.406601
+        let order_id = Uint64::new(100);
+        let key = (pair_id(), price, order_id);
+        let ask = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, key, &ask).unwrap();
+
+        let maker_state_before = UserState {
+            margin: LARGE_COLLATERAL,
+            open_order_count: 1,
+            reserved_margin: ask.reserved_margin,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &maker_state_before)
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome { maker_states, .. } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            price,
+            Quantity::new_raw(size_inner),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Order is fully consumed, so the user's reserved_margin must be
+        // zero. Pre-fix this is `UsdValue::new_raw(1)` — one ULP orphan.
+        assert_eq!(maker_states[&MAKER_A].reserved_margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+    }
+
     // ======= Market buy: price beyond slippage ===============================
 
     #[test]
