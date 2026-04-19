@@ -18,7 +18,9 @@ use {
         Quantity, UsdValue,
         perps::{LimitOrder, ReasonForOrderRemoval},
     },
-    grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64},
+    grug::{
+        MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64,
+    },
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
