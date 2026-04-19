@@ -54,8 +54,11 @@ lint:
 lint-without-features:
   #!/usr/bin/env bash
   set -euo pipefail
-  for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
-    echo "Checking $crate..."
+  crates=($(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'))
+  total=${#crates[@]}
+  for i in "${!crates[@]}"; do
+    crate="${crates[$i]}"
+    echo "[$((i+1))/$total] Checking $crate..."
     cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
   done
 
