@@ -188,7 +188,7 @@ fn rate_limit_global_enforcement() {
         })
         .should_succeed_and_equal(Some(Uint128::new(20_000_000)));
 
-    // Advance to epoch 24 — deposits from epoch 0 rotate to cumulative,
+    // Advance to epoch 24 — deposits from epoch 0 rotate to historical,
     // current epoch has no deposit credit.
     advance_to_next_day(&mut suite);
 
@@ -251,7 +251,7 @@ fn rate_limit_global_enforcement() {
         assert_eq!(user_mov.current.deposited, Uint128::ZERO);
         assert_eq!(user_mov.current.withdrawn, Uint128::new(20_000_000));
         assert_eq!(user_mov.current.credit_used, Uint128::ZERO);
-        assert_eq!(user_mov.cumulative.deposited, Uint128::new(200_000_000));
+        assert_eq!(user_mov.historical.deposited, Uint128::new(200_000_000));
     }
 
     // 1 more fails — global limit reached.

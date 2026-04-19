@@ -35,14 +35,14 @@ impl Movement {
 /// Per-user, per-denom movement tracking across epochs.
 ///
 /// `current` covers a full day (`WINDOW_SIZE` epochs). It is folded into
-/// `cumulative` once `WINDOW_SIZE` epochs have elapsed since `last_epoch`.
+/// `historical` once `WINDOW_SIZE` epochs have elapsed since `last_epoch`.
 #[grug::derive(Serde, Borsh)]
 pub struct UserMovement {
     pub last_epoch: u64,
     /// Historical aggregate of all past windows. Currently observational only
     /// (exposed via queries, not used in rate-limit checks). May be used in the
     /// future for trust-tier logic based on long-term deposit/withdraw patterns.
-    pub cumulative: Movement,
+    pub historical: Movement,
     pub current: Movement,
 }
 
@@ -50,18 +50,18 @@ impl UserMovement {
     pub fn new(epoch: u64) -> Self {
         Self {
             last_epoch: epoch,
-            cumulative: Movement::default(),
+            historical: Movement::default(),
             current: Movement::default(),
         }
     }
 
     /// If at least `WINDOW_SIZE` epochs have passed since `last_epoch`, fold
-    /// `current` into `cumulative` and reset for the new window. This handles
+    /// `current` into `historical` and reset for the new window. This handles
     /// arbitrary gaps: if the user was inactive for multiple windows, `current`
     /// is folded once (it already contains everything since `last_epoch`).
     pub fn rotate_if_needed(&mut self, current_epoch: u64) -> StdResult<()> {
         if current_epoch.saturating_sub(self.last_epoch) >= WINDOW_SIZE {
-            self.cumulative.accumulate(&self.current)?;
+            self.historical.accumulate(&self.current)?;
             self.current = Movement::default();
             self.last_epoch = current_epoch;
         }
