@@ -978,10 +978,20 @@ pub fn match_order(
 
         let pre_fill_abs_size = maker_order.size.checked_abs()?;
 
-        // Release reserved margin proportionally to the filled portion.
-        let margin_to_release = (maker_order.reserved_margin)
-            .checked_mul(maker_fill_size)?
-            .checked_div(maker_order.size)?;
+        // Compute the new size first so we can detect a full fill below.
+        let new_maker_size = maker_order.size.checked_sub(maker_fill_size)?;
+
+        // Release reserved margin. On a full fill, release everything that's
+        // left in the order: the proportional formula truncates toward zero
+        // and would otherwise orphan the residual in `maker_state` when the
+        // order is removed from storage a few lines below.
+        let margin_to_release = if new_maker_size.is_zero() {
+            maker_order.reserved_margin
+        } else {
+            (maker_order.reserved_margin)
+                .checked_mul(maker_fill_size)?
+                .checked_div(maker_order.size)?
+        };
 
         maker_state
             .reserved_margin
@@ -991,7 +1001,7 @@ pub fn match_order(
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
-        maker_order.size.checked_sub_assign(maker_fill_size)?;
+        maker_order.size = new_maker_size;
 
         if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
