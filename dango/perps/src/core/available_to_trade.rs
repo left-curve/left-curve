@@ -15,6 +15,7 @@ use {
         Dimensionless, Quantity, UsdValue,
         perps::{PairId, UserState},
     },
+    grug::MathResult,
 };
 
 /// Order side entering the trade form.
@@ -83,9 +84,11 @@ pub fn compute_available_to_trade(
         if pair_id == current_pair_id {
             continue;
         }
+
         if position.size.is_zero() {
             continue;
         }
+
         let price = oracle_querier.query_price_for_perps(pair_id)?;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
         let im = position
@@ -93,6 +96,7 @@ pub fn compute_available_to_trade(
             .checked_abs()?
             .checked_mul(price)?
             .checked_mul(pair_param.initial_margin_ratio)?;
+
         other_im.checked_add_assign(im)?;
     }
 
@@ -136,14 +140,16 @@ pub fn compute_max_order_notional(
     avail_to_trade: UsdValue,
     pair_imr: Dimensionless,
     fee: Dimensionless,
-) -> anyhow::Result<UsdValue> {
+) -> MathResult<UsdValue> {
     let avail_clamped = if avail_to_trade.is_negative() {
         UsdValue::ZERO
     } else {
         avail_to_trade
     };
-    let denom = pair_imr.checked_add(fee)?;
-    Ok(avail_clamped.checked_div(denom)?)
+
+    let denominator = pair_imr.checked_add(fee)?;
+
+    avail_clamped.checked_div(denominator)
 }
 
 // ----------------------------------- tests -----------------------------------
