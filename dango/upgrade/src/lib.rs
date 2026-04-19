@@ -41,6 +41,14 @@ const MIGRATION_MAX_MARKET_SLIPPAGE: Dimensionless = Dimensionless::new_percent(
 /// `Configure` once traffic patterns are understood.
 const MIGRATION_MAX_ACTION_BATCH_SIZE: usize = 5;
 
+/// Default `funding_rate_multiplier` applied to every pair during the
+/// migration. `1` reproduces the pre-multiplier funding behavior —
+/// funding continues to be computed as `-halfSpread × skew ×
+/// spreadSkewFactor` at the upgrade boundary, so there is no
+/// discontinuity for positions active across the upgrade. Governance
+/// tunes per-pair via `Configure` after the upgrade completes.
+const MIGRATION_FUNDING_RATE_MULTIPLIER: Dimensionless = Dimensionless::ONE;
+
 /// Legacy types matching the pre-upgrade Borsh layout.
 ///
 /// `PairParam` before this upgrade does not contain the
@@ -153,7 +161,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
 
     let mut storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
 
-    do_price_banding_and_batch_action_upgrades(&mut storage)?;
+    do_pair_param_and_param_upgrades(&mut storage)?;
     do_client_order_id_upgrade(&mut storage)?;
     do_fill_id_upgrade(&mut storage)?;
     do_reserved_margin_rounding_error_fix(&mut storage)?;
@@ -161,17 +169,21 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     Ok(())
 }
 
-/// Two Borsh-layout-breaking migrations bundled into one upgrade event:
+/// Borsh-layout-breaking migrations to `PairParam` and the global
+/// `Param`, bundled into one upgrade event:
 ///
 /// 1. Price banding — adds `max_limit_price_deviation` and
 ///    `max_market_slippage` to every `PairParam`.
-/// 2. Batch action size cap — adds `max_action_batch_size` to the
+/// 2. Funding rate multiplier — adds `funding_rate_multiplier` to
+///    every `PairParam`, seeded at `1` so funding behavior is
+///    unchanged at the upgrade boundary.
+/// 3. Batch action size cap — adds `max_action_batch_size` to the
 ///    global `Param`.
 ///
-/// Both are pure additions at the end of their respective struct
-/// layouts, so the migration is a straightforward read-legacy /
-/// write-new roundtrip.
-fn do_price_banding_and_batch_action_upgrades(storage: &mut dyn Storage) -> StdResult<()> {
+/// All three are pure additions to their respective struct layouts, so
+/// the migration is a straightforward read-legacy / write-new
+/// roundtrip.
+fn do_pair_param_and_param_upgrades(storage: &mut dyn Storage) -> StdResult<()> {
     // 1. PairParam: add price-banding fields.
     let old_pair_params: Vec<_> = legacy::PAIR_PARAMS
         .range(storage, None, None, IterationOrder::Ascending)
@@ -197,6 +209,8 @@ fn do_price_banding_and_batch_action_upgrades(storage: &mut dyn Storage) -> StdR
             vault_size_skew_factor: old.vault_size_skew_factor,
             vault_spread_skew_factor: old.vault_spread_skew_factor,
             vault_max_skew_size: old.vault_max_skew_size,
+            // Identity multiplier preserves pre-upgrade funding behavior.
+            funding_rate_multiplier: MIGRATION_FUNDING_RATE_MULTIPLIER,
             bucket_sizes: old.bucket_sizes,
         };
 
@@ -204,7 +218,7 @@ fn do_price_banding_and_batch_action_upgrades(storage: &mut dyn Storage) -> StdR
     }
 
     tracing::info!(
-        "Migrated {pair_count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION}, max_market_slippage = {MIGRATION_MAX_MARKET_SLIPPAGE})"
+        "Migrated {pair_count} PairParam entries (added max_limit_price_deviation = {MIGRATION_MAX_LIMIT_PRICE_DEVIATION}, max_market_slippage = {MIGRATION_MAX_MARKET_SLIPPAGE}, funding_rate_multiplier = {MIGRATION_FUNDING_RATE_MULTIPLIER})"
     );
 
     // 2. Param: add `max_action_batch_size`.
@@ -538,7 +552,7 @@ mod tests {
             .unwrap();
         legacy::PARAM.save(&mut storage, &old_param).unwrap();
 
-        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
+        do_pair_param_and_param_upgrades(&mut storage).unwrap();
 
         let migrated_eth = dango_perps::state::PAIR_PARAMS
             .load(&storage, &eth_pair())
@@ -591,6 +605,14 @@ mod tests {
         assert_eq!(
             migrated_btc.max_market_slippage,
             MIGRATION_MAX_MARKET_SLIPPAGE
+        );
+        assert_eq!(
+            migrated_eth.funding_rate_multiplier,
+            MIGRATION_FUNDING_RATE_MULTIPLIER
+        );
+        assert_eq!(
+            migrated_btc.funding_rate_multiplier,
+            MIGRATION_FUNDING_RATE_MULTIPLIER
         );
         assert_eq!(migrated_btc.tick_size, btc.tick_size);
 
@@ -647,7 +669,7 @@ mod tests {
     fn migration_with_no_pairs_still_migrates_param() {
         let mut storage = MockStorage::new();
         legacy::PARAM.save(&mut storage, &legacy_param()).unwrap();
-        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
+        do_pair_param_and_param_upgrades(&mut storage).unwrap();
         assert_eq!(
             dango_perps::state::PARAM
                 .load(&storage)
@@ -655,6 +677,36 @@ mod tests {
                 .max_action_batch_size,
             MIGRATION_MAX_ACTION_BATCH_SIZE
         );
+    }
+
+    /// Focused regression: every migrated pair gets
+    /// `funding_rate_multiplier = 1` so funding behavior is unchanged at
+    /// the upgrade boundary. Decoupled from
+    /// `migration_copies_fields_and_sets_new_default` so a constant
+    /// drift fails with a targeted message.
+    #[test]
+    fn migration_sets_funding_rate_multiplier_to_one() {
+        let mut storage = MockStorage::new();
+
+        legacy::PAIR_PARAMS
+            .save(&mut storage, &eth_pair(), &legacy_pair_param(1))
+            .unwrap();
+        legacy::PAIR_PARAMS
+            .save(&mut storage, &btc_pair(), &legacy_pair_param(2))
+            .unwrap();
+        legacy::PARAM.save(&mut storage, &legacy_param()).unwrap();
+
+        do_pair_param_and_param_upgrades(&mut storage).unwrap();
+
+        let eth = dango_perps::state::PAIR_PARAMS
+            .load(&storage, &eth_pair())
+            .unwrap();
+        let btc = dango_perps::state::PAIR_PARAMS
+            .load(&storage, &btc_pair())
+            .unwrap();
+
+        assert_eq!(eth.funding_rate_multiplier, Dimensionless::ONE);
+        assert_eq!(btc.funding_rate_multiplier, Dimensionless::ONE);
     }
 
     /// `do_client_order_id_upgrade` rewrites every legacy resting order
@@ -890,7 +942,7 @@ mod tests {
         plant_user_state_with_reserved_raw(&mut storage, USER_A, 105_000_000);
 
         // Run all migrations sequentially (mirrors `do_upgrade`).
-        do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
+        do_pair_param_and_param_upgrades(&mut storage).unwrap();
         do_client_order_id_upgrade(&mut storage).unwrap();
         do_fill_id_upgrade(&mut storage).unwrap();
         do_reserved_margin_rounding_error_fix(&mut storage).unwrap();
@@ -904,6 +956,10 @@ mod tests {
             MIGRATION_MAX_LIMIT_PRICE_DEVIATION
         );
         assert_eq!(pair.max_market_slippage, MIGRATION_MAX_MARKET_SLIPPAGE);
+        assert_eq!(
+            pair.funding_rate_multiplier,
+            MIGRATION_FUNDING_RATE_MULTIPLIER
+        );
 
         // Param migrated.
         assert_eq!(

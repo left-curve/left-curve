@@ -216,6 +216,7 @@ mod tests {
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_spread_skew_factor: Dimensionless::new_permille(300), // 0.3
             vault_max_skew_size: Quantity::new_int(100),
+            funding_rate_multiplier: Dimensionless::ONE,
             ..Default::default()
         }
     }
