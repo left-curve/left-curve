@@ -18,7 +18,9 @@ use {
         Quantity, UsdValue,
         perps::{LimitOrder, ReasonForOrderRemoval},
     },
-    grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
+    grug::{
+        MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64,
+    },
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
@@ -38,13 +40,13 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     let oracle_addr = oracle(ctx.querier);
 
-    // Only the oracle contract (after feeding fresh prices) may trigger a vault
-    // refresh. Without this check any account could consume the once-per-block
-    // refresh token on stale prices, causing the oracle's legitimate refresh
-    // submessage to be rejected.
+    // Only the oracle contract (after feeding fresh prices) or the chain owner
+    // may trigger a vault refresh. Without this check any account could consume
+    // the once-per-block refresh token on stale prices, causing the oracle's
+    // legitimate refresh submessage to be rejected.
     ensure!(
-        ctx.sender == oracle_addr,
-        "only the oracle contract may refresh vault orders"
+        ctx.sender == oracle_addr || ctx.sender == ctx.querier.query_owner()?,
+        "only the oracle contract or the chain owner may refresh vault orders"
     );
 
     let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
@@ -256,13 +258,33 @@ mod tests {
     use {
         super::*,
         dango_types::config::AppConfig,
-        grug::{Addr, Coins, MockContext, MockQuerier, ResultExt},
+        grug::{
+            Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
+            ResultExt,
+        },
+        std::collections::BTreeMap,
     };
 
     const CONTRACT: Addr = Addr::mock(0);
     const ORACLE: Addr = Addr::mock(1);
+    const OWNER: Addr = Addr::mock(2);
 
-    /// Build a mock querier whose `AppConfig` returns `ORACLE` as the oracle address.
+    fn mock_config() -> Config {
+        Config {
+            owner: OWNER,
+            bank: Addr::mock(3),
+            taxman: Addr::mock(4),
+            cronjobs: BTreeMap::new(),
+            permissions: Permissions {
+                upload: Permission::Nobody,
+                instantiate: Permission::Nobody,
+            },
+            max_orphan_age: Duration::from_seconds(0),
+        }
+    }
+
+    /// Build a mock querier whose `AppConfig` returns `ORACLE` as the oracle
+    /// address and whose `Config` returns `OWNER` as the chain owner.
     fn mock_querier() -> MockQuerier {
         MockQuerier::new()
             .with_app_config(AppConfig {
@@ -273,6 +295,7 @@ mod tests {
                 ..Default::default()
             })
             .unwrap()
+            .with_config(mock_config())
     }
 
     #[test]
@@ -284,8 +307,26 @@ mod tests {
             .with_funds(Coins::default())
             .with_block_height(10);
 
-        refresh_orders(ctx.as_mutable())
-            .should_fail_with_error("only the oracle contract may refresh vault orders");
+        refresh_orders(ctx.as_mutable()).should_fail_with_error(
+            "only the oracle contract or the chain owner may refresh vault orders",
+        );
+    }
+
+    #[test]
+    fn refresh_orders_owner_can_trigger() {
+        let mut ctx = MockContext::new()
+            .with_querier(mock_querier())
+            .with_contract(CONTRACT)
+            .with_sender(OWNER)
+            .with_funds(Coins::default())
+            .with_block_height(10);
+
+        PARAM.save(&mut ctx.storage, &Default::default()).unwrap();
+        PAIR_IDS
+            .save(&mut ctx.storage, &Default::default())
+            .unwrap();
+
+        refresh_orders(ctx.as_mutable()).should_succeed();
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use {
-    crate::{default_pair_param, default_param, refresh_vault_orders, register_oracle_prices},
+    crate::{default_pair_param, default_param, register_oracle_prices},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
@@ -107,7 +107,14 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
     // -------------------------------------------------------------------------
 
     suite.make_empty_block();
-    refresh_vault_orders(&mut suite, &mut accounts, &contracts);
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            Coins::new(),
+        )
+        .should_succeed();
 
     let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {

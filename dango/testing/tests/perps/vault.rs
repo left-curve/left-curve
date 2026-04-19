@@ -1,5 +1,5 @@
 use {
-    crate::{default_pair_param, default_param, refresh_vault_orders, register_oracle_prices},
+    crate::{default_pair_param, default_param, register_oracle_prices},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
@@ -128,7 +128,14 @@ fn vault_lp_lifecycle() {
 
     suite.make_empty_block();
 
-    refresh_vault_orders(&mut suite, &mut accounts, &contracts);
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Vault should have orders on the book.
     let vault_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
@@ -220,7 +227,14 @@ fn vault_lp_lifecycle() {
 
     suite.make_empty_block();
 
-    refresh_vault_orders(&mut suite, &mut accounts, &contracts);
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            Coins::new(),
+        )
+        .should_succeed();
 
     // -------------------------------------------------------------------------
     // Step 7: Taker buys back from vault's ask → vault realizes PnL.
@@ -730,7 +744,14 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
     //   bid @ $2,000 * (1 - 1%) = $1,980
     // -------------------------------------------------------------------------
 
-    refresh_vault_orders(&mut suite, &mut accounts, &contracts);
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            Coins::new(),
+        )
+        .should_succeed();
 
     let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
@@ -848,7 +869,14 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
     //   Correct: available = $0 -> should place NO orders.
     // -------------------------------------------------------------------------
 
-    refresh_vault_orders(&mut suite, &mut accounts, &contracts);
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            Coins::new(),
+        )
+        .should_succeed();
 
     // With the fix, available margin is $0, so the vault places NO orders.
     // OLD (incorrect) behavior: the vault would place a ~14.7 ETH bid here
