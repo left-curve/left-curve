@@ -156,6 +156,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     do_price_banding_and_batch_action_upgrades(&mut storage)?;
     do_client_order_id_upgrade(&mut storage)?;
     do_fill_id_upgrade(&mut storage)?;
+    do_reserved_margin_rounding_error_fix(&mut storage)?;
 
     Ok(())
 }
@@ -286,6 +287,72 @@ fn do_fill_id_upgrade(storage: &mut dyn Storage) -> StdResult<()> {
     Ok(())
 }
 
+/// Repair `UserState::reserved_margin` drift caused by a rounding bug in
+/// the proportional margin-release formula in `submit_order::match_order`
+/// (fixed in the same release). Pre-fix, each fully-filled maker order
+/// could orphan up to a few ULPs of reserved margin on the user side.
+/// A mainnet survey (Apr 2026) found hundreds of users with residuals
+/// ≤ ~0.04 USD.
+///
+/// For every user we recompute `reserved_margin` as the sum of
+/// `LimitOrder::reserved_margin` across their resting bids and asks,
+/// overwriting the field if it disagrees. This restores the invariant
+/// `user_state.reserved_margin == sum(open orders' reserved_margin)` at
+/// the upgrade boundary; from there the fixed matcher keeps it intact.
+///
+/// Must run *after* `do_client_order_id_upgrade` so that the books are
+/// already in the new `dango_perps::state::{BIDS, ASKS}` layout — the
+/// per-user `MultiIndex` used below reads through the new shape.
+fn do_reserved_margin_rounding_error_fix(storage: &mut dyn Storage) -> StdResult<()> {
+    // Snapshot users first — we cannot iterate `USER_STATES` and mutate
+    // it in the same pass.
+    let users: Vec<_> = dango_perps::state::USER_STATES
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<_>>()?;
+
+    let mut fixed = 0usize;
+
+    for (user, mut user_state) in users {
+        let mut actual = UsdValue::ZERO;
+
+        for res in dango_perps::state::BIDS.idx.user.prefix(user).range(
+            storage,
+            None,
+            None,
+            IterationOrder::Ascending,
+        ) {
+            let (_, order) = res?;
+            actual.checked_add_assign(order.reserved_margin)?;
+        }
+
+        for res in dango_perps::state::ASKS.idx.user.prefix(user).range(
+            storage,
+            None,
+            None,
+            IterationOrder::Ascending,
+        ) {
+            let (_, order) = res?;
+            actual.checked_add_assign(order.reserved_margin)?;
+        }
+
+        if actual != user_state.reserved_margin {
+            tracing::info!(
+                %user,
+                old = %user_state.reserved_margin,
+                new = %actual,
+                "Fixed reserved_margin rounding drift",
+            );
+            user_state.reserved_margin = actual;
+            dango_perps::state::USER_STATES.save(storage, user, &user_state)?;
+            fixed += 1;
+        }
+    }
+
+    tracing::info!("Reserved_margin rounding-error fix complete: {fixed} user(s) updated");
+
+    Ok(())
+}
+
 fn migrate_book(
     storage: &mut dyn Storage,
     legacy_map: &IndexedMap<OrderKey, legacy::LimitOrder, legacy::OrderIndexes>,
@@ -388,6 +455,71 @@ mod tests {
             vault_max_skew_size: Quantity::new_int(500),
             bucket_sizes: btree_set! { UsdPrice::new_int(1), UsdPrice::new_int(10) },
         }
+    }
+
+    /// Build a current-shape `LimitOrder` with `reserved_margin` given
+    /// directly in inner (Dec128_6) units — useful for exercising the
+    /// rounding-error fix with fractional values.
+    fn limit_order_with_reserved_raw(
+        user: Addr,
+        size: i128,
+        reserved_margin_raw: i128,
+    ) -> dango_types::perps::LimitOrder {
+        dango_types::perps::LimitOrder {
+            user,
+            size: Quantity::new_int(size),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_margin_raw),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        }
+    }
+
+    fn plant_bid(
+        storage: &mut dyn Storage,
+        pair: PairId,
+        price: i128,
+        id: u64,
+        order: &dango_types::perps::LimitOrder,
+    ) {
+        // Buy-side orders are stored under the inverted price so iteration
+        // yields the highest-priced bids first.
+        let stored_price = !UsdPrice::new_int(price);
+        dango_perps::state::BIDS
+            .save(storage, (pair, stored_price, Uint64::new(id)), order)
+            .unwrap();
+    }
+
+    fn plant_ask(
+        storage: &mut dyn Storage,
+        pair: PairId,
+        price: i128,
+        id: u64,
+        order: &dango_types::perps::LimitOrder,
+    ) {
+        dango_perps::state::ASKS
+            .save(
+                storage,
+                (pair, UsdPrice::new_int(price), Uint64::new(id)),
+                order,
+            )
+            .unwrap();
+    }
+
+    fn plant_user_state_with_reserved_raw(
+        storage: &mut dyn Storage,
+        user: Addr,
+        reserved_raw: i128,
+    ) {
+        let state = dango_types::perps::UserState {
+            reserved_margin: UsdValue::new_raw(reserved_raw),
+            ..Default::default()
+        };
+        dango_perps::state::USER_STATES
+            .save(storage, user, &state)
+            .unwrap();
     }
 
     #[test]
@@ -660,10 +792,82 @@ mod tests {
         do_fill_id_upgrade(&mut storage).unwrap();
     }
 
+    /// With a drifted `USER_A` (reserved_margin strictly greater than the
+    /// sum of their order's reserved_margin) and a consistent `USER_B`,
+    /// the fix rewrites `USER_A`'s field to the true sum and leaves
+    /// `USER_B` untouched.
+    #[test]
+    fn reserved_margin_fix_repairs_drift() {
+        let mut storage = MockStorage::new();
+
+        // USER_A: one ask with reserved_margin = 21.405596 USD, but
+        // user_state says 21.406601 USD — a 1005-ULP orphan.
+        let ask_a = limit_order_with_reserved_raw(USER_A, -1, 21_405_596);
+        plant_ask(&mut storage, eth_pair(), 2_340, 1, &ask_a);
+        plant_user_state_with_reserved_raw(&mut storage, USER_A, 21_406_601);
+
+        // USER_B: a bid + an ask summing to 10 USD, user_state matches.
+        let bid_b = limit_order_with_reserved_raw(USER_B, 1, 6_000_000);
+        let ask_b = limit_order_with_reserved_raw(USER_B, -1, 4_000_000);
+        plant_bid(&mut storage, btc_pair(), 50_000, 2, &bid_b);
+        plant_ask(&mut storage, btc_pair(), 51_000, 3, &ask_b);
+        plant_user_state_with_reserved_raw(&mut storage, USER_B, 10_000_000);
+
+        do_reserved_margin_rounding_error_fix(&mut storage).unwrap();
+
+        let after_a = dango_perps::state::USER_STATES
+            .load(&storage, USER_A)
+            .unwrap();
+        assert_eq!(after_a.reserved_margin, UsdValue::new_raw(21_405_596));
+
+        let after_b = dango_perps::state::USER_STATES
+            .load(&storage, USER_B)
+            .unwrap();
+        assert_eq!(after_b.reserved_margin, UsdValue::new_raw(10_000_000));
+    }
+
+    /// Users whose orders have all been fully filled can still carry a
+    /// residual reserved_margin. With no orders left, the fix resets
+    /// the field to zero.
+    #[test]
+    fn reserved_margin_fix_resets_to_zero_when_no_orders() {
+        let mut storage = MockStorage::new();
+
+        // User with 0.034211 USD reserved but no open orders — matches
+        // the shape of several mainnet inconsistencies from the survey.
+        plant_user_state_with_reserved_raw(&mut storage, USER_A, 34_211);
+
+        do_reserved_margin_rounding_error_fix(&mut storage).unwrap();
+
+        let after = dango_perps::state::USER_STATES
+            .load(&storage, USER_A)
+            .unwrap();
+        assert_eq!(after.reserved_margin, UsdValue::ZERO);
+    }
+
+    /// When every user's reserved_margin already matches the sum of
+    /// their orders' reserved_margin, the fix is a no-op.
+    #[test]
+    fn reserved_margin_fix_noop_when_consistent() {
+        let mut storage = MockStorage::new();
+
+        let bid = limit_order_with_reserved_raw(USER_A, 1, 5_000_000);
+        plant_bid(&mut storage, eth_pair(), 2_000, 1, &bid);
+        plant_user_state_with_reserved_raw(&mut storage, USER_A, 5_000_000);
+
+        do_reserved_margin_rounding_error_fix(&mut storage).unwrap();
+
+        let after = dango_perps::state::USER_STATES
+            .load(&storage, USER_A)
+            .unwrap();
+        assert_eq!(after.reserved_margin, UsdValue::new_raw(5_000_000));
+    }
+
     /// `do_upgrade` chains all migrations: legacy `PairParam`s are
     /// rewritten, the global `Param` gains `max_action_batch_size`,
-    /// legacy resting orders are rewritten, and the `NEXT_FILL_ID`
-    /// counter is seeded — all under one upgrade boundary.
+    /// legacy resting orders are rewritten, `NEXT_FILL_ID` is seeded,
+    /// and drifted `reserved_margin` entries are repaired — all under
+    /// one upgrade boundary.
     #[test]
     fn do_upgrade_runs_all_migrations() {
         let mut storage = MockStorage::new();
@@ -681,10 +885,15 @@ mod tests {
             )
             .unwrap();
 
+        // USER_A has one bid with reserved_margin = 100, but their
+        // user_state claims 105 — a 5 USD orphan to be corrected.
+        plant_user_state_with_reserved_raw(&mut storage, USER_A, 105_000_000);
+
         // Run all migrations sequentially (mirrors `do_upgrade`).
         do_price_banding_and_batch_action_upgrades(&mut storage).unwrap();
         do_client_order_id_upgrade(&mut storage).unwrap();
         do_fill_id_upgrade(&mut storage).unwrap();
+        do_reserved_margin_rounding_error_fix(&mut storage).unwrap();
 
         // PairParam migrated.
         let pair = dango_perps::state::PAIR_PARAMS
@@ -720,5 +929,12 @@ mod tests {
             dango_perps::state::NEXT_FILL_ID.load(&storage).unwrap(),
             FillId::ONE
         );
+
+        // `reserved_margin` repaired: user_state now matches the sum of
+        // the user's open orders (the one bid with reserved_margin = 100).
+        let user_a_state = dango_perps::state::USER_STATES
+            .load(&storage, USER_A)
+            .unwrap();
+        assert_eq!(user_a_state.reserved_margin, UsdValue::new_int(100));
     }
 }

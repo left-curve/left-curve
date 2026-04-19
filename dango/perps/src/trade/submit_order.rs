@@ -978,10 +978,20 @@ pub fn match_order(
 
         let pre_fill_abs_size = maker_order.size.checked_abs()?;
 
-        // Release reserved margin proportionally to the filled portion.
-        let margin_to_release = (maker_order.reserved_margin)
-            .checked_mul(maker_fill_size)?
-            .checked_div(maker_order.size)?;
+        // Compute the new size first so we can detect a full fill below.
+        let new_maker_size = maker_order.size.checked_sub(maker_fill_size)?;
+
+        // Release reserved margin. On a full fill, release everything that's
+        // left in the order: the proportional formula truncates toward zero
+        // and would otherwise orphan the residual in `maker_state` when the
+        // order is removed from storage a few lines below.
+        let margin_to_release = if new_maker_size.is_zero() {
+            maker_order.reserved_margin
+        } else {
+            (maker_order.reserved_margin)
+                .checked_mul(maker_fill_size)?
+                .checked_div(maker_order.size)?
+        };
 
         maker_state
             .reserved_margin
@@ -991,7 +1001,7 @@ pub fn match_order(
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
-        maker_order.size.checked_sub_assign(maker_fill_size)?;
+        maker_order.size = new_maker_size;
 
         if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
@@ -2688,6 +2698,491 @@ mod tests {
             maker_states[&MAKER_A].reserved_margin,
             UsdValue::new_int(15_000)
         );
+    }
+
+    // ======= Maker reserved margin release: full fill, truncation-prone =====
+
+    /// Regression test for a rounding leak in the proportional
+    /// margin-release formula on a full fill.
+    ///
+    /// The maker's order is planted directly with values chosen so that
+    /// `R * S` is not a multiple of `PRECISION` (1e6):
+    ///
+    /// - `R` (reserved_margin) = 21.406601 USD → inner = 21_406_601
+    /// - `S` (|size|)          = 0.182946 qty  → inner =    182_946
+    /// - `R.inner * S.inner mod 1_000_000 = 26_546 ≠ 0`
+    ///
+    /// On a single full fill, the proportional formula
+    /// `floor(floor(R·S / 1e6) · 1e6 / S)` yields 21_406_600 — one ULP
+    /// short of `R`. The order is removed with a residual ULP still in
+    /// `maker_order.reserved_margin`; that residual is dropped from the
+    /// order but orphaned in `maker_state.reserved_margin`, breaking the
+    /// invariant `user_state.reserved_margin == sum(open orders'
+    /// reserved_margin)`.
+    ///
+    /// After the fix this test must pass: on a full fill, everything
+    /// left in the order's reserved_margin is released to the user, so
+    /// the user's reserved_margin goes to zero once the only order is
+    /// removed.
+    #[test]
+    fn maker_reserved_margin_no_orphan_on_full_fill_with_truncation() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // Plant a resting ask directly (can't reuse `place_ask` because it
+        // hardcodes integer price/size and computes reserved_margin as
+        // `size * price / 20`; we need fractional inner values).
+        let price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946; // 0.182946
+        let reserved_inner: i128 = 21_406_601; // 21.406601
+        let order_id = Uint64::new(100);
+        let key = (pair_id(), price, order_id);
+        let ask = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, key, &ask).unwrap();
+
+        let maker_state_before = UserState {
+            margin: LARGE_COLLATERAL,
+            open_order_count: 1,
+            reserved_margin: ask.reserved_margin,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &maker_state_before)
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome { maker_states, .. } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            price,
+            Quantity::new_raw(size_inner),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Order is fully consumed, so the user's reserved_margin must be
+        // zero. Pre-fix this is `UsdValue::new_raw(1)` — one ULP orphan.
+        assert_eq!(maker_states[&MAKER_A].reserved_margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+    }
+
+    /// Regression test: a maker ask is consumed by two back-to-back partial
+    /// fills that together equal its full size. The final fill lands on the
+    /// `new_maker_size.is_zero()` branch and must release every remaining
+    /// ULP of `reserved_margin`.
+    ///
+    /// Pre-fix, each of the two fills truncates via the proportional
+    /// formula: the first leaves the order and user state consistent at the
+    /// mid-point (both drifted by the same amount), but the second fill
+    /// applies the proportional formula again on the residual R, truncates
+    /// once more, and drops a ≥1-ULP orphan into `maker_state.reserved_margin`
+    /// when the order is removed. Post-fix the final fill releases the full
+    /// remainder unconditionally.
+    #[test]
+    fn maker_reserved_margin_no_orphan_on_full_fill_via_two_partial_fills() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // Same truncation-prone plant values as the single-shot test above,
+        // split into two equal-sized taker fills (2 × 91_473 = 182_946).
+        let price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946;
+        let half_size_inner: i128 = 91_473;
+        let reserved_inner: i128 = 21_406_601;
+        let order_id = Uint64::new(100);
+        let key = (pair_id(), price, order_id);
+        let ask = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, key, &ask).unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: ask.reserved_margin,
+                ..Default::default()
+            })
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+
+        // ---------- Phase 1: first half-fill (partial) ----------
+        {
+            let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+            let taker_state = UserState {
+                margin: LARGE_COLLATERAL,
+                ..Default::default()
+            };
+            let mut oq = test_oracle_querier();
+
+            let SubmitOrderOutcome {
+                pair_state,
+                taker_state,
+                maker_states,
+                order_mutations,
+                ..
+            } = compute_submit_order_outcome(
+                &ctx.storage,
+                TAKER,
+                CONTRACT,
+                Timestamp::ZERO,
+                &mut oq,
+                &param,
+                &State::default(),
+                &pair_id(),
+                &pair_param,
+                &pair_state,
+                &taker_state,
+                price,
+                Quantity::new_raw(half_size_inner),
+                OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(100),
+                },
+                false,
+                None,
+                None,
+                &mut EventBuilder::new(),
+            )
+            .unwrap();
+
+            // Partial fill: the order must still exist with the residual size.
+            assert_eq!(order_mutations.len(), 1);
+            assert!(
+                order_mutations[0].2.is_some(),
+                "order should remain on the book after partial fill"
+            );
+            assert_eq!(maker_states[&MAKER_A].open_order_count, 1);
+
+            // Persist phase-1 side effects so phase-2 sees the post-partial state.
+            PAIR_STATES
+                .save(&mut ctx.storage, &pair_id(), &pair_state)
+                .unwrap();
+            USER_STATES
+                .save(&mut ctx.storage, TAKER, &taker_state)
+                .unwrap();
+            for (addr, ms) in &maker_states {
+                USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+            }
+            for (stored_price, mutated_order_id, mutation, _) in order_mutations {
+                let key = (pair_id(), stored_price, mutated_order_id);
+                match mutation {
+                    Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                    None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+                }
+            }
+        }
+
+        // ---------- Phase 2: consume the remainder (triggers full-fill branch) ----------
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            price,
+            Quantity::new_raw(half_size_inner),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Second fill fully consumes the order.
+        assert_eq!(order_mutations.len(), 1);
+        assert!(
+            order_mutations[0].2.is_none(),
+            "order should be removed after full consumption"
+        );
+        // The invariant: no ULP is orphaned in the maker's reserved_margin
+        // even though the two fills both touched the truncating formula.
+        assert_eq!(maker_states[&MAKER_A].reserved_margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+    }
+
+    /// Defensive test for the cancel-after-partial-fill pathway. Partial
+    /// fills decrement `order.reserved_margin` and `user_state.reserved_margin`
+    /// by the same truncated amount, so the mid-life invariant holds by
+    /// construction. On cancel, `cancel_order.rs` subtracts the full residual
+    /// `order.reserved_margin` from the user's reserved margin; this test
+    /// locks in that pairing with fractional-ULP values so a future refactor
+    /// cannot silently desynchronize either half.
+    ///
+    /// Passes both pre- and post-matcher-fix — the matcher bug only manifests
+    /// on a *full fill*, which removes the order and bypasses cancel.
+    #[test]
+    fn reserved_margin_zero_after_cancel_following_partial_fill() {
+        use crate::trade::cancel_order::_cancel_one_order;
+
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946;
+        let half_size_inner: i128 = 91_473;
+        let reserved_inner: i128 = 21_406_601;
+        let order_id = Uint64::new(100);
+        let key = (pair_id(), price, order_id);
+        let ask = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, key, &ask).unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: ask.reserved_margin,
+                ..Default::default()
+            })
+            .unwrap();
+
+        // Partial fill consuming half the order.
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            price,
+            Quantity::new_raw(half_size_inner),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Persist the partial-fill outcome so cancel operates on the correct
+        // post-fill state.
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, mutated_order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, mutated_order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // Sanity: after a partial fill the maker still holds some reserved
+        // margin — otherwise the cancel path isn't being exercised.
+        let mid_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert!(
+            mid_state.reserved_margin.is_non_zero(),
+            "partial fill must leave non-zero residual reserved_margin"
+        );
+        assert_eq!(mid_state.open_order_count, 1);
+
+        // Cancel the remaining order.
+        let mut events = EventBuilder::new();
+        _cancel_one_order(&mut ctx.storage, MAKER_A, order_id, &mut events).unwrap();
+
+        let after = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert_eq!(after.reserved_margin, UsdValue::ZERO);
+        assert_eq!(after.open_order_count, 0);
+    }
+
+    /// Defensive test for the self-trade prevention (STP) pathway. When a
+    /// taker crosses their own maker, the STP branch releases the full
+    /// `maker_order.reserved_margin` in one step (no truncating formula),
+    /// so the taker's `reserved_margin` must land at exactly zero — even
+    /// when the original reservation uses fractional-ULP values. This
+    /// tightens the existing `self_trade_prevention_expire_maker` test,
+    /// which only asserts `taker_state.reserved_margin < taker_reserved_before`.
+    ///
+    /// Passes both pre- and post-matcher-fix — the STP branch is untouched
+    /// by the fix.
+    #[test]
+    fn reserved_margin_zero_after_self_trade_prevention_with_fractional_values() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // TAKER owns a resting ask planted with fractional reserved_margin.
+        let takers_price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946;
+        let reserved_inner: i128 = 21_406_601;
+        let takers_order_id = Uint64::new(100);
+        let takers_key = (pair_id(), takers_price, takers_order_id);
+        let takers_ask = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, takers_key, &takers_ask)
+            .unwrap();
+
+        // A second, higher-priced maker ask so the taker's market buy can
+        // find liquidity after STP cancels the taker's own ask (otherwise
+        // `compute_submit_order_outcome` rejects the order as "no liquidity
+        // at acceptable price" when `unfilled == fillable_size`).
+        place_ask(&mut ctx.storage, MAKER_A, 50_100, 10, 101);
+
+        let taker_state_before = UserState {
+            margin: LARGE_COLLATERAL,
+            open_order_count: 1,
+            reserved_margin: takers_ask.reserved_margin,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state_before)
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state_before,
+            UsdPrice::new_int(50_100),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // First mutation is the taker's own ask, removed by STP.
+        assert_eq!(order_mutations.len(), 2);
+        assert!(
+            order_mutations[0].2.is_none(),
+            "taker's own ask should be STP-cancelled (mutation = None)"
+        );
+
+        // The STP branch releases the full fractional reservation in one
+        // step — no truncation, no orphan.
+        assert_eq!(taker_state.reserved_margin, UsdValue::ZERO);
+        assert_eq!(taker_state.open_order_count, 0);
     }
 
     // ======= Market buy: price beyond slippage ===============================
