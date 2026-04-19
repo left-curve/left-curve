@@ -192,4 +192,18 @@ mod tests {
         // premium = -(0.01 * 0.5 * 0.3 * 100) = -0.15
         assert_eq!(premium, Dimensionless::new_raw(-150_000));
     }
+
+    #[test]
+    fn spread_skew_factor_above_one_scales_linearly() {
+        // `vault_spread_skew_factor > 1` is now permitted; the premium
+        // formula scales linearly in the factor. Downstream clamping by
+        // `max_abs_funding_rate` handles magnitude, so no upper bound here.
+        let param = PairParam {
+            vault_spread_skew_factor: Dimensionless::new_int(5),
+            ..default_pair_param()
+        };
+        let premium = compute_vault_premium(Quantity::new_int(50), &param).unwrap();
+        // premium = -(0.01 * 0.5 * 5 * 1) = -0.025
+        assert_eq!(premium, Dimensionless::new_raw(-25_000));
+    }
 }

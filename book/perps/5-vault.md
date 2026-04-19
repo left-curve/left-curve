@@ -181,7 +181,7 @@ The mirror applies when short.
 | `vault_max_quote_size`     | Maximum base size per side                   |
 | `vault_max_skew_size`      | Position size at which skew saturates        |
 | `vault_size_skew_factor`   | Size skew intensity ($[0, 1]$)               |
-| `vault_spread_skew_factor` | Spread skew intensity ($[0, 1)$)             |
+| `vault_spread_skew_factor` | Spread skew intensity ($\ge 0$)              |
 
 If any of `vault_half_spread`, `vault_max_quote_size`, `vault_liquidity_weight`, `tick_size`, or the allocated margin is zero, the vault skips quoting for that pair.
 
@@ -191,6 +191,6 @@ If any of `vault_half_spread`, `vault_max_quote_size`, `vault_liquidity_weight`,
 
 **`vault_size_skew_factor`** — how aggressively to tilt order sizes. Start with **0.5**: at maximum skew, the heavier side quotes 1.5x and the lighter side 0.5x. A value of 1.0 fully shuts off quoting on one side at max position, which may be too aggressive for a vault that should always provide some liquidity. Range **0.5 to 0.8** is recommended.
 
-**`vault_spread_skew_factor`** — how aggressively to tilt spreads. Start with **0.3**: at maximum skew, the tightened side has 70% of normal spread and the widened side has 130%. Keep this below `vault_size_skew_factor` — size adjustment is the primary lever, spread adjustment is the fine-tuning. Must stay below 1.0 to avoid a negative spread. Range **0.3 to 0.5** is recommended.
+**`vault_spread_skew_factor`** — how aggressively to tilt spreads. Start with **0.3**: at maximum skew, the tightened side has 70% of normal spread and the widened side has 130%. Keep this below `vault_size_skew_factor` — size adjustment is the primary lever, spread adjustment is the fine-tuning. Range **0.3 to 0.5** is recommended. Values above 1.0 are permitted and cause the tightened side to cross the oracle price at maximum skew (an aggressive-unwind posture, useful for quickly deleveraging a large directional position); the invariant `bid < ask` still holds since `ask - bid = 2 × oracle × vault_half_spread`. The effective upper bound is governed by the cross-field invariant `vault_half_spread × (1 + vault_spread_skew_factor) < 1`, which ensures the bid stays positive at max skew.
 
 **General tuning principle:** start conservative (size 0.5, spread 0.3), observe PnL and position behavior, increase if the vault still accumulates too much directional exposure.

@@ -659,4 +659,48 @@ mod tests {
         // Ask side still active.
         assert!(ask.is_some());
     }
+
+    /// `vault_spread_skew_factor > 1` causes the tightened side to cross
+    /// the oracle price at maximum skew, while `bid < ask` still holds.
+    ///
+    /// Setup: oracle = $1000, half_spread = 1%, spread_factor = 2.0,
+    /// max_skew = 50, position = 50 (long) → skew = 1.
+    ///
+    /// Expected math:
+    ///   bid = 1000 * (1 - 0.01 * (1 + 1*2)) = 1000 * 0.97 = 970
+    ///   ask = 1000 * (1 + 0.01 * (1 - 1*2)) = 1000 * 0.99 = 990
+    ///
+    /// Note: ask < oracle (the vault is willing to sell below oracle to
+    /// aggressively unwind its long), but bid < ask is preserved.
+    #[test]
+    fn spread_skew_factor_above_one_crosses_oracle_on_tightened_side() {
+        let pair_param = PairParam {
+            vault_spread_skew_factor: Dimensionless::new_int(2),
+            vault_size_skew_factor: Dimensionless::ZERO,
+            vault_max_skew_size: Quantity::new_int(50),
+            ..default_pair_param()
+        };
+        let oracle = UsdPrice::new_int(1000);
+        let margin = UsdValue::new_int(10_000);
+
+        let (bid, ask) = compute_vault_quotes(
+            oracle,
+            &pair_param,
+            None,
+            None,
+            margin,
+            Quantity::new_int(50), // skew = 1 (max long)
+        )
+        .unwrap();
+
+        let bid = bid.unwrap();
+        let ask = ask.unwrap();
+
+        assert_eq!(bid.price, UsdPrice::new_int(970));
+        assert_eq!(ask.price, UsdPrice::new_int(990));
+
+        assert!(ask.price < oracle, "ask should cross below oracle");
+        assert!(bid.price > UsdPrice::ZERO, "bid must stay positive");
+        assert!(bid.price < ask.price, "bid < ask invariant must hold");
+    }
 }
