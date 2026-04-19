@@ -809,6 +809,7 @@ query {
 {
   "max_unlocks": 5,
   "max_open_orders": 50,
+  "max_action_batch_size": 5,
   "maker_fee_rates": {
     "base": "0.000000",
     "tiers": {}
@@ -832,21 +833,22 @@ query {
 }
 ```
 
-| Field                       | Type            | Description                                                |
-| --------------------------- | --------------- | ---------------------------------------------------------- |
-| `max_unlocks`               | `usize`         | Max concurrent vault unlock requests per user              |
-| `max_open_orders`           | `usize`         | Max resting limit orders per user (all pairs)              |
-| `maker_fee_rates`           | `RateSchedule`  | Volume-tiered maker fee rates                              |
-| `taker_fee_rates`           | `RateSchedule`  | Volume-tiered taker fee rates                              |
-| `protocol_fee_rate`         | `Dimensionless` | Fraction of trading fees routed to treasury                |
-| `liquidation_fee_rate`      | `Dimensionless` | Insurance fund fee on liquidations                         |
-| `liquidation_buffer_ratio`  | `Dimensionless` | Post-liquidation equity buffer above maintenance margin    |
-| `funding_period`            | `Duration`      | Interval between funding collections (nanoseconds)         |
-| `vault_total_weight`        | `Dimensionless` | Sum of all pairs' vault liquidity weights                  |
-| `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release (nanoseconds) |
-| `referral_active`           | `bool`          | Whether the referral commission system is active           |
-| `min_referrer_volume`       | `UsdValue`      | Minimum lifetime volume to become a referrer               |
-| `referrer_commission_rates` | `RateSchedule`  | Volume-tiered referrer commission rates                    |
+| Field                       | Type            | Description                                                                      |
+| --------------------------- | --------------- | -------------------------------------------------------------------------------- |
+| `max_unlocks`               | `usize`         | Max concurrent vault unlock requests per user                                    |
+| `max_open_orders`           | `usize`         | Max resting limit orders per user (all pairs)                                    |
+| `max_action_batch_size`     | `usize`         | Max actions in a single [`batch_update_orders`](#66-batch-update-orders) message |
+| `maker_fee_rates`           | `RateSchedule`  | Volume-tiered maker fee rates                                                    |
+| `taker_fee_rates`           | `RateSchedule`  | Volume-tiered taker fee rates                                                    |
+| `protocol_fee_rate`         | `Dimensionless` | Fraction of trading fees routed to treasury                                      |
+| `liquidation_fee_rate`      | `Dimensionless` | Insurance fund fee on liquidations                                               |
+| `liquidation_buffer_ratio`  | `Dimensionless` | Post-liquidation equity buffer above maintenance margin                          |
+| `funding_period`            | `Duration`      | Interval between funding collections (nanoseconds)                               |
+| `vault_total_weight`        | `Dimensionless` | Sum of all pairs' vault liquidity weights                                        |
+| `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release (nanoseconds)                       |
+| `referral_active`           | `bool`          | Whether the referral commission system is active                                 |
+| `min_referrer_volume`       | `UsdValue`      | Minimum lifetime volume to become a referrer                                     |
+| `referrer_commission_rates` | `RateSchedule`  | Volume-tiered referrer commission rates                                          |
 
 A `RateSchedule` has two fields: `base` (the default rate) and `tiers` (a map of volume threshold to rate; highest qualifying tier wins).
 
@@ -1442,7 +1444,9 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
   "closing_size": "0.000000",
   "opening_size": "0.100000",
   "realized_pnl": "0.000000",
-  "fee": "6.500000"
+  "fee": "6.500000",
+  "client_order_id": "42",
+  "fill_id": "17"
 }
 ```
 
@@ -1762,7 +1766,74 @@ Pattern: an algo trader can submit and cancel in the same block by reusing the `
 
 Cancellation releases reserved margin and decrements `open_order_count`.
 
-### 6.6 Submit conditional order (TP/SL)
+### 6.6 Batch update orders
+
+Apply a sequence of submit and cancel actions atomically. Actions execute in order; later actions observe the state written by earlier ones. If any action fails, the whole message reverts and no partial state is persisted.
+
+```json
+{
+  "execute": {
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "batch_update_orders": [
+          { "cancel": "all" },
+          {
+            "submit": {
+              "pair_id": "perp/btcusd",
+              "size": "0.100000",
+              "kind": {
+                "limit": {
+                  "limit_price": "64000.000000",
+                  "time_in_force": "POST",
+                  "client_order_id": "1"
+                }
+              },
+              "reduce_only": false
+            }
+          },
+          {
+            "submit": {
+              "pair_id": "perp/btcusd",
+              "size": "-0.100000",
+              "kind": {
+                "limit": {
+                  "limit_price": "66000.000000",
+                  "time_in_force": "POST",
+                  "client_order_id": "2"
+                }
+              },
+              "reduce_only": false
+            }
+          }
+        ]
+      }
+    },
+    "funds": {}
+  }
+}
+```
+
+The payload is a JSON array of `SubmitOrCancelOrderRequest` values. Each entry is one of:
+
+- `{ "submit": { … } }` — same shape as [`submit_order`](#64-submit-limit-order) (every field of `SubmitOrderRequest`).
+- `{ "cancel": <CancelOrderRequest> }` — any variant of [`CancelOrderRequest`](#103-enums): `{ "one": "..." }`, `{ "one_by_client_order_id": "..." }`, or the string `"all"`.
+
+**Constraints:**
+
+- The list must be non-empty.
+- The list length must not exceed [`Param.max_action_batch_size`](#41-global-parameters); the chain rejects oversize batches before any action runs.
+- Conditional (TP/SL) orders are not supported in batches — use [`submit_conditional_order`](#67-submit-conditional-order-tpsl) / [`cancel_conditional_order`](#68-cancel-conditional-order) for those.
+
+**Atomicity:** every storage write the earlier actions made — including realized fills that mutated counterparties' state — is discarded if a later action fails. Events are emitted only for the successful-batch case; a reverting batch surfaces just the top-level transaction failure.
+
+**Example use case — atomic book replacement:**
+
+An algo trader refreshing quotes at a new reference price can send a single `batch_update_orders` carrying `{ "cancel": "all" }` followed by the new `submit` entries. The old orders are canceled (freeing reserved margin) before the new submits run their margin checks, and if any new submit would fail (margin check, price band, OI cap, …) the old orders are restored along with the rest of the batch.
+
+**Reusing a `client_order_id` within one batch:** a `{ "cancel": { "one_by_client_order_id": "X" } }` entry releases the id before a later `{ "submit": { … "client_order_id": "X" } }` runs, so the same id can be rebound to a new order within a single message.
+
+### 6.7 Submit conditional order (TP/SL)
 
 Place a take-profit or stop-loss order that triggers when the oracle price crosses a threshold:
 
@@ -1803,7 +1874,7 @@ Place a take-profit or stop-loss order that triggers when the oracle price cross
 
 Conditional orders are always **reduce-only** with zero reserved margin. When triggered, they execute as market orders.
 
-### 6.7 Cancel conditional order
+### 6.8 Cancel conditional order
 
 Conditional orders are identified by `(pair_id, trigger_direction)`, not by order ID.
 
@@ -1864,7 +1935,7 @@ Conditional orders are identified by `(pair_id, trigger_direction)`, not by orde
 }
 ```
 
-### 6.8 Liquidate (permissionless)
+### 6.9 Liquidate (permissionless)
 
 Force-close all positions of an undercollateralized user. This message can be sent by anyone (liquidation bots):
 
@@ -2126,13 +2197,15 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                                              | Description                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                            | Limit order placed on book      |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                         | Order removed from book         |
+| Event             | Fields                                                                                                                                          | Description                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?` | Order partially or fully filled |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                        | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                     | Order removed from book         |
 
 `client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
+
+`fill_id` groups the two sides of a single order-book match. When a taker crosses a resting maker, two `order_filled` events are emitted — one for each side — and both carry the same `fill_id`. Successive matches use consecutive ids (strictly increasing), so a taker that crosses two makers in the same transaction produces four events with two distinct `fill_id` values. `fill_id` is `null` for trades executed before v0.15.0 — fill IDs were not assigned prior to that release. Not emitted for ADL fills, which use the [`deleveraged` and `liquidated` events](#liquidation-events) instead.
 
 ### Conditional order events
 
@@ -2197,6 +2270,7 @@ Additional integer types:
 | `OrderId`            | `Uint64` (string)               | `"42"`                           |
 | `ConditionalOrderId` | `Uint64` (shared counter)       | `"43"`                           |
 | `ClientOrderId`      | `Uint64` (caller-assigned)      | `"42"`                           |
+| `FillId`             | `Uint64` (per-match identifier) | `"17"`                           |
 | `Addr`               | Hex address                     | `"0x1234...abcd"`                |
 | `Hash256`            | 64-char hex                     | `"a1b2c3d4e5f6..."`              |
 | `UserIndex`          | `u32`                           | `0`                              |
@@ -2258,6 +2332,43 @@ Additional integer types:
 ```json
 "all"
 ```
+
+**SubmitOrderRequest:**
+
+```json
+{
+  "pair_id": "perp/btcusd",
+  "size": "-0.500000",
+  "kind": {
+    "limit": {
+      "limit_price": "65000.000000",
+      "time_in_force": "GTC",
+      "client_order_id": "42"
+    }
+  },
+  "reduce_only": false,
+  "tp": null,
+  "sl": null
+}
+```
+
+Same shape used by [`submit_order`](#64-submit-limit-order) and each `submit` entry in [`batch_update_orders`](#66-batch-update-orders).
+
+**SubmitOrCancelOrderRequest:**
+
+```json
+{ "submit": { /* SubmitOrderRequest */ } }
+```
+
+```json
+{ "cancel": { "one": "42" } }
+```
+
+```json
+{ "cancel": "all" }
+```
+
+One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Conditional (TP/SL) orders are not supported.
 
 **CancelConditionalOrderRequest:**
 

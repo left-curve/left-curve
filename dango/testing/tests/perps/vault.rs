@@ -177,7 +177,7 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: vault_bid_size.checked_neg().unwrap(), // sell
                 kind: perps::OrderKind::Market {
@@ -186,7 +186,7 @@ fn vault_lp_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -231,7 +231,7 @@ fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: vault_long_size, // buy same amount (closes taker's short)
                 kind: perps::OrderKind::Market {
@@ -240,7 +240,7 @@ fn vault_lp_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -765,7 +765,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: round1_bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
@@ -774,7 +774,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -884,7 +884,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: round1_bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
@@ -893,7 +893,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         // OLD (incorrect) behavior: the vault had a bid, so this would succeed.

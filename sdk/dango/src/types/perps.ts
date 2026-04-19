@@ -118,6 +118,7 @@ export type FeeRateOverride = {
 export type PerpsParam = {
   maxUnlocks: number;
   maxOpenOrders: number;
+  maxActionBatchSize: number;
   liquidationBufferRatio: string;
   makerFeeRates: RateSchedule;
   takerFeeRates: RateSchedule;

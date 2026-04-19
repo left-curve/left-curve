@@ -13,12 +13,12 @@ use {
         price::may_invert_price,
         querier::NoCachePerpQuerier,
         state::{
-            ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
-            USER_STATES,
+            ASKS, BIDS, LONGS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM,
+            SHORTS, STATE, USER_STATES,
         },
         trade::{
-            _cancel_all_orders, CancelAllOrdersOutcome, MatchOrderOutcome, match_order,
-            settle_fill, settle_pnls,
+            CancelAllOrdersOutcome, MatchOrderOutcome, compute_cancel_all_orders_outcome,
+            match_order, settle_fill, settle_pnls,
         },
         volume::flush_volumes,
     },
@@ -27,9 +27,9 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, LimitOrder, Liquidated, OrderId,
-            PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval, State,
-            TriggerDirection, UserState,
+            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, FillId, LimitOrder, Liquidated,
+            OrderId, PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval,
+            State, TriggerDirection, UserState,
         },
     },
     grug::{
@@ -66,7 +66,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    let CancelAllOrdersOutcome { mut user_state } = _cancel_all_orders(
+    let CancelAllOrdersOutcome { mut user_state } = compute_cancel_all_orders_outcome(
         ctx.storage,
         user,
         &user_state,
@@ -133,6 +133,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         index_updates,
         volumes,
         next_order_id,
+        next_fill_id,
     } = _liquidate(
         ctx.storage,
         user,
@@ -155,6 +156,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     STATE.save(ctx.storage, &state)?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
+    NEXT_FILL_ID.save(ctx.storage, &next_fill_id)?;
 
     for (pair_id, pair_state) in &pair_states {
         PAIR_STATES.save(ctx.storage, pair_id, pair_state)?;
@@ -286,6 +288,7 @@ pub struct LiquidateOutcome {
     pub index_updates: Vec<PositionIndexUpdate>,
     pub volumes: BTreeMap<Addr, UsdValue>,
     pub next_order_id: OrderId,
+    pub next_fill_id: FillId,
 }
 
 /// Pure liquidation core: takes the dense state structs by `&` and
@@ -363,6 +366,7 @@ fn _liquidate(
         all_index_updates,
         all_volumes,
         next_order_id,
+        next_fill_id,
     ) = execute_close_schedule(
         storage,
         user,
@@ -466,6 +470,7 @@ fn _liquidate(
         index_updates: all_index_updates,
         volumes: all_volumes,
         next_order_id,
+        next_fill_id,
     })
 }
 
@@ -505,8 +510,10 @@ fn execute_close_schedule(
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
     OrderId,
+    FillId,
 )> {
     let mut next_order_id = NEXT_ORDER_ID.load(storage)?;
+    let mut next_fill_id = NEXT_FILL_ID.load(storage)?;
 
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
@@ -580,6 +587,7 @@ fn execute_close_schedule(
             order_mutations,
             index_updates,
             next_order_id: updated_next_order_id,
+            next_fill_id: updated_next_fill_id,
         } = match_order(
             storage,
             user,
@@ -600,6 +608,7 @@ fn execute_close_schedule(
             pair_params.get(pair_id).unwrap().max_limit_price_deviation,
             *close_size,
             next_order_id,
+            next_fill_id,
             events,
         )?;
 
@@ -607,6 +616,7 @@ fn execute_close_schedule(
         *user_state = updated_user_state;
         *maker_states = updated_maker_states;
         next_order_id = updated_next_order_id;
+        next_fill_id = updated_next_fill_id;
 
         // Merge PnLs.
         for (addr, pnl) in pnls {
@@ -711,6 +721,7 @@ fn execute_close_schedule(
         all_index_updates,
         all_volumes,
         next_order_id,
+        next_fill_id,
     ))
 }
 
@@ -938,6 +949,7 @@ mod tests {
         PARAM.save(storage, param).unwrap();
         STATE.save(storage, &State::default()).unwrap();
         NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
+        NEXT_FILL_ID.save(storage, &FillId::ONE).unwrap();
 
         for (pair_id, pair_param, pair_state) in pairs {
             PAIR_PARAMS.save(storage, pair_id, pair_param).unwrap();
@@ -2080,7 +2092,7 @@ mod tests {
         let mut events = EventBuilder::new();
         let CancelAllOrdersOutcome {
             user_state: updated_user_state,
-        } = _cancel_all_orders(
+        } = compute_cancel_all_orders_outcome(
             &mut ctx.storage,
             USER,
             &user_state,

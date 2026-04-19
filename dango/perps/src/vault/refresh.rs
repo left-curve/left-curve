@@ -10,7 +10,7 @@ use {
             ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
             USER_STATES,
         },
-        trade::{_cancel_all_orders, CancelAllOrdersOutcome},
+        trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -68,7 +68,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     let CancelAllOrdersOutcome {
         user_state: updated_vault_state,
-    } = _cancel_all_orders(
+    } = compute_cancel_all_orders_outcome(
         ctx.storage,
         ctx.contract,
         &vault_state,

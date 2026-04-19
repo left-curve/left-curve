@@ -11,6 +11,7 @@ use {
         middlewares::shutdown::ShutdownMiddleware,
         routes::{graphql::graphql_route, index::index},
     },
+    grug_types::HttpdConfig,
     indexer_httpd::routes,
     sentry_actix::Sentry,
     std::sync::{Arc, atomic::AtomicBool, mpsc},
@@ -85,21 +86,20 @@ where
 ///
 /// If `port_sender` is provided, the actual bound port will be sent via the channel after binding.
 /// Use port 0 to let the OS allocate an available port (useful for tests).
-pub async fn run_server<I>(
-    ip: I,
-    port: u16,
-    cors_allowed_origin: Option<String>,
+pub async fn run_server(
+    httpd_config: &HttpdConfig,
     dango_httpd_context: crate::context::Context,
     shutdown_flag: Arc<AtomicBool>,
     port_sender: Option<mpsc::Sender<u16>>,
-) -> Result<(), indexer_httpd::error::Error>
-where
-    I: ToString + std::fmt::Display,
-{
+) -> Result<(), indexer_httpd::error::Error> {
     let graphql_schema = crate::graphql::build_schema(dango_httpd_context.clone());
 
     #[cfg(feature = "tracing")]
-    tracing::info!(%ip, port, "Starting dango httpd server");
+    tracing::info!(
+        httpd_config.ip,
+        httpd_config.port,
+        "Starting dango httpd server"
+    );
 
     #[cfg(feature = "metrics")]
     let metrics = actix_web_metrics::ActixWebMetricsBuilder::new().build();
@@ -107,6 +107,7 @@ where
     #[cfg(feature = "metrics")]
     indexer_httpd::middlewares::metrics::init_httpd_metrics();
 
+    let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     let shutdown_flag_clone = shutdown_flag.clone();
     let server = HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -143,12 +144,20 @@ where
             graphql_schema.clone(),
         ))
     })
-    .workers(8)
-    .max_connections(10_000)
-    .backlog(8192)
-    .keep_alive(actix_web::http::KeepAlive::Os)
-    .worker_max_blocking_threads(16)
-    .bind((ip.to_string(), port))?;
+    .workers(httpd_config.workers)
+    .max_connections(httpd_config.max_connections)
+    .backlog(httpd_config.backlog)
+    .keep_alive(actix_web::http::KeepAlive::Timeout(
+        std::time::Duration::from_secs(httpd_config.keep_alive_secs),
+    ))
+    .client_request_timeout(std::time::Duration::from_secs(
+        httpd_config.client_request_timeout_secs,
+    ))
+    .client_disconnect_timeout(std::time::Duration::from_secs(
+        httpd_config.client_disconnect_timeout_secs,
+    ))
+    .worker_max_blocking_threads(httpd_config.worker_max_blocking_threads)
+    .bind((&*httpd_config.ip, httpd_config.port))?;
 
     // Send the actual bound port if a channel was provided
     if let Some(sender) = port_sender

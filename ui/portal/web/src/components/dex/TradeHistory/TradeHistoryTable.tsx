@@ -1,4 +1,4 @@
-import { CursorPagination, Table, twMerge } from "@left-curve/applets-kit";
+import { Table, twMerge } from "@left-curve/applets-kit";
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
@@ -9,19 +9,12 @@ import type { GraphqlQueryResult } from "@left-curve/dango/types";
 type TradeHistoryTableProps<T extends { blockHeight: number }> = {
   data: GraphqlQueryResult<T> | undefined;
   columns: TableColumn<T>;
-  pagination: {
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-    goNext: () => void;
-    goPrev: () => void;
-  };
   isLoading: boolean;
 };
 
 export function TradeHistoryTable<T extends { blockHeight: number }>({
   data,
   columns,
-  pagination,
   isLoading,
 }: TradeHistoryTableProps<T>) {
   const navigate = useNavigate();
@@ -45,17 +38,6 @@ export function TradeHistoryTable<T extends { blockHeight: number }>({
           "group-hover:bg-transparent": !data?.nodes.length,
         }),
       }}
-      bottomContent={
-        pagination ? (
-          <CursorPagination
-            {...pagination}
-            isLoading={isLoading}
-            className="flex w-full justify-end gap-2"
-            nextLabel={m["pagination.next"]()}
-            previousLabel={m["pagination.previous"]()}
-          />
-        ) : null
-      }
       emptyComponent={
         <EmptyPlaceholder
           component={m["dex.protrade.history.noOpenOrders"]()}

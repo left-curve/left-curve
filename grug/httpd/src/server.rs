@@ -7,25 +7,22 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    grug_types::HttpdConfig,
     sentry_actix::Sentry,
-    std::{
-        fmt::Display,
-        sync::{Arc, atomic::AtomicBool},
-    },
+    std::sync::{Arc, atomic::AtomicBool},
 };
 #[cfg(feature = "metrics")]
 use {
     actix_web_metrics::ActixWebMetricsBuilder,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
+    std::fmt::Display,
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
 /// The shutdown_flag should be set when signals are received to return 503 for new requests.
 /// Actix Web handles graceful shutdown automatically on SIGTERM/SIGINT.
-pub async fn run_server<CA, GS, I>(
-    ip: I,
-    port: u16,
-    cors_allowed_origin: Option<String>,
+pub async fn run_server<CA, GS>(
+    httpd_config: &HttpdConfig,
     context: Context,
     config_app: CA,
     build_schema: fn(Context) -> GS,
@@ -34,16 +31,16 @@ pub async fn run_server<CA, GS, I>(
 where
     CA: Fn(Context, GS) -> Box<dyn Fn(&mut ServiceConfig)> + Clone + Send + 'static,
     GS: Clone + Send + 'static,
-    I: ToString + Display,
 {
     let graphql_schema = build_schema(context.clone());
 
     #[cfg(feature = "tracing")]
-    tracing::info!(%ip, port, "Starting httpd server");
+    tracing::info!(httpd_config.ip, httpd_config.port, "Starting httpd server");
 
     #[cfg(feature = "metrics")]
     let metrics = ActixWebMetricsBuilder::new().build();
 
+    let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     let shutdown_flag_clone = shutdown_flag.clone();
     HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -77,12 +74,20 @@ where
 
         app.configure(config_app(context.clone(), graphql_schema.clone()))
     })
-    .workers(8)
-    .max_connections(10_000)
-    .backlog(8192)
-    .keep_alive(actix_web::http::KeepAlive::Os)
-    .worker_max_blocking_threads(16)
-    .bind((ip.to_string(), port))?
+    .workers(httpd_config.workers)
+    .max_connections(httpd_config.max_connections)
+    .backlog(httpd_config.backlog)
+    .keep_alive(actix_web::http::KeepAlive::Timeout(
+        std::time::Duration::from_secs(httpd_config.keep_alive_secs),
+    ))
+    .client_request_timeout(std::time::Duration::from_secs(
+        httpd_config.client_request_timeout_secs,
+    ))
+    .client_disconnect_timeout(std::time::Duration::from_secs(
+        httpd_config.client_disconnect_timeout_secs,
+    ))
+    .worker_max_blocking_threads(httpd_config.worker_max_blocking_threads)
+    .bind((&*httpd_config.ip, httpd_config.port))?
     .run()
     .await?;
 

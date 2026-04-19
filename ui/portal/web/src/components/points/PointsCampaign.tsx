@@ -123,7 +123,7 @@ const RewardsLoot: React.FC = () => {
   const { volume } = useUserPoints();
 
   return (
-    <div className="p-5 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
+    <div className="p-4 lg:p-8 flex flex-col gap-5 lg:gap-8 bg-surface-primary-gray rounded-b-xl">
       <div className="p-4 lg:px-4 bg-surface-disabled-gray rounded-xl shadow-account-card">
         <PointsProgressBar currentVolume={volume} />
       </div>

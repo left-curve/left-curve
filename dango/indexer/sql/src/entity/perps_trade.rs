@@ -41,4 +41,10 @@ pub struct PerpsTrade {
 
     #[cfg_attr(feature = "async-graphql", graphql(name = "tradeIdx"))]
     pub trade_idx: u32,
+
+    /// Identifier shared between the two `OrderFilled` events of a single
+    /// order-book match. `None` for trades executed before v0.15.0 — fill
+    /// IDs were not assigned prior to that release.
+    #[cfg_attr(feature = "async-graphql", graphql(name = "fillId"))]
+    pub fill_id: Option<String>,
 }

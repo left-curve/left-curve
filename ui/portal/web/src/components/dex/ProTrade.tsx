@@ -354,15 +354,26 @@ const PerpsPositionsTable: React.FC = () => {
       },
       {
         header: m["dex.protrade.positions.size"](),
-        cell: ({ row }) => (
-          <Cell.Number
-            formatOptions={formatNumberOptions}
-            value={Math.abs(Number(row.original.size)).toString()}
-          />
-        ),
+        cell: ({ row }) => {
+          const absSize = Math.abs(Number(row.original.size)).toString();
+          return (
+            <Cell.Text
+              text={
+                <>
+                  <FormattedNumber
+                    number={absSize}
+                    formatOptions={formatNumberOptions}
+                    as="span"
+                  />{" "}
+                  {row.original.symbol}
+                </>
+              }
+            />
+          );
+        },
       },
       {
-        header: m["dex.protrade.positions.notional"](),
+        header: m["dex.protrade.positions.positionValue"](),
         cell: ({ row }) => {
           const notional = Decimal(row.original.size).abs().times(Decimal(row.original.entryPrice)).toFixed();
           return (
@@ -714,7 +725,7 @@ const UnifiedOpenOrders: React.FC = () => {
       ),
     },
     {
-      header: m["dex.protrade.orders.tradeValue"](),
+      header: m["dex.protrade.orders.orderValue"](),
       cell: ({ row }) => {
         const tradeValue = Decimal(row.original.size).times(Decimal(row.original.rawPrice)).toFixed();
         return (

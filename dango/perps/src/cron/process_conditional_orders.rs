@@ -5,10 +5,10 @@ use {
         price::may_invert_price,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{
-            ASKS, BIDS, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-            USER_STATES,
+            ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM,
+            STATE, USER_STATES,
         },
-        trade::{_submit_order, SubmitOrderOutcome},
+        trade::{SubmitOrderOutcome, compute_submit_order_outcome},
         volume::flush_volumes,
     },
     dango_oracle::OracleQuerier,
@@ -192,7 +192,7 @@ pub struct TriggeredOrderOutcome {
 /// submit a market order to close. Pure w.r.t. `state` and `pair_state` —
 /// takes them by `&` and returns the updated copies in the outcome. On the
 /// graceful-cancel path (slippage / no liquidity / position closed), the
-/// returned `state` and `pair_state` equal the inputs because `_submit_order`
+/// returned `state` and `pair_state` equal the inputs because `compute_submit_order_outcome`
 /// is itself pure and never touched them.
 fn process_triggered_order(
     storage: &mut dyn Storage,
@@ -352,7 +352,7 @@ fn process_triggered_order(
         oracle_price,
     })?;
 
-    // `_submit_order` is pure: takes `state` / `pair_state` / `user_state`
+    // `compute_submit_order_outcome` is pure: takes `state` / `pair_state` / `user_state`
     // by `&` and returns updated copies in its outcome. On `Err`, the
     // caller's locals are untouched by construction, so the graceful-cancel
     // path can simply discard the outcome and return the input `state` /
@@ -367,10 +367,11 @@ fn process_triggered_order(
         order_mutations,
         order_to_store: _order_to_store,
         next_order_id,
+        next_fill_id,
         index_updates,
         volumes,
         fee_breakdowns,
-    } = match _submit_order(
+    } = match compute_submit_order_outcome(
         storage,
         user,
         contract,
@@ -447,6 +448,7 @@ fn process_triggered_order(
     maker_states = updated_maker_states;
 
     NEXT_ORDER_ID.save(storage, &next_order_id)?;
+    NEXT_FILL_ID.save(storage, &next_fill_id)?;
 
     for (addr, user_state) in &maker_states {
         USER_STATES.save(storage, *addr, user_state)?;

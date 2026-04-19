@@ -41,7 +41,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
@@ -52,7 +52,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -93,7 +93,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
@@ -104,7 +104,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
