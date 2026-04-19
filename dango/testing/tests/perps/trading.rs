@@ -1384,3 +1384,244 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
         "fill ids increment by one per match"
     );
 }
+
+/// Bug reproduction: sell-side market order with partial fill is incorrectly
+/// rejected due to a sign-sensitive comparison at `submit_order.rs:579`.
+///
+/// The check `unfilled < fillable_size` works for buys (positive quantities)
+/// but is inverted for sells (negative quantities):
+///
+///   Sell 10: fillable_size = -10, after 5 filled unfilled = -5.
+///   -5 < -10 → false → ensure! fires → order rejected.
+///
+/// This test places a maker bid for 5 ETH, then submits a market sell for 10.
+/// The 5 available should fill and the remaining 5 should be discarded.
+/// With the bug, the entire order is rejected.
+#[test]
+fn sell_side_market_order_partial_fill() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Deposit margin for both users.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker (user2) places bid: buy 5 ETH @ $2,000 (post-only).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5), // buy / bid
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Taker (user1) market sells 10 ETH.
+    // Only 5 ETH of liquidity exists → should partially fill 5 and discard
+    // the remaining 5.
+    //
+    // BUG: the comparison `unfilled < fillable_size` evaluates as
+    //   -5 < -10 → false, so ensure! rejects the order.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10), // sell 10 ETH
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify taker has a 10 ETH short position from the 5 that filled.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("taker should have a position after partial fill");
+
+    assert_eq!(
+        pos.size,
+        Quantity::new_int(-5),
+        "taker should be 5 ETH short (partial fill of 10 ETH sell)"
+    );
+
+    // Maker's bid should be fully consumed.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed();
+
+    assert!(
+        orders.is_empty(),
+        "maker bid should be fully filled and removed"
+    );
+}
+
+/// Mirror of `sell_side_market_order_partial_fill`: a buy-side market order
+/// with partial fill works correctly because the comparison
+/// `unfilled < fillable_size` is correct for positive quantities.
+///
+///   Buy 10: fillable_size = 10, after 5 filled unfilled = 5.
+///   5 < 10 → true → passes.
+#[test]
+fn buy_side_market_order_partial_fill() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Deposit margin for both users.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker (user2) places ask: sell 5 ETH @ $2,000 (post-only).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5), // sell / ask
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Taker (user1) market buys 10 ETH.
+    // Only 5 ETH of liquidity exists → should partially fill 5 and discard
+    // the remaining 5. This works because 5 < 10 → true.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10), // buy 10 ETH
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify taker has a 5 ETH long position from the partial fill.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("taker should have a position after partial fill");
+
+    assert_eq!(
+        pos.size,
+        Quantity::new_int(5),
+        "taker should be 5 ETH long (partial fill of 10 ETH buy)"
+    );
+
+    // Maker's ask should be fully consumed.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed();
+
+    assert!(
+        orders.is_empty(),
+        "maker ask should be fully filled and removed"
+    );
+}
