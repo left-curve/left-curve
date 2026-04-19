@@ -177,12 +177,11 @@ mod tests {
     const OTHER_PRICE: i128 = 50_000; // BTC = $50_000
     const CURRENT_IMR_PERMILLE: i128 = 100; // 10%
     const OTHER_IMR_PERMILLE: i128 = 50; // 5%
-    const FEE_BPS: i128 = 45; // 0.045% → 45 × 10^-6 as raw micro-pct
+    const FEE_RAW: i128 = 450; // 0.045% = 450 × 10^-6 in Dec128_6 raw form
     const RESERVED_WHEN_SET: i128 = 500; // $500 reserved when `has_orders`
 
     fn fee() -> Dimensionless {
-        // 0.045% = 45 / 10^6 in Dec128_6 raw form.
-        Dimensionless::new_raw(FEE_BPS)
+        Dimensionless::new_raw(FEE_RAW)
     }
 
     fn oracle_price_current() -> UsdPrice {
