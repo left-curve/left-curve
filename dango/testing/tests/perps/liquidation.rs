@@ -1,5 +1,5 @@
 use {
-    crate::{default_pair_param, refresh_vault_orders, register_oracle_prices},
+    crate::{default_pair_param, register_oracle_prices},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
@@ -910,7 +910,14 @@ fn vault_liquidation_on_order_book() {
     // Step 3: Refresh vault orders → vault places bid at $1,980 for 12.5 ETH.
     // -------------------------------------------------------------------------
 
-    refresh_vault_orders(&mut suite, &mut accounts, &contracts);
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            Coins::new(),
+        )
+        .should_succeed();
 
     let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
