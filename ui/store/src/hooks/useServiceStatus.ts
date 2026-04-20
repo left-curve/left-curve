@@ -74,9 +74,9 @@ export function useServiceStatus(parameters?: UseServiceStatusParameters) {
 
   const globalStatus = useMemo<ServiceStatus>(() => {
     if (chainStatus === "error") return "error";
-    if (dexStatus === "error" || wsStatus === "error") return "warning";
+    if (wsStatus === "error") return "warning";
     return "success";
-  }, [dexStatus, chainStatus, wsStatus]);
+  }, [chainStatus, wsStatus]);
 
   return {
     wsStatus,

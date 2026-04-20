@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import type { TransportMode } from "@left-curve/dango/utils";
 
 import {
   Badge,
