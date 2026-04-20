@@ -242,7 +242,7 @@ export const AffiliateStats: React.FC = () => {
     [sortedThresholds, rollingRefereesVolume],
   );
 
-  const currentTier = isReferrer ? currentTierFromContract : localTier;
+  const currentTier = isReferrer ? currentTierFromContract : isEligible ? Math.max(1, localTier) : localTier;
 
   const targetVolume = isEligible
     ? nextTierVolume
@@ -264,7 +264,7 @@ export const AffiliateStats: React.FC = () => {
   const referralLink = getReferralLink(userIndex);
   const truncatedLink = truncateUrl(referralLink);
 
-  const commissionRate = override ?? settings?.commissionRate ?? "0";
+  const commissionRate = override ?? settings?.commissionRate ?? (isEligible ? referralParams?.referrerCommissionRates.base ?? "0" : "0");
   const shareRatio = settings?.shareRatio ?? "0";
   const totalCommissionPct = formatPercent(commissionRate);
   const youPct = formatPercent(String(Number(commissionRate) * (1 - Number(shareRatio))));
