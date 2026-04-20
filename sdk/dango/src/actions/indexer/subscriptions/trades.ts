@@ -1,3 +1,5 @@
+import { createSubscription } from "../../../utils/createSubscription.js";
+
 import type {
   Chain,
   Client,
@@ -13,12 +15,15 @@ export type TradesSubscriptionParameters = SubscriptionCallbacks<{
 }> & {
   baseDenom: Denom;
   quoteDenom: Denom;
+  /** HTTP polling interval in milliseconds for fallback when WS is unavailable. */
+  httpInterval?: number;
 };
 
 export type TradesSubscriptionReturnType = () => void;
 
 /**
  * Subscribes to trade events.
+ * Currently WS-only;
  * @param client The Dango client.
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the trade events.
@@ -32,7 +37,8 @@ export function tradesSubscription<
 ): TradesSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
-  const { baseDenom, quoteDenom, ...callbacks } = parameters;
+  const { baseDenom, quoteDenom, httpInterval = 3_000, ...callbacks } = parameters;
+  const { subscribe } = client;
 
   const query = /* GraphQL */ `
     subscription TradesSubscription($baseDenom: String!, $quoteDenom: String!) {
@@ -53,5 +59,24 @@ export function tradesSubscription<
       }
     }
   `;
-  return client.subscribe({ query, variables: { baseDenom, quoteDenom } }, callbacks);
+
+  return createSubscription<{ trades: Trade }>(
+    {
+      wsSubscribe: (listener) =>
+        subscribe(
+          { query, variables: { baseDenom, quoteDenom } },
+          {
+            next: (data) => listener(data as { trades: Trade }),
+            error: callbacks.error,
+            complete: callbacks.complete,
+          },
+        ),
+      httpQuery: undefined,
+      httpInterval,
+      emitter: subscribe.emitter!,
+      getStatus: subscribe.getClientStatus!,
+      onError: callbacks.error,
+    },
+    (data) => callbacks.next(data),
+  );
 }
