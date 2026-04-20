@@ -96,6 +96,8 @@
     "chain": "Chain",
     "dex": "DEX",
     "block": "Block",
+    "httpPolling": "HTTP Polling",
+    "reconnecting": "Reconnecting...",
     "statusText": [
       {
         "declarations": ["input status"],

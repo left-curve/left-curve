@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
+
+import type { TransportMode } from "@left-curve/dango/utils";
 
 import {
   Badge,
@@ -43,7 +45,7 @@ export const StatusBadge: React.FC = () => {
     enabled: enableWsCheck,
     queryKey: ["websocket_status"],
     queryFn: async () => publicClient.subscribe?.getClientStatus?.().isConnected,
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
   });
 
   const { data: isChainPaused, isFetched: isChainChecked } = useQuery({
@@ -67,7 +69,26 @@ export const StatusBadge: React.FC = () => {
     refetchInterval: 30_000,
   });
 
-  const wsStatus = wsIsConnected ? "success" : "error";
+  const transportMode = useSyncExternalStore<TransportMode>(
+    (callback) => {
+      const emitter = publicClient.subscribe?.emitter;
+      if (!emitter) return () => {};
+      emitter.on("transport-mode", callback);
+      return () => emitter.off("transport-mode", callback);
+    },
+    () => {
+      const isConnected = publicClient.subscribe?.getClientStatus?.().isConnected;
+      if (isConnected) return "ws";
+      return "reconnecting";
+    },
+    () => "ws",
+  );
+
+  const wsStatus = wsIsConnected
+    ? "success"
+    : transportMode === "http-polling"
+      ? "warning"
+      : "error";
   const chainStatus = isChainPaused ? "error" : "success";
   const dexStatus = isChainPaused || isDexPaused ? "error" : "success";
 
@@ -117,7 +138,7 @@ export const StatusBadge: React.FC = () => {
               </Button>
             </div>
             <div className="flex flex-col gap-2">
-              <WebSocketStatusSection wsStatus={wsStatus} />
+              <WebSocketStatusSection wsStatus={wsStatus} transportMode={transportMode} />
               <ChainStatusSection chainStatus={chainStatus} />
               <DexStatusSection dexStatus={dexStatus} />
             </div>
@@ -134,14 +155,25 @@ export const StatusBadge: React.FC = () => {
 
 type WebSocketStatusSectionProps = {
   wsStatus: "error" | "success" | "warning";
+  transportMode: TransportMode;
 };
 
-const WebSocketStatusSection: React.FC<WebSocketStatusSectionProps> = ({ wsStatus }) => {
+const WebSocketStatusSection: React.FC<WebSocketStatusSectionProps> = ({
+  wsStatus,
+  transportMode,
+}) => {
+  const statusLabel =
+    transportMode === "http-polling"
+      ? m["statusBadge.httpPolling"]()
+      : transportMode === "reconnecting" && wsStatus !== "success"
+        ? m["statusBadge.reconnecting"]()
+        : m["statusBadge.statusText"]({ status: wsStatus });
+
   return (
     <div className="p-4 bg-surface-tertiary-rice min-w-[22rem] flex items-center justify-between rounded-md">
       <p className="text-ink-secondary-700 diatype-m-medium">{m["statusBadge.websocket"]()}</p>
       <div className={twMerge(textColor[wsStatus], "diatype-xs-medium flex items-center gap-1")}>
-        {m["statusBadge.statusText"]({ status: wsStatus })}
+        {statusLabel}
         <Dot color={wsStatus} />
       </div>
     </div>

@@ -18,11 +18,16 @@ import type {
 } from "@left-curve/sdk/types";
 import type { GraphQLClientResponse, GraphqlOperation } from "../types/graphql.js";
 
+export type WsRetryConfig = {
+  /** Maximum number of reconnection attempts before giving up. Default: 10 */
+  maxRetries?: number;
+  /** Initial delay in ms before first retry (doubles each attempt). Default: 1000 */
+  baseDelay?: number;
+  /** Maximum delay in ms between retries. Default: 30000 */
+  maxDelay?: number;
+};
+
 export type GraphqlTransportConfig = {
-  /**
-   * Whether to enable Batch JSON-RPC.
-   * @link https://www.jsonrpc.org/specification#batch
-   */
   /**
    * Request configuration to pass to `fetch`.
    * @link https://developer.mozilla.org/en-US/docs/Web/API/fetch
@@ -42,6 +47,10 @@ export type GraphqlTransportConfig = {
   timeout?: number;
   /** Whether to create the WebSocket client in lazy mode. Default: true */
   lazy?: boolean;
+  /** Disable WebSocket subscriptions entirely, forcing HTTP polling fallback. */
+  disableWs?: boolean;
+  /** WebSocket retry configuration. */
+  wsRetry?: WsRetryConfig;
 };
 
 export type GraphqlTransport = Transport<"http-graphql", CometBftRpcSchema>; /**
@@ -72,27 +81,60 @@ export function graphql(
     const batch = _batch_ ? batchOptions : undefined;
     const timeout = _timeout_ ?? 10_000;
 
+    const {
+      maxRetries: wsMaxRetries = 10,
+      baseDelay: wsBaseDelay = 1_000,
+      maxDelay: wsMaxDelay = 30_000,
+    } = config.wsRetry ?? {};
+
     const wsClientStatus = { isConnected: false };
     const wsStatusEmitter = new EventEmitter();
+    const wsRef: { current: ReturnType<typeof createClient> } = { current: null! };
 
-    const wsClient = createClient({
-      url,
-      lazy,
-      retryWait: async (_) => {
-        await wait(1_000);
-      },
-      shouldRetry: (_) => true,
-    });
+    const createWsClient = (isLazy: boolean) => {
+      const ws = createClient({
+        url,
+        lazy: isLazy,
+        retryWait: async (retryCount: unknown) => {
+          const count = typeof retryCount === "number" ? retryCount : 0;
+          const delay = Math.min(wsBaseDelay * 2 ** count, wsMaxDelay);
+          await wait(delay);
+        },
+        shouldRetry: (retryCount: unknown) =>
+          typeof retryCount === "number" ? retryCount < wsMaxRetries : true,
+      });
 
-    wsClient.on("connected", () => {
-      wsClientStatus.isConnected = true;
-      wsStatusEmitter.emit("connected");
-    });
+      ws.on("connected", () => {
+        wsClientStatus.isConnected = true;
+        wsStatusEmitter.emit("connected");
+      });
 
-    wsClient.on("closed", () => {
-      wsClientStatus.isConnected = false;
-      wsStatusEmitter.emit("closed");
-    });
+      ws.on("closed", () => {
+        wsClientStatus.isConnected = false;
+        wsStatusEmitter.emit("closed");
+      });
+
+      return ws;
+    };
+
+    wsRef.current = createWsClient(lazy);
+
+    const attemptReconnect = () => {
+      if (!wsClientStatus.isConnected) {
+        wsRef.current.dispose();
+        wsRef.current = createWsClient(false);
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") attemptReconnect();
+      });
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", attemptReconnect);
+    }
 
     const client = graphqlClient(url, {
       fetchOptions,
@@ -134,7 +176,10 @@ export function graphql(
     const noOp = () => {};
 
     const subscribe: SubscribeFn = ({ query, variables }, { next, error, complete }) => {
-      return wsClient.subscribe(
+      if (config.disableWs) {
+        return noOp;
+      }
+      return wsRef.current.subscribe(
         { query, variables },
         {
           next: ({ data, errors }) => {
@@ -147,7 +192,7 @@ export function graphql(
       );
     };
 
-    subscribe.getClientStatus = () => wsClientStatus;
+    subscribe.getClientStatus = () => (config.disableWs ? { isConnected: false } : wsClientStatus);
     subscribe.emitter = wsStatusEmitter;
 
     return createTransport<"http-graphql">({

@@ -67,6 +67,12 @@ export const config: Config = createConfig({
   ],
   storage: createAsyncStorage({ storage: createIndexedDBStorage() }),
   onError: (e) => {
+    if (
+      Array.isArray(e) &&
+      e.every((err: { message?: string }) => err.message?.includes("data not found"))
+    )
+      return;
+
     let finalError: Error;
     const m = serializeJson(e);
 

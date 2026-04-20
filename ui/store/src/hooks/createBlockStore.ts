@@ -43,7 +43,8 @@ export function createBlockStore<T extends Record<string, unknown>>(config: Bloc
     setState: (params) => {
       const { blockHeight, ...data } = params;
       const current = get();
-      if (blockHeight <= current.lastUpdatedBlockHeight) return;
+      // blockHeight === 0 means HTTP polling mode (no block info) — always accept
+      if (blockHeight > 0 && blockHeight <= current.lastUpdatedBlockHeight) return;
 
       const extra = beforeUpdate
         ? beforeUpdate(current as unknown as T, data as unknown as Partial<T>)
