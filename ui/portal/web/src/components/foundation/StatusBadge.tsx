@@ -33,7 +33,6 @@ export const StatusBadge: React.FC = () => {
   const {
     wsStatus,
     chainStatus,
-    dexStatus,
     globalStatus,
     transportMode,
     isChainPaused,
@@ -82,7 +81,6 @@ export const StatusBadge: React.FC = () => {
             <div className="flex flex-col gap-2">
               <WebSocketStatusSection wsStatus={wsStatus} transportMode={transportMode} />
               <ChainStatusSection chainStatus={chainStatus} />
-              <DexStatusSection dexStatus={dexStatus} />
             </div>
           </div>
         }

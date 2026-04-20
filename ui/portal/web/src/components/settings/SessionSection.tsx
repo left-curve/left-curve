@@ -244,7 +244,6 @@ const StatusSection: React.FC = () => {
           <div className="flex flex-col gap-1">
             <StatusRow label={m["statusBadge.websocket"]()} status={wsStatus} />
             <StatusRow label={m["statusBadge.chain"]()} status={chainStatus} />
-            <StatusRow label={m["statusBadge.dex"]()} status={dexStatus} />
           </div>
         </div>
       </div>
