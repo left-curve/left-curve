@@ -756,7 +756,7 @@ pub struct UserReferralData {
 
     /// Number of direct referees that have made at least one trade.
     /// Incremented once per referee, on their very first trade.
-    pub cumulative_global_activated_referees: u32,
+    pub cumulative_global_active_referees: u32,
 }
 
 impl UserReferralData {
@@ -775,9 +775,9 @@ impl UserReferralData {
             cumulative_daily_active_referees: self
                 .cumulative_daily_active_referees
                 .saturating_sub(other.cumulative_daily_active_referees),
-            cumulative_global_activated_referees: self
-                .cumulative_global_activated_referees
-                .saturating_sub(other.cumulative_global_activated_referees),
+            cumulative_global_active_referees: self
+                .cumulative_global_active_referees
+                .saturating_sub(other.cumulative_global_active_referees),
         })
     }
 }

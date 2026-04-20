@@ -1295,14 +1295,14 @@ fn active_referral() {
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 1);
-    assert_eq!(data.cumulative_global_activated_referees, 1);
+    assert_eq!(data.cumulative_global_active_referees, 1);
 
     // User2 trades again same day — both counters unchanged.
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 1);
-    assert_eq!(data.cumulative_global_activated_referees, 1);
+    assert_eq!(data.cumulative_global_active_referees, 1);
 
     // User3 trades — cumulative_active_referees should be 2, activated_referees should be 2.
     place_ask_order(
@@ -1316,7 +1316,7 @@ fn active_referral() {
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 2);
-    assert_eq!(data.cumulative_global_activated_referees, 2);
+    assert_eq!(data.cumulative_global_active_referees, 2);
 
     // Next day, User2 trades — cumulative_active_referees should be 3 (cumulative),
     // but activated_referees stays at 2 (User2 already traded before).
@@ -1327,7 +1327,7 @@ fn active_referral() {
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 3);
-    assert_eq!(data.cumulative_global_activated_referees, 2);
+    assert_eq!(data.cumulative_global_active_referees, 2);
 }
 
 // ---------------------------------------------------------------------------
