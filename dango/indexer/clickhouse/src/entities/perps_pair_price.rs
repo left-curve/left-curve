@@ -79,4 +79,29 @@ impl PerpsPairPrice {
 
         Ok(pairs)
     }
+
+    /// Fetch all perps pair prices for a given pair whose `created_at >= since`,
+    /// ordered by `block_height` ascending. Used at startup to rebuild the
+    /// in-progress candle after an ungraceful shutdown (e.g. a panic triggered
+    /// by a chain upgrade block) when the in-memory aggregation was lost
+    /// before it could be flushed.
+    pub async fn since(
+        clickhouse_client: &clickhouse::Client,
+        pair_id: &str,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<PerpsPairPrice>> {
+        let query = r#"
+            SELECT pair_id, high, low, close, volume, volume_usd, created_at, block_height
+            FROM perps_pair_prices
+            WHERE pair_id = ? AND created_at >= toDateTime64(?, 6)
+            ORDER BY block_height ASC
+        "#;
+
+        Ok(clickhouse_client
+            .query(query)
+            .bind(pair_id)
+            .bind(since.timestamp_micros())
+            .fetch_all()
+            .await?)
+    }
 }

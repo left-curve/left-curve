@@ -388,12 +388,81 @@ impl PerpsCandleCache {
             }
         }
 
+        // Rebuild the in-progress perps candle for each interval from raw
+        // pair_prices. See the spot equivalent in `indexer::candles::cache`
+        // for the full rationale: the current bucket lives only in memory
+        // until it closes or a graceful shutdown flushes it, and an
+        // ungraceful shutdown (e.g. the panic that stops the chain at an
+        // upgrade block) loses that aggregation.
+        let now = Utc::now();
+        let earliest_start = crate::indexer::candles::cache::earliest_current_bucket_start(now);
+
+        let replay_tasks = pair_ids.iter().map(|pair_id| {
+            let pair_id = pair_id.clone();
+            async move { PerpsPairPrice::since(clickhouse_client, &pair_id, earliest_start).await }
+        });
+
+        let mut replayed = 0usize;
+        for result in join_all(replay_tasks).await {
+            match result {
+                Ok(prices) => {
+                    replayed += prices.len();
+                    self.rebuild_in_progress_from_prices(&prices, now);
+                },
+                Err(_err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        err = %_err,
+                        "Failed to fetch perps pair_prices for in-progress candle rebuild",
+                    );
+                },
+            }
+        }
+
         #[cfg(feature = "tracing")]
-        tracing::info!("Preloaded all perps candles");
+        tracing::info!(replayed, "Preloaded all perps candles");
 
         self.update_metrics();
 
         Ok(())
+    }
+
+    /// Drop any cached perps candles whose `time_start` falls inside the
+    /// current bucket (i.e. the in-progress candle for each interval) and
+    /// rebuild them by replaying `pair_prices` through
+    /// `update_or_create_candle`. Pair prices are filtered per-interval to
+    /// only touch the interval's current bucket, so past completed candles
+    /// already in the cache are left untouched.
+    pub fn rebuild_in_progress_from_prices(
+        &mut self,
+        pair_prices: &[PerpsPairPrice],
+        now: DateTime<Utc>,
+    ) {
+        let current_bucket_starts: HashMap<CandleInterval, DateTime<Utc>> = CandleInterval::iter()
+            .map(|interval| (interval, interval.interval_start(now)))
+            .collect();
+
+        for (key, candles) in self.candles.iter_mut() {
+            let start = current_bucket_starts[&key.interval];
+            candles.retain(|c| c.time_start < start);
+        }
+
+        for pair_price in pair_prices {
+            for interval in CandleInterval::iter() {
+                let start = current_bucket_starts[&interval];
+                if pair_price.created_at < start {
+                    continue;
+                }
+
+                let key = PerpsCandleCacheKey::new(pair_price.pair_id.clone(), interval);
+                self.update_or_create_candle(
+                    key,
+                    pair_price.block_height,
+                    pair_price.created_at,
+                    Some(pair_price.clone()),
+                );
+            }
+        }
     }
 
     // Keep last N candles, store the rest on Clickhouse
@@ -887,6 +956,78 @@ mod tests {
         ];
 
         assert_that!(cached_candles).is_equal_to(&expected_candles);
+
+        Ok(())
+    }
+
+    /// Mirrors the spot-side scenario: a chain upgrade panics, the in-memory
+    /// candle cache is wiped, but pair_prices are already persisted. Replay
+    /// must rebuild the 1d in-progress candle with the full volume, and the
+    /// new candle's `open` must bridge from the previous day's `close`.
+    #[tokio::test]
+    async fn rebuild_from_prices_rebuilds_current_bucket() -> crate::error::Result<()> {
+        let pair_id = "perp/ethusd";
+        let mut cache = PerpsCandleCache::default();
+
+        let now = parse_timestamp("2026-04-20 14:05:00.000")?;
+
+        let key = PerpsCandleCacheKey::new(pair_id.to_string(), CandleInterval::OneDay);
+        let yesterday = PerpsCandle {
+            pair_id: pair_id.to_string(),
+            interval: CandleInterval::OneDay,
+            close: Udec128_6::from_str("48").unwrap(),
+            high: Udec128_6::from_str("52").unwrap(),
+            low: Udec128_6::from_str("47").unwrap(),
+            open: Udec128_6::from_str("49").unwrap(),
+            volume: Udec128_6::from_str("1000").unwrap(),
+            volume_usd: Udec128_6::from_str("49500").unwrap(),
+            max_block_height: 500,
+            min_block_height: 100,
+            time_start: parse_timestamp("2026-04-19 00:00:00.000")?,
+        };
+        cache
+            .candles
+            .entry(key.clone())
+            .or_default()
+            .push(yesterday.clone());
+
+        let pair_prices = vec![
+            perps_pair_price(
+                pair_id,
+                51_000000,
+                49_000000,
+                50_000000,
+                10_000000,
+                500_000000,
+                "2026-04-20 01:00:00.000",
+                501,
+            )?,
+            perps_pair_price(
+                pair_id,
+                53_000000,
+                49_500000,
+                52_000000,
+                5_000000,
+                260_000000,
+                "2026-04-20 10:00:00.000",
+                600,
+            )?,
+        ];
+
+        cache.rebuild_in_progress_from_prices(&pair_prices, now);
+
+        let candles = cache.get_candles(&key).cloned().expect("no 1d candles");
+        assert_that!(candles.clone()).has_length(2);
+        // Yesterday's candle untouched.
+        assert_that!(candles[0].clone()).is_equal_to(yesterday.clone());
+        // Today's candle bridges from yesterday's close.
+        let today = &candles[1];
+        assert_that!(today.time_start).is_equal_to(parse_timestamp("2026-04-20 00:00:00.000")?);
+        assert_that!(today.open).is_equal_to(yesterday.close);
+        assert_that!(today.close).is_equal_to(Udec128_6::from_str("52").unwrap());
+        assert_that!(today.volume).is_equal_to(Udec128_6::from_str("15").unwrap());
+        assert_that!(today.volume_usd).is_equal_to(Udec128_6::from_str("760").unwrap());
+        assert_that!(today.max_block_height).is_equal_to(600);
 
         Ok(())
     }
