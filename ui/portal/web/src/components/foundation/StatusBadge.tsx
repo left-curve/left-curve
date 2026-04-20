@@ -1,8 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { usePublicClient } from "@left-curve/store";
-import { useQuery } from "@tanstack/react-query";
-
-import type { TransportMode } from "@left-curve/dango/utils";
+import { useEffect } from "react";
 
 import {
   Badge,
@@ -16,6 +12,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useServiceStatus } from "@left-curve/store";
 
 import type React from "react";
 
@@ -32,71 +29,15 @@ const textColor = {
 };
 
 export const StatusBadge: React.FC = () => {
-  const [enableWsCheck, setEnableWsCheck] = useState(false);
-  const publicClient = usePublicClient();
   const { navigate } = useApp();
-
-  useEffect(() => {
-    const t = setTimeout(() => setEnableWsCheck(true), 1_000);
-    return () => clearTimeout(t);
-  }, []);
-
-  const { data: wsIsConnected, isFetched: isWsChecked } = useQuery({
-    enabled: enableWsCheck,
-    queryKey: ["websocket_status"],
-    queryFn: async () => publicClient.subscribe?.getClientStatus?.().isConnected,
-    refetchInterval: 5_000,
-  });
-
-  const { data: isChainPaused, isFetched: isChainChecked } = useQuery({
-    queryKey: ["chain_status"],
-    queryFn: async () => {
-      try {
-        const response = await fetch(window.dango.urls.upUrl);
-        if (!response.ok) throw new Error("request failed");
-        const { is_running } = await response.json();
-        return !is_running;
-      } catch (_) {
-        return true;
-      }
-    },
-    refetchInterval: 30_000,
-  });
-
-  const { data: isDexPaused, isFetched: isDexChecked } = useQuery({
-    queryKey: ["dex_status"],
-    queryFn: async () => await publicClient.dexStatus(),
-    refetchInterval: 30_000,
-  });
-
-  const transportMode = useSyncExternalStore<TransportMode>(
-    (callback) => {
-      const emitter = publicClient.subscribe?.emitter;
-      if (!emitter) return () => {};
-      emitter.on("transport-mode", callback);
-      return () => emitter.off("transport-mode", callback);
-    },
-    () => {
-      const isConnected = publicClient.subscribe?.getClientStatus?.().isConnected;
-      if (isConnected) return "ws";
-      return "reconnecting";
-    },
-    () => "ws",
-  );
-
-  const wsStatus = wsIsConnected
-    ? "success"
-    : transportMode === "http-polling"
-      ? "warning"
-      : "error";
-  const chainStatus = isChainPaused ? "error" : "success";
-  const dexStatus = isChainPaused || isDexPaused ? "error" : "success";
-
-  const globalStatus = useMemo(() => {
-    if (chainStatus === "error") return "error";
-    if (dexStatus === "error" || wsStatus === "error") return "warning";
-    return "success";
-  }, [dexStatus, chainStatus, wsStatus]);
+  const {
+    wsStatus,
+    chainStatus,
+    globalStatus,
+    transportMode,
+    isChainPaused,
+    isReady,
+  } = useServiceStatus({ upUrl: window.dango.urls.upUrl });
 
   useEffect(() => {
     if (isChainPaused === undefined) return;
@@ -104,7 +45,7 @@ export const StatusBadge: React.FC = () => {
     if (!isChainPaused && window.location.pathname === "/maintenance") navigate("/");
   }, [isChainPaused]);
 
-  if (!isWsChecked || !isChainChecked || !isDexChecked) return null;
+  if (!isReady) return null;
 
   return (
     <div className="hidden fixed bottom-4 left-4 lg:flex flex-col gap-2 z-50">
@@ -140,7 +81,6 @@ export const StatusBadge: React.FC = () => {
             <div className="flex flex-col gap-2">
               <WebSocketStatusSection wsStatus={wsStatus} transportMode={transportMode} />
               <ChainStatusSection chainStatus={chainStatus} />
-              <DexStatusSection dexStatus={dexStatus} />
             </div>
           </div>
         }

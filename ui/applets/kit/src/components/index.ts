@@ -98,6 +98,7 @@ export { IconSwitch } from "./icons/IconSwitch";
 export { IconArrowDown } from "./icons/IconArrowDown";
 export { IconConvert } from "./icons/IconConvert";
 export { IconInfo } from "./icons/IconInfo";
+export { IconMonitor } from "./icons/IconMonitor";
 export { IconUser } from "./icons/IconUser";
 export { IconUserCircle } from "./icons/IconUserCircle";
 export { IconTimer } from "./icons/IconTimer";
