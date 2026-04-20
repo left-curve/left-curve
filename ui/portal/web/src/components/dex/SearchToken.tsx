@@ -1,14 +1,14 @@
 import { useAppConfig, useConfig, perpsMarginAsset, TradePairStore } from "@left-curve/store";
 import { useRef, useState } from "react";
 
-import { IconSearch, Input, Popover, Tabs, useMediaQuery } from "@left-curve/applets-kit";
+import { IconSearch, Input, Popover, /* Tabs, */ useMediaQuery } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
-import type { PairId, PairUpdate, PerpsPairParam } from "@left-curve/dango/types";
+import type { PairId, /* PairUpdate, */ PerpsPairParam } from "@left-curve/dango/types";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 
@@ -56,20 +56,21 @@ function normalizeRows(
 ): SearchTokenRow[] {
   const rows: SearchTokenRow[] = [];
 
-  const pairs: Record<string, PairUpdate> = config?.pairs ?? {};
-  for (const pair of Object.values(pairs)) {
-    if (pair.baseDenom.includes("dango")) continue;
-    const base = coins.byDenom[pair.baseDenom];
-    const quote = coins.byDenom[pair.quoteDenom];
-    if (!base || !quote) continue;
-    rows.push({
-      baseCoin: base,
-      quoteCoin: quote,
-      pairId: { baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom },
-      pairKey: `${base.symbol}-${quote.symbol}`,
-      mode: "spot",
-    });
-  }
+  // Spot pairs hidden — winding down spot trading
+  // const pairs: Record<string, PairUpdate> = config?.pairs ?? {};
+  // for (const pair of Object.values(pairs)) {
+  //   if (pair.baseDenom.includes("dango")) continue;
+  //   const base = coins.byDenom[pair.baseDenom];
+  //   const quote = coins.byDenom[pair.quoteDenom];
+  //   if (!base || !quote) continue;
+  //   rows.push({
+  //     baseCoin: base,
+  //     quoteCoin: quote,
+  //     pairId: { baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom },
+  //     pairKey: `${base.symbol}-${quote.symbol}`,
+  //     mode: "spot",
+  //   });
+  // }
 
   const perpsPairs: Record<string, PerpsPairParam> = (config as any)?.perpsPairs ?? {};
   for (const [perpsPairId, _param] of Object.entries(perpsPairs)) {
@@ -105,7 +106,7 @@ const SearchTokenMenu: React.FC<{
   pairId: PairId;
   onChangePairId: (row: SearchTokenRow) => void;
 }> = ({ onChangePairId }) => {
-  const [activeFilter, setActiveFilter] = useState<string>("All");
+  // const [activeFilter, setActiveFilter] = useState<string>("All");
   const [searchText, setSearchText] = useState<string>("");
   const { data: config } = useAppConfig();
   const { coins } = useConfig();
@@ -113,11 +114,12 @@ const SearchTokenMenu: React.FC<{
   const allRows = normalizeRows(config, coins);
 
   const filteredRows = allRows
-    .filter((row) => {
-      if (activeFilter === "Spot") return row.mode === "spot";
-      if (activeFilter === "Perps") return row.mode === "perps";
-      return true;
-    })
+    // Spot/Perps filter disabled — winding down spot trading
+    // .filter((row) => {
+    //   if (activeFilter === "Spot") return row.mode === "spot";
+    //   if (activeFilter === "Perps") return row.mode === "perps";
+    //   return true;
+    // })
     .filter((row) => {
       if (!searchText) return true;
       const upper = searchText.toUpperCase();
@@ -144,6 +146,7 @@ const SearchTokenMenu: React.FC<{
           </div>
         }
       />
+      {/* Spot/Perps tabs hidden — winding down spot trading
       <div className="relative overflow-x-auto scrollbar-none pt-1">
         <Tabs
           color="line-red"
@@ -153,10 +156,9 @@ const SearchTokenMenu: React.FC<{
           onTabChange={setActiveFilter}
           classNames={{ base: "z-10" }}
         />
-
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
-
+      */}
       <SearchTokenTable data={filteredRows} onChangePairId={onChangePairId} />
     </div>
   );

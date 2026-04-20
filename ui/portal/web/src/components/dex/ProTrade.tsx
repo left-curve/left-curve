@@ -94,10 +94,11 @@ const TradeDocumentTitle: React.FC = () => {
 const TradeSubscriptions: React.FC = () => {
   const mode = TradePairStore((s) => s.mode);
 
-  useOrderBookState({ subscribe: mode === "spot" });
+  // Spot subscriptions disabled — winding down spot trading
+  useOrderBookState({ subscribe: false });
 
   useLivePerpsTradesState({ subscribe: mode === "perps" });
-  useLiveSpotTradesState({ subscribe: mode === "spot" });
+  useLiveSpotTradesState({ subscribe: false });
 
   usePerpsUserState({ subscribe: mode === "perps" });
   usePerpsUserStateExtended({ subscribe: mode === "perps" });
@@ -129,7 +130,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   onChangeAction,
   orderType,
   onChangeOrderType,
-  type = "spot",
+  type = "perps",
   children,
 }) => {
   const controllers = useInputs();

@@ -73,28 +73,30 @@ export function graphql(
     onFetchResponse,
     lazy = true,
   } = config;
-  return ({ chain } = {}) => {
-    const url = _url_ || chain?.urls.indexer;
-    if (!url) throw new UrlRequiredError();
 
-    const batchOptions = typeof _batch_ === "object" ? _batch_ : { maxSize: 20, maxWait: 20 };
-    const batch = _batch_ ? batchOptions : undefined;
-    const timeout = _timeout_ ?? 10_000;
+  const {
+    maxRetries: wsMaxRetries = 10,
+    baseDelay: wsBaseDelay = 1_000,
+    maxDelay: wsMaxDelay = 30_000,
+  } = config.wsRetry ?? {};
 
-    const {
-      maxRetries: wsMaxRetries = 10,
-      baseDelay: wsBaseDelay = 1_000,
-      maxDelay: wsMaxDelay = 30_000,
-    } = config.wsRetry ?? {};
+  // Shared WebSocket state across all transport factory invocations.
+  // This ensures only one WS connection is created regardless of how many
+  // clients (public, signer, etc.) use this transport.
+  const wsClientStatus = { isConnected: false };
+  const wsStatusEmitter = new EventEmitter();
+  const wsRef: { current: ReturnType<typeof createClient> | null } = { current: null };
+  let wsInitialized = false;
 
-    const wsClientStatus = { isConnected: false };
-    const wsStatusEmitter = new EventEmitter();
-    const wsRef: { current: ReturnType<typeof createClient> } = { current: null! };
+  const initWsClient = (url: string) => {
+    if (wsInitialized) return;
+    wsInitialized = true;
 
     const createWsClient = (isLazy: boolean) => {
       const ws = createClient({
         url,
         lazy: isLazy,
+        keepAlive: 10_000,
         retryWait: async (retryCount: unknown) => {
           const count = typeof retryCount === "number" ? retryCount : 0;
           const delay = Math.min(wsBaseDelay * 2 ** count, wsMaxDelay);
@@ -121,7 +123,7 @@ export function graphql(
 
     const attemptReconnect = () => {
       if (!wsClientStatus.isConnected) {
-        wsRef.current.dispose();
+        wsRef.current?.dispose();
         wsRef.current = createWsClient(false);
       }
     };
@@ -134,6 +136,19 @@ export function graphql(
 
     if (typeof window !== "undefined") {
       window.addEventListener("online", attemptReconnect);
+    }
+  };
+
+  return ({ chain } = {}) => {
+    const url = _url_ || chain?.urls.indexer;
+    if (!url) throw new UrlRequiredError();
+
+    const batchOptions = typeof _batch_ === "object" ? _batch_ : { maxSize: 20, maxWait: 20 };
+    const batch = _batch_ ? batchOptions : undefined;
+    const timeout = _timeout_ ?? 10_000;
+
+    if (!config.disableWs) {
+      initWsClient(url);
     }
 
     const client = graphqlClient(url, {
@@ -179,7 +194,7 @@ export function graphql(
       if (config.disableWs) {
         return noOp;
       }
-      return wsRef.current.subscribe(
+      return wsRef.current!.subscribe(
         { query, variables },
         {
           next: ({ data, errors }) => {
