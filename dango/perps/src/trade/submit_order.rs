@@ -576,7 +576,7 @@ pub(crate) fn compute_submit_order_outcome(
             } => {
                 // IOC: discard unfilled remainder, same as market orders.
                 ensure!(
-                    unfilled < fillable_size,
+                    unfilled.checked_abs()? < fillable_size.checked_abs()?,
                     "no liquidity at acceptable price! target_price: {target_price}"
                 );
 
