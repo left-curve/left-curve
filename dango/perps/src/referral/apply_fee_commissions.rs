@@ -345,15 +345,22 @@ fn update_referee_stats(
         .commission_earned
         .checked_add_assign(commission_delta)?;
 
-    // If this referee hasn't traded today yet, increment the referrer's
-    // daily active direct referees count.
+    // If this referee hasn't traded today yet.
     if stats.last_day_active != today {
+        let mut referrer_data = load_referral_data(storage, referrer, None)?;
+
+        // Increment the daily active referees.
+        referrer_data.cumulative_daily_active_referees += 1;
+
+        // Check if this is the first trade made from the referee ever.
+        // If so, increment the global active users.
+        if stats.last_day_active == Timestamp::ZERO {
+            referrer_data.cumulative_global_activated_referees += 1;
+        }
+
         stats.last_day_active = today;
 
-        let mut data = load_referral_data(storage, referrer, None)?;
-        data.cumulative_active_referees += 1;
-
-        USER_REFERRAL_DATA.save(storage, (referrer, today), &data)?;
+        USER_REFERRAL_DATA.save(storage, (referrer, today), &referrer_data)?;
     }
 
     REFERRER_TO_REFEREE_STATISTICS.save(storage, (referrer, referee), &stats)
