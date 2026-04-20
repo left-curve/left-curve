@@ -479,8 +479,18 @@ pub struct PairParam {
     /// How aggressively to tilt spreads based on inventory.
     /// 0 = no skew (symmetric spreads on both sides).
     ///
-    /// Bounds: `[0, 1)`. At 1, the effective spread on the tightened side
-    /// reaches zero; > 1 would produce a negative spread.
+    /// Bounds: `>= 0`. Values > 1 cause the tightened side's quote to
+    /// cross the oracle price at maximum skew — e.g. when the vault is
+    /// fully long, the ask drops below the oracle. This is an aggressive
+    /// unwind posture, useful when the vault needs to rapidly deleverage
+    /// a large directional position. The invariant `bid < ask` always
+    /// holds because `ask - bid = 2 * oracle_price * vault_half_spread`,
+    /// independent of this factor.
+    ///
+    /// The effective upper bound is enforced via the cross-field invariant
+    /// `vault_half_spread * (1 + vault_spread_skew_factor) < 1` documented
+    /// on `vault_half_spread`, which prevents the bid price from collapsing
+    /// to zero at maximum positive skew.
     pub vault_spread_skew_factor: Dimensionless,
 
     /// Position size at which inventory skew saturates.
