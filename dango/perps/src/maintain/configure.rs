@@ -1,5 +1,8 @@
 use {
-    crate::state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
+    crate::{
+        core::check_fee_sign_invariant,
+        state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
+    },
     anyhow::ensure,
     dango_types::{
         Dimensionless, FundingRate, UsdPrice, UsdValue,
@@ -47,6 +50,11 @@ pub fn configure(
     }
 
     validate_vault_total_weight(&param, &pair_params)?;
+
+    // Net-fee distribution in `settle_pnls` requires
+    // `taker_fee_rate + maker_fee_rate >= 0` on every fill. Enforce the
+    // invariant against the tier schedules and any stored per-user overrides.
+    check_fee_sign_invariant(ctx.storage, &param, None)?;
 
     // --------------------------- 2. State changes ----------------------------
 
