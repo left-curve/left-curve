@@ -161,14 +161,6 @@
       "path": "/trade",
       "keywords": "swap,dex,trade,pro,charts,data,trading"
     },
-    "convert": {
-      "id": "convert",
-      "img": "/images/emojis/simple/swap.svg",
-      "title": "Convert",
-      "description": "The easiest way to trade at all sizes.",
-      "path": "/convert",
-      "keywords": "swap,trade,convert,exchange"
-    },
     "bridge": {
       "id": "bridge",
       "img": "/images/emojis/simple/moneybag.svg",
