@@ -39,6 +39,11 @@ function getPerpsEventPnl(eventType: string, data: PerpsEvent["data"]): string |
   return null;
 }
 
+function getPerpsEventFee(eventType: string, data: PerpsEvent["data"]): string | null {
+  if (eventType === "order_filled") return (data as OrderFilledData).fee;
+  return null;
+}
+
 export const PerpsTradeHistory: React.FC = () => {
   const { account } = useAccount();
   const publicClient = usePublicClient();
@@ -129,6 +134,18 @@ export const PerpsTradeHistory: React.FC = () => {
           <Cell.Text
             text={<>{isPositive ? "+" : ""}<FormattedNumber number={pnl} as="span" /></>}
             className={isPositive ? "text-green-500" : "text-red-500"}
+          />
+        );
+      },
+    },
+    {
+      header: "Fees",
+      cell: ({ row }) => {
+        const fee = getPerpsEventFee(row.original.eventType, row.original.data);
+        if (!fee || fee === "0") return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        return (
+          <Cell.Text
+            text={<FormattedNumber number={fee} formatOptions={{ currency: "USD" }} as="span" />}
           />
         );
       },

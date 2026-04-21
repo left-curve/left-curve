@@ -2,6 +2,7 @@ use {
     async_graphql::{futures_util::stream::Stream, *},
     dango_indexer_sql::entity::perps_trade::PerpsTrade,
     futures_util::stream::{self, StreamExt},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
@@ -18,6 +19,7 @@ impl PerpsTradeSubscription {
         ctx: &async_graphql::Context<'a>,
         #[graphql(name = "pairId")] pair_id: String,
     ) -> Result<impl Stream<Item = PerpsTrade> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let trade_cache = app_ctx.perps_trade_cache.clone();
 
@@ -38,7 +40,7 @@ impl PerpsTradeSubscription {
             .cloned()
             .unwrap_or_default();
 
-        Ok(
+        Ok(guard_subscription_stream(
             stream::iter(initial_trades).chain(pubsub_stream.filter_map(move |trade| {
                 #[cfg(feature = "metrics")]
                 let _guard = gauge_guard.clone();
@@ -53,6 +55,7 @@ impl PerpsTradeSubscription {
                     }
                 }
             })),
-        )
+            sub_guard,
+        ))
     }
 }

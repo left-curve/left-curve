@@ -1,3 +1,4 @@
+mod available_to_trade;
 mod closure;
 mod decompose;
 mod fees;
@@ -14,6 +15,7 @@ mod vault;
 mod vault_premium;
 
 pub use {
-    closure::*, decompose::*, fees::*, fill::*, funding::*, liq_price::*, margin::*, min_size::*,
-    oi::*, price_band::*, slippage::*, target_price::*, vault::*, vault_premium::*,
+    available_to_trade::*, closure::*, decompose::*, fees::*, fill::*, funding::*, liq_price::*,
+    margin::*, min_size::*, oi::*, price_band::*, slippage::*, target_price::*, vault::*,
+    vault_premium::*,
 };

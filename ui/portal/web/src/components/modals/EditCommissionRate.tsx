@@ -5,6 +5,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useAccount,
   useCommissionRateOverride,
+  useReferralParams,
   useReferralSettings,
   useSetFeeShareRatio,
 } from "@left-curve/store";
@@ -29,9 +30,11 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
     userIndex,
   });
 
+  const { referralParams } = useReferralParams();
+
   const isLoading = settingsLoading || overrideLoading;
 
-  const commissionRate = override ?? settings?.commissionRate ?? "0";
+  const commissionRate = override ?? settings?.commissionRate ?? referralParams?.referrerCommissionRates.base ?? "0";
   const commissionPct = Number(commissionRate) * 100;
   const currentShareRatio = Number(settings?.shareRatio ?? "0");
   const currentSharePercent = formatPercent(settings?.shareRatio);

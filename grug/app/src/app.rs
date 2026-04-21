@@ -25,9 +25,30 @@ use {
         StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
+    std::sync::Arc,
+    tokio::sync::watch,
 };
 
 pub type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>;
+
+/// Reason why the app requested a graceful halt of the process.
+///
+/// Sent over a `watch` channel so the binary's main loop can stop the ABCI
+/// server, flush the indexer, and exit cleanly with code `0` — in contrast
+/// with `panic!`, which leaves async background work unfinished.
+#[derive(Clone, Debug)]
+pub enum HaltReason {
+    /// The chain reached a scheduled upgrade height but the running binary's
+    /// cargo version does not match the one declared in the upgrade plan.
+    /// The operator must deploy the correct binary before the chain resumes.
+    UpgradeIncorrectVersion { current: String, expected: String },
+}
+
+/// Handle used by [`App`] to request a graceful shutdown of the host process.
+///
+/// Cloneable so the `App` (which is itself `Clone`) can carry it across the
+/// `split::service` fan-out; all clones drive the same underlying channel.
+pub type ShutdownTrigger = Arc<watch::Sender<Option<HaltReason>>>;
 
 /// The ABCI application.
 ///
@@ -56,6 +77,13 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     upgrade_handler: Option<UpgradeHandler<VM>>,
     /// Current cargo version of the app. Used in chain upgrades.
     cargo_version: String,
+    /// If set, the app can request a graceful shutdown of the host process
+    /// by sending a [`HaltReason`] through this channel (e.g. when
+    /// `finalize_block` hits an upgrade height with the wrong binary).
+    ///
+    /// `None` in tests and in the read-only `App` instance used by the HTTP
+    /// server, which never finalize blocks and therefore never halt.
+    shutdown_trigger: Option<ShutdownTrigger>,
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
@@ -84,7 +112,19 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             query_gas_limit,
             upgrade_handler,
             cargo_version: cargo_version.into(),
+            shutdown_trigger: None,
         }
+    }
+
+    /// Attach a shutdown trigger so the app can request a graceful halt of
+    /// the host process (see [`HaltReason`]).
+    ///
+    /// Intended to be called by the binary's `start` command right after
+    /// `App::new`; tests and the HTTP-only `App` instance leave this unset.
+    #[must_use]
+    pub fn with_shutdown_trigger(mut self, trigger: ShutdownTrigger) -> Self {
+        self.shutdown_trigger = Some(trigger);
+        self
     }
 }
 
@@ -99,6 +139,10 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
     {
         self.cargo_version = cargo_version.into();
         self.upgrade_handler = upgrade_handler;
+    }
+
+    pub fn set_shutdown_trigger(&mut self, trigger: ShutdownTrigger) {
+        self.shutdown_trigger = Some(trigger);
     }
 }
 
@@ -117,6 +161,7 @@ where
             query_gas_limit: self.query_gas_limit,
             upgrade_handler: self.upgrade_handler,
             cargo_version: self.cargo_version.clone(),
+            shutdown_trigger: self.shutdown_trigger.clone(),
         }
     }
 }
@@ -369,6 +414,19 @@ where
                         upgrade_version = upgrade.cargo_version,
                         "!!! PRE-PLANNED CHAIN HALT !!!"
                     );
+                }
+
+                // Signal the host binary to shut down gracefully (flush the
+                // indexer, close HTTP servers, flush telemetry) instead of
+                // leaving the main loop to `panic!` in the ABCI layer.
+                // Safe to ignore the send result: if there are no receivers,
+                // we are running in a test or in an embedded context that
+                // does not own the process lifecycle.
+                if let Some(trigger) = &self.shutdown_trigger {
+                    let _ = trigger.send(Some(HaltReason::UpgradeIncorrectVersion {
+                        current: self.cargo_version.clone(),
+                        expected: upgrade.cargo_version.clone(),
+                    }));
                 }
 
                 return Err(AppError::upgrade_incorrect_version(

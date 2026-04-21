@@ -4,6 +4,7 @@ use {
     crate::entities::perps_pair_stats::PerpsPairStats,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     std::sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -23,6 +24,7 @@ impl PerpsPairStatsSubscription {
         &self,
         ctx: &async_graphql::Context<'a>,
     ) -> Result<impl Stream<Item = Vec<PerpsPairStats>> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let cache = app_ctx.perps_pair_stats_cache.clone();
 
@@ -38,28 +40,31 @@ impl PerpsPairStatsSubscription {
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial = cache.read().await.stats().to_vec();
 
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+        Ok(guard_subscription_stream(
+            once({
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            async move { initial }
-        })
-        .chain(stream.filter_map(move |current_block_height| {
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+                async move { initial }
+            })
+            .chain(stream.filter_map(move |current_block_height| {
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            let cache = cache.clone();
-            let previous_block_height =
-                received_block_height.fetch_max(current_block_height, Ordering::Release);
+                let cache = cache.clone();
+                let previous_block_height =
+                    received_block_height.fetch_max(current_block_height, Ordering::Release);
 
-            async move {
-                if current_block_height < previous_block_height {
-                    return None;
+                async move {
+                    if current_block_height < previous_block_height {
+                        return None;
+                    }
+
+                    let stats = cache.read().await.stats().to_vec();
+                    Some(stats)
                 }
-
-                let stats = cache.read().await.stats().to_vec();
-                Some(stats)
-            }
-        })))
+            })),
+            sub_guard,
+        ))
     }
 }
