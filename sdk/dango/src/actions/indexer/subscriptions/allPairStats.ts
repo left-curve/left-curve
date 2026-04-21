@@ -37,6 +37,7 @@ export function allPairStatsSubscription<
 
   const { httpInterval = 5_000, ...callbacks } = parameters;
   const { subscribe } = client;
+  const { polling, batch } = client.transport;
 
   const query = /* GraphQL */ `
     subscription AllPairStatsSubscription {
@@ -70,6 +71,8 @@ export function allPairStatsSubscription<
       emitter: subscribe.emitter!,
       getStatus: subscribe.getClientStatus!,
       onError: callbacks.error,
+      polling,
+      batch,
     },
     (data) => callbacks.next(data),
   );

@@ -280,9 +280,7 @@ export function truncateDec(value: string, maxFraction = 6): string {
   const unsigned = negative ? trimmed.slice(1) : trimmed;
   const [intPart, fracPart = ""] = unsigned.split(".");
   const truncated =
-    fracPart.length > maxFraction
-      ? `${intPart}.${fracPart.slice(0, maxFraction)}`
-      : unsigned;
+    fracPart.length > maxFraction ? `${intPart}.${fracPart.slice(0, maxFraction)}` : unsigned;
   return negative ? `-${truncated}` : truncated;
 }
 

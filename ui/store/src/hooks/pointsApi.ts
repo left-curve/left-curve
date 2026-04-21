@@ -111,7 +111,10 @@ export const fetchTotalUsersWithPoints = async (baseUrl: string): Promise<number
   return res.json();
 };
 
-export const fetchUserBoxes = async (baseUrl: string, userIndex: number): Promise<BoxesResponse> => {
+export const fetchUserBoxes = async (
+  baseUrl: string,
+  userIndex: number,
+): Promise<BoxesResponse> => {
   const res = await fetch(`${baseUrl}/boxes/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch boxes: ${res.status}`);
   return res.json();

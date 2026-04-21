@@ -42,6 +42,7 @@ export function queryAppSubscription<
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const { request, interval, httpInterval = 5_000, ...callbacks } = parameters;
+  const { polling, batch } = client.transport;
   const { subscribe } = client;
 
   const query = /* GraphQL */ `
@@ -76,6 +77,8 @@ export function queryAppSubscription<
       emitter: subscribe.emitter!,
       getStatus: subscribe.getClientStatus!,
       onError: callbacks.error,
+      polling,
+      batch,
     },
     (data) => callbacks.next(data),
   );
