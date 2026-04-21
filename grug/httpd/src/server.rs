@@ -1,6 +1,9 @@
 use {
     super::error::Error,
-    crate::{context::Context, middlewares::shutdown::ShutdownMiddleware, routes},
+    crate::{
+        context::Context, middlewares::shutdown::ShutdownMiddleware, routes,
+        subscription_limiter::SubscriptionLimiter,
+    },
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
@@ -40,6 +43,11 @@ where
     #[cfg(feature = "metrics")]
     let metrics = ActixWebMetricsBuilder::new().build();
 
+    let subscription_limiter = SubscriptionLimiter::new(
+        httpd_config.max_subscriptions_per_connection,
+        httpd_config.max_subscriptions_global,
+    );
+
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     let shutdown_flag_clone = shutdown_flag.clone();
     HttpServer::new(move || {
@@ -72,7 +80,8 @@ where
         #[cfg(feature = "metrics")]
         let app = app.wrap(metrics.clone());
 
-        app.configure(config_app(context.clone(), graphql_schema.clone()))
+        app.app_data(web::Data::new(subscription_limiter.clone()))
+            .configure(config_app(context.clone(), graphql_schema.clone()))
     })
     .workers(httpd_config.workers)
     .max_connections(httpd_config.max_connections)

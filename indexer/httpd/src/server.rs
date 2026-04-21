@@ -7,7 +7,10 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
-    grug_httpd::routes::{graphql::graphql_route, index::index},
+    grug_httpd::{
+        routes::{graphql::graphql_route, index::index},
+        subscription_limiter::SubscriptionLimiter,
+    },
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
 };
@@ -45,6 +48,11 @@ where
     #[cfg(feature = "metrics")]
     init_httpd_metrics();
 
+    let subscription_limiter = SubscriptionLimiter::new(
+        httpd_config.max_subscriptions_per_connection,
+        httpd_config.max_subscriptions_global,
+    );
+
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -75,7 +83,8 @@ where
         #[cfg(feature = "metrics")]
         let app = app.wrap(metrics.clone());
 
-        app.configure(config_app(context.clone(), graphql_schema.clone()))
+        app.app_data(web::Data::new(subscription_limiter.clone()))
+            .configure(config_app(context.clone(), graphql_schema.clone()))
     })
     .workers(httpd_config.workers)
     .max_connections(httpd_config.max_connections)

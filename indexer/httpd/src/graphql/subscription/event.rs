@@ -4,6 +4,7 @@ use {
     super::MAX_PAST_BLOCKS,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     grug_types::Addr,
     indexer_sql::entity,
     itertools::Itertools,
@@ -205,6 +206,7 @@ impl EventSubscription {
         since_block_height: Option<u64>,
         query: sea_orm::Select<entity::events::Entity>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = entity::blocks::Entity::find()
@@ -234,47 +236,50 @@ impl EventSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
 
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
-            let _query = query.clone();
+        Ok(guard_subscription_stream(
+            once({
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
+                let _query = query.clone();
 
-            async move { Self::query_events(&app_ctx.db, block_range, _query).await }
-        })
-        .chain(stream.then(move |block_height| {
-            let query = query.clone();
+                async move { Self::query_events(&app_ctx.db, block_range, _query).await }
+            })
+            .chain(stream.then(move |block_height| {
+                let query = query.clone();
 
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            let received_height = received_block_height.clone();
+                let received_height = received_block_height.clone();
 
-            async move {
-                let current_received = received_height.load(Ordering::Acquire);
+                async move {
+                    let current_received = received_height.load(Ordering::Acquire);
 
-                if block_height < current_received {
-                    return vec![];
+                    if block_height < current_received {
+                        return vec![];
+                    }
+
+                    let events = Self::query_events(
+                        &app_ctx.db,
+                        (current_received + 1) as i64..=block_height as i64,
+                        query,
+                    )
+                    .await;
+
+                    received_height.store(block_height, Ordering::Release);
+
+                    events
                 }
-
-                let events = Self::query_events(
-                    &app_ctx.db,
-                    (current_received + 1) as i64..=block_height as i64,
-                    query,
-                )
-                .await;
-
-                received_height.store(block_height, Ordering::Release);
-
-                events
-            }
-        }))
-        .filter_map(|events| async move {
-            if events.is_empty() {
-                None
-            } else {
-                Some(events)
-            }
-        }))
+            }))
+            .filter_map(|events| async move {
+                if events.is_empty() {
+                    None
+                } else {
+                    Some(events)
+                }
+            }),
+            sub_guard,
+        ))
     }
 
     async fn _events_by_addresses<'a>(
@@ -283,6 +288,7 @@ impl EventSubscription {
         addresses: Vec<Addr>,
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = entity::blocks::Entity::find()
@@ -313,7 +319,7 @@ impl EventSubscription {
         let addresses = Arc::new(addresses);
         let stream = app_ctx.pubsub.subscribe().await?;
 
-        Ok(once({
+        Ok(guard_subscription_stream(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
             let _addresses = addresses.clone();
@@ -361,7 +367,7 @@ impl EventSubscription {
             } else {
                 Some(events)
             }
-        }))
+        }), sub_guard))
     }
 
     async fn query_events(

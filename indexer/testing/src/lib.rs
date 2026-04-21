@@ -9,12 +9,13 @@ use {
         dev::{AppConfig, ServiceFactory, ServiceRequest, ServiceResponse},
         middleware::{Compress, Logger},
         test::try_call_service,
-        web::ServiceConfig,
+        web::{self, ServiceConfig},
     },
     anyhow::{anyhow, bail, ensure},
     awc::BoxedSocket,
     core::str,
     futures_util::{sink::SinkExt, stream::StreamExt},
+    grug_httpd::subscription_limiter::SubscriptionLimiter,
     indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
@@ -726,7 +727,10 @@ where
     G: Clone + 'static,
     F: FnOnce(Context, G) -> Box<dyn Fn(&mut ServiceConfig)>,
 {
-    let app = App::new().wrap(Logger::default()).wrap(Compress::default());
+    let app = App::new()
+        .app_data(web::Data::new(SubscriptionLimiter::new(10, 5000)))
+        .wrap(Logger::default())
+        .wrap(Compress::default());
 
     app.configure(config_app(app_ctx, graphql_schema))
 }

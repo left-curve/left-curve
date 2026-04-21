@@ -14,6 +14,8 @@ pub struct HttpdConfig {
     pub client_request_timeout_secs: u64,
     pub client_disconnect_timeout_secs: u64,
     pub worker_max_blocking_threads: usize,
+    pub max_subscriptions_per_connection: usize,
+    pub max_subscriptions_global: usize,
 }
 
 impl Default for HttpdConfig {
@@ -31,6 +33,8 @@ impl Default for HttpdConfig {
             client_request_timeout_secs: 2,
             client_disconnect_timeout_secs: 1,
             worker_max_blocking_threads: 8,
+            max_subscriptions_per_connection: 25,
+            max_subscriptions_global: 5000,
         }
     }
 }

@@ -57,7 +57,7 @@ secret_key = "minioadmin"
 url = "postgres://postgres@db:5432/grug_dev"
 
 # How many connections to keep in the connection pool.
-max_connections = 10
+max_connections = 25
 
 [indexer.clickhouse]
 
@@ -110,6 +110,12 @@ client_disconnect_timeout_secs = 1
 
 # Maximum number of blocking threads per worker for synchronous operations.
 worker_max_blocking_threads = 2
+
+# Maximum number of GraphQL subscriptions allowed per WebSocket connection.
+max_subscriptions_per_connection = 20
+
+# Maximum total number of GraphQL subscriptions across all connections.
+max_subscriptions_global = 5000
 
 [metrics_httpd]
 
