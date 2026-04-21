@@ -115,7 +115,7 @@ worker_max_blocking_threads = 2
 max_subscriptions_per_connection = 20
 
 # Maximum total number of GraphQL subscriptions across all connections.
-max_subscriptions_global = 5000
+max_subscriptions_global = 15000
 
 [metrics_httpd]
 
