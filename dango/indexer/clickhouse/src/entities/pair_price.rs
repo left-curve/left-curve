@@ -96,6 +96,34 @@ impl PairPrice {
             })
             .collect()
     }
+
+    /// Fetch all pair prices for a given pair whose `created_at >= since`,
+    /// ordered by `block_height` ascending. Used at startup to rebuild the
+    /// in-progress candle after an ungraceful shutdown (e.g. a panic triggered
+    /// by a chain upgrade block) when the in-memory aggregation was lost
+    /// before it could be flushed.
+    pub async fn since(
+        clickhouse_client: &clickhouse::Client,
+        base_denom: &str,
+        quote_denom: &str,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<PairPrice>> {
+        let query = r#"
+            SELECT quote_denom, base_denom, clearing_price, volume_base, volume_quote,
+                   created_at, block_height
+            FROM pair_prices
+            WHERE quote_denom = ? AND base_denom = ? AND created_at >= toDateTime64(?, 6)
+            ORDER BY block_height ASC
+        "#;
+
+        Ok(clickhouse_client
+            .query(query)
+            .bind(quote_denom)
+            .bind(base_denom)
+            .bind(since.timestamp_micros())
+            .fetch_all()
+            .await?)
+    }
 }
 
 /// This will serialize and deserialize the decimals as u128, which is needed
