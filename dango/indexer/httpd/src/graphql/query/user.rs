@@ -92,7 +92,11 @@ impl UserQuery {
 
                         query = query.limit(limit + 1);
                     },
-                    _ => unreachable!(),
+                    _ => {
+                        return Err(async_graphql::Error::new(
+                            "unexpected combination of pagination parameters; should use `first` with `after`, or `last` with `before`",
+                        ));
+                    },
                 }
 
                 if let Some(block_height) = block_height {

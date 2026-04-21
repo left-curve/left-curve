@@ -75,9 +75,14 @@ pub fn apply_fee_commissions(
 
     for (payer, fee_breakdown) in fee_breakdowns {
         let vault_fee = fee_breakdown.vault_fee;
-        if vault_fee.is_zero() || payer == perps_contract {
+        if payer == perps_contract {
             continue;
         }
+        // A zero `vault_fee` here means the payer was a rebater on this fill
+        // (maker fee < 0 under the net-fee model, proportional share clamps
+        // to zero). We still walk the referral chain below so volume / stat
+        // tracking runs for them; each `credit_commission` / upstream update
+        // is already guarded by `is_non_zero()` so no funds move.
 
         // Resolve payer address → UserIndex.
         let Some(payer_index) = super::retrieve_user_index(

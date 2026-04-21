@@ -28,6 +28,11 @@ impl GrugSubscription {
         block_interval: u64,
     ) -> Result<impl Stream<Item = Result<QueryResponseWithBlockHeight, Error>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
+
+        if block_interval == 0 {
+            return Err(Error::new("blockInterval must be >= 1"));
+        }
+
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         #[cfg(feature = "metrics")]
@@ -86,6 +91,11 @@ impl GrugSubscription {
         block_interval: u64,
     ) -> Result<impl Stream<Item = Result<Store, Error>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
+
+        if block_interval == 0 {
+            return Err(Error::new("blockInterval must be >= 1"));
+        }
+
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         #[cfg(feature = "metrics")]
@@ -140,6 +150,11 @@ impl GrugSubscription {
         block_interval: u64,
     ) -> Result<impl Stream<Item = Result<Status, Error>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
+
+        if block_interval == 0 {
+            return Err(Error::new("blockInterval must be >= 1"));
+        }
+
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         #[cfg(feature = "metrics")]
