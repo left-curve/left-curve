@@ -3,6 +3,7 @@ use {
     dango_indexer_sql::entity,
     dango_types::account_factory::UserIndex,
     futures_util::stream::{StreamExt, once},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::entity::blocks::latest_block_height,
     itertools::Itertools,
@@ -83,6 +84,7 @@ impl TransferSubscription {
     where
         Self: Sync,
     {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
@@ -108,28 +110,31 @@ impl TransferSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
 
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+        Ok(guard_subscription_stream(
+            once({
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            async move { Self::get_transfers(app_ctx, block_range, a, user_index).await }
-        })
-        .chain(stream.then(move |block_height| {
-            let a = address.clone();
+                async move { Self::get_transfers(app_ctx, block_range, a, user_index).await }
+            })
+            .chain(stream.then(move |block_height| {
+                let a = address.clone();
 
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            async move {
-                Self::get_transfers(
-                    app_ctx,
-                    block_height as i64..=block_height as i64,
-                    a,
-                    user_index,
-                )
-                .await
-            }
-        }))
-        .filter_map(|transfers| async move { transfers }))
+                async move {
+                    Self::get_transfers(
+                        app_ctx,
+                        block_height as i64..=block_height as i64,
+                        a,
+                        user_index,
+                    )
+                    .await
+                }
+            }))
+            .filter_map(|transfers| async move { transfers }),
+            sub_guard,
+        ))
     }
 }
