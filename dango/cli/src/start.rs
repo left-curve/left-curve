@@ -9,7 +9,9 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
+    grug_app::{
+        App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment,
+    },
     grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
@@ -18,7 +20,10 @@ use {
     indexer_hooked::HookedIndexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::{Arc, atomic::AtomicBool},
-    tokio::signal::unix::{SignalKind, signal},
+    tokio::{
+        signal::unix::{SignalKind, signal},
+        sync::watch,
+    },
     tower_abci::v038::{Server, split},
 };
 
@@ -104,7 +109,12 @@ impl StartCmd {
         let httpd_shutdown_flags = vec![httpd_shutdown_flag.clone()];
 
         // Run ABCI server, optionally with indexer and httpd server.
-        match (
+        //
+        // Capture the result instead of `?`-propagating so we can *always*
+        // wait for the indexer's pending post-indexing tasks to drain before
+        // returning, even if one of the servers errored out (e.g. planned
+        // halt propagated as an ABCI error).
+        let run_result: anyhow::Result<()> = match (
             cfg.indexer.enabled,
             cfg.httpd.enabled,
             cfg.metrics_httpd.enabled,
@@ -128,7 +138,8 @@ impl StartCmd {
                         hooked_indexer,
                         httpd_shutdown_flags
                     )
-                )?;
+                )
+                .map(|_| ())
             },
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
@@ -148,7 +159,8 @@ impl StartCmd {
                         hooked_indexer,
                         httpd_shutdown_flags
                     )
-                )?;
+                )
+                .map(|_| ())
             },
             (true, false, true) => {
                 // Indexer and metrics enabled, HTTP server disabled
@@ -164,7 +176,8 @@ impl StartCmd {
                         hooked_indexer,
                         vec![] // No HTTP server shutdown flags
                     )
-                )?;
+                )
+                .map(|_| ())
             },
             (true, false, false) => {
                 // Only indexer enabled
@@ -178,7 +191,7 @@ impl StartCmd {
                     hooked_indexer,
                     vec![], // No HTTP server shutdown flags
                 )
-                .await?;
+                .await
             },
             (false, true, false) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics disabled
@@ -200,7 +213,8 @@ impl StartCmd {
                         NullIndexer,
                         httpd_shutdown_flags
                     )
-                )?;
+                )
+                .map(|_| ())
             },
             (false, true, true) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics enabled
@@ -223,7 +237,8 @@ impl StartCmd {
                         httpd_shutdown_flags
                     ),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
-                )?;
+                )
+                .map(|_| ())
             },
             (false, false, _) => {
                 // No indexer, no HTTP server
@@ -237,13 +252,17 @@ impl StartCmd {
                     NullIndexer,
                     vec![], // No HTTP server shutdown flags
                 )
-                .await?;
+                .await
             },
+        };
+
+        // Always drain the indexer's in-flight post-indexing tasks before
+        // returning, even if `run_result` is `Err`.
+        if let Err(err) = indexer_clone.wait_for_finish().await {
+            tracing::error!(%err, "Error waiting for indexer to finish");
         }
 
-        indexer_clone.wait_for_finish().await?;
-
-        Ok(())
+        run_result
     }
 
     /// Setup the hooked indexer with both SQL and Dango indexers, and prepare contexts for HTTP servers
@@ -449,6 +468,12 @@ impl StartCmd {
     where
         ID: Indexer + Send + 'static,
     {
+        // Channel used by the app to request a graceful shutdown from inside
+        // `finalize_block` (see `grug_app::HaltReason`). Initial value is
+        // `None`; a `Some(reason)` means the app has requested a halt.
+        let (halt_tx, mut halt_rx) = watch::channel::<Option<HaltReason>>(None);
+        let halt_tx = Arc::new(halt_tx);
+
         let app = App::new(
             db,
             vm,
@@ -457,7 +482,8 @@ impl StartCmd {
             grug_cfg.query_gas_limit,
             Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
             env!("CARGO_PKG_VERSION"),
-        );
+        )
+        .with_shutdown_trigger(halt_tx);
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);
 
@@ -477,7 +503,7 @@ impl StartCmd {
         let mut sigint = signal(SignalKind::interrupt())?;
         let mut sigterm = signal(SignalKind::terminate())?;
 
-        let mut shutdown = async || {
+        let shutdown = async |indexer_for_shutdown: &mut ID| -> anyhow::Result<()> {
             // Set shutdown flags to return 503 for new HTTP requests
             for flag in &httpd_shutdown_flags {
                 flag.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -496,18 +522,42 @@ impl StartCmd {
             Ok(())
         };
 
-        tokio::select! {
+        // Wait for the ABCI server to exit, a signal, or an app-initiated halt
+        // (e.g. scheduled upgrade with the wrong binary). We *always* run the
+        // shutdown sequence afterwards, regardless of which arm fires.
+        let select_result: anyhow::Result<()> = tokio::select! {
             result = async { abci_server.listen_tcp(tendermint_cfg.abci_addr).await } => {
                 result.map_err(|err| anyhow!("failed to start ABCI server: {err:?}"))
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
-                shutdown().await
+                Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
-                shutdown().await
+                Ok(())
             },
+            _ = halt_rx.changed() => {
+                tracing::warn!(reason = ?halt_rx.borrow(), "App requested graceful shutdown");
+                Ok(())
+            },
+        };
+
+        // Always run the shutdown sequence, even if the ABCI server exited
+        // with an error, so indexer writes and telemetry are flushed.
+        if let Err(err) = shutdown(&mut indexer_for_shutdown).await {
+            tracing::error!(%err, "Graceful shutdown failed");
         }
+
+        // If the app itself requested the halt, treat it as a clean exit so
+        // systemd doesn't restart us — the operator must deploy the correct
+        // binary before the chain resumes. The ABCI server very likely
+        // returned an error too (CometBFT disconnected after we rejected
+        // `finalize_block`), but that error is *expected* in this case.
+        if halt_rx.borrow().is_some() {
+            return Ok(());
+        }
+
+        select_result
     }
 }
