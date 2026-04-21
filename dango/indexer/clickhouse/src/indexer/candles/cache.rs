@@ -507,11 +507,15 @@ impl CandleCache {
             }
         });
 
+        #[cfg(feature = "tracing")]
         let mut replayed = 0usize;
         for result in join_all(replay_tasks).await {
             match result {
                 Ok(prices) => {
-                    replayed += prices.len();
+                    #[cfg(feature = "tracing")]
+                    {
+                        replayed += prices.len();
+                    }
                     self.rebuild_in_progress_from_prices(&prices, now);
                 },
                 Err(_err) => {
