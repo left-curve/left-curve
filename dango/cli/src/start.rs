@@ -555,6 +555,25 @@ impl StartCmd {
         // returned an error too (CometBFT disconnected after we rejected
         // `finalize_block`), but that error is *expected* in this case.
         if halt_rx.borrow().is_some() {
+            // The sibling HTTP server futures in the outer `try_join!`
+            // (`run_dango_httpd_server`, `run_metrics_httpd_server`) rely on
+            // actix-web's built-in SIGTERM handler to shut down — on the
+            // normal signal paths that happens automatically because the OS
+            // delivers the signal to every listener. A planned halt has no
+            // such signal, so we raise one ourselves: without it, actix
+            // keeps accepting connections and `try_join!` deadlocks until
+            // systemd SIGKILLs us, losing the graceful shutdown this path
+            // was designed to provide.
+            //
+            // NOTE: this assumes `HttpServer` keeps its default signal
+            // handling. If a future change calls `.disable_signals()`,
+            // switch to an explicit `ServerHandle::stop(true)` wired via a
+            // cancel signal.
+            //
+            // Safety: `libc::raise` is a thin wrapper over the POSIX
+            // `raise(3)` syscall; it is async-signal-safe and has no
+            // preconditions on the caller.
+            unsafe { libc::raise(libc::SIGTERM) };
             return Ok(());
         }
 

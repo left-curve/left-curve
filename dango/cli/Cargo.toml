@@ -43,6 +43,7 @@ indexer-cache               = { workspace = true, features = ["http-request-deta
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd               = { workspace = true, features = ["metrics", "tracing"] }
 indexer-sql                 = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
+libc                        = { workspace = true }
 metrics                     = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
 opentelemetry               = { workspace = true }

@@ -4021,6 +4021,7 @@ dependencies = [
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
+ "libc",
  "metrics",
  "metrics-exporter-prometheus",
  "opentelemetry 0.31.0",
