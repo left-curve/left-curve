@@ -35,6 +35,7 @@ export function useOraclePrices(parameters?: UseOraclePricesParameters) {
     const unsubscribe = subscriptions.subscribe("queryApp", {
       params: {
         interval,
+        httpInterval: 2_000,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: addresses.oracle,

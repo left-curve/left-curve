@@ -113,6 +113,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
     const unsubscribe = subscriptions.subscribe("queryApp", {
       params: {
         interval: 1,
+        httpInterval: 2_000,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: addresses.dex,

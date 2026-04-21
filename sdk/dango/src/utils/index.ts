@@ -1,6 +1,12 @@
 export * from "@left-curve/sdk/utils";
 
 export {
+  createSubscription,
+  type SubscriptionOptions,
+  type TransportMode,
+} from "./createSubscription.js";
+
+export {
   getNavigatorOS,
   getRootDomain,
   isMobileOrTable,

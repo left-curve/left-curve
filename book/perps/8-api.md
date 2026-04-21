@@ -1446,7 +1446,8 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
   "realized_pnl": "0.000000",
   "fee": "6.500000",
   "client_order_id": "42",
-  "fill_id": "17"
+  "fill_id": "17",
+  "is_maker": false
 }
 ```
 
@@ -2065,26 +2066,28 @@ subscription {
     createdAt
     blockHeight
     tradeIdx
+    isMaker
   }
 }
 ```
 
 **Behavior:** On connection, cached recent trades are replayed first, then new trades stream in real-time.
 
-| Field         | Type     | Description                                   |
-| ------------- | -------- | --------------------------------------------- |
-| `orderId`     | `String` | Order ID that produced this fill              |
-| `pairId`      | `String` | Trading pair                                  |
-| `user`        | `String` | Account address                               |
-| `fillPrice`   | `String` | Execution price                               |
-| `fillSize`    | `String` | Filled size (positive = buy, negative = sell) |
-| `closingSize` | `String` | Portion that closed existing position         |
-| `openingSize` | `String` | Portion that opened new position              |
-| `realizedPnl` | `String` | PnL realized from the closing portion         |
-| `fee`         | `String` | Trading fee charged                           |
-| `createdAt`   | `String` | Timestamp (ISO 8601)                          |
-| `blockHeight` | `Int`    | Block in which the trade occurred             |
-| `tradeIdx`    | `Int`    | Index within the block                        |
+| Field         | Type       | Description                                                                                                              |
+| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `orderId`     | `String`   | Order ID that produced this fill                                                                                         |
+| `pairId`      | `String`   | Trading pair                                                                                                             |
+| `user`        | `String`   | Account address                                                                                                          |
+| `fillPrice`   | `String`   | Execution price                                                                                                          |
+| `fillSize`    | `String`   | Filled size (positive = buy, negative = sell)                                                                            |
+| `closingSize` | `String`   | Portion that closed existing position                                                                                    |
+| `openingSize` | `String`   | Portion that opened new position                                                                                         |
+| `realizedPnl` | `String`   | PnL realized on this fill, including funding settled on the pre-existing position; excludes trading fees                 |
+| `fee`         | `String`   | Trading fee charged                                                                                                      |
+| `createdAt`   | `String`   | Timestamp (ISO 8601)                                                                                                     |
+| `blockHeight` | `Int`      | Block in which the trade occurred                                                                                        |
+| `tradeIdx`    | `Int`      | Index within the block                                                                                                   |
+| `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0                    |
 
 ### 8.3 Contract query polling
 
@@ -2199,13 +2202,17 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 | Event             | Fields                                                                                                                                          | Description                     |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?` | Order partially or fully filled |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?` | Order partially or fully filled |
 | `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                        | Limit order placed on book      |
 | `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                     | Order removed from book         |
 
 `client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
 
 `fill_id` groups the two sides of a single order-book match. When a taker crosses a resting maker, two `order_filled` events are emitted — one for each side — and both carry the same `fill_id`. Successive matches use consecutive ids (strictly increasing), so a taker that crosses two makers in the same transaction produces four events with two distinct `fill_id` values. `fill_id` is `null` for trades executed before v0.15.0 — fill IDs were not assigned prior to that release. Not emitted for ADL fills, which use the [`deleveraged` and `liquidated` events](#liquidation-events) instead.
+
+`is_maker` is `true` for the maker side of a match and `false` for the taker side. Within a single match's pair of `order_filled` events (sharing one `fill_id`), exactly one carries `is_maker = true` and one carries `is_maker = false`. `is_maker` is `null` for trades executed before v0.16.0 — the maker/taker flag was not recorded prior to that release.
+
+`realized_pnl` on `order_filled`, `deleveraged`, and `liquidated` (as `adl_realized_pnl`) includes both the closing PnL on the fill and the funding settled on the user's pre-existing position immediately before the fill is applied. Trading fees are reported separately in the `fee` field on `order_filled`; ADL and deleverage fills incur no trading fees.
 
 ### Conditional order events
 

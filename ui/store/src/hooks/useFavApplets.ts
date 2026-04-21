@@ -8,20 +8,20 @@ export function useFavApplets() {
     initialValue: [
       "earn",
       "trade",
-      "convert",
+      // "convert",
       "bridge",
       "transfer",
       "create-account",
       "settings",
       "referral",
     ],
-    version: 3.1,
+    version: 3.2,
     sync: true,
     migrations: {
       "*": () => [
         "earn",
         "trade",
-        "convert",
+        // "convert",
         "bridge",
         "transfer",
         "create-account",

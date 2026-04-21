@@ -1,3 +1,5 @@
+import { createSubscription } from "../../../utils/createSubscription.js";
+
 import type {
   Address,
   Chain,
@@ -18,9 +20,10 @@ export type EventsByAddressesSubscriptionParameters = SubscriptionCallbacks<{
 export type EventsByAddressesSubscriptionReturnType = () => void;
 
 /**
- * @description Subscribes to all events for a list of addresses.
- * @param client - The client instance to use for the subscription.
- * @param parameters - The parameters for the subscription, including the addresses and callbacks.
+ * Subscribes to all events for a list of addresses.
+ * Currently WS-only.
+ * @param client The client instance to use for the subscription.
+ * @param parameters The parameters for the subscription, including the addresses and callbacks.
  * @returns A function to unsubscribe from the events.
  */
 export function eventsByAddressesSubscription<
@@ -33,6 +36,7 @@ export function eventsByAddressesSubscription<
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const { addresses, sinceBlockHeight, ...callbacks } = parameters;
+  const { subscribe } = client;
 
   const query = /* GraphQL */ `
     subscription EventsByAddressesSubscription(
@@ -65,5 +69,23 @@ export function eventsByAddressesSubscription<
     }
   `;
 
-  return client.subscribe({ query, variables: { addresses, sinceBlockHeight } }, callbacks);
+  return createSubscription<{ eventByAddresses: IndexedEvent[] }>(
+    {
+      wsSubscribe: (listener) =>
+        subscribe(
+          { query, variables: { addresses, sinceBlockHeight } },
+          {
+            next: (data) => listener(data as { eventByAddresses: IndexedEvent[] }),
+            error: callbacks.error,
+            complete: callbacks.complete,
+          },
+        ),
+      httpQuery: undefined,
+      httpInterval: 5_000,
+      emitter: subscribe.emitter!,
+      getStatus: subscribe.getClientStatus!,
+      onError: callbacks.error,
+    },
+    (data) => callbacks.next(data),
+  );
 }

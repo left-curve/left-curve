@@ -60,9 +60,7 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   );
 
   const coins = useMemo(() => {
-    return Object.values(allCoins.byDenom).filter((c) =>
-      ["USDC", "ETH", "USDT"].includes(c.symbol),
-    );
+    return Object.values(allCoins.byDenom).filter((c) => ["USDC", "ETH"].includes(c.symbol));
   }, [allCoins]);
 
   const config = useMemo(() => {

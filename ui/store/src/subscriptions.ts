@@ -245,6 +245,7 @@ const allPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPairStats"> = (
   onError,
 }) => {
   return client.allPairStatsSubscription({
+    httpInterval: 5_000,
     next: (event) => {
       const currentListeners = getListeners();
       currentListeners.forEach((listener) => listener(event));
@@ -259,6 +260,7 @@ const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairS
   onError,
 }) => {
   return client.allPerpsPairStatsSubscription({
+    httpInterval: 5_000,
     next: (event) => {
       const currentListeners = getListeners();
       currentListeners.forEach((listener) => listener(event));

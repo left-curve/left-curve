@@ -84,6 +84,12 @@ export type PerpsTrade = {
    * were not assigned prior to that release.
    */
   fillId?: string | null;
+  /**
+   * `true` for the maker side of a match, `false` for the taker side.
+   * `null` for trades executed before v0.16.0 — the maker/taker flag was
+   * not recorded prior to that release.
+   */
+  isMaker?: boolean | null;
 };
 
 export type PerpsEventType = "order_filled" | "liquidated" | "deleveraged";
@@ -104,6 +110,12 @@ export type OrderFilledData = {
    * were not assigned prior to that release.
    */
   fill_id?: string | null;
+  /**
+   * `true` for the maker side of a match, `false` for the taker side.
+   * `null` for trades executed before v0.16.0 — the maker/taker flag was
+   * not recorded prior to that release.
+   */
+  is_maker?: boolean | null;
 };
 
 export type LiquidatedData = {
