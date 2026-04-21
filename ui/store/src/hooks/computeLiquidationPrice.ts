@@ -21,16 +21,8 @@ export function computeLiquidationPrice(params: {
   pairPrices: Record<string, PairPrice>;
   pairParams: Record<string, PerpsPairParam>;
 }): number | null {
-  const {
-    margin,
-    size,
-    entryPrice,
-    mmr,
-    targetPairId,
-    extendedPositions,
-    pairPrices,
-    pairParams,
-  } = params;
+  const { margin, size, entryPrice, mmr, targetPairId, extendedPositions, pairPrices, pairParams } =
+    params;
 
   if (margin <= 0 || entryPrice <= 0 || size === 0) return null;
 

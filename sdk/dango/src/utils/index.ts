@@ -6,6 +6,8 @@ export {
   type TransportMode,
 } from "./createSubscription.js";
 
+export { batchPoller } from "./batchPoller.js";
+
 export {
   getNavigatorOS,
   getRootDomain,

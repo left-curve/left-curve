@@ -208,7 +208,7 @@ export function createConfig<transport extends Transport = Transport>(
     });
   }
 
-  const sbStore = subscriptionsStore(getClient() as PublicClient, onError);
+  const sbStore = subscriptionsStore(getClient() as PublicClient, { onError });
 
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
@@ -243,9 +243,7 @@ export function createConfig<transport extends Transport = Transport>(
       // A `connect` event fired for a connector that isn't in the list.
       // This used to silently swallow the event — surface it loudly instead
       // so any remaining race or lifecycle bug shows up in telemetry.
-      const error = new Error(
-        `connect event received for unknown connector uid: ${data.uid}`,
-      );
+      const error = new Error(`connect event received for unknown connector uid: ${data.uid}`);
       if (onError) onError(error);
       else console.error(error);
       return;

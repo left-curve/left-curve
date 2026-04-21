@@ -1,5 +1,9 @@
 import type { EventEmitter } from "eventemitter3";
 
+import { batchPoller } from "./batchPoller.js";
+
+let nextSubscriptionId = 0;
+
 export type SubscriptionOptions<TData> = {
   /**
    * Start a WS subscription that calls `listener` on each event.
@@ -30,6 +34,12 @@ export type SubscriptionOptions<TData> = {
 
   /** Called on HTTP polling errors (silent retry on next interval). */
   onError?: (error: unknown) => void;
+
+  /** When false, disables HTTP polling fallback (WS-only mode). Default: true. */
+  polling?: boolean;
+
+  /** When true, uses a shared batch poller instead of per-subscription setInterval. */
+  batch?: boolean;
 };
 
 export type TransportMode = "ws" | "http-polling" | "reconnecting";
@@ -46,13 +56,18 @@ export function createSubscription<TData>(
 ): () => void {
   const {
     wsSubscribe,
-    httpQuery,
+    httpQuery: rawHttpQuery,
     httpInterval,
     emitter,
     getStatus,
     fallbackDelay = 5_000,
     onError,
+    polling = true,
+    batch,
   } = options;
+
+  const httpQuery = polling ? rawHttpQuery : undefined;
+  const subscriptionId = `sub_${nextSubscriptionId++}`;
 
   let wsUnsub: (() => void) | null = null;
   let httpTimer: ReturnType<typeof setInterval> | null = null;
@@ -66,6 +81,9 @@ export function createSubscription<TData>(
   };
 
   const stopHttp = () => {
+    if (batch) {
+      batchPoller.unregister(subscriptionId);
+    }
     if (httpTimer !== null) {
       clearInterval(httpTimer);
       httpTimer = null;
@@ -96,7 +114,11 @@ export function createSubscription<TData>(
     currentMode = "http-polling";
     emitter.emit("transport-mode", currentMode);
     poll();
-    httpTimer = setInterval(poll, httpInterval);
+    if (batch) {
+      batchPoller.register(subscriptionId, poll, httpInterval);
+    } else {
+      httpTimer = setInterval(poll, httpInterval);
+    }
   };
 
   const startWs = () => {

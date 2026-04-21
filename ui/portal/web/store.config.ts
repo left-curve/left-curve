@@ -21,7 +21,7 @@ export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chain,
   version: 2,
-  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true, lazy: false }),
+  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true, polling: false, lazy: false }),
   coins,
   connectors: [
     passkey(),

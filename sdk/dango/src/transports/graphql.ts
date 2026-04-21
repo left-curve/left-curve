@@ -49,6 +49,8 @@ export type GraphqlTransportConfig = {
   lazy?: boolean;
   /** Disable WebSocket subscriptions entirely, forcing HTTP polling fallback. */
   disableWs?: boolean;
+  /** When false, disables HTTP polling fallback for subscriptions. Default: true. */
+  polling?: boolean;
   /** WebSocket retry configuration. */
   wsRetry?: WsRetryConfig;
 };
@@ -214,6 +216,8 @@ export function graphql(
       type: "http-graphql",
       name,
       key,
+      batch: !!_batch_,
+      polling: config.polling ?? true,
       request,
       subscribe,
     });

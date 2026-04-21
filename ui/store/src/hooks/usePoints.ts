@@ -43,7 +43,17 @@ export function usePoints(parameters: UsePointsParameters) {
 
     const compensation: AttackCompensation | undefined = data?.compensation;
 
-    return { points, lpPoints, tradingPoints, referralPoints, volume, pnl, rank, percentile, compensation };
+    return {
+      points,
+      lpPoints,
+      tradingPoints,
+      referralPoints,
+      volume,
+      pnl,
+      rank,
+      percentile,
+      compensation,
+    };
   }, [userStatsQuery.data, totalUsersQuery.data]);
 
   return {

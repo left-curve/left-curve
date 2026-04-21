@@ -75,8 +75,7 @@ export function usePerpsMaxSize(parameters: UsePerpsMaxSizeParameters): UsePerps
 
     const positionBase = Math.abs(currentPositionSize);
     const orderSign = action === "buy" ? 1 : -1;
-    const isOpposing =
-      currentPositionSize !== 0 && Math.sign(currentPositionSize) !== orderSign;
+    const isOpposing = currentPositionSize !== 0 && Math.sign(currentPositionSize) !== orderSign;
 
     const imPosAtL = (positionBase * currentPrice) / leverage;
     const reserved = Math.max(reservedMargin, 0);

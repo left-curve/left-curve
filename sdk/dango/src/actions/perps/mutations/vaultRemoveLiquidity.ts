@@ -4,12 +4,7 @@ import { execute } from "../../app/mutations/execute.js";
 
 import type { Address, Transport } from "@left-curve/sdk/types";
 import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
-import type {
-  AppConfig,
-  DangoClient,
-  Signer,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { AppConfig, DangoClient, Signer, TypedDataParameter } from "../../../types/index.js";
 
 export type VaultRemoveLiquidityParameters = {
   sender: Address;
