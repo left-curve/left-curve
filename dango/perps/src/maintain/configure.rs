@@ -269,8 +269,8 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
     );
 
     ensure!(
-        (Dimensionless::ZERO..Dimensionless::ONE).contains(&pair_param.vault_spread_skew_factor),
-        "invalid `vault_spread_skew_factor`! pair id: {}, bounds: [0, 1), found: {}",
+        !pair_param.vault_spread_skew_factor.is_negative(),
+        "invalid `vault_spread_skew_factor`! pair id: {}, bounds: >= 0, found: {}",
         pair_id,
         pair_param.vault_spread_skew_factor,
     );
@@ -753,14 +753,51 @@ mod tests {
     }
 
     #[test]
-    fn pair_param_spread_skew_factor_one_rejected() {
+    fn pair_param_spread_skew_factor_one_accepted() {
+        // `vault_spread_skew_factor = 1` is now accepted as long as the
+        // cross-field invariant `vault_half_spread * (1 + factor) < 1` holds.
+        // Here: 0.01 * 2 = 0.02 < 1.
         let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_spread_skew_factor: Dimensionless::ONE,
             ..valid_pair_param()
         };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_spread_skew_factor_above_one_accepted() {
+        // `vault_spread_skew_factor = 5` is accepted when paired with a small
+        // `vault_half_spread`: 0.1 * (1 + 5) = 0.6 < 1. At max positive skew,
+        // the vault's ask drops below the oracle — the intended aggressive
+        // unwind semantic.
+        let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(100), // 10%
+            vault_spread_skew_factor: Dimensionless::new_int(5),
+            // Band must accommodate the vault's widest quote deviation
+            // (`vault_half_spread * (1 + factor)` = 60%).
+            max_limit_price_deviation: Dimensionless::new_permille(700),
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_spread_skew_factor_above_one_rejected_by_cross_invariant() {
+        // `vault_spread_skew_factor = 5` with `vault_half_spread = 0.2` violates
+        // the cross-field invariant (0.2 * 6 = 1.2 >= 1). This proves the
+        // cross-field invariant — not any per-field cap — is the sole gatekeeper
+        // for large factors.
+        let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(200), // 20%
+            vault_spread_skew_factor: Dimensionless::new_int(5),
+            ..valid_pair_param()
+        };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
-        assert!(err.contains("`vault_spread_skew_factor`"), "{err}");
-        assert!(err.contains("[0, 1)"), "{err}");
+        assert!(
+            err.contains("vault_half_spread * (1 + vault_spread_skew_factor) < 1"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -1214,6 +1251,7 @@ mod tests {
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
         assert!(err.contains("`vault_spread_skew_factor`"), "{err}");
+        assert!(err.contains(">= 0"), "{err}");
     }
 
     #[test]
@@ -1291,18 +1329,11 @@ mod tests {
 
     #[test]
     fn pair_param_half_spread_times_skew_factor_exactly_one_rejected() {
-        // 0.5 * (1 + 1) = 1.0 — boundary is strict (< 1, not <= 1).
-        // (vault_spread_skew_factor must be < 1 so use 0.5 * (1 + 0.999...)
-        //  — close enough; we pick 1/2 and factor that still tops out at 1.)
-        // Simpler: 0.5 * (1 + 1) is not reachable because skew_factor < 1.
-        // Instead pick half_spread = 0.5 and skew_factor just below 1:
-        // 0.5 * (1 + 0.999999) ≈ 0.9999995 — accepted. So we use half_spread
-        // slightly above 0.5 and skew_factor close to 1 to get >= 1:
-        // half_spread = 501 permille, skew_factor = 999 permille
-        //   → 0.501 * 1.999 = 1.001499 → rejected.
+        // Boundary: 0.5 * (1 + 1) = 1.0 — the cross-field invariant is
+        // strict (< 1, not <= 1), so this must be rejected.
         let p = PairParam {
-            vault_half_spread: Dimensionless::new_permille(501),
-            vault_spread_skew_factor: Dimensionless::new_permille(999),
+            vault_half_spread: Dimensionless::new_permille(500),
+            vault_spread_skew_factor: Dimensionless::ONE,
             ..valid_pair_param()
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();

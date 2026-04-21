@@ -95,6 +95,7 @@ export type SubscriptionSchema = [
     params: {
       request: QueryRequest;
       interval?: number;
+      httpInterval?: number;
     };
     listener: (event: { response: QueryResponse; blockHeight: number }) => void;
   },

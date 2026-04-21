@@ -2112,6 +2112,15 @@ fn conditional_order_trigger_fills_carry_fill_id() {
         fills[0].fill_id, fills[1].fill_id,
         "the taker and maker sides of a single match must share one fill_id"
     );
+
+    let mut is_makers = fills.iter().map(|f| f.is_maker).collect::<Vec<_>>();
+    is_makers.sort();
+    assert_eq!(
+        is_makers,
+        vec![Some(false), Some(true)],
+        "the two OrderFilled events of a match must have one is_maker=Some(false) (taker) \
+         and one is_maker=Some(true) (maker)"
+    );
 }
 
 /// Two TP orders that fire in the same `process_conditional_orders`
@@ -2288,6 +2297,28 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
             *count, 2,
             "fill_id {} should appear on exactly two events (taker + maker); got {}",
             id, count,
+        );
+    }
+
+    // Each fill_id pair must contain exactly one taker (is_maker=false)
+    // and one maker (is_maker=true).
+    let mut by_fill_id_makers = BTreeMap::<_, Vec<_>>::new();
+    for filled in &fills {
+        let id = filled.fill_id.unwrap();
+        by_fill_id_makers
+            .entry(id)
+            .or_default()
+            .push(filled.is_maker);
+    }
+    for (id, mut makers) in by_fill_id_makers {
+        makers.sort();
+        assert_eq!(
+            makers,
+            vec![Some(false), Some(true)],
+            "fill_id {} must pair one is_maker=Some(false) (taker) with one is_maker=Some(true) \
+             (maker); got {:?}",
+            id,
+            makers,
         );
     }
 

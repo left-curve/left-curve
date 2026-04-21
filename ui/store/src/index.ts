@@ -252,6 +252,7 @@ export { useFavApplets } from "./hooks/useFavApplets.js";
 export { useFavPairs } from "./hooks/useFavPairs.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
+export { useServiceStatus } from "./hooks/useServiceStatus.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
 

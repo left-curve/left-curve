@@ -6,6 +6,7 @@
 import {
   useAccount,
   useAppConfig,
+  useConfig,
   usePrices,
   TradePairStore,
   tradeInfoStore,
@@ -376,6 +377,42 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
 
   const equity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
+  const reservedMargin = userState?.reservedMargin ?? "0";
+
+  const { coins: allCoins } = useConfig();
+
+  const otherPairsUsedMargin = useMemo(() => {
+    const positions = userState?.positions;
+    if (!positions) return 0;
+    let total = 0;
+    for (const [pid, pos] of Object.entries(positions)) {
+      if (pid === perpsPairId) continue;
+      const size = Math.abs(Number(pos.size));
+      if (!(size > 0)) continue;
+      const imr = Number(appConfig.perpsPairs[pid]?.initialMarginRatio ?? 0);
+      if (!(imr > 0)) continue;
+
+      // Mirror current-pair price resolution: stats first, oracle fallback.
+      let price = Number(statsByPairId[pid]?.currentPrice ?? 0);
+      if (!(price > 0)) {
+        // Pair id format is `perp/{symbolLowerCase}usd` (see tradePairStore.ts:33).
+        const symbol = pid.match(/^perp\/(.+)usd$/)?.[1]?.toUpperCase();
+        const denom = symbol ? allCoins.bySymbol[symbol]?.denom : undefined;
+        price = denom ? Number(getPrice(1, denom) ?? 0) : 0;
+      }
+      if (!(price > 0)) continue;
+
+      total += size * price * imr;
+    }
+    return total;
+  }, [
+    userState?.positions,
+    perpsPairId,
+    appConfig.perpsPairs,
+    statsByPairId,
+    allCoins.bySymbol,
+    getPrice,
+  ]);
 
   const position = useMemo(() => {
     if (!userState?.positions?.[getPerpsPairId()]) return null;
@@ -469,6 +506,8 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const { availToTrade, maxSize } = usePerpsMaxSize({
     equity: Number(equity),
+    reservedMargin: Number(reservedMargin),
+    otherPairsUsedMargin,
     currentPositionSize: Number(currentPositionSize),
     action,
     leverage: selectedLeverage,

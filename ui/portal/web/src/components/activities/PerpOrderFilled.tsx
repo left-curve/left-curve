@@ -14,7 +14,7 @@ type ActivityPerpOrderFilledProps = {
 
 export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrderFilledProps>(
   ({ activity }, ref) => {
-    const { pair_id, fill_price, fill_size, realized_pnl, fee } = activity.data;
+    const { pair_id, fill_price, fill_size, realized_pnl, fee, is_maker } = activity.data;
 
     const isBuy = !fill_size.startsWith("-");
     const absSize = fill_size.startsWith("-") ? fill_size.slice(1) : fill_size;
@@ -46,6 +46,11 @@ export const ActivityPerpOrderFilled = forwardRef<ActivityRef, ActivityPerpOrder
               <span className="diatype-m-bold">
                 <FormattedNumber number={absSize} as="span" /> {baseSymbol}
               </span>
+              {is_maker != null && (
+                <span className="uppercase diatype-m-bold text-ink-tertiary-500">
+                  {is_maker ? "Maker" : "Taker"}
+                </span>
+              )}
             </div>
 
             <div className="flex w-full gap-1">

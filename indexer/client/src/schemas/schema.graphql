@@ -568,6 +568,12 @@ type PerpsTrade {
 	IDs were not assigned prior to that release.
 	"""
 	fillId: String
+	"""
+	`Some(true)` for the maker side of a match, `Some(false)` for the
+	taker side. `None` for trades executed before v0.16.0 — the
+	maker/taker flag was not recorded prior to that release.
+	"""
+	isMaker: Boolean
 }
 
 type PublicKey {

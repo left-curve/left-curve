@@ -479,8 +479,18 @@ pub struct PairParam {
     /// How aggressively to tilt spreads based on inventory.
     /// 0 = no skew (symmetric spreads on both sides).
     ///
-    /// Bounds: `[0, 1)`. At 1, the effective spread on the tightened side
-    /// reaches zero; > 1 would produce a negative spread.
+    /// Bounds: `>= 0`. Values > 1 cause the tightened side's quote to
+    /// cross the oracle price at maximum skew — e.g. when the vault is
+    /// fully long, the ask drops below the oracle. This is an aggressive
+    /// unwind posture, useful when the vault needs to rapidly deleverage
+    /// a large directional position. The invariant `bid < ask` always
+    /// holds because `ask - bid = 2 * oracle_price * vault_half_spread`,
+    /// independent of this factor.
+    ///
+    /// The effective upper bound is enforced via the cross-field invariant
+    /// `vault_half_spread * (1 + vault_spread_skew_factor) < 1` documented
+    /// on `vault_half_spread`, which prevents the bid price from collapsing
+    /// to zero at maximum positive skew.
     pub vault_spread_skew_factor: Dimensionless,
 
     /// Position size at which inventory skew saturates.
@@ -1413,11 +1423,28 @@ pub struct OrderFilled {
     pub fill_size: Quantity,
     pub closing_size: Quantity,
     pub opening_size: Quantity,
+
+    /// PnL realized by the user on this fill. Includes both:
+    ///
+    /// 1. Closing PnL: `|closing_size| * (fill_price - entry_price)` for
+    ///    longs, mirrored for shorts. Zero on pure-opening fills.
+    /// 2. Funding settled on the user's pre-existing position immediately
+    ///    before this fill is applied. Can be non-zero even on
+    ///    pure-opening fills if the user already held a position.
+    ///
+    /// Does not include trading fees (see `fee`).
     pub realized_pnl: UsdValue,
+
+    /// Trading fee charged on this fill, in USD. Always non-negative.
+    /// Already deducted from the user's margin in the same transaction;
+    /// reported here for transparency. Vault fills are exempt and report
+    /// zero.
     pub fee: UsdValue,
+
     /// Caller-assigned id from the originally-submitted order, or `None`
     /// if the order was submitted without one.
     pub client_order_id: Option<ClientOrderId>,
+
     /// Identifier shared between the two `OrderFilled` events of a single
     /// order-book match (taker + maker). Strictly increasing across
     /// matches. `None` for trades executed before v0.15.0 — fill IDs
@@ -1435,6 +1462,15 @@ pub struct OrderFilled {
     ///   each side sees the same `id` per match:
     ///   <https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Account-Trade-List>
     pub fill_id: Option<FillId>,
+
+    /// `Some(true)` for the maker side of a match, `Some(false)` for the
+    /// taker side. Each order-book match emits two `OrderFilled` events
+    /// sharing one `fill_id` — exactly one with `is_maker = Some(true)`
+    /// and one with `is_maker = Some(false)`.
+    ///
+    /// `None` for trades executed before v0.16.0 — the maker/taker flag was not
+    /// recorded prior to that release.
+    pub is_maker: Option<bool>,
 }
 
 /// Event indicating an order have been inserted into the order book.
@@ -1556,7 +1592,11 @@ pub struct Liquidated {
     /// Bankruptcy price used for ADL fills, or `None` if no ADL happened.
     pub adl_price: Option<UsdPrice>,
 
-    /// PnL realized by the liquidated user from ADL fills (zero if no ADL).
+    /// PnL realized by the liquidated user from ADL fills, accumulated
+    /// across all counter-party fills for this pair. Includes both the
+    /// closing PnL on each ADL fill and the funding settled on the user's
+    /// position immediately before each fill. Zero if no ADL happened.
+    /// ADL fills incur no trading fees.
     pub adl_realized_pnl: UsdValue,
 }
 
@@ -1575,7 +1615,10 @@ pub struct Deleveraged {
     /// Fill price (the liquidated user's bankruptcy price).
     pub fill_price: UsdPrice,
 
-    /// PnL realized by the counter-party from this ADL fill.
+    /// PnL realized by the counter-party from this ADL fill. Includes
+    /// both the closing PnL on the ADL fill and the funding settled on
+    /// the counter-party's pre-existing position immediately before the
+    /// fill is applied. ADL fills incur no trading fees.
     pub realized_pnl: UsdValue,
 }
 

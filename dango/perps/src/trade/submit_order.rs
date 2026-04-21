@@ -578,7 +578,7 @@ pub(crate) fn compute_submit_order_outcome(
             } => {
                 // IOC: discard unfilled remainder, same as market orders.
                 ensure!(
-                    unfilled < fillable_size,
+                    unfilled.checked_abs()? < fillable_size.checked_abs()?,
                     "no liquidity at acceptable price! target_price: {target_price}"
                 );
 
@@ -883,7 +883,13 @@ pub fn match_order(
             taker_fill_size,
             resting_price,
             taker_fee_rate,
-            Some((events, taker_order_id, taker_client_order_id, fill_id)),
+            Some((
+                events,
+                taker_order_id,
+                taker_client_order_id,
+                fill_id,
+                false,
+            )),
         )?;
 
         volumes
@@ -943,7 +949,13 @@ pub fn match_order(
             maker_fill_size,
             resting_price,
             maker_fee_rate,
-            Some((events, maker_order_id, maker_order.client_order_id, fill_id)),
+            Some((
+                events,
+                maker_order_id,
+                maker_order.client_order_id,
+                fill_id,
+                true,
+            )),
         )?;
 
         volumes
@@ -1138,7 +1150,13 @@ pub fn settle_fill(
     fill_size: Quantity,
     fill_price: UsdPrice,
     fee_rate: Dimensionless,
-    events: Option<(&mut EventBuilder, OrderId, Option<ClientOrderId>, FillId)>,
+    events: Option<(
+        &mut EventBuilder,
+        OrderId,
+        Option<ClientOrderId>,
+        FillId,
+        bool,
+    )>,
 ) -> grug::StdResult<FillSettlement> {
     let (closing, opening) = {
         let current_pos = user_state
@@ -1162,7 +1180,7 @@ pub fn settle_fill(
 
     let volume = compute_notional(fill_size, fill_price)?;
 
-    if let Some((events, order_id, client_order_id, fill_id)) = events {
+    if let Some((events, order_id, client_order_id, fill_id, is_maker)) = events {
         events.push(OrderFilled {
             order_id,
             pair_id: pair_id.clone(),
@@ -1175,6 +1193,7 @@ pub fn settle_fill(
             fee,
             client_order_id,
             fill_id: Some(fill_id),
+            is_maker: Some(is_maker),
         })?;
     }
 

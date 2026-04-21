@@ -1,10 +1,13 @@
 import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 
 import {
+  Badge,
   Button,
   CurrentBlock,
+  Dot,
   IconEdit,
   IconMobile,
+  IconMonitor,
   IconNetwork,
   IconStatus,
   IconTimer,
@@ -15,6 +18,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { SessionCountdown } from "./SessionCountdown";
+import { useServiceStatus } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -199,10 +203,59 @@ const ConnectMobileSection: React.FC = () => {
   );
 };
 
+const statusBadgeColor: Record<string, "light-green" | "light-red" | "warning"> = {
+  success: "light-green",
+  error: "light-red",
+  warning: "warning",
+};
+
+const StatusRow: React.FC<{ label: string; status: "success" | "error" | "warning" }> = ({
+  label,
+  status,
+}) => (
+  <div className="flex items-center justify-between pl-8">
+    <p className="text-ink-tertiary-500 diatype-sm-regular">{label}</p>
+    <Badge
+      size="m"
+      color={statusBadgeColor[status]}
+      text={
+        <div className="flex items-center gap-1">
+          <Dot color={status} />
+          {m["statusBadge.statusText"]({ status })}
+        </div>
+      }
+    />
+  </div>
+);
+
+const StatusSection: React.FC = () => {
+  const { wsStatus, chainStatus, dexStatus } = useServiceStatus({ upUrl: window.dango.urls.upUrl });
+
+  return (
+    <div className="flex items-start justify-between rounded-md gap-8 w-full px-2">
+      <div className="flex items-start justify-between max-w-[16rem] w-full">
+        <div className="flex flex-col gap-2 w-full">
+          <div className="flex gap-2 items-center">
+            <IconMonitor className="text-ink-tertiary-500" />
+            <span className="diatype-m-bold text-ink-secondary-700">
+              {m["statusBadge.status"]()}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <StatusRow label={m["statusBadge.websocket"]()} status={wsStatus} />
+            <StatusRow label={m["statusBadge.chain"]()} status={chainStatus} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const SessionSection = Object.assign(Container, {
   Username: UsernameSection,
   UserStatus: UserStatusSection,
   RemainingTime: RemainingTimeSection,
   Network: NetworkSection,
   ConnectMobile: ConnectMobileSection,
+  Status: StatusSection,
 });
