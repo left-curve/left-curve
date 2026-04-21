@@ -496,6 +496,11 @@ impl CandleCache {
         // post-restart tail of the bucket. Replaying pair_prices since the
         // earliest current-bucket start (OneWeek) reconstructs the full
         // aggregation for every interval.
+        //
+        // All pairs must be replayed in a single call: the rebuild drops
+        // every in-progress candle in the cache (across all pairs) before
+        // replaying, so a per-pair loop would have each iteration overwrite
+        // the rebuild produced by the previous iteration.
         let now = Utc::now();
         let earliest_start = earliest_current_bucket_start(now);
 
@@ -507,17 +512,10 @@ impl CandleCache {
             }
         });
 
-        #[cfg(feature = "tracing")]
-        let mut replayed = 0usize;
+        let mut all_prices: Vec<PairPrice> = Vec::new();
         for result in join_all(replay_tasks).await {
             match result {
-                Ok(prices) => {
-                    #[cfg(feature = "tracing")]
-                    {
-                        replayed += prices.len();
-                    }
-                    self.rebuild_in_progress_from_prices(&prices, now);
-                },
+                Ok(prices) => all_prices.extend(prices),
                 Err(_err) => {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
@@ -527,6 +525,10 @@ impl CandleCache {
                 },
             }
         }
+
+        #[cfg(feature = "tracing")]
+        let replayed = all_prices.len();
+        self.rebuild_in_progress_from_prices(&all_prices, now);
 
         #[cfg(feature = "tracing")]
         tracing::info!(replayed, "Preloaded all candles");
@@ -1220,6 +1222,119 @@ mod tests {
         assert_that!(today.open).is_equal_to(yesterday.close);
         assert_that!(today.close).is_equal_to(Udec128_24::from_str("50").unwrap());
         assert_that!(today.volume_base).is_equal_to(Udec128_6::from_str("10").unwrap());
+
+        Ok(())
+    }
+
+    /// Regression test for a multi-pair bug: the rebuild drops every
+    /// in-progress candle in the cache before replaying, so the preload
+    /// must replay all pairs' prices in a single call. If prices from
+    /// multiple pairs are replayed in one call, every pair must end up
+    /// with its rebuilt in-progress candle.
+    #[tokio::test]
+    async fn rebuild_from_prices_rebuilds_all_pairs_in_one_call() -> Result<()> {
+        let quote_denom = "bridge/usdc";
+        let btc_denom = "bridge/btc";
+        let eth_denom = "bridge/eth";
+        let mut cache = CandleCache::default();
+
+        let now = parse_timestamp("2026-04-20 14:05:00.000")?;
+
+        // Seed both pairs with a yesterday 1d candle so we exercise the
+        // "bridge from previous close" path for each pair.
+        let btc_key = CandleCacheKey::new(
+            btc_denom.to_string(),
+            quote_denom.to_string(),
+            CandleInterval::OneDay,
+        );
+        let eth_key = CandleCacheKey::new(
+            eth_denom.to_string(),
+            quote_denom.to_string(),
+            CandleInterval::OneDay,
+        );
+        let btc_yesterday = Candle {
+            base_denom: btc_denom.to_string(),
+            quote_denom: quote_denom.to_string(),
+            interval: CandleInterval::OneDay,
+            close: Udec128_24::from_str("48").unwrap(),
+            high: Udec128_24::from_str("52").unwrap(),
+            low: Udec128_24::from_str("47").unwrap(),
+            open: Udec128_24::from_str("49").unwrap(),
+            volume_base: Udec128_6::from_str("1000").unwrap(),
+            volume_quote: Udec128_6::from_str("49500").unwrap(),
+            max_block_height: 500,
+            min_block_height: 100,
+            time_start: parse_timestamp("2026-04-19 00:00:00.000")?,
+        };
+        let eth_yesterday = Candle {
+            base_denom: eth_denom.to_string(),
+            quote_denom: quote_denom.to_string(),
+            interval: CandleInterval::OneDay,
+            close: Udec128_24::from_str("2").unwrap(),
+            high: Udec128_24::from_str("2.1").unwrap(),
+            low: Udec128_24::from_str("1.9").unwrap(),
+            open: Udec128_24::from_str("2").unwrap(),
+            volume_base: Udec128_6::from_str("500").unwrap(),
+            volume_quote: Udec128_6::from_str("1000").unwrap(),
+            max_block_height: 500,
+            min_block_height: 100,
+            time_start: parse_timestamp("2026-04-19 00:00:00.000")?,
+        };
+        cache
+            .candles
+            .entry(btc_key.clone())
+            .or_default()
+            .push(btc_yesterday.clone());
+        cache
+            .candles
+            .entry(eth_key.clone())
+            .or_default()
+            .push(eth_yesterday.clone());
+
+        // Prices for both pairs in the current (Day21) 1d bucket.
+        let pair_prices = vec![
+            pair_price(
+                quote_denom,
+                btc_denom,
+                50_000_000_000_000_000_000_000_000,
+                10_000_000,
+                500_000_000,
+                "2026-04-20 01:00:00.000",
+                501,
+            )?,
+            pair_price(
+                quote_denom,
+                eth_denom,
+                3_000_000_000_000_000_000_000_000,
+                7_000_000,
+                21_000_000,
+                "2026-04-20 02:00:00.000",
+                502,
+            )?,
+        ];
+
+        cache.rebuild_in_progress_from_prices(&pair_prices, now);
+
+        let btc_candles = cache.get_candles(&btc_key).cloned().expect("no btc 1d");
+        let eth_candles = cache.get_candles(&eth_key).cloned().expect("no eth 1d");
+
+        // Both pairs keep yesterday and gain today's in-progress candle.
+        assert_that!(btc_candles.clone()).has_length(2);
+        assert_that!(eth_candles.clone()).has_length(2);
+        assert_that!(btc_candles[0].clone()).is_equal_to(btc_yesterday.clone());
+        assert_that!(eth_candles[0].clone()).is_equal_to(eth_yesterday.clone());
+
+        let btc_today = &btc_candles[1];
+        assert_that!(btc_today.time_start).is_equal_to(parse_timestamp("2026-04-20 00:00:00.000")?);
+        assert_that!(btc_today.open).is_equal_to(btc_yesterday.close);
+        assert_that!(btc_today.close).is_equal_to(Udec128_24::from_str("50").unwrap());
+        assert_that!(btc_today.volume_base).is_equal_to(Udec128_6::from_str("10").unwrap());
+
+        let eth_today = &eth_candles[1];
+        assert_that!(eth_today.time_start).is_equal_to(parse_timestamp("2026-04-20 00:00:00.000")?);
+        assert_that!(eth_today.open).is_equal_to(eth_yesterday.close);
+        assert_that!(eth_today.close).is_equal_to(Udec128_24::from_str("3").unwrap());
+        assert_that!(eth_today.volume_base).is_equal_to(Udec128_6::from_str("7").unwrap());
 
         Ok(())
     }
