@@ -1,7 +1,10 @@
+#[cfg(feature = "metrics")]
+use crate::metrics::GaugeGuard;
 use {
     crate::{
         rate_limit::{GraphqlIpRateLimitRejection, GraphqlIpRateLimiter, GraphqlOperationCounts},
         request_ip::RequesterIp,
+        subscription_limiter::SubscriptionLimiter,
     },
     actix_web::{
         HttpRequest, HttpResponse, Resource, Responder,
@@ -59,6 +62,7 @@ pub async fn graphql_ws<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
     req: HttpRequest,
     payload: web::Payload,
+    global_limiter: web::Data<SubscriptionLimiter>,
 ) -> actix_web::Result<HttpResponse>
 where
     Q: async_graphql::ObjectType + 'static,
@@ -75,8 +79,17 @@ where
         return Ok(response);
     }
 
+    let mut data = requester_ip_data(requester_ip);
+    data.insert(global_limiter.new_connection());
+    #[cfg(feature = "metrics")]
+    data.insert(GaugeGuard::new(
+        "graphql.websocket.connections.active",
+        "graphql",
+        "websocket",
+    ));
+
     GraphQLSubscription::new(Schema::clone(&*schema))
-        .with_data(requester_ip_data(requester_ip))
+        .with_data(data)
         .keepalive_timeout(Duration::from_secs(30))
         .start(&req, payload)
 }

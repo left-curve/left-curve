@@ -8,6 +8,7 @@ use {
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
     futures_util::stream::{StreamExt, once},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     std::sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -32,6 +33,7 @@ impl PerpsCandleSubscription {
         #[graphql(deprecation)]
         limit: Option<usize>,
     ) -> Result<impl Stream<Item = Vec<PerpsCandle>> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let candle_cache = app_ctx.perps_candle_cache.clone();
         let cache_key = cache::PerpsCandleCacheKey::new(pair_id.clone(), interval);
@@ -52,7 +54,7 @@ impl PerpsCandleSubscription {
             .get_last_candle(&cache_key)
             .cloned();
 
-        Ok(once({
+        Ok(guard_subscription_stream(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
@@ -122,6 +124,6 @@ impl PerpsCandleSubscription {
                     None
                 },
             }
-        }))
+        }), sub_guard))
     }
 }

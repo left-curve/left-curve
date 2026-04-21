@@ -3,6 +3,7 @@ use grug_httpd::metrics::GaugeGuard;
 use {
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     indexer_sql::entity,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::sync::{
@@ -21,6 +22,7 @@ impl BlockSubscription {
         &self,
         ctx: &Context<'a>,
     ) -> Result<impl Stream<Item = entity::blocks::Model> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let last_block = entity::blocks::Entity::find()
@@ -42,58 +44,61 @@ impl BlockSubscription {
         #[cfg(feature = "tracing")]
         tracing::debug!(?received_block_height, "Subscribing to block events");
 
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+        Ok(guard_subscription_stream(
+            once({
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            async { last_block.map(|block| vec![block]).unwrap_or_default() }
-        })
-        .chain(
-            app_ctx
-                .pubsub
-                .subscribe()
-                .await?
-                .filter_map(move |block_height| {
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
+                async { last_block.map(|block| vec![block]).unwrap_or_default() }
+            })
+            .chain(
+                app_ctx
+                    .pubsub
+                    .subscribe()
+                    .await?
+                    .filter_map(move |block_height| {
+                        #[cfg(feature = "metrics")]
+                        let _guard = gauge_guard.clone();
 
-                    let received_height = received_block_height.clone();
+                        let received_height = received_block_height.clone();
 
-                    async move {
-                        let current_received = received_height.load(Ordering::Acquire);
-                        if block_height < current_received {
-                            #[cfg(feature = "tracing")]
-                            tracing::debug!(current_received, block_height, "Skip block");
-                            return None;
-                        }
-
-                        #[cfg(feature = "tracing")]
-                        tracing::debug!(current_received, block_height, "Streaming blocks");
-
-                        let blocks = entity::blocks::Entity::find()
-                            .filter(
-                                entity::blocks::Column::BlockHeight
-                                    .gt(current_received as i64)
-                                    .and(
-                                        entity::blocks::Column::BlockHeight
-                                            .lte(block_height as i64),
-                                    ),
-                            )
-                            .order_by_asc(entity::blocks::Column::BlockHeight)
-                            .all(&app_ctx.db)
-                            .await
-                            .inspect_err(|_e| {
+                        async move {
+                            let current_received = received_height.load(Ordering::Acquire);
+                            if block_height < current_received {
                                 #[cfg(feature = "tracing")]
-                                tracing::error!(%_e, "Block error");
-                            })
-                            .unwrap_or_default();
+                                tracing::debug!(current_received, block_height, "Skip block");
+                                return None;
+                            }
 
-                        received_height.store(block_height, Ordering::Release);
+                            #[cfg(feature = "tracing")]
+                            tracing::debug!(current_received, block_height, "Streaming blocks");
 
-                        Some(blocks)
-                    }
-                }),
-        )
-        .flat_map(futures_util::stream::iter))
+                            let blocks = entity::blocks::Entity::find()
+                                .filter(
+                                    entity::blocks::Column::BlockHeight
+                                        .gt(current_received as i64)
+                                        .and(
+                                            entity::blocks::Column::BlockHeight
+                                                .lte(block_height as i64),
+                                        ),
+                                )
+                                .order_by_asc(entity::blocks::Column::BlockHeight)
+                                .all(&app_ctx.db)
+                                .await
+                                .inspect_err(|_e| {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::error!(%_e, "Block error");
+                                })
+                                .unwrap_or_default();
+
+                            received_height.store(block_height, Ordering::Release);
+
+                            Some(blocks)
+                        }
+                    }),
+            )
+            .flat_map(futures_util::stream::iter),
+            sub_guard,
+        ))
     }
 }

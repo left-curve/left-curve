@@ -3,6 +3,7 @@ use {
     dango_indexer_sql::entity,
     dango_types::account_factory::UserIndex,
     futures_util::stream::{StreamExt, once},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::entity::blocks::latest_block_height,
     itertools::Itertools,
@@ -59,6 +60,7 @@ impl AccountSubscription {
         // This is used to get the older account creations in case of disconnection
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::accounts::Model>> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
@@ -82,31 +84,34 @@ impl AccountSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
 
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+        Ok(guard_subscription_stream(
+            once({
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            async move { Self::get_accounts(app_ctx, block_range, user_index).await }
-        })
-        .chain(stream.then(move |block_height| {
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+                async move { Self::get_accounts(app_ctx, block_range, user_index).await }
+            })
+            .chain(stream.then(move |block_height| {
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            async move {
-                Self::get_accounts(
-                    app_ctx,
-                    block_height as i64..=block_height as i64,
-                    user_index,
-                )
-                .await
-            }
-        }))
-        .filter_map(|maybe_accounts| async move {
-            if maybe_accounts.is_empty() {
-                None
-            } else {
-                Some(maybe_accounts)
-            }
-        }))
+                async move {
+                    Self::get_accounts(
+                        app_ctx,
+                        block_height as i64..=block_height as i64,
+                        user_index,
+                    )
+                    .await
+                }
+            }))
+            .filter_map(|maybe_accounts| async move {
+                if maybe_accounts.is_empty() {
+                    None
+                } else {
+                    Some(maybe_accounts)
+                }
+            }),
+            sub_guard,
+        ))
     }
 }

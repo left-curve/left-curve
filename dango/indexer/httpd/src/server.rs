@@ -11,6 +11,7 @@ use {
         access_logger,
         middlewares::shutdown::ShutdownMiddleware,
         routes::{graphql::graphql_route, index::index},
+        subscription_limiter::SubscriptionLimiter,
     },
     grug_types::HttpdConfig,
     indexer_httpd::routes,
@@ -115,6 +116,11 @@ pub async fn run_server(
     #[cfg(feature = "metrics")]
     indexer_httpd::middlewares::metrics::init_httpd_metrics();
 
+    let subscription_limiter = SubscriptionLimiter::new(
+        httpd_config.max_subscriptions_per_connection,
+        httpd_config.max_subscriptions_global,
+    );
+
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     let shutdown_flag_clone = shutdown_flag.clone();
     let server = HttpServer::new(move || {
@@ -147,10 +153,11 @@ pub async fn run_server(
         #[cfg(feature = "metrics")]
         let app = app.wrap(metrics.clone());
 
-        app.configure(config_app(
-            dango_httpd_context.clone(),
-            graphql_schema.clone(),
-        ))
+        app.app_data(web::Data::new(subscription_limiter.clone()))
+            .configure(config_app(
+                dango_httpd_context.clone(),
+                graphql_schema.clone(),
+            ))
     })
     .workers(httpd_config.workers)
     .max_connections(httpd_config.max_connections)

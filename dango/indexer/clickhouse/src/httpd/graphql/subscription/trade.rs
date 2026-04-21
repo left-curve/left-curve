@@ -4,6 +4,7 @@ use {
     dango_types::dex::PairId,
     futures::stream,
     futures_util::stream::StreamExt,
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
@@ -20,6 +21,7 @@ impl TradeSubscription {
         base_denom: String,
         quote_denom: String,
     ) -> Result<impl Stream<Item = Trade> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let trade_cache = app_ctx.trade_cache.clone();
 
@@ -44,7 +46,7 @@ impl TradeSubscription {
             .cloned()
             .unwrap_or_default();
 
-        Ok(
+        Ok(guard_subscription_stream(
             stream::iter(initial_trades).chain(stream.filter_map(move |trade| {
                 #[cfg(feature = "metrics")]
                 let _guard = gauge_guard.clone();
@@ -60,6 +62,7 @@ impl TradeSubscription {
                     }
                 }
             })),
-        )
+            sub_guard,
+        ))
     }
 }
