@@ -248,52 +248,72 @@ mod tests {
 
         // Referrer A: referee_1 has traded, referee_2 has not.
         dango_perps::state::REFERRER_TO_REFEREE_STATISTICS
-            .save(&mut storage, (referrer_a, referee_1), &perps::RefereeStats {
-                registered_at: day1,
-                volume: UsdValue::new_int(100),
-                commission_earned: UsdValue::new_int(1),
-                last_day_active: day1,
-            })
+            .save(
+                &mut storage,
+                (referrer_a, referee_1),
+                &perps::RefereeStats {
+                    registered_at: day1,
+                    volume: UsdValue::new_int(100),
+                    commission_earned: UsdValue::new_int(1),
+                    last_day_active: day1,
+                },
+            )
             .unwrap();
 
         dango_perps::state::REFERRER_TO_REFEREE_STATISTICS
-            .save(&mut storage, (referrer_a, referee_2), &perps::RefereeStats {
-                registered_at: day1,
-                ..Default::default()
-            })
+            .save(
+                &mut storage,
+                (referrer_a, referee_2),
+                &perps::RefereeStats {
+                    registered_at: day1,
+                    ..Default::default()
+                },
+            )
             .unwrap();
 
         // Referrer B: referee_3 has traded.
         dango_perps::state::REFERRER_TO_REFEREE_STATISTICS
-            .save(&mut storage, (referrer_b, referee_3), &perps::RefereeStats {
-                registered_at: day1,
-                volume: UsdValue::new_int(200),
-                commission_earned: UsdValue::new_int(2),
-                last_day_active: day1,
-            })
+            .save(
+                &mut storage,
+                (referrer_b, referee_3),
+                &perps::RefereeStats {
+                    registered_at: day1,
+                    volume: UsdValue::new_int(200),
+                    commission_earned: UsdValue::new_int(2),
+                    last_day_active: day1,
+                },
+            )
             .unwrap();
 
         // Legacy data for both referrers.
         legacy::USER_REFERRAL_DATA
-            .save(&mut storage, (referrer_a, day1), &legacy::UserReferralData {
-                volume: UsdValue::ZERO,
-                commission_shared_by_referrer: UsdValue::ZERO,
-                referee_count: 2,
-                referees_volume: UsdValue::new_int(100),
-                commission_earned_from_referees: UsdValue::new_int(1),
-                cumulative_active_referees: 1,
-            })
+            .save(
+                &mut storage,
+                (referrer_a, day1),
+                &legacy::UserReferralData {
+                    volume: UsdValue::ZERO,
+                    commission_shared_by_referrer: UsdValue::ZERO,
+                    referee_count: 2,
+                    referees_volume: UsdValue::new_int(100),
+                    commission_earned_from_referees: UsdValue::new_int(1),
+                    cumulative_active_referees: 1,
+                },
+            )
             .unwrap();
 
         legacy::USER_REFERRAL_DATA
-            .save(&mut storage, (referrer_b, day1), &legacy::UserReferralData {
-                volume: UsdValue::ZERO,
-                commission_shared_by_referrer: UsdValue::ZERO,
-                referee_count: 1,
-                referees_volume: UsdValue::new_int(200),
-                commission_earned_from_referees: UsdValue::new_int(2),
-                cumulative_active_referees: 1,
-            })
+            .save(
+                &mut storage,
+                (referrer_b, day1),
+                &legacy::UserReferralData {
+                    volume: UsdValue::ZERO,
+                    commission_shared_by_referrer: UsdValue::ZERO,
+                    referee_count: 1,
+                    referees_volume: UsdValue::new_int(200),
+                    commission_earned_from_referees: UsdValue::new_int(2),
+                    cumulative_active_referees: 1,
+                },
+            )
             .unwrap();
 
         do_referral_activated_referees_upgrade(&mut storage).unwrap();
