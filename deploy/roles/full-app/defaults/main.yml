@@ -29,6 +29,7 @@ perp_liquidator_config:
     http_port: 9310
     notification_timeout: 1
     frontend_url: "https://test.dango.exchange"
+    reinit_interval_blocks: 7200
     instances:
       - name: "testnet-1"
         liquidation_delay_blocks: 0
@@ -43,6 +44,7 @@ perp_liquidator_config:
     http_port: 9310
     notification_timeout: 1
     frontend_url: "https://dango.exchange"
+    reinit_interval_blocks: 3600
     instances:
       - name: "mainnet-1"
         liquidation_delay_blocks: 0
