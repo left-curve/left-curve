@@ -353,7 +353,7 @@ fn update_referee_stats(
         referrer_data.cumulative_daily_active_referees += 1;
 
         // Check if this is the first trade made from the referee ever.
-        // If so, increment the global active users.
+        // If so, increment the global active referees.
         if stats.last_day_active == Timestamp::ZERO {
             referrer_data.cumulative_global_active_referees += 1;
         }
