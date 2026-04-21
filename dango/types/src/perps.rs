@@ -752,7 +752,11 @@ pub struct UserReferralData {
     /// Cumulative count of daily active direct referees. Incremented by one
     /// each time a direct referee trades for the first time on a given day.
     /// Difference two buckets to get the count for a specific window.
-    pub cumulative_active_referees: u32,
+    pub cumulative_daily_active_referees: u32,
+
+    /// Number of direct referees that have made at least one trade.
+    /// Incremented once per referee, on their very first trade.
+    pub cumulative_global_active_referees: u32,
 }
 
 impl UserReferralData {
@@ -768,9 +772,12 @@ impl UserReferralData {
             commission_earned_from_referees: self
                 .commission_earned_from_referees
                 .checked_sub(other.commission_earned_from_referees)?,
-            cumulative_active_referees: self
-                .cumulative_active_referees
-                .saturating_sub(other.cumulative_active_referees),
+            cumulative_daily_active_referees: self
+                .cumulative_daily_active_referees
+                .saturating_sub(other.cumulative_daily_active_referees),
+            cumulative_global_active_referees: self
+                .cumulative_global_active_referees
+                .saturating_sub(other.cumulative_global_active_referees),
         })
     }
 }

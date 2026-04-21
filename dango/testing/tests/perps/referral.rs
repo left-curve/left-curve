@@ -1291,19 +1291,21 @@ fn active_referral() {
         )
         .should_succeed();
 
-    // User2 trades — cumulative_active_referees should be 1.
+    // User2 trades — cumulative_daily_active_referees should be 1, cumulative_global_active_referees should be 1.
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.cumulative_active_referees, 1);
+    assert_eq!(data.cumulative_daily_active_referees, 1);
+    assert_eq!(data.cumulative_global_active_referees, 1);
 
-    // User2 trades again same day — cumulative_active_referees still 1.
+    // User2 trades again same day — both counters unchanged.
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.cumulative_active_referees, 1);
+    assert_eq!(data.cumulative_daily_active_referees, 1);
+    assert_eq!(data.cumulative_global_active_referees, 1);
 
-    // User3 trades — cumulative_active_referees should be 2.
+    // User3 trades — cumulative_daily_active_referees should be 2, cumulative_global_active_referees should be 2.
     place_ask_order(
         &mut suite,
         contracts.perps,
@@ -1314,16 +1316,19 @@ fn active_referral() {
     place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.cumulative_active_referees, 2);
+    assert_eq!(data.cumulative_daily_active_referees, 2);
+    assert_eq!(data.cumulative_global_active_referees, 2);
 
-    // Next day, User2 trades — cumulative_active_referees should be 3 (cumulative).
+    // Next day, User2 trades — cumulative_daily_active_referees should be 3 (cumulative),
+    // but cumulative_global_active_referees stays at 2 (User2 already traded before).
     suite.block_time = grug::Duration::from_days(1);
     suite.make_empty_block();
 
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
-    assert_eq!(data.cumulative_active_referees, 3);
+    assert_eq!(data.cumulative_daily_active_referees, 3);
+    assert_eq!(data.cumulative_global_active_referees, 2);
 }
 
 /// With a negative maker fee (rebate), the maker's referrer must NOT be
