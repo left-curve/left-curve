@@ -8,6 +8,7 @@ use {
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
     futures_util::stream::{StreamExt, once},
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     std::sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -33,6 +34,7 @@ impl CandleSubscription {
         #[graphql(deprecation)]
         limit: Option<usize>,
     ) -> Result<impl Stream<Item = Vec<Candle>> + 'a> {
+        let sub_guard = acquire_subscription(ctx)?;
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let candle_cache = app_ctx.candle_cache.clone();
         let cache_key =
@@ -54,7 +56,7 @@ impl CandleSubscription {
             .get_last_candle(&cache_key)
             .cloned();
 
-        Ok(once({
+        Ok(guard_subscription_stream(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
@@ -158,6 +160,6 @@ impl CandleSubscription {
                     None
                 },
             }
-        }))
+        }), sub_guard))
     }
 }
