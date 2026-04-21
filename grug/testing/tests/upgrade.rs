@@ -1,5 +1,5 @@
 use {
-    grug_app::{AppError, CHAIN_ID, CONFIG, CONTRACTS, GasTracker, TraceOption},
+    grug_app::{AppError, CHAIN_ID, CONFIG, CONTRACTS, GasTracker, HaltReason, TraceOption},
     grug_math::{Bytable, NextNumber, Uint128, Uint256},
     grug_testing::TestBuilder,
     grug_types::{
@@ -7,7 +7,7 @@ use {
         PastUpgrade, QuerierExt, ResultExt, StdError, Timestamp, btree_map, coins,
     },
     grug_vm_rust::ContractBuilder,
-    std::str::FromStr,
+    std::{str::FromStr, sync::Arc},
 };
 
 #[test]
@@ -281,4 +281,64 @@ fn upgrading_with_calling_contract() {
             bytes.len() == Uint256::BYTE_LEN
                 && bytes.as_ref() == Uint128::new(123).into_next().to_borsh_vec().unwrap()
         });
+}
+
+/// When the chain reaches a scheduled upgrade height but the running binary's
+/// cargo version doesn't match the planned one, the app must:
+///   1. return `AppError::UpgradeIncorrectVersion` (existing behavior), and
+///   2. fire the shutdown trigger so the host binary can flush the indexer
+///      and telemetry before exiting, instead of panicking inside the ABCI
+///      layer.
+///
+/// This test exercises (2): we attach a `watch` channel, drive the chain
+/// through the halt block, and assert the trigger fired with the expected
+/// halt reason.
+#[test]
+fn upgrade_incorrect_version_fires_shutdown_trigger() {
+    let (mut suite, mut accounts) = TestBuilder::new()
+        .set_genesis_time(Timestamp::from_nanos(0))
+        .set_block_time(Duration::from_seconds(1))
+        .add_account("owner", Coins::new())
+        .set_owner("owner")
+        .build();
+
+    let (halt_tx, halt_rx) = tokio::sync::watch::channel::<Option<HaltReason>>(None);
+    suite.app.set_shutdown_trigger(Arc::new(halt_tx));
+
+    // -------------------------------- Block 1 --------------------------------
+    suite
+        .upgrade(
+            &mut accounts["owner"],
+            3,
+            "0.1.0",
+            None::<String>,
+            None::<String>,
+        )
+        .should_succeed();
+
+    // -------------------------------- Block 2 --------------------------------
+    // Upgrade height not yet reached: trigger must stay silent.
+    suite.make_empty_block();
+    assert!(
+        halt_rx.borrow().is_none(),
+        "shutdown trigger fired before upgrade height",
+    );
+
+    // -------------------------------- Block 3 --------------------------------
+    // Halt height reached with wrong cargo version: error returned AND
+    // trigger fires with the mismatched versions.
+    suite
+        .try_make_empty_block()
+        .should_fail_with_error(AppError::upgrade_incorrect_version(
+            "0.0.0".to_string(),
+            "0.1.0".to_string(),
+        ));
+
+    match halt_rx.borrow().clone() {
+        Some(HaltReason::UpgradeIncorrectVersion { current, expected }) => {
+            assert_eq!(current, "0.0.0");
+            assert_eq!(expected, "0.1.0");
+        },
+        other => panic!("expected UpgradeIncorrectVersion halt reason, got {other:?}"),
+    }
 }
