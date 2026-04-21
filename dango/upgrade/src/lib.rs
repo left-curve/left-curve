@@ -231,4 +231,87 @@ mod tests {
         assert_eq!(migrated.cumulative_global_active_referees, 0);
         assert_eq!(migrated.cumulative_daily_active_referees, 0);
     }
+
+    /// Multiple referrers are migrated independently — each gets their own
+    /// `cumulative_global_active_referees` count based on their own referees.
+    #[test]
+    fn referral_activated_referees_migration_multiple_referrers() {
+        let mut storage = MockStorage::new();
+
+        let referrer_a: UserIndex = 1;
+        let referrer_b: UserIndex = 5;
+        let referee_1: UserIndex = 2;
+        let referee_2: UserIndex = 3;
+        let referee_3: UserIndex = 6;
+
+        let day1 = Timestamp::from_seconds(86_400);
+
+        // Referrer A: referee_1 has traded, referee_2 has not.
+        dango_perps::state::REFERRER_TO_REFEREE_STATISTICS
+            .save(&mut storage, (referrer_a, referee_1), &perps::RefereeStats {
+                registered_at: day1,
+                volume: UsdValue::new_int(100),
+                commission_earned: UsdValue::new_int(1),
+                last_day_active: day1,
+            })
+            .unwrap();
+
+        dango_perps::state::REFERRER_TO_REFEREE_STATISTICS
+            .save(&mut storage, (referrer_a, referee_2), &perps::RefereeStats {
+                registered_at: day1,
+                ..Default::default()
+            })
+            .unwrap();
+
+        // Referrer B: referee_3 has traded.
+        dango_perps::state::REFERRER_TO_REFEREE_STATISTICS
+            .save(&mut storage, (referrer_b, referee_3), &perps::RefereeStats {
+                registered_at: day1,
+                volume: UsdValue::new_int(200),
+                commission_earned: UsdValue::new_int(2),
+                last_day_active: day1,
+            })
+            .unwrap();
+
+        // Legacy data for both referrers.
+        legacy::USER_REFERRAL_DATA
+            .save(&mut storage, (referrer_a, day1), &legacy::UserReferralData {
+                volume: UsdValue::ZERO,
+                commission_shared_by_referrer: UsdValue::ZERO,
+                referee_count: 2,
+                referees_volume: UsdValue::new_int(100),
+                commission_earned_from_referees: UsdValue::new_int(1),
+                cumulative_active_referees: 1,
+            })
+            .unwrap();
+
+        legacy::USER_REFERRAL_DATA
+            .save(&mut storage, (referrer_b, day1), &legacy::UserReferralData {
+                volume: UsdValue::ZERO,
+                commission_shared_by_referrer: UsdValue::ZERO,
+                referee_count: 1,
+                referees_volume: UsdValue::new_int(200),
+                commission_earned_from_referees: UsdValue::new_int(2),
+                cumulative_active_referees: 1,
+            })
+            .unwrap();
+
+        do_referral_activated_referees_upgrade(&mut storage).unwrap();
+
+        // Referrer A: 1 out of 2 referees traded.
+        let migrated_a = dango_perps::state::USER_REFERRAL_DATA
+            .load(&storage, (referrer_a, day1))
+            .unwrap();
+        assert_eq!(migrated_a.cumulative_global_active_referees, 1);
+        assert_eq!(migrated_a.cumulative_daily_active_referees, 1);
+        assert_eq!(migrated_a.referee_count, 2);
+
+        // Referrer B: 1 out of 1 referees traded.
+        let migrated_b = dango_perps::state::USER_REFERRAL_DATA
+            .load(&storage, (referrer_b, day1))
+            .unwrap();
+        assert_eq!(migrated_b.cumulative_global_active_referees, 1);
+        assert_eq!(migrated_b.cumulative_daily_active_referees, 1);
+        assert_eq!(migrated_b.referee_count, 1);
+    }
 }
