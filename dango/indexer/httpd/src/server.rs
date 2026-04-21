@@ -4,10 +4,11 @@ use {
     actix_files::Files,
     actix_web::{
         App, HttpResponse, HttpServer, http,
-        middleware::{Compress, Logger},
+        middleware::Compress,
         web::{self, ServiceConfig},
     },
     grug_httpd::{
+        access_logger,
         middlewares::shutdown::ShutdownMiddleware,
         routes::{graphql::graphql_route, index::index},
     },
@@ -76,6 +77,13 @@ where
             .app_data(web::Data::new(
                 dango_httpd_context.indexer_httpd_context.base.clone(),
             ))
+            .app_data(web::Data::new(
+                dango_httpd_context
+                    .indexer_httpd_context
+                    .base
+                    .graphql_rate_limiter
+                    .clone(),
+            ))
             .app_data(web::Data::new(graphql_schema.clone()));
     })
 }
@@ -132,7 +140,7 @@ pub async fn run_server(
         let app = App::new()
             .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
             .wrap(Sentry::new())
-            .wrap(Logger::default())
+            .wrap(access_logger())
             .wrap(Compress::default())
             .wrap(cors);
 

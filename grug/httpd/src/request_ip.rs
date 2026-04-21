@@ -1,10 +1,17 @@
 use {
-    actix_web::{HttpRequest, http::header::HeaderMap},
+    actix_web::{
+        HttpRequest,
+        dev::{ConnectionInfo, ServiceRequest},
+        http::header::HeaderMap,
+        middleware::Logger,
+    },
     async_graphql::SimpleObject,
     grug_types::HttpRequestDetails,
     serde::Serialize,
     std::net::{IpAddr, SocketAddr},
 };
+
+const ACCESS_LOG_FORMAT: &str = r#"%{remote_ip}xi "%r" %s %b "%{Referer}i" "%{User-Agent}i" %T"#;
 
 #[derive(Clone, Debug, Serialize, SimpleObject)]
 #[serde(rename_all = "camelCase")]
@@ -20,39 +27,61 @@ pub struct RequesterIp {
 
 impl RequesterIp {
     pub(crate) fn from_request(req: &HttpRequest) -> Self {
-        let x_forwarded_for = header_value(req.headers(), "x-forwarded-for").map(ToOwned::to_owned);
-        let forwarded = header_value(req.headers(), "forwarded").map(ToOwned::to_owned);
-        let cf_connecting_ip =
-            header_value(req.headers(), "cf-connecting-ip").map(ToOwned::to_owned);
-        let true_client_ip = header_value(req.headers(), "true-client-ip").map(ToOwned::to_owned);
-        let x_real_ip = header_value(req.headers(), "x-real-ip").map(ToOwned::to_owned);
-        #[cfg(feature = "tracing")]
-        let cf_ray = header_value(req.headers(), "cf-ray").map(ToOwned::to_owned);
+        let connection_info = req.connection_info();
 
-        let real_ip = req
-            .connection_info()
+        Self::from_parts(
+            req.headers(),
+            &connection_info,
+            req.method().as_str(),
+            req.path(),
+        )
+    }
+
+    fn from_service_request(req: &ServiceRequest) -> Self {
+        let connection_info = req.connection_info();
+
+        Self::from_parts(
+            req.headers(),
+            &connection_info,
+            req.method().as_str(),
+            req.path(),
+        )
+    }
+
+    fn from_parts(
+        headers: &HeaderMap,
+        connection_info: &ConnectionInfo,
+        _method: &str,
+        _path: &str,
+    ) -> Self {
+        let x_forwarded_for = header_value(headers, "x-forwarded-for").map(ToOwned::to_owned);
+        let forwarded = header_value(headers, "forwarded").map(ToOwned::to_owned);
+        let cf_connecting_ip = header_value(headers, "cf-connecting-ip").map(ToOwned::to_owned);
+        let true_client_ip = header_value(headers, "true-client-ip").map(ToOwned::to_owned);
+        let x_real_ip = header_value(headers, "x-real-ip").map(ToOwned::to_owned);
+        #[cfg(feature = "tracing")]
+        let cf_ray = header_value(headers, "cf-ray").map(ToOwned::to_owned);
+
+        let real_ip = connection_info
             .realip_remote_addr()
             .and_then(parse_ip_candidate);
-        let peer_ip = req
-            .connection_info()
-            .peer_addr()
-            .and_then(parse_ip_candidate);
+        let peer_ip = connection_info.peer_addr().and_then(parse_ip_candidate);
 
         let remote_ip = if real_ip.as_ref().is_some_and(|ip| !is_proxy_hop_ip(ip)) {
             real_ip
         } else {
-            original_client_ip_from_headers(req.headers())
+            original_client_ip_from_headers(headers)
                 .or(real_ip)
                 .or_else(|| peer_ip.clone())
         };
 
         #[cfg(feature = "tracing")]
         tracing::info!(
-            method = %req.method(),
-            path = %req.path(),
+            method = %_method,
+            path = %_path,
             remote_ip = remote_ip.as_deref().unwrap_or("unknown"),
             peer_ip = peer_ip.as_deref().unwrap_or("unknown"),
-            real_ip = req.connection_info().realip_remote_addr().unwrap_or("unknown"),
+            real_ip = connection_info.realip_remote_addr().unwrap_or("unknown"),
             x_forwarded_for = x_forwarded_for.as_deref().unwrap_or("-"),
             forwarded = forwarded.as_deref().unwrap_or("-"),
             cf_connecting_ip = cf_connecting_ip.as_deref().unwrap_or("-"),
@@ -76,6 +105,16 @@ impl RequesterIp {
     pub(crate) fn into_http_request_details(self) -> HttpRequestDetails {
         HttpRequestDetails::new(self.remote_ip, self.peer_ip)
     }
+}
+
+pub fn access_logger() -> Logger {
+    Logger::new(ACCESS_LOG_FORMAT).custom_request_replace("remote_ip", access_log_remote_ip)
+}
+
+fn access_log_remote_ip(req: &ServiceRequest) -> String {
+    RequesterIp::from_service_request(req)
+        .remote_ip
+        .unwrap_or_else(|| "-".to_string())
 }
 
 fn original_client_ip_from_headers(headers: &HeaderMap) -> Option<String> {
@@ -242,6 +281,17 @@ mod tests {
 
         assert_eq!(requester_ip.remote_ip, Some("198.51.100.10".to_string()));
         assert_eq!(requester_ip.peer_ip, Some("172.22.0.2".to_string()));
+    }
+
+    #[test]
+    fn access_log_remote_ip_uses_resolved_requester_ip() {
+        let req = TestRequest::default()
+            .insert_header(("x-forwarded-for", "172.23.0.2"))
+            .insert_header(("cf-connecting-ip", "203.0.113.9"))
+            .peer_addr("172.22.0.2:1234".parse().unwrap())
+            .to_srv_request();
+
+        assert_eq!(access_log_remote_ip(&req), "203.0.113.9");
     }
 
     #[test]

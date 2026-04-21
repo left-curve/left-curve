@@ -1,10 +1,13 @@
 use {
     super::error::Error,
-    crate::{context::Context, middlewares::shutdown::ShutdownMiddleware, routes},
+    crate::{
+        context::Context, middlewares::shutdown::ShutdownMiddleware, request_ip::access_logger,
+        routes,
+    },
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
-        middleware::{Compress, Logger},
+        middleware::Compress,
         web::{self, ServiceConfig},
     },
     grug_types::HttpdConfig,
@@ -65,7 +68,7 @@ where
         let app = App::new()
             .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
             .wrap(Sentry::new())
-            .wrap(Logger::default())
+            .wrap(access_logger())
             .wrap(Compress::default())
             .wrap(cors);
 
@@ -118,7 +121,7 @@ where
         App::new()
             .wrap(metrics.clone())
             .wrap(Sentry::new())
-            .wrap(Logger::default())
+            .wrap(access_logger())
             .wrap(Compress::default())
             .route(
                 "/health",
@@ -169,6 +172,7 @@ where
             >())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))
+            .app_data(web::Data::new(app_ctx.graphql_rate_limiter.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));
     })
 }

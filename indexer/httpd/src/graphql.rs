@@ -2,6 +2,8 @@
 use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
 #[cfg(feature = "tracing")]
 use async_graphql::extensions as AsyncGraphqlExtensions;
+#[cfg(feature = "tracing")]
+use grug_httpd::graphql::extensions::RequestLoggingExtension;
 use {
     crate::context::Context,
     async_graphql::{Schema, dataloader::DataLoader},
@@ -88,6 +90,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     #[cfg(feature = "tracing")]
     {
         schema_builder = schema_builder
+            .extension(RequestLoggingExtension)
             .extension(AsyncGraphqlExtensions::Tracing)
             .extension(AsyncGraphqlExtensions::Logger);
     }

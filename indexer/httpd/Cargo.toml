@@ -20,7 +20,12 @@ metrics = [
   "dep:metrics-exporter-prometheus",
   "grug-httpd/metrics",
 ]
-tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
+tracing = [
+  "dep:tracing",
+  "grug-app/tracing",
+  "grug-httpd/tracing",
+  "indexer-sql/tracing",
+]
 
 [dependencies]
 actix                       = { workspace = true }
