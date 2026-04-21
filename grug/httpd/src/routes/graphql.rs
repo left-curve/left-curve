@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use crate::metrics::GaugeGuard;
 use {
     crate::{request_ip::RequesterIp, subscription_limiter::SubscriptionLimiter},
     actix_web::{HttpRequest, HttpResponse, Resource, web},
@@ -57,6 +59,12 @@ where
 
     let mut data = Data::default();
     data.insert(global_limiter.new_connection());
+    #[cfg(feature = "metrics")]
+    data.insert(GaugeGuard::new(
+        "graphql.websocket.connections.active",
+        "graphql",
+        "websocket",
+    ));
     subscription = subscription.with_data(data);
 
     subscription.start(&req, payload)
