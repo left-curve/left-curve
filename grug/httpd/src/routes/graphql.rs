@@ -1,7 +1,7 @@
 use {
-    crate::request_ip::RequesterIp,
+    crate::{request_ip::RequesterIp, subscription_limiter::SubscriptionLimiter},
     actix_web::{HttpRequest, HttpResponse, Resource, web},
-    async_graphql::Schema,
+    async_graphql::{Data, Schema},
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
     std::time::Duration,
 };
@@ -45,13 +45,19 @@ pub async fn graphql_ws<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
     req: HttpRequest,
     payload: web::Payload,
+    global_limiter: web::Data<SubscriptionLimiter>,
 ) -> actix_web::Result<HttpResponse>
 where
     Q: async_graphql::ObjectType + 'static,
     M: async_graphql::ObjectType + 'static,
     S: async_graphql::SubscriptionType + 'static,
 {
-    GraphQLSubscription::new(Schema::clone(&*schema))
-        .keepalive_timeout(Duration::from_secs(30))
-        .start(&req, payload)
+    let mut subscription = GraphQLSubscription::new(Schema::clone(&*schema))
+        .keepalive_timeout(Duration::from_secs(30));
+
+    let mut data = Data::default();
+    data.insert(global_limiter.new_connection());
+    subscription = subscription.with_data(data);
+
+    subscription.start(&req, payload)
 }
