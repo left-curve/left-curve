@@ -1,5 +1,6 @@
 use {
-    dango_testing::{Factory, Preset, TestAccount, TestOption, setup_test_naive},
+    crate::{default_pair_param, default_param},
+    dango_testing::{Factory, Preset, TestAccount, TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::{self, RegisterUserData},
@@ -1323,6 +1324,191 @@ fn active_referral() {
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_active_referees, 3);
+}
+
+/// With a negative maker fee (rebate), the maker's referrer must NOT be
+/// debited, and the taker's referrer must earn commission computed from
+/// the **net** vault fee — not from the taker's gross fee (which would
+/// overpay commissions beyond what the protocol actually collected).
+#[test]
+fn negative_maker_fee_does_not_debit_referrers() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Configure negative maker fee. taker = 3 bps, maker = -1 bps, protocol = 20%.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: perps::Param {
+                    taker_fee_rates: perps::RateSchedule {
+                        base: Dimensionless::new_raw(300),
+                        ..Default::default()
+                    },
+                    maker_fee_rates: perps::RateSchedule {
+                        base: Dimensionless::new_raw(-100),
+                        ..Default::default()
+                    },
+                    protocol_fee_rate: Dimensionless::new_percent(20),
+                    referrer_commission_rates: perps::RateSchedule {
+                        base: Dimensionless::new_percent(10),
+                        ..Default::default()
+                    },
+                    referral_active: true,
+                    ..default_param()
+                },
+                pair_params: grug::btree_map! {
+                    pair.clone() => default_pair_param(),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Deposit for users 1-4.
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000);
+
+    // user1 is the taker's referrer; user2 is the maker's referrer. Both
+    // become referrers by setting a 20% fee share ratio.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user2,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+
+    // Wire the referral relationships:
+    //   user4 (taker) ← user1 (referrer)
+    //   user3 (maker) ← user2 (referrer)
+    for (sender, referrer, referee) in [(4u32, 1u32, 4u32), (3, 2, 3)] {
+        let signer: &mut dyn Signer = match sender {
+            3 => &mut accounts.user3,
+            4 => &mut accounts.user4,
+            _ => unreachable!(),
+        };
+        suite
+            .execute(
+                signer,
+                contracts.perps,
+                &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral { referrer, referee }),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Snapshot margins for all four users before the rebate trade.
+    let user_addrs = [
+        accounts.user1.address(),
+        accounts.user2.address(),
+        accounts.user3.address(),
+        accounts.user4.address(),
+    ];
+    let margin_before: Vec<UsdValue> = user_addrs
+        .iter()
+        .map(|addr| {
+            suite
+                .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+                    user: *addr,
+                })
+                .should_succeed()
+                .map(|s: perps::UserState| s.margin)
+                .unwrap_or(UsdValue::ZERO)
+        })
+        .collect();
+
+    // user3 places a post-only ask (1 ETH @ $2,000); user4 markets into it.
+    //   Notional       = $2,000
+    //   Taker fee      = 3 bps * $2,000    = $0.60
+    //   Maker fee      = -1 bps * $2,000   = -$0.20 (rebate)
+    //   Net fee        = $0.40
+    //   Protocol fee   = $0.40 * 20%       = $0.08
+    //   Vault fee      = $0.40 * 80%       = $0.32
+    //   Total positive = $0.60 (only taker contributes weight)
+    //   Taker referrer (10%): $0.32 * 10% * 80% = $0.0256
+    //   Maker referrer     : 0 (weight(maker) = max(-0.20, 0) = 0)
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user3,
+        UsdPrice::new_int(2_000),
+        1,
+    );
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user4, 1);
+
+    // Snapshot margins after.
+    let margin_after: Vec<UsdValue> = user_addrs
+        .iter()
+        .map(|addr| {
+            suite
+                .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+                    user: *addr,
+                })
+                .should_succeed()
+                .map(|s: perps::UserState| s.margin)
+                .unwrap_or(UsdValue::ZERO)
+        })
+        .collect();
+
+    // Maker's referrer (user2) must NOT be debited — this is the core fix.
+    // Under the old per-user algorithm a negative maker vault_fee would
+    // multiply through the commission math and *remove* margin here.
+    assert_eq!(
+        margin_after[1], margin_before[1],
+        "maker's referrer must not be debited for a maker rebate"
+    );
+
+    // Taker's referrer (user1) earned commission from the *net* vault fee,
+    // not from the taker's gross fee. With vault_fee = $0.32 and a 10%
+    // commission rate shared 80/20 with the referee, user1 gets $0.0256.
+    let trade_value = UsdValue::new_int(2_000);
+    let expected_vault_fee = trade_value
+        .checked_mul(Dimensionless::new_raw(300))
+        .unwrap()
+        .checked_sub(
+            trade_value
+                .checked_mul(Dimensionless::new_raw(100))
+                .unwrap(),
+        )
+        .unwrap()
+        .checked_mul(Dimensionless::new_percent(80))
+        .unwrap();
+    let expected_user1_gain = expected_vault_fee
+        .checked_mul(Dimensionless::new_percent(10))
+        .unwrap()
+        .checked_mul(Dimensionless::new_percent(80))
+        .unwrap();
+    assert_eq!(
+        margin_after[0].checked_sub(margin_before[0]).unwrap(),
+        expected_user1_gain,
+        "taker's referrer earns proportional commission on the net vault fee"
+    );
+
+    // Maker's own margin — user3 is the rebating maker, so they gained
+    // the rebate ($0.20). They are also a referee of user2, so they
+    // received a 20% share of user2's zero commission = $0 extra.
+    let rebate = trade_value
+        .checked_mul(Dimensionless::new_raw(100))
+        .unwrap();
+    assert_eq!(
+        margin_after[2].checked_sub(margin_before[2]).unwrap(),
+        rebate,
+        "rebating maker's margin increases by the full rebate and nothing more"
+    );
 }
 
 // ---------------------------------------------------------------------------

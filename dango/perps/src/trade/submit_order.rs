@@ -517,13 +517,13 @@ pub(crate) fn compute_submit_order_outcome(
     // ---------------------- Step 7. Match against book -----------------------
 
     let MatchOrderOutcome {
+        state: updated_state,
         pair_state: updated_pair_state,
         taker_state: updated_taker_state,
-        mut maker_states,
+        maker_states,
         unfilled,
-        pnls,
-        fees,
         volumes,
+        fee_breakdowns,
         order_mutations,
         index_updates,
         next_order_id: updated_next_order_id,
@@ -534,6 +534,7 @@ pub(crate) fn compute_submit_order_outcome(
         contract,
         current_time,
         param,
+        &state,
         pair_id,
         &pair_state,
         &taker_state,
@@ -560,6 +561,7 @@ pub(crate) fn compute_submit_order_outcome(
         events,
     )?;
 
+    state = updated_state;
     pair_state = updated_pair_state;
     taker_state = updated_taker_state;
     next_order_id = updated_next_order_id;
@@ -645,24 +647,9 @@ pub(crate) fn compute_submit_order_outcome(
         emit_child_order_events(events, pair_id, taker, &tp, &sl, position.size)?;
     }
 
-    // Ensure the vault's UserState is in maker_states for fee settlement.
-    maker_states.entry(contract).or_insert_with(|| {
-        USER_STATES
-            .may_load(storage, contract)
-            .unwrap()
-            .unwrap_or_default()
-    });
-
-    let fee_breakdowns = settle_pnls(
-        contract,
-        param,
-        &mut state,
-        taker,
-        &mut taker_state,
-        &mut maker_states,
-        pnls,
-        fees,
-    )?;
+    // `match_order` has already settled fees and PnLs per-fill and
+    // accumulated `fee_breakdowns`; all that's left is to hand them back
+    // to the caller for `apply_fee_commissions`.
 
     Ok(SubmitOrderOutcome {
         state,
@@ -680,19 +667,22 @@ pub(crate) fn compute_submit_order_outcome(
 }
 
 /// Owned outcome of a `match_order` call. Carries post-match copies of
-/// `pair_state`, `taker_state`, and `maker_states`, plus the per-fill
-/// accumulators (`pnls`, `fees`, `volumes`) that the caller feeds into
-/// `settle_pnls` / `apply_fee_commissions` or merges into its own running
-/// totals (`execute_close_schedule`).
+/// `state`, `pair_state`, `taker_state`, and `maker_states`, plus the
+/// per-user accumulators (`volumes`, `fee_breakdowns`) that the caller
+/// feeds into `apply_fee_commissions` / `flush_volumes` or merges into
+/// its own running totals (`execute_close_schedule`).
+///
+/// PnL and fee settlement happens per-fill *inside* `match_order` via
+/// `settle_pnls`, so they do not appear as accumulators here.
 #[derive(Debug)]
 pub struct MatchOrderOutcome {
+    pub state: State,
     pub pair_state: PairState,
     pub taker_state: UserState,
     pub maker_states: BTreeMap<Addr, UserState>,
     pub unfilled: Quantity,
-    pub pnls: BTreeMap<Addr, UsdValue>,
-    pub fees: BTreeMap<Addr, UsdValue>,
     pub volumes: BTreeMap<Addr, UsdValue>,
+    pub fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
     pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
     pub index_updates: Vec<PositionIndexUpdate>,
     pub next_order_id: OrderId,
@@ -718,6 +708,7 @@ pub fn match_order(
     contract: Addr,
     current_time: Timestamp,
     param: &Param,
+    state: &State,
     pair_id: &PairId,
     pair_state: &PairState,
     taker_state: &UserState,
@@ -737,13 +728,28 @@ pub fn match_order(
 ) -> anyhow::Result<MatchOrderOutcome> {
     // Clone at entry and mutate locals freely. `events` is the one
     // deliberate `&mut` on caller state per the purity rule exception.
+    let mut state = state.clone();
     let mut pair_state = pair_state.clone();
     let mut taker_state = taker_state.clone();
     let mut maker_states = maker_states.clone();
 
-    let mut pnls = BTreeMap::new();
-    let mut fees = BTreeMap::new();
-    let mut volumes = BTreeMap::new();
+    // Ensure the vault's UserState is in `maker_states` so the per-fill
+    // `settle_pnls` below can credit the vault its fee cut when the maker
+    // is not the vault. Skip this when the **taker** is the vault — in
+    // that case `taker_state` IS the vault's state, and duplicating it
+    // into `maker_states` would (a) violate the "taker ∉ maker_states"
+    // invariant and (b) silently shadow the taker's updates.
+    if taker != contract {
+        maker_states.entry(contract).or_insert_with(|| {
+            USER_STATES
+                .may_load(storage, contract)
+                .unwrap()
+                .unwrap_or_default()
+        });
+    }
+
+    let mut volumes: BTreeMap<Addr, UsdValue> = BTreeMap::new();
+    let mut fee_breakdowns: BTreeMap<Addr, FeeBreakdown> = BTreeMap::new();
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
 
@@ -864,11 +870,11 @@ pub fn match_order(
         let fill_id = next_fill_id;
         next_fill_id = next_fill_id.checked_add(FillId::ONE)?;
 
-        // ------------------------ Settle taker's PnL -------------------------
+        // ------------------------ Settle taker side -------------------------
 
         let old_taker_pos = taker_state.positions.get(pair_id).cloned();
 
-        settle_fill(
+        let taker_settlement = settle_fill(
             contract,
             pair_id,
             &mut pair_state,
@@ -877,9 +883,6 @@ pub fn match_order(
             taker_fill_size,
             resting_price,
             taker_fee_rate,
-            &mut pnls,
-            &mut fees,
-            &mut volumes,
             Some((
                 events,
                 taker_order_id,
@@ -888,6 +891,11 @@ pub fn match_order(
                 false,
             )),
         )?;
+
+        volumes
+            .entry(taker)
+            .or_default()
+            .checked_add_assign(taker_settlement.volume)?;
 
         if let Some(diff) = compute_position_diff(
             pair_id,
@@ -898,18 +906,7 @@ pub fn match_order(
             index_updates.push(diff);
         }
 
-        // ------------------------ Settle maker's PnL -------------------------
-
-        // Find the maker's user state.
-        let maker_state = match maker_states.entry(maker_order.user) {
-            Entry::Vacant(e) => {
-                let maybe_maker_state = USER_STATES.may_load(storage, maker_order.user)?;
-                e.insert(maybe_maker_state.unwrap_or_default())
-            },
-            Entry::Occupied(e) => e.into_mut(),
-        };
-
-        let old_maker_pos = maker_state.positions.get(pair_id).cloned();
+        // ------------------------ Settle maker side -------------------------
 
         // Determine the maker's fee rate.
         // - If the caller forces a rate (e.g. zero during liquidation), use it
@@ -930,18 +927,28 @@ pub fn match_order(
             param.maker_fee_rates.resolve(maker_volume)
         };
 
-        settle_fill(
+        // Take the maker's user state out of the map so the later
+        // `settle_pnls` call can borrow the vault's state from the map
+        // disjointly. We reinsert it at the end of the loop iteration.
+        let maker_user = maker_order.user;
+        let mut maker_state = match maker_states.remove(&maker_user) {
+            Some(s) => s,
+            None => USER_STATES
+                .may_load(storage, maker_user)?
+                .unwrap_or_default(),
+        };
+
+        let old_maker_pos = maker_state.positions.get(pair_id).cloned();
+
+        let maker_settlement = settle_fill(
             contract,
             pair_id,
             &mut pair_state,
-            maker_state,
-            maker_order.user,
+            &mut maker_state,
+            maker_user,
             maker_fill_size,
             resting_price,
             maker_fee_rate,
-            &mut pnls,
-            &mut fees,
-            &mut volumes,
             Some((
                 events,
                 maker_order_id,
@@ -951,13 +958,57 @@ pub fn match_order(
             )),
         )?;
 
+        volumes
+            .entry(maker_user)
+            .or_default()
+            .checked_add_assign(maker_settlement.volume)?;
+
         if let Some(diff) = compute_position_diff(
             pair_id,
-            maker_order.user,
+            maker_user,
             old_maker_pos.as_ref(),
             maker_state.positions.get(pair_id),
         ) {
             index_updates.push(diff);
+        }
+
+        // ----------------- Per-fill net-fee settlement ------------------
+
+        let fill_breakdowns = {
+            // vault_state_opt carries the vault's state only when neither
+            // side of the fill is the vault itself. When the taker or
+            // maker IS the vault, that party's own state holds the vault's
+            // balance and settle_pnls routes the vault fee there.
+            let vault_state_opt = if taker != contract && maker_user != contract {
+                Some(
+                    maker_states
+                        .get_mut(&contract)
+                        .expect("vault inserted at match_order entry"),
+                )
+            } else {
+                None
+            };
+            settle_pnls(
+                contract,
+                param,
+                &mut state,
+                taker,
+                &mut taker_state,
+                taker_settlement.pnl,
+                taker_settlement.fee,
+                maker_user,
+                &mut maker_state,
+                maker_settlement.pnl,
+                maker_settlement.fee,
+                vault_state_opt,
+            )?
+        };
+
+        if let Some(bd) = fill_breakdowns.taker {
+            merge_fee_breakdown(&mut fee_breakdowns, taker, bd)?;
+        }
+        if let Some(bd) = fill_breakdowns.maker {
+            merge_fee_breakdown(&mut fee_breakdowns, maker_user, bd)?;
         }
 
         // ------------- Apply maker's child orders after fill -----------------
@@ -979,7 +1030,7 @@ pub fn match_order(
             emit_child_order_events(
                 events,
                 pair_id,
-                maker_order.user,
+                maker_user,
                 &maker_order.tp,
                 &maker_order.sl,
                 maker_pos.size,
@@ -1021,11 +1072,11 @@ pub fn match_order(
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
 
             // Vault order removal is internal churn — suppress the event.
-            if maker_order.user != contract {
+            if maker_user != contract {
                 events.push(OrderRemoved {
                     order_id: maker_order_id,
                     pair_id: pair_id.clone(),
-                    user: maker_order.user,
+                    user: maker_user,
                     reason: ReasonForOrderRemoval::Filled,
                     client_order_id: maker_order.client_order_id,
                 })?;
@@ -1048,17 +1099,21 @@ pub fn match_order(
             ));
         }
 
+        // Reinsert the maker's state now that we no longer need disjoint
+        // access to the vault state.
+        maker_states.insert(maker_user, maker_state);
+
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
     Ok(MatchOrderOutcome {
+        state,
         pair_state,
         taker_state,
         maker_states,
         unfilled: remaining_size,
-        pnls,
-        fees,
         volumes,
+        fee_breakdowns,
         order_mutations,
         index_updates,
         next_order_id,
@@ -1066,13 +1121,26 @@ pub fn match_order(
     })
 }
 
+/// Per-fill outcome returned by [`settle_fill`]. Callers typically feed
+/// `pnl` and `fee` directly into [`settle_pnls`], and accumulate `volume`
+/// across all of a taker order's fills for `apply_fee_commissions` and
+/// `flush_volumes`.
+#[derive(Debug, Clone, Copy)]
+pub struct FillSettlement {
+    pub pnl: UsdValue,
+    pub fee: UsdValue,
+    pub volume: UsdValue,
+}
+
 /// Mutates:
 ///
 /// - `pair_state.long_oi` / `pair_state.short_oi` — updated by `execute_fill`.
 /// - `user_state.positions` — opened / closed / flipped by `execute_fill`.
-/// - `pnls` — position PnL added for `user`.
-/// - `fees` — trading fee added for `user`.
 /// - `events` — `OrderFilled` event pushed (if `Some`).
+///
+/// Returns: per-fill `pnl`, `fee`, and `volume` for `user`. The caller
+/// applies them to margins (via `settle_pnls`) and to any running volume
+/// accumulator it maintains.
 pub fn settle_fill(
     contract: Addr,
     pair_id: &PairId,
@@ -1082,9 +1150,6 @@ pub fn settle_fill(
     fill_size: Quantity,
     fill_price: UsdPrice,
     fee_rate: Dimensionless,
-    pnls: &mut BTreeMap<Addr, UsdValue>,
-    fees: &mut BTreeMap<Addr, UsdValue>,
-    volumes: &mut BTreeMap<Addr, UsdValue>,
     events: Option<(
         &mut EventBuilder,
         OrderId,
@@ -1092,7 +1157,7 @@ pub fn settle_fill(
         FillId,
         bool,
     )>,
-) -> grug::StdResult<UsdValue> {
+) -> grug::StdResult<FillSettlement> {
     let (closing, opening) = {
         let current_pos = user_state
             .positions
@@ -1108,21 +1173,12 @@ pub fn settle_fill(
 
     // The vault is exempt from trading fees.
     let fee = if user != contract {
-        let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
-        fees.entry(user).or_default().checked_add_assign(fee)?;
-        fee
+        compute_trading_fee(fill_size, fill_price, fee_rate)?
     } else {
         UsdValue::ZERO
     };
 
     let volume = compute_notional(fill_size, fill_price)?;
-
-    pnls.entry(user).or_default().checked_add_assign(pnl)?;
-
-    volumes
-        .entry(user)
-        .or_default()
-        .checked_add_assign(volume)?;
 
     if let Some((events, order_id, client_order_id, fill_id, is_maker)) = events {
         events.push(OrderFilled {
@@ -1166,10 +1222,10 @@ pub fn settle_fill(
         .record(fee.to_f64().abs());
     }
 
-    Ok(pnl)
+    Ok(FillSettlement { pnl, fee, volume })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct FeeBreakdown {
     /// Portion of the fee routed to the protocol treasury.
     pub protocol_fee: UsdValue,
@@ -1178,103 +1234,164 @@ pub struct FeeBreakdown {
     pub vault_fee: UsdValue,
 }
 
-/// Settle PnLs and fees directly in USD on user margins.
+/// Per-fill settlement outcome: the protocol/vault split attributable to
+/// each party. Either side is `None` if that party owed no fee on this fill
+/// (e.g. the vault when it is the maker — vaults are fee-exempt).
 ///
-/// Two loops:
+/// Rebaters (negative fee) land as `Some(FeeBreakdown { ..ZERO })` so that
+/// `apply_fee_commissions` still runs their referral volume tracking; their
+/// proportional `vault_fee` is zero by construction.
+#[derive(Debug, Clone, Copy)]
+pub struct FillFeeBreakdowns {
+    pub taker: Option<FeeBreakdown>,
+    pub maker: Option<FeeBreakdown>,
+}
+
+/// Merge a single party's fee breakdown into a running per-user total.
+pub fn merge_fee_breakdown(
+    map: &mut BTreeMap<Addr, FeeBreakdown>,
+    addr: Addr,
+    bd: FeeBreakdown,
+) -> grug::StdResult<()> {
+    let entry = map.entry(addr).or_insert(FeeBreakdown {
+        protocol_fee: UsdValue::ZERO,
+        vault_fee: UsdValue::ZERO,
+    });
+    entry.protocol_fee.checked_add_assign(bd.protocol_fee)?;
+    entry.vault_fee.checked_add_assign(bd.vault_fee)?;
+    Ok(())
+}
+
+/// Settle one fill's PnLs and fees on the taker's and maker's margins.
 ///
-/// 1. **Fee loop** (first): non-vault fees increase the vault's margin (via its
-///    `UserState`) and are deducted from the user's margin. Vault fees are
-///    skipped (paying yourself is a no-op).
-/// 2. **PnL loop** (second): each user's (including the vault's) margin is
-///    adjusted by their PnL.
+/// A "fill" is a single trade between **one taker** and **one maker** at a
+/// single price. The function implements the net-fee distribution model:
 ///
-/// The taker is passed separately from `maker_states` because self-trade
-/// prevention guarantees the taker never appears as a maker.
+/// 1. `net_fee = taker_fee + maker_fee`. The constraint
+///    `taker_fee + maker_fee ≥ 0` (enforced at parameter / override set
+///    time) ensures the net is non-negative.
+/// 2. Treasury takes `net_fee × protocol_fee_rate`.
+/// 3. Vault receives the remainder `net_fee × (1 − protocol_fee_rate)`.
+/// 4. Each party's contribution to the referrer pool is weighted by
+///    `max(fee, 0)`, so a rebating party contributes zero weight (and
+///    therefore produces zero referrer commissions downstream).
+///
+/// When either the taker or the maker *is* the vault (`== contract`), the
+/// vault's fee cut is credited to that party's state and `vault_state`
+/// must be `None`. When neither party is the vault, `vault_state` must
+/// be `Some(&mut <vault's UserState>)`. Self-trade prevention
+/// guarantees taker and maker are never both the vault.
 ///
 /// Mutates:
 ///
-/// - `taker_state.margin` — adjusted by the taker's PnL and fees.
-/// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
-///   `UserState`).
-///
-/// Per-user fee breakdown after splitting between protocol treasury and vault.
-///
-/// Returns: per-user fee breakdown — the split between protocol treasury and
-/// vault for each fee-paying user.
+/// - `state.treasury` — credited with `protocol_fee`.
+/// - `taker_state.margin` — adjusted by `taker_pnl` and `−taker_fee`.
+///   When `taker == contract`, also credited with `vault_fee`.
+/// - `maker_state.margin` — adjusted by `maker_pnl` and `−maker_fee`.
+///   When `maker == contract`, also credited with `vault_fee`.
+/// - `vault_state.margin` (when `Some`) — credited with `vault_fee`.
 pub fn settle_pnls(
     contract: Addr,
     param: &Param,
     state: &mut State,
     taker: Addr,
     taker_state: &mut UserState,
-    maker_states: &mut BTreeMap<Addr, UserState>,
-    pnls: BTreeMap<Addr, UsdValue>,
-    fees: BTreeMap<Addr, UsdValue>,
-) -> anyhow::Result<BTreeMap<Addr, FeeBreakdown>> {
+    taker_pnl: UsdValue,
+    taker_fee: UsdValue,
+    maker: Addr,
+    maker_state: &mut UserState,
+    maker_pnl: UsdValue,
+    maker_fee: UsdValue,
+    vault_state: Option<&mut UserState>,
+) -> anyhow::Result<FillFeeBreakdowns> {
+    debug_assert!(taker != maker, "self-trade prevention violated");
     debug_assert!(
-        !maker_states.contains_key(&taker),
-        "taker must not be in maker_states — self-trade prevention violated"
+        (taker == contract || maker == contract) == vault_state.is_none(),
+        "vault_state must be None iff one of the parties is the vault"
+    );
+    debug_assert!(
+        taker != contract || taker_fee.is_zero(),
+        "vault as taker must be fee-exempt",
+    );
+    debug_assert!(
+        maker != contract || maker_fee.is_zero(),
+        "vault as maker must be fee-exempt",
     );
 
-    // ------------------------------ Settle fees ------------------------------
+    // Net fee and sum of positive contributions (rebaters contribute zero weight).
+    let net_fee = taker_fee.checked_add(maker_fee)?;
+    let taker_positive = if taker_fee.is_positive() {
+        taker_fee
+    } else {
+        UsdValue::ZERO
+    };
+    let maker_positive = if maker_fee.is_positive() {
+        maker_fee
+    } else {
+        UsdValue::ZERO
+    };
+    let total_positive = taker_positive.checked_add(maker_positive)?;
 
-    let mut fee_breakdowns = BTreeMap::new();
+    // Protocol and vault cuts on the net.
+    let protocol_fee = net_fee.checked_mul(param.protocol_fee_rate)?;
+    let vault_fee = net_fee.checked_sub(protocol_fee)?;
 
-    for (user, fee) in fees {
-        if fee.is_zero() || user == contract {
-            continue;
-        }
+    state.treasury.checked_add_assign(protocol_fee)?;
 
-        // Split the fee between the protocol treasury and the vault.
-        let protocol_fee = fee.checked_mul(param.protocol_fee_rate)?;
-        let vault_fee = fee.checked_sub(protocol_fee)?;
-
-        // Protocol treasury accumulates its share in global state.
-        state.treasury.checked_add_assign(protocol_fee)?;
-
-        // Vault receives its share.
-        maker_states
-            .get_mut(&contract)
-            .unwrap()
-            .margin
-            .checked_add_assign(vault_fee)?;
-
-        // Deduct fee from the paying user.
-        if user == taker {
-            taker_state.margin.checked_sub_assign(fee)?;
-        } else {
-            maker_states
-                .get_mut(&user)
-                .unwrap()
-                .margin
-                .checked_sub_assign(fee)?;
-        }
-
-        fee_breakdowns.insert(user, FeeBreakdown {
-            protocol_fee,
-            vault_fee,
-        });
+    // Fee-side margin adjustments. Vault is fee-exempt on its own fills.
+    if taker != contract && !taker_fee.is_zero() {
+        taker_state.margin.checked_sub_assign(taker_fee)?;
+    }
+    if maker != contract && !maker_fee.is_zero() {
+        maker_state.margin.checked_sub_assign(maker_fee)?;
     }
 
-    // ------------------------------ Settle PnLs ------------------------------
-
-    for (user, pnl) in pnls {
-        if pnl.is_zero() {
-            continue;
-        }
-
-        if user == taker {
-            taker_state.margin.checked_add_assign(pnl)?;
-        } else {
-            maker_states
-                .get_mut(&user)
-                .unwrap()
-                .margin
-                .checked_add_assign(pnl)?;
-        }
+    // Vault receives its cut. Route it to whichever state corresponds
+    // to the vault — the separately-passed `vault_state` when neither
+    // party is the vault, otherwise the party's own state.
+    match vault_state {
+        Some(vs) => vs.margin.checked_add_assign(vault_fee)?,
+        None if taker == contract => taker_state.margin.checked_add_assign(vault_fee)?,
+        None => maker_state.margin.checked_add_assign(vault_fee)?,
     }
 
-    Ok(fee_breakdowns)
+    // PnL adjustments.
+    if !taker_pnl.is_zero() {
+        taker_state.margin.checked_add_assign(taker_pnl)?;
+    }
+    if !maker_pnl.is_zero() {
+        maker_state.margin.checked_add_assign(maker_pnl)?;
+    }
+
+    // Per-party FeeBreakdown. Positive-fee parties split the pool by weight;
+    // rebaters get zeros (apply_fee_commissions still runs volume tracking).
+    let breakdown_for = |fee: UsdValue| -> anyhow::Result<FeeBreakdown> {
+        if fee.is_positive() && total_positive.is_positive() {
+            let weight = fee.checked_div(total_positive)?;
+            Ok(FeeBreakdown {
+                protocol_fee: protocol_fee.checked_mul(weight)?,
+                vault_fee: vault_fee.checked_mul(weight)?,
+            })
+        } else {
+            Ok(FeeBreakdown {
+                protocol_fee: UsdValue::ZERO,
+                vault_fee: UsdValue::ZERO,
+            })
+        }
+    };
+
+    Ok(FillFeeBreakdowns {
+        taker: if taker == contract || taker_fee.is_zero() {
+            None
+        } else {
+            Some(breakdown_for(taker_fee)?)
+        },
+        maker: if maker == contract || maker_fee.is_zero() {
+            None
+        } else {
+            Some(breakdown_for(maker_fee)?)
+        },
+    })
 }
 
 /// Validate and store a post-only limit order. Rejects if the limit price
@@ -3257,6 +3374,64 @@ mod tests {
 
     // =================== settle_pnls unit tests ==============================
 
+    /// Perform one synthetic fill via per-fill `settle_pnls`, routing the
+    /// vault's UserState from the caller's `maker_states` map. Returns the
+    /// per-party fee breakdowns for the fill.
+    fn settle_one_fill(
+        state: &mut State,
+        param: &Param,
+        taker: Addr,
+        taker_state: &mut UserState,
+        taker_pnl: UsdValue,
+        taker_fee: UsdValue,
+        maker: Addr,
+        maker_states: &mut BTreeMap<Addr, UserState>,
+        maker_pnl: UsdValue,
+        maker_fee: UsdValue,
+    ) -> anyhow::Result<FillFeeBreakdowns> {
+        // Temporarily pull the maker's state out so `vault_state` can be
+        // borrowed from the map disjointly. Reinsert afterwards.
+        let mut maker_state = maker_states.remove(&maker).unwrap_or_default();
+
+        let result = if maker == CONTRACT {
+            settle_pnls(
+                CONTRACT,
+                param,
+                state,
+                taker,
+                taker_state,
+                taker_pnl,
+                taker_fee,
+                maker,
+                &mut maker_state,
+                maker_pnl,
+                maker_fee,
+                None,
+            )
+        } else {
+            let vault_state = maker_states
+                .get_mut(&CONTRACT)
+                .expect("vault must be present in maker_states for a non-vault maker");
+            settle_pnls(
+                CONTRACT,
+                param,
+                state,
+                taker,
+                taker_state,
+                taker_pnl,
+                taker_fee,
+                maker,
+                &mut maker_state,
+                maker_pnl,
+                maker_fee,
+                Some(vault_state),
+            )
+        };
+
+        maker_states.insert(maker, maker_state);
+        result
+    }
+
     #[test]
     fn settle_pnls_mixed() {
         let taker = Addr::mock(1);
@@ -3266,24 +3441,37 @@ mod tests {
             (Addr::mock(2), UserState::default()),
             (Addr::mock(3), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(100)),
-            (Addr::mock(2), UsdValue::new_int(-200)),
-            (Addr::mock(3), UsdValue::ZERO),
-        ]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Fill 1: taker vs maker 2. Taker realises +$100 PnL, maker 2
+        // realises −$200 PnL on this fill.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::new_int(100),
+            UsdValue::ZERO,
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(-200),
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        // Fill 2: taker vs maker 3. No PnL, no fee — mirrors the old
+        // per-user `pnls` entry of ZERO for maker 3.
+        settle_one_fill(
+            &mut state,
+            &Param::default(),
+            taker,
+            &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            Addr::mock(3),
+            &mut maker_states,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3308,23 +3496,19 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(100)),
-            (Addr::mock(2), UsdValue::new_int(50)),
-        ]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::new_int(100),
+            UsdValue::ZERO,
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(50),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3343,23 +3527,19 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(-100)),
-            (Addr::mock(2), UsdValue::new_int(-200)),
-        ]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::new_int(-100),
+            UsdValue::ZERO,
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(-200),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3378,22 +3558,16 @@ mod tests {
             margin: UsdValue::new_int(500),
             ..Default::default()
         })]);
-
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // No fills — nothing to settle. Vault margin should be unchanged.
+        let _ = (
             &mut state,
-            taker,
             &mut taker_state,
             &mut maker_states,
-            pnls,
-            fees,
-        )
-        .unwrap();
+            taker,
+            Param::default(),
+        );
 
         assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(500));
     }
@@ -3406,23 +3580,21 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(50)),
-            (Addr::mock(2), UsdValue::new_int(100)),
-        ]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Single fill: taker pays $50, maker 2 pays $100. `protocol_fee_rate`
+        // defaults to 0, so the full $150 goes to the vault.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(50),
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::new_int(100),
         )
         .unwrap();
 
@@ -3444,21 +3616,20 @@ mod tests {
             margin: UsdValue::new_int(1_000),
             ..Default::default()
         })]);
-
-        // Vault profit of $500.
-        let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault is the maker on this fill and realises +$500 PnL.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(500),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3473,21 +3644,20 @@ mod tests {
             margin: UsdValue::new_int(100),
             ..Default::default()
         })]);
-
-        // Vault loss of $500.
-        let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(-500))]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault is the maker and realises −$500 PnL.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(-500),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3502,21 +3672,20 @@ mod tests {
             margin: UsdValue::new_int(-300),
             ..Default::default()
         })]);
-
-        // Vault profit of $500.
-        let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault maker with +$500 PnL on this fill.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(500),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3532,21 +3701,23 @@ mod tests {
             margin: UsdValue::new_int(1_000),
             ..Default::default()
         })]);
-
-        // Vault's own fees are a no-op (paying yourself).
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::from([(CONTRACT, UsdValue::new_int(100))]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault is the maker with no PnL and no fee — the upstream
+        // `settle_fill` invariant guarantees vault makers always supply
+        // `maker_fee = 0`, so `settle_pnls` has no fee to "skip" and the
+        // vault's margin stays put.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3562,19 +3733,21 @@ mod tests {
             ..Default::default()
         };
         let mut maker_states = BTreeMap::from([(CONTRACT, UserState::default())]);
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::from([(Addr::mock(1), UsdValue::new_int(100))]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &param,
+        // Taker pays $100, vault is the maker with no fee. Net = $100 →
+        // treasury 20% ($20), vault 80% ($80).
+        settle_one_fill(
             &mut state,
+            &param,
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(100),
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -3593,24 +3766,20 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::new();
-        // Taker pays +$50 fee, maker receives -$10 fee (rebate).
-        let fees = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(50)),
-            (Addr::mock(2), UsdValue::new_int(-10)),
-        ]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(), // protocol_fee_rate = 0
+        // Taker pays +$50 fee, maker receives -$10 fee (rebate).
+        settle_one_fill(
             &mut state,
+            &Param::default(), // protocol_fee_rate = 0
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(50),
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::new_int(-10),
         )
         .unwrap();
 
@@ -3639,24 +3808,20 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::new();
-        // Taker fee = +$30, maker fee = -$10 (rebate).
-        let fees = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(30)),
-            (Addr::mock(2), UsdValue::new_int(-10)),
-        ]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &param,
+        // Taker fee = +$30, maker fee = -$10 (rebate). Net = $20.
+        settle_one_fill(
             &mut state,
+            &param,
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(30),
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::new_int(-10),
         )
         .unwrap();
 
