@@ -109,8 +109,7 @@ export const BoxCard: React.FC<BoxCardProps> = ({
             alt={`${label} chest`}
             className={twMerge(
               "w-full h-full object-contain select-none drag-none absolute inset-0 -top-4 lg:-top-6",
-              imageShadow,
-              isUserLocked && "opacity-50",
+              isLocked ? "opacity-50" : imageShadow,
             )}
           />
         </div>

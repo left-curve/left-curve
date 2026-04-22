@@ -165,7 +165,7 @@ const LeaderboardSection: React.FC = () => (
     <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
       <PointsHeader />
     </div>
-    <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
+    <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
       <LeaderboardTable />
     </div>
   </div>
