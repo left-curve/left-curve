@@ -1,11 +1,11 @@
 use {
     dango_types::{
-        Quantity, UsdPrice, UsdValue,
+        Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
-            CommissionRate, ConditionalOrderId, FeeShareRatio, LimitOrder, OrderId, PairId,
-            PairParam, PairState, Param, Referee, RefereeStats, Referrer, State, TriggerDirection,
-            UserReferralData, UserState,
+            ClientOrderId, CommissionRate, ConditionalOrderId, FeeShareRatio, FillId, LimitOrder,
+            OrderId, PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
+            TriggerDirection, UserReferralData, UserState,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -15,6 +15,8 @@ use {
 // --------------------------------- constants ---------------------------------
 
 pub const NEXT_ORDER_ID: Item<OrderId> = Item::new("next_order_id");
+
+pub const NEXT_FILL_ID: Item<FillId> = Item::new("next_fill_id");
 
 pub const LAST_VAULT_ORDERS_UPDATE: Item<u64> = Item::new("last_vault_orders_update");
 
@@ -44,12 +46,16 @@ pub const LONGS: Set<(PairId, UsdPrice, Addr)> = Set::new("long");
 pub const SHORTS: Set<(PairId, UsdPrice, Addr)> = Set::new("short");
 
 /// Buy orders.
-pub const BIDS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
-    IndexedMap::new("bid", OrderIndexes::new("bid", "bid__id", "bid__user"));
+pub const BIDS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> = IndexedMap::new(
+    "bid",
+    OrderIndexes::new("bid", "bid__id", "bid__user", "bid__cid"),
+);
 
 /// Sell orders.
-pub const ASKS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> =
-    IndexedMap::new("ask", OrderIndexes::new("ask", "ask__id", "ask__user"));
+pub const ASKS: IndexedMap<OrderKey, LimitOrder, OrderIndexes> = IndexedMap::new(
+    "ask",
+    OrderIndexes::new("ask", "ask__id", "ask__user", "ask__cid"),
+);
 
 /// Liquidity depths of the order book.
 pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
@@ -57,6 +63,9 @@ pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 /// Cumulative trading volume per user, bucketed by day.
 /// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
 pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
+
+/// Address --> (maker_fee_rate, taker_fee_rate)
+pub const FEE_RATE_OVERRIDES: Map<Addr, (Dimensionless, Dimensionless)> = Map::new("fr_override");
 
 // --------------------------------- referral ----------------------------------
 
@@ -97,6 +106,12 @@ pub type OrderKey = (PairId, UsdPrice, OrderId);
 pub struct OrderIndexes<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
     pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
+    /// Lets a trader cancel an order in the same block it was submitted, by
+    /// the caller-assigned `client_order_id`. The index function returns at
+    /// most one key — empty `Vec` for orders submitted without a
+    /// `client_order_id`. Uniqueness is per-sender, enforced by
+    /// `UniqueIndex` (returns `StdError::duplicate_data` on collision).
+    pub client_order_id: UniqueIndex<'a, OrderKey, (Addr, ClientOrderId), LimitOrder>,
 }
 
 impl OrderIndexes<'static> {
@@ -104,6 +119,7 @@ impl OrderIndexes<'static> {
         pk_namespace: &'static str,
         order_id_namespace: &'static str,
         user_namespace: &'static str,
+        client_order_id_namespace: &'static str,
     ) -> Self {
         OrderIndexes {
             order_id: UniqueIndex::new(
@@ -112,6 +128,14 @@ impl OrderIndexes<'static> {
                 order_id_namespace,
             ),
             user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
+            client_order_id: UniqueIndex::new2(
+                |_, order| match order.client_order_id {
+                    Some(cid) => vec![(order.user, cid)],
+                    None => Vec::new(),
+                },
+                pk_namespace,
+                client_order_id_namespace,
+            ),
         }
     }
 }

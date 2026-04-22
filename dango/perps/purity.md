@@ -8,6 +8,39 @@ ancestor's locally-owned buffers MAY keep `&mut` parameters.
 `EventBuilder` is the one deliberate exception — it stays `&mut`
 everywhere.
 
+## Three function classes
+
+Trader-facing handlers in `dango-perps` are structured in three layers.
+Each layer has a fixed signature contract and a fixed role:
+
+| outer                                 | intermediate                           | inner                                     |
+| ------------------------------------- | -------------------------------------- | ----------------------------------------- |
+| `submit_order`                        | `_submit_order`                        | `compute_submit_order_outcome`            |
+| `cancel_one_order`                    | `_cancel_one_order`                    | `compute_cancel_one_order_outcome` (leaf) |
+| `cancel_one_order_by_client_order_id` | `_cancel_one_order_by_client_order_id` | `compute_cancel_one_order_outcome` (leaf) |
+| `cancel_all_orders`                   | `_cancel_all_orders`                   | `compute_cancel_all_orders_outcome`       |
+
+- **outer**: takes `MutableCtx`, returns `Response`. Directly called by
+  the contract's `execute` entry point. Does nothing except create an
+  `EventBuilder`, call the intermediate, and wrap the accumulated events
+  in a `Response`.
+
+- **intermediate** (`_`-prefixed): takes individual components of
+  `MutableCtx` (`&mut dyn Storage`, `QuerierWrapper`, `Timestamp`,
+  sender/contract `Addr`s, …) plus `&mut EventBuilder`. Returns
+  `Result<()>`; side effects are written to the passed-in `storage` and
+  `events`. The caller assembles the `Response`. Called by other outer
+  or intermediate functions — in particular, `batch_update_orders`'s
+  outer calls several intermediates in a loop, and the grug `Buffer`
+  provides atomic rollback if any one returns `Err`.
+
+- **inner**: pure logic. Takes caller-persistable state by shared
+  reference (`&State`, `&PairState`, `&UserState`), never mutates the
+  caller's inputs, and returns owned updated copies in a dedicated
+  `*Outcome` struct. The intermediate then applies the outcome to
+  storage. The rest of this document details the invariants that make
+  this pattern safe.
+
 ## The rule, in detail
 
 > **Public-within-module functions that take caller-persistable state
@@ -42,13 +75,14 @@ fields each. The clone cost at function entry is negligible.
 
 ### Pure set (must be `&`-only for caller state)
 
-| File                                    | Function                                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------- |
-| `src/trade/submit_order.rs`             | `_submit_order`, `match_order`, `store_limit_order`, `store_post_only_limit_order` |
-| `src/trade/cancel_order.rs`             | `_cancel_all_orders`                                                               |
-| `src/maintain/liquidate.rs`             | `_liquidate`                                                                       |
-| `src/cron.rs`                           | `process_triggered_order`, `process_unlock_for_user`                               |
-| `src/referral/apply_fee_commissions.rs` | `apply_fee_commissions`                                                            |
+| File                                     | Function                                                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/trade/submit_order.rs`              | `compute_submit_order_outcome`, `match_order`, `store_limit_order`, `store_post_only_limit_order` |
+| `src/trade/cancel_order.rs`              | `compute_cancel_all_orders_outcome`                                                               |
+| `src/maintain/liquidate.rs`              | `_liquidate`                                                                                      |
+| `src/cron/process_conditional_orders.rs` | `process_triggered_order`                                                                         |
+| `src/cron/process_unlocks.rs`            | `process_unlock_for_user`                                                                         |
+| `src/referral/apply_fee_commissions.rs`  | `apply_fee_commissions`                                                                           |
 
 `refresh_orders` (in `src/vault/refresh.rs`) is not in the pure set: it's a
 simple entry point with a single read/mutate path and no post-mutation
@@ -66,11 +100,13 @@ Current leaf exceptions:
 
 - `settle_fill` — only called from `match_order` / `execute_adl`,
   both of which clone their state at entry.
-- `settle_pnls` — only called from `_submit_order` / `_liquidate`,
-  operating on locals.
-- `_cancel_one_order` — only called from `_cancel_all_orders`
-  (which owns the local `user_state`) and from `cancel_one_order`
-  (a top-level one-shot that doesn't compose into a failing ancestor).
+- `settle_pnls` — only called from `compute_submit_order_outcome` /
+  `_liquidate`, operating on locals.
+- `compute_cancel_one_order_outcome` — only called from
+  `compute_cancel_all_orders_outcome` (which owns the local `user_state`) and
+  from the intermediate `_cancel_one_order` /
+  `_cancel_one_order_by_client_order_id` (top-level one-shots that
+  don't compose into a failing ancestor).
 - `execute_close_schedule` / `execute_adl` — private helpers of
   `_liquidate`. The ancestor `_liquidate` clones its inputs at entry,
   so any error discards the helpers' partial writes along with the
@@ -89,7 +125,7 @@ the smallest possible diff.
 ### Dense state structs — clone at entry, return owned
 
 ```rust
-fn _submit_order(
+fn compute_submit_order_outcome(
     // ...
     state: &State,
     pair_state: &PairState,

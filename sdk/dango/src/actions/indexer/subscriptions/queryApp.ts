@@ -1,3 +1,6 @@
+import { createSubscription } from "../../../utils/createSubscription.js";
+import { queryApp } from "../../app/queries/queryApp.js";
+
 import type {
   Chain,
   Client,
@@ -16,12 +19,15 @@ export type QueryAppSubscriptionParameters = SubscriptionCallbacks<{
 }> & {
   request: QueryRequest;
   interval?: number;
+  /** HTTP polling interval in milliseconds for fallback when WS is unavailable. */
+  httpInterval?: number;
 };
 
 export type QueryAppSubscriptionReturnType = () => void;
 
 /**
  * Subscribes to query app events.
+ * Uses WebSocket when available, falls back to HTTP polling when WS is unavailable.
  * @param client The Dango client.
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the query app events.
@@ -35,7 +41,9 @@ export function queryAppSubscription<
 ): QueryAppSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
-  const { request, interval, ...callbacks } = parameters;
+  const { request, interval, httpInterval = 5_000, ...callbacks } = parameters;
+  const { polling, batch } = client.transport;
+  const { subscribe } = client;
 
   const query = /* GraphQL */ `
     subscription QueryAppSubscription (
@@ -48,5 +56,30 @@ export function queryAppSubscription<
       }
     }
   `;
-  return client.subscribe({ query, variables: { request, interval } }, callbacks);
+
+  return createSubscription<{ queryApp: { response: QueryResponse; blockHeight: number } }>(
+    {
+      wsSubscribe: (listener) =>
+        subscribe(
+          { query, variables: { request, interval } },
+          {
+            next: (data) =>
+              listener(data as { queryApp: { response: QueryResponse; blockHeight: number } }),
+            error: callbacks.error,
+            complete: callbacks.complete,
+          },
+        ),
+      httpQuery: async () => {
+        const response = await queryApp(client, { query: request });
+        return { queryApp: { response, blockHeight: 0 } };
+      },
+      httpInterval,
+      emitter: subscribe.emitter!,
+      getStatus: subscribe.getClientStatus!,
+      onError: callbacks.error,
+      polling,
+      batch,
+    },
+    (data) => callbacks.next(data),
+  );
 }

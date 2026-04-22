@@ -1,6 +1,7 @@
 use {
     crate::{
-        core::compute_available_margin, oracle, querier::NoCachePerpQuerier, state::USER_STATES,
+        MAX_ORACLE_STALENESS, core::compute_available_margin, oracle, querier::NoCachePerpQuerier,
+        state::USER_STATES,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
@@ -28,7 +29,9 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
     // ---------------------- 1. Compute available margin ----------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
@@ -72,6 +75,11 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
             %amount,
             "Margin withdrawn"
         );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_WITHDRAWAL_AMOUNT).record(amount.to_f64());
     }
 
     Ok(Response::new()

@@ -213,13 +213,15 @@ const BlockCronsOutcomes: React.FC = () => {
 
   if (!data?.searchBlock) return null;
 
-  const cronOutcomes = (() => {
-    try {
-      return JSON.parse(data.searchBlock.cronsOutcomes);
-    } catch (_) {
-      return [];
-    }
-  })();
+  const cronOutcomes = Array.isArray(data.searchBlock.cronsOutcomes)
+    ? data.searchBlock.cronsOutcomes.map((item: string) => {
+        try {
+          return JSON.parse(item);
+        } catch {
+          return item;
+        }
+      })
+    : [];
 
   return (
     <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">

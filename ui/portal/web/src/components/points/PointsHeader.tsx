@@ -7,9 +7,9 @@ import {
 } from "@left-curve/applets-kit";
 import { useApp, useCountdown } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useAccount, useCurrentEpoch } from "@left-curve/store";
+import { useAccount, useCurrentEpoch, usePredictPoints } from "@left-curve/store";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useUserPoints } from "./useUserPoints";
 
 const BLOCK_TIME_MS = 500;
@@ -83,11 +83,80 @@ const EpochStartsIn: React.FC<{ startsAt: StartsAt; onRefetch: () => void }> = (
   );
 };
 
+type PointCardProps = {
+  icon: React.ReactNode;
+  value: number | string;
+  tooltip?: { title: string; description: string };
+};
+
+const PointCard: React.FC<PointCardProps> = ({ icon, value, tooltip }) => (
+  <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
+    {icon}
+    <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
+      <p className="text-ink-primary-900">
+        <FormattedNumber
+          number={value}
+          formatOptions={{ fractionDigits: 0 }}
+          as="span"
+        />
+      </p>
+      <p>{m["points.header.points"]()}</p>
+      {tooltip && <Tooltip title={tooltip.title} description={tooltip.description} />}
+    </div>
+  </div>
+);
+
+type PointsBreakdownRowProps = {
+  label: string;
+  trading: number;
+  lp: number;
+  referral: number;
+};
+
+const PointsBreakdownRow: React.FC<PointsBreakdownRowProps> = ({
+  label,
+  trading,
+  lp,
+  referral,
+}) => (
+  <div className="flex flex-col gap-2 w-full">
+    <p className="text-ink-tertiary-500 diatype-s-medium">{label}</p>
+    <div className="flex flex-col lg:flex-row gap-4 w-full">
+      <PointCard
+        icon={<IconSwapMoney />}
+        value={trading}
+        tooltip={{ title: m["points.header.tradingPoints.title"](), description: m["points.header.tradingPoints.description"]() }}
+      />
+      <PointCard
+        icon={<IconSprout />}
+        value={lp}
+        tooltip={{ title: m["points.header.lpPoints.title"](), description: m["points.header.lpPoints.description"]() }}
+      />
+      <PointCard
+        icon={<IconFriendshipGroup />}
+        value={referral}
+        tooltip={{ title: m["points.header.referralPoints.title"](), description: m["points.header.referralPoints.description"]() }}
+      />
+    </div>
+  </div>
+);
+
 export const PointsHeader: React.FC = () => {
-  const { isConnected } = useAccount();
+  const { isConnected, userIndex } = useAccount();
   const { points, volume, rank, tradingPoints, lpPoints, referralPoints } = useUserPoints();
   const pointsUrl = window.dango.urls.pointsUrl;
   const { isStarted, currentEpoch, endDate, startsAt, refetch } = useCurrentEpoch({ pointsUrl });
+  const { predictedPoints } = usePredictPoints({ pointsUrl, userIndex, enabled: isStarted && !!userIndex });
+
+  const predicted = useMemo(() => {
+    if (!predictedPoints?.stats) return { vault: 0, perps: 0, referral: 0, total: 0 };
+    const vault = Number(predictedPoints.stats.points.vault);
+    const perps = Number(predictedPoints.stats.points.perps);
+    const referral = Number(predictedPoints.stats.points.referral);
+    return { vault, perps, referral, total: vault + perps + referral };
+  }, [predictedPoints]);
+
+  const hasPredicted = isStarted && predicted.total > 0;
 
   const countdown = useCountdown({ date: endDate ?? undefined });
   const hasRefetchedRef = useRef(false);
@@ -164,72 +233,20 @@ export const PointsHeader: React.FC = () => {
           {!isStarted && startsAt && <EpochStartsIn startsAt={startsAt} onRefetch={refetch} />}
         </div>
       </div>
-      <div className="flex flex-col lg:flex-row gap-4 w-full">
-        <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
-          <IconSwapMoney />
-          <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-            <p className="text-ink-primary-900">
-              {isConnected ? (
-                <FormattedNumber
-                  number={tradingPoints}
-                  formatOptions={{ fractionDigits: 0 }}
-                  as="span"
-                />
-              ) : (
-                "--"
-              )}
-            </p>
-            <p>{m["points.header.points"]()}</p>
-            <Tooltip
-              title={m["points.header.tradingPoints.title"]()}
-              description={m["points.header.tradingPoints.description"]()}
-            />
-          </div>
-        </div>
-
-        <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
-          <IconSprout />
-          <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-            <p className="text-ink-primary-900">
-              {isConnected ? (
-                <FormattedNumber
-                  number={lpPoints}
-                  formatOptions={{ fractionDigits: 0 }}
-                  as="span"
-                />
-              ) : (
-                "--"
-              )}
-            </p>
-            <p>{m["points.header.points"]()}</p>
-            <Tooltip
-              title={m["points.header.lpPoints.title"]()}
-              description={m["points.header.lpPoints.description"]()}
-            />
-          </div>
-        </div>
-        <div className="bg-surface-tertiary-gray px-3 py-2 flex items-center justify-between rounded-xl flex-1">
-          <IconFriendshipGroup />
-          <div className="flex items-center gap-1 text-ink-tertiary-500 diatype-m-medium">
-            <p className="text-ink-primary-900">
-              {isConnected ? (
-                <FormattedNumber
-                  number={referralPoints}
-                  formatOptions={{ fractionDigits: 0 }}
-                  as="span"
-                />
-              ) : (
-                "--"
-              )}
-            </p>
-            <p>{m["points.header.points"]()}</p>
-            <Tooltip
-              title={m["points.header.referralPoints.title"]()}
-              description={m["points.header.referralPoints.description"]()}
-            />
-          </div>
-        </div>
-      </div>
+      <PointsBreakdownRow
+        label={m["points.header.earnedLabel"]()}
+        trading={isConnected ? tradingPoints : 0}
+        lp={isConnected ? lpPoints : 0}
+        referral={isConnected ? referralPoints : 0}
+      />
+      {hasPredicted && (
+        <PointsBreakdownRow
+          label={m["points.header.predictedLabel"]()}
+          trading={predicted.perps}
+          lp={predicted.vault}
+          referral={predicted.referral}
+        />
+      )}
     </div>
   );
 };

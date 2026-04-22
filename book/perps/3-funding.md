@@ -83,11 +83,12 @@ $$
 
 ## 5. Parameters
 
-| Field                  | Type          | Description                                                                                                                                                                                                     |
-| ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `funding_period`       | `Duration`    | Minimum time between funding collections.                                                                                                                                                                       |
-| `impact_size`          | `UsdValue`    | Notional depth walked on each side of the book to compute impact prices. A larger value dilutes the influence of any single resting order on the premium in proportion to the fraction of the walk it occupies. |
-| `max_abs_funding_rate` | `FundingRate` | Symmetric clamp applied to the average premium before scaling to a delta. Prevents runaway rates during prolonged skew.                                                                                         |
+| Field                      | Type            | Description                                                                                                                                                                                                     |
+| -------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `funding_period`           | `Duration`      | Minimum time between funding collections.                                                                                                                                                                       |
+| `impact_size`              | `UsdValue`      | Notional depth walked on each side of the book to compute impact prices. A larger value dilutes the influence of any single resting order on the premium in proportion to the fraction of the walk it occupies. |
+| `max_abs_funding_rate`     | `FundingRate`   | Symmetric clamp applied to the average premium before scaling to a delta. Prevents runaway rates during prolonged skew.                                                                                         |
+| `funding_rate_multiplier`  | `Dimensionless` | Scalar applied to the vault-driven premium so governance can tune funding independently of the vault's quoting (see §6). Bounds: $\geq 0$. $1$ is identity; $0$ disables funding for the pair.                  |
 
 ## 6. Discussions
 
@@ -112,10 +113,12 @@ $$
 and therefore
 
 $$
-\mathtt{premium} = -\mathtt{halfSpread} \cdot \mathtt{skew} \cdot \mathtt{spreadSkewFactor}
+\mathtt{premium} = -\mathtt{halfSpread} \cdot \mathtt{skew} \cdot \mathtt{spreadSkewFactor} \cdot \mathtt{fundingRateMultiplier}
 $$
 
 Positive skew (vault long, because sell flow has dominated) produces a negative premium, so longs receive funding from shorts — which credits the vault-as-long for absorbed inventory. Symmetric when short. The sign is economically correct by construction.
+
+The closed-form also tethers funding to the vault's quoting parameters: tightening spreads to compete for flow would otherwise shrink funding by the same factor. $\mathtt{fundingRateMultiplier}$ is a per-pair governance knob that decouples these two — admins can dial funding up or down (e.g. in response to persistent one-sided skew) without touching $\mathtt{halfSpread}$ or $\mathtt{spreadSkewFactor}$ and therefore without changing the vault's quoted prices. $\mathtt{fundingRateMultiplier} = 1$ is the identity and matches the pre-multiplier formulation; $0$ disables funding entirely.
 
 ### Comparison with other exchanges
 

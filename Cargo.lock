@@ -3990,7 +3990,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.12.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "bip32",
@@ -4021,6 +4021,7 @@ dependencies = [
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
+ "libc",
  "metrics",
  "metrics-exporter-prometheus",
  "opentelemetry 0.31.0",
@@ -4126,6 +4127,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-types",
  "grug-httpd",
+ "grug-types",
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
@@ -4448,6 +4450,9 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
+ "borsh",
+ "dango-perps",
+ "dango-types",
  "grug",
  "grug-app",
  "tracing",

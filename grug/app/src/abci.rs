@@ -226,6 +226,18 @@ where
                     consensus_param_updates: None,
                 })
             },
+            // A *planned* halt (e.g. upgrade height reached with the wrong
+            // binary) is reported to the host via `App::shutdown_trigger`
+            // inside `do_finalize_block`. Propagate the error instead of
+            // panicking so the CLI's main loop can run its graceful
+            // shutdown path (flush indexer, close HTTP, flush telemetry)
+            // and exit with code 0.
+            Err(err) if err.is_planned_halt() => {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(%err, "planned chain halt — yielding to graceful shutdown");
+
+                Err(err)
+            },
             Err(err) => panic!("failed to finalize block: {err}"),
         }
     }

@@ -4,9 +4,15 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
-        perps::{self, PairParam, Param, QueryOrdersByUserResponseItem, UserState},
+        perps::{
+            self, Deleveraged, OrderFilled, PairParam, Param, QueryOrdersByUserResponseItem,
+            UserState,
+        },
     },
-    grug::{Addressable, Coins, Duration, QuerierExt, ResultExt, Uint128, btree_map},
+    grug::{
+        Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, QuerierExt, ResultExt,
+        SearchEvent, Uint128, btree_map,
+    },
     std::collections::BTreeMap,
 };
 
@@ -30,6 +36,7 @@ fn default_param_no_liq_fee() -> Param {
         max_unlocks: 10,
         max_open_orders: 100,
         funding_period: Duration::from_hours(1),
+        max_action_batch_size: 5,
         ..Default::default()
     }
 }
@@ -109,17 +116,18 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -133,7 +141,7 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy
                 kind: perps::OrderKind::Market {
@@ -142,7 +150,7 @@ fn liquidation_on_order_book() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -191,17 +199,18 @@ fn liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy / bid
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -395,17 +404,18 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -419,7 +429,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -428,7 +438,7 @@ fn liquidation_with_adl() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -460,17 +470,18 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -483,7 +494,7 @@ fn liquidation_with_adl() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Market {
@@ -492,7 +503,7 @@ fn liquidation_with_adl() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -653,17 +664,18 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -673,7 +685,7 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -682,7 +694,7 @@ fn liquidation_cancels_conditional_orders() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -752,17 +764,18 @@ fn liquidation_cancels_conditional_orders() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -937,7 +950,7 @@ fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: bid_size.checked_neg().unwrap(),
                 kind: perps::OrderKind::Market {
@@ -946,7 +959,7 @@ fn vault_liquidation_on_order_book() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1031,17 +1044,18 @@ fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: bid_size, // buy same size as vault's long
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_600),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1152,5 +1166,234 @@ fn vault_liquidation_on_order_book() {
     assert!(
         user3_pos.size.is_positive(),
         "user3 should be long (absorbed vault's sell)"
+    );
+}
+
+/// A liquidation that partially fills on the order book and ADLs the
+/// remainder must:
+///
+/// - emit `OrderFilled` events for every book-matching fill, each with
+///   `fill_id: Some(_)`;
+/// - pair those fills two-to-one per `fill_id` (taker + maker);
+/// - emit `Deleveraged` events for the ADL leg, whose event payload has
+///   no `fill_id` field (enforced at compile time by the `Deleveraged`
+///   struct definition, re-confirmed at runtime by the successful
+///   `deserialize_json::<Deleveraged>`).
+///
+/// This pins the BitMEX-style separation: order-book matches get a
+/// `fill_id`, position transfers at the bankruptcy price do not.
+#[test]
+fn liquidation_book_fills_have_fill_id_adl_does_not() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Trader A (user1) opens a long that will later become liquidatable.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(1_100_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Maker (user2) deposits enough to seed the book with plenty of asks,
+    // and later partial-bid for the liquidation.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(20_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Maker places ask: 5 ETH @ $2,000. Trader A fills it, ending long 5 ETH.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader B (user3) will be the ADL counter-party: short 5 ETH @ $2,000.
+    // Large margin so that ADL finds them and they stay solvent.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Maker places a bid so Trader B can short into it.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Oracle drops to $1,450. Trader A is deeply underwater and forced
+    // to close the full position; equity is negative so target_price for
+    // book matching is the oracle ($1,450).
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
+
+    // Partial book liquidity for the liquidation: Maker places a bid for
+    // 2 ETH @ $1,450. Trader A's liquidation will fill this, then ADL
+    // the remaining 3 ETH against Trader B at the bankruptcy price.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(2),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_450),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Liquidate Trader A. Expect book fills + ADL remainder.
+    let events = suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
+                user: accounts.user1.address(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed()
+        .events;
+
+    // Book-matching leg: every OrderFilled event must carry a fill_id,
+    // and the events must pair two-to-one per fill_id (taker + maker).
+    let order_filled_events = events
+        .clone()
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_filled")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderFilled>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert!(
+        !order_filled_events.is_empty(),
+        "liquidation should have produced at least one book fill"
+    );
+
+    for filled in &order_filled_events {
+        assert!(
+            filled.fill_id.is_some(),
+            "every OrderFilled emitted during liquidation book matching must carry a fill_id"
+        );
+    }
+
+    let mut by_fill_id = BTreeMap::<_, usize>::new();
+    for filled in &order_filled_events {
+        *by_fill_id.entry(filled.fill_id.unwrap()).or_default() += 1;
+    }
+    for (fill_id, count) in &by_fill_id {
+        assert_eq!(
+            *count, 2,
+            "fill_id {} should appear on exactly two OrderFilled events \
+             (taker side + maker side); got {}",
+            fill_id, count,
+        );
+    }
+
+    // ADL leg: Deleveraged events must exist and deserialize cleanly into
+    // the `Deleveraged` struct, which has no fill_id field — if the
+    // runtime JSON ever gained one, downstream consumers would still
+    // deserialize fine (extra fields ignored) but this assertion
+    // documents the intended shape.
+    let deleveraged_events = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "deleveraged")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<Deleveraged>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert!(
+        !deleveraged_events.is_empty(),
+        "liquidation should have ADL'd the remainder against a counter-party"
     );
 }

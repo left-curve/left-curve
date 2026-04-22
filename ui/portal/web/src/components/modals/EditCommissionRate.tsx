@@ -1,19 +1,24 @@
 import { forwardRef, useMemo, useState } from "react";
 
-import { Button, IconButton, IconClose, Input, Skeleton, useApp } from "@left-curve/applets-kit";
+import { Button, IconButton, IconClose, Input, Skeleton, numberMask, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useAccount,
   useCommissionRateOverride,
+  useReferralParams,
   useReferralSettings,
   useSetFeeShareRatio,
 } from "@left-curve/store";
+
+const formatPct = (value: number): string => {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+};
 
 const formatPercent = (value: string | undefined): string => {
   if (!value) return "0";
   const num = Number(value);
   if (Number.isNaN(num)) return "0";
-  return (num * 100).toFixed(0);
+  return formatPct(num * 100);
 };
 
 export const EditCommissionRate = forwardRef((_props, _ref) => {
@@ -25,34 +30,46 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
     userIndex,
   });
 
+  const { referralParams } = useReferralParams();
+
   const isLoading = settingsLoading || overrideLoading;
 
-  const currentSharePercent = formatPercent(settings?.shareRatio);
-  const commissionPercent = formatPercent(override ?? settings?.commissionRate);
-
-  const [shareInput, setShareInput] = useState<string | null>(null);
-
-  const shareValue = shareInput ?? currentSharePercent;
-  const isShareEmpty = shareValue.trim() === "";
-  const parsedSharePercent = Number(shareValue);
-  const newShareRatio = isShareEmpty ? null : (parsedSharePercent / 100).toString();
-
+  const commissionRate = override ?? settings?.commissionRate ?? referralParams?.referrerCommissionRates.base ?? "0";
+  const commissionPct = Number(commissionRate) * 100;
   const currentShareRatio = Number(settings?.shareRatio ?? "0");
-  const canDecrease = !isShareEmpty && parsedSharePercent / 100 < currentShareRatio;
-  const exceedsMax = !isShareEmpty && parsedSharePercent > 50;
+  const currentSharePercent = formatPercent(settings?.shareRatio);
+  const currentRefereePct = commissionPct * currentShareRatio;
+  const currentYouPct = commissionPct * (1 - currentShareRatio);
+
+  const [refereeInput, setRefereeInput] = useState<string | null>(null);
+
+  const refereeValue = refereeInput ?? formatPct(currentRefereePct);
+  const parsedReferee = Number(refereeValue);
+  const youValue = Number.isNaN(parsedReferee) ? "" : formatPct(commissionPct - parsedReferee);
+
+  // Convert back to share_ratio for the contract: share_ratio = referee_absolute / commission
+  const newShareRatio = commissionPct > 0 && !Number.isNaN(parsedReferee)
+    ? (parsedReferee / commissionPct).toString()
+    : "0";
+
+  const newRatio = commissionPct > 0 ? parsedReferee / commissionPct : 0;
+  const canDecrease = !Number.isNaN(parsedReferee) && newRatio < currentShareRatio;
+  const exceedsMax = !Number.isNaN(parsedReferee) && newRatio > 0.5;
 
   const error = useMemo(() => {
+    if (refereeValue.trim() === "" || Number.isNaN(parsedReferee)) return null;
+    if (parsedReferee < 0 || parsedReferee > commissionPct) return m["referral.editFeeShare.errorExceedsCommission"]();
     if (canDecrease) return m["referral.editFeeShare.errorDecrease"]();
     if (exceedsMax) return m["referral.editFeeShare.errorExceedsMax"]();
     return null;
-  }, [canDecrease, exceedsMax]);
+  }, [canDecrease, exceedsMax, refereeValue, parsedReferee, commissionPct]);
 
   const { mutate: submitSetFeeShareRatio, isPending } = useSetFeeShareRatio({
     onSuccess: () => hideModal(),
   });
 
   const handleSave = () => {
-    if (error || isPending || !newShareRatio) return;
+    if (error || isPending || refereeValue.trim() === "") return;
     submitSetFeeShareRatio({ shareRatio: newShareRatio });
   };
 
@@ -75,7 +92,7 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
         </p>
       </div>
 
-      <div className="w-full h-px bg-outline-secondary-gray" />
+      <div className="-mx-4 md:-mx-6 h-px bg-outline-secondary-gray" />
 
       {isLoading ? (
         <div className="flex flex-col gap-4">
@@ -84,25 +101,26 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
+          <p className="diatype-m-regular text-ink-tertiary-500">
+            {m["referral.editFeeShare.yourCommissionRate"]()}{" "}
+            <span className="text-status-success diatype-m-bold">
+              {formatPercent(commissionRate)}%
+            </span>
+          </p>
+
           <Input
-            label={m["referral.editFeeShare.commissionRateLabel"]()}
-            value={`${commissionPercent}%`}
+            label={m["referral.editFeeShare.youReceive"]()}
+            value={youValue}
             readOnly
+            endContent={<span className="text-ink-tertiary-500 diatype-m-medium">%</span>}
           />
 
-          <div className="flex flex-col gap-1">
-            <Input
-              label={m["referral.editFeeShare.refereeReceives"]()}
-              value={shareValue}
-              onChange={(e) => setShareInput(e.target.value)}
-              type="number"
-              endContent={<span className="text-ink-tertiary-500 diatype-m-medium">%</span>}
-            />
-            <p className="diatype-sm-regular">
-              <span className="text-ink-tertiary-500">{m["referral.editFeeShare.current"]()}:</span>{" "}
-              <span className="text-utility-success-500">{currentSharePercent}%</span>
-            </p>
-          </div>
+          <Input
+            label={m["referral.editFeeShare.refereeReceives"]()}
+            value={refereeValue}
+            onChange={(e) => setRefereeInput(numberMask(e.target.value))}
+            endContent={<span className="text-ink-tertiary-500 diatype-m-medium">%</span>}
+          />
 
           {error && <p className="text-utility-error-500 diatype-sm-regular">{error}</p>}
         </div>
@@ -111,7 +129,7 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
       <Button
         fullWidth
         onClick={handleSave}
-        disabled={!!error || isPending || isLoading || !newShareRatio}
+        disabled={!!error || isPending || isLoading || refereeValue.trim() === ""}
       >
         {isPending ? m["referral.editFeeShare.saving"]() : m["referral.editFeeShare.save"]()}
       </Button>

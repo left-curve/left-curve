@@ -1,3 +1,5 @@
+import { createSubscription } from "../../../utils/createSubscription.js";
+
 import type {
   Chain,
   Client,
@@ -18,9 +20,10 @@ export type EventsSubscriptionParameters = SubscriptionCallbacks<{
 export type EventsSubscriptionReturnType = () => void;
 
 /**
- * @description Subscribes to events with flexible filtering by type and data paths.
- * @param client - The client instance to use for the subscription.
- * @param parameters - The parameters for the subscription, including optional filter and callbacks.
+ * Subscribes to events with flexible filtering by type and data paths.
+ * Currently WS-only.
+ * @param client The client instance to use for the subscription.
+ * @param parameters The parameters for the subscription, including optional filter and callbacks.
  * @returns A function to unsubscribe from the events.
  */
 export function eventsSubscription<
@@ -33,6 +36,7 @@ export function eventsSubscription<
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const { sinceBlockHeight, filter, ...callbacks } = parameters;
+  const { subscribe } = client;
 
   const query = /* GraphQL */ `
     subscription SubscribeEvents(
@@ -58,5 +62,23 @@ export function eventsSubscription<
     }
   `;
 
-  return client.subscribe({ query, variables: { sinceBlockHeight, filter } }, callbacks);
+  return createSubscription<{ events: SubscriptionEvent[] }>(
+    {
+      wsSubscribe: (listener) =>
+        subscribe(
+          { query, variables: { sinceBlockHeight, filter } },
+          {
+            next: (data) => listener(data as { events: SubscriptionEvent[] }),
+            error: callbacks.error,
+            complete: callbacks.complete,
+          },
+        ),
+      httpQuery: undefined,
+      httpInterval: 5_000,
+      emitter: subscribe.emitter!,
+      getStatus: subscribe.getClientStatus!,
+      onError: callbacks.error,
+    },
+    (data) => callbacks.next(data),
+  );
 }

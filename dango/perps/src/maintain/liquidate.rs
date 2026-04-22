@@ -1,5 +1,6 @@
 use {
     crate::{
+        MAX_ORACLE_STALENESS,
         core::{
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
             compute_user_equity, compute_user_equity_with_pnl, is_liquidatable,
@@ -12,12 +13,13 @@ use {
         price::may_invert_price,
         querier::NoCachePerpQuerier,
         state::{
-            ASKS, BIDS, LONGS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE,
-            USER_STATES,
+            ASKS, BIDS, LONGS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM,
+            SHORTS, STATE, USER_STATES,
         },
         trade::{
-            _cancel_all_orders, CancelAllOrdersOutcome, MatchOrderOutcome, match_order,
-            settle_fill, settle_pnls,
+            CancelAllOrdersOutcome, FeeBreakdown, MatchOrderOutcome,
+            compute_cancel_all_orders_outcome, match_order, merge_fee_breakdown, settle_fill,
+            settle_pnls,
         },
         volume::flush_volumes,
     },
@@ -26,16 +28,16 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, LimitOrder, Liquidated, OrderId,
-            PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval, State,
-            TriggerDirection, UserState,
+            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, FillId, LimitOrder, Liquidated,
+            OrderId, PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval,
+            State, TriggerDirection, UserState,
         },
     },
     grug::{
         Addr, EventBuilder, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage,
         Timestamp,
     },
-    std::collections::{BTreeMap, btree_map::Entry},
+    std::collections::BTreeMap,
 };
 
 /// Liquidate an underwater trader by closing their positions.
@@ -58,13 +60,14 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let mut events = EventBuilder::new();
 
     // -------------------- 2. Cancel all resting orders -----------------------
 
-    let CancelAllOrdersOutcome { mut user_state } = _cancel_all_orders(
+    let CancelAllOrdersOutcome { mut user_state } = compute_cancel_all_orders_outcome(
         ctx.storage,
         user,
         &user_state,
@@ -131,6 +134,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         index_updates,
         volumes,
         next_order_id,
+        next_fill_id,
     } = _liquidate(
         ctx.storage,
         user,
@@ -153,6 +157,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     STATE.save(ctx.storage, &state)?;
 
     NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
+    NEXT_FILL_ID.save(ctx.storage, &next_fill_id)?;
 
     for (pair_id, pair_state) in &pair_states {
         PAIR_STATES.save(ctx.storage, pair_id, pair_state)?;
@@ -284,6 +289,7 @@ pub struct LiquidateOutcome {
     pub index_updates: Vec<PositionIndexUpdate>,
     pub volumes: BTreeMap<Addr, UsdValue>,
     pub next_order_id: OrderId,
+    pub next_fill_id: FillId,
 }
 
 /// Pure liquidation core: takes the dense state structs by `&` and
@@ -354,19 +360,22 @@ fn _liquidate(
     let mut all_maker_states = BTreeMap::new();
 
     let (
-        all_pnls,
-        all_fees,
+        updated_state,
+        _all_fee_breakdowns,
         all_order_mutations,
         closed_notional,
         all_index_updates,
         all_volumes,
         next_order_id,
+        next_fill_id,
     ) = execute_close_schedule(
         storage,
         user,
         contract,
         current_time,
         param,
+        state,
+        pair_params,
         &mut pair_states,
         &mut user_state,
         &mut all_maker_states,
@@ -375,14 +384,16 @@ fn _liquidate(
         events,
     )?;
 
+    state = updated_state;
+
     // -------------------- Step 4: Liquidation fee → insurance fund -----------
 
-    // Do NOT add liq_fee to all_fees — it must bypass settle_pnls entirely
-    // to avoid the protocol/vault fee split. The fee is routed directly
-    // from the user's margin to the insurance fund.
+    // Per-fill settlement inside `match_order` + `execute_adl` has already
+    // applied realized PnLs to `user_state.margin`. Trading fees during
+    // liquidation are zero (liq_param zeroes fee rates), so the liquidation
+    // fee is the only additional margin hit — routed straight to the
+    // insurance fund, bypassing the protocol/vault fee split.
     let liq_fee = compute_liquidation_fee(
-        &all_pnls,
-        user,
         closed_notional,
         param.liquidation_fee_rate,
         user_state.margin,
@@ -393,37 +404,7 @@ fn _liquidate(
         state.insurance_fund.checked_add_assign(liq_fee)?;
     }
 
-    // ----------------------- Step 5: Settle PnLs ------------------------------
-
-    // Ensure the vault's UserState is in the map for fee settlement —
-    // unless the vault itself is being liquidated, in which case it is
-    // already the taker and must NOT appear in maker_states (settle_pnls
-    // assumes taker ∉ maker_states, and the later save would overwrite
-    // the taker's state, losing its PnL).
-    if user != contract {
-        all_maker_states.entry(contract).or_insert_with(|| {
-            USER_STATES
-                .may_load(storage, contract)
-                .unwrap()
-                .unwrap_or_default()
-        });
-    }
-
-    // Fee breakdowns are ignored during liquidation: trading fees are zero
-    // (liq_param zeroes fee rates), and the liquidation fee is routed to
-    // the insurance fund directly below.
-    let _ = settle_pnls(
-        contract,
-        param,
-        &mut state,
-        user,
-        &mut user_state,
-        &mut all_maker_states,
-        all_pnls,
-        all_fees,
-    )?;
-
-    // -------------------- Step 6: Bad debt → insurance fund ------------------
+    // -------------------- Step 5: Bad debt → insurance fund ------------------
 
     if user_state.margin.is_negative() {
         let bad_debt = user_state.margin.checked_abs()?;
@@ -463,6 +444,7 @@ fn _liquidate(
         index_updates: all_index_updates,
         volumes: all_volumes,
         next_order_id,
+        next_fill_id,
     })
 }
 
@@ -480,6 +462,8 @@ fn execute_close_schedule(
     contract: Addr,
     current_time: Timestamp,
     param: &Param,
+    state: State,
+    pair_params: &BTreeMap<PairId, PairParam>,
     pair_states: &mut BTreeMap<PairId, PairState>,
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
@@ -487,8 +471,8 @@ fn execute_close_schedule(
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     events: &mut EventBuilder,
 ) -> anyhow::Result<(
-    BTreeMap<Addr, UsdValue>,
-    BTreeMap<Addr, UsdValue>,
+    State,
+    BTreeMap<Addr, FeeBreakdown>,
     Vec<(
         PairId,
         bool,
@@ -501,8 +485,11 @@ fn execute_close_schedule(
     Vec<PositionIndexUpdate>,
     BTreeMap<Addr, UsdValue>,
     OrderId,
+    FillId,
 )> {
+    let mut state = state;
     let mut next_order_id = NEXT_ORDER_ID.load(storage)?;
+    let mut next_fill_id = NEXT_FILL_ID.load(storage)?;
 
     // Zero-fee param for liquidation fills.
     let liq_param = Param {
@@ -511,8 +498,7 @@ fn execute_close_schedule(
         ..param.clone()
     };
 
-    let mut all_pnls = BTreeMap::<_, UsdValue>::new();
-    let mut all_fees = BTreeMap::<_, UsdValue>::new();
+    let mut all_fee_breakdowns = BTreeMap::<Addr, FeeBreakdown>::new();
     let mut all_volumes = BTreeMap::<_, UsdValue>::new();
     let mut all_order_mutations = Vec::new();
     let mut closed_notional = UsdValue::ZERO;
@@ -537,22 +523,26 @@ fn execute_close_schedule(
         //    oracle-adjacent book fills. In this case we fall back to the
         //    oracle price as target_price and use bp only for ADL.
         //
-        // Previously bp was computed AFTER book fills from post-fill equity,
-        // which allowed absurd book fills to destroy equity and produce
-        // extreme negative ADL prices.
-        let user_pnl_pre = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
-        let user_fee_pre = all_fees.get(&user).copied().unwrap_or(UsdValue::ZERO);
+        // Per-fill settlement inside `match_order` has already applied
+        // realized PnLs and fees (zero during liquidation) from earlier
+        // pairs to `user_state.margin`, so the "pre" PnL / fee deltas
+        // passed to equity helpers are zero — user_state is already up
+        // to date.
         let bankruptcy_price = compute_bankruptcy_price(
             user_state,
             pair_id,
             close_size.checked_abs()?,
             oracle_prices,
-            user_pnl_pre,
-            user_fee_pre,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
         )?;
 
-        let equity =
-            compute_user_equity_with_pnl(user_state, oracle_prices, user_pnl_pre, user_fee_pre)?;
+        let equity = compute_user_equity_with_pnl(
+            user_state,
+            oracle_prices,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )?;
 
         let target_price = if equity.is_positive() {
             bankruptcy_price
@@ -560,53 +550,59 @@ fn execute_close_schedule(
             oracle_price
         };
 
-        // `match_order` is now pure — destructure its outcome and write the
-        // dense-state fields back through the caller's `&mut`s so the rest
-        // of `execute_close_schedule`'s body (still `&mut` at this commit)
+        // `match_order` settles fees and PnLs on margins per-fill; destructure
+        // its outcome and write the dense-state fields back through the
+        // caller's `&mut`s so the rest of `execute_close_schedule`'s body
         // keeps working. The liquidated user IS the taker, so
         // `updated_taker_state` goes into `*user_state`.
         let MatchOrderOutcome {
+            state: updated_state,
             pair_state: updated_pair_state,
             taker_state: updated_user_state,
             maker_states: updated_maker_states,
             unfilled,
-            pnls,
-            fees,
             volumes,
+            fee_breakdowns,
             order_mutations,
             index_updates,
             next_order_id: updated_next_order_id,
+            next_fill_id: updated_next_fill_id,
         } = match_order(
             storage,
             user,
             contract,
             current_time,
             &liq_param,
+            &state,
             pair_id,
             pair_state,
             user_state,
             taker_is_bid,
             OrderId::ZERO,
+            None,                      // liquidation has no client_order_id
+            Dimensionless::ZERO,       // zero trading fee for the liquidated taker
+            Some(Dimensionless::ZERO), // zero trading fee for makers, even if they have overrides
             maker_states,
             target_price,
+            oracle_price,
+            pair_params.get(pair_id).unwrap().max_limit_price_deviation,
             *close_size,
             next_order_id,
+            next_fill_id,
             events,
         )?;
 
+        state = updated_state;
         *pair_state = updated_pair_state;
         *user_state = updated_user_state;
         *maker_states = updated_maker_states;
         next_order_id = updated_next_order_id;
+        next_fill_id = updated_next_fill_id;
 
-        // Merge PnLs.
-        for (addr, pnl) in pnls {
-            all_pnls.entry(addr).or_default().checked_add_assign(pnl)?;
-        }
-
-        // Merge fees.
-        for (addr, fee) in fees {
-            all_fees.entry(addr).or_default().checked_add_assign(fee)?;
+        // Merge per-party fee breakdowns across pairs (empty during
+        // liquidation, but kept for structural symmetry with `submit_order`).
+        for (addr, bd) in fee_breakdowns {
+            merge_fee_breakdown(&mut all_fee_breakdowns, addr, bd)?;
         }
 
         // Merge volumes.
@@ -638,12 +634,16 @@ fn execute_close_schedule(
         // ADL: if there is unfilled remainder, ADL against counter-positions
         // at the bankruptcy price.
         if unfilled.is_non_zero() {
-            // Snapshot PnL before ADL to compute the delta for the Liquidated event.
-            let user_pnl_snapshot = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
+            // Snapshot the user's margin before ADL to measure the realized
+            // PnL delta for the `Liquidated` event (liq trading fees are
+            // zero, so the margin delta equals the realized PnL from ADL).
+            let user_margin_pre_adl = user_state.margin;
 
             let (adl_size, adl_price) = execute_adl(
                 storage,
                 contract,
+                &liq_param,
+                &mut state,
                 user,
                 pair_id,
                 pair_state,
@@ -651,8 +651,6 @@ fn execute_close_schedule(
                 maker_states,
                 unfilled,
                 bankruptcy_price,
-                &mut all_pnls,
-                &mut all_fees,
                 &mut all_volumes,
                 &mut all_index_updates,
                 events,
@@ -662,10 +660,7 @@ fn execute_close_schedule(
             closed_notional
                 .checked_add_assign(adl_size.checked_abs()?.checked_mul(oracle_price)?)?;
 
-            // Compute the liquidated user's realized PnL from ADL fills as the
-            // delta in accumulated PnL since the pre-ADL snapshot.
-            let user_pnl_after = all_pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
-            let adl_realized_pnl = user_pnl_after.checked_sub(user_pnl_snapshot)?;
+            let adl_realized_pnl = user_state.margin.checked_sub(user_margin_pre_adl)?;
 
             events.push(Liquidated {
                 user,
@@ -695,13 +690,14 @@ fn execute_close_schedule(
     }
 
     Ok((
-        all_pnls,
-        all_fees,
+        state,
+        all_fee_breakdowns,
         all_order_mutations,
         closed_notional,
         all_index_updates,
         all_volumes,
         next_order_id,
+        next_fill_id,
     ))
 }
 
@@ -711,9 +707,12 @@ fn execute_close_schedule(
 ///
 /// This is a leaf helper private to `execute_close_schedule` and keeps `&mut`
 /// parameters by design; it is not part of the pure set.
+#[allow(clippy::too_many_arguments)]
 fn execute_adl(
     storage: &dyn Storage,
     contract: Addr,
+    param: &Param,
+    state: &mut State,
     user: Addr,
     pair_id: &PairId,
     pair_state: &mut PairState,
@@ -721,8 +720,6 @@ fn execute_adl(
     maker_states: &mut BTreeMap<Addr, UserState>,
     unfilled: Quantity,
     bankruptcy_price: UsdPrice,
-    all_pnls: &mut BTreeMap<Addr, UsdValue>,
-    all_fees: &mut BTreeMap<Addr, UsdValue>,
     all_volumes: &mut BTreeMap<Addr, UsdValue>,
     index_updates: &mut Vec<PositionIndexUpdate>,
     events: &mut EventBuilder,
@@ -757,20 +754,26 @@ fn execute_adl(
             continue;
         }
 
-        // Load counter-party state.
-        let counter_state = match maker_states.entry(counter_user) {
-            Entry::Vacant(e) => {
-                let maybe_state = USER_STATES.may_load(storage, counter_user)?;
-                e.insert(maybe_state.unwrap_or_default())
-            },
-            Entry::Occupied(e) => e.into_mut(),
+        // Take the counter-party's state out of the map so the later
+        // `settle_pnls` can borrow the vault state disjointly (or simply
+        // use the counter-party's state when the counter-party *is* the
+        // vault).
+        let mut counter_state = match maker_states.remove(&counter_user) {
+            Some(s) => s,
+            None => USER_STATES
+                .may_load(storage, counter_user)?
+                .unwrap_or_default(),
         };
 
         // Verify counter-party still has this position (may have been modified
         // by earlier book matching in a shared maker_states map).
         let counter_position = match counter_state.positions.get(pair_id) {
             Some(pos) if pos.entry_price == entry_price => pos,
-            _ => continue,
+            _ => {
+                // Put the counter-party's state back unchanged.
+                maker_states.insert(counter_user, counter_state);
+                continue;
+            },
         };
 
         let user_close = {
@@ -783,9 +786,9 @@ fn execute_adl(
             }
         };
 
-        // User side:
+        // User side — position update and scalar PnL / fee / volume.
         let old_user_pos = user_state.positions.get(pair_id).cloned();
-        settle_fill(
+        let user_settlement = settle_fill(
             contract,
             pair_id,
             pair_state,
@@ -794,11 +797,12 @@ fn execute_adl(
             user_close,
             bankruptcy_price,
             Dimensionless::ZERO,
-            all_pnls,
-            all_fees,
-            all_volumes,
             None,
         )?;
+        all_volumes
+            .entry(user)
+            .or_default()
+            .checked_add_assign(user_settlement.volume)?;
         if let Some(diff) = compute_position_diff(
             pair_id,
             user,
@@ -808,22 +812,23 @@ fn execute_adl(
             index_updates.push(diff);
         }
 
-        // Counter-party side:
+        // Counter-party side — position update and scalar PnL / fee / volume.
         let old_counter_pos = counter_state.positions.get(pair_id).cloned();
-        let counter_pnl = settle_fill(
+        let counter_settlement = settle_fill(
             contract,
             pair_id,
             pair_state,
-            counter_state,
+            &mut counter_state,
             counter_user,
             user_close.checked_neg()?,
             bankruptcy_price,
             Dimensionless::ZERO,
-            all_pnls,
-            all_fees,
-            all_volumes,
             None,
         )?;
+        all_volumes
+            .entry(counter_user)
+            .or_default()
+            .checked_add_assign(counter_settlement.volume)?;
         if let Some(diff) = compute_position_diff(
             pair_id,
             counter_user,
@@ -833,34 +838,69 @@ fn execute_adl(
             index_updates.push(diff);
         }
 
+        // Per-fill settlement on margins. All fees are zero during ADL,
+        // so this is effectively a PnL application with a no-op fee
+        // split. `vault_state_opt` is None when either party IS the vault
+        // (their own state then routes the zero vault fee); otherwise we
+        // look up the vault's state in the maker-states map.
+        {
+            let vault_state_opt = if user != contract && counter_user != contract {
+                Some(maker_states.entry(contract).or_insert_with(|| {
+                    USER_STATES
+                        .may_load(storage, contract)
+                        .unwrap()
+                        .unwrap_or_default()
+                }))
+            } else {
+                None
+            };
+            // `_fill_breakdowns` is empty because both fees are zero.
+            let _fill_breakdowns = settle_pnls(
+                contract,
+                param,
+                state,
+                user,
+                user_state,
+                user_settlement.pnl,
+                user_settlement.fee,
+                counter_user,
+                &mut counter_state,
+                counter_settlement.pnl,
+                counter_settlement.fee,
+                vault_state_opt,
+            )?;
+        }
+
         // Emit Deleveraged event for counter-party.
         events.push(Deleveraged {
             user: counter_user,
             pair_id: pair_id.clone(),
             closing_size: user_close.checked_neg()?,
             fill_price: bankruptcy_price,
-            realized_pnl: counter_pnl,
+            realized_pnl: counter_settlement.pnl,
         })?;
 
         remaining = remaining.checked_sub(user_close)?;
         total_adl_size.checked_add_assign(user_close)?;
+
+        // Put the counter-party's (now updated) state back.
+        maker_states.insert(counter_user, counter_state);
     }
 
     Ok((total_adl_size, bankruptcy_price))
 }
 
-/// Compute the liquidation fee, capped at the user's remaining margin after
-/// position PnL.
+/// Compute the liquidation fee, capped at the user's remaining margin.
+///
+/// Caller guarantees `user_margin` already reflects realized PnL from the
+/// liquidation fills (per-fill settlement applies PnLs as fills happen).
 fn compute_liquidation_fee(
-    pnls: &BTreeMap<Addr, UsdValue>,
-    user: Addr,
     closed_notional: UsdValue,
     liquidation_fee_rate: Dimensionless,
     user_margin: UsdValue,
 ) -> anyhow::Result<UsdValue> {
     let fee_usd = closed_notional.checked_mul(liquidation_fee_rate)?;
-    let user_pnl = pnls.get(&user).copied().unwrap_or(UsdValue::ZERO);
-    let remaining_margin = user_margin.checked_add(user_pnl)?.max(UsdValue::ZERO);
+    let remaining_margin = user_margin.max(UsdValue::ZERO);
     Ok(fee_usd.min(remaining_margin))
 }
 
@@ -872,7 +912,7 @@ mod tests {
         super::*,
         crate::{
             PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
-            state::{LONGS, OrderKey, SHORTS},
+            state::{FEE_RATE_OVERRIDES, LONGS, OrderKey, SHORTS},
         },
         dango_types::{
             Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
@@ -914,6 +954,8 @@ mod tests {
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
             maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
             max_abs_oi: Quantity::new_int(1_000_000),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
     }
@@ -927,6 +969,7 @@ mod tests {
         PARAM.save(storage, param).unwrap();
         STATE.save(storage, &State::default()).unwrap();
         NEXT_ORDER_ID.save(storage, &OrderId::ONE).unwrap();
+        NEXT_FILL_ID.save(storage, &FillId::ONE).unwrap();
 
         for (pair_id, pair_param, pair_state) in pairs {
             PAIR_PARAMS.save(storage, pair_id, pair_param).unwrap();
@@ -987,6 +1030,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         BIDS.save(storage, key, &order).unwrap();
     }
@@ -1010,6 +1054,7 @@ mod tests {
             created_at: Timestamp::ZERO,
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         ASKS.save(storage, key, &order).unwrap();
     }
@@ -1477,6 +1522,153 @@ mod tests {
         );
     }
 
+    /// Verifies the "liquidation fills are fee-free" invariant holds for a
+    /// maker that has an admin-configured fee rate override.
+    ///
+    /// `match_order` looks up `FEE_RATE_OVERRIDES` before falling back to
+    /// `param.maker_fee_rates`, so without the `force_maker_fee_rate`
+    /// argument, the override would defeat `liq_param`'s zero schedule and
+    /// the maker would be charged a trading fee during liquidation — a
+    /// regression against `book/perps/4-liquidation-and-adl.md §4`.
+    ///
+    /// Setup:
+    ///   - User long 1 BTC @ $50,000, margin $2,500, oracle $48,000.
+    ///   - Equity = $500. MM = $2,400. Equity < MM → liquidatable.
+    ///   - Book bid at $49,000 from MAKER, size 1.
+    ///   - MAKER has a fee rate override = (1% maker, 1% taker).
+    ///   - `protocol_fee_rate = 20%` so any leaked fee splits into both
+    ///     treasury and vault, making leakage maximally observable.
+    ///
+    /// Expected (with the fix):
+    ///   - MAKER's side of the fill is pure opening (PnL = 0).
+    ///   - Maker fee = 0 → MAKER.margin unchanged ($100,000).
+    ///   - Treasury unchanged (no protocol cut from a zero fee).
+    ///   - Vault margin unchanged (no vault cut from a zero fee).
+    ///
+    /// Without the fix, a nonzero maker fee leaks through regardless of
+    /// the exact close size, so MAKER.margin < $100,000 and the vault /
+    /// treasury pick up an 80/20 split of that fee. The equality asserts
+    /// below catch any nonzero leak.
+    #[test]
+    fn liquidation_respects_zero_fee_even_with_maker_override() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = Param {
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_permille(10), // 1%
+                ..Default::default()
+            },
+            liquidation_fee_rate: Dimensionless::new_permille(10), // 1%
+            protocol_fee_rate: Dimensionless::new_percent(20),     // 20%
+            max_open_orders: 100,
+            ..Default::default()
+        };
+
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(1),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
+
+        // MAKER has an active fee rate override — this is exactly the state
+        // the fix must tolerate during a liquidation.
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                MAKER,
+                &(
+                    Dimensionless::new_permille(10), // 1% maker
+                    Dimensionless::new_permille(10), // 1% taker (irrelevant here)
+                ),
+            )
+            .unwrap();
+
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 1, 49_000);
+
+        let mut pair_params = BTreeMap::new();
+        pair_params.insert(pair_btc(), btc_pair_param());
+
+        let mut pair_states = BTreeMap::new();
+        pair_states.insert(pair_btc(), pair_state);
+
+        let mut oracle_prices = BTreeMap::new();
+        oracle_prices.insert(pair_btc(), UsdPrice::new_int(48_000));
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(2_500);
+
+        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let treasury_before = state.treasury;
+        let vault_margin_before = USER_STATES
+            .may_load(&ctx.storage, CONTRACT)
+            .unwrap()
+            .unwrap_or_default()
+            .margin;
+
+        let LiquidateOutcome {
+            state,
+            maker_states,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oracle_querier,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut EventBuilder::new(),
+        )
+        .expect("liquidation should succeed");
+
+        // MAKER opened a 1 BTC long at $49,000 (pure opening fill). With
+        // the override bypassed, there is no trading fee to deduct.
+        assert_eq!(
+            maker_states[&MAKER].margin,
+            UsdValue::new_int(100_000),
+            "maker margin must be unchanged — no trading fee during liquidation"
+        );
+
+        // No fee was charged, so neither the treasury nor the vault takes
+        // a cut. (The liq fee itself bypasses both and lands in the
+        // insurance fund.)
+        assert_eq!(
+            state.treasury, treasury_before,
+            "treasury must not receive a protocol cut — no maker fee was charged"
+        );
+        assert_eq!(
+            maker_states[&CONTRACT].margin, vault_margin_before,
+            "vault must not receive a maker-fee cut during liquidation"
+        );
+    }
+
     /// Verifies that when the vault itself is liquidated (`user == contract`),
     /// the liquidation fee is correctly deducted from the vault's own margin
     /// and credited to the insurance fund.
@@ -1920,7 +2112,7 @@ mod tests {
         let mut events = EventBuilder::new();
         let CancelAllOrdersOutcome {
             user_state: updated_user_state,
-        } = _cancel_all_orders(
+        } = compute_cancel_all_orders_outcome(
             &mut ctx.storage,
             USER,
             &user_state,
@@ -2048,6 +2240,7 @@ mod tests {
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
                 }),
+                client_order_id: None,
             };
             BIDS.save(&mut ctx.storage, key, &order).unwrap();
         }

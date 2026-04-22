@@ -84,6 +84,7 @@ mod tests {
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(limit),
                     time_in_force: TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
                 },
                 UsdPrice::new_int(100),
                 is_bid

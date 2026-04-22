@@ -40,12 +40,28 @@ export async function submitPerpsOrder<transport extends Transport>(
     ...(child.size ? { size: child.size } : {}),
   });
 
+  // Strip a `null` / `undefined` `clientOrderId` from the limit body so
+  // the JSON message and the EIP-712 typed-data structure agree on
+  // whether the field is present. The typed-data builder below uses the
+  // same `!= null` check.
+  const limitHasClientOrderId = "limit" in kind && kind.limit.clientOrderId != null;
+  const normalizedKind: PerpsOrderKind =
+    "limit" in kind
+      ? {
+          limit: {
+            limitPrice: kind.limit.limitPrice,
+            timeInForce: kind.limit.timeInForce,
+            ...(limitHasClientOrderId ? { clientOrderId: kind.limit.clientOrderId as string } : {}),
+          },
+        }
+      : kind;
+
   const msg = {
     trade: {
       submitOrder: {
         pairId,
         size,
-        kind,
+        kind: normalizedKind,
         reduceOnly,
         ...(tp ? { tp: buildChildOrder(tp) } : {}),
         ...(sl ? { sl: buildChildOrder(sl) } : {}),
@@ -53,18 +69,20 @@ export async function submitPerpsOrder<transport extends Transport>(
     },
   };
 
-  const kindTypedData = "market" in kind
-    ? {
-        kind: [{ name: "market", type: "Market" }],
-        Market: [{ name: "max_slippage", type: "string" }],
-      }
-    : {
-        kind: [{ name: "limit", type: "Limit" }],
-        Limit: [
-          { name: "limit_price", type: "string" },
-          { name: "time_in_force", type: "string" },
-        ],
-      };
+  const kindTypedData =
+    "market" in kind
+      ? {
+          kind: [{ name: "market", type: "Market" }],
+          Market: [{ name: "max_slippage", type: "string" }],
+        }
+      : {
+          kind: [{ name: "limit", type: "Limit" }],
+          Limit: [
+            { name: "limit_price", type: "string" },
+            { name: "time_in_force", type: "string" },
+            ...(limitHasClientOrderId ? [{ name: "client_order_id", type: "string" }] : []),
+          ],
+        };
 
   const childOrderTypeFor = (child: ChildOrder) => [
     { name: "trigger_price", type: "string" },

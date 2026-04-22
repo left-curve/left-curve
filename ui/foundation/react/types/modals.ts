@@ -36,6 +36,7 @@ export const Modals = {
   VaultWithdrawLiquidityWithPenalty: "vault-withdraw-liquidity-with-penalty",
   PerpsMarginMode: "perps-margin-mode",
   PerpsAdjustLeverage: "perps-adjust-leverage",
+  FeeTiers: "fee-tiers",
 };
 
 export type ModalRef = {

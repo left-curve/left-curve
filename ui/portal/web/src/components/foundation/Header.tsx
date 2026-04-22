@@ -1,4 +1,4 @@
-import { useAccount, useConfig, useCurrentEpoch } from "@left-curve/store";
+import { useAccount, useConfig } from "@left-curve/store";
 import { useRouterState } from "@tanstack/react-router";
 import {
   IconGift,
@@ -12,7 +12,7 @@ import {
 
 import { Button, IconButton, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
@@ -24,43 +24,23 @@ interface HeaderProps {
   isScrolled: boolean;
 }
 
-const BLOCK_TIME_MS = 500;
-
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected, isUserActive } = useAccount();
   const { chain } = useConfig();
 
-  const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible, subscriptions } =
-    useApp();
+  const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
   const { isLg } = useMediaQuery();
 
   const isMainnet = !["Devnet", "Testnet"].includes(chain.name);
 
-  const pointsUrl = window.dango.urls.pointsUrl;
-  const { isStarted, startsAt } = useCurrentEpoch({ pointsUrl, enabled: isMainnet });
+  // TODO: Re-enable once the points service is ready.
+  // const pointsUrl = window.dango.urls.pointsUrl;
+  // const { isStarted, startsAt } = useCurrentEpoch({ pointsUrl, enabled: isMainnet });
 
-  const [startDate, setStartDate] = useState<Date | null>(null);
-
-  useEffect(() => {
-    if (!startsAt) {
-      setStartDate(null);
-      return;
-    }
-    if ("timestamp" in startsAt) {
-      // Backend returns a unix timestamp in seconds as a string.
-      setStartDate(new Date(Number(startsAt.timestamp) * 1000));
-      return;
-    }
-    const targetBlock = startsAt.block;
-    const unsubscribe = subscriptions.subscribe("block", {
-      listener: ({ blockHeight }) => {
-        const blockDiff = Math.max(0, targetBlock - blockHeight);
-        setStartDate(new Date(Date.now() + blockDiff * BLOCK_TIME_MS));
-      },
-    });
-    return () => unsubscribe();
-  }, [startsAt, subscriptions]);
+  // Fixed countdown target: 2026-04-15 12:00:00 UTC
+  const startDate = new Date("2026-04-15T12:00:00Z");
+  const isStarted = new Date() >= startDate;
 
   const countdown = useCountdown({ date: startDate ?? undefined });
 

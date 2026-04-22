@@ -4,6 +4,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useEpochPoints } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
+import { useUserPoints } from "../useUserPoints";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
@@ -44,27 +45,47 @@ export const PointsProfileTable: React.FC = () => {
   const navigate = useNavigate();
   const pointsUrl = window.dango.urls.pointsUrl;
   const { epochPoints, isLoading } = useEpochPoints({ pointsUrl, userIndex });
+  const { compensation } = useUserPoints();
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const allRows = useMemo((): EpochHistoryRow[] => {
-    if (!epochPoints) return [];
-    return epochPoints
-      .map(([epoch, epochStats]) => {
+    const rows: EpochHistoryRow[] = [];
+
+    if (compensation) {
+      const compensationPoints = Number(compensation.vault) + Number(compensation.unrealized);
+      if (compensationPoints > 0) {
+        rows.push({
+          epoch: 0,
+          epochLabel: m["points.profile.epochLabel"]({ number: "0" }),
+          dateRange: m["points.profile.compensation"](),
+          dateTimestamp: 0,
+          points: compensationPoints,
+        });
+      }
+    }
+
+    if (epochPoints) {
+      for (const [epoch, epochStats] of epochPoints) {
         const vault = Number(epochStats.stats.points.vault);
         const perps = Number(epochStats.stats.points.perps);
         const referral = Number(epochStats.stats.points.referral);
-        return {
-          epoch,
-          epochLabel: m["points.profile.epochLabel"]({ number: String(epoch) }),
-          dateRange: formatEpochDateRange(epochStats.started_at, epochStats.ended_at),
-          dateTimestamp: Number.parseFloat(epochStats.started_at),
-          points: vault + perps + referral,
-        };
-      })
-      .filter((r) => r.points > 0);
-  }, [epochPoints]);
+        const total = vault + perps + referral;
+        if (total > 0) {
+          rows.push({
+            epoch,
+            epochLabel: m["points.profile.epochLabel"]({ number: String(epoch) }),
+            dateRange: formatEpochDateRange(epochStats.started_at, epochStats.ended_at),
+            dateTimestamp: Number.parseFloat(epochStats.started_at),
+            points: total,
+          });
+        }
+      }
+    }
+
+    return rows;
+  }, [epochPoints, compensation]);
 
   const sortedRows = useMemo(() => {
     const accessor =
@@ -157,7 +178,7 @@ export const PointsProfileTable: React.FC = () => {
         </div>
       }
       classNames={{
-        base: "p-0",
+        base: "p-0 p-4",
         cell: "px-6 py-4",
         row: "border-b border-outline-secondary-gray last:border-b-0",
       }}

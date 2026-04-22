@@ -551,7 +551,46 @@ Create an additional account for an existing user (maximum 5 accounts per user):
 
 Must be sent from an existing account owned by the user.
 
-### 3.3 Update key
+### 3.3 Account address derivation
+
+#### 3.3.1 Master account
+
+The first account of a new user ([§3.1](#31-register-user)) is derived as:
+
+```plain
+address := ripemd160(sha256(deployer || code_hash || seed || key_hash || key_tag || key))
+```
+
+where `||` denotes byte concatenation.
+
+The preimage layout (122 bytes total):
+
+| Byte range  | Size | Field       | Description                                                                                                   |
+| ----------- | ---- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| `[0..20)`   | 20   | `deployer`  | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                                             |
+| `[20..52)`  | 32   | `code_hash` | The code hash of the Dango single-signature account contract (see [§11](#11-constants))                       |
+| `[52..56)`  | 4    | `seed`      | User-chosen `u32`, big-endian — arbitrary value for frontrunning protection                                   |
+| `[56..88)`  | 32   | `key_hash`  | Client-chosen 32-byte identifier for the key (see [§3.8](#38-query-users-by-key) for hashing rules)           |
+| `[88..89)`  | 1    | `key_tag`   | Key type: `0` = Secp256r1, `1` = Secp256k1, `2` = Ethereum                                                    |
+| `[89..122)` | 33   | `key`       | Secp256r1 / Secp256k1: 33-byte compressed public key. Ethereum: 13 zero bytes followed by the 20-byte address |
+
+#### 3.3.2 Subaccount
+
+```plain
+address := ripemd160(sha256(deployer || code_hash || account_index))
+```
+
+The preimage layout (56 bytes total):
+
+| Byte range | Size | Field           | Description                                                                             |
+| ---------- | ---- | --------------- | --------------------------------------------------------------------------------------- |
+| `[0..20)`  | 20   | `deployer`      | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                       |
+| `[20..52)` | 32   | `code_hash`     | The code hash of the Dango single-signature account contract (see [§11](#11-constants)) |
+| `[52..56)` | 4    | `account_index` | Global account index, `u32`, big-endian                                                 |
+
+The global account index is a chain-wide monotonic counter maintained by the account factory; it is incremented for every account created across all users, so every account has a unique index.
+
+### 3.4 Update key
 
 Associate or disassociate a key with the user profile.
 
@@ -593,7 +632,7 @@ Associate or disassociate a key with the user profile.
 }
 ```
 
-### 3.4 Update username
+### 3.5 Update username
 
 Set the user's human-readable username (one-time operation):
 
@@ -613,7 +652,7 @@ Username rules: 1–15 characters, lowercase `a-z`, digits `0-9`, and underscore
 
 The username is cosmetic only — used for human-readable display on the frontend. It is not used in any business logic of the exchange.
 
-### 3.5 Query user
+### 3.6 Query user
 
 ```graphql
 query {
@@ -640,7 +679,7 @@ query {
 
 The `keyType` enum values are: `SECP256R1`, `SECP256K1`, `ETHEREUM`.
 
-### 3.6 Query user by username
+### 3.7 Query user by username
 
 Look up a user by their username via a smart contract query against the account factory:
 
@@ -678,7 +717,7 @@ query {
 
 You can also look up by index: `{ "user": { "index": 42 } }`.
 
-### 3.7 Query users by key
+### 3.8 Query users by key
 
 Search for users by public key or key hash. Useful when you know a user's key but not their index or username.
 
@@ -722,7 +761,7 @@ Filter by `publicKeyHash` or by `publicKey` (the raw key value). The key hash is
 
 The resulting hash is hex-encoded in uppercase.
 
-### 3.8 Query accounts
+### 3.9 Query accounts
 
 ```graphql
 query {
@@ -770,6 +809,7 @@ query {
 {
   "max_unlocks": 5,
   "max_open_orders": 50,
+  "max_action_batch_size": 5,
   "maker_fee_rates": {
     "base": "0.000000",
     "tiers": {}
@@ -793,21 +833,22 @@ query {
 }
 ```
 
-| Field                       | Type            | Description                                                |
-| --------------------------- | --------------- | ---------------------------------------------------------- |
-| `max_unlocks`               | `usize`         | Max concurrent vault unlock requests per user              |
-| `max_open_orders`           | `usize`         | Max resting limit orders per user (all pairs)              |
-| `maker_fee_rates`           | `RateSchedule`  | Volume-tiered maker fee rates                              |
-| `taker_fee_rates`           | `RateSchedule`  | Volume-tiered taker fee rates                              |
-| `protocol_fee_rate`         | `Dimensionless` | Fraction of trading fees routed to treasury                |
-| `liquidation_fee_rate`      | `Dimensionless` | Insurance fund fee on liquidations                         |
-| `liquidation_buffer_ratio`  | `Dimensionless` | Post-liquidation equity buffer above maintenance margin    |
-| `funding_period`            | `Duration`      | Interval between funding collections (nanoseconds)         |
-| `vault_total_weight`        | `Dimensionless` | Sum of all pairs' vault liquidity weights                  |
-| `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release (nanoseconds) |
-| `referral_active`           | `bool`          | Whether the referral commission system is active           |
-| `min_referrer_volume`       | `UsdValue`      | Minimum lifetime volume to become a referrer               |
-| `referrer_commission_rates` | `RateSchedule`  | Volume-tiered referrer commission rates                    |
+| Field                       | Type            | Description                                                                      |
+| --------------------------- | --------------- | -------------------------------------------------------------------------------- |
+| `max_unlocks`               | `usize`         | Max concurrent vault unlock requests per user                                    |
+| `max_open_orders`           | `usize`         | Max resting limit orders per user (all pairs)                                    |
+| `max_action_batch_size`     | `usize`         | Max actions in a single [`batch_update_orders`](#66-batch-update-orders) message |
+| `maker_fee_rates`           | `RateSchedule`  | Volume-tiered maker fee rates                                                    |
+| `taker_fee_rates`           | `RateSchedule`  | Volume-tiered taker fee rates                                                    |
+| `protocol_fee_rate`         | `Dimensionless` | Fraction of trading fees routed to treasury                                      |
+| `liquidation_fee_rate`      | `Dimensionless` | Insurance fund fee on liquidations                                               |
+| `liquidation_buffer_ratio`  | `Dimensionless` | Post-liquidation equity buffer above maintenance margin                          |
+| `funding_period`            | `Duration`      | Interval between funding collections (nanoseconds)                               |
+| `vault_total_weight`        | `Dimensionless` | Sum of all pairs' vault liquidity weights                                        |
+| `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release (nanoseconds)                       |
+| `referral_active`           | `bool`          | Whether the referral commission system is active                                 |
+| `min_referrer_volume`       | `UsdValue`      | Minimum lifetime volume to become a referrer                                     |
+| `referrer_commission_rates` | `RateSchedule`  | Volume-tiered referrer commission rates                                          |
 
 A `RateSchedule` has two fields: `base` (the default rate) and `tiers` (a map of volume threshold to rate; highest qualifying tier wins).
 
@@ -897,23 +938,27 @@ query {
   "vault_liquidity_weight": "1.000000",
   "vault_half_spread": "0.001000",
   "vault_max_quote_size": "50000.000000",
+  "max_limit_price_deviation": "0.100000",
+  "max_market_slippage": "0.100000",
   "bucket_sizes": ["1.000000", "5.000000", "10.000000"]
 }
 ```
 
-| Field                      | Type            | Description                                   |
-| -------------------------- | --------------- | --------------------------------------------- |
-| `tick_size`                | `UsdPrice`      | Minimum price increment for limit orders      |
-| `min_order_size`           | `UsdValue`      | Minimum notional value (reduce-only exempt)   |
-| `max_abs_oi`               | `Quantity`      | Maximum open interest per side                |
-| `max_abs_funding_rate`     | `FundingRate`   | Daily funding rate cap                        |
-| `initial_margin_ratio`     | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage) |
-| `maintenance_margin_ratio` | `Dimensionless` | Margin to stay open (liquidation threshold)   |
-| `impact_size`              | `UsdValue`      | Notional for impact price calculation         |
-| `vault_liquidity_weight`   | `Dimensionless` | Vault allocation weight for this pair         |
-| `vault_half_spread`        | `Dimensionless` | Half the vault's bid-ask spread               |
-| `vault_max_quote_size`     | `Quantity`      | Maximum vault resting size per side           |
-| `bucket_sizes`             | `[UsdPrice]`    | Price bucket granularities for depth queries  |
+| Field                       | Type            | Description                                                        |
+| --------------------------- | --------------- | ------------------------------------------------------------------ |
+| `tick_size`                 | `UsdPrice`      | Minimum price increment for limit orders                           |
+| `min_order_size`            | `UsdValue`      | Minimum notional value (reduce-only exempt)                        |
+| `max_abs_oi`                | `Quantity`      | Maximum open interest per side                                     |
+| `max_abs_funding_rate`      | `FundingRate`   | Daily funding rate cap                                             |
+| `initial_margin_ratio`      | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage)                      |
+| `maintenance_margin_ratio`  | `Dimensionless` | Margin to stay open (liquidation threshold)                        |
+| `impact_size`               | `UsdValue`      | Notional for impact price calculation                              |
+| `vault_liquidity_weight`    | `Dimensionless` | Vault allocation weight for this pair                              |
+| `vault_half_spread`         | `Dimensionless` | Half the vault's bid-ask spread                                    |
+| `vault_max_quote_size`      | `Quantity`      | Maximum vault resting size per side                                |
+| `max_limit_price_deviation` | `Dimensionless` | Max symmetric deviation of a limit price from oracle at submission |
+| `max_market_slippage`       | `Dimensionless` | Max `max_slippage` a user may set on a market or TP/SL child order |
+| `bucket_sizes`              | `[UsdPrice]`    | Price bucket granularities for depth queries                       |
 
 For the relationship between margin ratios and leverage, see [Risk §2](6-risk.md).
 
@@ -1399,7 +1444,10 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
   "closing_size": "0.000000",
   "opening_size": "0.100000",
   "realized_pnl": "0.000000",
-  "fee": "6.500000"
+  "fee": "6.500000",
+  "client_order_id": "42",
+  "fill_id": "17",
+  "is_maker": false
 }
 ```
 
@@ -1623,7 +1671,8 @@ Place a resting order on the book:
           "kind": {
             "limit": {
               "limit_price": "65000.000000",
-              "time_in_force": "GTC"
+              "time_in_force": "GTC",
+              "client_order_id": "42"
             }
           },
           "reduce_only": false
@@ -1635,13 +1684,14 @@ Place a resting order on the book:
 }
 ```
 
-| Field           | Type          | Description                                                            |
-| --------------- | ------------- | ---------------------------------------------------------------------- |
-| `limit_price`   | `UsdPrice`    | Limit price — must be aligned to `tick_size`                           |
-| `time_in_force` | `TimeInForce` | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                    |
-| `reduce_only`   | `bool`        | If `true`, only position-closing portion is kept                       |
-| `tp`            | `ChildOrder?` | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
-| `sl`            | `ChildOrder?` | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
+| Field             | Type             | Description                                                            |
+| ----------------- | ---------------- | ---------------------------------------------------------------------- |
+| `limit_price`     | `UsdPrice`       | Limit price — must be aligned to `tick_size`                           |
+| `time_in_force`   | `TimeInForce`    | `"GTC"` (default), `"IOC"`, or `"POST"` — see below                    |
+| `client_order_id` | `ClientOrderId?` | Optional caller-assigned id for in-flight cancel — see below           |
+| `reduce_only`     | `bool`           | If `true`, only position-closing portion is kept                       |
+| `tp`              | `ChildOrder?`    | Optional take-profit child order (see [§6.3](#63-submit-market-order)) |
+| `sl`              | `ChildOrder?`    | Optional stop-loss child order (see [§6.3](#63-submit-market-order))   |
 
 **Time-in-force options:**
 
@@ -1649,9 +1699,17 @@ Place a resting order on the book:
 - **IOC** (Immediate-Or-Cancel): fills as much as possible against the book, then discards any unfilled remainder. Errors if nothing fills at all.
 - **POST** (Post-Only): the entire order is placed on the book without matching. Rejected if the limit price would cross the best offer on the opposite side.
 
+**Client order id:**
+
+`client_order_id` is a caller-assigned `Uint64` that lets an algo trader cancel an order in the same block it was submitted, without round-tripping through the server response to learn the system-assigned `OrderId`. Cancel via [`CancelOrderRequest::OneByClientOrderId`](#65-cancel-order).
+
+- Uniqueness scope: per-sender, across the sender's _active_ (resting) limit orders only. The contract does not remember client order ids of orders that have been canceled or filled, so they can be reused freely.
+- Submitting a second order with a `client_order_id` that the sender already has on the book fails with `duplicate_data`.
+- Not allowed with `time_in_force: "IOC"` — IOC never enters the book, so the alias would be unreachable. Submission is rejected with a clear error.
+
 ### 6.5 Cancel order
 
-**Cancel a single order:**
+**Cancel a single order by system-assigned `OrderId`:**
 
 ```json
 {
@@ -1668,6 +1726,28 @@ Place a resting order on the book:
   }
 }
 ```
+
+**Cancel a single order by caller-assigned `ClientOrderId`:**
+
+```json
+{
+  "execute": {
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "cancel_order": {
+          "one_by_client_order_id": "42"
+        }
+      }
+    },
+    "funds": {}
+  }
+}
+```
+
+This resolves to the active order owned by the sender that carries the given `client_order_id` (see [§6.4](#64-submit-limit-order)). It bails if no such order exists. The lookup is per-sender, so two traders can independently use the same `client_order_id` value without colliding.
+
+Pattern: an algo trader can submit and cancel in the same block by reusing the `client_order_id` they assigned at submission, without waiting for the server response.
 
 **Cancel all orders:**
 
@@ -1687,7 +1767,74 @@ Place a resting order on the book:
 
 Cancellation releases reserved margin and decrements `open_order_count`.
 
-### 6.6 Submit conditional order (TP/SL)
+### 6.6 Batch update orders
+
+Apply a sequence of submit and cancel actions atomically. Actions execute in order; later actions observe the state written by earlier ones. If any action fails, the whole message reverts and no partial state is persisted.
+
+```json
+{
+  "execute": {
+    "contract": "PERPS_CONTRACT",
+    "msg": {
+      "trade": {
+        "batch_update_orders": [
+          { "cancel": "all" },
+          {
+            "submit": {
+              "pair_id": "perp/btcusd",
+              "size": "0.100000",
+              "kind": {
+                "limit": {
+                  "limit_price": "64000.000000",
+                  "time_in_force": "POST",
+                  "client_order_id": "1"
+                }
+              },
+              "reduce_only": false
+            }
+          },
+          {
+            "submit": {
+              "pair_id": "perp/btcusd",
+              "size": "-0.100000",
+              "kind": {
+                "limit": {
+                  "limit_price": "66000.000000",
+                  "time_in_force": "POST",
+                  "client_order_id": "2"
+                }
+              },
+              "reduce_only": false
+            }
+          }
+        ]
+      }
+    },
+    "funds": {}
+  }
+}
+```
+
+The payload is a JSON array of `SubmitOrCancelOrderRequest` values. Each entry is one of:
+
+- `{ "submit": { … } }` — same shape as [`submit_order`](#64-submit-limit-order) (every field of `SubmitOrderRequest`).
+- `{ "cancel": <CancelOrderRequest> }` — any variant of [`CancelOrderRequest`](#103-enums): `{ "one": "..." }`, `{ "one_by_client_order_id": "..." }`, or the string `"all"`.
+
+**Constraints:**
+
+- The list must be non-empty.
+- The list length must not exceed [`Param.max_action_batch_size`](#41-global-parameters); the chain rejects oversize batches before any action runs.
+- Conditional (TP/SL) orders are not supported in batches — use [`submit_conditional_order`](#67-submit-conditional-order-tpsl) / [`cancel_conditional_order`](#68-cancel-conditional-order) for those.
+
+**Atomicity:** every storage write the earlier actions made — including realized fills that mutated counterparties' state — is discarded if a later action fails. Events are emitted only for the successful-batch case; a reverting batch surfaces just the top-level transaction failure.
+
+**Example use case — atomic book replacement:**
+
+An algo trader refreshing quotes at a new reference price can send a single `batch_update_orders` carrying `{ "cancel": "all" }` followed by the new `submit` entries. The old orders are canceled (freeing reserved margin) before the new submits run their margin checks, and if any new submit would fail (margin check, price band, OI cap, …) the old orders are restored along with the rest of the batch.
+
+**Reusing a `client_order_id` within one batch:** a `{ "cancel": { "one_by_client_order_id": "X" } }` entry releases the id before a later `{ "submit": { … "client_order_id": "X" } }` runs, so the same id can be rebound to a new order within a single message.
+
+### 6.7 Submit conditional order (TP/SL)
 
 Place a take-profit or stop-loss order that triggers when the oracle price crosses a threshold:
 
@@ -1728,7 +1875,7 @@ Place a take-profit or stop-loss order that triggers when the oracle price cross
 
 Conditional orders are always **reduce-only** with zero reserved margin. When triggered, they execute as market orders.
 
-### 6.7 Cancel conditional order
+### 6.8 Cancel conditional order
 
 Conditional orders are identified by `(pair_id, trigger_direction)`, not by order ID.
 
@@ -1789,7 +1936,7 @@ Conditional orders are identified by `(pair_id, trigger_direction)`, not by orde
 }
 ```
 
-### 6.8 Liquidate (permissionless)
+### 6.9 Liquidate (permissionless)
 
 Force-close all positions of an undercollateralized user. This message can be sent by anyone (liquidation bots):
 
@@ -1919,26 +2066,28 @@ subscription {
     createdAt
     blockHeight
     tradeIdx
+    isMaker
   }
 }
 ```
 
 **Behavior:** On connection, cached recent trades are replayed first, then new trades stream in real-time.
 
-| Field         | Type     | Description                                   |
-| ------------- | -------- | --------------------------------------------- |
-| `orderId`     | `String` | Order ID that produced this fill              |
-| `pairId`      | `String` | Trading pair                                  |
-| `user`        | `String` | Account address                               |
-| `fillPrice`   | `String` | Execution price                               |
-| `fillSize`    | `String` | Filled size (positive = buy, negative = sell) |
-| `closingSize` | `String` | Portion that closed existing position         |
-| `openingSize` | `String` | Portion that opened new position              |
-| `realizedPnl` | `String` | PnL realized from the closing portion         |
-| `fee`         | `String` | Trading fee charged                           |
-| `createdAt`   | `String` | Timestamp (ISO 8601)                          |
-| `blockHeight` | `Int`    | Block in which the trade occurred             |
-| `tradeIdx`    | `Int`    | Index within the block                        |
+| Field         | Type       | Description                                                                                                              |
+| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `orderId`     | `String`   | Order ID that produced this fill                                                                                         |
+| `pairId`      | `String`   | Trading pair                                                                                                             |
+| `user`        | `String`   | Account address                                                                                                          |
+| `fillPrice`   | `String`   | Execution price                                                                                                          |
+| `fillSize`    | `String`   | Filled size (positive = buy, negative = sell)                                                                            |
+| `closingSize` | `String`   | Portion that closed existing position                                                                                    |
+| `openingSize` | `String`   | Portion that opened new position                                                                                         |
+| `realizedPnl` | `String`   | PnL realized on this fill, including funding settled on the pre-existing position; excludes trading fees                 |
+| `fee`         | `String`   | Trading fee charged                                                                                                      |
+| `createdAt`   | `String`   | Timestamp (ISO 8601)                                                                                                     |
+| `blockHeight` | `Int`      | Block in which the trade occurred                                                                                        |
+| `tradeIdx`    | `Int`      | Index within the block                                                                                                   |
+| `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0                    |
 
 ### 8.3 Contract query polling
 
@@ -2051,11 +2200,19 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                          | Description                     |
-| ----------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`                                                            | Limit order placed on book      |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`                                                                         | Order removed from book         |
+| Event             | Fields                                                                                                                                          | Description                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?` | Order partially or fully filled |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                        | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                     | Order removed from book         |
+
+`client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
+
+`fill_id` groups the two sides of a single order-book match. When a taker crosses a resting maker, two `order_filled` events are emitted — one for each side — and both carry the same `fill_id`. Successive matches use consecutive ids (strictly increasing), so a taker that crosses two makers in the same transaction produces four events with two distinct `fill_id` values. `fill_id` is `null` for trades executed before v0.15.0 — fill IDs were not assigned prior to that release. Not emitted for ADL fills, which use the [`deleveraged` and `liquidated` events](#liquidation-events) instead.
+
+`is_maker` is `true` for the maker side of a match and `false` for the taker side. Within a single match's pair of `order_filled` events (sharing one `fill_id`), exactly one carries `is_maker = true` and one carries `is_maker = false`. `is_maker` is `null` for trades executed before v0.16.0 — the maker/taker flag was not recorded prior to that release.
+
+`realized_pnl` on `order_filled`, `deleveraged`, and `liquidated` (as `adl_realized_pnl`) includes both the closing PnL on the fill and the funding settled on the user's pre-existing position immediately before the fill is applied. Trading fees are reported separately in the `fee` field on `order_filled`; ADL and deleverage fills incur no trading fees.
 
 ### Conditional order events
 
@@ -2075,15 +2232,17 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### ReasonForOrderRemoval
 
-| Value                   | Description                                                    |
-| ----------------------- | -------------------------------------------------------------- |
-| `filled`                | Order fully filled                                             |
-| `canceled`              | User voluntarily canceled                                      |
-| `position_closed`       | Position was closed (conditional orders only)                  |
-| `self_trade_prevention` | Order crossed user's own order on the opposite side            |
-| `liquidated`            | User was liquidated                                            |
-| `deleveraged`           | User was hit by auto-deleveraging                              |
-| `slippage_exceeded`     | Conditional order triggered but could not fill within slippage |
+| Value                    | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `filled`                 | Order fully filled                                                           |
+| `canceled`               | User voluntarily canceled                                                    |
+| `position_closed`        | Position was closed (conditional orders only)                                |
+| `self_trade_prevention`  | Order crossed user's own order on the opposite side                          |
+| `liquidated`             | User was liquidated                                                          |
+| `deleveraged`            | User was hit by auto-deleveraging                                            |
+| `slippage_exceeded`      | Conditional order triggered but could not fill within slippage               |
+| `price_band_violation`   | Resting price drifted outside the per-pair band before match                 |
+| `slippage_cap_tightened` | Conditional order's stored max_slippage now exceeds the pair's tightened cap |
 
 For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl.md).
 
@@ -2117,6 +2276,8 @@ Additional integer types:
 | `PairId`             | `perp/<base><quote>`            | `"perp/btcusd"`, `"perp/ethusd"` |
 | `OrderId`            | `Uint64` (string)               | `"42"`                           |
 | `ConditionalOrderId` | `Uint64` (shared counter)       | `"43"`                           |
+| `ClientOrderId`      | `Uint64` (caller-assigned)      | `"42"`                           |
+| `FillId`             | `Uint64` (per-match identifier) | `"17"`                           |
 | `Addr`               | Hex address                     | `"0x1234...abcd"`                |
 | `Hash256`            | 64-char hex                     | `"a1b2c3d4e5f6..."`              |
 | `UserIndex`          | `u32`                           | `0`                              |
@@ -2141,10 +2302,13 @@ Additional integer types:
 {
   "limit": {
     "limit_price": "65000.000000",
-    "time_in_force": "GTC"
+    "time_in_force": "GTC",
+    "client_order_id": "42"
   }
 }
 ```
+
+`client_order_id` is optional. Defaults to `null` when omitted; not allowed with `time_in_force: "IOC"`.
 
 **TimeInForce:** `"GTC"` | `"IOC"` | `"POST"` (defaults to `"GTC"` if omitted)
 
@@ -2167,8 +2331,51 @@ Additional integer types:
 ```
 
 ```json
+{
+  "one_by_client_order_id": "42"
+}
+```
+
+```json
 "all"
 ```
+
+**SubmitOrderRequest:**
+
+```json
+{
+  "pair_id": "perp/btcusd",
+  "size": "-0.500000",
+  "kind": {
+    "limit": {
+      "limit_price": "65000.000000",
+      "time_in_force": "GTC",
+      "client_order_id": "42"
+    }
+  },
+  "reduce_only": false,
+  "tp": null,
+  "sl": null
+}
+```
+
+Same shape used by [`submit_order`](#64-submit-limit-order) and each `submit` entry in [`batch_update_orders`](#66-batch-update-orders).
+
+**SubmitOrCancelOrderRequest:**
+
+```json
+{ "submit": { /* SubmitOrderRequest */ } }
+```
+
+```json
+{ "cancel": { "one": "42" } }
+```
+
+```json
+{ "cancel": "all" }
+```
+
+One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Conditional (TP/SL) orders are not supported.
 
 **CancelConditionalOrderRequest:**
 
@@ -2358,3 +2565,11 @@ Additional integer types:
 | `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
 | `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
 | `PERPS_CONTRACT`           | `0x90bc84df68d1aa59a857e04ed529e9a26edbea4f` | `0xf6344c5e2792e8f9202c58a2d88fbbde4cd3142f` |
+
+### Code hashes
+
+| Name                     | Value                                                              |
+| ------------------------ | ------------------------------------------------------------------ |
+| Single-signature account | `d86e8112f3c4c4442126f8e9f44f16867da487f29052bf91b810457db34209a4` |
+
+The code hash is the same on mainnet and testnet.

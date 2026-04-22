@@ -4,9 +4,12 @@ use {
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
-        perps::{self, LiquidityDepthResponse, PairParam, Param, UserState},
+        perps::{self, LiquidityDepthResponse, OrderFilled, PairParam, Param, UserState},
     },
-    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint128, btree_map, btree_set},
+    grug::{
+        Addressable, CheckedContractEvent, Coins, Inner, JsonDeExt, QuerierExt, ResultExt,
+        SearchEvent, Uint128, btree_map, btree_set,
+    },
     std::collections::BTreeMap,
 };
 
@@ -69,17 +72,18 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10), // sell / ask
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -102,7 +106,7 @@ fn trading_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy
                 kind: perps::OrderKind::Market {
@@ -111,7 +115,7 @@ fn trading_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -238,17 +242,18 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask 5 ETH
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -263,17 +268,18 @@ fn limit_order_partial_fill_and_cancel() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy 10 ETH
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -443,17 +449,18 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-3),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -481,17 +488,18 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -523,17 +531,18 @@ fn liquidity_depth_tracking() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -649,17 +658,18 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -668,7 +678,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
@@ -677,7 +687,7 @@ fn protocol_fee_accumulates_across_fills() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -700,17 +710,18 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -719,7 +730,7 @@ fn protocol_fee_accumulates_across_fills() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
@@ -728,7 +739,7 @@ fn protocol_fee_accumulates_across_fills() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -821,17 +832,18 @@ fn negative_maker_fee_rebate_lifecycle() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-50),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -848,7 +860,7 @@ fn negative_maker_fee_rebate_lifecycle() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(50),
                 kind: perps::OrderKind::Market {
@@ -857,7 +869,7 @@ fn negative_maker_fee_rebate_lifecycle() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -959,17 +971,18 @@ fn ioc_limit_order_partial_fill() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -984,17 +997,18 @@ fn ioc_limit_order_partial_fill() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::ImmediateOrCancel,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1070,18 +1084,544 @@ fn ioc_limit_order_no_fill_rejected() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_900),
                     time_in_force: perps::TimeInForce::ImmediateOrCancel,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_fail_with_error("no liquidity at acceptable price");
+}
+
+// ==================== market-order slippage cap ==============================
+//
+// Set up a pair with `max_market_slippage = 5%` and verify the cap is
+// enforced at submission for market orders and TP/SL child orders while
+// leaving limit orders untouched.
+
+/// Set up a suite with oracle = $2,000 and a pair configured with 5%
+/// `max_market_slippage`. user1 is funded with $10,000.
+macro_rules! setup_slippage_cap_suite {
+    () => {{
+        let (mut suite, mut accounts, _, contracts, _) =
+            setup_test_naive(TestOption::default());
+        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+        let pair = pair_id();
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.perps,
+                &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                    param: default_param(),
+                    pair_params: btree_map! {
+                        pair.clone() => PairParam {
+                            max_market_slippage: Dimensionless::new_permille(50), // 5%
+                            ..default_pair_param()
+                        },
+                    },
+                }),
+                Coins::new(),
+            )
+            .should_succeed();
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+
+        (suite, accounts, contracts, pair)
+    }};
+}
+
+/// Market order with slippage exactly at the pair cap is accepted at
+/// submission. (It fails later for lack of liquidity — that's fine; the
+/// point of the test is the submission-time check.)
+#[test]
+fn slippage_cap_market_at_cap_accepted_at_submission() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // max_slippage = 5% (exactly the cap). The order passes the cap
+    // check, then fails downstream because the book is empty.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_fail_with_error("no liquidity at acceptable price");
+}
+
+/// Market order with slippage just above the pair cap is rejected at
+/// submission with the cap error (not "no liquidity"). This proves the
+/// cap check runs before matching.
+#[test]
+fn slippage_cap_market_above_cap_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // max_slippage = 6% against 5% cap.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(60),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_fail_with_error("exceeds the pair cap");
+}
+
+/// TP/SL child order slippage is capped by the same per-pair parameter
+/// as the top-level market order.
+#[test]
+fn slippage_cap_tpsl_child_order_above_cap_rejected() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // Parent market order with slippage within cap, but the TP child
+    // order's slippage (6%) is above the cap.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(10), // 1%, within cap
+                },
+                reduce_only: false,
+                tp: Some(perps::ChildOrder {
+                    trigger_price: UsdPrice::new_int(2_500),
+                    max_slippage: Dimensionless::new_permille(60), // 6%, above cap
+                    size: None,
+                }),
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_fail_with_error("exceeds the pair cap");
+}
+
+/// Limit orders do not carry `max_slippage` and are unaffected by the
+/// market-order slippage cap. Their `limit_price` is bounded instead by
+/// `max_limit_price_deviation` (PR1 banding).
+#[test]
+fn slippage_cap_does_not_affect_limit_orders() {
+    let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
+
+    // Limit buy at oracle = $2,000. Always within the 10% band of
+    // default_pair_param (via new_mock → 50% band). Cap is irrelevant
+    // here because limit orders don't have a max_slippage field.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(1),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+/// A taker that crosses two resting maker orders emits four `OrderFilled`
+/// events — two per match — and the two events of a given match share a
+/// `fill_id`. Successive matches use consecutive fill ids, and
+/// `NEXT_FILL_ID` in storage advances by one per match.
+#[test]
+fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Two different maker users so we also exercise the maker-states map.
+    for user in [&mut accounts.user1, &mut accounts.user2] {
+        suite
+            .execute(
+                user,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Two resting asks at different prices. The taker's market buy will
+    // sweep the cheaper one first, then fill the rest at the higher price —
+    // two distinct matches, four `OrderFilled` events total.
+    for (maker, price) in [(&mut accounts.user1, 2_000), (&mut accounts.user2, 2_010)] {
+        suite
+            .execute(
+                maker,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(
+                    perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(-2), // ask
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(price),
+                            time_in_force: perps::TimeInForce::PostOnly,
+                            client_order_id: None,
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    },
+                )),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Taker market buy crosses both asks.
+    let events = suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(4),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed()
+        .events;
+
+    let fills = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_filled")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderFilled>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(fills.len(), 4, "two matches × two sides = four fills");
+
+    for fill in &fills {
+        assert!(
+            fill.fill_id.is_some(),
+            "every matched fill must carry a fill id"
+        );
+    }
+
+    // Matching iterates makers in price-time priority (best price first).
+    // Given the current iteration order, the event stream pairs are
+    // (fills[0] taker, fills[1] maker) and (fills[2] taker, fills[3] maker).
+    let match1 = fills[0].fill_id.unwrap();
+    assert_eq!(
+        fills[1].fill_id.unwrap(),
+        match1,
+        "the two sides of a match share one fill id"
+    );
+
+    let match2 = fills[2].fill_id.unwrap();
+    assert_eq!(
+        fills[3].fill_id.unwrap(),
+        match2,
+        "the two sides of a match share one fill id"
+    );
+
+    assert_ne!(match1, match2, "distinct matches have distinct fill ids");
+    assert_eq!(
+        match2.into_inner(),
+        match1.into_inner() + 1,
+        "fill ids increment by one per match"
+    );
+}
+
+/// Bug reproduction: sell-side market order with partial fill is incorrectly
+/// rejected due to a sign-sensitive comparison at `submit_order.rs:579`.
+///
+/// The check `unfilled < fillable_size` works for buys (positive quantities)
+/// but is inverted for sells (negative quantities):
+///
+///   Sell 10: fillable_size = -10, after 5 filled unfilled = -5.
+///   -5 < -10 → false → ensure! fires → order rejected.
+///
+/// This test places a maker bid for 5 ETH, then submits a market sell for 10.
+/// The 5 available should fill and the remaining 5 should be discarded.
+/// With the bug, the entire order is rejected.
+#[test]
+fn sell_side_market_order_partial_fill() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Deposit margin for both users.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker (user2) places bid: buy 5 ETH @ $2,000 (post-only).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5), // buy / bid
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Taker (user1) market sells 10 ETH.
+    // Only 5 ETH of liquidity exists → should partially fill 5 and discard
+    // the remaining 5.
+    //
+    // BUG: the comparison `unfilled < fillable_size` evaluates as
+    //   -5 < -10 → false, so ensure! rejects the order.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10), // sell 10 ETH
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify taker has a 10 ETH short position from the 5 that filled.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("taker should have a position after partial fill");
+
+    assert_eq!(
+        pos.size,
+        Quantity::new_int(-5),
+        "taker should be 5 ETH short (partial fill of 10 ETH sell)"
+    );
+
+    // Maker's bid should be fully consumed.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed();
+
+    assert!(
+        orders.is_empty(),
+        "maker bid should be fully filled and removed"
+    );
+}
+
+/// Mirror of `sell_side_market_order_partial_fill`: a buy-side market order
+/// with partial fill works correctly because the comparison
+/// `unfilled < fillable_size` is correct for positive quantities.
+///
+///   Buy 10: fillable_size = 10, after 5 filled unfilled = 5.
+///   5 < 10 → true → passes.
+#[test]
+fn buy_side_market_order_partial_fill() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // -------------------------------------------------------------------------
+    // Step 1: Deposit margin for both users.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 2: Maker (user2) places ask: sell 5 ETH @ $2,000 (post-only).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5), // sell / ask
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Taker (user1) market buys 10 ETH.
+    // Only 5 ETH of liquidity exists → should partially fill 5 and discard
+    // the remaining 5. This works because 5 < 10 → true.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10), // buy 10 ETH
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Verify taker has a 5 ETH long position from the partial fill.
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("taker should have a position after partial fill");
+
+    assert_eq!(
+        pos.size,
+        Quantity::new_int(5),
+        "taker should be 5 ETH long (partial fill of 10 ETH buy)"
+    );
+
+    // Maker's ask should be fully consumed.
+    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user2.address(),
+        })
+        .should_succeed();
+
+    assert!(
+        orders.is_empty(),
+        "maker ask should be fully filled and removed"
+    );
 }

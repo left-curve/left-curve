@@ -173,3 +173,44 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
         })
         .await?
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn query_users_rejects_conflicting_pagination_args() -> anyhow::Result<()> {
+    let (
+        _suite,
+        _accounts,
+        _codes,
+        _contracts,
+        _validator_sets,
+        _,
+        dango_httpd_context,
+        _,
+        _db_guard,
+    ) = setup_test_with_indexer(TestOption::default()).await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let response = call_graphql_query::<_, users::ResponseData>(
+                    dango_httpd_context,
+                    Users::build_query(users::Variables {
+                        first: Some(1),
+                        last: Some(1),
+                        ..Default::default()
+                    }),
+                )
+                .await?;
+
+                let errors = response.errors.unwrap_or_default();
+                assert_that!(errors).is_not_empty();
+                assert_that!(errors[0].message.as_str())
+                    .contains("unexpected combination of pagination parameters");
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}

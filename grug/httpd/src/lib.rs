@@ -7,4 +7,5 @@ pub mod middlewares;
 mod request_ip;
 pub mod routes;
 pub mod server;
+pub mod subscription_limiter;
 pub mod traits;

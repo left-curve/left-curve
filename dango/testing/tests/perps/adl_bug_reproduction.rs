@@ -22,31 +22,39 @@
 //!
 //! ## This test
 //!
-//! Simplified reproduction of the incident:
+//! Simplified reproduction of the incident. Price banding at order submission
+//! (see `book/perps/2-order-matching.md` §3a) now rejects limit orders whose
+//! price deviates more than a configured fraction from the oracle price. To
+//! let this regression test still reproduce an out-of-oracle-range resting
+//! order, we configure the test pair with a very wide band (99.9%) and use
+//! an ask price near the upper edge of that band. The structural point of the
+//! test — "a resting order strictly above oracle must not be swept during a
+//! negative-equity liquidation" — is unchanged.
+//!
 //! - user1 opens SHORT 5 ETH @ $2,000 (margin $1,040 after fees)
 //! - user3 opens LONG 5 ETH @ $2,000 (margin $10,000)
-//! - user2 places an absurd ask: 1 ETH @ $100,000
+//! - user2 places an out-of-range ask: 1 ETH @ $3,900 (195% of oracle)
 //! - Oracle rises to $2,300 → user1 is liquidatable
-//! - Liquidation sweeps the absurd ask, then ADL's the remainder at ~-$22,240
-//! - user3's margin drops to ~-$87,000 (deeply negative — the bug)
+//! - Under the bug, liquidation sweeps the $3,900 ask; under the fix, it is
+//!   skipped because equity is negative and target_price is clamped to oracle.
 //!
 //! ## Expected behavior after fix
 //!
-//! Bankruptcy price is computed **before** book fills: bp ≈ $2,208. Since equity
-//! is negative, the oracle ($2,300) is used as `target_price` — the $100,000
-//! ask is skipped. (When equity is positive, bp itself is used as target_price
-//! for tighter protection.) All 5 ETH are ADL'd at bp $2,208. user3 receives
-//! a modest $1,040 gain (margin → $11,040). No extreme prices.
+//! Bankruptcy price is computed **before** book fills. Since equity is
+//! negative, the oracle ($2,300) is used as `target_price` — the $3,900 ask
+//! is skipped. (When equity is positive, bp itself is used as target_price
+//! for tighter protection.) All 5 ETH are ADL'd at bp ≈ $2,208. user3
+//! receives a modest $1,040 gain (margin → $11,040). No extreme prices.
 
 use {
-    crate::register_oracle_prices,
+    crate::{default_pair_param, default_param, register_oracle_prices},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
-        perps::{self, UserState},
+        perps::{self, PairParam, UserState},
     },
-    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint128},
+    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint128, btree_map},
 };
 
 /// Reproduces the ADL bankruptcy-price bug with an absurd resting ask.
@@ -69,6 +77,30 @@ fn adl_bug_absurd_book_price() {
     let pair = pair_id();
 
     // -------------------------------------------------------------------------
+    // Step 0: Widen the price band so user2's out-of-oracle-range ask can be
+    // placed. Banding normally rejects such orders at submission; here we
+    // need to exercise the *liquidation engine's* skip behavior for orders
+    // already on the book.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        max_limit_price_deviation: Dimensionless::new_permille(999), // 99.9%
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
     // Step 1: user3 (ADL counter-party) deposits $10,000, places BID 5 ETH @ $2,000.
     // -------------------------------------------------------------------------
 
@@ -85,17 +117,18 @@ fn adl_bug_absurd_book_price() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // bid (buy)
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -121,7 +154,7 @@ fn adl_bug_absurd_book_price() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // ask (sell)
                 kind: perps::OrderKind::Market {
@@ -130,7 +163,7 @@ fn adl_bug_absurd_book_price() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -157,10 +190,11 @@ fn adl_bug_absurd_book_price() {
     assert_eq!(state.positions[&pair].size, Quantity::new_int(5));
 
     // -------------------------------------------------------------------------
-    // Step 3: user2 deposits $50,000, places absurd ASK: 1 ETH @ $100,000.
+    // Step 3: user2 deposits $10,000, places an out-of-range ASK: 1 ETH @ $3,900.
     //
-    // This order sits on the book at 50× oracle. Under the bug, the liquidation
-    // market order sweeps it without any price limit.
+    // This order sits on the book at ~195% of oracle, near the upper edge of
+    // the widened band. Under the bug, the liquidation market order sweeps
+    // it without any price limit.
     // -------------------------------------------------------------------------
 
     suite
@@ -168,7 +202,7 @@ fn adl_bug_absurd_book_price() {
             &mut accounts.user2,
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
-            Coins::one(usdc::DENOM.clone(), Uint128::new(50_000_000_000)).unwrap(),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
         .should_succeed();
 
@@ -176,17 +210,18 @@ fn adl_bug_absurd_book_price() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-1), // ask (sell) 1 ETH
                 kind: perps::OrderKind::Limit {
-                    limit_price: UsdPrice::new_int(100_000),
+                    limit_price: UsdPrice::new_int(3_900),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -213,25 +248,31 @@ fn adl_bug_absurd_book_price() {
     // BUG BEHAVIOR:
     //   The liquidation market buy has no price limit (target_price = MAX).
     //   It sweeps the book:
-    //     - 1 ETH filled at $100,000 (user2's absurd ask)
+    //     - 1 ETH filled at $3,900 (user2's out-of-range ask)
     //     - 4 ETH unfilled → ADL against user3 (most profitable long)
     //
     //   Post-fill equity:
     //     margin      = $1,040
-    //     book_pnl    = 1 × ($2,000 − $100,000) = −$98,000
+    //     book_pnl    = 1 × ($2,000 − $3,900) = −$1,900
     //     remaining   = (−4) × ($2,300 − $2,000) = −$1,200
-    //     equity      = $1,040 − $98,000 − $1,200 = −$98,160
+    //     equity      = $1,040 − $1,900 − $1,200 = −$2,060
     //
-    //   Buggy bp = $2,300 + (−$98,160) / 4 = −$22,240
+    //   Buggy bp = $2,300 + (−$2,060) / 4 = $1,785
     //
-    //   user3 forced to sell 4 of 5 ETH at −$22,240:
-    //     PnL = 4 × (−$22,240 − $2,000) = −$96,960
-    //     margin after = $10,000 − $96,960 = −$86,960
+    //   user3 PnL at buggy bp = 4 × ($1,785 − $2,000) = −$860
+    //   margin after = $10,000 − $860 = $9,140 (still positive but far
+    //   below the fix's $11,040).
+    //
+    //   Under the original testnet incident with *truly* absurd prices
+    //   ($10M asks), this went deeply negative. The numbers here are
+    //   smaller because the price band caps how far from oracle a resting
+    //   order can be placed, but the structural bug — sweeping above-oracle
+    //   asks during a negative-equity liquidation — is identical.
     //
     // CORRECT BEHAVIOR (after fix):
     //   equity = −$460 (negative), so target_price = oracle ($2,300)
     //   bp = $2,300 + (−$460) / 5 = $2,208 (computed before book fills)
-    //   Absurd ask at $100,000 >> oracle → skipped
+    //   Out-of-range ask at $3,900 > oracle → skipped
     //   All 5 ETH unfilled → ADL'd at bp $2,208
     //   user3 PnL = 5 × ($2,208 − $2,000) = +$1,040
     //   user3 margin = $10,000 + $1,040 = $11,040

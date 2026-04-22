@@ -34,12 +34,21 @@ export async function cancelPerpsOrder<transport extends Transport>(
     },
   };
 
-  const cancelOrderTypedData =
-    request === "all"
-      ? { CancelOrder: [] }
-      : {
-          CancelOrder: [{ name: "one", type: "string" }],
-        };
+  const cancelOrderTypedData = (() => {
+    if (request === "all") {
+      return { CancelOrder: [] };
+    }
+    if ("one" in request) {
+      return { CancelOrder: [{ name: "one", type: "string" }] };
+    }
+    // `oneByClientOrderId` — the message is camelCase here; the
+    // outgoing JSON is snake_cased by `composeTxTypedData` via
+    // `recursiveTransform`, so the typed-data field name must be the
+    // snake_case form the contract sees.
+    return {
+      CancelOrder: [{ name: "one_by_client_order_id", type: "string" }],
+    };
+  })();
 
   const typedData: TypedDataParameter = {
     type: [{ name: "trade", type: "Trade" }],

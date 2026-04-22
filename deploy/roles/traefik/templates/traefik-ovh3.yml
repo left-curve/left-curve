@@ -77,4 +77,6 @@ accessLog:
         CF-Connecting-IP: keep
         X-Forwarded-For: keep
         Forwarded: keep
+        True-Client-IP: keep
+        X-Real-IP: keep
         Cf-Ray: keep

@@ -27,7 +27,15 @@ type ProSwapEditedSLProps = {
 };
 
 export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
-  ({ pairId, symbol, entryPrice, markPrice, size, conditionalOrderAbove, conditionalOrderBelow }) => {
+  ({
+    pairId,
+    symbol,
+    entryPrice,
+    markPrice,
+    size,
+    conditionalOrderAbove,
+    conditionalOrderBelow,
+  }) => {
     const { hideModal, showModal } = useApp();
     const { account } = useAccount();
     const { data: signingClient } = useSigningClient();
@@ -48,17 +56,13 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
     const tpPnl = useMemo(() => {
       if (!tpOrder) return null;
       const trigger = Number(tpOrder.triggerPrice);
-      return isLong
-        ? (trigger - entryPriceNum) * absSize
-        : (entryPriceNum - trigger) * absSize;
+      return isLong ? (trigger - entryPriceNum) * absSize : (entryPriceNum - trigger) * absSize;
     }, [tpOrder, entryPriceNum, isLong, absSize]);
 
     const slPnl = useMemo(() => {
       if (!slOrder) return null;
       const trigger = Number(slOrder.triggerPrice);
-      return isLong
-        ? (trigger - entryPriceNum) * absSize
-        : (entryPriceNum - trigger) * absSize;
+      return isLong ? (trigger - entryPriceNum) * absSize : (entryPriceNum - trigger) * absSize;
     }, [slOrder, entryPriceNum, isLong, absSize]);
 
     const { mutateAsync: cancelOrder } = useSubmitTx({
@@ -86,7 +90,6 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
           setCancelingDirection(null);
           queryClient.invalidateQueries({ queryKey: ["prices"] });
           queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
-          hideModal();
         },
         onError: () => {
           setCancelingDirection(null);
@@ -122,7 +125,9 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
           {tpOrder ? (
             <div className="flex items-start justify-between gap-2 p-3 rounded-lg bg-surface-secondary-oat">
               <div className="flex flex-col gap-0.5">
-                <p className="diatype-sm-medium text-ink-secondary-700">{m["modals.tpsl.takeProfit"]()}</p>
+                <p className="diatype-sm-medium text-ink-secondary-700">
+                  {m["modals.tpsl.takeProfit"]()}
+                </p>
                 <p className="diatype-sm-regular text-ink-tertiary-500">
                   {isLong ? m["modals.tpsl.priceAbove"]() : m["modals.tpsl.priceBelow"]()}{" "}
                   <FormattedNumber
@@ -132,7 +137,9 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
                   />
                 </p>
                 {tpPnl !== null ? (
-                  <p className={`diatype-sm-regular ${tpPnl >= 0 ? "text-utility-success-600" : "text-utility-error-600"}`}>
+                  <p
+                    className={`diatype-sm-regular ${tpPnl >= 0 ? "text-utility-success-600" : "text-utility-error-600"}`}
+                  >
                     {m["modals.tpsl.expectedPl"]()}{" "}
                     <FormattedNumber
                       number={tpPnl.toFixed(2)}
@@ -153,7 +160,9 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
             </div>
           ) : (
             <div className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary-oat">
-              <p className="diatype-sm-regular text-ink-tertiary-500">{m["modals.tpsl.noTakeProfitSet"]()}</p>
+              <p className="diatype-sm-regular text-ink-tertiary-500">
+                {m["modals.tpsl.noTakeProfitSet"]()}
+              </p>
               <Button variant="link" size="sm" onClick={openEditModal}>
                 {m["modals.tpsl.add"]()}
               </Button>
@@ -163,7 +172,9 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
           {slOrder ? (
             <div className="flex items-start justify-between gap-2 p-3 rounded-lg bg-surface-secondary-oat">
               <div className="flex flex-col gap-0.5">
-                <p className="diatype-sm-medium text-ink-secondary-700">{m["modals.tpsl.stopLoss"]()}</p>
+                <p className="diatype-sm-medium text-ink-secondary-700">
+                  {m["modals.tpsl.stopLoss"]()}
+                </p>
                 <p className="diatype-sm-regular text-ink-tertiary-500">
                   {isLong ? m["modals.tpsl.priceBelow"]() : m["modals.tpsl.priceAbove"]()}{" "}
                   <FormattedNumber
@@ -173,7 +184,9 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
                   />
                 </p>
                 {slPnl !== null ? (
-                  <p className={`diatype-sm-regular ${slPnl >= 0 ? "text-utility-success-600" : "text-utility-error-600"}`}>
+                  <p
+                    className={`diatype-sm-regular ${slPnl >= 0 ? "text-utility-success-600" : "text-utility-error-600"}`}
+                  >
                     {m["modals.tpsl.expectedPl"]()}{" "}
                     <FormattedNumber
                       number={slPnl.toFixed(2)}
@@ -194,7 +207,9 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
             </div>
           ) : (
             <div className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary-oat">
-              <p className="diatype-sm-regular text-ink-tertiary-500">{m["modals.tpsl.noStopLossSet"]()}</p>
+              <p className="diatype-sm-regular text-ink-tertiary-500">
+                {m["modals.tpsl.noStopLossSet"]()}
+              </p>
               <Button variant="link" size="sm" onClick={openEditModal}>
                 {m["modals.tpsl.add"]()}
               </Button>

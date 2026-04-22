@@ -965,9 +965,7 @@ fn dex_actions(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<De
                             quote_denom: quote_denom.clone(),
                         };
                         let current_funds = liquidity_provided.entry(pair_id).or_default();
-                        current_funds
-                            .insert_many(funds.clone().into_iter())
-                            .unwrap();
+                        current_funds.insert_many(funds.clone()).unwrap();
                         actions.push(action);
                     },
                     _ => {

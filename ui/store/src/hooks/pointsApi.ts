@@ -4,6 +4,11 @@ export type Points = {
   referral: string;
 };
 
+export type AttackCompensation = {
+  vault: string;
+  unrealized: string;
+};
+
 export type UserStats = {
   points: Points;
   realized_pnl: string;
@@ -25,6 +30,7 @@ export type LeaderboardEntry = {
 export type UserPoints = {
   stats: UserStats;
   rank: number;
+  compensation?: AttackCompensation;
 };
 
 export type BoxCount = {
@@ -105,7 +111,10 @@ export const fetchTotalUsersWithPoints = async (baseUrl: string): Promise<number
   return res.json();
 };
 
-export const fetchUserBoxes = async (baseUrl: string, userIndex: number): Promise<BoxesResponse> => {
+export const fetchUserBoxes = async (
+  baseUrl: string,
+  userIndex: number,
+): Promise<BoxesResponse> => {
   const res = await fetch(`${baseUrl}/boxes/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch boxes: ${res.status}`);
   return res.json();
@@ -175,6 +184,13 @@ export const checkOat = async (
   const res = await fetch(`${baseUrl}/oat/check/${evmAddress}`);
   if (!res.ok) throw new Error(`Failed to check OAT: ${res.status}`);
   return res.json();
+};
+
+export type PredictPointsEvent = {
+  epoch: number;
+  stats: UserStats | null;
+  updated_at_epoch_secs: number;
+  next_update_epoch_secs: number;
 };
 
 export type EpochInfoNotStarted = {

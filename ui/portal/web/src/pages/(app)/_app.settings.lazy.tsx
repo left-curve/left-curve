@@ -26,6 +26,7 @@ function SettingsApplet() {
           <SessionSection.ConnectMobile />
           <SessionSection.RemainingTime />
           <SessionSection.Network />
+          <SessionSection.Status />
         </SessionSection>
       </div>
       <div className="flex flex-col gap-3">

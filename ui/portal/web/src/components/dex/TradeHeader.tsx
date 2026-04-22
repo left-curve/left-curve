@@ -19,7 +19,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   useCurrentPrice,
-  usePrices,
+  oraclePricesStore,
   allPairStatsStore,
   allPerpsPairStatsStore,
   TradePairStore,
@@ -88,7 +88,7 @@ export const TradeHeader: React.FC = () => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
-            className="gap-2 lg:gap-5 grid grid-cols-3 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
+            className="gap-2 xxl:gap-6 grid grid-cols-3 lg:flex lg:justify-end overflow-hidden diatype-xxs-medium lg:diatype-xs-medium"
           >
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice />
@@ -98,7 +98,7 @@ export const TradeHeader: React.FC = () => {
               price24HAgo={pairStatsData?.price24HAgo}
               priceChange24H={pairStatsData?.priceChange24H}
             />
-            <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
+            <div className="flex gap-1 flex-col items-start lg:w-[5rem] lg:shrink-0">
               <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.volume"]()}
               </p>
@@ -125,9 +125,9 @@ const HeaderPrice: React.FC = () => {
   const { currentPrice, previousPrice } = useCurrentPrice();
 
   return (
-    <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
+    <div className="flex gap-1 flex-col lg:w-[4.5rem] lg:shrink-0 items-start">
       <Tooltip title={m["dex.protrade.spot.lastPriceTooltip"]()}>
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+        <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.lastPrice"]()}
         </p>
       </Tooltip>
@@ -148,13 +148,13 @@ const HeaderPrice: React.FC = () => {
 };
 
 const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
-  const { getPrice } = usePrices();
-  const oraclePrice = getPrice(1, denom);
+  const prices = oraclePricesStore((s) => s.prices);
+  const oraclePrice = prices?.[denom]?.humanizedPrice ? Number(prices[denom].humanizedPrice) : null;
 
   return (
-    <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
+    <div className="flex gap-1 flex-col lg:w-[4.5rem] lg:shrink-0 items-start">
       <Tooltip title={m["dex.protrade.spot.oraclePriceTooltip"]()}>
-        <p className="diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+        <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.oraclePrice"]()}
         </p>
       </Tooltip>
@@ -197,7 +197,7 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
   }, [priceChange24H]);
 
   return (
-    <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
+    <div className="flex gap-1 flex-col items-start lg:w-[8rem] lg:shrink-0">
       <p className="diatype-xs-medium text-ink-tertiary-500">
         {m["dex.protrade.spot.24hChange"]()}
       </p>

@@ -4,8 +4,8 @@ use {
         account_factory::UserIndex,
     },
     grug::{
-        Addr, Denom, Duration, MathResult, Op, Order as IterationOrder, Part, Timestamp, Uint64,
-        Uint128,
+        Addr, Denom, Duration, MathResult, NonEmpty, Op, Order as IterationOrder, Part, Timestamp,
+        Uint64, Uint128,
     },
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
@@ -47,6 +47,24 @@ pub type OrderId = Uint64;
 
 /// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
 pub type ConditionalOrderId = OrderId;
+
+/// Identifier for an order-book match. Both `OrderFilled` events emitted
+/// for a single match (taker side + maker side) carry the same `FillId`,
+/// so consumers can group the two sides by this field. Strictly
+/// increasing across matches.
+///
+/// Not assigned to ADL fills — those are emitted via the `Deleveraged`
+/// and `Liquidated` events, which have no `fill_id` field.
+pub type FillId = Uint64;
+
+/// Client-assigned order id. Lets a trader cancel an order in the same block
+/// it was submitted, without round-tripping through the server response to
+/// learn the system-assigned `OrderId`.
+///
+/// Scope of uniqueness: per-sender, across the sender's *active* (resting)
+/// limit orders only. The contract does not remember client order ids of
+/// orders that have been canceled or filled, so they can be reused freely.
+pub type ClientOrderId = Uint64;
 
 /// Type alias for a referrer's user index.
 pub type Referrer = UserIndex;
@@ -102,21 +120,15 @@ pub enum OrderKind {
         ///   limit price crosses best offer).
         #[serde(default)]
         time_in_force: TimeInForce,
-    },
-}
 
-impl OrderKind {
-    /// If this is a post-only limit order, return the limit price.
-    /// Otherwise, return `None`.
-    pub fn post_only_price(self) -> Option<UsdPrice> {
-        match self {
-            OrderKind::Limit {
-                limit_price,
-                time_in_force: TimeInForce::PostOnly,
-            } => Some(limit_price),
-            _ => None,
-        }
-    }
+        /// Caller-assigned id used to cancel this order via
+        /// `CancelOrderRequest::OneByClientOrderId` before the system-assigned
+        /// `OrderId` is known. Must be unique across the sender's *active*
+        /// orders. Not allowed with `TimeInForce::ImmediateOrCancel`, which
+        /// never enters the book.
+        #[serde(default)]
+        client_order_id: Option<ClientOrderId>,
+    },
 }
 
 /// For a conditional (TP/SL) order, direction the oracle price must cross to
@@ -303,6 +315,13 @@ pub struct Param {
     ///
     /// Bounds: if `Some`, `> 0`. Use `None` for unlimited.
     pub vault_deposit_cap: Option<UsdValue>,
+
+    /// Maximum number of actions allowed in a single
+    /// `TraderMsg::BatchUpdateOrders` message.
+    ///
+    /// Bounds: `>= 1`. Governance-tunable via `Configure`; no hard
+    /// upper bound is enforced.
+    pub max_action_batch_size: usize,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
@@ -340,6 +359,39 @@ pub struct PairParam {
     ///
     /// Bounds: `>= 0`. Zero disables the minimum.
     pub min_order_size: UsdValue,
+
+    /// Maximum deviation of a limit order's `limit_price` from the oracle
+    /// price, expressed as a fraction. A limit order is accepted only if
+    ///
+    /// ```plain
+    /// |limit_price - oracle_price| / oracle_price <= max_limit_price_deviation
+    /// ```
+    ///
+    /// This prevents users from placing resting orders at pathological prices
+    /// (e.g. 99% below oracle) that could trap counterparties into bad-price
+    /// fills.
+    ///
+    /// Bounds: `(0, 1)`.
+    ///
+    /// Cross-field invariant:
+    /// `max_limit_price_deviation >= vault_half_spread * (1 + vault_spread_skew_factor)`.
+    /// The band must be at least as wide as the vault's widest quote
+    /// deviation under maximum skew, otherwise users' crossing limit
+    /// orders at the vault's legitimately-quoted edges would be rejected.
+    /// Enforced at `Configure` time.
+    pub max_limit_price_deviation: Dimensionless,
+
+    /// Maximum slippage tolerance a user may specify on a market order or
+    /// a TP/SL child order in this pair. Market orders compute their
+    /// `target_price` as `oracle_price * (1 ± max_slippage)`; this field
+    /// caps how far the user may push that target at submission.
+    ///
+    /// Acts as the submission-time analogue of `max_limit_price_deviation`
+    /// for limit orders.
+    ///
+    /// Bounds: `(0, 1)`. Aligns with industry practice (dYdX 10% flat,
+    /// Hyperliquid 10% for TP/SL).
+    pub max_market_slippage: Dimensionless,
 
     /// The maximum allowed open interest for both long and short.
     /// I.e. the following must be satisfied:
@@ -427,8 +479,18 @@ pub struct PairParam {
     /// How aggressively to tilt spreads based on inventory.
     /// 0 = no skew (symmetric spreads on both sides).
     ///
-    /// Bounds: `[0, 1)`. At 1, the effective spread on the tightened side
-    /// reaches zero; > 1 would produce a negative spread.
+    /// Bounds: `>= 0`. Values > 1 cause the tightened side's quote to
+    /// cross the oracle price at maximum skew — e.g. when the vault is
+    /// fully long, the ask drops below the oracle. This is an aggressive
+    /// unwind posture, useful when the vault needs to rapidly deleverage
+    /// a large directional position. The invariant `bid < ask` always
+    /// holds because `ask - bid = 2 * oracle_price * vault_half_spread`,
+    /// independent of this factor.
+    ///
+    /// The effective upper bound is enforced via the cross-field invariant
+    /// `vault_half_spread * (1 + vault_spread_skew_factor) < 1` documented
+    /// on `vault_half_spread`, which prevents the bid price from collapsing
+    /// to zero at maximum positive skew.
     pub vault_spread_skew_factor: Dimensionless,
 
     /// Position size at which inventory skew saturates.
@@ -436,6 +498,21 @@ pub struct PairParam {
     ///
     /// Bounds: `>= 0`. Zero disables inventory skew (skew always 0).
     pub vault_max_skew_size: Quantity,
+
+    /// Multiplier applied to the funding-rate premium so governance can tune
+    /// funding independently of the vault's quoting parameters. The full
+    /// formula is:
+    ///
+    /// ```plain
+    /// premium = -halfSpread × skew × spreadSkewFactor × fundingRateMultiplier
+    /// ```
+    ///
+    /// `1` reproduces the pre-multiplier behavior; `0` disables funding
+    /// without touching the vault's quoting; values `> 1` amplify funding.
+    ///
+    /// Bounds: `>= 0`. Negative values would flip the funding sign and
+    /// invert the economic incentive.
+    pub funding_rate_multiplier: Dimensionless,
 
     /// Price bucket sizes for which aggregated order book depth is maintained.
     /// Each entry defines a granularity level for the depth query.
@@ -452,6 +529,9 @@ impl PairParam {
             impact_size: UsdValue::new_int(10_000),
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_max_quote_size: Quantity::new_int(100),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
+            funding_rate_multiplier: Dimensionless::ONE,
             ..Default::default()
         }
     }
@@ -672,7 +752,11 @@ pub struct UserReferralData {
     /// Cumulative count of daily active direct referees. Incremented by one
     /// each time a direct referee trades for the first time on a given day.
     /// Difference two buckets to get the count for a specific window.
-    pub cumulative_active_referees: u32,
+    pub cumulative_daily_active_referees: u32,
+
+    /// Number of direct referees that have made at least one trade.
+    /// Incremented once per referee, on their very first trade.
+    pub cumulative_global_active_referees: u32,
 }
 
 impl UserReferralData {
@@ -688,9 +772,12 @@ impl UserReferralData {
             commission_earned_from_referees: self
                 .commission_earned_from_referees
                 .checked_sub(other.commission_earned_from_referees)?,
-            cumulative_active_referees: self
-                .cumulative_active_referees
-                .saturating_sub(other.cumulative_active_referees),
+            cumulative_daily_active_referees: self
+                .cumulative_daily_active_referees
+                .saturating_sub(other.cumulative_daily_active_referees),
+            cumulative_global_active_referees: self
+                .cumulative_global_active_referees
+                .saturating_sub(other.cumulative_global_active_referees),
         })
     }
 }
@@ -711,6 +798,10 @@ pub struct LimitOrder {
     pub tp: Option<ChildOrder>,
     /// Stop-loss child order to apply when this order fills.
     pub sl: Option<ChildOrder>,
+    /// Caller-assigned id used to look this order up via the
+    /// `client_order_id` index on `BIDS`/`ASKS`. `None` if the order was
+    /// submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// A conditional order stored off-book until triggered.
@@ -745,13 +836,58 @@ pub struct ChildOrder {
     pub size: Option<Quantity>,
 }
 
+/// Parameters for submitting an order. Shared between
+/// `TraderMsg::SubmitOrder` and (upcoming) `TraderMsg::BatchUpdateOrders`
+/// so the two message variants carry exactly the same shape.
+#[grug::derive(Serde)]
+pub struct SubmitOrderRequest {
+    pub pair_id: PairId,
+
+    /// The amount of futures contract to buy or sell.
+    /// Positive indicates buy, negative indicates sell.
+    pub size: Quantity,
+
+    /// Order type: market, limit, etc.
+    pub kind: OrderKind,
+
+    /// If true, the opening portion of the order is discarded, while the
+    /// closing portion of the order is always executed, ignoring the risk
+    /// parameters such as maximum open interest (OI).
+    ///
+    /// If false, the order must be executed in full. If any of the risk
+    /// parameters is violated, the entire order is aborted.
+    pub reduce_only: bool,
+
+    /// Take-profit child order. Applied to the resulting position after fill.
+    pub tp: Option<ChildOrder>,
+
+    /// Stop-loss child order. Applied to the resulting position after fill.
+    pub sl: Option<ChildOrder>,
+}
+
 #[grug::derive(Serde)]
 pub enum CancelOrderRequest {
-    /// Cancel a single order by ID.
+    /// Cancel a single order by its system-assigned `OrderId`.
     One(OrderId),
+
+    /// Cancel a single order by its caller-assigned `ClientOrderId`.
+    /// Resolves to the active order owned by the sender that carries this
+    /// client id; bails if no such order exists.
+    OneByClientOrderId(ClientOrderId),
 
     /// Cancel all orders associated with the sender.
     All,
+}
+
+/// One action inside a `TraderMsg::BatchUpdateOrders` list.
+///
+/// Conditional (TP/SL) orders are intentionally out of scope for
+/// batching — use `SubmitConditionalOrder` / `CancelConditionalOrder`.
+#[grug::derive(Serde)]
+#[allow(clippy::large_enum_variant)]
+pub enum SubmitOrCancelOrderRequest {
+    Submit(SubmitOrderRequest),
+    Cancel(CancelOrderRequest),
 }
 
 #[grug::derive(Serde)]
@@ -813,6 +949,20 @@ pub enum MaintainerMsg {
     /// Accept a USDC donation to the perps contract.
     /// Only callable by the chain owner. Must attach exactly USDC, nonzero.
     Donate {},
+
+    /// Override a user's fee rate, overriding the tier-based fee rates derived
+    /// from the user's recent trading volume.
+    ///
+    /// Bounds:
+    ///
+    /// - `maker_fee_rate`: [-1, 1]. Note that negative maker rates are allowed.
+    /// - `taker_fee_rate`: [0, 1].
+    SetFeeRateOverride {
+        user: Addr,
+
+        /// First element is maker rate, second is taker rate.
+        maker_taker_fee_rates: Op<(Dimensionless, Dimensionless)>,
+    },
 }
 
 #[grug::derive(Serde)]
@@ -832,33 +982,23 @@ pub enum TraderMsg {
     Withdraw { amount: UsdValue },
 
     /// Submit an order.
-    SubmitOrder {
-        pair_id: PairId,
-
-        /// The amount of futures contract to buy or sell.
-        /// Positive indicates buy, negative indicates sell.
-        size: Quantity,
-
-        /// Order type: market, limit, etc.
-        kind: OrderKind,
-
-        /// If true, the opening portion of the order is discarded, while the
-        /// closing portion of the order is always executed, ignoring the risk
-        /// parameters such as maximum open interest (OI).
-        ///
-        /// If false, the order must be executed in full. If any of the risk
-        /// parameters is violated, the entire order is aborted.
-        reduce_only: bool,
-
-        /// Take-profit child order. Applied to the resulting position after fill.
-        tp: Option<ChildOrder>,
-
-        /// Stop-loss child order. Applied to the resulting position after fill.
-        sl: Option<ChildOrder>,
-    },
+    SubmitOrder(SubmitOrderRequest),
 
     /// Cancel a resting limit order.
     CancelOrder(CancelOrderRequest),
+
+    /// Execute a sequence of order actions atomically.
+    ///
+    /// Actions are applied sequentially — later actions observe the state
+    /// written by earlier ones — and the whole batch is atomic: if any
+    /// action fails the message reverts and no partial state is persisted.
+    ///
+    /// The list must be non-empty, and its length must not exceed
+    /// `Param::max_action_batch_size`.
+    ///
+    /// Conditional (TP/SL) orders are not supported in batches — use
+    /// `SubmitConditionalOrder` / `CancelConditionalOrder`.
+    BatchUpdateOrders(NonEmpty<Vec<SubmitOrCancelOrderRequest>>),
 
     /// Submit a conditional (TP/SL) order that triggers when the oracle price
     /// crosses the specified trigger price. Always reduce-only, executed as a
@@ -1014,6 +1154,34 @@ pub enum QueryMsg {
         include_all: bool,
     },
 
+    /// Enumeate the states of all users with additional data computed on-the-fly.
+    #[returns(BTreeMap<Addr, UserStateExtended>)]
+    UserStatesExtended {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+
+        #[serde(default)]
+        include_equity: bool,
+
+        #[serde(default)]
+        include_available_margin: bool,
+
+        #[serde(default)]
+        include_maintenance_margin: bool,
+
+        #[serde(default)]
+        include_unrealized_pnl: bool,
+
+        #[serde(default)]
+        include_unrealized_funding: bool,
+
+        #[serde(default)]
+        include_liquidation_price: bool,
+
+        #[serde(default)]
+        include_all: bool,
+    },
+
     /// Query a single limit order by ID.
     #[returns(Option<QueryOrderResponse>)]
     Order { order_id: OrderId },
@@ -1030,11 +1198,21 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query a user's cumulative trading volume.
+    /// Query a user's cumulative trading volume by address.
     /// `since: None` -> lifetime volume. `since: Some(ts)` -> volume since ts.
     #[returns(UsdValue)]
     Volume {
         user: Addr,
+        since: Option<Timestamp>,
+    },
+
+    /// Query a user's cumulative trading volume by user index.
+    /// Resolves the `UserIndex` to the master account address via the account
+    /// factory, then returns cumulative volume.
+    /// `since: None` -> lifetime volume. `since: Some(ts)` -> volume since ts.
+    #[returns(UsdValue)]
+    VolumeByUser {
+        user: UserIndex,
         since: Option<Timestamp>,
     },
 
@@ -1083,6 +1261,19 @@ pub enum QueryMsg {
     #[returns(BTreeMap<UserIndex, CommissionRate>)]
     CommissionRateOverrides {
         start_after: Option<UserIndex>,
+        limit: Option<u32>,
+    },
+
+    /// Return the trading fee rate override for a user, if one exists.
+    /// Return value is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(Option<(Dimensionless, Dimensionless)>)]
+    FeeRateOverride { user: Addr },
+
+    /// Enumerate all trading fee overrides, with pagination.
+    /// Each value in the returned map is a tuple: `[maker_fee_rate, taker_fee_rate]`.
+    #[returns(BTreeMap<Addr, (Dimensionless, Dimensionless)>)]
+    FeeRateOverrides {
+        start_after: Option<Addr>,
         limit: Option<u32>,
     },
 }
@@ -1239,8 +1430,54 @@ pub struct OrderFilled {
     pub fill_size: Quantity,
     pub closing_size: Quantity,
     pub opening_size: Quantity,
+
+    /// PnL realized by the user on this fill. Includes both:
+    ///
+    /// 1. Closing PnL: `|closing_size| * (fill_price - entry_price)` for
+    ///    longs, mirrored for shorts. Zero on pure-opening fills.
+    /// 2. Funding settled on the user's pre-existing position immediately
+    ///    before this fill is applied. Can be non-zero even on
+    ///    pure-opening fills if the user already held a position.
+    ///
+    /// Does not include trading fees (see `fee`).
     pub realized_pnl: UsdValue,
+
+    /// Trading fee charged on this fill, in USD. Always non-negative.
+    /// Already deducted from the user's margin in the same transaction;
+    /// reported here for transparency. Vault fills are exempt and report
+    /// zero.
     pub fee: UsdValue,
+
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
+
+    /// Identifier shared between the two `OrderFilled` events of a single
+    /// order-book match (taker + maker). Strictly increasing across
+    /// matches. `None` for trades executed before v0.15.0 — fill IDs
+    /// were not assigned prior to that release.
+    ///
+    /// Equivalents at other venues:
+    ///
+    /// - BitMEX — `trdMatchID`, shared across the two executions of a
+    ///   match; non-match `execType`s use an all-zeros placeholder:
+    ///   <https://support.bitmex.com/hc/en-gb/articles/6205689858077--execution-field-definitions>
+    /// - Hyperliquid — `tid`, a 50-bit hash of `(buyer_oid, seller_oid)`
+    ///   that both sides of a match emit:
+    ///   <https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/websocket/subscriptions>
+    /// - Binance USD-M Futures — trade `id` on `GET /fapi/v1/userTrades`;
+    ///   each side sees the same `id` per match:
+    ///   <https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Account-Trade-List>
+    pub fill_id: Option<FillId>,
+
+    /// `Some(true)` for the maker side of a match, `Some(false)` for the
+    /// taker side. Each order-book match emits two `OrderFilled` events
+    /// sharing one `fill_id` — exactly one with `is_maker = Some(true)`
+    /// and one with `is_maker = Some(false)`.
+    ///
+    /// `None` for trades executed before v0.16.0 — the maker/taker flag was not
+    /// recorded prior to that release.
+    pub is_maker: Option<bool>,
 }
 
 /// Event indicating an order have been inserted into the order book.
@@ -1252,6 +1489,9 @@ pub struct OrderPersisted {
     pub user: Addr,
     pub limit_price: UsdPrice,
     pub size: Quantity,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating an order has been removed from the order book.
@@ -1262,6 +1502,9 @@ pub struct OrderRemoved {
     pub pair_id: PairId,
     pub user: Addr,
     pub reason: ReasonForOrderRemoval,
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 /// Event indicating a conditional (TP/SL) order has been placed.
@@ -1323,6 +1566,20 @@ pub enum ReasonForOrderRemoval {
     /// The conditional order was triggered but could not fill within the
     /// user's max_slippage tolerance (insufficient book liquidity).
     SlippageExceeded,
+
+    /// The resting order's price fell outside the pair's
+    /// `max_limit_price_deviation` band at the time it was about to match
+    /// (i.e. the oracle moved after the order was placed). The matching
+    /// engine cancels such stale orders and walks deeper in the book.
+    PriceBandViolation,
+
+    /// A conditional (TP/SL) order was triggered but its stored
+    /// `max_slippage` now exceeds the pair's `max_market_slippage` cap —
+    /// governance tightened the cap between the order's submission and
+    /// its trigger. The order is cancelled rather than submitted. Distinct
+    /// from `SlippageExceeded` so the event stream can tell a policy
+    /// tightening apart from a liquidity shortfall.
+    SlippageCapTightened,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.
@@ -1342,7 +1599,11 @@ pub struct Liquidated {
     /// Bankruptcy price used for ADL fills, or `None` if no ADL happened.
     pub adl_price: Option<UsdPrice>,
 
-    /// PnL realized by the liquidated user from ADL fills (zero if no ADL).
+    /// PnL realized by the liquidated user from ADL fills, accumulated
+    /// across all counter-party fills for this pair. Includes both the
+    /// closing PnL on each ADL fill and the funding settled on the user's
+    /// position immediately before each fill. Zero if no ADL happened.
+    /// ADL fills incur no trading fees.
     pub adl_realized_pnl: UsdValue,
 }
 
@@ -1361,7 +1622,10 @@ pub struct Deleveraged {
     /// Fill price (the liquidated user's bankruptcy price).
     pub fill_price: UsdPrice,
 
-    /// PnL realized by the counter-party from this ADL fill.
+    /// PnL realized by the counter-party from this ADL fill. Includes
+    /// both the closing PnL on the ADL fill and the funding settled on
+    /// the counter-party's pre-existing position immediately before the
+    /// fill is applied. ADL fills incur no trading fees.
     pub realized_pnl: UsdValue,
 }
 

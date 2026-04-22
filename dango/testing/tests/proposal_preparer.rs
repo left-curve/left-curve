@@ -43,8 +43,8 @@ fn proposal_pyth() {
                 limit: None,
             })
             .should_succeed()
-            .into_iter()
-            .filter_map(|(_, price_source)| match price_source {
+            .into_values()
+            .filter_map(|price_source| match price_source {
                 PriceSource::Pyth { id, channel, .. } => {
                     Some(PythLazerSubscriptionDetails { id, channel })
                 },

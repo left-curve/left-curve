@@ -6,6 +6,7 @@ use {
         web,
     },
     dango_httpd::{graphql::build_schema, server::config_app},
+    grug_httpd::subscription_limiter::SubscriptionLimiter,
     serde::{Serialize, de::DeserializeOwned},
 };
 
@@ -46,6 +47,7 @@ pub fn build_actix_app(
     let graphql_schema = build_schema(dango_httpd_context.clone());
 
     App::new()
+        .app_data(web::Data::new(SubscriptionLimiter::new(10, 5000)))
         .app_data(web::Data::new(dango_httpd_context.clone()))
         .app_data(web::Data::new(
             dango_httpd_context.indexer_httpd_context.clone(),

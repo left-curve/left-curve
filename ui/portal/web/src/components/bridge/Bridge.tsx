@@ -5,6 +5,7 @@ import {
   useBridgeEvmDeposit,
   useBridgeState,
   useBridgeWithdraw,
+  useConfig,
   useEvmBalances,
   usePrices,
 } from "@left-curve/store";
@@ -23,6 +24,7 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 
+import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 
@@ -34,6 +36,7 @@ import {
   ResizerContainer,
   NetworkSelector,
   Tabs,
+  WarningContainer,
 } from "@left-curve/applets-kit";
 
 import type React from "react";
@@ -100,15 +103,18 @@ const BridgeDeposit: React.FC = () => {
       {network === "bitcoin" && <BitcoinDeposit />}
 
       {network && !["bitcoin", "solana"].includes(network) && <EvmDeposit />}
+
+      <WarningContainer description={m["bridge.rateLimitWarning"]()} />
     </>
   );
 };
 
 const BridgeSelectors: React.FC = () => {
   const { isConnected } = useAccount();
+  const { chain } = useConfig();
 
   const { state } = useBridge();
-  const { coin, changeCoin, coins, network, setNetwork, networks } = state;
+  const { coin, changeCoin, coins, network, setNetwork, networks, action } = state;
 
   return (
     <>
@@ -120,7 +126,11 @@ const BridgeSelectors: React.FC = () => {
         classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
         value={coin?.denom}
         onChange={changeCoin}
-        coins={coins}
+        coins={coins.filter(
+          (c) =>
+            (chain.id === "dango-1" && c.name !== "Ether" && action === "deposit") ||
+            action === "withdraw",
+        )}
         withName
         withPrice
       />
@@ -260,7 +270,11 @@ const EvmDeposit: React.FC = () => {
         }
         insideBottomComponent={
           <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-            <FormattedNumber number={getPrice(amount, coin.denom)} formatOptions={{ currency: "USD" }} as="p" />
+            <FormattedNumber
+              number={getPrice(amount, coin.denom)}
+              formatOptions={{ currency: "USD" }}
+              as="p"
+            />
           </div>
         }
       />
@@ -314,9 +328,32 @@ const BridgeWithdraw: React.FC = () => {
 
   if (action !== "withdraw") return null;
 
+  const withdrawHintParts = m["bridge.withdrawTransferHint"]({ app: "{app}" }).split("{app}");
+
   return (
     <>
       <BridgeSelectors />
+
+      <WarningContainer
+        description={
+          <ul className="list-disc pl-4 flex flex-col gap-1">
+            <li>
+              {withdrawHintParts[0]}
+              <Button
+                as={Link}
+                to="/transfer"
+                variant="link"
+                size="xs"
+                className="p-0 h-fit m-0 inline"
+              >
+                {m["sendAndReceive.title"]()}
+              </Button>
+              {withdrawHintParts[1]}
+            </li>
+            <li>{m["bridge.rateLimitWarning"]()}</li>
+          </ul>
+        }
+      />
 
       {coin && network && (
         <div className="flex flex-col items-center justify-center gap-6">
@@ -375,7 +412,11 @@ const BridgeWithdraw: React.FC = () => {
             }
             insideBottomComponent={
               <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-                <FormattedNumber number={getPrice(youGet, coin.denom)} formatOptions={{ currency: "USD" }} as="p" />
+                <FormattedNumber
+                  number={getPrice(youGet, coin.denom)}
+                  formatOptions={{ currency: "USD" }}
+                  as="p"
+                />
               </div>
             }
           />

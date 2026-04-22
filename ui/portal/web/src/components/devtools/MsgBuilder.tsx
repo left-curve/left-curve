@@ -4,7 +4,6 @@ import {
   JsonVisualizer,
   ResizerContainer,
   Tabs,
-  useApp,
   useTheme,
 } from "@left-curve/applets-kit";
 import {
@@ -154,7 +153,6 @@ const QueryMsg: React.FC = () => {
 };
 
 const ExecuteMsg: React.FC = () => {
-  const { toast } = useApp();
   const { currentTab } = useMsgBuilder();
   const { data: signingClient } = useSigningClient();
   const { isConnected, account } = useAccount();
@@ -163,9 +161,6 @@ const ExecuteMsg: React.FC = () => {
   const { theme } = useTheme();
 
   const { isPending, mutateAsync: execute } = useSubmitTx({
-    toast: {
-      error: (error) => toast.error({ title: m["common.error"](), description: String(error) }),
-    },
     mutation: {
       mutationFn: async () => {
         if (!signingClient || !account) {

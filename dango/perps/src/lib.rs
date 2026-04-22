@@ -15,19 +15,23 @@ pub mod vault;
 pub mod volume;
 
 use {
-    crate::state::{NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+    crate::state::{
+        FEE_RATE_OVERRIDES, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
+        USER_STATES,
+    },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, UsdValue,
         perps::{
-            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
-            MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, TraderMsg, VaultMsg,
+            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, FillId, InstantiateMsg,
+            MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg,
+            VaultMsg,
         },
     },
     grug::{
-        Addr, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst, Response,
-        SudoCtx, Uint128,
+        Addr, Duration, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst,
+        Response, SudoCtx, Uint128,
     },
 };
 
@@ -42,7 +46,10 @@ const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
 /// Lookback window for volume-tiered fee rate resolution.
-const VOLUME_LOOKBACK: grug::Duration = grug::Duration::from_days(14);
+const VOLUME_LOOKBACK: Duration = Duration::from_days(14);
+
+/// Reject oracle prices for being too old if older than this threshold.
+const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 
 /// Returns the oracle contract address.
 ///
@@ -85,6 +92,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     })?;
 
     NEXT_ORDER_ID.save(ctx.storage, &OrderId::ONE)?;
+    NEXT_FILL_ID.save(ctx.storage, &FillId::ONE)?;
 
     maintain::configure(ctx, msg.param, msg.pair_params)
 }
@@ -98,9 +106,15 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    cron::process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
+    cron::process_funding(
+        ctx.storage,
+        ctx.block.timestamp,
+        ctx.contract,
+        &mut oracle_querier,
+    )?;
 
     cron::process_conditional_orders(
         ctx.storage,
@@ -143,22 +157,30 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             },
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
             MaintainerMsg::Donate {} => maintain::donate(ctx),
+            MaintainerMsg::SetFeeRateOverride {
+                user,
+                maker_taker_fee_rates,
+            } => maintain::set_fee_rate_override(ctx, user, maker_taker_fee_rates),
         },
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),
             TraderMsg::Withdraw { amount } => trade::withdraw(ctx, amount),
-            TraderMsg::SubmitOrder {
+            TraderMsg::SubmitOrder(SubmitOrderRequest {
                 pair_id,
                 size,
                 kind,
                 reduce_only,
                 tp,
                 sl,
-            } => trade::submit_order(ctx, pair_id, size, kind, reduce_only, tp, sl),
+            }) => trade::submit_order(ctx, pair_id, size, kind, reduce_only, tp, sl),
             TraderMsg::CancelOrder(CancelOrderRequest::One(order_id)) => {
                 trade::cancel_one_order(ctx, order_id)
             },
+            TraderMsg::CancelOrder(CancelOrderRequest::OneByClientOrderId(cid)) => {
+                trade::cancel_one_order_by_client_order_id(ctx, cid)
+            },
             TraderMsg::CancelOrder(CancelOrderRequest::All) => trade::cancel_all_orders(ctx),
+            TraderMsg::BatchUpdateOrders(reqs) => trade::batch_update_orders(ctx, reqs),
             TraderMsg::SubmitConditionalOrder {
                 pair_id,
                 size,
@@ -258,8 +280,37 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             include_all,
         } => {
             let res = query::query_user_state_extended(
-                ctx,
+                ctx.storage,
+                ctx.querier,
+                ctx.block.timestamp,
                 user,
+                include_equity,
+                include_available_margin,
+                include_maintenance_margin,
+                include_unrealized_pnl,
+                include_unrealized_funding,
+                include_liquidation_price,
+                include_all,
+            )?;
+            res.to_json_value()
+        },
+        QueryMsg::UserStatesExtended {
+            start_after,
+            limit,
+            include_equity,
+            include_available_margin,
+            include_maintenance_margin,
+            include_unrealized_pnl,
+            include_unrealized_funding,
+            include_liquidation_price,
+            include_all,
+        } => {
+            let res = query::query_user_states_extended(
+                ctx.storage,
+                ctx.querier,
+                ctx.block.timestamp,
+                start_after,
+                limit,
                 include_equity,
                 include_available_margin,
                 include_maintenance_margin,
@@ -288,6 +339,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Volume { user, since } => {
             let res = query::query_volume(ctx.storage, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VolumeByUser { user, since } => {
+            let res = query::query_volume_by_user(ctx, user, since)?;
             res.to_json_value()
         },
         QueryMsg::Referrer { referee } => {
@@ -320,6 +375,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::CommissionRateOverrides { start_after, limit } => {
             let res = query::query_commission_rate_overrides(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::FeeRateOverride { user } => {
+            let res = FEE_RATE_OVERRIDES.may_load(ctx.storage, user)?;
+            res.to_json_value()
+        },
+        QueryMsg::FeeRateOverrides { start_after, limit } => {
+            let res = query::query_fee_rate_overrides(ctx, start_after, limit)?;
             res.to_json_value()
         },
     }

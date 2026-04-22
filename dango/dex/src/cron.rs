@@ -1012,7 +1012,7 @@ mod tests {
             dex::{Geometric, OrderId, PairParams, PassiveLiquidity, Price},
             oracle::PriceSource,
         },
-        grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
+        grug::{Bounded, MockContext, MockQuerier, NumberConst, Timestamp, Uint128},
         std::str::FromStr,
         test_case::test_case,
     };

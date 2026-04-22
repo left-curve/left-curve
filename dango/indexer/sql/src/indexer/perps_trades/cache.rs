@@ -72,6 +72,8 @@ impl PerpsTradeCache {
                 created_at: Timestamp::from(row.created_at).to_rfc3339_string(),
                 block_height: row.block_height as u64,
                 trade_idx: trade_idx as u32,
+                fill_id: order_filled.fill_id.as_ref().map(ToString::to_string),
+                is_maker: order_filled.is_maker,
             };
 
             trades

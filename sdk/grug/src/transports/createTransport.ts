@@ -15,6 +15,8 @@ export function createTransport<
   key,
   name,
   type,
+  batch,
+  polling,
   request,
   subscribe,
 }: TransportConfig<type, schema>): ReturnType<Transport<type, schema>> {
@@ -23,6 +25,8 @@ export function createTransport<
       key,
       name,
       type,
+      batch,
+      polling,
       request,
     },
     subscribe,

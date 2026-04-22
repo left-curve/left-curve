@@ -76,24 +76,16 @@ const Container: React.FC = () => {
     if (!orders.length) return balances;
     return orders.reduce(
       (acc, order) => {
-        const { baseDenom, quoteDenom, amount, direction, remaining } = order;
+        const { baseDenom, quoteDenom, price, direction, remaining } = order;
         if (direction === Direction.Buy) {
-          const quoteAmount = remaining;
+          // remaining is in base units; convert to quote units using the order's price
+          const quoteAmount = Decimal(remaining).mul(price).toFixed();
           acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
             .plus(quoteAmount)
             .toFixed();
-          const restAmount = Decimal(amount).minus(remaining).toFixed();
-          acc[baseDenom] = Decimal(acc[baseDenom] || "0")
-            .minus(restAmount)
-            .toFixed();
         } else {
-          const baseAmount = remaining;
           acc[baseDenom] = Decimal(acc[baseDenom] || "0")
-            .plus(baseAmount)
-            .toFixed();
-          const restAmount = Decimal(amount).minus(remaining).toFixed();
-          acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
-            .minus(restAmount)
+            .plus(remaining)
             .toFixed();
         }
         return acc;

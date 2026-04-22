@@ -872,11 +872,14 @@
             "pair_params": {
               "perp/ethusd": {
                 "bucket_sizes": [],
+                "funding_rate_multiplier": "1",
                 "impact_size": "10000",
                 "initial_margin_ratio": "0.1",
                 "maintenance_margin_ratio": "0.05",
                 "max_abs_funding_rate": "0",
                 "max_abs_oi": "1000000",
+                "max_limit_price_deviation": "0.05",
+                "max_market_slippage": "0.05",
                 "min_order_size": "0",
                 "tick_size": "1",
                 "vault_half_spread": "0.0006",
@@ -895,6 +898,7 @@
                 "base": "0",
                 "tiers": {}
               },
+              "max_action_batch_size": 5,
               "max_open_orders": 100,
               "max_unlocks": 10,
               "min_referrer_volume": "0",

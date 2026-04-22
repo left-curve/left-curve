@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { fetchTotalUsersWithPoints, fetchUserStats } from "./pointsApi.js";
+import { type AttackCompensation, fetchTotalUsersWithPoints, fetchUserStats } from "./pointsApi.js";
 
 export type UsePointsParameters = {
   pointsUrl: string;
@@ -41,7 +41,19 @@ export function usePoints(parameters: UsePointsParameters) {
     const percentile =
       rank > 0 && totalUsers > 0 ? Math.min(((totalUsers - rank + 1) / totalUsers) * 100, 100) : 0;
 
-    return { points, lpPoints, tradingPoints, referralPoints, volume, pnl, rank, percentile };
+    const compensation: AttackCompensation | undefined = data?.compensation;
+
+    return {
+      points,
+      lpPoints,
+      tradingPoints,
+      referralPoints,
+      volume,
+      pnl,
+      rank,
+      percentile,
+      compensation,
+    };
   }, [userStatsQuery.data, totalUsersQuery.data]);
 
   return {

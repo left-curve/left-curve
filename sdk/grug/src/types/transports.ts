@@ -91,6 +91,8 @@ export type TransportConfig<
   type: type;
   /** Indicates if the transport supports batch queries. */
   batch?: boolean;
+  /** When false, disables HTTP polling fallback for subscriptions. Default: true. */
+  polling?: boolean;
   request: RequestFn<transportSchema>;
   subscribe?: SubscribeFn;
 };

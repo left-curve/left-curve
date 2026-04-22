@@ -41,17 +41,18 @@ fn place_limit_ask(
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id(),
                 size: Quantity::new_int(-(size as i128)),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price as i128),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -68,7 +69,7 @@ fn market_buy(
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: perps::OrderKind::Market {
@@ -77,7 +78,7 @@ fn market_buy(
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -630,6 +631,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
                     max_unlocks: 10,
                     max_open_orders: 100,
                     funding_period: Duration::from_hours(1),
+                    max_action_batch_size: 5,
                     ..Default::default()
                 },
                 pair_params: btree_map! {

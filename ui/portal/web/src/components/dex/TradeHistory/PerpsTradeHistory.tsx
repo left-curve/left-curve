@@ -1,5 +1,6 @@
 import { Cell, FormattedNumber } from "@left-curve/applets-kit";
 import { usePublicClient, useAccount, useQueryWithPagination } from "@left-curve/store";
+import { Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TradeHistoryTable } from "./TradeHistoryTable";
 
@@ -35,6 +36,11 @@ function getPerpsEventPnl(eventType: string, data: PerpsEvent["data"]): string |
   if (eventType === "order_filled") return (data as OrderFilledData).realized_pnl;
   if (eventType === "liquidated") return (data as LiquidatedData).adl_realized_pnl;
   if (eventType === "deleveraged") return (data as DeleveragedData).realized_pnl;
+  return null;
+}
+
+function getPerpsEventFee(eventType: string, data: PerpsEvent["data"]): string | null {
+  if (eventType === "order_filled") return (data as OrderFilledData).fee;
   return null;
 }
 
@@ -96,6 +102,21 @@ export const PerpsTradeHistory: React.FC = () => {
       },
     },
     {
+      header: m["dex.protrade.tradeHistory.tradeValue"](),
+      cell: ({ row }) => {
+        const size = getPerpsEventSize(row.original.eventType, row.original.data);
+        const price = getPerpsEventPrice(row.original.eventType, row.original.data);
+        if (!size || !price) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        const absSize = size.startsWith("-") ? size.slice(1) : size;
+        const orderValue = Decimal(absSize).times(Decimal(price)).toFixed();
+        return (
+          <Cell.Text
+            text={<FormattedNumber number={orderValue} formatOptions={{ currency: "USD" }} as="span" />}
+          />
+        );
+      },
+    },
+    {
       header: m["dex.protrade.history.price"](),
       cell: ({ row }) => {
         const price = getPerpsEventPrice(row.original.eventType, row.original.data);
@@ -118,12 +139,24 @@ export const PerpsTradeHistory: React.FC = () => {
       },
     },
     {
+      header: "Fees",
+      cell: ({ row }) => {
+        const fee = getPerpsEventFee(row.original.eventType, row.original.data);
+        if (!fee || fee === "0") return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        return (
+          <Cell.Text
+            text={<FormattedNumber number={fee} formatOptions={{ currency: "USD" }} as="span" />}
+          />
+        );
+      },
+    },
+    {
       header: "Time",
       cell: ({ row }) => <Cell.Time date={row.original.createdAt} dateFormat="MM/dd/yy h:mm a" />,
     },
   ];
 
   return (
-    <TradeHistoryTable data={data} columns={columns} pagination={pagination} isLoading={isLoading} />
+    <TradeHistoryTable data={data} columns={columns} isLoading={isLoading} />
   );
 };

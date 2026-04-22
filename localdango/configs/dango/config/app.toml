@@ -57,7 +57,7 @@ secret_key = "minioadmin"
 url = "postgres://postgres@db:5432/grug_dev"
 
 # How many connections to keep in the connection pool.
-max_connections = 10
+max_connections = 25
 
 [indexer.clickhouse]
 
@@ -89,6 +89,33 @@ port = 8080
 
 # This will be exposed
 static_files_path = ""
+
+# Number of actix worker threads.
+workers = 12
+
+# Maximum number of concurrent connections per worker.
+max_connections = 10000
+
+# Maximum number of pending connections in the OS listen queue.
+backlog = 2048
+
+# Keep-alive timeout in seconds. Idle connections are closed after this period.
+keep_alive_secs = 5
+
+# Maximum time in seconds to wait for the client to send a complete request.
+client_request_timeout_secs = 2
+
+# Maximum time in seconds to wait for the client to disconnect gracefully.
+client_disconnect_timeout_secs = 1
+
+# Maximum number of blocking threads per worker for synchronous operations.
+worker_max_blocking_threads = 2
+
+# Maximum number of GraphQL subscriptions allowed per WebSocket connection.
+max_subscriptions_per_connection = 20
+
+# Maximum total number of GraphQL subscriptions across all connections.
+max_subscriptions_global = 15000
 
 [metrics_httpd]
 

@@ -75,9 +75,14 @@ pub fn apply_fee_commissions(
 
     for (payer, fee_breakdown) in fee_breakdowns {
         let vault_fee = fee_breakdown.vault_fee;
-        if vault_fee.is_zero() || payer == perps_contract {
+        if payer == perps_contract {
             continue;
         }
+        // A zero `vault_fee` here means the payer was a rebater on this fill
+        // (maker fee < 0 under the net-fee model, proportional share clamps
+        // to zero). We still walk the referral chain below so volume / stat
+        // tracking runs for them; each `credit_commission` / upstream update
+        // is already guarded by `is_non_zero()` so no funds move.
 
         // Resolve payer address → UserIndex.
         let Some(payer_index) = super::retrieve_user_index(
@@ -345,15 +350,22 @@ fn update_referee_stats(
         .commission_earned
         .checked_add_assign(commission_delta)?;
 
-    // If this referee hasn't traded today yet, increment the referrer's
-    // daily active direct referees count.
+    // If this referee hasn't traded today yet.
     if stats.last_day_active != today {
+        let mut referrer_data = load_referral_data(storage, referrer, None)?;
+
+        // Increment the daily active referees.
+        referrer_data.cumulative_daily_active_referees += 1;
+
+        // Check if this is the first trade made from the referee ever.
+        // If so, increment the global active referees.
+        if stats.last_day_active == Timestamp::ZERO {
+            referrer_data.cumulative_global_active_referees += 1;
+        }
+
         stats.last_day_active = today;
 
-        let mut data = load_referral_data(storage, referrer, None)?;
-        data.cumulative_active_referees += 1;
-
-        USER_REFERRAL_DATA.save(storage, (referrer, today), &data)?;
+        USER_REFERRAL_DATA.save(storage, (referrer, today), &referrer_data)?;
     }
 
     REFERRER_TO_REFEREE_STATISTICS.save(storage, (referrer, referee), &stats)

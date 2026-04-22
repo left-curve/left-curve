@@ -1,10 +1,11 @@
 use {
     crate::{
-        VOLUME_LOOKBACK,
+        MAX_ORACLE_STALENESS, VOLUME_LOOKBACK,
         core::{
-            check_margin, check_minimum_order_size, check_oi_constraint, compute_available_margin,
-            compute_notional, compute_required_margin, compute_target_price, compute_trading_fee,
-            decompose_fill, execute_fill, is_price_constraint_violated, validate_slippage,
+            check_margin, check_minimum_order_size, check_oi_constraint, check_price_band,
+            compute_available_margin, compute_notional, compute_required_margin,
+            compute_target_price, compute_trading_fee, decompose_fill, execute_fill,
+            is_price_constraint_violated, validate_slippage,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
@@ -15,22 +16,26 @@ use {
         querier::NoCachePerpQuerier,
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
-        state::{ASKS, BIDS, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        state::{
+            ASKS, BIDS, FEE_RATE_OVERRIDES, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES,
+            PARAM, STATE, USER_STATES,
+        },
         volume::flush_volumes,
     },
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         perps::{
-            ChildOrder, ConditionalOrder, ConditionalOrderPlaced, LimitOrder, OrderFilled, OrderId,
-            OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam, PairState, Param,
-            ReasonForOrderRemoval, State, TimeInForce, TriggerDirection, UserState,
+            ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, FillId,
+            LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
+            PairParam, PairState, Param, ReasonForOrderRemoval, State, TimeInForce,
+            TriggerDirection, UserState,
         },
     },
     grug::{
-        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder, Response,
-        Storage, Timestamp,
+        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder,
+        QuerierWrapper, Response, Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -44,26 +49,67 @@ pub fn submit_order(
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
 ) -> anyhow::Result<Response> {
+    let mut events = EventBuilder::new();
+
+    _submit_order(
+        ctx.storage,
+        ctx.querier,
+        ctx.block.timestamp,
+        ctx.contract,
+        ctx.sender,
+        pair_id,
+        size,
+        kind,
+        reduce_only,
+        tp,
+        sl,
+        &mut events,
+    )?;
+
+    // No token transfers — all PnL/fees settled via user_state.margin.
+    Ok(Response::new().add_events(events)?)
+}
+
+/// Intermediate layer of `submit_order`: takes individual components of
+/// `MutableCtx` (so multiple invocations can share the same storage within
+/// a `batch_update_orders` loop), loads the contract state, delegates the
+/// pure decision-making to [`compute_submit_order_outcome`], then writes
+/// the resulting mutations back to storage.
+///
+/// Events are pushed into the caller-owned `events` builder; the caller
+/// assembles the `Response`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn _submit_order(
+    storage: &mut dyn Storage,
+    querier: QuerierWrapper,
+    current_time: Timestamp,
+    contract: Addr,
+    sender: Addr,
+    pair_id: PairId,
+    size: Quantity,
+    kind: OrderKind,
+    reduce_only: bool,
+    tp: Option<ChildOrder>,
+    sl: Option<ChildOrder>,
+    events: &mut EventBuilder,
+) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
     // ---------------------------- 1. Preparation -----------------------------
 
-    let param = PARAM.load(ctx.storage)?;
-    let state = STATE.load(ctx.storage)?;
+    let param = PARAM.load(storage)?;
+    let state = STATE.load(storage)?;
 
-    let pair_param = PAIR_PARAMS.load(ctx.storage, &pair_id)?;
-    let pair_state = PAIR_STATES.load(ctx.storage, &pair_id)?;
+    let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
+    let pair_state = PAIR_STATES.load(storage, &pair_id)?;
 
-    let taker_state = USER_STATES
-        .may_load(ctx.storage, ctx.sender)?
-        .unwrap_or_default();
+    let taker_state = USER_STATES.may_load(storage, sender)?.unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(querier), querier)
+        .with_no_older_than(current_time - MAX_ORACLE_STALENESS);
 
     let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
-
-    let mut events = EventBuilder::new();
 
     // --------------------------- 2. Business logic ---------------------------
 
@@ -75,14 +121,15 @@ pub fn submit_order(
         order_mutations,
         order_to_store,
         next_order_id,
+        next_fill_id,
         index_updates,
         volumes,
         fee_breakdowns,
-    } = _submit_order(
-        ctx.storage,
-        ctx.sender,
-        ctx.contract,
-        ctx.block.timestamp,
+    } = compute_submit_order_outcome(
+        storage,
+        sender,
+        contract,
+        current_time,
         &mut oracle_querier,
         &param,
         &state,
@@ -96,42 +143,43 @@ pub fn submit_order(
         reduce_only,
         tp,
         sl,
-        &mut events,
+        events,
     )?;
 
     // ------------------------ 3. Apply state changes -------------------------
 
-    flush_volumes(ctx.storage, ctx.block.timestamp, &volumes)?;
+    flush_volumes(storage, current_time, &volumes)?;
 
-    maker_states.insert(ctx.sender, taker_state);
+    maker_states.insert(sender, taker_state);
 
     let FeeCommissionsOutcome {
         user_states: updated_maker_states,
     } = apply_fee_commissions(
-        ctx.storage,
-        ctx.querier,
-        ctx.contract,
-        ctx.block.timestamp,
+        storage,
+        querier,
+        contract,
+        current_time,
         &param,
         &maker_states,
         fee_breakdowns,
         &volumes,
-        &mut events,
+        events,
     )?;
 
-    maker_states = updated_maker_states;
+    let maker_states = updated_maker_states;
 
-    NEXT_ORDER_ID.save(ctx.storage, &next_order_id)?;
+    NEXT_ORDER_ID.save(storage, &next_order_id)?;
+    NEXT_FILL_ID.save(storage, &next_fill_id)?;
 
-    STATE.save(ctx.storage, &state)?;
+    STATE.save(storage, &state)?;
 
-    PAIR_STATES.save(ctx.storage, &pair_id, &pair_state)?;
+    PAIR_STATES.save(storage, &pair_id, &pair_state)?;
 
     for (addr, user_state) in &maker_states {
-        USER_STATES.save(ctx.storage, *addr, user_state)?;
+        USER_STATES.save(storage, *addr, user_state)?;
     }
 
-    apply_position_index_updates(ctx.storage, &index_updates)?;
+    apply_position_index_updates(storage, &index_updates)?;
 
     let (taker_book, maker_book) = if size.is_positive() {
         (BIDS, ASKS)
@@ -152,7 +200,7 @@ pub fn submit_order(
         // notional drift. See `../liquidity_depth.rs`, test function `partial_fill_no_residual_depth`
         // for detail.
         decrease_liquidity_depths(
-            ctx.storage,
+            storage,
             &pair_id,
             maker_is_bid,
             real_price,
@@ -163,7 +211,7 @@ pub fn submit_order(
         match mutation {
             Some(order) => {
                 increase_liquidity_depths(
-                    ctx.storage,
+                    storage,
                     &pair_id,
                     maker_is_bid,
                     real_price,
@@ -171,10 +219,10 @@ pub fn submit_order(
                     &pair_param.bucket_sizes,
                 )?;
 
-                maker_book.save(ctx.storage, order_key, &order)?;
+                maker_book.save(storage, order_key, &order)?;
             },
             None => {
-                maker_book.remove(ctx.storage, order_key)?;
+                maker_book.remove(storage, order_key)?;
             },
         }
     }
@@ -184,7 +232,7 @@ pub fn submit_order(
         let limit_price = may_invert_price(stored_price, is_bid);
 
         increase_liquidity_depths(
-            ctx.storage,
+            storage,
             &pair_id,
             is_bid,
             limit_price,
@@ -192,25 +240,22 @@ pub fn submit_order(
             &pair_param.bucket_sizes,
         )?;
 
-        taker_book.save(
-            ctx.storage,
-            (pair_id.clone(), stored_price, order_id),
-            &order,
-        )?;
+        taker_book.save(storage, (pair_id.clone(), stored_price, order_id), &order)?;
 
         events.push(OrderPersisted {
             order_id,
             pair_id: pair_id.clone(),
-            user: ctx.sender,
+            user: sender,
             limit_price,
             size: order.size,
+            client_order_id: order.client_order_id,
         })?;
     }
 
     #[cfg(feature = "tracing")]
     {
         tracing::info!(
-            user = %ctx.sender,
+            user = %sender,
             %pair_id,
             %size,
             "Order submitted"
@@ -246,11 +291,10 @@ pub fn submit_order(
         .record(start.elapsed().as_secs_f64());
     }
 
-    // No token transfers — all PnL/fees settled via user_state.margin.
-    Ok(Response::new().add_events(events)?)
+    Ok(())
 }
 
-/// Owned outcome of a `_submit_order` call. Every piece of
+/// Owned outcome of a `compute_submit_order_outcome` call. Every piece of
 /// caller-persistable state that the call may have updated is returned in
 /// this struct, so that a failed call can discard everything at once
 /// simply by dropping the `Err` variant — no partial mutations can leak
@@ -265,6 +309,7 @@ pub struct SubmitOrderOutcome {
     pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
     pub order_to_store: Option<(UsdPrice, OrderId, LimitOrder)>,
     pub next_order_id: OrderId,
+    pub next_fill_id: FillId,
     pub index_updates: Vec<PositionIndexUpdate>,
     pub volumes: BTreeMap<Addr, UsdValue>,
     pub fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
@@ -281,7 +326,7 @@ pub struct SubmitOrderOutcome {
 /// returned `maker_states`; moving it inside is left as a follow-up
 /// since that requires lifting `&mut Storage` and `QuerierWrapper`
 /// into the signature and re-plumbing every test call site.
-pub(crate) fn _submit_order(
+pub(crate) fn compute_submit_order_outcome(
     storage: &dyn Storage,
     taker: Addr,
     contract: Addr,
@@ -311,14 +356,31 @@ pub(crate) fn _submit_order(
 
     match &kind {
         OrderKind::Market { max_slippage } => {
-            validate_slippage(*max_slippage)?;
+            validate_slippage(*max_slippage, pair_param.max_market_slippage)?;
         },
         OrderKind::Limit { limit_price, .. } => {
-            ensure!(
-                limit_price.is_positive(),
-                "limit price must be positive: {limit_price}"
-            );
+            // `check_price_band` subsumes the positivity check: any
+            // `max_limit_price_deviation < 1` (enforced at configure time)
+            // makes the lower bound strictly positive, so zero or negative
+            // `limit_price` is rejected here too.
+            check_price_band(
+                *limit_price,
+                oracle_price,
+                pair_param.max_limit_price_deviation,
+            )?;
         },
+    }
+
+    // IOC limit orders never enter the book, so a `client_order_id` would
+    // never be reachable for cancellation — disallow it to surface the
+    // misconfiguration loudly instead of silently dropping the id.
+    if let OrderKind::Limit {
+        time_in_force: TimeInForce::ImmediateOrCancel,
+        client_order_id: Some(_),
+        ..
+    } = &kind
+    {
+        bail!("client_order_id is not allowed with TimeInForce::ImmediateOrCancel");
     }
 
     for child_order in [&tp, &sl].into_iter().flatten() {
@@ -328,7 +390,7 @@ pub(crate) fn _submit_order(
             child_order.trigger_price
         );
 
-        validate_slippage(child_order.max_slippage)?;
+        validate_slippage(child_order.max_slippage, pair_param.max_market_slippage)?;
     }
 
     // -------------- Step 1. Check minimum order size -------------------------
@@ -364,10 +426,16 @@ pub(crate) fn _submit_order(
 
     let taker_order_id = NEXT_ORDER_ID.load(storage)?;
     let mut next_order_id = taker_order_id + OrderId::ONE;
+    let mut next_fill_id = NEXT_FILL_ID.load(storage)?;
 
     // ---------------------- Step 4. Post-only fast path ----------------------
 
-    if let Some(limit_price) = kind.post_only_price() {
+    if let OrderKind::Limit {
+        limit_price,
+        time_in_force: TimeInForce::PostOnly,
+        client_order_id,
+    } = kind
+    {
         let StoreLimitOrderOutcome {
             user_state: updated_taker_state,
             stored_price,
@@ -388,6 +456,7 @@ pub(crate) fn _submit_order(
             taker_order_id,
             tp,
             sl,
+            client_order_id,
         )?;
 
         taker_state = updated_taker_state;
@@ -400,6 +469,8 @@ pub(crate) fn _submit_order(
             order_mutations: Vec::new(),
             order_to_store: Some((stored_price, order_id, order)),
             next_order_id: taker_order_id + OrderId::ONE,
+            // Post-only orders cannot match, so no fill id is allocated.
+            next_fill_id,
             index_updates: Vec::new(),
             volumes: BTreeMap::new(),
             fee_breakdowns: BTreeMap::new(),
@@ -410,14 +481,22 @@ pub(crate) fn _submit_order(
     //
     // Reduce-only orders only reduce exposure, so they skip the check.
 
+    // Determine the taker's fee rate.
+    // If the admin has configured a fee rate override for the taker, then
+    // simply use it.
+    // Otherwise, resolve it based on recent volume.
+    let taker_fee_rate = if let Some((_maker_rate_override, taker_rate_override)) =
+        FEE_RATE_OVERRIDES.may_load(storage, taker)?
+    {
+        taker_rate_override
+    } else {
+        let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+        let taker_volume = query_volume(storage, taker, volume_since)?;
+        param.taker_fee_rates.resolve(taker_volume)
+    };
+
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
-
-        let taker_fee_rate = {
-            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-            let taker_volume = query_volume(storage, taker, volume_since)?;
-            param.taker_fee_rates.resolve(taker_volume)
-        };
 
         check_margin(
             oracle_querier,
@@ -438,37 +517,55 @@ pub(crate) fn _submit_order(
     // ---------------------- Step 7. Match against book -----------------------
 
     let MatchOrderOutcome {
+        state: updated_state,
         pair_state: updated_pair_state,
         taker_state: updated_taker_state,
-        mut maker_states,
+        maker_states,
         unfilled,
-        pnls,
-        fees,
         volumes,
+        fee_breakdowns,
         order_mutations,
         index_updates,
         next_order_id: updated_next_order_id,
+        next_fill_id: updated_next_fill_id,
     } = match_order(
         storage,
         taker,
         contract,
         current_time,
         param,
+        &state,
         pair_id,
         &pair_state,
         &taker_state,
         taker_is_bid,
         taker_order_id,
+        // Surface the taker's `client_order_id` (if any) on the
+        // `OrderFilled` event so off-chain consumers can correlate fills
+        // with the originally-submitted order.
+        match kind {
+            OrderKind::Limit {
+                client_order_id, ..
+            } => client_order_id,
+            OrderKind::Market { .. } => None,
+        },
+        taker_fee_rate,
+        None, // no forced maker fee; respect per-user overrides and tier schedule
         &BTreeMap::new(),
         target_price,
+        oracle_price,
+        pair_param.max_limit_price_deviation,
         fillable_size,
         next_order_id,
+        next_fill_id,
         events,
     )?;
 
+    state = updated_state;
     pair_state = updated_pair_state;
     taker_state = updated_taker_state;
     next_order_id = updated_next_order_id;
+    next_fill_id = updated_next_fill_id;
 
     // ------------------- Step 8. Handle unfilled remainder -------------------
 
@@ -481,7 +578,7 @@ pub(crate) fn _submit_order(
             } => {
                 // IOC: discard unfilled remainder, same as market orders.
                 ensure!(
-                    unfilled < fillable_size,
+                    unfilled.checked_abs()? < fillable_size.checked_abs()?,
                     "no liquidity at acceptable price! target_price: {target_price}"
                 );
 
@@ -490,6 +587,7 @@ pub(crate) fn _submit_order(
             OrderKind::Limit {
                 limit_price,
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id,
             } => {
                 let StoreLimitOrderOutcome {
                     user_state: updated_taker_state,
@@ -510,6 +608,7 @@ pub(crate) fn _submit_order(
                     taker_order_id,
                     tp.clone(),
                     sl.clone(),
+                    client_order_id,
                 )?;
 
                 taker_state = updated_taker_state;
@@ -548,24 +647,9 @@ pub(crate) fn _submit_order(
         emit_child_order_events(events, pair_id, taker, &tp, &sl, position.size)?;
     }
 
-    // Ensure the vault's UserState is in maker_states for fee settlement.
-    maker_states.entry(contract).or_insert_with(|| {
-        USER_STATES
-            .may_load(storage, contract)
-            .unwrap()
-            .unwrap_or_default()
-    });
-
-    let fee_breakdowns = settle_pnls(
-        contract,
-        param,
-        &mut state,
-        taker,
-        &mut taker_state,
-        &mut maker_states,
-        pnls,
-        fees,
-    )?;
+    // `match_order` has already settled fees and PnLs per-fill and
+    // accumulated `fee_breakdowns`; all that's left is to hand them back
+    // to the caller for `apply_fee_commissions`.
 
     Ok(SubmitOrderOutcome {
         state,
@@ -575,6 +659,7 @@ pub(crate) fn _submit_order(
         order_mutations,
         order_to_store,
         next_order_id,
+        next_fill_id,
         index_updates,
         volumes,
         fee_breakdowns,
@@ -582,22 +667,26 @@ pub(crate) fn _submit_order(
 }
 
 /// Owned outcome of a `match_order` call. Carries post-match copies of
-/// `pair_state`, `taker_state`, and `maker_states`, plus the per-fill
-/// accumulators (`pnls`, `fees`, `volumes`) that the caller feeds into
-/// `settle_pnls` / `apply_fee_commissions` or merges into its own running
-/// totals (`execute_close_schedule`).
+/// `state`, `pair_state`, `taker_state`, and `maker_states`, plus the
+/// per-user accumulators (`volumes`, `fee_breakdowns`) that the caller
+/// feeds into `apply_fee_commissions` / `flush_volumes` or merges into
+/// its own running totals (`execute_close_schedule`).
+///
+/// PnL and fee settlement happens per-fill *inside* `match_order` via
+/// `settle_pnls`, so they do not appear as accumulators here.
 #[derive(Debug)]
 pub struct MatchOrderOutcome {
+    pub state: State,
     pub pair_state: PairState,
     pub taker_state: UserState,
     pub maker_states: BTreeMap<Addr, UserState>,
     pub unfilled: Quantity,
-    pub pnls: BTreeMap<Addr, UsdValue>,
-    pub fees: BTreeMap<Addr, UsdValue>,
     pub volumes: BTreeMap<Addr, UsdValue>,
+    pub fee_breakdowns: BTreeMap<Addr, FeeBreakdown>,
     pub order_mutations: Vec<(UsdPrice, OrderId, Option<LimitOrder>, Quantity)>,
     pub index_updates: Vec<PositionIndexUpdate>,
     pub next_order_id: OrderId,
+    pub next_fill_id: FillId,
 }
 
 /// Iterate the opposite-side order book in price-time priority and match
@@ -619,35 +708,50 @@ pub fn match_order(
     contract: Addr,
     current_time: Timestamp,
     param: &Param,
+    state: &State,
     pair_id: &PairId,
     pair_state: &PairState,
     taker_state: &UserState,
     taker_is_bid: bool,
     taker_order_id: OrderId,
+    taker_client_order_id: Option<ClientOrderId>,
+    taker_fee_rate: Dimensionless,
+    force_maker_fee_rate: Option<Dimensionless>,
     maker_states: &BTreeMap<Addr, UserState>,
     target_price: UsdPrice,
+    oracle_price: UsdPrice,
+    max_limit_price_deviation: Dimensionless,
     mut remaining_size: Quantity,
     mut next_order_id: OrderId,
+    mut next_fill_id: FillId,
     events: &mut EventBuilder,
 ) -> anyhow::Result<MatchOrderOutcome> {
     // Clone at entry and mutate locals freely. `events` is the one
     // deliberate `&mut` on caller state per the purity rule exception.
+    let mut state = state.clone();
     let mut pair_state = pair_state.clone();
     let mut taker_state = taker_state.clone();
     let mut maker_states = maker_states.clone();
 
-    let mut pnls = BTreeMap::new();
-    let mut fees = BTreeMap::new();
-    let mut volumes = BTreeMap::new();
+    // Ensure the vault's UserState is in `maker_states` so the per-fill
+    // `settle_pnls` below can credit the vault its fee cut when the maker
+    // is not the vault. Skip this when the **taker** is the vault — in
+    // that case `taker_state` IS the vault's state, and duplicating it
+    // into `maker_states` would (a) violate the "taker ∉ maker_states"
+    // invariant and (b) silently shadow the taker's updates.
+    if taker != contract {
+        maker_states.entry(contract).or_insert_with(|| {
+            USER_STATES
+                .may_load(storage, contract)
+                .unwrap()
+                .unwrap_or_default()
+        });
+    }
+
+    let mut volumes: BTreeMap<Addr, UsdValue> = BTreeMap::new();
+    let mut fee_breakdowns: BTreeMap<Addr, FeeBreakdown> = BTreeMap::new();
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
-
-    // Resolve taker's fee rate based on recent volume.
-    let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-    let taker_fee_rate = {
-        let taker_volume = query_volume(storage, taker, volume_since)?;
-        param.taker_fee_rates.resolve(taker_volume)
-    };
 
     // Create iterator over the maker side of the order book.
     // The iteration follows price-time priority.
@@ -698,6 +802,50 @@ pub fn match_order(
                 pair_id: pair_id.clone(),
                 user: taker,
                 reason: ReasonForOrderRemoval::SelfTradePrevention,
+                client_order_id: maker_order.client_order_id,
+            })?;
+
+            continue;
+        }
+
+        // ----------------------- Price-band re-check -------------------------
+
+        // The maker's price was within the band when placed, but the oracle
+        // may have drifted since. Cancel out-of-band makers and walk deeper.
+        //
+        // Vault quotes are exempt — their prices are algorithmically bounded
+        // by `vault_half_spread * (1 + vault_spread_skew_factor)` and are
+        // refreshed on every oracle update, so cancelling them during
+        // matching would cause continuous churn without security gain (the
+        // vault cannot be part of an attacker's coordinated setup).
+        if maker_order.user != contract
+            && check_price_band(resting_price, oracle_price, max_limit_price_deviation).is_err()
+        {
+            let pre_fill_abs_size = maker_order.size.checked_abs()?;
+
+            let maker_state = match maker_states.entry(maker_order.user) {
+                Entry::Vacant(e) => {
+                    let s = USER_STATES
+                        .may_load(storage, maker_order.user)?
+                        .unwrap_or_default();
+                    e.insert(s)
+                },
+                Entry::Occupied(e) => e.into_mut(),
+            };
+
+            maker_state.open_order_count -= 1;
+            maker_state
+                .reserved_margin
+                .checked_sub_assign(maker_order.reserved_margin)?;
+
+            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
+
+            events.push(OrderRemoved {
+                order_id: maker_order_id,
+                pair_id: pair_id.clone(),
+                user: maker_order.user,
+                reason: ReasonForOrderRemoval::PriceBandViolation,
+                client_order_id: maker_order.client_order_id,
             })?;
 
             continue;
@@ -715,11 +863,18 @@ pub fn match_order(
 
         let maker_fill_size = taker_fill_size.checked_neg()?;
 
-        // ------------------------ Settle taker's PnL -------------------------
+        // -------------------- Allocate a shared fill id ----------------------
+
+        // Both `OrderFilled` events below carry this `fill_id`, so downstream
+        // consumers can group the two sides of the match.
+        let fill_id = next_fill_id;
+        next_fill_id = next_fill_id.checked_add(FillId::ONE)?;
+
+        // ------------------------ Settle taker side -------------------------
 
         let old_taker_pos = taker_state.positions.get(pair_id).cloned();
 
-        settle_fill(
+        let taker_settlement = settle_fill(
             contract,
             pair_id,
             &mut pair_state,
@@ -728,11 +883,19 @@ pub fn match_order(
             taker_fill_size,
             resting_price,
             taker_fee_rate,
-            &mut pnls,
-            &mut fees,
-            &mut volumes,
-            Some((events, taker_order_id)),
+            Some((
+                events,
+                taker_order_id,
+                taker_client_order_id,
+                fill_id,
+                false,
+            )),
         )?;
+
+        volumes
+            .entry(taker)
+            .or_default()
+            .checked_add_assign(taker_settlement.volume)?;
 
         if let Some(diff) = compute_position_diff(
             pair_id,
@@ -743,47 +906,109 @@ pub fn match_order(
             index_updates.push(diff);
         }
 
-        // ------------------------ Settle maker's PnL -------------------------
+        // ------------------------ Settle maker side -------------------------
 
-        // Find the maker's user state.
-        let maker_state = match maker_states.entry(maker_order.user) {
-            Entry::Vacant(e) => {
-                let maybe_maker_state = USER_STATES.may_load(storage, maker_order.user)?;
-                e.insert(maybe_maker_state.unwrap_or_default())
-            },
-            Entry::Occupied(e) => e.into_mut(),
-        };
-
-        let old_maker_pos = maker_state.positions.get(pair_id).cloned();
-
-        // Resolve maker's fee rate based on recent volume.
-        let maker_fee_rate = {
+        // Determine the maker's fee rate.
+        // - If the caller forces a rate (e.g. zero during liquidation), use it
+        //   and bypass both the override and the tier schedule so the
+        //   zero-fee invariant cannot be defeated by a pre-existing override.
+        // - Else if the admin has configured a fee rate override for the
+        //   maker, use it.
+        // - Otherwise, resolve it based on recent volume.
+        let maker_fee_rate = if let Some(forced) = force_maker_fee_rate {
+            forced
+        } else if let Some((maker_rate_override, _taker_rate_override)) =
+            FEE_RATE_OVERRIDES.may_load(storage, maker_order.user)?
+        {
+            maker_rate_override
+        } else {
+            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
             let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
             param.maker_fee_rates.resolve(maker_volume)
         };
 
-        settle_fill(
+        // Take the maker's user state out of the map so the later
+        // `settle_pnls` call can borrow the vault's state from the map
+        // disjointly. We reinsert it at the end of the loop iteration.
+        let maker_user = maker_order.user;
+        let mut maker_state = match maker_states.remove(&maker_user) {
+            Some(s) => s,
+            None => USER_STATES
+                .may_load(storage, maker_user)?
+                .unwrap_or_default(),
+        };
+
+        let old_maker_pos = maker_state.positions.get(pair_id).cloned();
+
+        let maker_settlement = settle_fill(
             contract,
             pair_id,
             &mut pair_state,
-            maker_state,
-            maker_order.user,
+            &mut maker_state,
+            maker_user,
             maker_fill_size,
             resting_price,
             maker_fee_rate,
-            &mut pnls,
-            &mut fees,
-            &mut volumes,
-            Some((events, maker_order_id)),
+            Some((
+                events,
+                maker_order_id,
+                maker_order.client_order_id,
+                fill_id,
+                true,
+            )),
         )?;
+
+        volumes
+            .entry(maker_user)
+            .or_default()
+            .checked_add_assign(maker_settlement.volume)?;
 
         if let Some(diff) = compute_position_diff(
             pair_id,
-            maker_order.user,
+            maker_user,
             old_maker_pos.as_ref(),
             maker_state.positions.get(pair_id),
         ) {
             index_updates.push(diff);
+        }
+
+        // ----------------- Per-fill net-fee settlement ------------------
+
+        let fill_breakdowns = {
+            // vault_state_opt carries the vault's state only when neither
+            // side of the fill is the vault itself. When the taker or
+            // maker IS the vault, that party's own state holds the vault's
+            // balance and settle_pnls routes the vault fee there.
+            let vault_state_opt = if taker != contract && maker_user != contract {
+                Some(
+                    maker_states
+                        .get_mut(&contract)
+                        .expect("vault inserted at match_order entry"),
+                )
+            } else {
+                None
+            };
+            settle_pnls(
+                contract,
+                param,
+                &mut state,
+                taker,
+                &mut taker_state,
+                taker_settlement.pnl,
+                taker_settlement.fee,
+                maker_user,
+                &mut maker_state,
+                maker_settlement.pnl,
+                maker_settlement.fee,
+                vault_state_opt,
+            )?
+        };
+
+        if let Some(bd) = fill_breakdowns.taker {
+            merge_fee_breakdown(&mut fee_breakdowns, taker, bd)?;
+        }
+        if let Some(bd) = fill_breakdowns.maker {
+            merge_fee_breakdown(&mut fee_breakdowns, maker_user, bd)?;
         }
 
         // ------------- Apply maker's child orders after fill -----------------
@@ -805,7 +1030,7 @@ pub fn match_order(
             emit_child_order_events(
                 events,
                 pair_id,
-                maker_order.user,
+                maker_user,
                 &maker_order.tp,
                 &maker_order.sl,
                 maker_pos.size,
@@ -816,10 +1041,20 @@ pub fn match_order(
 
         let pre_fill_abs_size = maker_order.size.checked_abs()?;
 
-        // Release reserved margin proportionally to the filled portion.
-        let margin_to_release = (maker_order.reserved_margin)
-            .checked_mul(maker_fill_size)?
-            .checked_div(maker_order.size)?;
+        // Compute the new size first so we can detect a full fill below.
+        let new_maker_size = maker_order.size.checked_sub(maker_fill_size)?;
+
+        // Release reserved margin. On a full fill, release everything that's
+        // left in the order: the proportional formula truncates toward zero
+        // and would otherwise orphan the residual in `maker_state` when the
+        // order is removed from storage a few lines below.
+        let margin_to_release = if new_maker_size.is_zero() {
+            maker_order.reserved_margin
+        } else {
+            (maker_order.reserved_margin)
+                .checked_mul(maker_fill_size)?
+                .checked_div(maker_order.size)?
+        };
 
         maker_state
             .reserved_margin
@@ -829,7 +1064,7 @@ pub fn match_order(
             .reserved_margin
             .checked_sub_assign(margin_to_release)?;
 
-        maker_order.size.checked_sub_assign(maker_fill_size)?;
+        maker_order.size = new_maker_size;
 
         if maker_order.size.is_zero() {
             maker_state.open_order_count -= 1;
@@ -837,12 +1072,13 @@ pub fn match_order(
             order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
 
             // Vault order removal is internal churn — suppress the event.
-            if maker_order.user != contract {
+            if maker_user != contract {
                 events.push(OrderRemoved {
                     order_id: maker_order_id,
                     pair_id: pair_id.clone(),
-                    user: maker_order.user,
+                    user: maker_user,
                     reason: ReasonForOrderRemoval::Filled,
+                    client_order_id: maker_order.client_order_id,
                 })?;
             }
 
@@ -863,30 +1099,48 @@ pub fn match_order(
             ));
         }
 
+        // Reinsert the maker's state now that we no longer need disjoint
+        // access to the vault state.
+        maker_states.insert(maker_user, maker_state);
+
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
     Ok(MatchOrderOutcome {
+        state,
         pair_state,
         taker_state,
         maker_states,
         unfilled: remaining_size,
-        pnls,
-        fees,
         volumes,
+        fee_breakdowns,
         order_mutations,
         index_updates,
         next_order_id,
+        next_fill_id,
     })
+}
+
+/// Per-fill outcome returned by [`settle_fill`]. Callers typically feed
+/// `pnl` and `fee` directly into [`settle_pnls`], and accumulate `volume`
+/// across all of a taker order's fills for `apply_fee_commissions` and
+/// `flush_volumes`.
+#[derive(Debug, Clone, Copy)]
+pub struct FillSettlement {
+    pub pnl: UsdValue,
+    pub fee: UsdValue,
+    pub volume: UsdValue,
 }
 
 /// Mutates:
 ///
 /// - `pair_state.long_oi` / `pair_state.short_oi` — updated by `execute_fill`.
 /// - `user_state.positions` — opened / closed / flipped by `execute_fill`.
-/// - `pnls` — position PnL added for `user`.
-/// - `fees` — trading fee added for `user`.
 /// - `events` — `OrderFilled` event pushed (if `Some`).
+///
+/// Returns: per-fill `pnl`, `fee`, and `volume` for `user`. The caller
+/// applies them to margins (via `settle_pnls`) and to any running volume
+/// accumulator it maintains.
 pub fn settle_fill(
     contract: Addr,
     pair_id: &PairId,
@@ -896,11 +1150,14 @@ pub fn settle_fill(
     fill_size: Quantity,
     fill_price: UsdPrice,
     fee_rate: Dimensionless,
-    pnls: &mut BTreeMap<Addr, UsdValue>,
-    fees: &mut BTreeMap<Addr, UsdValue>,
-    volumes: &mut BTreeMap<Addr, UsdValue>,
-    events: Option<(&mut EventBuilder, OrderId)>,
-) -> grug::StdResult<UsdValue> {
+    events: Option<(
+        &mut EventBuilder,
+        OrderId,
+        Option<ClientOrderId>,
+        FillId,
+        bool,
+    )>,
+) -> grug::StdResult<FillSettlement> {
     let (closing, opening) = {
         let current_pos = user_state
             .positions
@@ -916,23 +1173,14 @@ pub fn settle_fill(
 
     // The vault is exempt from trading fees.
     let fee = if user != contract {
-        let fee = compute_trading_fee(fill_size, fill_price, fee_rate)?;
-        fees.entry(user).or_default().checked_add_assign(fee)?;
-        fee
+        compute_trading_fee(fill_size, fill_price, fee_rate)?
     } else {
         UsdValue::ZERO
     };
 
     let volume = compute_notional(fill_size, fill_price)?;
 
-    pnls.entry(user).or_default().checked_add_assign(pnl)?;
-
-    volumes
-        .entry(user)
-        .or_default()
-        .checked_add_assign(volume)?;
-
-    if let Some((events, order_id)) = events {
+    if let Some((events, order_id, client_order_id, fill_id, is_maker)) = events {
         events.push(OrderFilled {
             order_id,
             pair_id: pair_id.clone(),
@@ -943,6 +1191,9 @@ pub fn settle_fill(
             opening_size: opening,
             realized_pnl: pnl,
             fee,
+            client_order_id,
+            fill_id: Some(fill_id),
+            is_maker: Some(is_maker),
         })?;
     }
 
@@ -971,10 +1222,10 @@ pub fn settle_fill(
         .record(fee.to_f64().abs());
     }
 
-    Ok(pnl)
+    Ok(FillSettlement { pnl, fee, volume })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct FeeBreakdown {
     /// Portion of the fee routed to the protocol treasury.
     pub protocol_fee: UsdValue,
@@ -983,103 +1234,164 @@ pub struct FeeBreakdown {
     pub vault_fee: UsdValue,
 }
 
-/// Settle PnLs and fees directly in USD on user margins.
+/// Per-fill settlement outcome: the protocol/vault split attributable to
+/// each party. Either side is `None` if that party owed no fee on this fill
+/// (e.g. the vault when it is the maker — vaults are fee-exempt).
 ///
-/// Two loops:
+/// Rebaters (negative fee) land as `Some(FeeBreakdown { ..ZERO })` so that
+/// `apply_fee_commissions` still runs their referral volume tracking; their
+/// proportional `vault_fee` is zero by construction.
+#[derive(Debug, Clone, Copy)]
+pub struct FillFeeBreakdowns {
+    pub taker: Option<FeeBreakdown>,
+    pub maker: Option<FeeBreakdown>,
+}
+
+/// Merge a single party's fee breakdown into a running per-user total.
+pub fn merge_fee_breakdown(
+    map: &mut BTreeMap<Addr, FeeBreakdown>,
+    addr: Addr,
+    bd: FeeBreakdown,
+) -> grug::StdResult<()> {
+    let entry = map.entry(addr).or_insert(FeeBreakdown {
+        protocol_fee: UsdValue::ZERO,
+        vault_fee: UsdValue::ZERO,
+    });
+    entry.protocol_fee.checked_add_assign(bd.protocol_fee)?;
+    entry.vault_fee.checked_add_assign(bd.vault_fee)?;
+    Ok(())
+}
+
+/// Settle one fill's PnLs and fees on the taker's and maker's margins.
 ///
-/// 1. **Fee loop** (first): non-vault fees increase the vault's margin (via its
-///    `UserState`) and are deducted from the user's margin. Vault fees are
-///    skipped (paying yourself is a no-op).
-/// 2. **PnL loop** (second): each user's (including the vault's) margin is
-///    adjusted by their PnL.
+/// A "fill" is a single trade between **one taker** and **one maker** at a
+/// single price. The function implements the net-fee distribution model:
 ///
-/// The taker is passed separately from `maker_states` because self-trade
-/// prevention guarantees the taker never appears as a maker.
+/// 1. `net_fee = taker_fee + maker_fee`. The constraint
+///    `taker_fee + maker_fee ≥ 0` (enforced at parameter / override set
+///    time) ensures the net is non-negative.
+/// 2. Treasury takes `net_fee × protocol_fee_rate`.
+/// 3. Vault receives the remainder `net_fee × (1 − protocol_fee_rate)`.
+/// 4. Each party's contribution to the referrer pool is weighted by
+///    `max(fee, 0)`, so a rebating party contributes zero weight (and
+///    therefore produces zero referrer commissions downstream).
+///
+/// When either the taker or the maker *is* the vault (`== contract`), the
+/// vault's fee cut is credited to that party's state and `vault_state`
+/// must be `None`. When neither party is the vault, `vault_state` must
+/// be `Some(&mut <vault's UserState>)`. Self-trade prevention
+/// guarantees taker and maker are never both the vault.
 ///
 /// Mutates:
 ///
-/// - `taker_state.margin` — adjusted by the taker's PnL and fees.
-/// - `maker_states[*].margin` — adjusted by PnL and fees (including the vault's
-///   `UserState`).
-///
-/// Per-user fee breakdown after splitting between protocol treasury and vault.
-///
-/// Returns: per-user fee breakdown — the split between protocol treasury and
-/// vault for each fee-paying user.
+/// - `state.treasury` — credited with `protocol_fee`.
+/// - `taker_state.margin` — adjusted by `taker_pnl` and `−taker_fee`.
+///   When `taker == contract`, also credited with `vault_fee`.
+/// - `maker_state.margin` — adjusted by `maker_pnl` and `−maker_fee`.
+///   When `maker == contract`, also credited with `vault_fee`.
+/// - `vault_state.margin` (when `Some`) — credited with `vault_fee`.
 pub fn settle_pnls(
     contract: Addr,
     param: &Param,
     state: &mut State,
     taker: Addr,
     taker_state: &mut UserState,
-    maker_states: &mut BTreeMap<Addr, UserState>,
-    pnls: BTreeMap<Addr, UsdValue>,
-    fees: BTreeMap<Addr, UsdValue>,
-) -> anyhow::Result<BTreeMap<Addr, FeeBreakdown>> {
+    taker_pnl: UsdValue,
+    taker_fee: UsdValue,
+    maker: Addr,
+    maker_state: &mut UserState,
+    maker_pnl: UsdValue,
+    maker_fee: UsdValue,
+    vault_state: Option<&mut UserState>,
+) -> anyhow::Result<FillFeeBreakdowns> {
+    debug_assert!(taker != maker, "self-trade prevention violated");
     debug_assert!(
-        !maker_states.contains_key(&taker),
-        "taker must not be in maker_states — self-trade prevention violated"
+        (taker == contract || maker == contract) == vault_state.is_none(),
+        "vault_state must be None iff one of the parties is the vault"
+    );
+    debug_assert!(
+        taker != contract || taker_fee.is_zero(),
+        "vault as taker must be fee-exempt",
+    );
+    debug_assert!(
+        maker != contract || maker_fee.is_zero(),
+        "vault as maker must be fee-exempt",
     );
 
-    // ------------------------------ Settle fees ------------------------------
+    // Net fee and sum of positive contributions (rebaters contribute zero weight).
+    let net_fee = taker_fee.checked_add(maker_fee)?;
+    let taker_positive = if taker_fee.is_positive() {
+        taker_fee
+    } else {
+        UsdValue::ZERO
+    };
+    let maker_positive = if maker_fee.is_positive() {
+        maker_fee
+    } else {
+        UsdValue::ZERO
+    };
+    let total_positive = taker_positive.checked_add(maker_positive)?;
 
-    let mut fee_breakdowns = BTreeMap::new();
+    // Protocol and vault cuts on the net.
+    let protocol_fee = net_fee.checked_mul(param.protocol_fee_rate)?;
+    let vault_fee = net_fee.checked_sub(protocol_fee)?;
 
-    for (user, fee) in fees {
-        if fee.is_zero() || user == contract {
-            continue;
-        }
+    state.treasury.checked_add_assign(protocol_fee)?;
 
-        // Split the fee between the protocol treasury and the vault.
-        let protocol_fee = fee.checked_mul(param.protocol_fee_rate)?;
-        let vault_fee = fee.checked_sub(protocol_fee)?;
-
-        // Protocol treasury accumulates its share in global state.
-        state.treasury.checked_add_assign(protocol_fee)?;
-
-        // Vault receives its share.
-        maker_states
-            .get_mut(&contract)
-            .unwrap()
-            .margin
-            .checked_add_assign(vault_fee)?;
-
-        // Deduct fee from the paying user.
-        if user == taker {
-            taker_state.margin.checked_sub_assign(fee)?;
-        } else {
-            maker_states
-                .get_mut(&user)
-                .unwrap()
-                .margin
-                .checked_sub_assign(fee)?;
-        }
-
-        fee_breakdowns.insert(user, FeeBreakdown {
-            protocol_fee,
-            vault_fee,
-        });
+    // Fee-side margin adjustments. Vault is fee-exempt on its own fills.
+    if taker != contract && !taker_fee.is_zero() {
+        taker_state.margin.checked_sub_assign(taker_fee)?;
+    }
+    if maker != contract && !maker_fee.is_zero() {
+        maker_state.margin.checked_sub_assign(maker_fee)?;
     }
 
-    // ------------------------------ Settle PnLs ------------------------------
-
-    for (user, pnl) in pnls {
-        if pnl.is_zero() {
-            continue;
-        }
-
-        if user == taker {
-            taker_state.margin.checked_add_assign(pnl)?;
-        } else {
-            maker_states
-                .get_mut(&user)
-                .unwrap()
-                .margin
-                .checked_add_assign(pnl)?;
-        }
+    // Vault receives its cut. Route it to whichever state corresponds
+    // to the vault — the separately-passed `vault_state` when neither
+    // party is the vault, otherwise the party's own state.
+    match vault_state {
+        Some(vs) => vs.margin.checked_add_assign(vault_fee)?,
+        None if taker == contract => taker_state.margin.checked_add_assign(vault_fee)?,
+        None => maker_state.margin.checked_add_assign(vault_fee)?,
     }
 
-    Ok(fee_breakdowns)
+    // PnL adjustments.
+    if !taker_pnl.is_zero() {
+        taker_state.margin.checked_add_assign(taker_pnl)?;
+    }
+    if !maker_pnl.is_zero() {
+        maker_state.margin.checked_add_assign(maker_pnl)?;
+    }
+
+    // Per-party FeeBreakdown. Positive-fee parties split the pool by weight;
+    // rebaters get zeros (apply_fee_commissions still runs volume tracking).
+    let breakdown_for = |fee: UsdValue| -> anyhow::Result<FeeBreakdown> {
+        if fee.is_positive() && total_positive.is_positive() {
+            let weight = fee.checked_div(total_positive)?;
+            Ok(FeeBreakdown {
+                protocol_fee: protocol_fee.checked_mul(weight)?,
+                vault_fee: vault_fee.checked_mul(weight)?,
+            })
+        } else {
+            Ok(FeeBreakdown {
+                protocol_fee: UsdValue::ZERO,
+                vault_fee: UsdValue::ZERO,
+            })
+        }
+    };
+
+    Ok(FillFeeBreakdowns {
+        taker: if taker == contract || taker_fee.is_zero() {
+            None
+        } else {
+            Some(breakdown_for(taker_fee)?)
+        },
+        maker: if maker == contract || maker_fee.is_zero() {
+            None
+        } else {
+            Some(breakdown_for(maker_fee)?)
+        },
+    })
 }
 
 /// Validate and store a post-only limit order. Rejects if the limit price
@@ -1101,6 +1413,7 @@ fn store_post_only_limit_order(
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
+    client_order_id: Option<ClientOrderId>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
     let taker_is_bid = size.is_positive();
     let maker_is_bid = !taker_is_bid;
@@ -1146,6 +1459,7 @@ fn store_post_only_limit_order(
         order_id,
         tp,
         sl,
+        client_order_id,
     )
 }
 
@@ -1183,6 +1497,7 @@ fn store_limit_order(
     order_id: OrderId,
     tp: Option<ChildOrder>,
     sl: Option<ChildOrder>,
+    client_order_id: Option<ClientOrderId>,
 ) -> anyhow::Result<StoreLimitOrderOutcome> {
     ensure!(
         user_state.open_order_count < param.max_open_orders,
@@ -1241,6 +1556,7 @@ fn store_limit_order(
             created_at: current_time,
             tp,
             sl,
+            client_order_id,
         },
     })
 }
@@ -1347,7 +1663,10 @@ mod tests {
             oracle::PrecisionedPrice,
             perps::{Position, RateSchedule},
         },
-        grug::{Coins, MockContext, ResultExt, Timestamp, Udec128, Uint64, hash_map},
+        grug::{
+            Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, Udec128, Uint64,
+            hash_map,
+        },
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -1389,6 +1708,11 @@ mod tests {
             tick_size: UsdPrice::new_int(1),
             initial_margin_ratio: Dimensionless::new_permille(50), // 5%
             maintenance_margin_ratio: Dimensionless::new_permille(25), // 2.5%
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            // 99.9% — permissive cap used by the drift-cancel tests, which
+            // need wide slippage so the walk reaches out-of-band makers
+            // before `target_price` would break.
+            max_market_slippage: Dimensionless::new_permille(999),
             ..Default::default()
         }
     }
@@ -1402,6 +1726,7 @@ mod tests {
             .save(storage, &pair_id(), &PairState::default())
             .unwrap();
         NEXT_ORDER_ID.save(storage, &Uint64::new(1)).unwrap();
+        NEXT_FILL_ID.save(storage, &FillId::ONE).unwrap();
     }
 
     /// Place a resting ask (sell) order on the book.
@@ -1415,6 +1740,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         ASKS.save(storage, key, &order).unwrap();
 
@@ -1442,6 +1768,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: None,
             sl: None,
+            client_order_id: None,
         };
         BIDS.save(storage, key, &order).unwrap();
 
@@ -1483,7 +1810,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1548,7 +1875,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1598,7 +1925,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1654,7 +1981,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1671,6 +1998,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1710,7 +2038,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1727,6 +2055,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1770,7 +2099,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1787,6 +2116,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -1828,7 +2158,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1845,6 +2175,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: None,
             },
             false,
             None,
@@ -1886,7 +2217,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -1903,6 +2234,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: None,
             },
             false,
             None,
@@ -1952,7 +2284,7 @@ mod tests {
             taker_state,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2000,7 +2332,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2057,7 +2389,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2119,7 +2451,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2178,7 +2510,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2240,7 +2572,7 @@ mod tests {
         let mut oq = test_oracle_querier();
 
         // 50,100 is a valid multiple of tick size 100 — should succeed.
-        let result = _submit_order(
+        let result = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2257,6 +2589,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_100),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -2289,7 +2622,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2306,6 +2639,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_050),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             None,
@@ -2348,7 +2682,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2415,7 +2749,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2468,7 +2802,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2502,6 +2836,491 @@ mod tests {
         );
     }
 
+    // ======= Maker reserved margin release: full fill, truncation-prone =====
+
+    /// Regression test for a rounding leak in the proportional
+    /// margin-release formula on a full fill.
+    ///
+    /// The maker's order is planted directly with values chosen so that
+    /// `R * S` is not a multiple of `PRECISION` (1e6):
+    ///
+    /// - `R` (reserved_margin) = 21.406601 USD → inner = 21_406_601
+    /// - `S` (|size|)          = 0.182946 qty  → inner =    182_946
+    /// - `R.inner * S.inner mod 1_000_000 = 26_546 ≠ 0`
+    ///
+    /// On a single full fill, the proportional formula
+    /// `floor(floor(R·S / 1e6) · 1e6 / S)` yields 21_406_600 — one ULP
+    /// short of `R`. The order is removed with a residual ULP still in
+    /// `maker_order.reserved_margin`; that residual is dropped from the
+    /// order but orphaned in `maker_state.reserved_margin`, breaking the
+    /// invariant `user_state.reserved_margin == sum(open orders'
+    /// reserved_margin)`.
+    ///
+    /// After the fix this test must pass: on a full fill, everything
+    /// left in the order's reserved_margin is released to the user, so
+    /// the user's reserved_margin goes to zero once the only order is
+    /// removed.
+    #[test]
+    fn maker_reserved_margin_no_orphan_on_full_fill_with_truncation() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // Plant a resting ask directly (can't reuse `place_ask` because it
+        // hardcodes integer price/size and computes reserved_margin as
+        // `size * price / 20`; we need fractional inner values).
+        let price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946; // 0.182946
+        let reserved_inner: i128 = 21_406_601; // 21.406601
+        let order_id = Uint64::new(100);
+        let key = (pair_id(), price, order_id);
+        let ask = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, key, &ask).unwrap();
+
+        let maker_state_before = UserState {
+            margin: LARGE_COLLATERAL,
+            open_order_count: 1,
+            reserved_margin: ask.reserved_margin,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &maker_state_before)
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome { maker_states, .. } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            price,
+            Quantity::new_raw(size_inner),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Order is fully consumed, so the user's reserved_margin must be
+        // zero. Pre-fix this is `UsdValue::new_raw(1)` — one ULP orphan.
+        assert_eq!(maker_states[&MAKER_A].reserved_margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+    }
+
+    /// Regression test: a maker ask is consumed by two back-to-back partial
+    /// fills that together equal its full size. The final fill lands on the
+    /// `new_maker_size.is_zero()` branch and must release every remaining
+    /// ULP of `reserved_margin`.
+    ///
+    /// Pre-fix, each of the two fills truncates via the proportional
+    /// formula: the first leaves the order and user state consistent at the
+    /// mid-point (both drifted by the same amount), but the second fill
+    /// applies the proportional formula again on the residual R, truncates
+    /// once more, and drops a ≥1-ULP orphan into `maker_state.reserved_margin`
+    /// when the order is removed. Post-fix the final fill releases the full
+    /// remainder unconditionally.
+    #[test]
+    fn maker_reserved_margin_no_orphan_on_full_fill_via_two_partial_fills() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // Same truncation-prone plant values as the single-shot test above,
+        // split into two equal-sized taker fills (2 × 91_473 = 182_946).
+        let price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946;
+        let half_size_inner: i128 = 91_473;
+        let reserved_inner: i128 = 21_406_601;
+        let order_id = Uint64::new(100);
+        let key = (pair_id(), price, order_id);
+        let ask = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, key, &ask).unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: ask.reserved_margin,
+                ..Default::default()
+            })
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+
+        // ---------- Phase 1: first half-fill (partial) ----------
+        {
+            let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+            let taker_state = UserState {
+                margin: LARGE_COLLATERAL,
+                ..Default::default()
+            };
+            let mut oq = test_oracle_querier();
+
+            let SubmitOrderOutcome {
+                pair_state,
+                taker_state,
+                maker_states,
+                order_mutations,
+                ..
+            } = compute_submit_order_outcome(
+                &ctx.storage,
+                TAKER,
+                CONTRACT,
+                Timestamp::ZERO,
+                &mut oq,
+                &param,
+                &State::default(),
+                &pair_id(),
+                &pair_param,
+                &pair_state,
+                &taker_state,
+                price,
+                Quantity::new_raw(half_size_inner),
+                OrderKind::Market {
+                    max_slippage: Dimensionless::new_permille(100),
+                },
+                false,
+                None,
+                None,
+                &mut EventBuilder::new(),
+            )
+            .unwrap();
+
+            // Partial fill: the order must still exist with the residual size.
+            assert_eq!(order_mutations.len(), 1);
+            assert!(
+                order_mutations[0].2.is_some(),
+                "order should remain on the book after partial fill"
+            );
+            assert_eq!(maker_states[&MAKER_A].open_order_count, 1);
+
+            // Persist phase-1 side effects so phase-2 sees the post-partial state.
+            PAIR_STATES
+                .save(&mut ctx.storage, &pair_id(), &pair_state)
+                .unwrap();
+            USER_STATES
+                .save(&mut ctx.storage, TAKER, &taker_state)
+                .unwrap();
+            for (addr, ms) in &maker_states {
+                USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+            }
+            for (stored_price, mutated_order_id, mutation, _) in order_mutations {
+                let key = (pair_id(), stored_price, mutated_order_id);
+                match mutation {
+                    Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                    None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+                }
+            }
+        }
+
+        // ---------- Phase 2: consume the remainder (triggers full-fill branch) ----------
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            price,
+            Quantity::new_raw(half_size_inner),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Second fill fully consumes the order.
+        assert_eq!(order_mutations.len(), 1);
+        assert!(
+            order_mutations[0].2.is_none(),
+            "order should be removed after full consumption"
+        );
+        // The invariant: no ULP is orphaned in the maker's reserved_margin
+        // even though the two fills both touched the truncating formula.
+        assert_eq!(maker_states[&MAKER_A].reserved_margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+    }
+
+    /// Defensive test for the cancel-after-partial-fill pathway. Partial
+    /// fills decrement `order.reserved_margin` and `user_state.reserved_margin`
+    /// by the same truncated amount, so the mid-life invariant holds by
+    /// construction. On cancel, `cancel_order.rs` subtracts the full residual
+    /// `order.reserved_margin` from the user's reserved margin; this test
+    /// locks in that pairing with fractional-ULP values so a future refactor
+    /// cannot silently desynchronize either half.
+    ///
+    /// Passes both pre- and post-matcher-fix — the matcher bug only manifests
+    /// on a *full fill*, which removes the order and bypasses cancel.
+    #[test]
+    fn reserved_margin_zero_after_cancel_following_partial_fill() {
+        use crate::trade::cancel_order::_cancel_one_order;
+
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946;
+        let half_size_inner: i128 = 91_473;
+        let reserved_inner: i128 = 21_406_601;
+        let order_id = Uint64::new(100);
+        let key = (pair_id(), price, order_id);
+        let ask = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, key, &ask).unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: ask.reserved_margin,
+                ..Default::default()
+            })
+            .unwrap();
+
+        // Partial fill consuming half the order.
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            price,
+            Quantity::new_raw(half_size_inner),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Persist the partial-fill outcome so cancel operates on the correct
+        // post-fill state.
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, mutated_order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, mutated_order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // Sanity: after a partial fill the maker still holds some reserved
+        // margin — otherwise the cancel path isn't being exercised.
+        let mid_state = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert!(
+            mid_state.reserved_margin.is_non_zero(),
+            "partial fill must leave non-zero residual reserved_margin"
+        );
+        assert_eq!(mid_state.open_order_count, 1);
+
+        // Cancel the remaining order.
+        let mut events = EventBuilder::new();
+        _cancel_one_order(&mut ctx.storage, MAKER_A, order_id, &mut events).unwrap();
+
+        let after = USER_STATES.load(&ctx.storage, MAKER_A).unwrap();
+        assert_eq!(after.reserved_margin, UsdValue::ZERO);
+        assert_eq!(after.open_order_count, 0);
+    }
+
+    /// Defensive test for the self-trade prevention (STP) pathway. When a
+    /// taker crosses their own maker, the STP branch releases the full
+    /// `maker_order.reserved_margin` in one step (no truncating formula),
+    /// so the taker's `reserved_margin` must land at exactly zero — even
+    /// when the original reservation uses fractional-ULP values. This
+    /// tightens the existing `self_trade_prevention_expire_maker` test,
+    /// which only asserts `taker_state.reserved_margin < taker_reserved_before`.
+    ///
+    /// Passes both pre- and post-matcher-fix — the STP branch is untouched
+    /// by the fix.
+    #[test]
+    fn reserved_margin_zero_after_self_trade_prevention_with_fractional_values() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        // TAKER owns a resting ask planted with fractional reserved_margin.
+        let takers_price = UsdPrice::new_int(50_000);
+        let size_inner: i128 = 182_946;
+        let reserved_inner: i128 = 21_406_601;
+        let takers_order_id = Uint64::new(100);
+        let takers_key = (pair_id(), takers_price, takers_order_id);
+        let takers_ask = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_raw(-size_inner),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_raw(reserved_inner),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        ASKS.save(&mut ctx.storage, takers_key, &takers_ask)
+            .unwrap();
+
+        // A second, higher-priced maker ask so the taker's market buy can
+        // find liquidity after STP cancels the taker's own ask (otherwise
+        // `compute_submit_order_outcome` rejects the order as "no liquidity
+        // at acceptable price" when `unfilled == fillable_size`).
+        place_ask(&mut ctx.storage, MAKER_A, 50_100, 10, 101);
+
+        let taker_state_before = UserState {
+            margin: LARGE_COLLATERAL,
+            open_order_count: 1,
+            reserved_margin: takers_ask.reserved_margin,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state_before)
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state_before,
+            UsdPrice::new_int(50_100),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // First mutation is the taker's own ask, removed by STP.
+        assert_eq!(order_mutations.len(), 2);
+        assert!(
+            order_mutations[0].2.is_none(),
+            "taker's own ask should be STP-cancelled (mutation = None)"
+        );
+
+        // The STP branch releases the full fractional reservation in one
+        // step — no truncation, no orphan.
+        assert_eq!(taker_state.reserved_margin, UsdValue::ZERO);
+        assert_eq!(taker_state.open_order_count, 0);
+    }
+
     // ======= Market buy: price beyond slippage ===============================
 
     #[test]
@@ -2522,7 +3341,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -2555,6 +3374,64 @@ mod tests {
 
     // =================== settle_pnls unit tests ==============================
 
+    /// Perform one synthetic fill via per-fill `settle_pnls`, routing the
+    /// vault's UserState from the caller's `maker_states` map. Returns the
+    /// per-party fee breakdowns for the fill.
+    fn settle_one_fill(
+        state: &mut State,
+        param: &Param,
+        taker: Addr,
+        taker_state: &mut UserState,
+        taker_pnl: UsdValue,
+        taker_fee: UsdValue,
+        maker: Addr,
+        maker_states: &mut BTreeMap<Addr, UserState>,
+        maker_pnl: UsdValue,
+        maker_fee: UsdValue,
+    ) -> anyhow::Result<FillFeeBreakdowns> {
+        // Temporarily pull the maker's state out so `vault_state` can be
+        // borrowed from the map disjointly. Reinsert afterwards.
+        let mut maker_state = maker_states.remove(&maker).unwrap_or_default();
+
+        let result = if maker == CONTRACT {
+            settle_pnls(
+                CONTRACT,
+                param,
+                state,
+                taker,
+                taker_state,
+                taker_pnl,
+                taker_fee,
+                maker,
+                &mut maker_state,
+                maker_pnl,
+                maker_fee,
+                None,
+            )
+        } else {
+            let vault_state = maker_states
+                .get_mut(&CONTRACT)
+                .expect("vault must be present in maker_states for a non-vault maker");
+            settle_pnls(
+                CONTRACT,
+                param,
+                state,
+                taker,
+                taker_state,
+                taker_pnl,
+                taker_fee,
+                maker,
+                &mut maker_state,
+                maker_pnl,
+                maker_fee,
+                Some(vault_state),
+            )
+        };
+
+        maker_states.insert(maker, maker_state);
+        result
+    }
+
     #[test]
     fn settle_pnls_mixed() {
         let taker = Addr::mock(1);
@@ -2564,24 +3441,37 @@ mod tests {
             (Addr::mock(2), UserState::default()),
             (Addr::mock(3), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(100)),
-            (Addr::mock(2), UsdValue::new_int(-200)),
-            (Addr::mock(3), UsdValue::ZERO),
-        ]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Fill 1: taker vs maker 2. Taker realises +$100 PnL, maker 2
+        // realises −$200 PnL on this fill.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::new_int(100),
+            UsdValue::ZERO,
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(-200),
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        // Fill 2: taker vs maker 3. No PnL, no fee — mirrors the old
+        // per-user `pnls` entry of ZERO for maker 3.
+        settle_one_fill(
+            &mut state,
+            &Param::default(),
+            taker,
+            &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            Addr::mock(3),
+            &mut maker_states,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2606,23 +3496,19 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(100)),
-            (Addr::mock(2), UsdValue::new_int(50)),
-        ]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::new_int(100),
+            UsdValue::ZERO,
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(50),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2641,23 +3527,19 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(-100)),
-            (Addr::mock(2), UsdValue::new_int(-200)),
-        ]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::new_int(-100),
+            UsdValue::ZERO,
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(-200),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2676,22 +3558,16 @@ mod tests {
             margin: UsdValue::new_int(500),
             ..Default::default()
         })]);
-
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // No fills — nothing to settle. Vault margin should be unchanged.
+        let _ = (
             &mut state,
-            taker,
             &mut taker_state,
             &mut maker_states,
-            pnls,
-            fees,
-        )
-        .unwrap();
+            taker,
+            Param::default(),
+        );
 
         assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(500));
     }
@@ -2704,23 +3580,21 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(50)),
-            (Addr::mock(2), UsdValue::new_int(100)),
-        ]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Single fill: taker pays $50, maker 2 pays $100. `protocol_fee_rate`
+        // defaults to 0, so the full $150 goes to the vault.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(50),
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::new_int(100),
         )
         .unwrap();
 
@@ -2742,21 +3616,20 @@ mod tests {
             margin: UsdValue::new_int(1_000),
             ..Default::default()
         })]);
-
-        // Vault profit of $500.
-        let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault is the maker on this fill and realises +$500 PnL.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(500),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2771,21 +3644,20 @@ mod tests {
             margin: UsdValue::new_int(100),
             ..Default::default()
         })]);
-
-        // Vault loss of $500.
-        let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(-500))]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault is the maker and realises −$500 PnL.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(-500),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2800,21 +3672,20 @@ mod tests {
             margin: UsdValue::new_int(-300),
             ..Default::default()
         })]);
-
-        // Vault profit of $500.
-        let pnls = BTreeMap::from([(CONTRACT, UsdValue::new_int(500))]);
-        let fees = BTreeMap::new();
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault maker with +$500 PnL on this fill.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::new_int(500),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2830,21 +3701,23 @@ mod tests {
             margin: UsdValue::new_int(1_000),
             ..Default::default()
         })]);
-
-        // Vault's own fees are a no-op (paying yourself).
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::from([(CONTRACT, UsdValue::new_int(100))]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(),
+        // Vault is the maker with no PnL and no fee — the upstream
+        // `settle_fill` invariant guarantees vault makers always supply
+        // `maker_fee = 0`, so `settle_pnls` has no fee to "skip" and the
+        // vault's margin stays put.
+        settle_one_fill(
             &mut state,
+            &Param::default(),
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2860,19 +3733,21 @@ mod tests {
             ..Default::default()
         };
         let mut maker_states = BTreeMap::from([(CONTRACT, UserState::default())]);
-        let pnls = BTreeMap::new();
-        let fees = BTreeMap::from([(Addr::mock(1), UsdValue::new_int(100))]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &param,
+        // Taker pays $100, vault is the maker with no fee. Net = $100 →
+        // treasury 20% ($20), vault 80% ($80).
+        settle_one_fill(
             &mut state,
+            &param,
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(100),
+            CONTRACT,
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -2891,24 +3766,20 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::new();
-        // Taker pays +$50 fee, maker receives -$10 fee (rebate).
-        let fees = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(50)),
-            (Addr::mock(2), UsdValue::new_int(-10)),
-        ]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &Param::default(), // protocol_fee_rate = 0
+        // Taker pays +$50 fee, maker receives -$10 fee (rebate).
+        settle_one_fill(
             &mut state,
+            &Param::default(), // protocol_fee_rate = 0
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(50),
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::new_int(-10),
         )
         .unwrap();
 
@@ -2937,24 +3808,20 @@ mod tests {
             (CONTRACT, UserState::default()),
             (Addr::mock(2), UserState::default()),
         ]);
-
-        let pnls = BTreeMap::new();
-        // Taker fee = +$30, maker fee = -$10 (rebate).
-        let fees = BTreeMap::from([
-            (Addr::mock(1), UsdValue::new_int(30)),
-            (Addr::mock(2), UsdValue::new_int(-10)),
-        ]);
         let mut state = State::default();
 
-        settle_pnls(
-            CONTRACT,
-            &param,
+        // Taker fee = +$30, maker fee = -$10 (rebate). Net = $20.
+        settle_one_fill(
             &mut state,
+            &param,
             taker,
             &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(30),
+            Addr::mock(2),
             &mut maker_states,
-            pnls,
-            fees,
+            UsdValue::ZERO,
+            UsdValue::new_int(-10),
         )
         .unwrap();
 
@@ -2977,7 +3844,7 @@ mod tests {
         assert_eq!(state.treasury, UsdValue::new_int(4));
     }
 
-    // ====== Negative maker fee: full _submit_order integration ===============
+    // ====== Negative maker fee: full compute_submit_order_outcome integration ===============
 
     #[test]
     fn negative_maker_fee_rebate_on_market_buy() {
@@ -3011,6 +3878,7 @@ mod tests {
         NEXT_ORDER_ID
             .save(&mut ctx.storage, &Uint64::new(1))
             .unwrap();
+        NEXT_FILL_ID.save(&mut ctx.storage, &FillId::ONE).unwrap();
 
         place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
 
@@ -3029,7 +3897,7 @@ mod tests {
             taker_state,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3086,6 +3954,330 @@ mod tests {
         assert_eq!(taker_pos.entry_price, UsdPrice::new_int(50_000));
     }
 
+    // =================== Fee rate overrides ==================================
+
+    /// Taker fills two consecutive orders. Between the fills, the admin sets
+    /// a lower taker-fee override on the taker. Fill #1 must be charged the
+    /// schedule rate (5 bps); fill #2 must be charged the override rate (1 bps).
+    #[test]
+    fn fee_override_taker_rate_applied() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Taker fee = 5 bps on the schedule; maker fee & protocol fee = 0
+        // so that fee flows land entirely on the taker/vault legs and the
+        // numbers are easy to reason about.
+        let param = Param {
+            max_open_orders: 10,
+            taker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(500), // 5 bps
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+        NEXT_FILL_ID.save(&mut ctx.storage, &FillId::ONE).unwrap();
+
+        // Two resting asks — one per phase.
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 101);
+
+        let pair_param = test_pair_param();
+
+        // ----------------- Phase 1: no override, schedule rate -----------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = 10 × $50,000 = $500,000. Taker fee = 5 bps × $500k = $250.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(250))
+                .unwrap()
+        );
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(250));
+
+        // Persist side effects so phase 3 sees the post-phase-1 state.
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // ------------------ Phase 2: apply the taker override ------------------
+
+        // 1 bps — lower than the 5 bps schedule rate, matching the realistic
+        // VIP-discount use case.
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                TAKER,
+                &(Dimensionless::ZERO, Dimensionless::new_raw(100)),
+            )
+            .unwrap();
+
+        // ------------------ Phase 3: override-branch fill ----------------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Fill #2 fee = 1 bps × $500k = $50 (override). Without the override,
+        // it would have been another $250 and the totals below would be $500.
+        //
+        // Cumulative: taker paid $250 + $50 = $300; vault received $300.
+        assert_eq!(
+            taker_state.margin,
+            LARGE_COLLATERAL
+                .checked_sub(UsdValue::new_int(300))
+                .unwrap()
+        );
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(300));
+    }
+
+    /// MAKER_A's two resting asks are each consumed by a taker market buy.
+    /// Between the fills, the admin sets a lower maker-fee override on
+    /// MAKER_A. Fill #1 must be charged the schedule rate (5 bps);
+    /// fill #2 must be charged the override rate (1 bps).
+    #[test]
+    fn fee_override_maker_rate_applied() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        // Maker fee = 5 bps on the schedule; taker fee & protocol fee = 0
+        // so the maker is the only party paying a fee and assertions isolate
+        // the maker-side override.
+        let param = Param {
+            max_open_orders: 10,
+            maker_fee_rates: RateSchedule {
+                base: Dimensionless::new_raw(500), // 5 bps
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        PARAM.save(&mut ctx.storage, &param).unwrap();
+        PAIR_PARAMS
+            .save(&mut ctx.storage, &pair_id(), &test_pair_param())
+            .unwrap();
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &PairState::default())
+            .unwrap();
+        NEXT_ORDER_ID
+            .save(&mut ctx.storage, &Uint64::new(1))
+            .unwrap();
+        NEXT_FILL_ID.save(&mut ctx.storage, &FillId::ONE).unwrap();
+
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 100);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 10, 101);
+
+        let pair_param = test_pair_param();
+
+        // ----------------- Phase 1: no override, schedule rate -----------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            pair_state,
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Notional = $500,000. Maker fee = 5 bps × $500k = $250.
+        // MAKER_A starts at margin 0 (place_ask doesn't seed margin), so the
+        // post-fill margin is -$250.
+        assert_eq!(taker_state.margin, LARGE_COLLATERAL);
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(-250));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(250));
+
+        PAIR_STATES
+            .save(&mut ctx.storage, &pair_id(), &pair_state)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, TAKER, &taker_state)
+            .unwrap();
+        for (addr, ms) in &maker_states {
+            USER_STATES.save(&mut ctx.storage, *addr, ms).unwrap();
+        }
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(order) => ASKS.save(&mut ctx.storage, key, &order).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // ------------------ Phase 2: apply the maker override ------------------
+
+        FEE_RATE_OVERRIDES
+            .save(
+                &mut ctx.storage,
+                MAKER_A,
+                &(Dimensionless::new_raw(100), Dimensionless::ZERO), // 1 bps
+            )
+            .unwrap();
+
+        // ------------------ Phase 3: override-branch fill ----------------------
+
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Fill #2 maker fee = 1 bps × $500k = $50 (override). Without the
+        // override it would have been another $250, and MAKER_A's final
+        // margin would be -$500.
+        //
+        // Cumulative: MAKER_A paid $250 + $50 = $300; vault received $300.
+        assert_eq!(taker_state.margin, LARGE_COLLATERAL);
+        assert_eq!(maker_states[&MAKER_A].margin, UsdValue::new_int(-300));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_int(300));
+    }
+
     // =================== Post-only order tests ===============================
 
     #[test]
@@ -3112,7 +4304,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3129,6 +4321,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3165,7 +4358,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3182,6 +4375,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3211,7 +4405,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3228,6 +4422,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3263,7 +4458,7 @@ mod tests {
             order_mutations,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3280,6 +4475,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3315,7 +4511,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3332,6 +4528,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3366,7 +4563,7 @@ mod tests {
             taker_state: _,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3383,6 +4580,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3428,7 +4626,7 @@ mod tests {
             taker_state: _,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3445,6 +4643,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(51_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             true,
             None,
@@ -3487,7 +4686,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        let err = _submit_order(
+        let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3504,6 +4703,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
@@ -3555,7 +4755,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3609,6 +4809,356 @@ mod tests {
         assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
     }
 
+    // ======= Match-time price-band re-check ==============================
+
+    /// Far-end drift: a stale maker whose price is above the upper band
+    /// bound is encountered after in-band makers. The walk fills the
+    /// in-band maker first, then cancels the stale maker on encounter
+    /// and continues (terminating when it runs out of book).
+    #[test]
+    fn drift_cancel_far_end_out_of_band_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // MAKER_A at $35,000 (in-band at oracle=$30,000, 50% band → [15k, 45k]).
+        place_ask(&mut ctx.storage, MAKER_A, 35_000, 5, 100);
+        // MAKER_B at $50,000 (above upper band). Stale from when oracle was higher.
+        place_ask(&mut ctx.storage, MAKER_B, 50_000, 10, 101);
+
+        let maker_b_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_B)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            // Oracle at $30,000, band = 50% → allowed [$15k, $45k].
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                // Wide slippage so target_price doesn't terminate the walk
+                // before reaching the $50k maker: target = $30k * (1 + 0.99)
+                // = ~$59.7k > $50k.
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Two mutations: MAKER_A fully filled (None), MAKER_B cancelled (None).
+        assert_eq!(order_mutations.len(), 2);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A fully filled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B cancelled");
+
+        // MAKER_B's resting order was cancelled via the drift check.
+        assert_eq!(maker_states[&MAKER_B].open_order_count, 0);
+        assert!(
+            maker_b_reserved_before.is_non_zero()
+                && maker_states[&MAKER_B].reserved_margin < maker_b_reserved_before,
+            "MAKER_B's reserved margin should be fully released"
+        );
+
+        // Taker filled 5 @ $35,000 against MAKER_A only; MAKER_B was
+        // cancelled, not filled.
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(35_000));
+    }
+
+    /// Near-end drift: a stale maker whose price is below the lower band
+    /// bound is encountered *before* in-band makers. The walk cancels the
+    /// stale maker (rather than breaking) and proceeds to the in-band
+    /// maker behind it. This is the case `continue` handles correctly that
+    /// `break` would miss.
+    #[test]
+    fn drift_cancel_near_end_out_of_band_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // MAKER_A at $5,000 — below oracle's lower bound (stale from when
+        // oracle was much lower). Walked *first* in ascending order.
+        place_ask(&mut ctx.storage, MAKER_A, 5_000, 5, 100);
+        // MAKER_B at $35,000 — in-band at oracle=$30,000, 50% band.
+        place_ask(&mut ctx.storage, MAKER_B, 35_000, 10, 101);
+
+        let maker_a_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_A)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Two mutations: MAKER_A cancelled first, MAKER_B fully filled.
+        assert_eq!(order_mutations.len(), 2);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A cancelled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B fully filled");
+
+        // MAKER_A: cancelled, reserved released.
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        assert!(
+            maker_a_reserved_before.is_non_zero()
+                && maker_states[&MAKER_A].reserved_margin < maker_a_reserved_before,
+            "MAKER_A's reserved margin should be fully released"
+        );
+
+        // Taker filled 10 @ $35,000 against MAKER_B (walked past cancelled A).
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(10));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(35_000));
+    }
+
+    /// Vault exemption: a vault maker whose price is outside the band is
+    /// NOT cancelled by the match-time check. The vault's prices are
+    /// algorithmically bounded and auto-refresh; cancelling them on match
+    /// would cause churn without security gain.
+    #[test]
+    fn drift_cancel_skips_vault_maker() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // Vault (CONTRACT) is the maker. Give it enough margin to take
+        // the other side of the taker's buy.
+        USER_STATES
+            .save(&mut ctx.storage, CONTRACT, &UserState {
+                margin: LARGE_COLLATERAL,
+                ..Default::default()
+            })
+            .unwrap();
+        // Vault ask at $50,000 — would be out-of-band at oracle=$30k.
+        place_ask(&mut ctx.storage, CONTRACT, 50_000, 5, 100);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(5),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Vault maker was filled (not cancelled) despite being out-of-band.
+        assert_eq!(order_mutations.len(), 1);
+        assert!(order_mutations[0].2.is_none(), "vault maker fully filled");
+
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(
+            pos.entry_price,
+            UsdPrice::new_int(50_000),
+            "taker filled against the out-of-band vault price"
+        );
+    }
+
+    /// Cancel–fill–cancel across a single walk. The walk encounters:
+    ///
+    ///   1. An out-of-band maker at the near end (below lower bound) →
+    ///      drift-cancel, `continue`.
+    ///   2. An in-band maker → fill.
+    ///   3. Another out-of-band maker at the far end (above upper bound) →
+    ///      drift-cancel, `continue`.
+    ///
+    /// This exercises the `continue` semantics twice within one match and
+    /// confirms that a mid-walk fill does not mask subsequent drifted
+    /// makers. `break` would fail this test: stopping at step 1 would
+    /// leave no fill at all.
+    #[test]
+    fn drift_cancel_fill_cancel_within_one_walk() {
+        const MAKER_C: Addr = Addr::mock(4);
+
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+        setup_storage(&mut ctx.storage);
+
+        // Oracle = $30,000, band = 50% → allowed range [$15,000, $45,000].
+        //
+        // MAKER_A ask at $5,000 — below lower bound (out-of-band, near end).
+        // MAKER_B ask at $40,000 — in-band.
+        // MAKER_C ask at $50,000 — above upper bound (out-of-band, far end).
+        place_ask(&mut ctx.storage, MAKER_A, 5_000, 5, 100);
+        place_ask(&mut ctx.storage, MAKER_B, 40_000, 5, 101);
+        place_ask(&mut ctx.storage, MAKER_C, 50_000, 5, 102);
+
+        let maker_a_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_A)
+            .unwrap()
+            .reserved_margin;
+        let maker_c_reserved_before = USER_STATES
+            .load(&ctx.storage, MAKER_C)
+            .unwrap()
+            .reserved_margin;
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            taker_state,
+            maker_states,
+            order_mutations,
+            ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(30_000),
+            Quantity::new_int(15),
+            OrderKind::Market {
+                // 99% slippage → target ≈ $59.7k, covers all three asks
+                // so that none of them break the walk on target_price
+                // before the band check fires.
+                max_slippage: Dimensionless::new_percent(99),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Three order_mutations, all removals (None):
+        //   [0] MAKER_A cancelled (drift, near-end)
+        //   [1] MAKER_B fully filled
+        //   [2] MAKER_C cancelled (drift, far-end)
+        assert_eq!(order_mutations.len(), 3);
+        assert!(order_mutations[0].2.is_none(), "MAKER_A cancelled");
+        assert!(order_mutations[1].2.is_none(), "MAKER_B fully filled");
+        assert!(order_mutations[2].2.is_none(), "MAKER_C cancelled");
+
+        // Both cancelled makers have their reserved margin released and
+        // open_order_count decremented.
+        assert_eq!(maker_states[&MAKER_A].open_order_count, 0);
+        assert!(
+            maker_a_reserved_before.is_non_zero()
+                && maker_states[&MAKER_A].reserved_margin < maker_a_reserved_before,
+            "MAKER_A reserved margin released"
+        );
+        assert_eq!(maker_states[&MAKER_C].open_order_count, 0);
+        assert!(
+            maker_c_reserved_before.is_non_zero()
+                && maker_states[&MAKER_C].reserved_margin < maker_c_reserved_before,
+            "MAKER_C reserved margin released"
+        );
+
+        // MAKER_B was filled normally.
+        assert_eq!(maker_states[&MAKER_B].open_order_count, 0);
+
+        // Taker filled exactly 5 @ $40,000 (the single in-band maker).
+        let pos = taker_state.positions.get(&pair_id()).unwrap();
+        assert_eq!(pos.size, Quantity::new_int(5));
+        assert_eq!(pos.entry_price, UsdPrice::new_int(40_000));
+    }
+
     // ======= Vault-as-maker PnL settlement ===================================
 
     /// Helper: run a two-step trade where the vault (CONTRACT) is the maker on
@@ -3660,7 +5210,7 @@ mod tests {
             maker_states,
             order_mutations,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3720,7 +5270,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -3853,7 +5403,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             MAKER_B,
             CONTRACT,
@@ -3894,7 +5444,7 @@ mod tests {
     /// was never actually consumed, so a subsequent order could reuse the
     /// same ID.
     ///
-    /// After the fix, `_submit_order` always increments the order ID counter,
+    /// After the fix, `compute_submit_order_outcome` always increments the order ID counter,
     /// regardless of whether the order enters the book.
     #[test]
     fn orders_not_entering_book_should_increment_next_order_id() {
@@ -3924,7 +5474,7 @@ mod tests {
                 order_to_store,
                 next_order_id,
                 ..
-            } = _submit_order(
+            } = compute_submit_order_outcome(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
@@ -3992,7 +5542,7 @@ mod tests {
                 order_to_store,
                 next_order_id,
                 ..
-            } = _submit_order(
+            } = compute_submit_order_outcome(
                 &ctx.storage,
                 TAKER,
                 CONTRACT,
@@ -4009,6 +5559,7 @@ mod tests {
                 OrderKind::Limit {
                     limit_price: UsdPrice::new_int(50_000),
                     time_in_force: TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
                 },
                 false,
                 None,
@@ -4063,7 +5614,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4115,7 +5666,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4186,7 +5737,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4232,7 +5783,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4282,7 +5833,7 @@ mod tests {
             taker_state: ts,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4299,6 +5850,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(50_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),
@@ -4348,7 +5900,7 @@ mod tests {
             taker_state: ts,
             order_to_store,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4365,6 +5917,7 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(49_000),
                 time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: None,
             },
             false,
             make_tp(55_000),
@@ -4406,6 +5959,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: make_tp(45_000),
             sl: make_sl(55_000),
+            client_order_id: None,
         };
         ASKS.save(&mut ctx.storage, key, &order).unwrap();
 
@@ -4425,7 +5979,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4481,7 +6035,7 @@ mod tests {
             taker_state: _,
             next_order_id,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4549,7 +6103,7 @@ mod tests {
 
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4629,7 +6183,7 @@ mod tests {
         // Buy 5 with TP/SL intended for a long.
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4709,6 +6263,7 @@ mod tests {
             created_at: Timestamp::from_nanos(0),
             tp: make_tp(55_000),
             sl: make_sl(45_000),
+            client_order_id: None,
         };
         BIDS.save(&mut ctx.storage, key, &order).unwrap();
 
@@ -4720,7 +6275,7 @@ mod tests {
             taker_state: _,
             maker_states,
             ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4795,7 +6350,7 @@ mod tests {
         // SL trigger ($49k), so the SL condition is already met.
         let SubmitOrderOutcome {
             taker_state: ts, ..
-        } = _submit_order(
+        } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4854,7 +6409,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4881,8 +6436,9 @@ mod tests {
 
     /// A limit order with a negative limit_price must be rejected.
     ///
-    /// Wrong behavior: storing the order on the book with a negative price,
-    /// corrupting the order book invariant.
+    /// The banding check at Step 0 subsumes the old positivity check: a
+    /// negative limit price is always outside any `max_deviation < 1` band
+    /// around a positive oracle price.
     #[test]
     fn reject_limit_order_negative_price() {
         let mut ctx = MockContext::new()
@@ -4900,7 +6456,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4917,16 +6473,20 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::new_int(-1_000),
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("price must be positive");
+        .should_fail_with_error("deviates too far");
     }
 
     /// A limit order with zero limit_price must be rejected.
+    ///
+    /// Same banding subsumption as the negative-price case: zero is outside
+    /// any legal band around a positive oracle price.
     #[test]
     fn reject_limit_order_zero_price() {
         let mut ctx = MockContext::new()
@@ -4944,7 +6504,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -4961,13 +6521,14 @@ mod tests {
             OrderKind::Limit {
                 limit_price: UsdPrice::ZERO,
                 time_in_force: TimeInForce::PostOnly,
+                client_order_id: None,
             },
             false,
             None,
             None,
             &mut EventBuilder::new(),
         )
-        .should_fail_with_error("price must be positive");
+        .should_fail_with_error("deviates too far");
     }
 
     /// TP child order with negative trigger_price must be rejected.
@@ -4989,7 +6550,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5037,7 +6598,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5085,7 +6646,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5133,7 +6694,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5181,7 +6742,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5229,7 +6790,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5278,7 +6839,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5321,7 +6882,7 @@ mod tests {
         };
         let mut oq = test_oracle_querier();
 
-        _submit_order(
+        compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
@@ -5360,5 +6921,374 @@ mod tests {
             ..Default::default()
         };
         USER_STATES.save(storage, TAKER, &ts).unwrap();
+    }
+
+    // ======================== client_order_id tests ==========================
+
+    /// A GTC limit order carrying a `client_order_id` is reachable via the
+    /// `(sender, cid)` index and the stored `LimitOrder.client_order_id`
+    /// matches the submitted value.
+    #[test]
+    fn submit_limit_with_client_order_id_indexes_it() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+        let cid = Uint64::new(7);
+
+        let SubmitOrderOutcome { order_to_store, .. } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: Some(cid),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        let (stored_price, order_id, order) = order_to_store.unwrap();
+        assert_eq!(order.client_order_id, Some(cid));
+
+        // Apply the outcome: persist the resting order. The new
+        // `client_order_id` index entry is written by `IndexedMap::save`.
+        BIDS.save(
+            &mut ctx.storage,
+            (pair_id(), stored_price, order_id),
+            &order,
+        )
+        .unwrap();
+
+        let key = BIDS
+            .idx
+            .client_order_id
+            .may_load_key(&ctx.storage, (TAKER, cid))
+            .unwrap();
+        assert_eq!(key, Some((pair_id(), stored_price, order_id)));
+    }
+
+    /// IOC limit orders never enter the book, so a `client_order_id` is
+    /// meaningless — `compute_submit_order_outcome` rejects with a clear error.
+    #[test]
+    fn submit_ioc_with_client_order_id_rejects() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(49_000),
+                time_in_force: TimeInForce::ImmediateOrCancel,
+                client_order_id: Some(Uint64::new(7)),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .should_fail_with_error("client_order_id is not allowed");
+    }
+
+    /// Submitting a second resting order with a `client_order_id` already
+    /// owned by the same sender is rejected by the `UniqueIndex` (returns
+    /// `StdError::duplicate_data`).
+    #[test]
+    fn submit_duplicate_client_order_id_rejects() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let cid = Uint64::new(7);
+
+        let order_a = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_int(5),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(12_500),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        BIDS.save(
+            &mut ctx.storage,
+            (pair_id(), !UsdPrice::new_int(49_000), Uint64::new(1)),
+            &order_a,
+        )
+        .unwrap();
+
+        // A second order with the same (TAKER, cid) — different price/id, so
+        // the primary key differs, but the `client_order_id` index collides.
+        let order_b = LimitOrder {
+            user: TAKER,
+            size: Quantity::new_int(5),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(12_500),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        let err = BIDS
+            .save(
+                &mut ctx.storage,
+                (pair_id(), !UsdPrice::new_int(48_000), Uint64::new(2)),
+                &order_b,
+            )
+            .unwrap_err();
+        assert!(
+            format!("{err:?}").to_lowercase().contains("duplicate"),
+            "expected duplicate_data error, got: {err:?}"
+        );
+    }
+
+    /// On a fill, both the taker's and maker's `OrderFilled` events
+    /// surface the respective `client_order_id` from the originally
+    /// submitted order, so off-chain consumers can correlate fills with
+    /// the cid the trader assigned.
+    #[test]
+    fn order_filled_events_carry_client_order_ids() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let maker_cid = Uint64::new(11);
+        let taker_cid = Uint64::new(22);
+
+        // Maker ask carrying a cid.
+        let maker_order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(-10),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(25_000),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(maker_cid),
+        };
+        ASKS.save(
+            &mut ctx.storage,
+            (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100)),
+            &maker_order,
+        )
+        .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
+            .unwrap();
+
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+        let mut events = EventBuilder::new();
+
+        // Taker GTC limit buy carrying its own cid fully fills the maker.
+        compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Limit {
+                limit_price: UsdPrice::new_int(50_000),
+                time_in_force: TimeInForce::GoodTilCanceled,
+                client_order_id: Some(taker_cid),
+            },
+            false,
+            None,
+            None,
+            &mut events,
+        )
+        .unwrap();
+
+        let order_filleds: Vec<OrderFilled> = events
+            .into_iter()
+            .filter(|e| e.ty == OrderFilled::EVENT_NAME)
+            .map(|e| e.data.deserialize_json().unwrap())
+            .collect();
+
+        assert_eq!(order_filleds.len(), 2, "expected one OrderFilled per side");
+
+        let taker_filled = order_filleds
+            .iter()
+            .find(|f| f.user == TAKER)
+            .expect("taker OrderFilled missing");
+        assert_eq!(taker_filled.client_order_id, Some(taker_cid));
+
+        let maker_filled = order_filleds
+            .iter()
+            .find(|f| f.user == MAKER_A)
+            .expect("maker OrderFilled missing");
+        assert_eq!(maker_filled.client_order_id, Some(maker_cid));
+    }
+
+    /// When a maker order with a `client_order_id` is fully filled and
+    /// removed from the book, the `(sender, cid)` index entry is cleared
+    /// automatically by `IndexedMap::remove`.
+    #[test]
+    fn client_order_id_alias_clears_on_fill() {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+
+        let cid = Uint64::new(7);
+
+        // Place a maker ask owned by MAKER_A with cid=Some(7).
+        let maker_order = LimitOrder {
+            user: MAKER_A,
+            size: Quantity::new_int(-10),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(25_000),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: Some(cid),
+        };
+        let maker_key = (pair_id(), UsdPrice::new_int(50_000), Uint64::new(100));
+        ASKS.save(&mut ctx.storage, maker_key, &maker_order)
+            .unwrap();
+        USER_STATES
+            .save(&mut ctx.storage, MAKER_A, &UserState {
+                margin: LARGE_COLLATERAL,
+                open_order_count: 1,
+                reserved_margin: UsdValue::new_int(25_000),
+                ..Default::default()
+            })
+            .unwrap();
+
+        // Sanity: the alias is reachable before the fill.
+        assert!(
+            ASKS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (MAKER_A, cid))
+                .unwrap()
+                .is_some()
+        );
+
+        // Taker fully fills the maker.
+        let param = test_param();
+        let pair_param = test_pair_param();
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        let mut oq = test_oracle_querier();
+
+        let SubmitOrderOutcome {
+            order_mutations, ..
+        } = compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(10),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_percent(10),
+            },
+            false,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+        .unwrap();
+
+        // Apply the order mutation: a `None` mutation removes the maker.
+        for (stored_price, order_id, mutation, _) in order_mutations {
+            let key = (pair_id(), stored_price, order_id);
+            match mutation {
+                Some(o) => ASKS.save(&mut ctx.storage, key, &o).unwrap(),
+                None => ASKS.remove(&mut ctx.storage, key).unwrap(),
+            }
+        }
+
+        // After full fill, the alias is gone — same `cid` is reusable.
+        assert!(
+            ASKS.idx
+                .client_order_id
+                .may_load_key(&ctx.storage, (MAKER_A, cid))
+                .unwrap()
+                .is_none()
+        );
     }
 }

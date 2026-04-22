@@ -45,7 +45,10 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     initialValue: parameters.session,
     storage: createStorage({ storage: window?.sessionStorage }),
-    version: 1.1,
+    version: 1.2,
+    migrations: {
+      "*": () => null,
+    },
   });
 
   const { data: client } = useQuery({

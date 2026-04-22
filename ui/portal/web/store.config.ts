@@ -21,7 +21,7 @@ export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chain,
   version: 2,
-  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true, lazy: false }),
+  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true, polling: false, lazy: false }),
   coins,
   connectors: [
     passkey(),
@@ -67,6 +67,12 @@ export const config: Config = createConfig({
   ],
   storage: createAsyncStorage({ storage: createIndexedDBStorage() }),
   onError: (e) => {
+    if (
+      Array.isArray(e) &&
+      e.every((err: { message?: string }) => err.message?.includes("data not found"))
+    )
+      return;
+
     let finalError: Error;
     const m = serializeJson(e);
 

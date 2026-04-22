@@ -8,7 +8,12 @@ import type {
   SubscriptionKey,
 } from "./types/subscriptions.js";
 
-export function subscriptionsStore(client: PublicClient, onError?: (error: unknown) => void) {
+export type SubscriptionsStoreOptions = {
+  onError?: (error: unknown) => void;
+};
+
+export function subscriptionsStore(client: PublicClient, options?: SubscriptionsStoreOptions) {
+  const { onError } = options ?? {};
   const activeExecutors: Map<string, () => void> = new Map();
   const listeners = new Map<string, Set<(...args: any[]) => void>>();
 
@@ -245,6 +250,7 @@ const allPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPairStats"> = (
   onError,
 }) => {
   return client.allPairStatsSubscription({
+    httpInterval: 5_000,
     next: (event) => {
       const currentListeners = getListeners();
       currentListeners.forEach((listener) => listener(event));
@@ -259,6 +265,7 @@ const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairS
   onError,
 }) => {
   return client.allPerpsPairStatsSubscription({
+    httpInterval: 5_000,
     next: (event) => {
       const currentListeners = getListeners();
       currentListeners.forEach((listener) => listener(event));

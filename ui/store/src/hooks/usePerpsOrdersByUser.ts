@@ -34,6 +34,7 @@ export function usePerpsOrdersByUser(parameters?: UsePerpsOrdersByUserParameters
     const unsubscribe = subscriptions.subscribe("queryApp", {
       params: {
         interval: 5,
+        httpInterval: 5_000,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: addresses.perps,

@@ -11,11 +11,15 @@ use {
 };
 
 mod adl_bug_reproduction;
+mod batch_update_orders;
+mod client_order_id;
 mod conditional_orders;
 mod liquidation;
+mod price_band;
 mod referral;
 mod trading;
 mod vault;
+mod vault_withdrawal_health;
 
 /// Return the genesis-default global params (mirrors `PerpsOption::preset_test()`).
 pub fn default_param() -> Param {
@@ -30,6 +34,7 @@ pub fn default_param() -> Param {
         max_unlocks: 10,
         max_open_orders: 100,
         funding_period: Duration::from_hours(1),
+        max_action_batch_size: 5,
         ..Default::default()
     }
 }

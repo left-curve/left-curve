@@ -156,6 +156,7 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
   const [pendingOpenPayload, setPendingOpenPayload] = useState<
     Record<string, Record<string, number>>
   >({});
+  const [hasSpun, setHasSpun] = useState(false);
 
   const isOpen = currentVariant !== null;
   const animationFrames = currentVariant ? (ANIMATION_FRAMES[currentVariant] ?? null) : null;
@@ -253,6 +254,7 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
       setCurrentBoxIndex(0);
       setTotalBoxesToOpen(1);
       setLootSequence([]);
+      setHasSpun(false);
     },
     [unopenedBoxes],
   );
@@ -278,6 +280,7 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
       setAnimationComplete(false);
       lastFrameTimeRef.current = 0;
       setCurrentVariant(variant);
+      setHasSpun(false);
     },
     [unopenedBoxes],
   );
@@ -312,17 +315,22 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
     setTotalBoxesToOpen(1);
     setLootSequence([]);
     setPendingOpenPayload({});
+    setHasSpun(false);
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
   }, []);
 
   const closeChest = useCallback(() => {
-    if (userIndex && Object.keys(pendingOpenPayload).length > 0) {
+    if (hasSpun && userIndex && Object.keys(pendingOpenPayload).length > 0) {
       openBoxesMutation.mutate({ boxUserIndex: userIndex, boxes: pendingOpenPayload });
     }
     closeChestInternal();
-  }, [userIndex, pendingOpenPayload, openBoxesMutation, closeChestInternal]);
+  }, [hasSpun, userIndex, pendingOpenPayload, openBoxesMutation, closeChestInternal]);
+
+  const markSpun = useCallback(() => {
+    setHasSpun(true);
+  }, []);
 
   const onAnimationComplete = useCallback(() => {
     setAnimationComplete(true);
@@ -353,6 +361,7 @@ export const ChestOpeningProvider: React.FC<ChestOpeningProviderProps> = ({
             currentFrame={currentFrame}
             animationFrames={animationFrames}
             onAnimationComplete={onAnimationComplete}
+            onSpin={markSpun}
             isOpenAllMode={isOpenAllMode}
             isBulkMode={isBulkMode}
             currentBoxIndex={currentBoxIndex}

@@ -12,7 +12,9 @@ const clampValueToStep = (value: number, min: number, max: number, step: number)
   let steppedValue = Math.round(valueRelativeToMin / step) * step + min;
   const precision = step.toString().split(".")[1]?.length || 0;
   steppedValue = Number.parseFloat(steppedValue.toFixed(precision));
-  return Math.max(min, Math.min(max, steppedValue));
+  const clamped = Math.max(min, Math.min(max, steppedValue));
+  if (max - clamped < step && value > clamped) return max;
+  return clamped;
 };
 
 const formatInputValue = (num: number, precision: number): string => {

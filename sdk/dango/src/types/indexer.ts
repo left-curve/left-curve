@@ -78,6 +78,18 @@ export type PerpsTrade = {
   createdAt: string;
   blockHeight: number;
   tradeIdx: number;
+  /**
+   * Identifier shared between the two `OrderFilled` events of a single
+   * order-book match. `null` for trades executed before v0.15.0 — fill IDs
+   * were not assigned prior to that release.
+   */
+  fillId?: string | null;
+  /**
+   * `true` for the maker side of a match, `false` for the taker side.
+   * `null` for trades executed before v0.16.0 — the maker/taker flag was
+   * not recorded prior to that release.
+   */
+  isMaker?: boolean | null;
 };
 
 export type PerpsEventType = "order_filled" | "liquidated" | "deleveraged";
@@ -92,6 +104,18 @@ export type OrderFilledData = {
   opening_size: string;
   realized_pnl: string;
   fee: string;
+  /**
+   * Identifier shared between the two `OrderFilled` events of a single
+   * order-book match. `null` for trades executed before v0.15.0 — fill IDs
+   * were not assigned prior to that release.
+   */
+  fill_id?: string | null;
+  /**
+   * `true` for the maker side of a match, `false` for the taker side.
+   * `null` for trades executed before v0.16.0 — the maker/taker flag was
+   * not recorded prior to that release.
+   */
+  is_maker?: boolean | null;
 };
 
 export type LiquidatedData = {

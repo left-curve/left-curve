@@ -1,12 +1,16 @@
 use {
-    crate::register_oracle_prices,
+    crate::{default_pair_param, default_param, register_oracle_prices},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
-        perps::{self, UserState},
+        perps::{self, OrderFilled, PairParam, UserState},
     },
-    grug::{Addressable, Coins, Duration, QuerierExt, ResultExt, Uint128},
+    grug::{
+        Addressable, CheckedContractEvent, Coins, Duration, Inner, JsonDeExt, QuerierExt,
+        ResultExt, SearchEvent, Uint128, btree_map,
+    },
+    std::collections::BTreeMap,
 };
 
 /// Full lifecycle: deposit → open position → place TP → oracle rises →
@@ -43,17 +47,18 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -63,7 +68,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
@@ -72,7 +77,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -127,17 +132,18 @@ fn conditional_order_tp_triggers_on_price_rise() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -211,17 +217,18 @@ fn conditional_order_sl_triggers_on_price_drop() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -230,7 +237,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -239,7 +246,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -265,17 +272,18 @@ fn conditional_order_sl_triggers_on_price_drop() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -369,17 +377,18 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -392,7 +401,7 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -401,7 +410,7 @@ fn conditional_orders_follow_price_time_priority() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -414,7 +423,7 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -423,7 +432,7 @@ fn conditional_orders_follow_price_time_priority() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -476,17 +485,18 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_790),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -495,17 +505,18 @@ fn conditional_orders_follow_price_time_priority() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_770),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -577,7 +588,7 @@ fn conditional_orders_follow_price_time_priority() {
     );
 }
 
-/// When a conditional order's `_submit_order` fails (e.g. no liquidity on the
+/// When a conditional order's `compute_submit_order_outcome` fails (e.g. no liquidity on the
 /// book for the order's side), the cron now gracefully cancels it with
 /// `SlippageExceeded` instead of propagating the error via `?`. Previously
 /// the error would abort the entire cron, leaving the failed order stuck
@@ -634,17 +645,18 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -653,7 +665,7 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -662,7 +674,7 @@ fn conditional_order_failure_does_not_block_others() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -675,17 +687,18 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -694,7 +707,7 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Market {
@@ -703,7 +716,7 @@ fn conditional_order_failure_does_not_block_others() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -735,7 +748,7 @@ fn conditional_order_failure_does_not_block_others() {
 
     // -------------------------------------------------------------------------
     // Step 3: User1 places SL: BELOW $1,900, size -5 (sell). No bids will be
-    // on book at trigger time → _submit_order will fail.
+    // on book at trigger time → compute_submit_order_outcome will fail.
     // -------------------------------------------------------------------------
 
     suite
@@ -782,17 +795,18 @@ fn conditional_order_failure_does_not_block_others() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -908,17 +922,18 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -928,7 +943,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -937,7 +952,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -948,17 +963,18 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_950),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1064,7 +1080,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
         .execute(
             &mut accounts.user3,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-1),
                 kind: perps::OrderKind::Market {
@@ -1073,7 +1089,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1121,17 +1137,18 @@ fn child_order_market_with_tp_triggers() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1141,7 +1158,7 @@ fn child_order_market_with_tp_triggers() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
@@ -1154,7 +1171,7 @@ fn child_order_market_with_tp_triggers() {
                     size: None,
                 }),
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1179,17 +1196,18 @@ fn child_order_market_with_tp_triggers() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1239,17 +1257,18 @@ fn child_order_market_with_sl_triggers() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1259,7 +1278,7 @@ fn child_order_market_with_sl_triggers() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -1272,7 +1291,7 @@ fn child_order_market_with_sl_triggers() {
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
                 }),
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1297,17 +1316,18 @@ fn child_order_market_with_sl_triggers() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1354,17 +1374,18 @@ fn child_order_ignored_when_position_closed() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1373,7 +1394,7 @@ fn child_order_ignored_when_position_closed() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -1382,7 +1403,7 @@ fn child_order_ignored_when_position_closed() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1392,17 +1413,18 @@ fn child_order_ignored_when_position_closed() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1411,7 +1433,7 @@ fn child_order_ignored_when_position_closed() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // close the long
                 kind: perps::OrderKind::Market {
@@ -1428,7 +1450,7 @@ fn child_order_ignored_when_position_closed() {
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
                 }),
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1470,17 +1492,18 @@ fn child_order_overwrites_existing() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1489,7 +1512,7 @@ fn child_order_overwrites_existing() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -1498,7 +1521,7 @@ fn child_order_overwrites_existing() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1524,7 +1547,7 @@ fn child_order_overwrites_existing() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
                 kind: perps::OrderKind::Market {
@@ -1541,7 +1564,7 @@ fn child_order_overwrites_existing() {
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
                 }),
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1596,17 +1619,18 @@ fn conditional_order_overwrite_same_direction() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1615,7 +1639,7 @@ fn conditional_order_overwrite_same_direction() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
                 kind: perps::OrderKind::Market {
@@ -1624,7 +1648,7 @@ fn conditional_order_overwrite_same_direction() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1709,17 +1733,18 @@ fn conditional_order_size_exceeds_position_allowed() {
         .execute(
             &mut accounts.user2,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-3),
                 kind: perps::OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
                     time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
                 },
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1728,7 +1753,7 @@ fn conditional_order_size_exceeds_position_allowed() {
         .execute(
             &mut accounts.user1,
             contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder {
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(3),
                 kind: perps::OrderKind::Market {
@@ -1737,7 +1762,7 @@ fn conditional_order_size_exceeds_position_allowed() {
                 reduce_only: false,
                 tp: None,
                 sl: None,
-            }),
+            })),
             Coins::new(),
         )
         .should_succeed();
@@ -1769,4 +1794,540 @@ fn conditional_order_size_exceeds_position_allowed() {
     let pos = state.positions.get(&pair).unwrap();
     let above = pos.conditional_order_above.as_ref().unwrap();
     assert_eq!(above.size, Some(Quantity::new_int(-5)));
+}
+
+/// If governance tightens `max_market_slippage` after a conditional order
+/// is submitted, and the order's stored `max_slippage` now exceeds the
+/// cap, the cron trigger path cancels the order gracefully with
+/// `SlippageCapTightened` — distinct from `SlippageExceeded` which
+/// signals a book-liquidity shortfall. The position stays open; no
+/// market order is attempted.
+#[test]
+fn conditional_order_cancelled_when_slippage_cap_tightened() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Start with a permissive cap so the trader's 5% TP slippage is
+    // legal at submission.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        max_market_slippage: Dimensionless::new_permille(500), // 50%
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader deposits and opens a long via a market fill against a
+    // maker ask.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Trader places TP with 10% slippage — legal against the 50% cap.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Some(Quantity::new_int(-10)),
+                trigger_price: UsdPrice::new_int(2_500),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(10),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Governance tightens the cap to 5% — the stored 10% TP slippage
+    // now exceeds it.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        max_market_slippage: Dimensionless::new_permille(50), // 5%
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Provide a bid the TP could legally fill at, so the only reason
+    // for failure is the cap mismatch (not absent liquidity).
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(10),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_500),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Oracle rises to the TP trigger.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+
+    // Advance time so the perps cron fires.
+    suite.increase_time(Duration::from_minutes(2));
+
+    // Position is still open (TP was not executed; order was cancelled
+    // for cap tightening).
+    let state: UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed()
+        .unwrap();
+
+    let pos = state
+        .positions
+        .get(&pair)
+        .expect("position should still be open — TP cancelled, not executed");
+    assert_eq!(pos.size, Quantity::new_int(10));
+    assert!(
+        pos.conditional_order_above.is_none(),
+        "conditional order should have been removed by the cap-tightened cancel"
+    );
+}
+
+/// A TP that fires from cron and crosses a resting maker produces
+/// `OrderFilled` events carrying `Some(fill_id)` on both sides of the
+/// match. Verifies the cron path of `compute_submit_order_outcome` → `match_order` →
+/// `settle_fill` correctly threads `next_fill_id` the same way the
+/// user-submitted path does.
+#[test]
+fn conditional_order_trigger_fills_carry_fill_id() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Trader deposits, buys 5 ETH long, attaches a TP at $2,500.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(50_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Some(Quantity::new_int(-5)),
+                trigger_price: UsdPrice::new_int(2_500),
+                trigger_direction: perps::TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(5),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Resting bid that the TP will cross when triggered.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: perps::OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_500),
+                    time_in_force: perps::TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Move oracle above the TP trigger and advance time to fire cron.
+    // `increase_time` discards the block outcome, so inline its body to
+    // keep access to the cron-emitted events.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+
+    let old_block_time = suite.block_time;
+    suite.block_time = Duration::from_minutes(2);
+    let outcome = suite.make_empty_block();
+    suite.block_time = old_block_time;
+
+    let fills = outcome
+        .block_outcome
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_filled")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderFilled>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        fills.len(),
+        2,
+        "one TP crossing one maker should emit two OrderFilled events"
+    );
+
+    for filled in &fills {
+        assert!(
+            filled.fill_id.is_some(),
+            "cron-triggered TP fills must carry a fill_id"
+        );
+    }
+    assert_eq!(
+        fills[0].fill_id, fills[1].fill_id,
+        "the taker and maker sides of a single match must share one fill_id"
+    );
+
+    let mut is_makers = fills.iter().map(|f| f.is_maker).collect::<Vec<_>>();
+    is_makers.sort();
+    assert_eq!(
+        is_makers,
+        vec![Some(false), Some(true)],
+        "the two OrderFilled events of a match must have one is_maker=Some(false) (taker) \
+         and one is_maker=Some(true) (maker)"
+    );
+}
+
+/// Two TP orders that fire in the same `process_conditional_orders`
+/// invocation must produce consecutive fill ids. This pins the storage
+/// round-trip at `dango/perps/src/cron/process_conditional_orders.rs`:
+/// after the first triggered order saves its advanced `NEXT_FILL_ID`,
+/// the second triggered order must load the updated value rather than
+/// the pre-cron one.
+#[test]
+fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+
+    let pair = pair_id();
+
+    // Two traders each open a long position and attach a TP.
+    for trader in [&mut accounts.user1, &mut accounts.user3] {
+        suite
+            .execute(
+                trader,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Maker deposits and seeds the book with asks so both traders can
+    // open their longs, then later provides bids to fill the TPs.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .should_succeed();
+
+    // Two opening asks, one per trader.
+    for _ in 0..2 {
+        suite
+            .execute(
+                &mut accounts.user2,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(
+                    perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(-5),
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(2_000),
+                            time_in_force: perps::TimeInForce::PostOnly,
+                            client_order_id: None,
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    },
+                )),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    for trader in [&mut accounts.user1, &mut accounts.user3] {
+        suite
+            .execute(
+                trader,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(
+                    perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(5),
+                        kind: perps::OrderKind::Market {
+                            max_slippage: Dimensionless::new_percent(50),
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    },
+                )),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Both traders submit TPs at the same trigger price so both fire in
+    // the same cron tick. Using slightly different trigger prices is
+    // not required — the cron handler processes every triggered order
+    // in a single invocation regardless of relative trigger prices.
+    for trader in [&mut accounts.user1, &mut accounts.user3] {
+        suite
+            .execute(
+                trader,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                    pair_id: pair.clone(),
+                    size: Some(Quantity::new_int(-5)),
+                    trigger_price: UsdPrice::new_int(2_500),
+                    trigger_direction: perps::TriggerDirection::Above,
+                    max_slippage: Dimensionless::new_percent(5),
+                }),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Two resting bids — one per TP — priced generously enough to fill.
+    for _ in 0..2 {
+        suite
+            .execute(
+                &mut accounts.user2,
+                contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(
+                    perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(5),
+                        kind: perps::OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(2_500),
+                            time_in_force: perps::TimeInForce::PostOnly,
+                            client_order_id: None,
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    },
+                )),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Move the oracle so both TPs trigger, then fire cron.
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+
+    let old_block_time = suite.block_time;
+    suite.block_time = Duration::from_minutes(2);
+    let outcome = suite.make_empty_block();
+    suite.block_time = old_block_time;
+
+    let fills = outcome
+        .block_outcome
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_filled")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderFilled>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        fills.len(),
+        4,
+        "two TPs × two sides per match = four OrderFilled events"
+    );
+
+    // Group by fill_id. Must be exactly two distinct values with two
+    // events each, and the two values must be consecutive.
+    let mut by_fill_id = BTreeMap::<_, usize>::new();
+    for filled in &fills {
+        let id = filled
+            .fill_id
+            .expect("cron-triggered fill must carry a fill_id");
+        *by_fill_id.entry(id).or_default() += 1;
+    }
+
+    assert_eq!(
+        by_fill_id.len(),
+        2,
+        "two independent matches should produce two distinct fill_ids"
+    );
+    for (id, count) in &by_fill_id {
+        assert_eq!(
+            *count, 2,
+            "fill_id {} should appear on exactly two events (taker + maker); got {}",
+            id, count,
+        );
+    }
+
+    // Each fill_id pair must contain exactly one taker (is_maker=false)
+    // and one maker (is_maker=true).
+    let mut by_fill_id_makers = BTreeMap::<_, Vec<_>>::new();
+    for filled in &fills {
+        let id = filled.fill_id.unwrap();
+        by_fill_id_makers
+            .entry(id)
+            .or_default()
+            .push(filled.is_maker);
+    }
+    for (id, mut makers) in by_fill_id_makers {
+        makers.sort();
+        assert_eq!(
+            makers,
+            vec![Some(false), Some(true)],
+            "fill_id {} must pair one is_maker=Some(false) (taker) with one is_maker=Some(true) \
+             (maker); got {:?}",
+            id,
+            makers,
+        );
+    }
+
+    let mut ids = by_fill_id.keys().copied().collect::<Vec<_>>();
+    ids.sort();
+    assert_eq!(
+        *ids[1].inner(),
+        ids[0].inner() + 1,
+        "the second cron-triggered match's fill_id must be the first's + 1 \
+         (pins the NEXT_FILL_ID storage round-trip between triggers)"
+    );
 }

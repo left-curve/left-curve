@@ -1,5 +1,8 @@
 use {
-    crate::state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
+    crate::{
+        core::check_fee_sign_invariant,
+        state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
+    },
     anyhow::ensure,
     dango_types::{
         Dimensionless, FundingRate, UsdPrice, UsdValue,
@@ -48,6 +51,11 @@ pub fn configure(
 
     validate_vault_total_weight(&param, &pair_params)?;
 
+    // Net-fee distribution in `settle_pnls` requires
+    // `taker_fee_rate + maker_fee_rate >= 0` on every fill. Enforce the
+    // invariant against the tier schedules and any stored per-user overrides.
+    check_fee_sign_invariant(ctx.storage, &param, None)?;
+
     // --------------------------- 2. State changes ----------------------------
 
     PARAM.save(ctx.storage, &param)?;
@@ -79,6 +87,12 @@ fn validate_param(param: &Param) -> anyhow::Result<()> {
         param.max_open_orders > 0,
         "invalid `max_open_orders`! bounds: > 0, found: {}",
         param.max_open_orders,
+    );
+
+    ensure!(
+        param.max_action_batch_size > 0,
+        "invalid `max_action_batch_size`! bounds: > 0, found: {}",
+        param.max_action_batch_size,
     );
 
     // Maker fees may be negative: a negative rate represents a rebate paid
@@ -255,8 +269,8 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
     );
 
     ensure!(
-        (Dimensionless::ZERO..Dimensionless::ONE).contains(&pair_param.vault_spread_skew_factor),
-        "invalid `vault_spread_skew_factor`! pair id: {}, bounds: [0, 1), found: {}",
+        !pair_param.vault_spread_skew_factor.is_negative(),
+        "invalid `vault_spread_skew_factor`! pair id: {}, bounds: >= 0, found: {}",
         pair_id,
         pair_param.vault_spread_skew_factor,
     );
@@ -281,6 +295,44 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
         "invalid `vault_max_skew_size`! pair id: {}, bounds: >= 0, found: {}",
         pair_id,
         pair_param.vault_max_skew_size,
+    );
+
+    ensure!(
+        !pair_param.funding_rate_multiplier.is_negative(),
+        "invalid `funding_rate_multiplier`! pair id: {}, bounds: >= 0, found: {}",
+        pair_id,
+        pair_param.funding_rate_multiplier,
+    );
+
+    ensure!(
+        pair_param.max_limit_price_deviation > Dimensionless::ZERO
+            && pair_param.max_limit_price_deviation < Dimensionless::ONE,
+        "invalid `max_limit_price_deviation`! pair id: {}, bounds: (0, 1), found: {}",
+        pair_id,
+        pair_param.max_limit_price_deviation,
+    );
+
+    // Cross-field: the band must be wide enough to admit any price the
+    // vault may legitimately quote into. The vault's widest quote under
+    // maximum skew sits at oracle_price × (1 ± max_bid_effective_spread)
+    // (computed above), so a user's crossing limit at that price must
+    // also pass the band check. If `max_limit_price_deviation` is set
+    // tighter than the vault's widest deviation, users cannot match the
+    // vault at its legitimately-quoted edges.
+    ensure!(
+        pair_param.max_limit_price_deviation >= max_bid_effective_spread,
+        "invalid `max_limit_price_deviation`! pair id: {}, bounds: must be >= vault_half_spread * (1 + vault_spread_skew_factor) = {}, found: {}",
+        pair_id,
+        max_bid_effective_spread,
+        pair_param.max_limit_price_deviation,
+    );
+
+    ensure!(
+        pair_param.max_market_slippage > Dimensionless::ZERO
+            && pair_param.max_market_slippage < Dimensionless::ONE,
+        "invalid `max_market_slippage`! pair id: {}, bounds: (0, 1), found: {}",
+        pair_id,
+        pair_param.max_market_slippage,
     );
 
     for bucket_size in &pair_param.bucket_sizes {
@@ -379,6 +431,7 @@ mod tests {
             min_referrer_volume: UsdValue::ZERO,
             referrer_commission_rates: RateSchedule::default(),
             vault_deposit_cap: None,
+            max_action_batch_size: 5,
         }
     }
 
@@ -387,6 +440,8 @@ mod tests {
         PairParam {
             tick_size: UsdPrice::new_int(1),
             min_order_size: UsdValue::ZERO,
+            max_limit_price_deviation: Dimensionless::new_permille(100), // 10%
+            max_market_slippage: Dimensionless::new_permille(100),       // 10%
             max_abs_oi: Quantity::new_int(1_000_000),
             max_abs_funding_rate: FundingRate::ZERO,
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
@@ -398,6 +453,7 @@ mod tests {
             vault_size_skew_factor: Dimensionless::ZERO,
             vault_spread_skew_factor: Dimensionless::ZERO,
             vault_max_skew_size: Quantity::ZERO,
+            funding_rate_multiplier: Dimensionless::ONE,
             bucket_sizes: btree_set! {},
         }
     }
@@ -432,6 +488,16 @@ mod tests {
         };
         let err = validate_param(&param).unwrap_err().to_string();
         assert!(err.contains("`max_open_orders`"), "{err}");
+    }
+
+    #[test]
+    fn param_zero_max_action_batch_size_rejected() {
+        let param = Param {
+            max_action_batch_size: 0,
+            ..valid_param()
+        };
+        let err = validate_param(&param).unwrap_err().to_string();
+        assert!(err.contains("`max_action_batch_size`"), "{err}");
     }
 
     #[test]
@@ -687,14 +753,51 @@ mod tests {
     }
 
     #[test]
-    fn pair_param_spread_skew_factor_one_rejected() {
+    fn pair_param_spread_skew_factor_one_accepted() {
+        // `vault_spread_skew_factor = 1` is now accepted as long as the
+        // cross-field invariant `vault_half_spread * (1 + factor) < 1` holds.
+        // Here: 0.01 * 2 = 0.02 < 1.
         let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_spread_skew_factor: Dimensionless::ONE,
             ..valid_pair_param()
         };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_spread_skew_factor_above_one_accepted() {
+        // `vault_spread_skew_factor = 5` is accepted when paired with a small
+        // `vault_half_spread`: 0.1 * (1 + 5) = 0.6 < 1. At max positive skew,
+        // the vault's ask drops below the oracle — the intended aggressive
+        // unwind semantic.
+        let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(100), // 10%
+            vault_spread_skew_factor: Dimensionless::new_int(5),
+            // Band must accommodate the vault's widest quote deviation
+            // (`vault_half_spread * (1 + factor)` = 60%).
+            max_limit_price_deviation: Dimensionless::new_permille(700),
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_spread_skew_factor_above_one_rejected_by_cross_invariant() {
+        // `vault_spread_skew_factor = 5` with `vault_half_spread = 0.2` violates
+        // the cross-field invariant (0.2 * 6 = 1.2 >= 1). This proves the
+        // cross-field invariant — not any per-field cap — is the sole gatekeeper
+        // for large factors.
+        let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(200), // 20%
+            vault_spread_skew_factor: Dimensionless::new_int(5),
+            ..valid_pair_param()
+        };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
-        assert!(err.contains("`vault_spread_skew_factor`"), "{err}");
-        assert!(err.contains("[0, 1)"), "{err}");
+        assert!(
+            err.contains("vault_half_spread * (1 + vault_spread_skew_factor) < 1"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -708,6 +811,38 @@ mod tests {
     }
 
     #[test]
+    fn pair_param_negative_funding_rate_multiplier_rejected() {
+        let p = PairParam {
+            funding_rate_multiplier: Dimensionless::new_raw(-1),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`funding_rate_multiplier`"), "{err}");
+        assert!(err.contains(">= 0"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_zero_funding_rate_multiplier_accepted() {
+        // Zero is in range — lets governance disable funding for a pair
+        // without touching the vault's quoting.
+        let p = PairParam {
+            funding_rate_multiplier: Dimensionless::ZERO,
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_large_funding_rate_multiplier_accepted() {
+        // No upper bound on the multiplier.
+        let p = PairParam {
+            funding_rate_multiplier: Dimensionless::new_int(1_000),
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
     fn pair_param_zero_bucket_size_rejected() {
         let p = PairParam {
             bucket_sizes: btree_set! { UsdPrice::ZERO },
@@ -715,6 +850,139 @@ mod tests {
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
         assert!(err.contains("`bucket_sizes`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_zero_max_limit_price_deviation_rejected() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::ZERO,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_limit_price_deviation`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_one_max_limit_price_deviation_rejected() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::ONE,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_limit_price_deviation`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_negative_max_limit_price_deviation_rejected() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::new_raw(-1),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_limit_price_deviation`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_max_limit_price_deviation_just_below_one_accepted() {
+        let p = PairParam {
+            max_limit_price_deviation: Dimensionless::new_permille(999), // 99.9%
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    /// Boundary: band exactly equal to the vault's widest quote
+    /// deviation (`vault_half_spread × (1 + vault_spread_skew_factor)`)
+    /// is accepted because the submission band check is inclusive
+    /// (`|Δ| ≤ oracle × dev`).
+    #[test]
+    fn pair_param_max_limit_price_deviation_equals_vault_max_accepted() {
+        // vault_half_spread = 2%, vault_spread_skew_factor = 0.5 →
+        // vault max deviation = 2% × 1.5 = 3%.
+        let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(20), // 2%
+            vault_spread_skew_factor: Dimensionless::new_permille(500), // 0.5
+            max_limit_price_deviation: Dimensionless::new_permille(30), // 3%
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    /// Band tighter than the vault's widest quote by one permille is
+    /// rejected — users would be unable to place a crossing limit at
+    /// the vault's max-skewed quote.
+    #[test]
+    fn pair_param_max_limit_price_deviation_below_vault_max_rejected() {
+        // vault_half_spread = 2%, skew = 0.5 → vault max = 3%.
+        // Band = 2.9% — one permille below.
+        let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(20),
+            vault_spread_skew_factor: Dimensionless::new_permille(500),
+            max_limit_price_deviation: Dimensionless::new_permille(29),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_limit_price_deviation`"), "{err}");
+        assert!(
+            err.contains("vault_half_spread * (1 + vault_spread_skew_factor)"),
+            "{err}"
+        );
+    }
+
+    /// Realistic setup: vault half-spread 1%, skew 0.3 (vault max
+    /// 1.3%), band 10% — comfortably clears the invariant.
+    #[test]
+    fn pair_param_max_limit_price_deviation_well_above_vault_max_accepted() {
+        let p = PairParam {
+            vault_half_spread: Dimensionless::new_permille(10), // 1%
+            vault_spread_skew_factor: Dimensionless::new_permille(300), // 0.3
+            max_limit_price_deviation: Dimensionless::new_permille(100), // 10%
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
+    }
+
+    #[test]
+    fn pair_param_zero_max_market_slippage_rejected() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::ZERO,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_market_slippage`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_one_max_market_slippage_rejected() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::ONE,
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_market_slippage`"), "{err}");
+        assert!(err.contains("(0, 1)"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_negative_max_market_slippage_rejected() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::new_raw(-1),
+            ..valid_pair_param()
+        };
+        let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
+        assert!(err.contains("`max_market_slippage`"), "{err}");
+    }
+
+    #[test]
+    fn pair_param_max_market_slippage_just_below_one_accepted() {
+        let p = PairParam {
+            max_market_slippage: Dimensionless::new_permille(999), // 99.9%
+            ..valid_pair_param()
+        };
+        validate_pair_param(&pair(), &p).unwrap();
     }
 
     // --------------- validate_param — negative-value branches ------------------
@@ -983,6 +1251,7 @@ mod tests {
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
         assert!(err.contains("`vault_spread_skew_factor`"), "{err}");
+        assert!(err.contains(">= 0"), "{err}");
     }
 
     #[test]
@@ -1060,18 +1329,11 @@ mod tests {
 
     #[test]
     fn pair_param_half_spread_times_skew_factor_exactly_one_rejected() {
-        // 0.5 * (1 + 1) = 1.0 — boundary is strict (< 1, not <= 1).
-        // (vault_spread_skew_factor must be < 1 so use 0.5 * (1 + 0.999...)
-        //  — close enough; we pick 1/2 and factor that still tops out at 1.)
-        // Simpler: 0.5 * (1 + 1) is not reachable because skew_factor < 1.
-        // Instead pick half_spread = 0.5 and skew_factor just below 1:
-        // 0.5 * (1 + 0.999999) ≈ 0.9999995 — accepted. So we use half_spread
-        // slightly above 0.5 and skew_factor close to 1 to get >= 1:
-        // half_spread = 501 permille, skew_factor = 999 permille
-        //   → 0.501 * 1.999 = 1.001499 → rejected.
+        // Boundary: 0.5 * (1 + 1) = 1.0 — the cross-field invariant is
+        // strict (< 1, not <= 1), so this must be rejected.
         let p = PairParam {
-            vault_half_spread: Dimensionless::new_permille(501),
-            vault_spread_skew_factor: Dimensionless::new_permille(999),
+            vault_half_spread: Dimensionless::new_permille(500),
+            vault_spread_skew_factor: Dimensionless::ONE,
             ..valid_pair_param()
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
@@ -1084,9 +1346,13 @@ mod tests {
     #[test]
     fn pair_param_half_spread_times_skew_factor_below_one_accepted() {
         // 0.5 * (1 + 0.5) = 0.75 — well below 1.
+        // Also bump `max_limit_price_deviation` above the vault's 75%
+        // widest-quote deviation so the cross-field invariant added by
+        // the banding PR doesn't reject this vault-skew-focused test.
         let p = PairParam {
             vault_half_spread: Dimensionless::new_permille(500),
             vault_spread_skew_factor: Dimensionless::new_permille(500),
+            max_limit_price_deviation: Dimensionless::new_permille(800),
             ..valid_pair_param()
         };
         validate_pair_param(&pair(), &p).unwrap();

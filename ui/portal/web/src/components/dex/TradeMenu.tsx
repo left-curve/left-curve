@@ -1,6 +1,12 @@
+// The perps order-sizing maths (side-dependent "Available to trade",
+// slider max, reduce-only cap) is non-obvious because the on-chain
+// margin check treats closing and opening portions asymmetrically.
+// See `./max-size-math.md` for the formulas and worked examples.
+
 import {
   useAccount,
   useAppConfig,
+  useConfig,
   usePrices,
   TradePairStore,
   tradeInfoStore,
@@ -14,6 +20,8 @@ import {
   perpsTradeSettingsStore,
   allPerpsPairStatsStore,
   computeLiquidationPrice,
+  useVolume,
+  useFeeRateOverride,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,6 +40,8 @@ import {
   Range,
   Select,
   Tabs,
+  Tooltip,
+  IconToastInfo,
   numberMask,
   twMerge,
   useApp,
@@ -40,7 +50,8 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/dango/utils";
+import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import type { PerpsTimeInForce } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
@@ -315,7 +326,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
 const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { isConnected } = useAccount();
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const { data: appConfig } = useAppConfig();
@@ -327,6 +338,20 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const { baseCoin, quoteCoin } = useTradeCoins();
   const { getPrice } = usePrices();
+  const { account } = useAccount();
+
+  const [volumeRefreshKey, setVolumeRefreshKey] = useState(0);
+  const feeLookbackSince = useMemo(
+    () => Math.floor(Date.now() / 1000) - FEE_VOLUME_LOOKBACK_SECONDS,
+    [volumeRefreshKey],
+  );
+  const { volume: userVolume } = useVolume({
+    userAddress: account?.address,
+    since: feeLookbackSince,
+    enabled: isConnected,
+  });
+
+  const { override: feeRateOverride } = useFeeRateOverride({ enabled: isConnected });
 
   const [sizeCoinDenom, setSizeCoinDenom] = useState("usd");
 
@@ -352,7 +377,42 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
 
   const equity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
-  const availableMargin = Number(perpsUserStateExtendedStore((s) => s.availableMargin) ?? "0");
+  const reservedMargin = userState?.reservedMargin ?? "0";
+
+  const { coins: allCoins } = useConfig();
+
+  const otherPairsUsedMargin = useMemo(() => {
+    const positions = userState?.positions;
+    if (!positions) return 0;
+    let total = 0;
+    for (const [pid, pos] of Object.entries(positions)) {
+      if (pid === perpsPairId) continue;
+      const size = Math.abs(Number(pos.size));
+      if (!(size > 0)) continue;
+      const imr = Number(appConfig.perpsPairs[pid]?.initialMarginRatio ?? 0);
+      if (!(imr > 0)) continue;
+
+      // Mirror current-pair price resolution: stats first, oracle fallback.
+      let price = Number(statsByPairId[pid]?.currentPrice ?? 0);
+      if (!(price > 0)) {
+        // Pair id format is `perp/{symbolLowerCase}usd` (see tradePairStore.ts:33).
+        const symbol = pid.match(/^perp\/(.+)usd$/)?.[1]?.toUpperCase();
+        const denom = symbol ? allCoins.bySymbol[symbol]?.denom : undefined;
+        price = denom ? Number(getPrice(1, denom) ?? 0) : 0;
+      }
+      if (!(price > 0)) continue;
+
+      total += size * price * imr;
+    }
+    return total;
+  }, [
+    userState?.positions,
+    perpsPairId,
+    appConfig.perpsPairs,
+    statsByPairId,
+    allCoins.bySymbol,
+    getPrice,
+  ]);
 
   const position = useMemo(() => {
     if (!userState?.positions?.[getPerpsPairId()]) return null;
@@ -371,9 +431,12 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [storedLeverage, maxLeverage]);
 
   const takerFeeRate = useMemo(() => {
-    const rate = Number(appConfig?.perpsParam?.takerFeeRates?.base ?? 0);
+    if (feeRateOverride) return Number(feeRateOverride.takerFeeRate);
+    const schedule = appConfig?.perpsParam?.takerFeeRates;
+    if (!schedule) return 0;
+    const rate = resolveRateSchedule(schedule, userVolume ?? "0");
     return Number.isFinite(rate) ? rate : 0;
-  }, [appConfig?.perpsParam]);
+  }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
   const [reduceOnly, setReduceOnly] = useState(false);
@@ -434,22 +497,30 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return null;
   }, [tpPrice, slPrice, action, referencePrice, tpslEnabled]);
 
+  const currentPositionSize = position?.size ?? "0";
+
   const changeSizeCoin = useCallback((denom: string) => {
     setSizeCoinDenom(denom);
     setValue("size", "");
   }, []);
 
-  const maxSizeAmount = usePerpsMaxSize({
-    availableMargin,
+  const { availToTrade, maxSize } = usePerpsMaxSize({
+    equity: Number(equity),
+    reservedMargin: Number(reservedMargin),
+    otherPairsUsedMargin,
+    currentPositionSize: Number(currentPositionSize),
+    action,
     leverage: selectedLeverage,
     currentPrice,
     takerFeeRate,
+    reduceOnly,
     isBaseSize,
   });
+  const maxSizeAmount = maxSize;
 
   useEffect(() => {
     const currentSize = Number(size);
-    if (currentSize > maxSizeAmount && maxSizeAmount > 0) {
+    if (currentSize > maxSizeAmount) {
       setValue("size", maxSizeAmount.toString());
     }
   }, [maxSizeAmount]);
@@ -474,7 +545,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [size, isBaseSize, currentPrice]);
 
   const queryClient = useQueryClient();
-  const { account } = useAccount();
 
   const submission = usePerpsSubmission({
     perpsPairId: getPerpsPairId(),
@@ -482,6 +552,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     operation,
     sizeValue,
     priceValue,
+    maxSlippage: PERPS_DEFAULT_SLIPPAGE,
     tpPrice: tpslEnabled && Number(tpPrice) > 0 ? tpPrice : undefined,
     slPrice: tpslEnabled && Number(slPrice) > 0 ? slPrice : undefined,
     reduceOnly,
@@ -489,16 +560,24 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     controllers,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+      queryClient.invalidateQueries({ queryKey: ["perpsVolume", account?.address] });
+      setVolumeRefreshKey((k) => k + 1);
     },
   });
 
   const feesDisplay = useMemo(() => {
+    if (feeRateOverride) {
+      const maker = Number(feeRateOverride.makerFeeRate) * 100;
+      const taker = Number(feeRateOverride.takerFeeRate) * 100;
+      return `${taker}% / ${maker}%`;
+    }
     const perpsParam = appConfig?.perpsParam;
     if (!perpsParam) return "-";
-    const taker = Number(perpsParam.takerFeeRates.base) * 100;
-    const maker = Number(perpsParam.makerFeeRates.base) * 100;
+    const vol = userVolume ?? "0";
+    const taker = resolveRateSchedule(perpsParam.takerFeeRates, vol) * 100;
+    const maker = resolveRateSchedule(perpsParam.makerFeeRates, vol) * 100;
     return `${taker}% / ${maker}%`;
-  }, [appConfig?.perpsParam]);
+  }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 
   const requiredMargin = useMemo(() => {
     const s = Number(size);
@@ -550,8 +629,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     return isBaseSize ? minNotional / currentPrice : minNotional;
   }, [params, isBaseSize, currentPrice]);
 
-  const currentPositionSize = position?.size ?? "0";
-
   const sizeRangeValue = useMemo(() => {
     if (maxSizeAmount === 0) return 0;
     return Math.min(100, (Number(size) / maxSizeAmount) * 100);
@@ -575,7 +652,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             label={m["dex.protrade.perps.availableToTrade"]()}
             value={
               <>
-                <FormattedNumber number={availableMargin.toString()} as="span" /> USD
+                <FormattedNumber number={availToTrade.toString()} as="span" /> USD
               </>
             }
           />
@@ -594,7 +671,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           availableAmount={maxSizeAmount.toString()}
           register={register}
           setValue={setValue}
-          validationMessage={m["dex.protrade.perps.errors.exceedsMargin"]()}
+          validationMessage={reduceOnly ? m["dex.protrade.perps.errors.exceedsClosable"]() : m["dex.protrade.perps.errors.exceedsMargin"]()}
           label={m["dex.protrade.perps.size"]()}
           minSizeAmount={minSizeAmount}
           minSizeMessage={m["dex.protrade.perps.errors.minOrderSize"]({
@@ -663,6 +740,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           checked={reduceOnly}
           onChange={() => setReduceOnly((prev) => !prev)}
         />
+        {reduceOnly && maxSizeAmount === 0 ? (
+          <p className="diatype-xs-regular text-utility-warning-600">
+            {m["dex.protrade.perps.errors.reduceOnlyNoPosition"]()}
+          </p>
+        ) : null}
         <Checkbox
           radius="md"
           size="sm"
@@ -720,7 +802,8 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             Decimal(size).lte(0) ||
             (operation === "limit" && Decimal(priceValue).lte(0)) ||
             hasErrors ||
-            tpslError !== null
+            tpslError !== null ||
+            (reduceOnly && maxSizeAmount === 0)
           }
           isPending={submission.isPending}
           onSubmit={() => submission.mutateAsync()}
@@ -752,9 +835,34 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             />
           ) : null}
           {operation === "market" ? (
-            <InfoRow label={m["dex.protrade.perps.slippage"]()} value="Max: 0.1%" />
+            <InfoRow label={m["dex.protrade.perps.slippage"]()} value={m["dex.protrade.perps.slippageDefault"]()} />
           ) : null}
-          <InfoRow label={m["dex.protrade.perps.fees"]()} value={feesDisplay} />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <p className="diatype-xs-regular text-ink-tertiary-500">
+                {m["dex.protrade.perps.fees"]()}
+              </p>
+              <Tooltip
+                trigger="click"
+                title={
+                  <div className="flex flex-col gap-1">
+                    <p>{m["dex.protrade.perps.feesTooltipTaker"]({ rate: `${(feeRateOverride ? Number(feeRateOverride.takerFeeRate) * 100 : resolveRateSchedule(appConfig.perpsParam.takerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
+                    <p>{m["dex.protrade.perps.feesTooltipMaker"]({ rate: `${(feeRateOverride ? Number(feeRateOverride.makerFeeRate) * 100 : resolveRateSchedule(appConfig.perpsParam.makerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
+                    <button
+                      type="button"
+                      className="text-status-success diatype-xs-bold mt-1 text-left"
+                      onClick={() => showModal(Modals.FeeTiers)}
+                    >
+                      {m["dex.protrade.perps.feesLearnMore"]()}
+                    </button>
+                  </div>
+                }
+              >
+                <IconToastInfo className="w-4 h-4 text-ink-tertiary-500 cursor-help" />
+              </Tooltip>
+            </div>
+            <p className="diatype-xs-medium text-ink-secondary-700">{feesDisplay}</p>
+          </div>
         </div>
         <div className="flex flex-col gap-1 px-4 border-t border-outline-tertiary-rice pt-3">
           <InfoRow

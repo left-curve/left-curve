@@ -1,8 +1,11 @@
+#[cfg(feature = "metrics")]
+use crate::metrics::GaugeGuard;
 use {
-    crate::request_ip::RequesterIp,
-    actix_web::{HttpRequest, HttpResponse, Resource, http::header, web},
-    async_graphql::{Schema, http::GraphiQLSource},
+    crate::{request_ip::RequesterIp, subscription_limiter::SubscriptionLimiter},
+    actix_web::{HttpRequest, HttpResponse, Resource, web},
+    async_graphql::{Data, Schema},
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
+    std::time::Duration,
 };
 
 pub fn graphql_route<Q, M, S>() -> Resource
@@ -18,7 +21,6 @@ where
                 .guard(actix_web::guard::Header("upgrade", "websocket"))
                 .to(graphql_ws::<Q, M, S>),
         )
-        .route(web::get().to(graphiql_playground))
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
@@ -41,31 +43,29 @@ where
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-pub async fn graphiql_playground() -> HttpResponse {
-    let html = GraphiQLSource::build()
-        .endpoint("/graphql")
-        .subscription_endpoint("/graphql")
-        .finish();
-
-    HttpResponse::Ok()
-        .insert_header((header::CONTENT_TYPE, "text/html; charset=utf-8"))
-        .insert_header((
-            header::CONTENT_SECURITY_POLICY,
-            "default-src 'self'; script-src 'self' 'unsafe-eval'",
-        ))
-        .body(html)
-}
-
-#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub async fn graphql_ws<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
     req: HttpRequest,
     payload: web::Payload,
+    global_limiter: web::Data<SubscriptionLimiter>,
 ) -> actix_web::Result<HttpResponse>
 where
     Q: async_graphql::ObjectType + 'static,
     M: async_graphql::ObjectType + 'static,
     S: async_graphql::SubscriptionType + 'static,
 {
-    GraphQLSubscription::new(Schema::clone(&*schema)).start(&req, payload)
+    let mut subscription = GraphQLSubscription::new(Schema::clone(&*schema))
+        .keepalive_timeout(Duration::from_secs(30));
+
+    let mut data = Data::default();
+    data.insert(global_limiter.new_connection());
+    #[cfg(feature = "metrics")]
+    data.insert(GaugeGuard::new(
+        "graphql.websocket.connections.active",
+        "graphql",
+        "websocket",
+    ));
+    subscription = subscription.with_data(data);
+
+    subscription.start(&req, payload)
 }
