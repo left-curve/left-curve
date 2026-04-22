@@ -1,5 +1,6 @@
 import {
   Button,
+  IconDangoStick,
   IconGift,
   IconStar,
   IconUser,
@@ -80,8 +81,18 @@ const PointsCampaignHeader: React.FC = () => (
   <div className="flex flex-col gap-8 w-full items-center">
     <div className="max-w-[15.5rem] flex flex-col gap-2 items-center text-center">
       <p className="text-ink-tertiary-500 diatype-m-regular">{m["points.header.welcome"]()}</p>
-      <h1 className="exposure-h1-italic lg:text-[48px] text-ink-primary-rice">
-        {m["points.header.title"]()}
+      <h1 className="exposure-h1-italic lg:text-[48px] text-ink-primary-rice flex flex-col items-center">
+        {(() => {
+          const parts = m["points.header.titlePoints"]({ icon: "{icon}" }).split("{icon}");
+          return (
+            <span className="flex items-center">
+              {parts[0]}
+              <IconDangoStick className="inline-block h-[2.7rem] w-auto -mx-[0.6rem]" />
+              {parts[1]}
+            </span>
+          );
+        })()}
+        <span>{m["points.header.titleProgram"]()}</span>
       </h1>
     </div>
     <Button

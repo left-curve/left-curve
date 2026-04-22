@@ -1386,6 +1386,8 @@
     "header": {
       "welcome": "Welcome to Dango's",
       "title": "POINTS PROGRAM",
+      "titlePoints": "PO{icon}NTS",
+      "titleProgram": "PROGRAM",
       "readRules": "Read Rules",
       "myPoints": "My points",
       "myVolume": "My volume",

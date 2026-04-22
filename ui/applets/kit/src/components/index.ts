@@ -98,6 +98,7 @@ export { IconSwitch } from "./icons/IconSwitch";
 export { IconArrowDown } from "./icons/IconArrowDown";
 export { IconArrowDownRound } from "./icons/IconArrowDownRound";
 export { IconConvert } from "./icons/IconConvert";
+export { IconDangoStick } from "./icons/IconDangoStick";
 export { IconInfo } from "./icons/IconInfo";
 export { IconMonitor } from "./icons/IconMonitor";
 export { IconUser } from "./icons/IconUser";
