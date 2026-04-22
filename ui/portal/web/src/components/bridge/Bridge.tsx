@@ -363,30 +363,37 @@ const BridgeWithdraw: React.FC = () => {
 
       {coin && network && (
         <div className="flex flex-col items-center justify-center gap-6">
-          <AssetInputWithRange
-            name="amount"
-            asset={coin}
-            balances={balances}
-            controllers={controllers}
-            showRange
-            label={m["bridge.youWithdraw"]()}
-            bottomComponent={
-              <div className="w-full flex justify-between">
-                <p>{m["bridge.minimumWithdraw"]()}</p>
-                <p className="flex gap-1">
-                  <span>{`> ${fee}`}</span>
-                  <span>{coin.symbol}</span>
-                </p>
+          <div className="flex flex-col items-center gap-4 w-full">
+            <AssetInputWithRange
+              name="amount"
+              asset={coin}
+              balances={balances}
+              controllers={controllers}
+              showRange
+              label={m["bridge.youWithdraw"]()}
+              bottomComponent={
+                <div className="w-full flex justify-between">
+                  <p>{m["bridge.minimumWithdraw"]()}</p>
+                  <p className="flex gap-1">
+                    <span>{`> ${fee}`}</span>
+                    <span>{coin.symbol}</span>
+                  </p>
+                </div>
+              }
+            />
+            <div className="flex items-center justify-center">
+              <div className="flex items-center justify-center border border-fg-tertiary-400 rounded-full h-5 w-5">
+                <IconArrowDown className="h-3 w-3 text-ink-tertiary-500" />
               </div>
-            }
-          />
-          <Input
-            {...register("recipient", { mask: masks[network as keyof typeof masks] })}
-            label={m["bridge.withdrawAddress"]()}
-            placeholder={m["bridge.placeholderWithdrawAddress"]({
-              network: m["bridge.network"]({ network }),
-            })}
-          />
+            </div>
+            <Input
+              {...register("recipient", { mask: masks[network as keyof typeof masks] })}
+              label={m["bridge.withdrawAddress"]()}
+              placeholder={m["bridge.placeholderWithdrawAddress"]({
+                network: m["bridge.network"]({ network }),
+              })}
+            />
+          </div>
           <Input
             placeholder="0"
             readOnly
