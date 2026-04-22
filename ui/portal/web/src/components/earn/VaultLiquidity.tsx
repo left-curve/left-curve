@@ -238,13 +238,11 @@ const DepositForm: React.FC = () => {
       {isTvlCapReached ? (
         <WarningContainer
           color="error"
-          className="border border-outline-primary-red"
           description={m["vaultLiquidity.tvlCapReached"]()}
         />
       ) : (
         <WarningContainer
           color="error"
-          className="border border-outline-primary-red"
           description={
             <ul className="list-disc pl-4 flex flex-col gap-1">
               <li>
