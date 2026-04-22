@@ -208,76 +208,82 @@ const EvmDeposit: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center gap-6">
-      <AssetInputWithRange
-        name="amount"
-        asset={coin}
-        balances={balances}
-        controllers={controllers}
-        showRange
-        shouldValidate
-        extendValidation={(v) => {
-          if (userStatus === "active") return true;
-          const minDeposit = minimumDeposit[coin.denom as keyof typeof minimumDeposit];
-          if (!minDeposit) return true;
+      <div className="flex flex-col items-center gap-2 w-full">
+        <AssetInputWithRange
+          name="amount"
+          asset={coin}
+          balances={balances}
+          controllers={controllers}
+          showRange
+          shouldValidate
+          extendValidation={(v) => {
+            if (userStatus === "active") return true;
+            const minDeposit = minimumDeposit[coin.denom as keyof typeof minimumDeposit];
+            if (!minDeposit) return true;
 
-          const amount = formatUnits(minDeposit, coin.decimals);
-          if (Number(v) < Number(amount))
-            return m["bridge.activeAccount"]({ amount: `${amount} ${coin.symbol}` });
-          return true;
-        }}
-        label={
-          <div className="flex justify-between w-full items-center">
-            <p className="exposure-sm-italic text-ink-secondary-700">{m["bridge.youDeposit"]()}</p>
+            const amount = formatUnits(minDeposit, coin.decimals);
+            if (Number(v) < Number(amount))
+              return m["bridge.activeAccount"]({ amount: `${amount} ${coin.symbol}` });
+            return true;
+          }}
+          label={
+            <div className="flex justify-between w-full items-center">
+              <p className="exposure-sm-italic text-ink-secondary-700">
+                {m["bridge.youDeposit"]()}
+              </p>
 
-            <div className="flex gap-2 items-center">
-              <img src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
-              <TruncateText
-                start={4}
-                end={4}
-                text={evmAddress || ""}
-                className="diatype-sm-medium text-ink-tertiary-500"
-              />
-              <IconDisconnect
-                className="w-4 h-4 inline-block text-ink-tertiary-500 hover:cursor-pointer hover:text-ink-primary-900"
-                onClick={() => setConnectorId(null)}
+              <div className="flex gap-2 items-center">
+                <img src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
+                <TruncateText
+                  start={4}
+                  end={4}
+                  text={evmAddress || ""}
+                  className="diatype-sm-medium text-ink-tertiary-500"
+                />
+                <IconDisconnect
+                  className="w-4 h-4 inline-block text-ink-tertiary-500 hover:cursor-pointer hover:text-ink-primary-900"
+                  onClick={() => setConnectorId(null)}
+                />
+              </div>
+            </div>
+          }
+        />
+        <div className="flex items-center justify-center mt-2">
+          <div className="flex items-center justify-center border border-fg-tertiary-400 rounded-full h-5 w-5">
+            <IconArrowDown className="h-3 w-3 text-ink-tertiary-500" />
+          </div>
+        </div>
+        <Input
+          placeholder="0"
+          readOnly
+          label={m["bridge.youGet"]()}
+          value={amount}
+          classNames={{
+            base: "z-20",
+            inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
+            inputParent: "h-[34px] h3-bold",
+            input: "!h3-bold",
+          }}
+          startText="right"
+          startContent={
+            <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
+              <div className="flex gap-2 items-center font-semibold">
+                <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+                <p>{coin.symbol}</p>
+              </div>
+            </div>
+          }
+          insideBottomComponent={
+            <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
+              <FormattedNumber
+                number={getPrice(amount, coin.denom)}
+                formatOptions={{ currency: "USD" }}
+                as="p"
               />
             </div>
-          </div>
-        }
-      />
-      <div className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer">
-        <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
+          }
+        />
       </div>
-      <Input
-        placeholder="0"
-        readOnly
-        label={m["bridge.youGet"]()}
-        value={amount}
-        classNames={{
-          base: "z-20",
-          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
-          inputParent: "h-[34px] h3-bold",
-          input: "!h3-bold",
-        }}
-        startText="right"
-        startContent={
-          <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
-            <div className="flex gap-2 items-center font-semibold">
-              <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
-              <p>{coin.symbol}</p>
-            </div>
-          </div>
-        }
-        insideBottomComponent={
-          <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-            <FormattedNumber
-              number={getPrice(amount, coin.denom)}
-              formatOptions={{ currency: "USD" }}
-              as="p"
-            />
-          </div>
-        }
-      />
 
       <Button
         fullWidth
