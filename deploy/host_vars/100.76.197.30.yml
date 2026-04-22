@@ -6,3 +6,4 @@ reboot_time: "14:30"
 dango_networks:
   - mainnet
 cloudflare_lb_enabled: true
+internal_api_enabled: true
