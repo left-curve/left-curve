@@ -21,7 +21,9 @@ export type UserReferralData = {
   /** Total commission distributed from this user's referees (cumulative). */
   commissionEarnedFromReferees: string;
   /** Cumulative count of daily active direct referees. */
-  cumulativeActiveReferees: number;
+  cumulativeDailyActiveReferees: number;
+  /** Number of direct referees that have made at least one trade. */
+  cumulativeGlobalActiveReferees: number;
 };
 
 /**
