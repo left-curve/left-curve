@@ -63,7 +63,8 @@
     "epoch_perps_share": "750000",
     "epoch_vault_points": "250000",
     "leaderboard_timeframes": [1, 2, 4],
-    "reset_perps_at_block": 17709888
+    "reset_perps_at_block": 17709888,
+    "blacklist": {{ (points_bot_blacklist[network] | default([])) | to_nice_json(indent=2) | indent(4) }}
   },
   "http_url": "https://api-mainnet-hetzner1.dango.zone",
   "httpd": {

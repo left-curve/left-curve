@@ -9,3 +9,4 @@ points_bot_metrics_ports:
   mainnet: 9302
 points_bot_referral_boosts: {}
 points_bot_compensation: {}
+points_bot_blacklist: {}

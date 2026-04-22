@@ -62,7 +62,8 @@
     "perps_expression": "1 + max(0.0, math::log10(x))",
     "epoch_perps_share": "750000",
     "epoch_vault_points": "250000",
-    "leaderboard_timeframes": [1, 2, 4]
+    "leaderboard_timeframes": [1, 2, 4],
+    "blacklist": {{ (points_bot_blacklist[network] | default([])) | to_nice_json(indent=2) | indent(4) }}
   },
   "http_url": "https://api-devnet.dango.zone",
   "httpd": {
