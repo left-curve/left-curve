@@ -341,6 +341,17 @@ hyperlane-kms-address network index:
       -e hyperlane_validator_index={{index}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-hyperlane-kms-address.log
 
+# ----------------------------- Traefik Routes --------------------------------
+
+# Update Traefik routing config without a full deploy
+# Usage: just update-traefik-routes mainnet 100.76.197.30
+update-traefik-routes network limit:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && ansible-playbook update-traefik-routes.yml \
+      -e dango_network={{network}} \
+      --limit {{limit}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-update-traefik-routes.log"
+
 # ------------------------------- Infrastructure -------------------------------
 
 deploy-github-runners:
