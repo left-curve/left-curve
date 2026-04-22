@@ -13,7 +13,7 @@ perp_liquidator_config:
     query_timeout: 1
     query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 1
+    notification_timeout: 3
     frontend_url: "https://dev.dango.exchange"
     instances:
       - name: "devnet-1"
@@ -27,7 +27,7 @@ perp_liquidator_config:
     query_timeout: 1
     query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 1
+    notification_timeout: 3
     frontend_url: "https://test.dango.exchange"
     reinit_interval_blocks: 7200
     instances:
@@ -42,7 +42,7 @@ perp_liquidator_config:
     query_timeout: 1
     query_timeout_heavy: 5
     http_port: 9310
-    notification_timeout: 1
+    notification_timeout: 3
     frontend_url: "https://dango.exchange"
     reinit_interval_blocks: 3600
     instances:
