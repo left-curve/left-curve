@@ -124,7 +124,7 @@ export const LigueLevels: React.FC<LigueLevelsProps> = ({ currentLevel }) => {
   return (
     <div className="w-full min-h-[18rem] lg:min-h-[28rem] bg-surface-primary-rice rounded-b-xl p-4 lg:p-8 flex flex-col">
       <div className="flex flex-col mb-4 lg:mb-6">
-        <h2 className="display-heading-4xs lg:display-heading-xl text-primitives-warning-300">
+        <h2 className="display-heading-4xs lg:display-heading-xl text-utility-warning-600">
           {m["points.leagues.title"]()}
         </h2>
         <p>{m["points.leagues.subtitle"]()}</p>

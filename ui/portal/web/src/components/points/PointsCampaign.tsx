@@ -108,7 +108,7 @@ const ProfileTable: React.FC = () => {
   if (!isConnected) return null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 mt-6">
       <p className="diatype-m-bold text-ink-primary-900">{m["points.profile.pointHistory"]()}</p>
       <PointsProfileTable />
     </div>
