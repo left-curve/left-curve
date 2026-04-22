@@ -88,7 +88,7 @@ export const TradeHeader: React.FC = () => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
-            className="gap-2 xxl:gap-6 grid grid-cols-3 lg:flex lg:justify-end overflow-hidden diatype-xxs-medium lg:diatype-xs-medium"
+            className="gap-2 xxl:gap-6 grid grid-cols-3 lg:flex lg:justify-end lg:items-center overflow-hidden diatype-xxs-medium lg:diatype-xs-medium"
           >
             <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice />
@@ -99,13 +99,13 @@ export const TradeHeader: React.FC = () => {
               priceChange24H={pairStatsData?.priceChange24H}
             />
             <div className="flex gap-1 flex-col items-start lg:w-[5rem] lg:shrink-0">
-              <p className="diatype-xs-medium text-ink-tertiary-500">
+              <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.volume"]()}
               </p>
               <PairStatValue
                 kind="volume24h"
                 value={pairStatsData?.volume24H}
-                className="diatype-xs-medium text-center"
+                className="diatype-xxs-medium lg:diatype-xs-medium text-center"
               />
             </div>
             {mode === "perps" && (
@@ -198,10 +198,10 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
 
   return (
     <div className="flex gap-1 flex-col items-start lg:w-[8rem] lg:shrink-0">
-      <p className="diatype-xs-medium text-ink-tertiary-500">
+      <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500">
         {m["dex.protrade.spot.24hChange"]()}
       </p>
-      <p className={twMerge("diatype-xs-medium", colorClass)}>
+      <p className={twMerge("diatype-xxs-medium lg:diatype-xs-medium", colorClass)}>
         {absoluteChange && priceChange24H ? (
           <>
             {isPositive ? "+" : ""}
