@@ -276,7 +276,7 @@ export const AffiliateStats: React.FC = () => {
   const totalCommission = referralData?.commissionEarnedFromReferees ?? "0";
   const totalRefereesVolume = referralData?.refereesVolume ?? "0";
   const totalReferees = referralData?.refereeCount ?? 0;
-  const activeReferees = referralData?.cumulativeActiveReferees ?? 0;
+  const activeReferees = referralData?.cumulativeGlobalActiveReferees ?? 0;
 
   const nextTierLabel = `Tier ${currentTier + 1}`;
   const progressLeftLabel = isConnected
