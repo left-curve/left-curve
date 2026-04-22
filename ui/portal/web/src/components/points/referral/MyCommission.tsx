@@ -70,12 +70,12 @@ function diffReferralData(
   wider: {
     commissionEarnedFromReferees?: string;
     refereesVolume?: string;
-    cumulativeActiveReferees?: number;
+    cumulativeDailyActiveReferees?: number;
   },
   narrower: {
     commissionEarnedFromReferees?: string;
     refereesVolume?: string;
-    cumulativeActiveReferees?: number;
+    cumulativeDailyActiveReferees?: number;
   },
 ) {
   return {
@@ -83,7 +83,7 @@ function diffReferralData(
       Number(wider.commissionEarnedFromReferees ?? "0") -
       Number(narrower.commissionEarnedFromReferees ?? "0"),
     volume: Number(wider.refereesVolume ?? "0") - Number(narrower.refereesVolume ?? "0"),
-    activeUsers: (wider.cumulativeActiveReferees ?? 0) - (narrower.cumulativeActiveReferees ?? 0),
+    activeUsers: (wider.cumulativeDailyActiveReferees ?? 0) - (narrower.cumulativeDailyActiveReferees ?? 0),
   };
 }
 
