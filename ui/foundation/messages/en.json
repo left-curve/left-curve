@@ -431,6 +431,14 @@
       "isolatedDescription": "This feature is currently under development. We're working hard to bring it to you soon.",
       "confirm": "Confirm"
     },
+    "marketClose": {
+      "title": "Market Close",
+      "description": "This will attempt to immediately close the position.",
+      "size": "Size",
+      "price": "Price",
+      "market": "Market",
+      "confirm": "Confirm"
+    },
     "adjustLeverage": {
       "title": "Adjust Leverage",
       "description": "Control the leverage used for {symbol} positions. The maximum leverage is {maxLeverage}x.",
