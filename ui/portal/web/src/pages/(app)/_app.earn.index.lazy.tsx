@@ -19,7 +19,6 @@ function EarnApplet() {
 
   return (
     <VaultLiquidity action={action} onChangeAction={onChangeAction}>
-      <VaultLiquidity.Header />
       <VaultLiquidity.Content />
     </VaultLiquidity>
   );

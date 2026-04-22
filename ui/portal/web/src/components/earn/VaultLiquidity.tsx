@@ -1,5 +1,6 @@
 import {
   Button,
+  IconArrowDownRound,
   Input,
   Modals,
   RangeWithButtons,
@@ -43,19 +44,20 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   return (
     <VaultLiquidityProvider value={{ state, controllers }}>
       <div
-        className={`w-full mx-auto flex flex-col md:flex-row pt-6 mb-16 gap-4 px-4 md:px-0 ${
+        className={`w-full mx-auto flex flex-col pt-6 mb-16 gap-4 px-4 md:px-0 ${
           isLoggedIn ? "md:max-w-[50rem]" : "md:max-w-[25rem]"
         }`}
       >
-        <div className="flex flex-col gap-4 w-full md:max-w-[25rem]">
-          <MobileTitle title={m["vaultLiquidity.title"]()} />
-          {children}
+        <MobileTitle title={m["vaultLiquidity.title"]()} />
+        <VaultLiquidityHeader />
+        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
+          <div className="flex flex-col gap-4 w-full md:max-w-[25rem]">{children}</div>
+          {isLoggedIn && (
+            <div className="flex flex-col gap-4 w-full md:max-w-[24rem]">
+              <UserPosition />
+            </div>
+          )}
         </div>
-        {isLoggedIn && (
-          <div className="flex flex-col gap-4 w-full md:max-w-[24rem]">
-            <UserPosition />
-          </div>
-        )}
       </div>
     </VaultLiquidityProvider>
   );
@@ -77,17 +79,17 @@ const VaultLiquidityHeader: React.FC = () => {
           </p>
         </div>
       )}
-      <div className="flex flex-col gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
         <div className="flex gap-2 items-center">
           <img src="/images/coins/usd.svg" alt="vault" className="w-8 h-8 rounded-full" />
           <p className="text-ink-secondary-700 h4-bold">{m["vaultLiquidity.title"]()}</p>
         </div>
-        <div className="flex flex-row justify-between items-center">
-          <div className="flex flex-col items-start">
+        <div className="flex flex-row gap-6 items-center">
+          <div className="flex items-center gap-1">
             <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.apy"]()}</p>
             <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
           </div>
-          <div className="flex flex-col items-end">
+          <div className="flex items-center gap-1">
             <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.tvl"]()}</p>
             {isLoading ? (
               <Skeleton className="w-16 h-5" />
@@ -213,6 +215,12 @@ const DepositForm: React.FC = () => {
         {errors?.depositAmount && (
           <p className="diatype-sm-regular text-status-fail">{errors.depositAmount}</p>
         )}
+      </div>
+
+      <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center border border-fg-tertiary-400 rounded-full h-5 w-5">
+          <IconArrowDownRound className="h-3 w-3 text-ink-tertiary-500" />
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

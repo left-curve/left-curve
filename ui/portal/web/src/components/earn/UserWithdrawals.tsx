@@ -80,7 +80,7 @@ export const UserWithdrawals: React.FC<UserWithdrawalsProps> = ({ unlocks }) => 
           <p className="exposure-sm-italic text-ink-secondary-700">
             {m["vaultLiquidity.noWithdrawals"]()}
           </p>
-          <p className="text-ink-tertiary-500 diatype-xs-regular text-center">
+          <p className="text-ink-tertiary-500 diatype-sm-medium text-center">
             {m["vaultLiquidity.noWithdrawalsDescription"]()}
           </p>
         </div>
