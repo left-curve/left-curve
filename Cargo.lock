@@ -4333,6 +4333,7 @@ dependencies = [
  "grug-vm-rust",
  "hex",
  "hex-literal",
+ "home",
  "hyperlane-types",
  "indexer-cache",
  "indexer-client",

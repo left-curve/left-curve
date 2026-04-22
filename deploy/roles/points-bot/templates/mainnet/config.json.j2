@@ -58,22 +58,26 @@
     },
     "oat_multiplier": "1",
     "oat_window": "4weeks",
-    "perps_expression": "1 + max(0.0, math::log10(x))",
+    "perps_expression": "1 + x * 0.05",
     "epoch_duration": "1week",
     "epoch_perps_share": "750000",
     "epoch_vault_points": "250000",
     "leaderboard_timeframes": [1, 2, 4],
-    "reset_perps_at_block": 17709888
+    "reset_perps_at_block": 17709888,
+    "blacklist": {{ (points_bot_blacklist[network] | default([])) | to_nice_json(indent=2) | indent(4) }}
   },
-  "http_url": "https://api-mainnet-inter1.dango.zone",
+  "http_url": "https://api-mainnet-hetzner1.dango.zone",
   "httpd": {
     "register_cache_delta": "1m",
     "rest_url": "0.0.0.0:8080",
-    "leaderboard_refresh_interval": "1m"
+    "leaderboard_refresh_interval": "1m",
+    "predict_points_refresh_interval": "2m"
   },
   "log_level": "info",
   "referral": {
     "direct_share": "0.2",
-    "indirect_share": "0.05"
-  }
+    "indirect_share": "0.05",
+    "referral_boosts": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }}
+  },
+  "compensation": {{ (points_bot_compensation[network] | default({})) | to_nice_json(indent=2) | indent(2) }}
 }

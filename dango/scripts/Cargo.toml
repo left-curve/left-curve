@@ -16,6 +16,7 @@ dango-client   = { workspace = true }
 dialoguer      = { workspace = true }
 grug           = { workspace = true }
 grug-app       = { workspace = true }
+home           = { workspace = true }
 indexer-client = { workspace = true }
 tokio          = { workspace = true }
 

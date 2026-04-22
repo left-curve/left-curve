@@ -5,11 +5,12 @@
     "timeout": "30s"
   },
   "bot": {
-    "event_duration": 38,
+    "epoch_duration": "10m",
+    "event_duration": 4320,
     "event_start": {
-      "timestamp": "2026-04-13T12:00:00Z"
+      "block": 18290000
     },
-    "from_block": 16840000,
+    "from_block": 18280000,
     "loot_tables": {
       "25000": {
         "chest": "bronze",
@@ -57,22 +58,24 @@
       }
     },
     "oat_multiplier": "1",
-    "oat_window": "4weeks",
+    "oat_window": "2weeks",
     "perps_expression": "1 + max(0.0, math::log10(x))",
-    "epoch_duration": "1week",
-    "epoch_perps_share": "750000",
-    "epoch_vault_points": "250000",
-    "leaderboard_timeframes": [1, 2, 4]
+    "epoch_perps_share": "7500",
+    "epoch_vault_points": "2500",
+    "leaderboard_timeframes": [1, 2, 4],
+    "blacklist": {{ (points_bot_blacklist[network] | default([])) | to_nice_json(indent=2) | indent(4) }}
   },
-  "http_url": "https://api-mainnet.dango.zone",
+  "http_url": "https://api-testnet.dango.zone",
   "httpd": {
     "register_cache_delta": "1m",
     "rest_url": "0.0.0.0:8080",
-    "leaderboard_refresh_interval": "1m"
+    "leaderboard_refresh_interval": "1m",
+    "predict_points_refresh_interval": "2m"
   },
   "log_level": "info",
   "referral": {
     "direct_share": "0.2",
-    "indirect_share": "0.05"
+    "indirect_share": "0.05",
+    "referral_boosts": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }}
   }
 }
