@@ -1,6 +1,7 @@
 import { getAppConfig } from "@left-curve/sdk";
 import { getAction } from "@left-curve/sdk/actions";
 import { execute } from "../../app/mutations/execute.js";
+import { truncateDec } from "../../../utils/index.js";
 
 import type { Address, Transport } from "@left-curve/sdk/types";
 import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
@@ -19,13 +20,15 @@ export async function setFeeShareRatio<transport extends Transport>(
 ): SetFeeShareRatioReturnType {
   const { sender, shareRatio } = parameters;
 
+  const truncatedRatio = truncateDec(shareRatio);
+
   const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
   const { addresses } = await getAppConfigAction<AppConfig>({});
 
   const msg = {
     referral: {
       setFeeShareRatio: {
-        shareRatio,
+        shareRatio: truncatedRatio,
       },
     },
   };
