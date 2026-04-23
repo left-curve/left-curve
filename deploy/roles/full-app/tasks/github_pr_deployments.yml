@@ -92,7 +92,7 @@
     | **CometBFT RPC** | [http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}](http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}) |
     | **CometBFT Metrics** | [http://{{ wireguard_ip }}:{{ cometbft_metrics_port }}/metrics](http://{{ wireguard_ip }}:{{ cometbft_metrics_port }}/metrics) |
     | **Deployment name** | `{{ deployment_name }}` |
-{% if faucet_bot_enabled | default(false) %}
+    {% if faucet_bot_enabled | default(false) %}
     | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
-{% endif %}
+    {% endif %}
     EOF
