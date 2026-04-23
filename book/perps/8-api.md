@@ -793,7 +793,7 @@ Filter by `userIndex` to get all accounts for a specific user, or by `address` f
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         param: {}
@@ -859,7 +859,7 @@ For fee mechanics, see [Order matching §8](2-order-matching.md#8-trading-fees).
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         state: {}
@@ -894,7 +894,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_params: {
@@ -912,7 +912,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_param: {
@@ -969,7 +969,7 @@ For the relationship between margin ratios and leverage, see [Risk §2](6-risk.m
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_states: {
@@ -987,7 +987,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_state: {
@@ -1026,7 +1026,7 @@ Query aggregated order book depth at a given price bucket granularity:
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         liquidity_depth: {
@@ -1186,7 +1186,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         user_state: {
@@ -1266,7 +1266,7 @@ Returns `null` if the user has no state.
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         user_states: {
@@ -1288,7 +1288,7 @@ Query all resting limit orders for a user:
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         orders_by_user: {
@@ -1331,7 +1331,7 @@ The response is a map of `OrderId` → order details. This query returns only re
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         order: {
@@ -1374,7 +1374,7 @@ Returns `null` if the order does not exist.
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         volume: {
@@ -1458,7 +1458,7 @@ Query user state with additional computed fields (equity, available margin, main
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         user_state_extended: {
@@ -2097,7 +2097,7 @@ Poll any contract query at a regular block interval:
 subscription {
   queryApp(
     request: {
-      wasmSmart: {
+      wasm_smart: {
         contract: "PERPS_CONTRACT",
         msg: {
           user_state: {
