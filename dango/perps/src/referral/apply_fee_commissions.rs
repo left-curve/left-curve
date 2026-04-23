@@ -31,7 +31,8 @@ pub struct FeeCommissionsOutcome {
 }
 
 /// Calculate and apply fee commissions for all fee-paying users based on the
-/// referral chain.
+/// referral chain. Emits a [`FeeDistributed`] event for every fee-paying user,
+/// regardless of whether they have a referrer.
 ///
 /// Commissions are funded from the post-protocol-cut fee.
 /// The protocol treasury is unaffected.
@@ -63,10 +64,6 @@ pub fn apply_fee_commissions(
     // `&BTreeMap<Addr, UserState>` is never touched.
     let mut user_states = user_states.clone();
 
-    if !param.referral_active {
-        return Ok(FeeCommissionsOutcome { user_states });
-    }
-
     let mut total_vault_deduction = UsdValue::ZERO;
     let mut referrer_settings_cache = BTreeMap::<UserIndex, ReferrerSettings>::new();
     let mut addr_to_user_index_cache = BTreeMap::<Addr, Option<UserIndex>>::new();
@@ -94,8 +91,22 @@ pub fn apply_fee_commissions(
             continue;
         };
 
-        // Look up the first referrer.
-        let Some(first_referrer) = REFEREE_TO_REFERRER.may_load(storage, payer_index)? else {
+        // If referrals are inactive or the payer has no referrer, emit the
+        // event with empty commissions and skip chain processing.
+        let first_referrer = if param.referral_active {
+            REFEREE_TO_REFERRER.may_load(storage, payer_index)?
+        } else {
+            None
+        };
+
+        let Some(first_referrer) = first_referrer else {
+            events.push(FeeDistributed {
+                payer: payer_index,
+                payer_addr: payer,
+                protocol_fee: fee_breakdown.protocol_fee,
+                vault_fee,
+                commissions: vec![],
+            })?;
             continue;
         };
 
