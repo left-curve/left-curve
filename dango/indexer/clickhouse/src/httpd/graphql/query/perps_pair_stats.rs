@@ -18,11 +18,7 @@ impl PerpsPairStatsQuery {
         let app_ctx = ctx.data::<Context>()?;
         let cache = app_ctx.perps_pair_stats_cache.read().await;
 
-        Ok(cache
-            .stats()
-            .iter()
-            .find(|s| s.pair_id == pair_id)
-            .cloned())
+        Ok(cache.stats().iter().find(|s| s.pair_id == pair_id).cloned())
     }
 
     /// Get 24h statistics for all perps trading pairs.
