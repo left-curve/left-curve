@@ -7,6 +7,11 @@ use {
 };
 
 pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
+    let (client, accounts, _port) = setup_client_test_with_port().await?;
+    Ok((client, accounts))
+}
+
+pub async fn setup_client_test_with_port() -> anyhow::Result<(HttpClient, TestAccounts, u16)> {
     let port = get_mock_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();
@@ -43,5 +48,6 @@ pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
     Ok((
         HttpClient::new(format!("http://localhost:{port}"))?,
         accounts,
+        port,
     ))
 }
