@@ -3,9 +3,14 @@ use {
     anyhow::bail,
     graphql_client::{GraphQLQuery, Response},
     graphql_ws_client::{Client, graphql::StreamingOperation},
+    std::time::Duration,
     tokio_tungstenite::tungstenite::{client::IntoClientRequest, http::HeaderValue},
     url::Url,
 };
+
+/// Must stay below the server's `GraphQLSubscription::keepalive_timeout` (30s)
+/// or idle subscriptions are dropped with close code 3008.
+const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(15);
 
 /// A WebSocket client for GraphQL subscriptions.
 #[derive(Debug, Clone)]
@@ -122,6 +127,7 @@ impl WsClient {
         tracing::debug!("WebSocket connected, building client");
 
         let subscription = Client::build(connection)
+            .keep_alive_interval(KEEP_ALIVE_INTERVAL)
             .subscribe(StreamingOperation::<Q>::new(variables))
             .await
             .map_err(|e| anyhow::anyhow!("Subscription failed: {e}"))?;
