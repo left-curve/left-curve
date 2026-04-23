@@ -1,4 +1,7 @@
 ---
+- include_tasks: cloudflare_lb_cleanup.yml
+  when: lb_exclude | default({}) | length > 0
+
 - include_tasks: cloudflare_tunnel.yml
 
 - include_tasks: cloudflare_lb.yml

@@ -71,3 +71,4 @@ verify_signatures: true
 verify_backend_signature: true
 verify_frontend_signature: true
 deploy_lock_threshold_seconds: 600
+faucet_bot_enabled: false

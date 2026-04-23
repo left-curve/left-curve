@@ -9,6 +9,13 @@
       - { name: "www",         path: "/",       expect: "200" }
       - { name: "api",         path: "/up",     expect: "200" }
       - { name: "faucet",      path: "/health", expect: "200" }
+    # Services excluded from load balancer creation per network.
+    # These get a direct tunnel CNAME on the host running the service.
+    lb_exclude:
+      mainnet:
+        - faucet
+      testnet:
+        - faucet
   pre_tasks:
     - name: Get deploy user info
       getent:

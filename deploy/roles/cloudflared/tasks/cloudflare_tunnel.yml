@@ -138,6 +138,7 @@
     state: present
     api_token: "{{ cloudflare_api_token }}"
   loop: "{{ dango_networks | product(['api','www','faucet','graphiql']) | list }}"
+  when: (item.1 != 'faucet') or (faucet_bot_enabled | default(false))
   retries: 3
   delay: 5
 
@@ -165,7 +166,26 @@
     state: present
     api_token: "{{ cloudflare_api_token }}"
   loop: "{{ dango_networks | product(['api','www','faucet']) | list }}"
-  when: not cloudflare_lb_enabled
+  when:
+    - not cloudflare_lb_enabled
+    - (item.1 != 'faucet') or (faucet_bot_enabled | default(false))
+  retries: 3
+  delay: 5
+
+- name: Create DNS for LB-excluded services (single-instance via tunnel)
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "{{ item.1 }}-{{ item.0 }}"
+    type: CNAME
+    value: "{{ tunnel_id }}.cfargotunnel.com"
+    proxied: true
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
+  loop: "{{ dango_networks | product(['api', 'www', 'faucet']) | list }}"
+  when:
+    - cloudflare_lb_enabled
+    - item.1 in (lb_exclude[item.0] | default([]))
+    - (item.1 != 'faucet') or (faucet_bot_enabled | default(false))
   retries: 3
   delay: 5
 
