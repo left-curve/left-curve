@@ -793,7 +793,7 @@ Filter by `userIndex` to get all accounts for a specific user, or by `address` f
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         param: {}
@@ -859,7 +859,7 @@ For fee mechanics, see [Order matching §8](2-order-matching.md#8-trading-fees).
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         state: {}
@@ -894,7 +894,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_params: {
@@ -912,7 +912,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_param: {
@@ -969,7 +969,7 @@ For the relationship between margin ratios and leverage, see [Risk §2](6-risk.m
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_states: {
@@ -987,7 +987,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         pair_state: {
@@ -1026,7 +1026,7 @@ Query aggregated order book depth at a given price bucket granularity:
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         liquidity_depth: {
@@ -1186,7 +1186,7 @@ query {
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         user_state: {
@@ -1266,7 +1266,7 @@ Returns `null` if the user has no state.
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         user_states: {
@@ -1288,7 +1288,7 @@ Query all resting limit orders for a user:
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         orders_by_user: {
@@ -1331,7 +1331,7 @@ The response is a map of `OrderId` → order details. This query returns only re
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         order: {
@@ -1374,7 +1374,7 @@ Returns `null` if the order does not exist.
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         volume: {
@@ -1458,7 +1458,7 @@ Query user state with additional computed fields (equity, available margin, main
 ```graphql
 query {
   queryApp(request: {
-    wasmSmart: {
+    wasm_smart: {
       contract: "PERPS_CONTRACT",
       msg: {
         user_state_extended: {
@@ -2073,21 +2073,21 @@ subscription {
 
 **Behavior:** On connection, cached recent trades are replayed first, then new trades stream in real-time.
 
-| Field         | Type       | Description                                                                                                              |
-| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `orderId`     | `String`   | Order ID that produced this fill                                                                                         |
-| `pairId`      | `String`   | Trading pair                                                                                                             |
-| `user`        | `String`   | Account address                                                                                                          |
-| `fillPrice`   | `String`   | Execution price                                                                                                          |
-| `fillSize`    | `String`   | Filled size (positive = buy, negative = sell)                                                                            |
-| `closingSize` | `String`   | Portion that closed existing position                                                                                    |
-| `openingSize` | `String`   | Portion that opened new position                                                                                         |
-| `realizedPnl` | `String`   | PnL realized on this fill, including funding settled on the pre-existing position; excludes trading fees                 |
-| `fee`         | `String`   | Trading fee charged                                                                                                      |
-| `createdAt`   | `String`   | Timestamp (ISO 8601)                                                                                                     |
-| `blockHeight` | `Int`      | Block in which the trade occurred                                                                                        |
-| `tradeIdx`    | `Int`      | Index within the block                                                                                                   |
-| `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0                    |
+| Field         | Type       | Description                                                                                              |
+| ------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
+| `orderId`     | `String`   | Order ID that produced this fill                                                                         |
+| `pairId`      | `String`   | Trading pair                                                                                             |
+| `user`        | `String`   | Account address                                                                                          |
+| `fillPrice`   | `String`   | Execution price                                                                                          |
+| `fillSize`    | `String`   | Filled size (positive = buy, negative = sell)                                                            |
+| `closingSize` | `String`   | Portion that closed existing position                                                                    |
+| `openingSize` | `String`   | Portion that opened new position                                                                         |
+| `realizedPnl` | `String`   | PnL realized on this fill, including funding settled on the pre-existing position; excludes trading fees |
+| `fee`         | `String`   | Trading fee charged                                                                                      |
+| `createdAt`   | `String`   | Timestamp (ISO 8601)                                                                                     |
+| `blockHeight` | `Int`      | Block in which the trade occurred                                                                        |
+| `tradeIdx`    | `Int`      | Index within the block                                                                                   |
+| `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0    |
 
 ### 8.3 Contract query polling
 
@@ -2097,7 +2097,7 @@ Poll any contract query at a regular block interval:
 subscription {
   queryApp(
     request: {
-      wasmSmart: {
+      wasm_smart: {
         contract: "PERPS_CONTRACT",
         msg: {
           user_state: {
@@ -2200,11 +2200,11 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                                                          | Description                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Event             | Fields                                                                                                                                                       | Description                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
 | `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                        | Limit order placed on book      |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                     | Order removed from book         |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                                     | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                                  | Order removed from book         |
 
 `client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
 
