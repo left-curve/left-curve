@@ -1,11 +1,13 @@
 use {
     async_graphql::MergedObject, candle::CandleQuery, pair_stats::PairStatsQuery,
-    perps_candle::PerpsCandleQuery, perps_pair_stats::PerpsPairStatsQuery, trade::TradeQuery,
+    perps_candle::PerpsCandleQuery, perps_fees::PerpsFeesQuery,
+    perps_pair_stats::PerpsPairStatsQuery, trade::TradeQuery,
 };
 
 pub mod candle;
 pub mod pair_stats;
 pub mod perps_candle;
+pub mod perps_fees;
 pub mod perps_pair_stats;
 pub mod trade;
 
@@ -16,4 +18,5 @@ pub struct ClickhouseQuery(
     PairStatsQuery,
     PerpsCandleQuery,
     PerpsPairStatsQuery,
+    PerpsFeesQuery,
 );

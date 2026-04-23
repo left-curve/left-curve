@@ -14,6 +14,7 @@ use {
 pub mod candles;
 pub mod pair_stats;
 pub mod perps_candles;
+pub mod perps_fees;
 pub mod perps_pair_stats;
 pub mod trades;
 
@@ -55,6 +56,7 @@ impl grug_app::Indexer for Indexer {
         for migration in crate::migrations::candle_builder::migrations()
             .iter()
             .chain(crate::migrations::perps_candle_builder::migrations().iter())
+            .chain(crate::migrations::perps_fees::migrations().iter())
             .chain(crate::migrations::trade::Migration::migrations().iter())
         {
             clickhouse_client
@@ -152,7 +154,8 @@ impl grug_app::Indexer for Indexer {
         try_join!(
             Self::store_candles(&app_cfg.addresses.dex, &ctx, &context),
             Self::store_trades(&app_cfg.addresses.dex, &ctx, &context),
-            Self::store_perps_candles(&app_cfg.addresses.perps, &ctx, &context)
+            Self::store_perps_candles(&app_cfg.addresses.perps, &ctx, &context),
+            Self::store_perps_fees(&app_cfg.addresses.perps, &ctx, &context)
         )
         .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
