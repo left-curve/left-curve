@@ -743,7 +743,6 @@ type Query {
 	"""
 	Get 24h statistics for a specific trading pair.
 	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume.
-	Fields are fetched lazily - only requested fields trigger database queries.
 	"""
 	pairStats(
 		"""
@@ -758,7 +757,6 @@ type Query {
 	"""
 	Get 24h statistics for all trading pairs.
 	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume for each pair.
-	Fields are fetched lazily - only requested fields trigger database queries.
 	"""
 	allPairStats: [PairStats!]!
 	"""
@@ -785,7 +783,6 @@ type Query {
 	"""
 	Get 24h statistics for a specific perps trading pair.
 	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume.
-	Fields are fetched lazily - only requested fields trigger database queries.
 	"""
 	perpsPairStats(
 		"""
@@ -796,7 +793,6 @@ type Query {
 	"""
 	Get 24h statistics for all perps trading pairs.
 	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume for each pair.
-	Fields are fetched lazily - only requested fields trigger database queries.
 	"""
 	allPerpsPairStats: [PerpsPairStats!]!
 	"""

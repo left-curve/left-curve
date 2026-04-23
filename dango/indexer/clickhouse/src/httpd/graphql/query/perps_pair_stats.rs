@@ -10,35 +10,26 @@ pub struct PerpsPairStatsQuery;
 impl PerpsPairStatsQuery {
     /// Get 24h statistics for a specific perps trading pair.
     /// Returns current price, price from 24h ago, 24h price change percentage, and 24h volume.
-    /// Fields are fetched lazily - only requested fields trigger database queries.
     async fn perps_pair_stats(
         &self,
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Pair ID (e.g., 'perp/btcusd')")] pair_id: String,
     ) -> Result<Option<PerpsPairStats>> {
         let app_ctx = ctx.data::<Context>()?;
-        let clickhouse_client = app_ctx.clickhouse_client();
+        let cache = app_ctx.perps_pair_stats_cache.read().await;
 
-        // Check if the pair exists before returning
-        if !PerpsPairStats::exists(clickhouse_client, &pair_id).await? {
-            return Ok(None);
-        }
-
-        Ok(Some(PerpsPairStats::new(pair_id)))
+        Ok(cache.stats().iter().find(|s| s.pair_id == pair_id).cloned())
     }
 
     /// Get 24h statistics for all perps trading pairs.
     /// Returns current price, price from 24h ago, 24h price change percentage, and 24h volume for each pair.
-    /// Fields are fetched lazily - only requested fields trigger database queries.
     async fn all_perps_pair_stats(
         &self,
         ctx: &async_graphql::Context<'_>,
     ) -> Result<Vec<PerpsPairStats>> {
         let app_ctx = ctx.data::<Context>()?;
-        let clickhouse_client = app_ctx.clickhouse_client();
+        let cache = app_ctx.perps_pair_stats_cache.read().await;
 
-        let stats = PerpsPairStats::fetch_all(clickhouse_client).await?;
-
-        Ok(stats)
+        Ok(cache.stats().to_vec())
     }
 }
