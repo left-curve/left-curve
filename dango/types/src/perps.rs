@@ -1654,7 +1654,7 @@ pub struct FeeDistributed {
     /// Protocol treasury portion of the fee.
     pub protocol_fee: UsdValue,
 
-    /// Vault portion of the fee (before commissions).
+    /// Vault portion of the fee.
     pub vault_fee: UsdValue,
 
     /// Commission amounts per chain level: [payer, 1st referrer, 2nd, ...].
