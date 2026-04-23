@@ -201,13 +201,32 @@
         - (cf_list.json.result | default([])) | length > 0
       ignore_errors: true
 
+    - name: Clean up PR tunnel connections (Cloudflare)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ pr_tunnel_id }}/connections"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: {}
+      when: pr_tunnel_id is defined
+      ignore_errors: true
+
     - name: Delete PR tunnel (Cloudflare)
       uri:
         url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ pr_tunnel_id }}"
         method: DELETE
-        headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: {}
       when: pr_tunnel_id is defined
-      ignore_errors: true
+      register: tunnel_delete_result
+      failed_when: >-
+        tunnel_delete_result.status is defined and
+        tunnel_delete_result.status != 200
 
     - name: Log deletion complete
       community.general.syslogger:
