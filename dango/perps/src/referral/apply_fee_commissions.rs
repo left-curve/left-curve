@@ -64,13 +64,16 @@ pub fn apply_fee_commissions(
     // `&BTreeMap<Addr, UserState>` is never touched.
     let mut user_states = user_states.clone();
 
-    let mut total_vault_deduction = UsdValue::ZERO;
     let mut referrer_settings_cache = BTreeMap::<UserIndex, ReferrerSettings>::new();
     let mut addr_to_user_index_cache = BTreeMap::<Addr, Option<UserIndex>>::new();
 
     let account_factory = account_factory(querier);
 
     for (payer, fee_breakdown) in fee_breakdowns {
+        // The USD value credited to the referee and referrer that need to be subtracted
+        // from the vault balance. We can't change the vault value during the referral calculation.
+        let mut vault_deduction = UsdValue::ZERO;
+
         let vault_fee = fee_breakdown.vault_fee;
         if payer == perps_contract {
             continue;
@@ -136,7 +139,7 @@ pub fn apply_fee_commissions(
         // Credit the referee.
         if referee_share.is_non_zero() {
             credit_commission(storage, &mut user_states, payer, referee_share)?;
-            total_vault_deduction.checked_add_assign(referee_share)?;
+            vault_deduction.checked_add_assign(referee_share)?;
         }
 
         // Credit the first referrer.
@@ -150,7 +153,7 @@ pub fn apply_fee_commissions(
                 referrer_addr,
                 referrer_commission,
             )?;
-            total_vault_deduction.checked_add_assign(referrer_commission)?;
+            vault_deduction.checked_add_assign(referrer_commission)?;
         }
 
         // Payer's trade volume for this fill.
@@ -219,7 +222,7 @@ pub fn apply_fee_commissions(
                         super::retrieve_master_account(querier, next_referrer, account_factory)
                     {
                         credit_commission(storage, &mut user_states, addr, upstream_commission)?;
-                        total_vault_deduction.checked_add_assign(upstream_commission)?;
+                        vault_deduction.checked_add_assign(upstream_commission)?;
                     }
 
                     // Update upstream referrer's referral data: commission_earned_from_referees only.
@@ -242,22 +245,22 @@ pub fn apply_fee_commissions(
             current_user = next_referrer;
         }
 
+        // Deduct the total commission from the vault margin.
+        if vault_deduction.is_non_zero() {
+            user_states
+                .get_mut(&perps_contract)
+                .expect("vault must be in user_states for fee commission settlement")
+                .margin
+                .checked_sub_assign(vault_deduction)?;
+        }
+
         events.push(FeeDistributed {
             payer: payer_index,
             payer_addr: payer,
             protocol_fee: fee_breakdown.protocol_fee,
-            vault_fee,
+            vault_fee: vault_fee.checked_sub(vault_deduction)?,
             commissions,
         })?;
-    }
-
-    // Deduct the total commission from the vault margin.
-    if total_vault_deduction.is_non_zero() {
-        user_states
-            .get_mut(&perps_contract)
-            .expect("vault must be in user_states for fee commission settlement")
-            .margin
-            .checked_sub_assign(total_vault_deduction)?;
     }
 
     Ok(FeeCommissionsOutcome { user_states })
