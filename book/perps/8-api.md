@@ -2073,21 +2073,21 @@ subscription {
 
 **Behavior:** On connection, cached recent trades are replayed first, then new trades stream in real-time.
 
-| Field         | Type       | Description                                                                                                              |
-| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `orderId`     | `String`   | Order ID that produced this fill                                                                                         |
-| `pairId`      | `String`   | Trading pair                                                                                                             |
-| `user`        | `String`   | Account address                                                                                                          |
-| `fillPrice`   | `String`   | Execution price                                                                                                          |
-| `fillSize`    | `String`   | Filled size (positive = buy, negative = sell)                                                                            |
-| `closingSize` | `String`   | Portion that closed existing position                                                                                    |
-| `openingSize` | `String`   | Portion that opened new position                                                                                         |
-| `realizedPnl` | `String`   | PnL realized on this fill, including funding settled on the pre-existing position; excludes trading fees                 |
-| `fee`         | `String`   | Trading fee charged                                                                                                      |
-| `createdAt`   | `String`   | Timestamp (ISO 8601)                                                                                                     |
-| `blockHeight` | `Int`      | Block in which the trade occurred                                                                                        |
-| `tradeIdx`    | `Int`      | Index within the block                                                                                                   |
-| `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0                    |
+| Field         | Type       | Description                                                                                              |
+| ------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
+| `orderId`     | `String`   | Order ID that produced this fill                                                                         |
+| `pairId`      | `String`   | Trading pair                                                                                             |
+| `user`        | `String`   | Account address                                                                                          |
+| `fillPrice`   | `String`   | Execution price                                                                                          |
+| `fillSize`    | `String`   | Filled size (positive = buy, negative = sell)                                                            |
+| `closingSize` | `String`   | Portion that closed existing position                                                                    |
+| `openingSize` | `String`   | Portion that opened new position                                                                         |
+| `realizedPnl` | `String`   | PnL realized on this fill, including funding settled on the pre-existing position; excludes trading fees |
+| `fee`         | `String`   | Trading fee charged                                                                                      |
+| `createdAt`   | `String`   | Timestamp (ISO 8601)                                                                                     |
+| `blockHeight` | `Int`      | Block in which the trade occurred                                                                        |
+| `tradeIdx`    | `Int`      | Index within the block                                                                                   |
+| `isMaker`     | `Boolean?` | True for the maker side of a match, false for the taker side; null for trades executed before v0.16.0    |
 
 ### 8.3 Contract query polling
 
@@ -2200,11 +2200,11 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                                                          | Description                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| Event             | Fields                                                                                                                                                       | Description                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
 | `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                        | Limit order placed on book      |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                     | Order removed from book         |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                                     | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                                  | Order removed from book         |
 
 `client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
 
