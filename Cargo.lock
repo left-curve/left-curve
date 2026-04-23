@@ -5489,12 +5489,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "037711b3d59c33004d3856fbdc83b99d4ff37a24768fa1be9ce3538a1cde4393"
 
 [[package]]
-name = "futures-timer"
-version = "3.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f288b0a4f20f9a56b5d1da57e2227c661b7b16168e2f72365f57b63326e29b24"
-
-[[package]]
 name = "futures-util"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5652,25 +5646,6 @@ checksum = "7a818c0d883d7c0801df27be910917750932be279c7bc82dc541b8769425f409"
 dependencies = [
  "combine",
  "thiserror 1.0.69",
-]
-
-[[package]]
-name = "graphql-ws-client"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4855443d93653e3b7a0378cf65eb680098600dfd2319a663ea45e49240084ec6"
-dependencies = [
- "async-channel 2.5.0",
- "futures-lite",
- "futures-sink",
- "futures-timer",
- "graphql_client",
- "log",
- "pin-project 1.1.11",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tungstenite 0.28.0",
 ]
 
 [[package]]
@@ -6861,7 +6836,6 @@ dependencies = [
  "dango-types",
  "error-backtrace",
  "futures",
- "graphql-ws-client",
  "graphql_client",
  "grug",
  "grug-testing",
@@ -6872,6 +6846,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tendermint-rpc",
+ "thiserror 2.0.18",
  "tokio",
  "tokio-tungstenite 0.28.0",
  "tracing",

@@ -1,10 +1,14 @@
 use {
     crate::Variables,
     anyhow::bail,
+    futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     graphql_client::{GraphQLQuery, Response},
-    graphql_ws_client::{Client, graphql::StreamingOperation},
-    std::time::Duration,
-    tokio_tungstenite::tungstenite::{client::IntoClientRequest, http::HeaderValue},
+    serde::{Deserialize, Serialize},
+    std::{pin::Pin, time::Duration},
+    tokio_tungstenite::{
+        connect_async,
+        tungstenite::{Message, client::IntoClientRequest, http::HeaderValue},
+    },
     url::Url,
 };
 
@@ -12,16 +16,69 @@ use {
 /// or idle subscriptions are dropped with close code 3008.
 const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(15);
 
+const SUBSCRIPTION_ID: &str = "1";
+const CHANNEL_CAPACITY: usize = 32;
+
+/// Errors surfaced on a [`SubscriptionStream`].
+#[derive(Debug, thiserror::Error)]
+pub enum WsError {
+    #[error("WebSocket connection closed: {0}")]
+    Closed(String),
+    #[error("WebSocket transport error: {0}")]
+    Transport(String),
+    #[error("subscription returned error: {0}")]
+    Subscription(serde_json::Value),
+    #[error("failed to decode message: {0}")]
+    Decode(String),
+}
+
 /// A WebSocket client for GraphQL subscriptions.
+///
+/// Implements the `graphql-transport-ws` protocol directly on top of
+/// [`tokio_tungstenite`] so that `ping` messages are sent on a fixed schedule
+/// regardless of inbound traffic — required because `async-graphql` only
+/// resets its `keepalive_timeout` when it receives a client protocol message.
 #[derive(Debug, Clone)]
 pub struct WsClient {
     url: Url,
 }
 
 /// Type alias for the subscription stream returned by the client.
-pub type SubscriptionStream<T> = std::pin::Pin<
-    Box<dyn futures::Stream<Item = Result<Response<T>, graphql_ws_client::Error>> + Send>,
->;
+pub type SubscriptionStream<T> = Pin<Box<dyn Stream<Item = Result<Response<T>, WsError>> + Send>>;
+
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum ClientMessage<'a> {
+    ConnectionInit,
+    Subscribe {
+        id: &'a str,
+        payload: serde_json::Value,
+    },
+    Ping,
+    Pong,
+    Complete {
+        id: &'a str,
+    },
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum ServerMessage {
+    ConnectionAck,
+    Ping,
+    Pong,
+    Next {
+        id: String,
+        payload: serde_json::Value,
+    },
+    Error {
+        id: String,
+        payload: serde_json::Value,
+    },
+    Complete {
+        id: String,
+    },
+}
 
 impl WsClient {
     /// Create a new WebSocket client.
@@ -31,7 +88,6 @@ impl WsClient {
         let url_str = url.into();
         let url = Url::parse(&url_str)?;
 
-        // Validate the URL scheme
         match url.scheme() {
             "ws" | "wss" => {},
             scheme => bail!("Invalid URL scheme: {scheme}. Expected ws:// or wss://"),
@@ -47,7 +103,6 @@ impl WsClient {
         let url_str = url.into();
         let mut url = Url::parse(&url_str)?;
 
-        // Convert HTTP scheme to WebSocket scheme
         match url.scheme() {
             "http" => url
                 .set_scheme("ws")
@@ -105,7 +160,6 @@ impl WsClient {
     {
         let mut request = self.url.as_str().into_client_request()?;
 
-        // Set the required WebSocket protocol header for GraphQL
         request.headers_mut().insert(
             "Sec-WebSocket-Protocol",
             HeaderValue::from_static("graphql-transport-ws"),
@@ -114,29 +168,183 @@ impl WsClient {
         #[cfg(feature = "tracing")]
         tracing::debug!("Connecting to WebSocket: {}", self.url);
 
-        let (connection, _response) =
-            tokio_tungstenite::connect_async(request)
-                .await
-                .map_err(|e| {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!("WebSocket connection failed: {e}");
-                    anyhow::anyhow!("WebSocket connection failed: {e}")
-                })?;
-
-        #[cfg(feature = "tracing")]
-        tracing::debug!("WebSocket connected, building client");
-
-        let subscription = Client::build(connection)
-            .keep_alive_interval(KEEP_ALIVE_INTERVAL)
-            .subscribe(StreamingOperation::<Q>::new(variables))
+        let (ws, _response) = connect_async(request)
             .await
-            .map_err(|e| anyhow::anyhow!("Subscription failed: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("WebSocket connection failed: {e}"))?;
+
+        let (mut sink, mut stream) = ws.split();
+
+        sink.send(Message::text(serde_json::to_string(
+            &ClientMessage::ConnectionInit,
+        )?))
+        .await
+        .map_err(|e| anyhow::anyhow!("failed to send connection_init: {e}"))?;
+
+        // Wait for `connection_ack`, responding to any `ping` in between.
+        loop {
+            match stream.next().await {
+                Some(Ok(Message::Text(txt))) => {
+                    match serde_json::from_str::<ServerMessage>(&txt)? {
+                        ServerMessage::ConnectionAck => break,
+                        ServerMessage::Ping => {
+                            sink.send(Message::text(serde_json::to_string(&ClientMessage::Pong)?))
+                                .await?;
+                        },
+                        _ => bail!("unexpected message before connection_ack: {txt}"),
+                    }
+                },
+                Some(Ok(Message::Ping(data))) => {
+                    sink.send(Message::Pong(data)).await?;
+                },
+                Some(Ok(_)) => {},
+                Some(Err(e)) => bail!("WebSocket error before connection_ack: {e}"),
+                None => bail!("WebSocket closed before connection_ack"),
+            }
+        }
+
+        let body = Q::build_query(variables);
+        let payload = serde_json::json!({
+            "query": body.query,
+            "variables": body.variables,
+            "operationName": body.operation_name,
+        });
+
+        sink.send(Message::text(serde_json::to_string(
+            &ClientMessage::Subscribe {
+                id: SUBSCRIPTION_ID,
+                payload,
+            },
+        )?))
+        .await
+        .map_err(|e| anyhow::anyhow!("failed to send subscribe: {e}"))?;
 
         #[cfg(feature = "tracing")]
         tracing::debug!("Subscription established");
 
-        Ok(Box::pin(subscription))
+        let (tx, rx) =
+            mpsc::channel::<Result<Response<Q::ResponseData>, WsError>>(CHANNEL_CAPACITY);
+
+        tokio::spawn(run_subscription::<Q>(sink, stream, tx));
+
+        Ok(Box::pin(rx))
     }
+}
+
+async fn run_subscription<Q>(
+    mut sink: futures::stream::SplitSink<
+        tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+        Message,
+    >,
+    mut stream: futures::stream::SplitStream<
+        tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+    >,
+    mut tx: mpsc::Sender<Result<Response<Q::ResponseData>, WsError>>,
+) where
+    Q: GraphQLQuery + Unpin + Send + Sync + 'static,
+    Q::ResponseData: Unpin + Send + Sync + 'static,
+{
+    let mut ping_interval = tokio::time::interval(KEEP_ALIVE_INTERVAL);
+    // First tick fires immediately; skip it so we don't ping right after subscribe.
+    ping_interval.tick().await;
+
+    let ping_payload = serde_json::to_string(&ClientMessage::Ping)
+        .expect("serializing unit enum variant never fails");
+    let pong_payload = serde_json::to_string(&ClientMessage::Pong)
+        .expect("serializing unit enum variant never fails");
+    let complete_payload = serde_json::to_string(&ClientMessage::Complete {
+        id: SUBSCRIPTION_ID,
+    })
+    .expect("serializing Complete never fails");
+
+    loop {
+        tokio::select! {
+            _ = ping_interval.tick() => {
+                if sink.send(Message::text(ping_payload.clone())).await.is_err() {
+                    break;
+                }
+            }
+            msg = stream.next() => {
+                match msg {
+                    Some(Ok(Message::Text(txt))) => {
+                        let decoded: ServerMessage = match serde_json::from_str(&txt) {
+                            Ok(m) => m,
+                            Err(e) => {
+                                let _ = tx.send(Err(WsError::Decode(e.to_string()))).await;
+                                break;
+                            },
+                        };
+
+                        match decoded {
+                            ServerMessage::Next { id, payload } => {
+                                if id != SUBSCRIPTION_ID {
+                                    continue;
+                                }
+                                match serde_json::from_value::<Response<Q::ResponseData>>(payload) {
+                                    Ok(resp) => {
+                                        if tx.send(Ok(resp)).await.is_err() {
+                                            break;
+                                        }
+                                    },
+                                    Err(e) => {
+                                        let _ =
+                                            tx.send(Err(WsError::Decode(e.to_string()))).await;
+                                        break;
+                                    },
+                                }
+                            },
+                            ServerMessage::Error { id, payload } => {
+                                if id != SUBSCRIPTION_ID {
+                                    continue;
+                                }
+                                let _ = tx.send(Err(WsError::Subscription(payload))).await;
+                                break;
+                            },
+                            ServerMessage::Complete { id } => {
+                                if id == SUBSCRIPTION_ID {
+                                    break;
+                                }
+                            },
+                            ServerMessage::Ping => {
+                                if sink
+                                    .send(Message::text(pong_payload.clone()))
+                                    .await
+                                    .is_err()
+                                {
+                                    break;
+                                }
+                            },
+                            ServerMessage::Pong | ServerMessage::ConnectionAck => {},
+                        }
+                    },
+                    Some(Ok(Message::Ping(data))) => {
+                        if sink.send(Message::Pong(data)).await.is_err() {
+                            break;
+                        }
+                    },
+                    Some(Ok(Message::Close(frame))) => {
+                        let reason = frame
+                            .map(|f| format!("{} (code {})", f.reason, u16::from(f.code)))
+                            .unwrap_or_else(|| "no close frame".to_string());
+                        let _ = tx.send(Err(WsError::Closed(reason))).await;
+                        break;
+                    },
+                    Some(Ok(_)) => {},
+                    Some(Err(e)) => {
+                        let _ = tx.send(Err(WsError::Transport(e.to_string()))).await;
+                        break;
+                    },
+                    None => break,
+                }
+            }
+        }
+    }
+
+    let _ = sink.send(Message::text(complete_payload)).await;
+    let _ = sink.close().await;
 }
 
 /// Helper trait for subscription variables with an associated subscription type.
@@ -174,6 +382,3 @@ impl SubscriptionVariables for crate::subscribe_trades::Variables {}
 impl SubscriptionVariables for crate::subscribe_query_app::Variables {}
 impl SubscriptionVariables for crate::subscribe_query_store::Variables {}
 impl SubscriptionVariables for crate::subscribe_query_status::Variables {}
-
-// Re-export graphql_ws_client types that users might need
-pub use graphql_ws_client::Error as WsError;
