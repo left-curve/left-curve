@@ -1,0 +1,143 @@
+---
+# swap-points-bot-app-db.yml — Swap db/app from a reindexed source to a target
+# points-bot instance on the same host.
+#
+# The target's existing db/app is renamed to db/app.old.<timestamp> (kept as
+# an escape hatch). The source's db/app is copied in its place. db/httpd on
+# both sides is untouched.
+#
+# Both containers are stopped during the swap and both restarted at the end.
+# The source is re-copied (not moved) so restarting it is safe — it keeps
+# running with its own db/app. After a "real" swap (backup → mainnet), stop
+# the source manually (`just stop-points-bot <source>`) to retire the clone.
+#
+# Usage:
+#   just swap-points-bot-app-db mainnet-backup mainnet
+#
+#   ansible-playbook swap-points-bot-app-db.yml \
+#     -e source_network=mainnet-backup \
+#     -e target_network=mainnet \
+#     --limit points-bot-mainnet
+#
+# Variables:
+#   source_network (required): network whose db/app replaces the target's
+#   target_network (required): production network receiving the new app
+#                              Must live on the same host as source.
+
+- hosts: "points-bot-{{ target_network }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  remote_user: deploy
+  collections:
+    - community.docker
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+    - name: Validate inputs
+      assert:
+        that:
+          - source_network is defined
+          - target_network is defined
+          - source_network != target_network
+        fail_msg: "source_network and target_network must be defined and different"
+  vars:
+    points_bot_dir: "{{ deploy_home }}/points-bot"
+    points_bot_alpine_image: "alpine:3.20"
+  tasks:
+    - name: Compute archive timestamp
+      set_fact:
+        _swap_ts: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
+
+    - name: Verify source db/app exists
+      stat:
+        path: "{{ points_bot_dir }}/{{ source_network }}/db/app"
+      register: _src_app
+
+    - name: Verify target db/app exists
+      stat:
+        path: "{{ points_bot_dir }}/{{ target_network }}/db/app"
+      register: _tgt_app
+
+    - name: Abort if source app missing
+      fail:
+        msg: "Source app not found at {{ points_bot_dir }}/{{ source_network }}/db/app"
+      when: not _src_app.stat.exists
+
+    - name: Abort if target app missing
+      fail:
+        msg: "Target app not found at {{ points_bot_dir }}/{{ target_network }}/db/app"
+      when: not _tgt_app.stat.exists
+
+    - name: Measure source app
+      command: "du -sh {{ points_bot_dir }}/{{ source_network }}/db/app"
+      register: _src_size
+      changed_when: false
+
+    - name: Measure target app
+      command: "du -sh {{ points_bot_dir }}/{{ target_network }}/db/app"
+      register: _tgt_size
+      changed_when: false
+
+    - name: Show swap plan
+      pause:
+        prompt: |-
+          Swap plan (same-host):
+            Source app:    {{ source_network }} ({{ _src_size.stdout.split('\t')[0] }}) — will be copied into target
+            Target app:    {{ target_network }} ({{ _tgt_size.stdout.split('\t')[0] }}) — will be renamed to db/app.old.{{ _swap_ts }}
+            Target httpd:  untouched
+            Downtime:      target stopped during copy (local SSD cp)
+            Rollback:      just rollback-points-bot-app-db {{ target_network }}
+
+          Press ENTER to proceed or Ctrl+C to abort.
+
+    - block:
+        - name: Stop target container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ target_network }}"
+            state: stopped
+            pull: never
+
+        - name: Stop source container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ source_network }}"
+            state: stopped
+            pull: never
+
+        - name: Archive target app and copy source app into target (via root container)
+          command: >-
+            docker run --rm
+            -v {{ points_bot_dir }}:/pb
+            {{ points_bot_alpine_image }}
+            sh -c "mv /pb/{{ target_network }}/db/app /pb/{{ target_network }}/db/app.old.{{ _swap_ts }} &&
+                   cp -a /pb/{{ source_network }}/db/app /pb/{{ target_network }}/db/app"
+
+        - name: Restart target container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ target_network }}"
+            state: present
+            recreate: always
+            pull: never
+
+      always:
+        # Always restart source even if the copy or target restart failed — source's
+        # db/app is read-only during the swap, so restarting it is always safe.
+        - name: Restart source container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ source_network }}"
+            state: present
+            pull: never
+            wait: false
+
+    - name: Swap complete
+      debug:
+        msg: |-
+          Swap complete.
+            Target:        {{ target_network }} restarted with new app (catching up any missed blocks)
+            Archived app:  {{ points_bot_dir }}/{{ target_network }}/db/app.old.{{ _swap_ts }}
+            Source:        {{ source_network }} also restarted (stop manually to retire: just stop-points-bot {{ source_network }})
+            Rollback:      just rollback-points-bot-app-db {{ target_network }}

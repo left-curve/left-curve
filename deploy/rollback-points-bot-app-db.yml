@@ -1,0 +1,123 @@
+---
+# rollback-points-bot-app-db.yml — Restore a points-bot db/app from an
+# app.old.<timestamp> archive left by swap-points-bot-app-db.yml.
+#
+# Finds app.old.* archives in the target's db directory. If `rollback_ts` is
+# provided, restores that specific one; otherwise restores the most recent.
+# The current db/app is rotated to db/app.replaced.<timestamp> so the
+# rollback itself is also reversible.
+#
+# Usage:
+#   just rollback-points-bot-app-db mainnet
+#   just rollback-points-bot-app-db mainnet 20260415123045
+#
+#   ansible-playbook rollback-points-bot-app-db.yml \
+#     -e target_network=mainnet \
+#     [-e rollback_ts=20260415123045] \
+#     --limit points-bot-mainnet
+#
+# Variables:
+#   target_network (required): network to roll back
+#   rollback_ts    (optional): specific app.old.<ts> timestamp to restore
+
+- hosts: "points-bot-{{ target_network }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  remote_user: deploy
+  collections:
+    - community.docker
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+    - name: Validate inputs
+      assert:
+        that:
+          - target_network is defined
+        fail_msg: "target_network must be defined"
+  vars:
+    points_bot_dir: "{{ deploy_home }}/points-bot"
+    points_bot_alpine_image: "alpine:3.20"
+  tasks:
+    - name: Find app.old.* archives
+      find:
+        paths: "{{ points_bot_dir }}/{{ target_network }}/db"
+        patterns: "app.old.*"
+        file_type: directory
+      register: _archives
+
+    - name: Abort if no archives found
+      fail:
+        msg: "No app.old.* archives found in {{ points_bot_dir }}/{{ target_network }}/db"
+      when: _archives.files | length == 0
+
+    - name: Pick archive to restore
+      set_fact:
+        _restore_path: >-
+          {%- if rollback_ts | default('') | length > 0 -%}
+          {{ points_bot_dir }}/{{ target_network }}/db/app.old.{{ rollback_ts }}
+          {%- else -%}
+          {{ (_archives.files | sort(attribute='path') | last).path }}
+          {%- endif -%}
+
+    - name: Verify chosen archive exists
+      stat:
+        path: "{{ _restore_path }}"
+      register: _restore_stat
+
+    - name: Abort if chosen archive missing
+      fail:
+        msg: "Archive not found: {{ _restore_path }}"
+      when: not _restore_stat.stat.exists
+
+    - name: Compute replaced timestamp
+      set_fact:
+        _replaced_ts: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
+        _restore_basename: "{{ _restore_path | basename }}"
+
+    - name: Check if current app exists
+      stat:
+        path: "{{ points_bot_dir }}/{{ target_network }}/db/app"
+      register: _current_app
+
+    - name: Show rollback plan
+      pause:
+        prompt: |-
+          Rollback plan:
+            Target:           {{ target_network }}
+            Archives found:   {{ _archives.files | length }}
+            Restoring from:   {{ _restore_path }}
+            Current app:      {{ 'present — will be rotated to db/app.replaced.' ~ _replaced_ts if _current_app.stat.exists else 'absent' }}
+
+          Press ENTER to proceed or Ctrl+C to abort.
+
+    - name: Stop target container
+      community.docker.docker_compose_v2:
+        project_src: "{{ points_bot_dir }}/{{ target_network }}"
+        state: stopped
+        pull: never
+
+    - name: Rotate current app and restore archive (via root container)
+      command: >-
+        docker run --rm
+        -v {{ points_bot_dir }}:/pb
+        {{ points_bot_alpine_image }}
+        sh -c "{% if _current_app.stat.exists %}mv /pb/{{ target_network }}/db/app /pb/{{ target_network }}/db/app.replaced.{{ _replaced_ts }} && {% endif %}mv /pb/{{ target_network }}/db/{{ _restore_basename }} /pb/{{ target_network }}/db/app"
+
+    - name: Restart target container
+      community.docker.docker_compose_v2:
+        project_src: "{{ points_bot_dir }}/{{ target_network }}"
+        state: present
+        recreate: always
+        pull: never
+
+    - name: Rollback complete
+      debug:
+        msg: |-
+          Rollback complete.
+            Target:        {{ target_network }} restarted from {{ _restore_basename }}
+            {% if _current_app.stat.exists %}Previous app:  {{ points_bot_dir }}/{{ target_network }}/db/app.replaced.{{ _replaced_ts }}{% endif %}

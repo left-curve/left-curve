@@ -105,10 +105,14 @@ deploy_user="deploy"
 [points-bot-mainnet]
 100.126.8.2    # hetzner1
 
+[points-bot-mainnet-backup]
+100.126.8.2    # hetzner1
+
 [points-bot:children]
 points-bot-devnet
 points-bot-testnet
 points-bot-mainnet
+points-bot-mainnet-backup
 
 [perps-bot]
 100.126.8.2    # hetzner1

@@ -6,8 +6,8 @@ services:
     restart: always
     command: ["points", "start"]
     environment:
-      - oat_provider__type={{ points_bot_oat_providers[network].type }}
-      - oat_provider__api_key={{ points_bot_oat_providers[network].api_key }}
+      - oat_provider__type={{ points_bot_oat_providers[points_bot_source_network].type }}
+      - oat_provider__api_key={{ points_bot_oat_providers[points_bot_source_network].api_key }}
     ports:
       - "{{ points_bot_metrics_ports[network] }}:8080"
     volumes:

@@ -10,7 +10,7 @@
 
 - name: "{{ network }} - Template config.json"
   template:
-    src: "{{ network }}/config.json.j2"
+    src: "{{ points_bot_source_network }}/config.json.j2"
     dest: "{{ points_bot_dir }}/{{ network }}/config.json"
     mode: "0644"
 

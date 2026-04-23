@@ -155,6 +155,37 @@ drop-all-dbs-points-bot network tag="latest":
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-all-dbs-points-bot.log
 
+# Seed a clone instance's db/httpd from a live source on the same host.
+# Source is stopped only during the local cp and restarted immediately.
+# Target container (if deployed) is stopped and left stopped — deploy it afterwards.
+# No tee: the playbook uses an interactive pause: prompt that needs direct stdout.
+# Usage: just seed-points-bot-httpd mainnet mainnet-backup
+seed-points-bot-httpd source target:
+  ansible-playbook seed-points-bot-httpd.yml \
+    -e source_network={{source}} \
+    -e target_network={{target}} \
+    --limit points-bot-{{target}}
+
+# Swap db/app from a reindexed source into a target on the same host.
+# Target's old db/app is kept as db/app.old.<ts> as an escape hatch.
+# No tee: the playbook uses an interactive pause: prompt that needs direct stdout.
+# Usage: just swap-points-bot-app-db mainnet-backup mainnet
+swap-points-bot-app-db source target:
+  ansible-playbook swap-points-bot-app-db.yml \
+    -e source_network={{source}} \
+    -e target_network={{target}} \
+    --limit points-bot-{{target}}
+
+# Roll a target's db/app back to the most recent app.old.<ts> archive
+# left by a prior swap. Pass an explicit timestamp to pick a specific one.
+# No tee: the playbook uses an interactive pause: prompt that needs direct stdout.
+# Usage: just rollback-points-bot-app-db mainnet
+#        just rollback-points-bot-app-db mainnet 20260415123045
+rollback-points-bot-app-db target ts="":
+  ansible-playbook rollback-points-bot-app-db.yml \
+    -e target_network={{target}} \
+    -e rollback_ts={{ts}} \
+    --limit points-bot-{{target}}
 
 # -------------------------------- Perps Bot ----------------------------------
 

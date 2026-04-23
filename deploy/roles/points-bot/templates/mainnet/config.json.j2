@@ -64,7 +64,7 @@
     "epoch_vault_points": "250000",
     "leaderboard_timeframes": [1, 2, 4],
     "reset_perps_at_block": 17709888,
-    "blacklist": {{ (points_bot_blacklist[network] | default([])) | to_nice_json(indent=2) | indent(4) }}
+    "blacklist": {{ (points_bot_blacklist[points_bot_source_network] | default([])) | to_nice_json(indent=2) | indent(4) }}
   },
   "http_url": "https://api-mainnet-hetzner1.dango.zone",
   "httpd": {
@@ -77,7 +77,7 @@
   "referral": {
     "direct_share": "0.2",
     "indirect_share": "0.05",
-    "referral_boosts": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }}
+    "referral_boosts": {{ (points_bot_referral_boosts[points_bot_source_network] | default({})) | to_nice_json(indent=2) | indent(4) }}
   },
-  "compensation": {{ (points_bot_compensation[network] | default({})) | to_nice_json(indent=2) | indent(2) }}
+  "compensation": {{ (points_bot_compensation[points_bot_source_network] | default({})) | to_nice_json(indent=2) | indent(2) }}
 }

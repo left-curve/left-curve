@@ -63,7 +63,7 @@
     "epoch_perps_share": "750000",
     "epoch_vault_points": "250000",
     "leaderboard_timeframes": [1, 2, 4],
-    "blacklist": {{ (points_bot_blacklist[network] | default([])) | to_nice_json(indent=2) | indent(4) }}
+    "blacklist": {{ (points_bot_blacklist[points_bot_source_network] | default([])) | to_nice_json(indent=2) | indent(4) }}
   },
   "http_url": "https://api-devnet.dango.zone",
   "httpd": {
@@ -76,6 +76,6 @@
   "referral": {
     "direct_share": "0.2",
     "indirect_share": "0.05",
-    "referral_boosts": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }}
+    "referral_boosts": {{ (points_bot_referral_boosts[points_bot_source_network] | default({})) | to_nice_json(indent=2) | indent(4) }}
   }
 }

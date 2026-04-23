@@ -3,10 +3,21 @@ points_bot_dir: "{{ deploy_home }}/points-bot"
 points_bot_image: "ghcr.io/left-curve/bots/points"
 points_bot_tag: "latest"
 points_bot_networks: []
+# Maps an instance network name to the network whose config template and
+# per-network secrets/settings should be used. Useful for clone instances
+# (e.g. mainnet-backup shares mainnet's config/OAT provider/compensation).
+# Lookups that fall outside the map default to the instance's own network.
+points_bot_source_network_map:
+  mainnet-backup: mainnet
+points_bot_source_network: "{{ points_bot_source_network_map[network] | default(network) }}"
 points_bot_metrics_ports:
   devnet: 9300
   testnet: 9301
   mainnet: 9302
+  mainnet-backup: 9303
 points_bot_referral_boosts: {}
 points_bot_compensation: {}
 points_bot_blacklist: {}
+# Used for root-privileged filesystem operations on docker-owned files
+# (seed httpd, swap app, rollback). Any small image with coreutils/sh works.
+points_bot_alpine_image: "alpine:3.20"

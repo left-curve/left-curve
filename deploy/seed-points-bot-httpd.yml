@@ -1,0 +1,134 @@
+---
+# seed-points-bot-httpd.yml — Seed httpd DB on a points-bot clone instance.
+#
+# Copies db/httpd from a live source network to a target network living on
+# the same host. Used to prepare a mainnet-backup instance for reindex:
+# its db/httpd must match production (user registrations, OAT cache, etc.)
+# while db/app is reindexed from scratch.
+#
+# The source container is stopped only for the duration of the copy
+# (seconds on local SSD) and restarted immediately in the always: block.
+# The target container is stopped first (if already deployed) so that a
+# subsequent deploy starts cleanly with the seeded httpd + empty app.
+#
+# Usage:
+#   just seed-points-bot-httpd mainnet mainnet-backup
+#
+#   ansible-playbook seed-points-bot-httpd.yml \
+#     -e source_network=mainnet \
+#     -e target_network=mainnet-backup \
+#     --limit points-bot-mainnet-backup
+#
+# Variables:
+#   source_network (required): network whose db/httpd is copied (e.g. mainnet)
+#   target_network (required): network that receives the copy (e.g. mainnet-backup)
+#                              Must live on the same host as source.
+
+- hosts: "points-bot-{{ target_network }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  remote_user: deploy
+  collections:
+    - community.docker
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+    - name: Validate inputs
+      assert:
+        that:
+          - source_network is defined
+          - target_network is defined
+          - source_network != target_network
+        fail_msg: "source_network and target_network must be defined and different"
+  vars:
+    points_bot_dir: "{{ deploy_home }}/points-bot"
+    points_bot_alpine_image: "alpine:3.20"
+  tasks:
+    - name: Verify source db/httpd exists
+      stat:
+        path: "{{ points_bot_dir }}/{{ source_network }}/db/httpd"
+      register: _src_httpd
+
+    - name: Abort if source httpd missing
+      fail:
+        msg: "Source httpd not found at {{ points_bot_dir }}/{{ source_network }}/db/httpd"
+      when: not _src_httpd.stat.exists
+
+    - name: Measure source httpd size
+      command: "du -sh {{ points_bot_dir }}/{{ source_network }}/db/httpd"
+      register: _src_size
+      changed_when: false
+
+    - name: Show seed plan
+      pause:
+        prompt: |-
+          Seed plan (same-host copy):
+            Source:        {{ source_network }} ({{ points_bot_dir }}/{{ source_network }}/db/httpd, {{ _src_size.stdout.split('\t')[0] }})
+            Target:        {{ target_network }} ({{ points_bot_dir }}/{{ target_network }}/db)
+            Note:          target db/* will be wiped and replaced with a fresh copy of source httpd
+            Source stop:   brief (local SSD cp)
+            Target state:  will be left STOPPED — run `just deploy-points-bot {{ target_network }}` afterwards
+
+          Press ENTER to proceed or Ctrl+C to abort.
+
+    - name: Ensure target network directory exists (as deploy user)
+      file:
+        path: "{{ points_bot_dir }}/{{ target_network }}/db"
+        state: directory
+        mode: "0755"
+
+    - name: Check if target compose exists
+      stat:
+        path: "{{ points_bot_dir }}/{{ target_network }}/docker-compose.yml"
+      register: _target_compose
+
+    - name: Stop target container (if already deployed)
+      community.docker.docker_compose_v2:
+        project_src: "{{ points_bot_dir }}/{{ target_network }}"
+        state: stopped
+        pull: never
+      when: _target_compose.stat.exists
+
+    - block:
+        - name: Stop source container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ source_network }}"
+            services: ["points"]
+            state: stopped
+            pull: never
+
+        - name: Wipe target db/* and copy source httpd (via root container)
+          command: >-
+            docker run --rm
+            -v {{ points_bot_dir }}:/pb
+            {{ points_bot_alpine_image }}
+            sh -c "rm -rf /pb/{{ target_network }}/db/* &&
+                   cp -a /pb/{{ source_network }}/db/httpd /pb/{{ target_network }}/db/httpd"
+
+      always:
+        - name: Restart source container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ source_network }}"
+            services: ["points"]
+            state: present
+            recreate: always
+            pull: never
+            wait: false
+
+    - name: Report target httpd size
+      command: "du -sh {{ points_bot_dir }}/{{ target_network }}/db/httpd"
+      register: _tgt_size
+      changed_when: false
+
+    - name: Seed complete
+      debug:
+        msg: |-
+          Seed complete.
+            Source httpd:  {{ _src_size.stdout.split('\t')[0] }}
+            Target httpd:  {{ _tgt_size.stdout.split('\t')[0] }}
+            Next step:     just deploy-points-bot {{ target_network }}
