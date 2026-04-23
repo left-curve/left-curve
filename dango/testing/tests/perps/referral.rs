@@ -7,13 +7,14 @@ use {
         constants::usdc,
         oracle::{self, PriceSource},
         perps::{
-            self, CommissionRate, FeeShareRatio, QueryParamRequest, Referee, ReferrerSettings,
-            ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
+            self, CommissionRate, FeeDistributed, FeeShareRatio, QueryParamRequest, Referee,
+            ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
         },
     },
     grug::{
-        Addr, Addressable, Coins, HashExt, NumberConst, Op, Order as IterationOrder, QuerierExt,
-        ResultExt, Signer, Timestamp, TxOutcome, Udec128, Uint128, btree_map,
+        Addr, Addressable, CheckedContractEvent, Coins, HashExt, JsonDeExt, NumberConst, Op,
+        Order as IterationOrder, QuerierExt, ResultExt, SearchEvent, Signer, Timestamp, TxOutcome,
+        Udec128, Uint128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -1516,6 +1517,205 @@ fn negative_maker_fee_does_not_debit_referrers() {
     );
 }
 
+/// A payer without a referrer still gets a `FeeDistributed` event with
+/// correct protocol_fee, vault_fee, and empty commissions.
+#[test]
+fn fee_distributed_event_without_referrer() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // Set protocol fee to 50%.
+    let mut param: perps::Param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+
+    param.protocol_fee_rate = Dimensionless::new_percent(50);
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+
+    // Trade without any referral relationship.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        UsdPrice::new_int(2_000),
+        1,
+    );
+    let events = place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1);
+
+    let fee_events: Vec<FeeDistributed> = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "fee_distributed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json().unwrap())
+        .collect();
+
+    // Maker fee is zero, so only the taker gets a FeeDistributed event.
+    assert_eq!(
+        fee_events.len(),
+        1,
+        "One FeeDistributed event must be emitted for the taker"
+    );
+
+    // Notional = 1 × $2,000 = $2,000. Taker fee = 0.1% = $2. Protocol fee = 50%.
+    // With no commissions: protocol_fee = $1, vault_fee = $1.
+    let expected_vault_fee = UsdValue::new_int(1);
+    let expected_protocol_fee = UsdValue::new_int(1);
+
+    let total_vault_fee: UsdValue = fee_events
+        .iter()
+        .map(|e| e.vault_fee)
+        .try_fold(UsdValue::ZERO, |acc, v| acc.checked_add(v))
+        .unwrap();
+    let total_protocol_fee: UsdValue = fee_events
+        .iter()
+        .map(|e| e.protocol_fee)
+        .try_fold(UsdValue::ZERO, |acc, v| acc.checked_add(v))
+        .unwrap();
+
+    assert_eq!(total_vault_fee, expected_vault_fee);
+    assert_eq!(total_protocol_fee, expected_protocol_fee);
+
+    for event in &fee_events {
+        assert!(event.commissions.is_empty());
+    }
+}
+
+/// A payer with a referrer gets a `FeeDistributed` event with correct
+/// protocol_fee, vault_fee (reduced by commissions), and commissions.
+#[test]
+fn fee_distributed_event_with_referrer() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // Set protocol fee to 50%.
+    let mut param: perps::Param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+
+    param.protocol_fee_rate = Dimensionless::new_percent(50);
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+
+    // User1 becomes a referrer with 20% share ratio.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(20),
+    )
+    .should_succeed();
+
+    // User2 sets User1 as referrer.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Set a known commission rate override for deterministic math.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
+                user: 1,
+                commission_rate: Op::Insert(CommissionRate::new_percent(50)),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User8 places ask (maker), User2 (referee) buys (taker).
+    // Notional = 1 × $2,000 = $2,000. Taker fee = 0.1% = $2.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user8,
+        UsdPrice::new_int(2_000),
+        1,
+    );
+    let events = place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1);
+
+    let fee_events: Vec<FeeDistributed> = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "fee_distributed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json().unwrap())
+        .collect();
+
+    // The taker (user2) has a referrer → non-empty commissions.
+    let taker_event = fee_events
+        .iter()
+        .find(|e| e.payer_addr == accounts.user2.address())
+        .expect("taker must have a FeeDistributed event");
+
+    // Notional = $2,000. Taker fee = 0.1% = $2.
+    // protocol_fee = $2 × 50% = $1. vault_fee (before commissions) = $1.
+    // commission_rate = 50%, share_ratio = 20%.
+    // total_commission = $1 × 50% = $0.50
+    // referee_share    = $0.50 × 20% = $0.10
+    // referrer_share   = $0.50 × 80% = $0.40
+    // vault_fee (after) = $1 − $0.50 = $0.50
+    let expected_protocol_fee = UsdValue::new_int(1);
+    let expected_vault_fee_before = UsdValue::new_int(1);
+    let expected_total_commission = expected_vault_fee_before
+        .checked_mul(CommissionRate::new_percent(50))
+        .unwrap();
+    let expected_referee_share = expected_total_commission
+        .checked_mul(Dimensionless::new_percent(20))
+        .unwrap();
+    let expected_referrer_share = expected_total_commission
+        .checked_sub(expected_referee_share)
+        .unwrap();
+    let expected_vault_fee = expected_vault_fee_before
+        .checked_sub(expected_total_commission)
+        .unwrap();
+
+    assert_eq!(taker_event.protocol_fee, expected_protocol_fee);
+    assert_eq!(taker_event.vault_fee, expected_vault_fee);
+    assert_eq!(taker_event.commissions.len(), 2);
+    assert_eq!(taker_event.commissions[0], expected_referee_share);
+    assert_eq!(taker_event.commissions[1], expected_referrer_share);
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -1647,6 +1847,32 @@ fn create_perps_fill(
         size,
     );
     place_market_buy(suite, perps, &mut accounts.user2, size);
+}
+
+fn place_market_buy_with_events(
+    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    user: &mut dyn Signer,
+    size: u128,
+) -> grug::TxEvents {
+    suite
+        .execute(
+            user,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: dango_testing::perps::pair_id(),
+                size: Quantity::new_int(size as i128),
+                kind: perps::OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .should_succeed()
+        .events
 }
 
 fn query_referral_settings(
