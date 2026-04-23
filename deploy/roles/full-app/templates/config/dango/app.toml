@@ -103,7 +103,7 @@ backlog = 2048
 keep_alive_secs = 5
 
 # Maximum time in seconds to wait for the client to send a complete request.
-client_request_timeout_secs = 2
+client_request_timeout_secs = 5
 
 # Maximum time in seconds to wait for the client to disconnect gracefully.
 client_disconnect_timeout_secs = 1
