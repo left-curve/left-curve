@@ -8,7 +8,7 @@ use {
             perps_candle_query::{PerpsCandleQueryBuilder, PerpsCandleResult},
             perps_pair_price::PerpsPairPrice,
         },
-        indexer::perps_candles::cache::PerpsCandleCache,
+        indexer::perps_candles::cache::{PerpsCandleCache, PerpsCandleCacheKey},
     },
     dango_testing::{
         Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
@@ -705,6 +705,92 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
     assert_that!(btc_candle.volume).is_equal_to(Udec128_6::new(1));
     // volume_usd = 1 * 60000 = 60000
     assert_that!(btc_candle.volume_usd).is_equal_to(Udec128_6::new(60_000));
+
+    Ok(())
+}
+
+/// Regression test: `preload_pairs` must rebuild the in-progress candle
+/// from `perps_pair_prices` in ClickHouse end-to-end. A prior bug in
+/// `PerpsPairPrice::since` bound `timestamp_micros()` into
+/// `toDateTime64(?, 6)`; ClickHouse treats integer inputs as seconds
+/// regardless of scale, so the bind saturated to the DateTime64 max
+/// (year 2299) and the predicate silently matched nothing — the rebuild
+/// ran on an empty prices vec (`replayed=0`) and the in-progress candle
+/// was lost on every restart.
+///
+/// The test uses a recent genesis timestamp so that block `created_at`
+/// values fall inside the current `earliest_current_bucket_start`
+/// window; with the 1970-based genesis used by the other tests the
+/// `since` filter would drop every row anyway, masking the regression.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_perps_candles_preload_rebuilds_current_bucket_from_clickhouse() -> anyhow::Result<()>
+{
+    // One hour ago — comfortably inside every current-bucket window,
+    // including the 1d and 1h intervals exercised below.
+    let genesis_secs = chrono::Utc::now().timestamp() as u128 - 3_600;
+
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer_and_custom_genesis(
+            TestOption {
+                genesis_block: BlockInfo {
+                    height: 0,
+                    timestamp: Timestamp::from_seconds(genesis_secs),
+                    hash: Hash256::ZERO,
+                },
+                ..Default::default()
+            },
+            dango_genesis::GenesisOption::preset_test(),
+        )
+        .await;
+
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000);
+
+    for _ in 0..5 {
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1);
+    }
+
+    suite.app.indexer.wait_for_finish().await?;
+
+    let ch = clickhouse_context.clickhouse_client();
+    let pair_ids = PerpsPairPrice::all_pair_ids(ch).await?;
+    assert_that!(pair_ids.is_empty()).is_false();
+
+    // Exactly the path `Context::preload_cache` takes at node startup.
+    let mut fresh_cache = PerpsCandleCache::default();
+    fresh_cache.preload_pairs(&pair_ids, ch).await?;
+
+    // With the broken `since` binding the 1d in-progress candle was never
+    // rebuilt: `replayed=0`, cache empty for the current bucket, and
+    // `get_last_candle` would return `None` (or a stale candle from a
+    // previous bucket). Assert the rebuild actually populated it.
+    for interval in [
+        CandleInterval::OneHour,
+        CandleInterval::FourHours,
+        CandleInterval::OneDay,
+    ] {
+        let key = PerpsCandleCacheKey::new(pair_id().to_string(), interval);
+        let candle = fresh_cache
+            .get_last_candle(&key)
+            .cloned()
+            .unwrap_or_else(|| {
+                panic!(
+                    "preload_pairs produced no {interval} candle for {}",
+                    pair_id()
+                )
+            });
+
+        // 5 fills * 1 event (positive side) * 1 ETH each.
+        assert_eq!(
+            candle.volume,
+            Udec128_6::new(5),
+            "{interval} candle volume mismatch after rebuild",
+        );
+        assert_eq!(
+            candle.volume_usd,
+            Udec128_6::new(10_000),
+            "{interval} candle volume_usd mismatch after rebuild",
+        );
+    }
 
     Ok(())
 }

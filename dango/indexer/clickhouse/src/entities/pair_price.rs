@@ -102,6 +102,11 @@ impl PairPrice {
     /// in-progress candle after an ungraceful shutdown (e.g. a panic triggered
     /// by a chain upgrade block) when the in-memory aggregation was lost
     /// before it could be flushed.
+    ///
+    /// Uses `fromUnixTimestamp64Micro` rather than `toDateTime64(?, 6)`:
+    /// ClickHouse's `toDateTime64` treats integer inputs as seconds
+    /// regardless of scale, so a microsecond-valued bind saturates to the
+    /// DateTime64 max (year 2299) and silently matches nothing.
     pub async fn since(
         clickhouse_client: &clickhouse::Client,
         base_denom: &str,
@@ -112,7 +117,7 @@ impl PairPrice {
             SELECT quote_denom, base_denom, clearing_price, volume_base, volume_quote,
                    created_at, block_height
             FROM pair_prices
-            WHERE quote_denom = ? AND base_denom = ? AND created_at >= toDateTime64(?, 6)
+            WHERE quote_denom = ? AND base_denom = ? AND created_at >= fromUnixTimestamp64Micro(?)
             ORDER BY block_height ASC
         "#;
 

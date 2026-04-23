@@ -85,6 +85,11 @@ impl PerpsPairPrice {
     /// in-progress candle after an ungraceful shutdown (e.g. a panic triggered
     /// by a chain upgrade block) when the in-memory aggregation was lost
     /// before it could be flushed.
+    ///
+    /// Uses `fromUnixTimestamp64Micro` rather than `toDateTime64(?, 6)`:
+    /// ClickHouse's `toDateTime64` treats integer inputs as seconds
+    /// regardless of scale, so a microsecond-valued bind saturates to the
+    /// DateTime64 max (year 2299) and silently matches nothing.
     pub async fn since(
         clickhouse_client: &clickhouse::Client,
         pair_id: &str,
@@ -93,7 +98,7 @@ impl PerpsPairPrice {
         let query = r#"
             SELECT pair_id, high, low, close, volume, volume_usd, created_at, block_height
             FROM perps_pair_prices
-            WHERE pair_id = ? AND created_at >= toDateTime64(?, 6)
+            WHERE pair_id = ? AND created_at >= fromUnixTimestamp64Micro(?)
             ORDER BY block_height ASC
         "#;
 

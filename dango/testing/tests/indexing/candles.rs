@@ -2,9 +2,12 @@ use {
     assertor::*,
     chrono::{DateTime, TimeDelta},
     dango_genesis::{Contracts, DexOption, GenesisOption},
-    dango_indexer_clickhouse::entities::{
-        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
-        pair_price_query::PairPriceQueryBuilder,
+    dango_indexer_clickhouse::{
+        entities::{
+            CandleInterval, candle::Candle, candle_query::CandleQueryBuilder,
+            pair_price::PairPrice, pair_price_query::PairPriceQueryBuilder,
+        },
+        indexer::candles::cache::{CandleCache, CandleCacheKey},
     },
     dango_testing::{
         Preset, TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
@@ -752,6 +755,86 @@ async fn create_pair_prices(
         .for_each(|outcome| {
             outcome.should_succeed();
         });
+
+    Ok(())
+}
+
+/// Regression test: `CandleCache::preload_pairs` must rebuild the
+/// in-progress candle from `pair_prices` in ClickHouse end-to-end.
+/// A prior bug in `PairPrice::since` bound `timestamp_micros()` into
+/// `toDateTime64(?, 6)`; ClickHouse treats integer inputs to
+/// `toDateTime64` as seconds regardless of scale, so the bind saturated
+/// to the DateTime64 max (year 2299) and the predicate silently matched
+/// nothing — the rebuild ran on an empty prices vec (`replayed=0`) and
+/// the in-progress candle was lost on every restart.
+///
+/// Uses a recent genesis timestamp so block `created_at` values fall
+/// inside the current `earliest_current_bucket_start` window; with the
+/// 1971-based default (`MOCK_GENESIS_TIMESTAMP`) the per-interval
+/// `created_at >= start` filter in `rebuild_in_progress_from_prices`
+/// drops every row even when `since` is fixed, masking the regression.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_candles_preload_rebuilds_current_bucket_from_clickhouse() -> anyhow::Result<()> {
+    let genesis_secs = chrono::Utc::now().timestamp() as u128 - 3_600;
+
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer_and_custom_genesis(
+            TestOption {
+                genesis_block: BlockInfo {
+                    height: 0,
+                    timestamp: Timestamp::from_seconds(genesis_secs),
+                    hash: Hash256::ZERO,
+                },
+                ..Default::default()
+            },
+            GenesisOption::preset_test(),
+        )
+        .await;
+
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+    suite.app.indexer.wait_for_finish().await?;
+
+    let ch = clickhouse_context.clickhouse_client();
+    let pairs = PairPrice::all_pairs(ch).await?;
+    assert_that!(pairs.is_empty()).is_false();
+
+    // Exactly the path `Context::preload_cache` takes at node startup.
+    let mut fresh_cache = CandleCache::default();
+    fresh_cache.preload_pairs(&pairs, ch).await?;
+
+    // With the broken `since` binding every interval's in-progress
+    // candle was missing after rebuild. Assert every active pair has
+    // produced 1h / 4h / 1d candles whose volume survived the replay.
+    for pair in &pairs {
+        for interval in [
+            CandleInterval::OneHour,
+            CandleInterval::FourHours,
+            CandleInterval::OneDay,
+        ] {
+            let key = CandleCacheKey::new(
+                pair.base_denom.to_string(),
+                pair.quote_denom.to_string(),
+                interval,
+            );
+            let candle = fresh_cache
+                .get_last_candle(&key)
+                .cloned()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "preload_pairs produced no {interval} candle for {}/{}",
+                        pair.base_denom, pair.quote_denom
+                    )
+                });
+
+            assert!(
+                candle.volume_base > Udec128_6::ZERO,
+                "{}/{} {interval} rebuilt with zero volume_base — the \
+                 `since` query did not return the day's rows",
+                pair.base_denom,
+                pair.quote_denom,
+            );
+        }
+    }
 
     Ok(())
 }
