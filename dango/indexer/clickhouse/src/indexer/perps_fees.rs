@@ -220,8 +220,39 @@ fn process_fee_distributed(
         }
     }
 
+    // The event emits `vault_fee` as the gross vault allocation, before the
+    // contract pays out referral commissions from it. We store the net amount
+    // retained by the vault so consumers don't have to re-derive it. The
+    // contract invariant `referee_rebate + referrer_payout ≤ vault_fee` must
+    // hold — a violation signals a contract bug, so we log + bump a metric
+    // and drop the event rather than saturate to zero.
+    let net_vault_fee = match vault_fee
+        .checked_sub(referee_rebate)
+        .and_then(|v| v.checked_sub(referrer_payout))
+    {
+        Ok(v) => v,
+        Err(_err) => {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                block_height,
+                %payer,
+                vault_fee = %vault_fee,
+                referee_rebate = %referee_rebate,
+                referrer_payout = %referrer_payout,
+                "referral commissions exceed vault_fee; skipping event"
+            );
+            #[cfg(feature = "metrics")]
+            metrics::counter!(
+                "indexer.clickhouse.perps_fees.invariant_violations.total",
+                "field" => "net_vault_fee",
+            )
+            .increment(1);
+            return;
+        },
+    };
+
     if acc.protocol_fee.checked_add_assign(protocol_fee).is_err()
-        || acc.vault_fee.checked_add_assign(vault_fee).is_err()
+        || acc.vault_fee.checked_add_assign(net_vault_fee).is_err()
         || acc
             .referee_rebate
             .checked_add_assign(referee_rebate)

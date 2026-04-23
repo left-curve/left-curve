@@ -20,11 +20,13 @@ use {
 /// Values are pre-aggregated across all events in the block so that range
 /// queries become a single streaming SUM.
 ///
-/// Fee flow: the total fee paid by a user is `protocol_fee + vault_fee`.
-/// The `vault_fee` is gross — a portion is redistributed as referral
-/// commissions (`referee_rebate` back to the payer, `referrer_payout` up
-/// the referrer chain). Net vault retention is
-/// `vault_fee - referee_rebate - referrer_payout`.
+/// Fee flow: the event emits `vault_fee` gross, before referral commissions
+/// are paid out of it. At ingest time we subtract the commissions so that
+/// `vault_fee` here is already net — the amount the vault actually retains.
+/// `referee_rebate` (commissions[0]) and `referrer_payout` (sum of
+/// commissions[1..]) are kept as informational totals of the distributed
+/// commissions. The total fee paid by a user is therefore
+/// `protocol_fee + vault_fee + referee_rebate + referrer_payout`.
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PerpsFees {
     pub block_height: u64,
@@ -81,6 +83,11 @@ pub struct PerpsFeesAndRevenue {
 
 #[cfg(feature = "async-graphql")]
 impl PerpsFeesAndRevenue {
+    /// Threshold above which the query reads from the hourly materialized
+    /// view instead of the per-block table. Short ranges keep microsecond
+    /// precision; long ranges trade hour-snapped bounds for scan cost.
+    const HOURLY_THRESHOLD: chrono::Duration = chrono::Duration::days(3);
+
     pub async fn fetch(
         clickhouse_client: &clickhouse::Client,
         from: DateTime<Utc>,
@@ -89,17 +96,35 @@ impl PerpsFeesAndRevenue {
         // Explicit `toUInt128` / `toUInt64` keeps the return type stable: ClickHouse
         // widens `sum(UInt128)` to `UInt256`, which the crate would fail to
         // deserialize into `u128`. Fees never approach 2^128 at USD·10^6 scale.
-        let query = r#"
-            SELECT
-                toUInt128(sum(protocol_fee))    AS protocol_fee,
-                toUInt128(sum(vault_fee))       AS vault_fee,
-                toUInt128(sum(referee_rebate))  AS referee_rebate,
-                toUInt128(sum(referrer_payout)) AS referrer_payout,
-                toUInt64(sum(fee_events_count)) AS fee_events_count
-            FROM perps_fees
-            WHERE created_at >= toDateTime64(?, 6)
-              AND created_at <= toDateTime64(?, 6)
-        "#;
+        //
+        // Short ranges hit the per-block table for precise bounds. Long ranges
+        // hit `perps_fees_hourly` (a SummingMergeTree MV) whose buckets make
+        // a year-long scan a few thousand rows instead of tens of millions.
+        let query = if (to - from) < Self::HOURLY_THRESHOLD {
+            r#"
+                SELECT
+                    toUInt128(sum(protocol_fee))    AS protocol_fee,
+                    toUInt128(sum(vault_fee))       AS vault_fee,
+                    toUInt128(sum(referee_rebate))  AS referee_rebate,
+                    toUInt128(sum(referrer_payout)) AS referrer_payout,
+                    toUInt64(sum(fee_events_count)) AS fee_events_count
+                FROM perps_fees
+                WHERE created_at >= toDateTime64(?, 6)
+                  AND created_at <= toDateTime64(?, 6)
+            "#
+        } else {
+            r#"
+                SELECT
+                    toUInt128(sum(protocol_fee))    AS protocol_fee,
+                    toUInt128(sum(vault_fee))       AS vault_fee,
+                    toUInt128(sum(referee_rebate))  AS referee_rebate,
+                    toUInt128(sum(referrer_payout)) AS referrer_payout,
+                    toUInt64(sum(fee_events_count)) AS fee_events_count
+                FROM perps_fees_hourly
+                WHERE hour >= toStartOfHour(toDateTime64(?, 6))
+                  AND hour <= toStartOfHour(toDateTime64(?, 6))
+            "#
+        };
 
         let row: FeesAggregateRow = clickhouse_client
             .query(query)
