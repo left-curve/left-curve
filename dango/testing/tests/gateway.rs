@@ -223,35 +223,23 @@ fn rate_limit_global_enforcement() {
         )
         .should_succeed();
 
-    // Global available = 0 (20 - 20). User available = 0 (no credit).
+    // Global available = 0 (20 - 20).
     suite
         .query_wasm_smart(contracts.gateway, gateway::QueryAvailableWithdrawRequest {
             denom: usdc::DENOM.clone(),
         })
         .should_succeed_and_equal(Some(Uint128::ZERO));
 
-    suite
-        .query_wasm_smart(
-            contracts.gateway,
-            gateway::QueryUserAvailableWithdrawRequest {
-                user_index: receiver.user_index(),
-                denom: usdc::DENOM.clone(),
-            },
-        )
-        .should_succeed_and_equal(Some(Uint128::ZERO));
-
     // Verify user movement state.
     {
-        let user_mov: gateway::UserMovement = suite
+        let user_mov: gateway::Movement = suite
             .query_wasm_smart(contracts.gateway, gateway::QueryUserMovementRequest {
                 user_index: receiver.user_index(),
                 denom: usdc::DENOM.clone(),
             })
             .unwrap();
-        assert_eq!(user_mov.current.deposited, Uint128::ZERO);
-        assert_eq!(user_mov.current.withdrawn, Uint128::new(20_000_000));
-        assert_eq!(user_mov.current.credit_used, Uint128::ZERO);
-        assert_eq!(user_mov.historical.deposited, Uint128::new(200_000_000));
+        assert_eq!(user_mov.deposited, Uint128::new(200_000_000));
+        assert_eq!(user_mov.withdrawn, Uint128::new(20_000_000));
     }
 
     // 1 more fails — global limit reached.
@@ -270,92 +258,7 @@ fn rate_limit_global_enforcement() {
         )
         .should_fail_with_error("rate limit exceeded!");
 
-    // Deposit 50 more in this epoch — gives deposit credit.
-    suite
-        .receive_warp_transfer(
-            relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
-            receiver,
-            50_000_000,
-        )
-        .should_succeed();
-
-    // Global still 0, but user now has 50 credit → user available = 50.
-    suite
-        .query_wasm_smart(contracts.gateway, gateway::QueryAvailableWithdrawRequest {
-            denom: usdc::DENOM.clone(),
-        })
-        .should_succeed_and_equal(Some(Uint128::ZERO));
-
-    suite
-        .query_wasm_smart(
-            contracts.gateway,
-            gateway::QueryUserAvailableWithdrawRequest {
-                user_index: receiver.user_index(),
-                denom: usdc::DENOM.clone(),
-            },
-        )
-        .should_succeed_and_equal(Some(Uint128::new(50_000_000)));
-
-    // Deposited 50 this epoch. Previous 20 withdrawal was charged to global,
-    // NOT to credit. So remaining credit = 50. Withdraw all 50.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // Credit exhausted. Verify state.
-    {
-        let user_mov: gateway::UserMovement = suite
-            .query_wasm_smart(contracts.gateway, gateway::QueryUserMovementRequest {
-                user_index: receiver.user_index(),
-                denom: usdc::DENOM.clone(),
-            })
-            .unwrap();
-        assert_eq!(user_mov.current.deposited, Uint128::new(50_000_000));
-        assert_eq!(user_mov.current.withdrawn, Uint128::new(70_000_000));
-        assert_eq!(user_mov.current.credit_used, Uint128::new(50_000_000));
-    }
-
-    // Global still 20 (the 50 was within credit). User available = 0.
-    suite
-        .query_wasm_smart(
-            contracts.gateway,
-            gateway::QueryUserAvailableWithdrawRequest {
-                user_index: receiver.user_index(),
-                denom: usdc::DENOM.clone(),
-            },
-        )
-        .should_succeed_and_equal(Some(Uint128::ZERO));
-
-    // 1 more is excess → global already at 20, so 20 + 1 > 20 → fails.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
-        .should_fail_with_error("rate limit exceeded!");
-
-    // Advance to epoch 48. Supply = 200 - 20 + 50 - 50 = 180. Allowance = 18.
+    // Advance to epoch 48. Supply = 200 - 20 = 180. Allowance = 18.
     advance_to_next_day(&mut suite);
 
     suite
@@ -408,11 +311,10 @@ fn rate_limit_global_enforcement() {
         .should_fail_with_error("rate limit exceeded!");
 }
 
-/// Verify per-user deposit credit: if one user exhausts the global limit,
-/// another user who deposited in the same epoch can still withdraw up to their
-/// deposit amount.
+/// Verify the rate limit is global: if one user exhausts the limit, another
+/// user cannot withdraw either — even if they deposited in the same epoch.
 #[test]
-fn rate_limit_per_user_deposit_credit() {
+fn rate_limit_shared_across_users() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -457,17 +359,6 @@ fn rate_limit_per_user_deposit_credit() {
 
     advance_to_next_day(&mut suite);
 
-    // Deposit 50 to user_b in the new epoch — gives user_b deposit credit.
-    suite
-        .receive_warp_transfer(
-            relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
-            &*user_b,
-            50_000_000,
-        )
-        .should_succeed();
-
     // user_a exhausts the global limit (20).
     suite
         .execute(
@@ -484,176 +375,10 @@ fn rate_limit_per_user_deposit_credit() {
         )
         .should_succeed();
 
-    // user_a can't withdraw any more.
-    suite
-        .execute(
-            user_a,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
-        .should_fail_with_error("rate limit exceeded!");
-
-    // user_b can still withdraw up to their deposit credit (50), even though
-    // the global limit is exhausted — deposit-backed withdrawals are free.
+    // user_b can't withdraw either — the limit is global, not per-user.
     suite
         .execute(
             user_b,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // user_b's credit is exhausted. 1 more is excess → global already at 20 → fails.
-    suite
-        .execute(
-            user_b,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
-        .should_fail_with_error("rate limit exceeded!");
-}
-
-/// Verify deposit credit is denom-wide, not per-route: a deposit from ETH
-/// gives credit that can be used to withdraw via SOL, and vice versa.
-#[test]
-fn rate_limit_across_routes() {
-    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
-        bridge_ops: |_| vec![],
-        ..TestOption::default()
-    });
-
-    suite.block_time = Duration::ZERO;
-
-    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
-
-    let receiver = &mut accounts.user2;
-    let relayer = &mut accounts.user1;
-    let owner = &mut accounts.owner;
-
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let mock_eth_recipient: Addr32 = Addr::mock(202).into();
-    let usdc_sol_fee = 10_000;
-    let usdc_eth_fee = 1_000_000;
-
-    // Deposit 60 from ETH and 40 from SOL = 100 total.
-    suite
-        .receive_warp_transfer(
-            relayer,
-            mock_ethereum::DOMAIN,
-            mock_ethereum::USDC_WARP,
-            receiver,
-            60_000_000,
-        )
-        .should_succeed();
-    suite
-        .receive_warp_transfer(
-            relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
-            receiver,
-            40_000_000,
-        )
-        .should_succeed();
-
-    // Set rate limit 10%. Supply = 100, daily allowance = 10.
-    suite
-        .execute(
-            owner,
-            contracts.gateway,
-            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
-                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
-
-    advance_to_next_day(&mut suite);
-
-    // Deposit 20 from ETH in this epoch → credit = 20.
-    suite
-        .receive_warp_transfer(
-            relayer,
-            mock_ethereum::DOMAIN,
-            mock_ethereum::USDC_WARP,
-            receiver,
-            20_000_000,
-        )
-        .should_succeed();
-
-    // Withdraw 30 via SOL route — within credit (ETH deposit covers SOL
-    // withdrawal because credit is per-denom, not per-route). Credit = 0.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // Credit exhausted. Global outbound is still 0 (all within credit).
-    // Withdraw 10 via SOL → excess = 10. Global: 0 + 10 = 10 ≤ 10. Succeeds.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: mock_solana_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // 1 more via either route → excess → global full → fails.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_ethereum::DOMAIN,
-                    contract: mock_ethereum::USDC_WARP,
-                },
-                recipient: mock_eth_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
-        )
-        .should_fail_with_error("rate limit exceeded!");
-
-    suite
-        .execute(
-            receiver,
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
@@ -669,7 +394,7 @@ fn rate_limit_across_routes() {
 
 /// Verify that per-route reserves are respected: a user cannot withdraw more
 /// from a specific route than what was deposited through that route, even if
-/// they have deposit credit and global allowance available.
+/// they have global allowance available.
 #[test]
 fn rate_limit_reserve_enforcement() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
@@ -1013,10 +738,8 @@ fn rate_limit_change() {
         .should_fail_with_error("rate limit exceeded!");
 }
 
-/// Verify that deposit credit is tracked independently per denom: depositing
-/// denom A does not grant credit for withdrawing denom B. Before the fix
-/// (keying `USER_MOVEMENTS` by `(UserIndex, &Denom)` instead of `UserIndex`),
-/// this test would fail because all deposit credit was pooled across denoms.
+/// Verify that rate limits are independent per denom: exhausting the USDC
+/// limit does not affect ETH withdrawals.
 #[test]
 fn rate_limit_per_denom_isolation() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
@@ -1069,12 +792,10 @@ fn rate_limit_per_denom_isolation() {
         )
         .should_succeed();
 
-    // Advance to epoch 1 so the epoch-0 deposits rotate away — no credit
-    // from them in the new epoch.
     advance_to_next_day(&mut suite);
 
     // USDC: supply = 200, daily allowance = 20.
-    // ETH:  supply = 10 ETH, daily allowance = 1 ETH (1_000_000_000_000_000_000).
+    // ETH:  supply = 10 ETH, daily allowance = 1 ETH (1e18).
 
     // Exhaust the USDC daily allowance (20).
     suite
@@ -1108,19 +829,7 @@ fn rate_limit_per_denom_isolation() {
         )
         .should_fail_with_error("rate limit exceeded!");
 
-    // Now deposit 50 USDC in this epoch — gives USDC-specific credit of 50.
-    suite
-        .receive_warp_transfer(
-            relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
-            receiver,
-            50_000_000,
-        )
-        .should_succeed();
-
-    // The USDC credit must NOT help with ETH withdrawals.
-    // ETH daily allowance = 1 ETH. Withdraw 1 ETH (the full allowance).
+    // ETH limit is independent — can still withdraw 1 ETH.
     suite
         .execute(
             receiver,
@@ -1136,9 +845,7 @@ fn rate_limit_per_denom_isolation() {
         )
         .should_succeed();
 
-    // ETH global limit is exhausted. 1 more wei fails.
-    // With the old per-user-only key, the 50 USDC deposit credit would have
-    // been fungible and this withdrawal would have incorrectly succeeded.
+    // ETH limit exhausted too. 1 more wei fails.
     suite
         .execute(
             receiver,
@@ -1153,22 +860,6 @@ fn rate_limit_per_denom_isolation() {
             Coin::new(eth::DENOM.clone(), 1_u128 + eth_fee).unwrap(),
         )
         .should_fail_with_error("rate limit exceeded!");
-
-    // Meanwhile the USDC credit is intact — can still withdraw 50 USDC.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
-                },
-                recipient: Addr::mock(201).into(),
-            },
-            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
-        )
-        .should_succeed();
 }
 
 /// Verify the sliding window prevents the boundary double-dip attack: withdraw
@@ -1339,8 +1030,7 @@ fn deposit_to_unregistered_address() {
 }
 
 /// Verify that a zero rate limit acts as an emergency freeze: all withdrawals
-/// are blocked, even deposit-credited ones. Unfreezing (setting a non-zero
-/// rate limit) re-enables withdrawals.
+/// are blocked. Unfreezing (setting a non-zero rate limit) re-enables them.
 #[test]
 fn rate_limit_zero_freeze() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
@@ -1382,8 +1072,7 @@ fn rate_limit_zero_freeze() {
         )
         .should_succeed();
 
-    // Even though the user has 100 of deposit credit in the same epoch,
-    // a zero rate limit blocks everything.
+    // A zero rate limit blocks all withdrawals.
     suite
         .execute(
             receiver,
@@ -1411,7 +1100,7 @@ fn rate_limit_zero_freeze() {
         )
         .should_succeed();
 
-    // Withdrawals work again — deposit credit covers this.
+    // Withdrawals work again.
     suite
         .execute(
             receiver,

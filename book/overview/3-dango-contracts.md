@@ -454,11 +454,10 @@ Bridge aggregator for cross-chain token transfers.
 
 **Inbound:** Remote bridge delivers tokens → gateway mints wrapped tokens → transfers
 to recipient (or orphaned transfer if address not registered). The deposit is recorded
-in the recipient's `UserMovement` for deposit credit tracking.
+in the recipient's `UserMovement` for observability.
 
-**Outbound:** User sends tokens to gateway → deposit credit check → excess checked
-against global rate limit → withdrawal fee deducted → local tokens burned →
-cross-chain message sent.
+**Outbound:** User sends tokens to gateway → global rate limit check →
+withdrawal fee deducted → local tokens burned → cross-chain message sent.
 
 ### Rate limiting
 
@@ -466,18 +465,18 @@ The rate limit uses a 24-slot hourly sliding window (`GlobalOutbound`) to preven
 boundary exploitation. The cron job runs every hour, rotating the window and
 advancing `EPOCH`. Supply is re-snapshotted every 24 epochs (once per day).
 
-The core invariant for non-deposit-backed withdrawals:
+The core invariant:
 
 ```
-total_24h + excess <= supply_snapshot * rate_limit
+total_24h + amount <= supply_snapshot * rate_limit
 ```
 
-**Per-user deposit credit:** Each user's deposits are tracked per denom via
-`UserMovement`. When withdrawing, the user can freely withdraw up to their
-deposit credit (`deposited - credit_used`) without affecting the global limit.
-Only the excess beyond deposit credit counts against the global `total_24h`.
-This prevents round-trip griefing where a deposit-then-withdraw would otherwise
-consume the global allowance.
+All withdrawals count against the global limit. Per-user deposit/withdraw
+history is tracked via `UserMovement` for observability and potential future
+trust-tier logic, but does not affect the rate-limit check.
+
+A zero rate limit acts as an emergency freeze — all withdrawals are blocked
+immediately.
 
 Rate limit changes (both increases and decreases) take effect immediately.
 

@@ -10,7 +10,7 @@ use {
         bank,
         gateway::{
             Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote, Traceable,
-            UserMovement, WINDOW_SIZE, WithdrawalFee,
+            WINDOW_SIZE, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
@@ -175,8 +175,8 @@ fn receive_remote(
         })?;
     }
 
-    // Track the deposit in the recipient's per-user movement so they can
-    // withdraw up to this amount without hitting the global rate limit.
+    // Track the deposit in the recipient's per-user movement for historical
+    // observability (and potential future trust-tier logic).
     //
     // This runs for all denoms, not just rate-limited ones. The extra storage
     // cost is intentional: we want historical deposit data available even for
@@ -187,17 +187,14 @@ fn receive_remote(
     // an unknown address), the funds are still minted and
     // transferred — they will be held as an orphan transfer in the bank until
     // the address is claimed or the funds retrieved by the owner.
-    // In that case we simply skip credit tracking;
-    // the user will have no deposit credit but can still withdraw within the
-    // global allowance once they register.
+    // In that case we simply skip movement tracking.
     {
-        let current_epoch = EPOCH.load(ctx.storage)?;
-
         if let Ok(user_index) = resolve_user_index(ctx.querier, recipient) {
-            let mut user_movement =
-                load_user_movement(ctx.storage, user_index, &denom, current_epoch)?;
-            user_movement.current.deposited.checked_add_assign(amount)?;
-            USER_MOVEMENTS.save(ctx.storage, (user_index, &denom), &user_movement)?;
+            let mut movement = USER_MOVEMENTS
+                .may_load(ctx.storage, (user_index, &denom))?
+                .unwrap_or_default();
+            movement.deposited.checked_add_assign(amount)?;
+            USER_MOVEMENTS.save(ctx.storage, (user_index, &denom), &movement)?;
         };
     }
 
@@ -270,11 +267,9 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })?;
     }
 
-    // Check the rate limit. If a rate limit is configured for this denom:
-    // 1. The user can freely withdraw up to their deposit credit (deposited -
-    //    credit_used in the current window) without affecting the global limit.
-    // 2. Any excess beyond the deposit credit counts against the global
-    //    outbound, which must not exceed `supply * rate_limit`.
+    // Check the rate limit. If a rate limit is configured for this denom,
+    // the entire withdrawal counts against the global outbound, which must
+    // not exceed `supply * rate_limit`.
     //
     // Only account-factory-registered users can withdraw from rate-limited
     // denoms. This is intentional: all legitimate users are registered, and
@@ -283,50 +278,45 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     // mechanism should be added.
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
         // A zero rate limit acts as an emergency freeze — all withdrawals are
-        // blocked, including deposit-credited ones. This lets the owner halt
-        // outflows immediately in response to a bridge exploit.
+        // blocked. This lets the owner halt outflows immediately in response
+        // to a bridge exploit.
         ensure!(
             rate_limit.into_inner() > Udec128::ZERO,
             "withdrawals are frozen for denom: {}",
             coin.denom
         );
 
-        let current_epoch = EPOCH.load(ctx.storage)?;
+        let mut global = GLOBAL_OUTBOUND
+            .may_load(ctx.storage, &coin.denom)?
+            .unwrap_or_default();
+
+        let global_available = crate::query::compute_global_available_withdraw(
+            ctx.storage,
+            &coin.denom,
+            rate_limit,
+            global.total_24h,
+        )?;
+
+        ensure!(
+            global_available >= coin.amount,
+            "rate limit exceeded! denom: {}, available: {}, amount: {}",
+            coin.denom,
+            global_available,
+            coin.amount
+        );
+
+        global.add_to_current(coin.amount)?;
+        GLOBAL_OUTBOUND.save(ctx.storage, &coin.denom, &global)?;
+
+        // Record the withdrawal in per-user movement for observability.
         let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
-        let mut user_movement =
-            load_user_movement(ctx.storage, user_index, &coin.denom, current_epoch)?;
+        let mut movement = USER_MOVEMENTS
+            .may_load(ctx.storage, (user_index, &coin.denom))?
+            .unwrap_or_default();
 
-        // Split the withdrawal into the deposit-backed portion (covered, no
-        // global impact) and the excess that counts against the global limit.
-        let (covered, excess) = user_movement.compute_credit_coverage(coin.amount);
+        movement.withdrawn.checked_add_assign(coin.amount)?;
 
-        if excess > Uint128::ZERO {
-            let mut global = GLOBAL_OUTBOUND
-                .may_load(ctx.storage, &coin.denom)?
-                .unwrap_or_default();
-
-            let global_available = crate::query::compute_global_available_withdraw(
-                ctx.storage,
-                &coin.denom,
-                rate_limit,
-                global.total_24h,
-            )?;
-
-            ensure!(
-                global_available >= excess,
-                "rate limit exceeded! denom: {}, available: {}, excess: {}",
-                coin.denom,
-                global_available,
-                excess
-            );
-
-            global.add_to_current(excess)?;
-            GLOBAL_OUTBOUND.save(ctx.storage, &coin.denom, &global)?;
-        }
-
-        user_movement.record_withdrawal(covered, coin.amount)?;
-
-        USER_MOVEMENTS.save(ctx.storage, (user_index, &coin.denom), &user_movement)?;
+        USER_MOVEMENTS.save(ctx.storage, (user_index, &coin.denom), &movement)?;
     }
 
     #[cfg(feature = "metrics")]
@@ -419,21 +409,4 @@ fn resolve_user_index(querier: QuerierWrapper, address: Addr) -> StdResult<UserI
     querier
         .query_wasm_smart(factory, account_factory::QueryAccountRequest { address })
         .map(|account| account.owner)
-}
-
-/// Loads (or creates) the user's movement record, rotating if the epoch has
-/// advanced since their last interaction.
-fn load_user_movement(
-    storage: &dyn Storage,
-    user_index: UserIndex,
-    denom: &Denom,
-    current_epoch: u64,
-) -> StdResult<UserMovement> {
-    let mut movement = USER_MOVEMENTS
-        .may_load(storage, (user_index, denom))?
-        .unwrap_or_else(|| UserMovement::new(current_epoch));
-
-    movement.rotate_if_needed(current_epoch)?;
-
-    Ok(movement)
 }

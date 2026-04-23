@@ -1,7 +1,7 @@
 use {
     dango_types::{
         account_factory::UserIndex,
-        gateway::{GlobalOutbound, RateLimit, Remote, UserMovement},
+        gateway::{GlobalOutbound, Movement, RateLimit, Remote},
     },
     grug::{Addr, Denom, Item, Map, Uint128},
     std::collections::BTreeMap,
@@ -33,5 +33,6 @@ pub const SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 /// Each hourly cron rotates the window; the rolling 24h total is cached.
 pub const GLOBAL_OUTBOUND: Map<&Denom, GlobalOutbound> = Map::new("global_out");
 
-/// Per-user, per-denom deposit and withdrawal tracking.
-pub const USER_MOVEMENTS: Map<(UserIndex, &Denom), UserMovement> = Map::new("user_mvmt");
+/// Per-user, per-denom all-time deposit and withdrawal totals. Observational
+/// only — not used in rate-limit checks.
+pub const USER_MOVEMENTS: Map<(UserIndex, &Denom), Movement> = Map::new("user_mvmt");

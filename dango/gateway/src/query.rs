@@ -6,8 +6,8 @@ use {
     dango_types::{
         account_factory::UserIndex,
         gateway::{
-            GlobalOutbound, QueryMsg, QueryReservesResponseItem, QueryRoutesResponseItem,
-            QueryWithdrawalFeesResponseItem, RateLimit, Remote, UserMovement,
+            GlobalOutbound, Movement, QueryMsg, QueryReservesResponseItem, QueryRoutesResponseItem,
+            QueryWithdrawalFeesResponseItem, RateLimit, Remote,
         },
     },
     grug::{
@@ -183,15 +183,10 @@ fn query_user_movement(
     ctx: ImmutableCtx,
     user_index: UserIndex,
     denom: Denom,
-) -> StdResult<UserMovement> {
-    let epoch = EPOCH.load(ctx.storage)?;
-    let mut movement = USER_MOVEMENTS
+) -> StdResult<Movement> {
+    Ok(USER_MOVEMENTS
         .may_load(ctx.storage, (user_index, &denom))?
-        .unwrap_or_else(|| UserMovement::new(epoch));
-
-    movement.rotate_if_needed(epoch)?;
-
-    Ok(movement)
+        .unwrap_or_default())
 }
 
 /// Computes the remaining global withdrawal allowance for a denom:
@@ -244,30 +239,21 @@ fn query_global_available_withdraws(ctx: ImmutableCtx) -> StdResult<BTreeMap<Den
 
 fn query_user_available_withdraw(
     ctx: ImmutableCtx,
-    user_index: UserIndex,
+    _user_index: UserIndex,
     denom: Denom,
 ) -> StdResult<Option<Uint128>> {
+    // All withdrawals count against the global limit — there is no per-user
+    // deposit credit. The user's available is the same as the global available.
     let rate_limits = RATE_LIMITS.load(ctx.storage)?;
 
-    let global_available = match rate_limits.get(&denom) {
+    match rate_limits.get(&denom) {
         Some(rate_limit) => {
             let rolling = GLOBAL_OUTBOUND
                 .may_load(ctx.storage, &denom)?
                 .map(|g| g.total_24h)
                 .unwrap_or(Uint128::ZERO);
-            compute_global_available_withdraw(ctx.storage, &denom, rate_limit, rolling)?
+            compute_global_available_withdraw(ctx.storage, &denom, rate_limit, rolling).map(Some)
         },
-        None => return Ok(None),
-    };
-
-    let epoch = EPOCH.load(ctx.storage)?;
-    let mut user_movement = USER_MOVEMENTS
-        .may_load(ctx.storage, (user_index, &denom))?
-        .unwrap_or_else(|| UserMovement::new(epoch));
-
-    user_movement.rotate_if_needed(epoch)?;
-
-    let deposit_credit = user_movement.remaining_credit();
-
-    Ok(Some(global_available.checked_add(deposit_credit)?))
+        None => Ok(None),
+    }
 }

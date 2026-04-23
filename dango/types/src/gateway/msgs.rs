@@ -1,5 +1,5 @@
 use {
-    super::{Addr32, GlobalOutbound, Origin, RateLimit, Remote, UserMovement},
+    super::{Addr32, GlobalOutbound, Movement, Origin, RateLimit, Remote},
     crate::account_factory::UserIndex,
     grug::{Addr, Denom, Op, Uint128},
     std::collections::{BTreeMap, BTreeSet},
@@ -92,8 +92,8 @@ pub enum QueryMsg {
     /// Query the global outbound sliding window for a denom.
     #[returns(GlobalOutbound)]
     GlobalOutbound { denom: Denom },
-    /// Query a user's movement history for a denom.
-    #[returns(UserMovement)]
+    /// Query a user's all-time deposit/withdraw totals for a denom.
+    #[returns(Movement)]
     UserMovement { user_index: UserIndex, denom: Denom },
     /// Query the remaining global withdrawal allowance for a single denom.
     /// Returns `None` if the denom has no rate limit configured.
