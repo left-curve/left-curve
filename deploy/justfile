@@ -76,7 +76,7 @@ provision:
 deploy-devnet:
   mkdir -p {{justfile_directory()}}/logs \
     && ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}' \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}' \
       -e frontend_enabled_features='points' \
       --limit 100.96.253.40,100.107.248.71 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-devnet.log
@@ -85,7 +85,7 @@ reset-and-deploy-devnet:
   just stop-devnet
   mkdir -p {{justfile_directory()}}/logs \
     && ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true, "reset_data": true}' \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true, "reset_data": true}' \
       -e frontend_enabled_features='points' \
       --limit 100.96.253.40,100.107.248.71 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-reset-and-deploy-devnet.log
@@ -187,7 +187,7 @@ deploy-perp-liquidator network tag="latest":
 deploy-testnet:
   mkdir -p {{justfile_directory()}}/logs \
     && ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "faucet_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
       -e frontend_enabled_features='points' \
       --limit 100.90.163.19,100.109.200.70 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-testnet.log
@@ -225,7 +225,7 @@ remove-deploy-lock-testnet:
 deploy-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "faucet_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
       --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet.log
 
