@@ -80,7 +80,7 @@ const buttonVariants = tv(
         tertiary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         "tertiary-red":
-          "rounded-full [box-shadow:0px_-1px_3px_-2px_#00000012_inset,_0px_2px_3px_-1px_#FFFFFF12_inset_0px_1px_1px_-0.5px_#0000000A] transition-all duration-300 flex items-center justify-center w-fit",
+          "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
         link: "rounded-xl transition-all duration-300 w-fit mx-1",
       },
@@ -135,7 +135,7 @@ const buttonVariants = tv(
         variant: "tertiary-red",
         isDisabled: false,
         class:
-          "bg-surface-primary-red hover:bg-surface-secondary-red text-ink-tertiary-red focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-primary-red hover:bg-surface-secondary-red text-ink-tertiary-red focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D]",
       },
       {
         variant: "link",

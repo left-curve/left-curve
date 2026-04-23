@@ -178,7 +178,7 @@ export const PointsProfileTable: React.FC = () => {
         </div>
       }
       classNames={{
-        base: "p-0 p-4",
+        base: "p-0 p-4 bg-surface-primary-gray",
         cell: "px-6 py-4",
         row: "border-b border-outline-secondary-gray last:border-b-0",
       }}

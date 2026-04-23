@@ -52,7 +52,7 @@ const UsernameSection: React.FC = () => {
         </div>
       </div>
       <div
-        className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-center gap-1"
+        className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-start gap-1"
         onClick={() => allowEdit && showModal(Modals.EditUsername)}
       >
         <p>{username}</p>
@@ -90,7 +90,7 @@ const UserStatusSection: React.FC = () => {
           </>
         )}
       </div>
-      <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-center gap-1">
+      <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-start gap-1">
         <p>
           {m["settings.session.accountStatus"]({ status: userStatus ? userStatus : "inactive" })}
         </p>
@@ -137,7 +137,7 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.title"]()}
             </span>
           </div>
-          <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-center">
+          <div className="text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] flex items-center justify-end md:justify-start">
             {chain.name}
           </div>
         </div>

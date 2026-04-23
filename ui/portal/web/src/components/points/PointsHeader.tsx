@@ -121,7 +121,7 @@ const PointsBreakdownRow: React.FC<PointsBreakdownRowProps> = ({
 }) => (
   <div className="flex flex-col gap-2 w-full">
     <p className="text-ink-tertiary-500 diatype-s-medium">{label}</p>
-    <div className="flex flex-col lg:flex-row gap-4 w-full">
+    <div className="flex flex-col gap-4 w-full">
       <PointCard
         icon={<IconSwapMoney />}
         value={trading}
@@ -183,7 +183,7 @@ export const PointsHeader: React.FC = () => {
     <div className="p-4 lg:p-8 lg:pb-[30px] flex flex-col gap-4 rounded-t-xl">
       <div className="w-full rounded-xl bg-surface-tertiary-rice border border-outline-primary-gray p-4 flex flex-col gap-4 items-center lg:flex-row lg:justify-around">
         <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">
+          <p className="text-utility-warning-600 h3-bold">
             {isConnected ? (
               <FormattedNumber number={points} formatOptions={{ fractionDigits: 0 }} as="span" />
             ) : (
@@ -193,7 +193,7 @@ export const PointsHeader: React.FC = () => {
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myPoints"]()}</p>
         </div>
         <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">
+          <p className="text-utility-warning-600 h3-bold">
             {isConnected ? (
               <FormattedNumber number={volume} formatOptions={{ currency: "USD" }} as="span" />
             ) : (
@@ -203,7 +203,7 @@ export const PointsHeader: React.FC = () => {
           <p className="text-ink-tertiary-500 diatype-m-medium">{m["points.header.myVolume"]()}</p>
         </div>
         <div className="flex flex-col items-center">
-          <p className="text-ink-secondary-rice h3-bold">
+          <p className="text-utility-warning-600 h3-bold">
             {isConnected ? (
               <>
                 {"#"}
@@ -217,7 +217,7 @@ export const PointsHeader: React.FC = () => {
         </div>
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1">
-            <p className="text-ink-secondary-rice h3-bold">
+            <p className="text-utility-warning-600 h3-bold">
               {m["points.header.currentEpoch"]()} {isStarted ? currentEpoch : "--"}
             </p>
             <Tooltip
@@ -233,20 +233,22 @@ export const PointsHeader: React.FC = () => {
           {!isStarted && startsAt && <EpochStartsIn startsAt={startsAt} onRefetch={refetch} />}
         </div>
       </div>
-      <PointsBreakdownRow
-        label={m["points.header.earnedLabel"]()}
-        trading={isConnected ? tradingPoints : 0}
-        lp={isConnected ? lpPoints : 0}
-        referral={isConnected ? referralPoints : 0}
-      />
-      {hasPredicted && (
+      <div className="flex flex-col lg:flex-row gap-4">
         <PointsBreakdownRow
-          label={m["points.header.predictedLabel"]()}
-          trading={predicted.perps}
-          lp={predicted.vault}
-          referral={predicted.referral}
+          label={m["points.header.earnedLabel"]()}
+          trading={isConnected ? tradingPoints : 0}
+          lp={isConnected ? lpPoints : 0}
+          referral={isConnected ? referralPoints : 0}
         />
-      )}
+        {hasPredicted && (
+          <PointsBreakdownRow
+            label={m["points.header.predictedLabel"]()}
+            trading={predicted.perps}
+            lp={predicted.vault}
+            referral={predicted.referral}
+          />
+        )}
+      </div>
     </div>
   );
 };

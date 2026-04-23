@@ -194,7 +194,7 @@ export const LeaderboardTable: React.FC = () => {
         style="default"
         isLoading={isLoading}
         classNames={{
-          base: "shadow-none p-0 pt-0",
+          base: "shadow-none p-0 pt-0 bg-surface-primary-gray",
           row: "border-b border-outline-secondary-gray",
           cell: "px-6 py-4",
         }}

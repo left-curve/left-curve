@@ -25,7 +25,7 @@ export const PerpsMarginMode = forwardRef<void, PerpsMarginModeProps>(
 
     return (
       <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[28rem]">
-        <h2 className="text-ink-primary-900 h4-bold w-full">
+        <h2 className="text-ink-primary-900 diatype-lg-bold w-full">
           {m["modals.marginMode.title"]({ symbol: pairSymbol })}
         </h2>
 
@@ -81,19 +81,18 @@ const MarginOption: React.FC<MarginOptionProps> = ({
       disabled={disabled}
       onClick={onClick}
       className={twMerge(
-        "flex flex-col gap-2 p-4 rounded-lg border text-left transition-all",
-        selected
-          ? "border-primitives-red-light-400 bg-surface-secondary-oat"
-          : "border-outline-secondary-gray bg-surface-primary-rice",
+        "flex flex-col gap-2 p-4 rounded-xl border text-left transition-all",
         disabled
-          ? "opacity-60 cursor-not-allowed"
-          : "cursor-pointer hover:border-primitives-red-light-300",
+          ? "border-outline-secondary-gray bg-surface-disabled-gray cursor-not-allowed"
+          : selected
+            ? "border-outline-tertiary-rice bg-surface-secondary-rice"
+            : "border-outline-tertiary-rice bg-surface-secondary-rice cursor-pointer hover:border-outline-primary-red",
       )}
     >
       <div className="flex items-center gap-2">
         <div
           className={twMerge(
-            "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+            "w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center shrink-0",
             selected
               ? "border-primitives-red-light-400"
               : "border-outline-secondary-gray",

@@ -17,8 +17,8 @@ const COLOR_STYLES = {
     icon: "text-utility-warning-600",
   },
   error: {
-    container: "bg-surface-secondary-red text-utility-error-600",
-    icon: "text-utility-error-600",
+    container: "bg-surface-secondary-red text-ink-secondary-red border border-outline-primary-red",
+    icon: "text-ink-secondary-red",
   },
 } as const;
 

@@ -147,11 +147,11 @@ const AffiliateLockedBanner: React.FC<AffiliateLockedBannerProps> = ({
 
 const AffiliateCredentialsLoading: React.FC = () => (
   <div className="flex flex-col lg:flex-row gap-4">
-    <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center gap-4">
+    <div className="flex-1 bg-surface-tertiary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center gap-4">
       <Skeleton className="h-5 w-28" />
       <Skeleton className="h-5 w-28" />
     </div>
-    <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center gap-4">
+    <div className="flex-1 bg-surface-tertiary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center gap-4">
       <Skeleton className="h-5 w-28" />
       <Skeleton className="h-5 w-20" />
     </div>
@@ -302,7 +302,7 @@ export const AffiliateStats: React.FC = () => {
               {isLoading ? (
                 <Skeleton className="w-24 h-8" />
               ) : (
-                <p className="text-primitives-warning-500 h3-bold">
+                <p className="text-utility-warning-600 h3-bold">
                   {rateDisplay}
                 </p>
               )}
@@ -334,7 +334,7 @@ export const AffiliateStats: React.FC = () => {
             {isLoading ? (
               <Skeleton className="w-24 h-8" />
             ) : (
-              <p className="text-ink-primary-900 h3-bold">
+              <p className="text-utility-warning-600 h3-bold">
                 {isConnected ? (
                   <FormattedNumber
                     number={totalCommission}
@@ -359,7 +359,7 @@ export const AffiliateStats: React.FC = () => {
             {isLoading ? (
               <Skeleton className="w-24 h-8" />
             ) : (
-              <p className="text-primitives-warning-500 h3-bold">
+              <p className="text-utility-warning-600 h3-bold">
                 {isConnected ? (
                   <FormattedNumber
                     number={totalRefereesVolume}
@@ -389,13 +389,13 @@ export const AffiliateStats: React.FC = () => {
           thumbSrc="/images/points/pointBarThumb.png"
           classNames={{
             leftLabel: "diatype-s-medium",
-            rightLabel: "diatype-m-bold text-primitives-warning-500",
+            rightLabel: "diatype-m-bold text-utility-warning-600",
           }}
         />
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+            <div className="flex-1 bg-surface-tertiary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
               <p className="text-ink-tertiary-500 diatype-m-medium">
                 {m["referral.stats.totalReferees"]()}
               </p>
@@ -407,7 +407,7 @@ export const AffiliateStats: React.FC = () => {
                 </p>
               )}
             </div>
-            <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+            <div className="flex-1 bg-surface-tertiary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
               <p className="text-ink-tertiary-500 diatype-m-medium">
                 {m["referral.stats.totalActiveReferees"]()}
               </p>
@@ -425,7 +425,7 @@ export const AffiliateStats: React.FC = () => {
             <AffiliateCredentialsLoading />
           ) : isReferrer ? (
             <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+              <div className="flex-1 bg-surface-tertiary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
                 <p className="text-ink-tertiary-500 diatype-m-medium">
                   {m["referral.stats.myReferralLink"]()}
                 </p>
@@ -439,7 +439,7 @@ export const AffiliateStats: React.FC = () => {
                   />
                 </div>
               </div>
-              <div className="flex-1 bg-surface-primary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
+              <div className="flex-1 bg-surface-tertiary-gray shadow-account-card rounded-xl px-4 py-3 flex justify-between items-center">
                 <p className="text-ink-tertiary-500 diatype-m-medium">
                   {m["referral.stats.myReferralCode"]()}
                 </p>
@@ -614,7 +614,7 @@ export const TraderStats: React.FC = () => {
                       variant="link"
                       className="p-0"
                       onClick={handleSubmitReferralCode}
-                      disabled={isSubmitting || !referralCodeInput}
+                      isDisabled={isSubmitting || !referralCodeInput}
                     >
                       {isSubmitting
                         ? m["referral.submitting"]()

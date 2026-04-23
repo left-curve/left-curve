@@ -1,6 +1,14 @@
 import { forwardRef, useMemo, useState } from "react";
 
-import { Button, IconButton, IconClose, Input, Skeleton, numberMask, useApp } from "@left-curve/applets-kit";
+import {
+  Button,
+  IconButton,
+  IconClose,
+  Input,
+  Skeleton,
+  numberMask,
+  useApp,
+} from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useAccount,
@@ -11,7 +19,9 @@ import {
 } from "@left-curve/store";
 
 const formatPct = (value: number): string => {
-  return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return Number.isInteger(value)
+    ? value.toString()
+    : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 };
 
 const formatPercent = (value: string | undefined): string => {
@@ -34,23 +44,25 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
 
   const isLoading = settingsLoading || overrideLoading;
 
-  const commissionRate = override ?? settings?.commissionRate ?? referralParams?.referrerCommissionRates.base ?? "0";
+  const commissionRate =
+    override ?? settings?.commissionRate ?? referralParams?.referrerCommissionRates.base ?? "0";
   const commissionPct = Number(commissionRate) * 100;
   const currentShareRatio = Number(settings?.shareRatio ?? "0");
-  const currentSharePercent = formatPercent(settings?.shareRatio);
   const currentRefereePct = commissionPct * currentShareRatio;
-  const currentYouPct = commissionPct * (1 - currentShareRatio);
 
   const [refereeInput, setRefereeInput] = useState<string | null>(null);
 
   const refereeValue = refereeInput ?? formatPct(currentRefereePct);
   const parsedReferee = Number(refereeValue);
-  const youValue = Number.isNaN(parsedReferee) ? "" : formatPct(commissionPct - parsedReferee);
+  const youValue = Number.isNaN(parsedReferee)
+    ? ""
+    : formatPct(Math.max(0, commissionPct - parsedReferee));
 
   // Convert back to share_ratio for the contract: share_ratio = referee_absolute / commission
-  const newShareRatio = commissionPct > 0 && !Number.isNaN(parsedReferee)
-    ? (parsedReferee / commissionPct).toString()
-    : "0";
+  const newShareRatio =
+    commissionPct > 0 && !Number.isNaN(parsedReferee)
+      ? (parsedReferee / commissionPct).toString()
+      : "0";
 
   const newRatio = commissionPct > 0 ? parsedReferee / commissionPct : 0;
   const canDecrease = !Number.isNaN(parsedReferee) && newRatio < currentShareRatio;
@@ -58,7 +70,8 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
 
   const error = useMemo(() => {
     if (refereeValue.trim() === "" || Number.isNaN(parsedReferee)) return null;
-    if (parsedReferee < 0 || parsedReferee > commissionPct) return m["referral.editFeeShare.errorExceedsCommission"]();
+    if (parsedReferee < 0 || parsedReferee > commissionPct)
+      return m["referral.editFeeShare.errorExceedsCommission"]();
     if (canDecrease) return m["referral.editFeeShare.errorDecrease"]();
     if (exceedsMax) return m["referral.editFeeShare.errorExceedsMax"]();
     return null;
@@ -118,7 +131,7 @@ export const EditCommissionRate = forwardRef((_props, _ref) => {
           <Input
             label={m["referral.editFeeShare.refereeReceives"]()}
             value={refereeValue}
-            onChange={(e) => setRefereeInput(numberMask(e.target.value))}
+            onChange={(e) => setRefereeInput(numberMask(e.target.value, refereeValue))}
             endContent={<span className="text-ink-tertiary-500 diatype-m-medium">%</span>}
           />
 
