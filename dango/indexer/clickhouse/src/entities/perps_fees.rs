@@ -20,9 +20,8 @@ use {
 /// Values are pre-aggregated across all events in the block so that range
 /// queries become a single streaming SUM.
 ///
-/// Fee flow: the event emits `vault_fee` gross, before referral commissions
-/// are paid out of it. At ingest time we subtract the commissions so that
-/// `vault_fee` here is already net — the amount the vault actually retains.
+/// Fee flow: the contract emits `vault_fee` already net of referral
+/// commissions — it is the amount the vault actually retains.
 /// `referee_rebate` (commissions[0]) and `referrer_payout` (sum of
 /// commissions[1..]) are kept as informational totals of the distributed
 /// commissions. The total fee paid by a user is therefore
