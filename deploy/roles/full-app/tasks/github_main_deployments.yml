@@ -17,6 +17,7 @@
     - "dango-api"
     - "dango-graphiql"
     - "faucet-bot"
+  when: item != 'faucet-bot' or (faucet_bot_enabled | default(false))
 
 - name: Create GitHub deployments
   uri:
@@ -39,6 +40,7 @@
     - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
     - { name: "dango-graphiql", description: "GraphiQL", url: "https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
     - { name: "faucet-bot", description: "Faucet", url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
+  when: item.name != 'faucet-bot' or (faucet_bot_enabled | default(false))
 
 - name: Set deployment statuses
   uri:
@@ -73,6 +75,8 @@
     | **Dango Frontend** | [https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
     | **Dango GraphiQL** | [https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
-    | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
     | **Deployment name** | `{{ deployment_name }}` |
+{% if faucet_bot_enabled | default(false) %}
+    | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
+{% endif %}
     EOF

@@ -138,6 +138,7 @@
     state: present
     api_token: "{{ cloudflare_api_token }}"
   loop: "{{ dango_networks | product(['api','www','faucet','graphiql']) | list }}"
+  when: (item.1 != 'faucet') or (faucet_bot_enabled | default(false))
   retries: 3
   delay: 5
 
