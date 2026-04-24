@@ -8,11 +8,13 @@ import type {
   ContractInfo,
   PerpsOrdersByUserResponse,
   PerpsUserStateExtended,
+  PerpsVaultState,
 } from "@left-curve/dango/types";
 
 export type ExplorerPerpsData = {
   userState: PerpsUserStateExtended | null;
   orders: PerpsOrdersByUserResponse | null;
+  vaultState: PerpsVaultState | null;
 };
 
 export type ExplorerAccount =
@@ -29,7 +31,7 @@ export function useExplorerAccount(address: Address) {
   return useQuery<ExplorerAccount>({
     queryKey: ["account_explorer", address],
     queryFn: async () => {
-      const [account, contractInfo, balances, perpsUserState, perpsOrders] =
+      const [account, contractInfo, balances, perpsUserState, perpsOrders, perpsVaultState] =
         await Promise.all([
           client.getAccountInfo({ address }),
           client.getContractInfo({ address }),
@@ -39,6 +41,9 @@ export function useExplorerAccount(address: Address) {
             .catch(() => null),
           client
             .getPerpsOrdersByUser({ user: address })
+            .catch(() => null),
+          client
+            .getPerpsVaultState()
             .catch(() => null),
         ]);
 
@@ -51,6 +56,7 @@ export function useExplorerAccount(address: Address) {
         perps: {
           userState: perpsUserState,
           orders: perpsOrders,
+          vaultState: perpsVaultState,
         },
       };
     },

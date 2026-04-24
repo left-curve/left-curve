@@ -40,3 +40,5 @@ export {
   adjustPrice,
   resolveRateSchedule,
 } from "./dex.js";
+
+export { sharesToUsd, usdToShares } from "./vault.js";

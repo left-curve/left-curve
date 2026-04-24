@@ -112,19 +112,29 @@ const Header: React.FC = () => {
 type StackedAccountCardProps = {
   account: AccountWithDetails;
   isFirst: boolean;
+  href: string;
   onClick: () => void;
 };
 
-const StackedAccountCard: React.FC<StackedAccountCardProps> = ({ account, isFirst, onClick }) => {
+const StackedAccountCard: React.FC<StackedAccountCardProps> = ({
+  account,
+  isFirst,
+  href,
+  onClick,
+}) => {
   return (
-    <div
+    <a
+      href={href}
       className={twMerge(
         "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] flex-shrink-0 h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 cursor-pointer",
         "bg-account-card-red text-ink-secondary-700",
         "transition-all duration-200 ease-out hover:-translate-y-2 hover:z-50",
         !isFirst && "-mt-[4rem]",
       )}
-      onClick={onClick}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
     >
       <div className="flex items-start justify-between relative z-10">
         <div className="flex flex-col">
@@ -148,7 +158,7 @@ const StackedAccountCard: React.FC<StackedAccountCardProps> = ({ account, isFirs
           />
         </div>
       </div>
-    </div>
+    </a>
   );
 };
 
@@ -167,6 +177,7 @@ const AccountsStack: React.FC = () => {
             key={account.address}
             account={account}
             isFirst={index === 0}
+            href={`/account/${account.address}`}
             onClick={() => navigate({ to: `/account/${account.address}` })}
           />
         ))}

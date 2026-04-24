@@ -56,8 +56,6 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 
   const isClickable = !!onClick;
 
-  const Component = isClickable ? "button" : "div";
-
   const { data } = useQuery({
     queryKey: ["address_visualizer", config, address],
     queryFn: async () => {
@@ -112,39 +110,60 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 
   const { contract, account } = (data || {}) as { contract?: AddressInfo; account?: AddressInfo };
 
-  if (contract)
-    return (
-      <Component
-        className={twMerge(
-          "flex items-center gap-1",
-          { "cursor-pointer": isClickable },
-          classNames?.container,
-        )}
-        onClick={() => onClick?.(blockExplorer.contractPage.replace("${address}", address))}
-      >
+  const contractUrl = blockExplorer.contractPage.replace("${address}", address);
+  const accountUrl = blockExplorer.accountPage.replace("${address}", address);
+
+  if (contract) {
+    const content = (
+      <>
         {withIcon ? <img src="/DGX.svg" alt="dango logo" className="h-4 w-4" /> : null}
         <span className={twMerge("diatype-m-bold", classNames?.text)}>{contract.name}</span>
         {isClickable ? <IconLink className="w-4 h-4" /> : null}
-      </Component>
+      </>
     );
 
-  if (account)
-    return (
-      <Component
-        className={twMerge(
-          "flex items-center gap-1",
-          { "cursor-pointer": isClickable },
-          classNames?.container,
-        )}
-        onClick={() => onClick?.(blockExplorer.accountPage.replace("${address}", address))}
+    return isClickable ? (
+      <a
+        href={contractUrl}
+        className={twMerge("flex items-center gap-1 cursor-pointer", classNames?.container)}
+        onClick={(e) => {
+          e.preventDefault();
+          onClick?.(contractUrl);
+        }}
       >
+        {content}
+      </a>
+    ) : (
+      <div className={twMerge("flex items-center gap-1", classNames?.container)}>{content}</div>
+    );
+  }
+
+  if (account) {
+    const content = (
+      <>
         {withIcon ? (
           <IconUserCircle className="w-4 h-4 fill-primitives-rice-light-50 text-primitives-rice-light-500 rounded-full overflow-hidden" />
         ) : null}
         <span className={twMerge("diatype-m-bold", classNames?.text)}>{account.name}</span>
         {isClickable ? <IconLink className="w-4 h-4" /> : null}
-      </Component>
+      </>
     );
+
+    return isClickable ? (
+      <a
+        href={accountUrl}
+        className={twMerge("flex items-center gap-1 cursor-pointer", classNames?.container)}
+        onClick={(e) => {
+          e.preventDefault();
+          onClick?.(accountUrl);
+        }}
+      >
+        {content}
+      </a>
+    ) : (
+      <div className={twMerge("flex items-center gap-1", classNames?.container)}>{content}</div>
+    );
+  }
 
   return <TruncateResponsive text={address} className={classNames?.text} />;
 };

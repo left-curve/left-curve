@@ -12,7 +12,7 @@ import { createContext, useContext } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Badge, Cell, FormattedNumber, Table, TextCopy } from "@left-curve/applets-kit";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal, sharesToUsd } from "@left-curve/dango/utils";
 import { AccountCard } from "../foundation/AccountCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
@@ -171,15 +171,19 @@ const PerpsBalance: React.FC = () => {
 
   if (isLoading || !account) return null;
 
-  const { userState } = account.perps;
+  const { userState, vaultState } = account.perps;
   if (!userState) return null;
+
+  const vaultSharesValue = vaultState
+    ? sharesToUsd(userState.vaultShares, vaultState.equity, vaultState.shareSupply)
+    : "0";
 
   const items: PerpsBalanceItem[] = [
     { label: m["explorer.accounts.perps.balance.margin"](), value: userState.margin },
     { label: m["explorer.accounts.perps.balance.equity"](), value: userState.equity ?? "0" },
     { label: m["explorer.accounts.perps.balance.availableMargin"](), value: userState.availableMargin ?? "0" },
     { label: m["explorer.accounts.perps.balance.reservedMargin"](), value: userState.reservedMargin },
-    { label: m["explorer.accounts.perps.balance.vaultShares"](), value: userState.vaultShares },
+    { label: m["explorer.accounts.perps.balance.vaultShares"](), value: vaultSharesValue },
   ];
 
   return (

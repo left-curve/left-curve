@@ -184,15 +184,23 @@ const MarketPrice: React.FC<CellMarketPriceProps> = ({ denom, className, formatO
 
 type CellBlockHeightProps = {
   blockHeight: number;
+  href?: string;
   navigate: () => void;
 };
 
-const BlockHeight: React.FC<CellBlockHeightProps> = ({ blockHeight, navigate }) => {
+const BlockHeight: React.FC<CellBlockHeightProps> = ({ blockHeight, href, navigate }) => {
   return (
     <div className="flex h-full items-center">
-      <p className="diatype-mono-sm-medium cursor-pointer" onClick={navigate}>
+      <a
+        href={href}
+        className="diatype-mono-sm-medium cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate();
+        }}
+      >
         {blockHeight}
-      </p>
+      </a>
     </div>
   );
 };
@@ -241,19 +249,24 @@ const TxResult: React.FC<CellTxResultProps> = ({ className, isSuccess, text, tot
 
 type CellTxHashProps = {
   hash: string;
+  href?: string;
   navigate?: () => void;
 };
 
-const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
+const TxHash: React.FC<CellTxHashProps> = ({ hash, href, navigate }) => {
   return (
-    <div
-      className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-ink-secondary-700"
-      onClick={navigate}
-    >
-      <div className="flex items-center hover:text-ink-primary-900">
+    <div className="flex items-center h-full gap-1 diatype-mono-sm-medium text-ink-secondary-700">
+      <a
+        href={href}
+        className="flex items-center cursor-pointer hover:text-ink-primary-900"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate?.();
+        }}
+      >
         <p className="truncate max-w-36">{hash}</p>
         <IconLink className="h-4 w-4" />
-      </div>
+      </a>
       <TextCopy
         copyText={hash}
         className="h-4 w-4 text-ink-secondary-700 hover:text-ink-primary-900"
