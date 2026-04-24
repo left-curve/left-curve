@@ -6,11 +6,11 @@ use {
     },
     dango_types::{
         constants::{dango, usdc},
-        gateway::{self, Origin, PersonalQuota, RateLimit, Remote},
+        gateway::{self, Origin, PersonalQuota, RateLimit, Remote, SetPersonalQuotaRequest},
     },
     grug::{
-        Addr, Addressable, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt,
-        Udec128, Uint128, btree_map, btree_set, coins,
+        Addr, Addressable, BalanceChange, Coin, Coins, Duration, MathError, Op, QuerierExt,
+        ResultExt, Udec128, Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::MockValidatorSet,
     hyperlane_types::{Addr32, isms},
@@ -787,8 +787,10 @@ fn personal_quota() {
             &gateway::ExecuteMsg::SetPersonalQuota {
                 user: receiver_addr,
                 denom: usdc::DENOM.clone(),
-                amount: Uint128::new(10_000_000),
-                available_for: None,
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(10_000_000),
+                    available_for: None,
+                }),
             },
             Coins::default(),
         )
@@ -803,8 +805,10 @@ fn personal_quota() {
             &gateway::ExecuteMsg::SetPersonalQuota {
                 user: receiver_addr,
                 denom: usdc::DENOM.clone(),
-                amount: Uint128::new(100_000_000),
-                available_for: Some(Duration::from_hours(1)),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(100_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
             },
             Coins::default(),
         )
@@ -818,8 +822,10 @@ fn personal_quota() {
             &gateway::ExecuteMsg::SetPersonalQuota {
                 user: receiver_addr,
                 denom: usdc::DENOM.clone(),
-                amount: Uint128::new(50_000_000),
-                available_for: None,
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(50_000_000),
+                    available_for: None,
+                }),
             },
             Coins::default(),
         )
@@ -913,8 +919,10 @@ fn personal_quota() {
             &gateway::ExecuteMsg::SetPersonalQuota {
                 user: receiver_addr,
                 denom: usdc::DENOM.clone(),
-                amount: Uint128::new(100_000_000),
-                available_for: Some(Duration::from_hours(1)),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(100_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
             },
             Coins::default(),
         )

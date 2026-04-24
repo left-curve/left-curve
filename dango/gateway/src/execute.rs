@@ -8,13 +8,13 @@ use {
         bank,
         gateway::{
             Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, PersonalQuota, RateLimit,
-            Remote, Traceable, WithdrawalFee,
+            Remote, SetPersonalQuotaRequest, Traceable, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Denom, Duration, Inner, IsZero, Message, MultiplyFraction, MutableCtx, Number,
+        Addr, Coins, Denom, Inner, IsZero, Message, MultiplyFraction, MutableCtx, Number,
         NumberConst, Op, QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage,
         SudoCtx, Uint128, btree_map, coins,
     },
@@ -42,12 +42,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             recipient,
         } => receive_remote(ctx, remote, amount, recipient),
         ExecuteMsg::TransferRemote { remote, recipient } => transfer_remote(ctx, remote, recipient),
-        ExecuteMsg::SetPersonalQuota {
-            user,
-            denom,
-            amount,
-            available_for,
-        } => set_personal_quota(ctx, user, denom, amount, available_for),
+        ExecuteMsg::SetPersonalQuota { user, denom, quota } => {
+            set_personal_quota(ctx, user, denom, quota)
+        },
     }
 }
 
@@ -205,22 +202,31 @@ fn set_personal_quota(
     ctx: MutableCtx,
     user: Addr,
     denom: Denom,
-    amount: Uint128,
-    available_for: Option<Duration>,
+    quota: Op<SetPersonalQuotaRequest>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "only the owner can set personal quotas"
     );
 
-    let expiry = available_for
-        .map(|d| ctx.block.timestamp.checked_add(d))
-        .transpose()?;
+    match quota {
+        Op::Insert(SetPersonalQuotaRequest {
+            amount,
+            available_for,
+        }) => {
+            let expiry = available_for
+                .map(|d| ctx.block.timestamp.checked_add(d))
+                .transpose()?;
 
-    PERSONAL_QUOTAS.save(ctx.storage, (user, &denom), &PersonalQuota {
-        amount,
-        expiry,
-    })?;
+            PERSONAL_QUOTAS.save(ctx.storage, (user, &denom), &PersonalQuota {
+                amount,
+                expiry,
+            })?;
+        },
+        Op::Delete => {
+            PERSONAL_QUOTAS.remove(ctx.storage, (user, &denom));
+        },
+    }
 
     Ok(Response::new())
 }

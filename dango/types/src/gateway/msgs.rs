@@ -14,13 +14,25 @@ pub struct WithdrawalFee {
 }
 
 /// Per-account allowance that is consumed before the global outbound quota
-/// when the user sends a remote transfer.
+/// when the user sends a remote transfer. This is the stored / returned
+/// form; `SetPersonalQuotaRequest` is the admin input.
 #[grug::derive(Borsh, Serde)]
 pub struct PersonalQuota {
     pub amount: Uint128,
     /// `None` means the quota never expires. `Some(t)` means the quota is
     /// ignored once the current block timestamp reaches `t`.
     pub expiry: Option<Timestamp>,
+}
+
+/// Admin input for `ExecuteMsg::SetPersonalQuota`. Carries the relative
+/// lifetime `available_for`; the contract translates it into an absolute
+/// `expiry` when saving the resulting `PersonalQuota`.
+#[grug::derive(Serde)]
+pub struct SetPersonalQuotaRequest {
+    pub amount: Uint128,
+    /// `None` means the quota never expires. `Some(d)` means the quota
+    /// expires at `current_block_time + d`.
+    pub available_for: Option<Duration>,
 }
 
 #[grug::derive(Serde)]
@@ -46,19 +58,18 @@ pub enum ExecuteMsg {
     /// Set withdrawal fees for the denoms.
     SetWithdrawalFees(Vec<WithdrawalFee>),
 
-    /// Grant a per-account, per-denom withdrawal allowance that is consumed
-    /// before the global outbound quota. Overwrites any existing entry for
-    /// the same `(user, denom)`.
+    /// Grant or revoke a per-account, per-denom withdrawal allowance that is
+    /// consumed before the global outbound quota.
     ///
-    /// `available_for = None` → the quota never expires.
-    /// `available_for = Some(d)` → the quota expires at `current_block_time + d`.
+    /// `Op::Insert(request)` overwrites any existing entry for the same
+    /// `(user, denom)` with the fields in `request`. `Op::Delete` removes
+    /// the entry entirely.
     ///
     /// Can only be called by the chain owner.
     SetPersonalQuota {
         user: Addr,
         denom: Denom,
-        amount: Uint128,
-        available_for: Option<Duration>,
+        quota: Op<SetPersonalQuotaRequest>,
     },
 
     /// Receive a token transfer from a remote chain.
