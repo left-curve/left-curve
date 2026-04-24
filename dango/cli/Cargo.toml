@@ -19,7 +19,6 @@ dango-httpd                 = { workspace = true, features = ["metrics", "tracin
 dango-indexer-clickhouse    = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-indexer-sql           = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
-dango-sdk                   = { workspace = true }
 dango-upgrade               = { workspace = true }
 dialoguer                   = { workspace = true }
 futures                     = { workspace = true }

@@ -20,7 +20,6 @@ dango-httpd              = { workspace = true, features = ["metrics", "tracing"]
 dango-indexer-clickhouse = { workspace = true, features = ["async-graphql", "metrics", "testing", "tracing"] }
 dango-indexer-sql        = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 dango-proposal-preparer  = { workspace = true }
-dango-sdk                = { workspace = true, features = ["tracing"] }
 dango-types              = { workspace = true, features = ["async-graphql"] }
 grug                     = { workspace = true }
 grug-app                 = { workspace = true }
@@ -64,6 +63,7 @@ dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
 dango-perps                 = { workspace = true, features = ["library"] }
+dango-sdk                   = { workspace = true, features = ["tracing"] }
 dango-taxman                = { workspace = true, features = ["library"] }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }

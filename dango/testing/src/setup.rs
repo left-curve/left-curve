@@ -8,7 +8,6 @@ use {
     },
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
-    dango_sdk::HttpClient,
     dango_types::{
         gateway::{Domain, Remote},
         warp,
@@ -244,7 +243,8 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     clickhouse_context.start_cache().await.unwrap();
 
-    let consensus_client = Arc::new(HttpClient::new("http://localhost:8080").unwrap());
+    let consensus_client =
+        Arc::new(indexer_httpd::TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_cache_context,

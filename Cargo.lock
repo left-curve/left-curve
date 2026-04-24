@@ -4001,7 +4001,6 @@ dependencies = [
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
  "dango-proposal-preparer",
- "dango-sdk",
  "dango-upgrade",
  "dialoguer",
  "futures",

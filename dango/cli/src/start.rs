@@ -9,7 +9,6 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    dango_sdk::HttpClient,
     grug_app::{
         App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment,
     },
@@ -18,6 +17,7 @@ use {
     grug_types::{GIT_COMMIT, HttpdConfig},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
+    indexer_httpd::TendermintRpcClient,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::{Arc, atomic::AtomicBool},
     tokio::{
@@ -98,9 +98,8 @@ impl StartCmd {
 
         let app = Arc::new(app);
 
-        let httpd_url = format!("http://{}:{}", cfg.httpd.ip, cfg.httpd.port);
         let (hooked_indexer, _, dango_httpd_context) = self
-            .setup_indexer_stack(app_dir, &cfg, app.clone(), &httpd_url)
+            .setup_indexer_stack(app_dir, &cfg, app.clone(), &cfg.tendermint.rpc_addr)
             .await?;
 
         let indexer_clone = hooked_indexer.clone();
@@ -272,7 +271,7 @@ impl StartCmd {
         app_dir: HomeDirectory,
         cfg: &Config,
         app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
-        httpd_url: &str,
+        tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
         indexer_httpd::context::Context,
@@ -323,7 +322,7 @@ impl StartCmd {
             indexer_cache_context,
             indexer_context,
             app.clone(),
-            Arc::new(HttpClient::new(httpd_url)?),
+            Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
         );
 
         let dango_httpd_context = dango_httpd::context::Context::new(
