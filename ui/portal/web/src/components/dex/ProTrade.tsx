@@ -607,7 +607,7 @@ const UnifiedOpenOrders: React.FC = () => {
   const { formatNumberOptions } = settings;
   const { baseCoin } = useTradeCoins();
 
-  const [showAllPairs, setShowAllPairs] = useState(false);
+  const [showAllPairs, setShowAllPairs] = useState(true);
 
   const spotOrders = useOrdersByUser({ enabled: mode === "spot", initialData: [] });
 
