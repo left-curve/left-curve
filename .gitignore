@@ -48,7 +48,7 @@ ui/portal/web/public/images
 **/.turbo
 
 # SDK
-sdk/docs
+sdk/typescript/docs
 
 # UI
 **/.next
