@@ -1,19 +1,22 @@
 use {
-    crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
+    crate::{
+        OUTBOUND_QUOTAS, PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES,
+        WITHDRAWAL_FEES,
+    },
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote, Traceable,
-            WithdrawalFee,
+            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, PersonalQuota, RateLimit,
+            Remote, Traceable, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst, Op,
-        QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
-        btree_map, coins,
+        Addr, Coins, Denom, Duration, Inner, IsZero, Message, MultiplyFraction, MutableCtx, Number,
+        NumberConst, Op, QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage,
+        SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -39,6 +42,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             recipient,
         } => receive_remote(ctx, remote, amount, recipient),
         ExecuteMsg::TransferRemote { remote, recipient } => transfer_remote(ctx, remote, recipient),
+        ExecuteMsg::SetPersonalQuota {
+            user,
+            denom,
+            amount,
+            available_for,
+        } => set_personal_quota(ctx, user, denom, amount, available_for),
     }
 }
 
@@ -154,6 +163,28 @@ fn _set_withdrawal_fees(
     Ok(())
 }
 
+fn set_personal_quota(
+    ctx: MutableCtx,
+    user: Addr,
+    denom: Denom,
+    amount: Uint128,
+    available_for: Option<Duration>,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only the owner can set personal quotas"
+    );
+
+    let expiry = available_for.map(|d| ctx.block.timestamp + d);
+
+    PERSONAL_QUOTAS.save(ctx.storage, (user, &denom), &PersonalQuota {
+        amount,
+        expiry,
+    })?;
+
+    Ok(Response::new())
+}
+
 fn receive_remote(
     ctx: MutableCtx,
     remote: Remote,
@@ -235,21 +266,46 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })?;
     }
 
-    // Reduce the outbound quota.
-    OUTBOUND_QUOTAS.may_modify(ctx.storage, &coin.denom, |maybe_quota| {
-        let Some(quota) = maybe_quota else {
-            return Ok(None);
-        };
+    // Consume the sender's personal quota first, if any and still active.
+    // Whatever is left over falls through to the global outbound quota.
+    let key = (ctx.sender, &coin.denom);
+    let mut remaining = coin.amount;
 
-        Some(quota.checked_sub(coin.amount).map_err(|_| {
-            anyhow!(
-                "insufficient outbound quota! denom: {}, amount: {}",
-                coin.denom,
-                coin.amount
-            )
-        }))
-        .transpose()
-    })?;
+    if let Some(pq) = PERSONAL_QUOTAS.may_load(ctx.storage, key)?
+        && pq.expiry.is_none_or(|e| ctx.block.timestamp < e)
+    {
+        let consumed = pq.amount.min(remaining);
+        remaining = remaining.checked_sub(consumed)?;
+
+        let leftover = pq.amount.checked_sub(consumed)?;
+        if leftover.is_zero() {
+            PERSONAL_QUOTAS.remove(ctx.storage, key);
+        } else {
+            PERSONAL_QUOTAS.save(ctx.storage, key, &PersonalQuota {
+                amount: leftover,
+                expiry: pq.expiry,
+            })?;
+        }
+    }
+
+    // Reduce the global outbound quota by whatever the personal quota did not
+    // cover. A missing entry means the denom is not rate-limited at all.
+    if !remaining.is_zero() {
+        OUTBOUND_QUOTAS.may_modify(ctx.storage, &coin.denom, |maybe_quota| {
+            let Some(quota) = maybe_quota else {
+                return Ok(None);
+            };
+
+            Some(quota.checked_sub(remaining).map_err(|_| {
+                anyhow!(
+                    "insufficient outbound quota! denom: {}, amount: {}",
+                    coin.denom,
+                    remaining
+                )
+            }))
+            .transpose()
+        })?;
+    }
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
 

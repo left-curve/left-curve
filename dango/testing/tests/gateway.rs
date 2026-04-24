@@ -6,11 +6,11 @@ use {
     },
     dango_types::{
         constants::{dango, usdc},
-        gateway::{self, Origin, RateLimit, Remote},
+        gateway::{self, Origin, PersonalQuota, RateLimit, Remote},
     },
     grug::{
-        Addr, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt, Udec128,
-        btree_map, btree_set, coins,
+        Addr, Addressable, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt,
+        Udec128, Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::MockValidatorSet,
     hyperlane_types::{Addr32, isms},
@@ -509,8 +509,246 @@ fn set_rate_limits_resets_quota() {
         .should_succeed();
 }
 
+#[test]
+fn personal_quota() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver_addr = accounts.user2.address();
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Seed 200M USDC from solana so there's both stock and a non-trivial
+    // reserve for withdrawals to hit.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            200_000_000,
+        )
+        .should_succeed();
+
+    // Tight 1% rate limit. Supply is 200M → global quota = 2M.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(1)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // ---- Auth ----
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(10_000_000),
+                available_for: None,
+            },
+            Coins::default(),
+        )
+        .should_fail_with_error("only the owner can set personal quotas");
+
+    // ---- Overwrite + query ----
+    // Initial 100M with a 1h lifetime.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(100_000_000),
+                available_for: Some(Duration::from_hours(1)),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Overwrite with a smaller, permanent allowance.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(50_000_000),
+                available_for: None,
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(PersonalQuota {
+            amount: Uint128::new(50_000_000),
+            expiry: None,
+        }));
+
+    // ---- Consumption fully within personal quota ----
+    // Personal = 50M, global = 2M. Withdraw 40M; only personal is touched.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 40_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(PersonalQuota {
+            amount: Uint128::new(10_000_000),
+            expiry: None,
+        }));
+
+    // ---- Overflow into global quota ----
+    // Withdraw 12M; personal (10M) is fully consumed, global absorbs 2M.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 12_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Fully consumed personal quotas are removed from storage.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(None);
+
+    // Global is now depleted. The error mentions the remainder after any
+    // personal quota would have been consumed — here that is the full amount.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+
+    // ---- Expired personal quota is ignored ----
+    // Grant 100M more, this time with a 1h lifetime.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(100_000_000),
+                available_for: Some(Duration::from_hours(1)),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // 2h later — under the 24h cron interval, so the global quota stays at 0.
+    advance_by(&mut suite, Duration::from_hours(2));
+
+    // The personal quota is now expired and must be skipped. Withdrawing 1
+    // token falls through to the global quota (still 0) and fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+
+    // The expired entry is left in storage; the handler doesn't scrub it. The
+    // caller can still query it to reason about `expiry`.
+    let stored = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed();
+    assert_eq!(
+        stored.as_ref().map(|q| q.amount),
+        Some(Uint128::new(100_000_000))
+    );
+    assert!(stored.and_then(|q| q.expiry).is_some());
+
+    // ---- Pagination query ----
+    let mut page = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed();
+    assert_eq!(page.len(), 1);
+    let entry = page.pop().unwrap();
+    assert_eq!(entry.user, receiver_addr);
+    assert_eq!(entry.denom, usdc::DENOM.clone());
+    assert_eq!(entry.quota.amount, Uint128::new(100_000_000));
+}
+
 fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
+    suite.make_empty_block();
+    suite.block_time = Duration::ZERO;
+}
+
+fn advance_by(suite: &mut TestSuite, d: Duration) {
+    suite.block_time = d;
     suite.make_empty_block();
     suite.block_time = Duration::ZERO;
 }

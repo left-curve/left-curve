@@ -1,5 +1,5 @@
 use {
-    dango_types::gateway::{RateLimit, Remote},
+    dango_types::gateway::{PersonalQuota, RateLimit, Remote},
     grug::{Addr, Denom, Item, Map, Uint128},
     std::collections::BTreeMap,
 };
@@ -15,3 +15,5 @@ pub const WITHDRAWAL_FEES: Map<(&Denom, Remote), Uint128> = Map::new("withdrawal
 pub const RESERVES: Map<(Addr, Remote), Uint128> = Map::new("reserve");
 
 pub const OUTBOUND_QUOTAS: Map<&Denom, Uint128> = Map::new("outbound_quota");
+
+pub const PERSONAL_QUOTAS: Map<(Addr, &Denom), PersonalQuota> = Map::new("personal_quota");
