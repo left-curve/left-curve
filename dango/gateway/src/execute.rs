@@ -175,7 +175,9 @@ fn set_personal_quota(
         "only the owner can set personal quotas"
     );
 
-    let expiry = available_for.map(|d| ctx.block.timestamp + d);
+    let expiry = available_for
+        .map(|d| ctx.block.timestamp.checked_add(d))
+        .transpose()?;
 
     PERSONAL_QUOTAS.save(ctx.storage, (user, &denom), &PersonalQuota {
         amount,
