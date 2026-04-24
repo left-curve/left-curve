@@ -2,8 +2,7 @@ use {
     crate::config::{Config, evm::EVMConfig},
     alloy::primitives::Address,
     anyhow::{anyhow, bail},
-    dango_client::{Secp256k1, SingleSigner},
-    dango_sdk::HttpClient,
+    dango_sdk::{HttpClient, Secp256k1, SingleSigner},
     dango_types::{
         auth::Nonce,
         config::AppConfig,

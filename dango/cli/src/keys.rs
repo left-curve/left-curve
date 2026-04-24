@@ -4,7 +4,7 @@ use {
     bip32::{Language, Mnemonic},
     clap::Subcommand,
     colored::Colorize,
-    dango_client::{Keystore, Secp256k1, Secret},
+    dango_sdk::{Keystore, Secp256k1, Secret},
     grug_types::JsonDeExt,
     rand::rngs::OsRng,
     std::{

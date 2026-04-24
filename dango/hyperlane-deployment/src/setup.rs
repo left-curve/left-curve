@@ -1,7 +1,6 @@
 use {
     crate::config::dango::DangoConfig,
-    dango_client::{Secp256k1, Secret, SingleSigner},
-    dango_sdk::HttpClient,
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
     dango_types::{
         account_factory::{self, UserIndexOrName},
         auth::Nonce,

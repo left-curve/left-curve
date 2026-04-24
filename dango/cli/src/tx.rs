@@ -7,7 +7,7 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     config_parser::parse_config,
-    dango_client::{Keystore, Secp256k1, Secret, SingleSigner},
+    dango_sdk::{Keystore, Secp256k1, Secret, SingleSigner},
     dango_types::{account_factory::UserIndex, config::AppConfig},
     grug_app::GAS_COSTS,
     grug_client::TendermintRpcClient,
