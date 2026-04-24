@@ -976,6 +976,138 @@ fn personal_quota() {
     assert_eq!(entry.quota.amount, Uint128::new(100_000_000));
 }
 
+/// `Op::Delete` must remove the personal quota entry outright — not just
+/// flip its amount to zero — so subsequent withdrawals see no personal
+/// allowance at all and fall straight to the global quota.
+#[test]
+fn personal_quota_revoke_via_op_delete() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver_addr = accounts.user2.address();
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // 100M supply. 10% rate limit → global quota = 10M.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Grant a 50M personal allowance.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(50_000_000),
+                    available_for: None,
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(PersonalQuota {
+            amount: Uint128::new(50_000_000),
+            expiry: None,
+        }));
+
+    // Revoke via `Op::Delete`.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Delete,
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Entry is gone — not just zeroed.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(None);
+
+    // Try to withdraw 20M — above the 10M global quota. Pre-revocation the
+    // personal quota would have covered it; post-revocation the transfer
+    // must fall straight to the global quota and fail. The error message's
+    // `remaining` equals the full request because no personal quota was
+    // consumed.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error(
+            "insufficient outbound quota! denom: bridge/usdc, requested: 20000000, remaining after personal quota: 20000000",
+        );
+
+    // The 10M global quota still applies — 10M succeeds, 10M + 1 fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+}
+
 fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
     suite.make_empty_block();
