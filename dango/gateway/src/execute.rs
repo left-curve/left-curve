@@ -12,7 +12,8 @@ use {
     },
     grug::{
         Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst, Op,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
+        QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+        btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -91,6 +92,7 @@ fn set_rate_limits(
     );
 
     _set_rate_limits(ctx.storage, rate_limits)?;
+    refresh_quotas(ctx.storage, ctx.querier)?;
 
     Ok(Response::new())
 }
@@ -100,6 +102,22 @@ fn _set_rate_limits(
     rate_limits: BTreeMap<Denom, RateLimit>,
 ) -> StdResult<()> {
     RATE_LIMITS.save(storage, &rate_limits)?;
+
+    Ok(())
+}
+
+/// Clear all outbound quotas and reseed them from each rate-limited denom's
+/// current supply times its configured percentage. Called by the cron job and
+/// whenever the admin updates rate limits.
+fn refresh_quotas(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResult<()> {
+    OUTBOUND_QUOTAS.clear(storage, None, None);
+
+    for (denom, limit) in RATE_LIMITS.load(storage)? {
+        let supply = querier.query_supply(denom.clone())?;
+        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+
+        OUTBOUND_QUOTAS.save(storage, &denom, &quota)?;
+    }
 
     Ok(())
 }
@@ -278,16 +296,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    // Clear the quotas for the previous 24-hour window.
-    OUTBOUND_QUOTAS.clear(ctx.storage, None, None);
-
-    // Set quotes for the next 24-hour window.
-    for (denom, limit) in RATE_LIMITS.load(ctx.storage)? {
-        let supply = ctx.querier.query_supply(denom.clone())?;
-        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
-
-        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
-    }
+    refresh_quotas(ctx.storage, ctx.querier)?;
 
     Ok(Response::new())
 }
