@@ -21,7 +21,11 @@ pub struct PersonalQuota {
     pub amount: Uint128,
     /// `None` means the quota never expires. `Some(t)` means the quota is
     /// ignored once the current block timestamp reaches `t`.
-    pub expiry: Option<Timestamp>,
+    pub expire_at: Option<Timestamp>,
+    /// The admin account that created or last overwrote this entry.
+    pub granted_by: Addr,
+    /// The block timestamp of the grant or most recent overwrite.
+    pub granted_at: Timestamp,
 }
 
 /// Admin input for `ExecuteMsg::SetPersonalQuota`. Carries the relative

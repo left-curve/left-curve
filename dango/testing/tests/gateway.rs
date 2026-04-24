@@ -748,6 +748,7 @@ fn personal_quota() {
     let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
 
     let receiver_addr = accounts.user2.address();
+    let owner_addr = accounts.owner.address();
     let receiver = &mut accounts.user2;
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
@@ -831,15 +832,19 @@ fn personal_quota() {
         )
         .should_succeed();
 
-    suite
+    let pq = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
             user: receiver_addr,
             denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and_equal(Some(PersonalQuota {
-            amount: Uint128::new(50_000_000),
-            expiry: None,
-        }));
+        .should_succeed()
+        .expect("entry present");
+    assert_eq!(pq.amount, Uint128::new(50_000_000));
+    assert_eq!(pq.expire_at, None);
+    assert_eq!(pq.granted_by, owner_addr);
+    // Captured so the next assertion can check that partial consumption
+    // preserves the grant's `granted_at`.
+    let granted_at_after_overwrite = pq.granted_at;
 
     // ---- Consumption fully within personal quota ----
     // Personal = 50M, global = 2M. Withdraw 40M; only personal is touched.
@@ -858,15 +863,19 @@ fn personal_quota() {
         )
         .should_succeed();
 
-    suite
+    let pq = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
             user: receiver_addr,
             denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and_equal(Some(PersonalQuota {
-            amount: Uint128::new(10_000_000),
-            expiry: None,
-        }));
+        .should_succeed()
+        .expect("entry present");
+    assert_eq!(pq.amount, Uint128::new(10_000_000));
+    assert_eq!(pq.expire_at, None);
+    assert_eq!(pq.granted_by, owner_addr);
+    // Partial consumption must preserve `granted_at` from the previous grant
+    // — it's an audit field, not an activity timestamp.
+    assert_eq!(pq.granted_at, granted_at_after_overwrite);
 
     // ---- Overflow into global quota ----
     // Withdraw 12M; personal (10M) is fully consumed, global absorbs 2M.
@@ -949,7 +958,7 @@ fn personal_quota() {
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // The expired entry is left in storage; the handler doesn't scrub it. The
-    // caller can still query it to reason about `expiry`.
+    // caller can still query it to reason about `expire_at`.
     let stored = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
             user: receiver_addr,
@@ -960,7 +969,7 @@ fn personal_quota() {
         stored.as_ref().map(|q| q.amount),
         Some(Uint128::new(100_000_000))
     );
-    assert!(stored.and_then(|q| q.expiry).is_some());
+    assert!(stored.and_then(|q| q.expire_at).is_some());
 
     // ---- Pagination query ----
     let mut page = suite
@@ -991,6 +1000,7 @@ fn personal_quota_revoke_via_op_delete() {
     let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
 
     let receiver_addr = accounts.user2.address();
+    let owner_addr = accounts.owner.address();
     let receiver = &mut accounts.user2;
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
@@ -1037,15 +1047,16 @@ fn personal_quota_revoke_via_op_delete() {
         )
         .should_succeed();
 
-    suite
+    let pq = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
             user: receiver_addr,
             denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and_equal(Some(PersonalQuota {
-            amount: Uint128::new(50_000_000),
-            expiry: None,
-        }));
+        .should_succeed()
+        .expect("entry present");
+    assert_eq!(pq.amount, Uint128::new(50_000_000));
+    assert_eq!(pq.expire_at, None);
+    assert_eq!(pq.granted_by, owner_addr);
 
     // Revoke via `Op::Delete`.
     suite
@@ -1124,6 +1135,7 @@ fn personal_quota_on_un_rate_limited_denom() {
     let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
 
     let receiver_addr = accounts.user2.address();
+    let owner_addr = accounts.owner.address();
     let receiver = &mut accounts.user2;
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
@@ -1176,15 +1188,16 @@ fn personal_quota_on_un_rate_limited_denom() {
         )
         .should_succeed();
 
-    suite
+    let pq = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
             user: receiver_addr,
             denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and_equal(Some(PersonalQuota {
-            amount: Uint128::new(20_000_000),
-            expiry: None,
-        }));
+        .should_succeed()
+        .expect("entry present");
+    assert_eq!(pq.amount, Uint128::new(20_000_000));
+    assert_eq!(pq.expire_at, None);
+    assert_eq!(pq.granted_by, owner_addr);
 
     // Withdraw 50M: 20M from personal (fully consumed), 30M falls through
     // to the global quota. Because the denom is not in RATE_LIMITS, the
@@ -1246,6 +1259,7 @@ fn personal_quota_mid_consumption_overwrite() {
     let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
 
     let receiver_addr = accounts.user2.address();
+    let owner_addr = accounts.owner.address();
     let receiver = &mut accounts.user2;
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
@@ -1309,15 +1323,17 @@ fn personal_quota_mid_consumption_overwrite() {
         )
         .should_succeed();
 
-    suite
+    let pq = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
             user: receiver_addr,
             denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and_equal(Some(PersonalQuota {
-            amount: Uint128::new(60_000_000),
-            expiry: None,
-        }));
+        .should_succeed()
+        .expect("entry present");
+    assert_eq!(pq.amount, Uint128::new(60_000_000));
+    assert_eq!(pq.expire_at, None);
+    assert_eq!(pq.granted_by, owner_addr);
+    let granted_at_before_overwrite = pq.granted_at;
 
     // Overwrite: admin replaces with 10M + 1h expiry. The 60M leftover is
     // discarded; the expiry is newly computed from the current block time.
@@ -1348,7 +1364,11 @@ fn personal_quota_mid_consumption_overwrite() {
     // Amount is the new 10M — no carry-over.
     assert_eq!(stored.amount, Uint128::new(10_000_000));
     // Expiry is Some — the new lifetime replaced the previous `None`.
-    assert!(stored.expiry.is_some());
+    assert!(stored.expire_at.is_some());
+    // Overwrites must reset `granted_at` — the record should reflect the
+    // latest admin decision, not the first grant.
+    assert!(stored.granted_at >= granted_at_before_overwrite);
+    assert_eq!(stored.granted_by, owner_addr);
 }
 
 /// Paginated queries must return entries in ascending `(Addr, Denom)`

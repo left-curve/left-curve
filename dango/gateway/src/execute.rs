@@ -214,13 +214,15 @@ fn set_personal_quota(
             amount,
             available_for,
         }) => {
-            let expiry = available_for
+            let expire_at = available_for
                 .map(|d| ctx.block.timestamp.checked_add(d))
                 .transpose()?;
 
             PERSONAL_QUOTAS.save(ctx.storage, (user, &denom), &PersonalQuota {
                 amount,
-                expiry,
+                expire_at,
+                granted_by: ctx.sender,
+                granted_at: ctx.block.timestamp,
             })?;
         },
         Op::Delete => {
@@ -318,7 +320,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     let mut remaining = coin.amount;
 
     if let Some(pq) = PERSONAL_QUOTAS.may_load(ctx.storage, key)?
-        && pq.expiry.is_none_or(|e| ctx.block.timestamp < e)
+        && pq.expire_at.is_none_or(|t| ctx.block.timestamp < t)
     {
         let consumed = pq.amount.min(remaining);
         remaining = remaining.checked_sub(consumed)?;
@@ -329,7 +331,9 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         } else {
             PERSONAL_QUOTAS.save(ctx.storage, key, &PersonalQuota {
                 amount: leftover,
-                expiry: pq.expiry,
+                expire_at: pq.expire_at,
+                granted_by: pq.granted_by,
+                granted_at: pq.granted_at,
             })?;
         }
     }
