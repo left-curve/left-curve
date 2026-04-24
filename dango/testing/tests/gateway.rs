@@ -1351,6 +1351,114 @@ fn personal_quota_mid_consumption_overwrite() {
     assert!(stored.expiry.is_some());
 }
 
+/// Paginated queries must return entries in ascending `(Addr, Denom)`
+/// order and the `start_after` bound must correctly skip past the end of
+/// the previous page.
+#[test]
+fn personal_quotas_pagination() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let user_a = accounts.user1.address();
+    let user_b = accounts.user2.address();
+    let owner = &mut accounts.owner;
+
+    // Grant four quotas across two users × two denoms.
+    for (user, denom) in [
+        (user_a, usdc::DENOM.clone()),
+        (user_a, dango::DENOM.clone()),
+        (user_b, usdc::DENOM.clone()),
+        (user_b, dango::DENOM.clone()),
+    ] {
+        suite
+            .execute(
+                owner,
+                contracts.gateway,
+                &gateway::ExecuteMsg::SetPersonalQuota {
+                    user,
+                    denom,
+                    quota: Op::Insert(SetPersonalQuotaRequest {
+                        amount: Uint128::new(1_000_000),
+                        available_for: None,
+                    }),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+    }
+
+    // First page, limit 2.
+    let page1 = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
+            start_after: None,
+            limit: Some(2),
+        })
+        .should_succeed();
+    assert_eq!(page1.len(), 2);
+
+    // Second page picks up after the last entry of page 1.
+    let last = page1.last().expect("page 1 non-empty");
+    let page2 = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
+            start_after: Some((last.user, last.denom.clone())),
+            limit: Some(2),
+        })
+        .should_succeed();
+    assert_eq!(page2.len(), 2);
+
+    // No entry overlap between pages.
+    let page1_keys: std::collections::BTreeSet<_> =
+        page1.iter().map(|e| (e.user, e.denom.clone())).collect();
+    let page2_keys: std::collections::BTreeSet<_> =
+        page2.iter().map(|e| (e.user, e.denom.clone())).collect();
+    assert!(page1_keys.is_disjoint(&page2_keys));
+
+    // Combined, the two pages cover exactly all four grants.
+    let combined: std::collections::BTreeSet<_> = page1_keys.union(&page2_keys).cloned().collect();
+    let expected: std::collections::BTreeSet<_> = [
+        (user_a, usdc::DENOM.clone()),
+        (user_a, dango::DENOM.clone()),
+        (user_b, usdc::DENOM.clone()),
+        (user_b, dango::DENOM.clone()),
+    ]
+    .into_iter()
+    .collect();
+    assert_eq!(combined, expected);
+
+    // Each page is internally sorted ascending.
+    assert!(
+        page1
+            .windows(2)
+            .all(|w| (w[0].user, &w[0].denom) <= (w[1].user, &w[1].denom))
+    );
+    assert!(
+        page2
+            .windows(2)
+            .all(|w| (w[0].user, &w[0].denom) <= (w[1].user, &w[1].denom))
+    );
+
+    // And the boundary between pages is also ascending.
+    let last_p1 = page1.last().unwrap();
+    let first_p2 = page2.first().unwrap();
+    assert!((last_p1.user, &last_p1.denom) < (first_p2.user, &first_p2.denom));
+
+    // Querying beyond the end yields an empty page.
+    let last_p2 = page2.last().unwrap();
+    let page3 = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotasRequest {
+            start_after: Some((last_p2.user, last_p2.denom.clone())),
+            limit: Some(2),
+        })
+        .should_succeed();
+    assert!(page3.is_empty());
+}
+
 fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
     suite.make_empty_block();
