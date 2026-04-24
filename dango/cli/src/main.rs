@@ -4,11 +4,7 @@ mod home_directory;
 mod indexer;
 mod start;
 mod telemetry;
-#[cfg(feature = "testing")]
-mod test;
 
-#[cfg(feature = "testing")]
-use crate::test::TestCmd;
 use {
     crate::{db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, start::StartCmd},
     clap::{CommandFactory, FromArgMatches, Parser},
@@ -51,10 +47,6 @@ enum Command {
 
     /// Start the node
     Start(StartCmd),
-
-    /// Run test
-    #[cfg(feature = "testing")]
-    Test(TestCmd),
 }
 
 #[tokio::main]
@@ -231,8 +223,6 @@ async fn main() -> anyhow::Result<()> {
         Command::Db(cmd) => cmd.run(app_dir)?,
         Command::Indexer(cmd) => cmd.run(app_dir).await?,
         Command::Start(cmd) => cmd.run(app_dir).await?,
-        #[cfg(feature = "testing")]
-        Command::Test(cmd) => cmd.run(app_dir).await?,
     }
 
     // Flush and shutdown the tracer provider (if set) to avoid losing spans.

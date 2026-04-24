@@ -9,10 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = "0.16.1"
 
-[features]
-default = []
-testing = ["pyth-client", "pyth-types", "tokio-stream"]
-
 [dependencies]
 anyhow                      = { workspace = true }
 clap                        = { workspace = true, features = ["derive", "wrap_help"] }
@@ -43,12 +39,9 @@ metrics-exporter-prometheus = { workspace = true }
 opentelemetry               = { workspace = true }
 opentelemetry-otlp          = { workspace = true }
 opentelemetry_sdk           = { workspace = true }
-pyth-client                 = { workspace = true, optional = true }
-pyth-types                  = { workspace = true, optional = true }
 sentry                      = { workspace = true }
 serde                       = { workspace = true }
 tokio                       = { workspace = true }
-tokio-stream                = { workspace = true, optional = true }
 tower                       = { workspace = true, features = ["full"] }
 tower-abci                  = { workspace = true }
 tracing                     = { workspace = true }
