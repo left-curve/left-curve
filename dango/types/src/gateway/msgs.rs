@@ -56,7 +56,25 @@ pub enum ExecuteMsg {
     /// existing route.
     SetRoutes(BTreeSet<(Origin, Addr, Remote)>),
 
-    /// Set rate limit for the routes.
+    /// Overwrite the global rate-limit configuration.
+    ///
+    /// The map is the new complete set of rate-limited denoms:
+    ///
+    /// - A denom absent from the map is not rate-limited — outbound
+    ///   transfers of it are unrestricted by quota (only reserves and
+    ///   withdrawal fees still apply). Any existing quota entry for a
+    ///   dropped denom is cleared in the same block.
+    /// - A denom mapped to `0` is fully locked — the quota is set to
+    ///   zero, so no outbound transfer passes until the admin raises
+    ///   the limit or removes the denom.
+    /// - A denom mapped to a positive fraction less than `1` has its
+    ///   quota enforced at `supply × limit` per cron window.
+    ///
+    /// A call only tightens outstanding quotas immediately: each denom's
+    /// quota becomes `min(current_quota, supply × new_limit)`. Raises
+    /// take effect on the next cron tick.
+    ///
+    /// Can only be called by the chain owner.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
 
     /// Set withdrawal fees for the denoms.
