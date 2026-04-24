@@ -3,7 +3,7 @@ import { ethHashMessage } from "../crypto.js";
 import { decodeHex, encodeHex } from "../encoding.js";
 import { IncrementalMerkleTree } from "./merkletree.js";
 
-import cases from "../../../../hyperlane/types/testdata/merkle.json" with { type: "json" };
+import cases from "../../../../../hyperlane/types/testdata/merkle.json" with { type: "json" };
 
 describe("incremental merklee tree", () => {
   it("insertion works", () => {

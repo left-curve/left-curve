@@ -13,7 +13,7 @@ This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) containing a number
 | [grug](./grug/)           | Rust       | an execution environment for blockchains                                                         |
 | [hyperlane](./hyperlane/) | Rust       | implementation of the [Hyperlane](https://hyperlane.xyz/) cross-chain messaging protocol in Grug |
 | [indexer](./indexer/)     | Rust       | indexer and server infrastructure                                                                |
-| [sdk](./sdk/)             | TypeScript | an SDK for interacting with Grug chains                                                          |
+| [sdk](./sdk/typescript/)  | TypeScript | an SDK for interacting with Grug chains                                                          |
 | [ui](./ui/)               | TypeScript | a web interface for accessing Dango                                                              |
 
 ## How to use
