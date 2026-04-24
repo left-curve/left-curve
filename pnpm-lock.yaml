@@ -583,6 +583,9 @@ importers:
       graphql-ws:
         specifier: ^6.0.4
         version: 6.0.4(graphql@16.10.0)(ws@8.18.3)
+      html-to-image:
+        specifier: ^1.11.13
+        version: 1.11.13
       idb-keyval:
         specifier: ^6.2.2
         version: 6.2.2
@@ -6567,6 +6570,9 @@ packages:
     resolution: {integrity: sha512-tXgn3QfqPIpGl9o+K5tpcj3/MN4SfLtsx2GWwBC3SSd0tXQGyF3gsSqad8loJgKZGM3ZxbYDd5yhiBIdWpmvLA==}
     engines: {node: ^14.13.1 || >=16.0.0}
     hasBin: true
+
+  html-to-image@1.11.13:
+    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   http-errors@2.0.0:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
@@ -16332,6 +16338,8 @@ snapshots:
       param-case: 3.0.4
       relateurl: 0.2.7
       terser: 5.34.1
+
+  html-to-image@1.11.13: {}
 
   http-errors@2.0.0:
     dependencies:

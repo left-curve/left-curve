@@ -37,7 +37,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
-import { Cell, FormattedNumber, Table, Tabs } from "@left-curve/applets-kit";
+import { Cell, FormattedNumber, IconLink, Table, Tabs } from "@left-curve/applets-kit";
 import { CountBadge } from "../../foundation/CountBadge";
 import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
 import { OrderBookOverview } from "./OrderBookOverview";
@@ -243,9 +243,7 @@ const ProTradeHistory: React.FC = () => {
 
   const positionsCount = Object.keys(userState?.positions ?? {}).length;
   const openOrdersCount =
-    mode === "spot"
-      ? (spotOrders.data?.length ?? 0)
-      : Object.keys(perpsOrders ?? {}).length;
+    mode === "spot" ? (spotOrders.data?.length ?? 0) : Object.keys(perpsOrders ?? {}).length;
 
   useEffect(() => {
     setActiveTab(mode === "perps" ? "positions" : "open-orders");
@@ -382,11 +380,7 @@ const PerpsPositionsTable: React.FC = () => {
             <Cell.Text
               text={
                 <>
-                  <FormattedNumber
-                    number={absSize}
-                    formatOptions={formatNumberOptions}
-                    as="span"
-                  />{" "}
+                  <FormattedNumber number={absSize} formatOptions={formatNumberOptions} as="span" />{" "}
                   {row.original.symbol}
                 </>
               }
@@ -395,26 +389,33 @@ const PerpsPositionsTable: React.FC = () => {
         },
       },
       {
-        header: m["dex.protrade.positions.positionValue"](),
+        id: "positionValue",
+        header: () => (
+          <span className="block text-right">{m["dex.protrade.positions.positionValue"]()}</span>
+        ),
         cell: ({ row }) => {
-          const notional = Decimal(row.original.size).abs().times(Decimal(row.original.entryPrice)).toFixed();
+          const notional = Decimal(row.original.size)
+            .abs()
+            .times(Decimal(row.original.entryPrice))
+            .toFixed();
           return (
             <Cell.Text
+              className="text-right"
               text={
-                <FormattedNumber
-                  number={notional}
-                  formatOptions={{ currency: "USD" }}
-                  as="span"
-                />
+                <FormattedNumber number={notional} formatOptions={{ currency: "USD" }} as="span" />
               }
             />
           );
         },
       },
       {
-        header: m["dex.protrade.positions.entryPrice"](),
+        id: "entryPrice",
+        header: () => (
+          <span className="block text-right">{m["dex.protrade.positions.entryPrice"]()}</span>
+        ),
         cell: ({ row }) => (
           <Cell.Text
+            className="text-right"
             text={
               <FormattedNumber
                 number={row.original.entryPrice}
@@ -426,46 +427,72 @@ const PerpsPositionsTable: React.FC = () => {
         ),
       },
       {
-        header: m["dex.protrade.positions.markPrice"](),
+        id: "markPrice",
+        header: () => (
+          <span className="block text-right">{m["dex.protrade.positions.markPrice"]()}</span>
+        ),
         cell: ({ row }) => (
           <Cell.Text
+            className="text-right"
             text={
-              <span className="inline-block min-w-[6rem]">
-                <FormattedNumber
-                  number={row.original.currentPrice.toString()}
-                  formatOptions={{ currency: "USD" }}
-                  as="span"
-                />
-              </span>
+              <FormattedNumber
+                number={row.original.currentPrice.toString()}
+                formatOptions={{ currency: "USD" }}
+                as="span"
+              />
             }
           />
         ),
       },
       {
-        header: m["dex.protrade.positions.pnl"](),
+        id: "pnl",
+        header: () => <span className="block text-right">{m["dex.protrade.positions.pnl"]()}</span>,
         cell: ({ row }) => {
           const isPositive = row.original.pnl >= 0;
           return (
             <Cell.Text
               text={
-                <span className="inline-block min-w-[7rem]">
-                  {isPositive ? "+" : ""}
-                  <FormattedNumber
-                    number={row.original.pnl.toString()}
-                    formatOptions={{ currency: "USD" }}
-                    as="span"
-                  />
+                <span className="inline-flex items-center gap-1">
+                  <span className="min-w-[7rem]">
+                    {isPositive ? "+" : ""}
+                    <FormattedNumber
+                      number={row.original.pnl.toString()}
+                      formatOptions={{ currency: "USD" }}
+                      as="span"
+                    />
+                  </span>
+                  <button
+                    type="button"
+                    className="text-ink-tertiary-500 hover:text-ink-secondary-700 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      showModal(Modals.PnlShare, {
+                        pairId: row.original.pairId,
+                        symbol: row.original.symbol,
+                        size: row.original.size,
+                        entryPrice: row.original.entryPrice,
+                        currentPrice: row.original.currentPrice,
+                        pnl: row.original.pnl,
+                      });
+                    }}
+                  >
+                    <IconLink className="w-4 h-4" />
+                  </button>
                 </span>
               }
-              className={isPositive ? "text-utility-success-600" : "text-utility-error-600"}
+              className={`text-right ${isPositive ? "text-utility-success-600" : "text-utility-error-600"}`}
             />
           );
         },
       },
       {
-        header: m["dex.protrade.positions.liqPrice"](),
+        id: "liqPrice",
+        header: () => (
+          <span className="block text-right">{m["dex.protrade.positions.liqPrice"]()}</span>
+        ),
         cell: ({ row }) => (
           <Cell.Text
+            className="text-right"
             text={
               row.original.estLiquidationPrice != null ? (
                 <FormattedNumber
@@ -481,7 +508,10 @@ const PerpsPositionsTable: React.FC = () => {
         ),
       },
       {
-        header: m["dex.protrade.positions.tpsl"](),
+        id: "tpsl",
+        header: () => (
+          <span className="block text-right">{m["dex.protrade.positions.tpsl"]()}</span>
+        ),
         cell: ({ row }: { row: { original: PerpsPositionRow } }) => {
           const { size, conditionalOrderAbove, conditionalOrderBelow } = row.original;
           const isLong = Number(size) > 0;
@@ -749,15 +779,13 @@ const UnifiedOpenOrders: React.FC = () => {
     {
       header: m["dex.protrade.orders.orderValue"](),
       cell: ({ row }) => {
-        const tradeValue = Decimal(row.original.size).times(Decimal(row.original.rawPrice)).toFixed();
+        const tradeValue = Decimal(row.original.size)
+          .times(Decimal(row.original.rawPrice))
+          .toFixed();
         return (
           <Cell.Text
             text={
-              <FormattedNumber
-                number={tradeValue}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
+              <FormattedNumber number={tradeValue} formatOptions={{ currency: "USD" }} as="span" />
             }
           />
         );

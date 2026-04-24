@@ -39,6 +39,7 @@ export const Modals = {
   FeeTiers: "fee-tiers",
   DestinationWallet: "destination-wallet",
   AdjustSlippage: "adjust-slippage",
+  PnlShare: "pnl-share",
 };
 
 export type ModalRef = {
