@@ -529,6 +529,192 @@ fn set_rate_limits_resets_quota() {
         .should_succeed();
 }
 
+/// `SetRateLimits` must never refill a partially-drained outbound quota
+/// mid-window — otherwise a well-timed admin call right before the next
+/// cron tick lets the same user drain `supply × limit` twice in a row.
+/// Covers the four cases the tighten helper has to get right: no-op,
+/// lower, raise, and cron reseed.
+#[test]
+fn set_rate_limits_only_tightens_existing_quotas() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Setup: 100M USDC supply, reserve 100M on solana.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .should_succeed();
+
+    // Seed a 50% rate limit. Quota = 50M.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(50)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Drain 30M → quota 20M, supply 70M.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Case 1: same limit re-set. min(20M, 70M × 50% = 35M) = 20M. No change
+    // — the drained state is preserved.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(50)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Transfer 20M + 1 must still fail. If the same-limit call had reset the
+    // quota to `supply × 50% = 35M`, this would succeed.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_001 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient outbound quota!");
+
+    // Case 2: lower the limit to 10%. Tightens to min(20M, 70M × 10% = 7M)
+    // = 7M — takes effect immediately.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // 7M + 1 fails, 7M succeeds.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 7_000_001 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient outbound quota!");
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 7_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Quota is now 0. Supply 63M.
+
+    // Case 3: raise the limit to 80%. Would be `63M × 80% = 50.4M` if the
+    // admin call reseeded, but tighten-only preserves the drained 0.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(80)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Even 1 more token fails — no quota has been freed by the raise.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient outbound quota!");
+
+    // Case 4: cron tick reseeds to the raised level. 63M × 80% = 50.4M.
+    advance_to_next_day(&mut suite);
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+}
+
 #[test]
 fn personal_quota() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
