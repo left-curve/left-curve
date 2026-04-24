@@ -527,6 +527,27 @@ fn set_rate_limits_resets_quota() {
             Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
+
+    // Advance a day so the cron fires. The cron iterates RATE_LIMITS, which
+    // no longer contains USDC, so no OUTBOUND_QUOTAS entry should be
+    // resurrected for it. A subsequent large transfer must still succeed —
+    // reserves remain the only constraint.
+    advance_to_next_day(&mut suite);
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
 }
 
 /// `SetRateLimits` must never refill a partially-drained outbound quota
