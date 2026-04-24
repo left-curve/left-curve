@@ -6,7 +6,7 @@ use {
     },
     dango_types::{
         constants::{dango, usdc},
-        gateway::{self, Origin, PersonalQuota, RateLimit, Remote, SetPersonalQuotaRequest},
+        gateway::{self, Origin, RateLimit, Remote, SetPersonalQuotaRequest},
     },
     grug::{
         Addr, Addressable, BalanceChange, Coin, Coins, Duration, MathError, Op, QuerierExt,
@@ -1477,6 +1477,139 @@ fn personal_quotas_pagination() {
         })
         .should_succeed();
     assert!(page3.is_empty());
+}
+
+/// The `is_none_or(|t| block.timestamp < t)` predicate is strict. Cover
+/// both sides of the boundary: at exactly `block.timestamp == expire_at`
+/// the quota is already expired; 1ns before that it is still active.
+#[test]
+fn personal_quota_expire_at_boundary() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver_addr = accounts.user2.address();
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // 100M supply; leave USDC un-rate-limited so that the transfer's quota
+    // path depends only on the personal allowance.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .should_succeed();
+
+    // ---- Active: 1ns before expiry ----
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(10_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Advance to 1ns before the expiry. The predicate `now < expire_at` is
+    // still true, so the personal quota is active.
+    advance_by(
+        &mut suite,
+        Duration::from_hours(1) - Duration::from_nanos(1),
+    );
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // The active path consumed 1 token from the personal quota.
+    let pq = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("entry still present");
+    assert_eq!(pq.amount, Uint128::new(9_999_999));
+
+    // ---- Expired: at exactly the boundary ----
+    // Re-grant a fresh 10M with another 1h lifetime. `expire_at` is now
+    // `current_block_time + 1h`; advancing by exactly 1h puts us right on
+    // the boundary.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(10_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    advance_by(&mut suite, Duration::from_hours(1));
+
+    // The transfer should succeed (the denom is un-rate-limited), but the
+    // personal quota must NOT be consumed — the predicate treats
+    // `now == expire_at` as expired.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    let pq = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("expired entry is left in storage untouched");
+    assert_eq!(pq.amount, Uint128::new(10_000_000));
 }
 
 fn advance_to_next_day(suite: &mut TestSuite) {
