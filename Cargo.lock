@@ -4301,7 +4301,6 @@ dependencies = [
  "graphql_client",
  "grug",
  "grug-testing",
- "grug-types",
  "identity",
  "indexer-testing",
  "k256",

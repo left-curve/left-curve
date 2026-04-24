@@ -26,7 +26,6 @@ eth-utils         = { workspace = true }
 futures           = { workspace = true }
 graphql_client    = { workspace = true }
 grug              = { workspace = true }
-grug-types        = { workspace = true }
 identity          = { workspace = true }
 k256              = { workspace = true }
 paste             = { workspace = true }

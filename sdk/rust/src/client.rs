@@ -7,7 +7,7 @@ use {
     async_trait::async_trait,
     error_backtrace::BacktracedError,
     graphql_client::{GraphQLQuery, Response},
-    grug_types::{
+    grug::{
         Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
         BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
@@ -258,7 +258,7 @@ impl_paginate_method!(paginate_messages, messages, messages, MessagesMessagesNod
 #[async_trait]
 impl QueryClient for HttpClient {
     type Error = anyhow::Error;
-    type Proof = grug_types::Proof;
+    type Proof = grug::Proof;
 
     async fn query_app(
         &self,

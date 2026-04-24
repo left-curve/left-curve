@@ -20,6 +20,7 @@ use {
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
+    indexer_httpd::TendermintRpcClient,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
@@ -243,8 +244,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     clickhouse_context.start_cache().await.unwrap();
 
-    let consensus_client =
-        Arc::new(indexer_httpd::TendermintRpcClient::new("http://localhost:26657").unwrap());
+    let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_cache_context,
