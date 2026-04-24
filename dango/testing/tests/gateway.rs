@@ -1612,6 +1612,135 @@ fn personal_quota_expire_at_boundary() {
     assert_eq!(pq.amount, Uint128::new(10_000_000));
 }
 
+/// After a personal quota has expired (but before any consumption has
+/// scrubbed it), re-granting must replace the stale entry cleanly —
+/// fresh amount, fresh expire_at, fresh granted_at. No carry-over of the
+/// old expired record.
+#[test]
+fn personal_quota_regrant_after_expiry() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver_addr = accounts.user2.address();
+    let owner_addr = accounts.owner.address();
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Reserve + supply seed.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .should_succeed();
+
+    // Grant 10M with a 1h lifetime.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(10_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    let pq_before = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("entry present");
+    let granted_at_before = pq_before.granted_at;
+
+    // Advance 2h so the entry is expired but has not been scrubbed by any
+    // transfer attempt.
+    advance_by(&mut suite, Duration::from_hours(2));
+
+    // Re-grant a fresh 20M with a new 1h lifetime. Under no carry-over, the
+    // old expired record is replaced wholesale.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(20_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    let pq_after = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("entry present");
+
+    assert_eq!(pq_after.amount, Uint128::new(20_000_000));
+    assert!(pq_after.expire_at.is_some());
+    // expire_at was recomputed from the new block time, so it is strictly
+    // later than the original expiry.
+    assert!(pq_after.expire_at > pq_before.expire_at);
+    assert_eq!(pq_after.granted_by, owner_addr);
+    // granted_at was reset to the new block time, strictly later than the
+    // original grant.
+    assert!(pq_after.granted_at > granted_at_before);
+
+    // The new allowance is actually usable — consume 1M and check the stored
+    // amount drops to 19M (it's the new quota that's being consumed, not a
+    // phantom merger with the old).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    let pq_consumed = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("entry present");
+    assert_eq!(pq_consumed.amount, Uint128::new(19_000_000));
+}
+
 fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
     suite.make_empty_block();
