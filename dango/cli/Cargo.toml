@@ -15,10 +15,8 @@ testing = ["pyth-client", "pyth-types", "tokio-stream"]
 
 [dependencies]
 anyhow                      = { workspace = true }
-bip32                       = { workspace = true }
 clap                        = { workspace = true, features = ["derive", "wrap_help"] }
 colored                     = { workspace = true }
-colored_json                = { workspace = true }
 config-parser               = { workspace = true }
 dango-genesis               = { workspace = true, features = ["metrics"] }
 dango-httpd                 = { workspace = true, features = ["metrics", "tracing"] }
@@ -26,9 +24,7 @@ dango-indexer-clickhouse    = { workspace = true, features = ["async-graphql", "
 dango-indexer-sql           = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
 dango-sdk                   = { workspace = true }
-dango-types                 = { workspace = true }
 dango-upgrade               = { workspace = true }
-data-encoding               = { workspace = true }
 dialoguer                   = { workspace = true }
 futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
@@ -36,7 +32,6 @@ grug-db-disk                = { workspace = true, features = ["metrics", "tracin
 grug-httpd                  = { workspace = true, features = ["metrics", "tracing"] }
 grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }
-hex                         = { workspace = true }
 home                        = { workspace = true }
 indexer-cache               = { workspace = true, features = ["http-request-details", "metrics", "s3", "tracing"] }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
@@ -50,7 +45,6 @@ opentelemetry-otlp          = { workspace = true }
 opentelemetry_sdk           = { workspace = true }
 pyth-client                 = { workspace = true, optional = true }
 pyth-types                  = { workspace = true, optional = true }
-rand                        = { workspace = true }
 sentry                      = { workspace = true }
 serde                       = { workspace = true }
 tokio                       = { workspace = true }

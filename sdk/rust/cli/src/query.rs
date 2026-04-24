@@ -1,11 +1,11 @@
 use {
-    crate::{config::Config, home_directory::HomeDirectory, prompt::print_json_pretty},
+    crate::{config::ClientConfig, home_directory::HomeDirectory, prompt::print_json_pretty},
     clap::{Parser, Subcommand},
     config_parser::parse_config,
     dango_sdk::HttpClient,
     grug_types::{
-        Addr, Binary, Bound, Denom, Hash256, JsonDeExt, Proof, Query, QueryClient,
-        QueryWasmSmartRequest,
+        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, Proof, Query,
+        QueryClient, QueryWasmSmartRequest, SearchTxClient,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -126,14 +126,23 @@ enum SubCmd {
         #[arg(long, default_value_t = false)]
         prove: bool,
     },
+    /// Look up a transaction by hash
+    Tx {
+        /// Transaction hash in hex encoding
+        hash: String,
+    },
+    /// Fetch block results by height
+    Block {
+        /// Block height [default: latest]
+        height: Option<u64>,
+    },
 }
 
 impl QueryCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        // Parse the config file.
-        let cfg: Config = parse_config(app_dir.config_file())?;
+        let cfg: ClientConfig = parse_config(app_dir.config_file())?;
 
-        let client = HttpClient::new(&cfg.indexer_url)?;
+        let client = HttpClient::new(&cfg.url)?;
 
         let req = match self.subcmd {
             SubCmd::Status => Query::status(),
@@ -207,6 +216,17 @@ impl QueryCmd {
             },
             SubCmd::Store { key, prove } => {
                 return query_store(&client, key, self.height, prove).await;
+            },
+            SubCmd::Tx { hash } => {
+                // Cast the hex string to uppercase, so that users can use either upper or
+                // lowercase on the CLI.
+                let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
+                let res = client.search_tx(hash).await?;
+                return print_json_pretty(res);
+            },
+            SubCmd::Block { height } => {
+                let res = client.query_block_outcome(height).await?;
+                return print_json_pretty(res);
             },
         };
 

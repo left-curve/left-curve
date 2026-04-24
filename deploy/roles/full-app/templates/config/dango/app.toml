@@ -7,9 +7,6 @@ log_level = "info"
 # Logging format: text|json.
 log_format = "json"
 
-# GraphQL endpoint used by client-side sub-commands (query, tx, tendermint).
-indexer_url = "http://127.0.0.1:8080"
-
 ################################################################################
 ###                            Grug Configuration                            ###
 ################################################################################

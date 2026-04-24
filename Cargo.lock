@@ -3993,10 +3993,8 @@ name = "dango-cli"
 version = "0.16.1"
 dependencies = [
  "anyhow",
- "bip32",
  "clap",
  "colored",
- "colored_json",
  "config-parser",
  "dango-genesis",
  "dango-httpd",
@@ -4004,9 +4002,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-sdk",
- "dango-types",
  "dango-upgrade",
- "data-encoding",
  "dialoguer",
  "futures",
  "grug-app",
@@ -4014,7 +4010,6 @@ dependencies = [
  "grug-httpd",
  "grug-types",
  "grug-vm-rust",
- "hex",
  "home",
  "indexer-cache",
  "indexer-hooked",
@@ -4028,7 +4023,6 @@ dependencies = [
  "opentelemetry_sdk",
  "pyth-client",
  "pyth-types",
- "rand 0.8.5",
  "sentry",
  "serde",
  "tokio",
@@ -4327,6 +4321,28 @@ dependencies = [
  "tokio-tungstenite 0.28.0",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "dango-sdk-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "bip32",
+ "clap",
+ "colored",
+ "colored_json",
+ "config-parser",
+ "dango-sdk",
+ "dango-types",
+ "dialoguer",
+ "grug-app",
+ "grug-types",
+ "hex",
+ "home",
+ "rand 0.8.5",
+ "serde",
+ "tokio",
 ]
 
 [[package]]

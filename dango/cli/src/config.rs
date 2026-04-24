@@ -3,12 +3,10 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     pub grug: GrugConfig,
     pub indexer: IndexerConfig,
-    /// GraphQL endpoint used by client-side sub-commands.
-    pub indexer_url: String,
     pub httpd: HttpdConfig,
     pub metrics_httpd: MetricsHttpdConfig,
     pub tendermint: TendermintConfig,
@@ -18,25 +16,6 @@ pub struct Config {
     pub log_level: String,
     pub log_format: LogFormat,
     pub pyth: PythLazerConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            grug: GrugConfig::default(),
-            indexer: IndexerConfig::default(),
-            indexer_url: "http://127.0.0.1:8080".to_string(),
-            httpd: HttpdConfig::default(),
-            metrics_httpd: MetricsHttpdConfig::default(),
-            tendermint: TendermintConfig::default(),
-            transactions: TransactionsConfig::default(),
-            sentry: SentryConfig::default(),
-            trace: TraceConfig::default(),
-            log_level: String::default(),
-            log_format: LogFormat::default(),
-            pyth: PythLazerConfig::default(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Default)]

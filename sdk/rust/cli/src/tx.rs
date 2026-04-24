@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::Config,
+        config::ClientConfig,
         home_directory::HomeDirectory,
         prompt::{confirm, print_json_pretty, read_password},
     },
@@ -122,8 +122,7 @@ enum SubCmd {
 
 impl TxCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        // Parse the config file.
-        let cfg: Config = parse_config(app_dir.config_file())?;
+        let cfg: ClientConfig = parse_config(app_dir.config_file())?;
 
         let msg = match self.subcmd {
             SubCmd::Configure {
@@ -183,7 +182,7 @@ impl TxCmd {
             },
         };
 
-        let client = HttpClient::new(&cfg.indexer_url)?;
+        let client = HttpClient::new(&cfg.url)?;
 
         let mut signer = {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));
@@ -209,7 +208,7 @@ impl TxCmd {
 
         if self.simulate {
             let msgs = NonEmpty::new_unchecked(vec![msg]);
-            let unsigned_tx = signer.unsigned_transaction(msgs, &cfg.transactions.chain_id)?;
+            let unsigned_tx = signer.unsigned_transaction(msgs, &cfg.chain_id)?;
             let outcome = client.simulate(unsigned_tx).await?;
             print_json_pretty(outcome)?;
         } else {
@@ -217,7 +216,7 @@ impl TxCmd {
                 GasOption::Predefined { gas_limit }
             } else {
                 GasOption::Simulate {
-                    scale: cfg.transactions.gas_adjustment,
+                    scale: cfg.gas_adjustment,
                     // We always increase the simulated gas consumption by this
                     // amount, since signature verification is skipped during
                     // simulation.
@@ -226,16 +225,10 @@ impl TxCmd {
             };
 
             let maybe_res = client
-                .send_message_with_confirmation(
-                    &mut signer,
-                    msg,
-                    gas_opt,
-                    &cfg.transactions.chain_id,
-                    |tx| {
-                        print_json_pretty(tx)?;
-                        Ok(confirm("🤔 Broadcast transaction?".bold())?)
-                    },
-                )
+                .send_message_with_confirmation(&mut signer, msg, gas_opt, &cfg.chain_id, |tx| {
+                    print_json_pretty(tx)?;
+                    Ok(confirm("🤔 Broadcast transaction?".bold())?)
+                })
                 .await?;
 
             if let Some(res) = maybe_res {

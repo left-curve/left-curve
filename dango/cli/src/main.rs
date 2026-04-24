@@ -2,23 +2,15 @@ mod config;
 mod db;
 mod home_directory;
 mod indexer;
-mod keys;
-mod prompt;
-mod query;
 mod start;
 mod telemetry;
-mod tendermint;
 #[cfg(feature = "testing")]
 mod test;
-mod tx;
 
 #[cfg(feature = "testing")]
 use crate::test::TestCmd;
 use {
-    crate::{
-        db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
-        query::QueryCmd, start::StartCmd, tendermint::TendermintCmd, tx::TxCmd,
-    },
+    crate::{db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, start::StartCmd},
     clap::{CommandFactory, FromArgMatches, Parser},
     config::Config,
     config_parser::parse_config,
@@ -57,28 +49,12 @@ enum Command {
     /// Indexer related commands
     Indexer(IndexerCmd),
 
-    /// Manage keys
-    #[command(subcommand, next_display_order = None)]
-    Keys(KeysCmd),
-
-    /// Make a query [alias: q]
-    #[command(next_display_order = None, alias = "q")]
-    Query(QueryCmd),
-
     /// Start the node
     Start(StartCmd),
-
-    /// Interact with Tendermint RPC [alias: tm]
-    #[command(next_display_order = None, alias = "tm")]
-    Tendermint(TendermintCmd),
 
     /// Run test
     #[cfg(feature = "testing")]
     Test(TestCmd),
-
-    /// Send transactions
-    #[command(next_display_order = None)]
-    Tx(TxCmd),
 }
 
 #[tokio::main]
@@ -254,13 +230,9 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir)?,
         Command::Indexer(cmd) => cmd.run(app_dir).await?,
-        Command::Keys(cmd) => cmd.run(app_dir.keys_dir())?,
-        Command::Query(cmd) => cmd.run(app_dir).await?,
         Command::Start(cmd) => cmd.run(app_dir).await?,
-        Command::Tendermint(cmd) => cmd.run(app_dir).await?,
         #[cfg(feature = "testing")]
         Command::Test(cmd) => cmd.run(app_dir).await?,
-        Command::Tx(cmd) => cmd.run(app_dir).await?,
     }
 
     // Flush and shutdown the tracer provider (if set) to avoid losing spans.
