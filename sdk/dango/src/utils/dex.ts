@@ -44,17 +44,17 @@ export function calculatePrice(
  * Mirrors the backend RateSchedule::resolve logic: finds the highest tier
  * threshold that the volume meets or exceeds, falling back to the base rate.
  */
-export function resolveRateSchedule(schedule: RateSchedule, volume: string): number {
-  const vol = Number(volume);
+export function resolveRateSchedule(schedule: RateSchedule, volume: string): string {
+  const vol = Decimal(volume);
   const applicableTier = Object.entries(schedule.tiers)
-    .map(([threshold, rate]) => [Number(threshold), Number(rate)] as const)
-    .filter(([threshold]) => !Number.isNaN(threshold) && vol >= threshold)
-    .reduce<readonly [number, number] | null>(
-      (highest, entry) => (!highest || entry[0] > highest[0] ? entry : highest),
+    .filter(([threshold]) => !Decimal.isNaN(threshold) && vol.gte(Decimal(threshold)))
+    .reduce<readonly [string, string] | null>(
+      (highest, [threshold, rate]) =>
+        !highest || Decimal(threshold).gt(highest[0]) ? [threshold, rate] : highest,
       null,
     );
 
-  return applicableTier ? applicableTier[1] : Number(schedule.base);
+  return applicableTier ? applicableTier[1] : schedule.base;
 }
 
 export function adjustPrice(price: number, shifting = 6, min = 2) {
