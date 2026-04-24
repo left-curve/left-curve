@@ -154,15 +154,6 @@ fn receive_remote(
         })?;
     }
 
-    // Increase the outbound quota.
-    OUTBOUND_QUOTAS.may_modify(ctx.storage, &denom, |maybe_quota| {
-        let Some(quota) = maybe_quota else {
-            return Ok(None);
-        };
-
-        Ok::<_, StdError>(Some(quota.checked_add(amount)?))
-    })?;
-
     // First,
     // - if the token is not native on Dango, mint it to the Gateway contract;
     // - otherwise, the token should already been in the Gateway contract, no need

@@ -32,10 +32,8 @@ fn rate_limit() {
     let owner = &mut accounts.owner;
 
     let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let mock_eth_recipient: Addr32 = Addr::mock(202).into();
 
     let usdc_sol_fee = 10_000;
-    let usdc_eth_fee = 1_000_000;
 
     suite.balances().record(receiver);
 
@@ -115,7 +113,8 @@ fn rate_limit() {
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
-    // Receive more tokens increase rate limit and allow to send them back.
+    // Inflows must no longer replenish the outbound quota. Receive 100M more
+    // USDC from Ethereum; the quota should stay at zero.
     suite
         .receive_warp_transfer(
             relayer,
@@ -126,9 +125,8 @@ fn rate_limit() {
         )
         .should_succeed();
 
-    // Check supply now.
-    // it should be 200_000_000 + 200_000_000 - 30_000_000 + 100_000_000 = 370_000_000
-    // `receiver` should has 370_000_000 - 10_000 (fee) = 369_990_000
+    // Supply is now 300M + 100M = 400M minus the 30M already sent back to
+    // solana = 370M. Receiver holds everything except the 10_000 fee paid.
     {
         suite
             .query_supply(usdc::DENOM.clone())
@@ -139,54 +137,35 @@ fn rate_limit() {
         });
     }
 
-    // Try withdraw everything the 100_000 available but to ethereum.
+    // Quota was not bumped by the inbound transfer — sending even 1 token
+    // fails with the same error as before.
     suite
         .execute(
             receiver,
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_ethereum::DOMAIN,
-                    contract: mock_ethereum::USDC_WARP,
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
                 },
-                recipient: mock_eth_recipient,
+                recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 100_000_000 + usdc_eth_fee).unwrap(),
-        )
-        .should_succeed();
-
-    // Trigger the rate limit sending 1 more token.
-    suite
-        .execute(
-            receiver,
-            contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
-                    domain: mock_ethereum::DOMAIN,
-                    contract: mock_ethereum::USDC_WARP,
-                },
-                recipient: mock_eth_recipient,
-            },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
-    // Make 1 day pass letting the cron job to reset the rate limits.
+    // Advance one day so the cron seeds a fresh quota of 10% × 370M = 37M.
     advance_to_next_day(&mut suite);
 
-    // The supply on chain now are:
-    // 370_000_000 - 100_000_000 = 270_000_000 where
-    // 100_000_000 are from ethereum
-    // 170_000_000 are from solana
-
-    // Check reserves.
+    // Reserves: ethereum received 100M twice (no outflow) → 200M.
+    //           solana received 200M, sent 30M back → 170M.
     for (remote, amount) in [
         (
             Remote::Warp {
                 domain: mock_ethereum::DOMAIN,
                 contract: mock_ethereum::USDC_WARP,
             },
-            100_000_000,
+            200_000_000,
         ),
         (
             Remote::Warp {
@@ -204,7 +183,7 @@ fn rate_limit() {
             .should_succeed_and_equal(amount.into());
     }
 
-    // Withdraw 27 tokens to solana.
+    // Drain the full 37M quota to solana.
     suite
         .execute(
             receiver,
@@ -216,11 +195,11 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 27_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 37_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
-    // Try to withdraw 1 more token.
+    // One more token fails — quota is depleted and inflow can't refill it.
     suite
         .execute(
             receiver,
@@ -236,7 +215,8 @@ fn rate_limit() {
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
-    // Increase the rate limit
+    // Raise the rate limit to 99%. In phase 1 this still only takes effect
+    // after the next cron tick.
     suite
         .execute(
             owner,
@@ -248,15 +228,11 @@ fn rate_limit() {
         )
         .should_succeed();
 
-    // Make 1 day pass letting the cron job to reset the rate limits.
+    // Another day. Supply is 370M - 37M = 333M; quota is 333M × 99%.
     advance_to_next_day(&mut suite);
 
-    // The supply on chain now are:
-    // 370_000_000 - 100_000_000 - 27_000_000 = 243_000_000 where
-    // 100_000_000 are from ethereum
-    // 143_000_000 are from solana
-
-    // try to withdraw 43 to solana.
+    // Solana reserve after the previous 37M withdraw is 170M - 37M = 133M.
+    // Drain it completely in a single transfer (well under the new quota).
     suite
         .execute(
             receiver,
@@ -268,12 +244,12 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 143_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 133_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
-    // solana should be empty now.
-    // Try to withdraw 1 more token.
+    // Solana reserve is now empty; the next transfer fails on reserve, not
+    // quota.
     suite
         .execute(
             receiver,
