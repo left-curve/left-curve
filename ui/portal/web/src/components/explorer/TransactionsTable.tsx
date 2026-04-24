@@ -32,6 +32,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
       cell: ({ row }) => (
         <Cell.TxHash
           hash={row.original.hash}
+          href={`/tx/${row.original.hash}`}
           navigate={() => navigate({ to: `/tx/${row.original.hash}` })}
         />
       ),
@@ -41,6 +42,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
       cell: ({ row }) => (
         <Cell.BlockHeight
           blockHeight={row.original.blockHeight}
+          href={`/block/${row.original.blockHeight}`}
           navigate={() => navigate({ to: `/block/${row.original.blockHeight}` })}
         />
       ),

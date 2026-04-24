@@ -8,10 +8,7 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { perpsUserStateStore } from "./usePerpsUserState.js";
 import { perpsUserStateExtendedStore } from "./usePerpsUserStateExtended.js";
 
-import { Decimal } from "@left-curve/dango/utils";
-
-const VIRTUAL_SHARES = "1000000";
-const VIRTUAL_ASSETS = "1";
+import { Decimal, sharesToUsd, usdToShares } from "@left-curve/dango/utils";
 
 export type UseVaultLiquidityStateParameters = {
   action: "deposit" | "withdraw";
@@ -59,32 +56,25 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
   const vaultDepositCap = appConfig.perpsParam.vaultDepositCap;
   const isTvlCapReached = vaultDepositCap != null && Decimal(vaultMargin).gte(vaultDepositCap);
 
-  const effectiveSupply = useMemo(
-    () => Decimal(shareSupply).plus(VIRTUAL_SHARES).toString(),
-    [shareSupply],
-  );
-
-  const effectiveEquity = useMemo(() => Decimal(equity).plus(VIRTUAL_ASSETS).toString(), [equity]);
-
   const sharePrice = useMemo(() => {
     if (shareSupply === "0") return "0";
     return Decimal(equity).div(shareSupply).toString();
   }, [equity, shareSupply]);
 
-  const sharesToReceive = useMemo(() => {
-    if (depositAmount === "0" || effectiveEquity === "0") return "0";
-    return Decimal(depositAmount).mul(effectiveSupply).div(effectiveEquity).toFixed(0);
-  }, [depositAmount, effectiveSupply, effectiveEquity]);
+  const sharesToReceive = useMemo(
+    () => usdToShares(depositAmount, equity, shareSupply),
+    [depositAmount, equity, shareSupply],
+  );
 
-  const usdToReceive = useMemo(() => {
-    if (withdrawShares === "0" || effectiveSupply === "0") return "0";
-    return Decimal(withdrawShares).mul(effectiveEquity).div(effectiveSupply).toString();
-  }, [withdrawShares, effectiveEquity, effectiveSupply]);
+  const usdToReceive = useMemo(
+    () => sharesToUsd(withdrawShares, equity, shareSupply),
+    [withdrawShares, equity, shareSupply],
+  );
 
-  const userSharesValue = useMemo(() => {
-    if (userVaultShares === "0" || effectiveSupply === "0") return "0";
-    return Decimal(userVaultShares).mul(effectiveEquity).div(effectiveSupply).toString();
-  }, [userVaultShares, effectiveEquity, effectiveSupply]);
+  const userSharesValue = useMemo(
+    () => sharesToUsd(userVaultShares, equity, shareSupply),
+    [userVaultShares, equity, shareSupply],
+  );
 
   const deposit = useSubmitTx({
     mutation: {
