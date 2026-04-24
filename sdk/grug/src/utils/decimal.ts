@@ -10,6 +10,7 @@ export type DecimalConstructor = {
   RM: number;
   from(value: BigSource): Decimal;
   max(...values: (string | number | Decimal)[]): Decimal;
+  isNaN(value: string | number | Decimal): boolean;
 };
 
 Big.DP = 18;
@@ -33,6 +34,15 @@ class Decimal {
       const currentDecimal = Decimal.from(current);
       return currentDecimal.gt(max) ? currentDecimal : max;
     }, Decimal.from(values[0])) as Decimal;
+  }
+
+  static isNaN(value: string | number | Decimal): boolean {
+    try {
+      new Big(value instanceof Decimal ? value.inner : value);
+      return false;
+    } catch {
+      return true;
+    }
   }
 
   static from(value: string | number | Decimal): Decimal {
@@ -124,6 +134,10 @@ class Decimal {
     return this.inner.lte(other.inner);
   }
 
+  isNaN(): boolean {
+    return Decimal.isNaN(this);
+  }
+
   isZero(): boolean {
     return this.inner.eq(0);
   }
@@ -188,6 +202,11 @@ Object.defineProperty(DecimalFactory, "from", {
 
 Object.defineProperty(DecimalFactory, "max", {
   value: Decimal.max,
+  writable: false,
+});
+
+Object.defineProperty(DecimalFactory, "isNaN", {
+  value: Decimal.isNaN,
   writable: false,
 });
 

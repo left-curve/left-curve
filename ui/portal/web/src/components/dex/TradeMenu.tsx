@@ -316,7 +316,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           ) : null}
           <InfoRow
             label={m["dex.protrade.spot.fees"]()}
-            value={`${Number(appConfig.takerFeeRate) * 100} % / ${Number(appConfig.makerFeeRate) * 100} %`}
+            value={`${Decimal(appConfig.takerFeeRate).mul(100).toFixed()}% / ${Decimal(appConfig.makerFeeRate).mul(100).toFixed()}%`}
           />
         </div>
       </div>
@@ -567,15 +567,15 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const feesDisplay = useMemo(() => {
     if (feeRateOverride) {
-      const maker = Number(feeRateOverride.makerFeeRate) * 100;
-      const taker = Number(feeRateOverride.takerFeeRate) * 100;
+      const maker = Decimal(feeRateOverride.makerFeeRate).mul(100).toFixed();
+      const taker = Decimal(feeRateOverride.takerFeeRate).mul(100).toFixed();
       return `${taker}% / ${maker}%`;
     }
     const perpsParam = appConfig?.perpsParam;
     if (!perpsParam) return "-";
     const vol = userVolume ?? "0";
-    const taker = resolveRateSchedule(perpsParam.takerFeeRates, vol) * 100;
-    const maker = resolveRateSchedule(perpsParam.makerFeeRates, vol) * 100;
+    const taker = Decimal(resolveRateSchedule(perpsParam.takerFeeRates, vol)).mul(100).toFixed();
+    const maker = Decimal(resolveRateSchedule(perpsParam.makerFeeRates, vol)).mul(100).toFixed();
     return `${taker}% / ${maker}%`;
   }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 
@@ -671,7 +671,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
           availableAmount={maxSizeAmount.toString()}
           register={register}
           setValue={setValue}
-          validationMessage={reduceOnly ? m["dex.protrade.perps.errors.exceedsClosable"]() : m["dex.protrade.perps.errors.exceedsMargin"]()}
+          validationMessage={
+            reduceOnly
+              ? m["dex.protrade.perps.errors.exceedsClosable"]()
+              : m["dex.protrade.perps.errors.exceedsMargin"]()
+          }
           label={m["dex.protrade.perps.size"]()}
           minSizeAmount={minSizeAmount}
           minSizeMessage={m["dex.protrade.perps.errors.minOrderSize"]({
@@ -835,7 +839,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             />
           ) : null}
           {operation === "market" ? (
-            <InfoRow label={m["dex.protrade.perps.slippage"]()} value={m["dex.protrade.perps.slippageDefault"]()} />
+            <InfoRow
+              label={m["dex.protrade.perps.slippage"]()}
+              value={m["dex.protrade.perps.slippageDefault"]()}
+            />
           ) : null}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
@@ -846,8 +853,34 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
                 trigger="click"
                 title={
                   <div className="flex flex-col gap-1">
-                    <p>{m["dex.protrade.perps.feesTooltipTaker"]({ rate: `${(feeRateOverride ? Number(feeRateOverride.takerFeeRate) * 100 : resolveRateSchedule(appConfig.perpsParam.takerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
-                    <p>{m["dex.protrade.perps.feesTooltipMaker"]({ rate: `${(feeRateOverride ? Number(feeRateOverride.makerFeeRate) * 100 : resolveRateSchedule(appConfig.perpsParam.makerFeeRates, userVolume ?? "0") * 100).toFixed(3)}%` })}</p>
+                    <p>
+                      {m["dex.protrade.perps.feesTooltipTaker"]({
+                        rate: `${Decimal(
+                          feeRateOverride
+                            ? feeRateOverride.takerFeeRate
+                            : resolveRateSchedule(
+                                appConfig.perpsParam.takerFeeRates,
+                                userVolume ?? "0",
+                              ),
+                        )
+                          .mul(100)
+                          .toFixed()}%`,
+                      })}
+                    </p>
+                    <p>
+                      {m["dex.protrade.perps.feesTooltipMaker"]({
+                        rate: `${Decimal(
+                          feeRateOverride
+                            ? feeRateOverride.makerFeeRate
+                            : resolveRateSchedule(
+                                appConfig.perpsParam.makerFeeRates,
+                                userVolume ?? "0",
+                              ),
+                        )
+                          .mul(100)
+                          .toFixed()}%`,
+                      })}
+                    </p>
                     <button
                       type="button"
                       className="text-status-success diatype-xs-bold mt-1 text-left"
