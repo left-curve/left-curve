@@ -18,7 +18,6 @@ members = [
   "dango/oracle",
   "dango/perps",
   "dango/proposal-preparer",
-  "dango/scripts",
   "dango/taxman",
   "dango/testing",
   "dango/types",
@@ -220,7 +219,6 @@ dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-perps                 = { path = "dango/perps" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
-dango-scripts               = { path = "dango/scripts" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/types" }

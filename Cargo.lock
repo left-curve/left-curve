@@ -4313,38 +4313,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-scripts"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "clap",
- "dango-client",
- "dango-genesis",
- "dango-testing",
- "dango-types",
- "dialoguer",
- "futures",
- "grug",
- "grug-app",
- "grug-db-disk",
- "grug-db-memory",
- "grug-vm-rust",
- "hex",
- "hex-literal",
- "home",
- "hyperlane-types",
- "indexer-cache",
- "indexer-client",
- "indexer-sql",
- "num-format",
- "pyth-types",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
@@ -7873,16 +7841,6 @@ name = "num-conv"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf97ec579c3c42f953ef76dbf8d55ac91fb219dde70e49aa4a6b7d74e9919050"
-
-[[package]]
-name = "num-format"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
-dependencies = [
- "arrayvec",
- "itoa",
-]
 
 [[package]]
 name = "num-integer"
