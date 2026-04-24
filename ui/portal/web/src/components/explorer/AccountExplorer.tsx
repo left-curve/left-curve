@@ -175,11 +175,11 @@ const PerpsBalance: React.FC = () => {
   if (!userState) return null;
 
   const items: PerpsBalanceItem[] = [
-    { label: "Margin", value: userState.margin },
-    { label: "Equity", value: userState.equity ?? "0" },
-    { label: "Available Margin", value: userState.availableMargin ?? "0" },
-    { label: "Reserved Margin", value: userState.reservedMargin },
-    { label: "Vault Shares", value: userState.vaultShares },
+    { label: m["explorer.accounts.perps.balance.margin"](), value: userState.margin },
+    { label: m["explorer.accounts.perps.balance.equity"](), value: userState.equity ?? "0" },
+    { label: m["explorer.accounts.perps.balance.availableMargin"](), value: userState.availableMargin ?? "0" },
+    { label: m["explorer.accounts.perps.balance.reservedMargin"](), value: userState.reservedMargin },
+    { label: m["explorer.accounts.perps.balance.vaultShares"](), value: userState.vaultShares },
   ];
 
   return (
@@ -230,32 +230,36 @@ const PerpsPositions: React.FC = () => {
 
   const columns: TableColumn<PerpsPositionRow> = [
     {
-      header: "Pair",
+      header: m["explorer.accounts.perps.positions.pair"](),
       cell: ({ row }) => (
         <Cell.Text text={formatPairLabel(row.original.pairId)} className="diatype-xs-medium" />
       ),
     },
     {
-      header: "Side",
+      header: m["explorer.accounts.perps.positions.side"](),
       cell: ({ row }) => {
         const isLong = Decimal(row.original.size).gt(0);
         return (
           <Cell.Text
-            text={isLong ? "LONG" : "SHORT"}
+            text={
+              isLong
+                ? m["explorer.accounts.perps.positions.long"]()
+                : m["explorer.accounts.perps.positions.short"]()
+            }
             className={isLong ? "text-utility-success-600" : "text-utility-error-600"}
           />
         );
       },
     },
     {
-      header: "Size",
+      header: m["explorer.accounts.perps.positions.size"](),
       cell: ({ row }) => {
         const absSize = Decimal(row.original.size).abs().toFixed();
         return <Cell.Text text={<FormattedNumber number={absSize} as="span" />} />;
       },
     },
     {
-      header: "Entry Price",
+      header: m["explorer.accounts.perps.positions.entryPrice"](),
       cell: ({ row }) => (
         <Cell.Text
           text={
@@ -269,7 +273,7 @@ const PerpsPositions: React.FC = () => {
       ),
     },
     {
-      header: "Unrealized PnL",
+      header: m["explorer.accounts.perps.positions.unrealizedPnl"](),
       cell: ({ row }) => {
         const { unrealizedPnl } = row.original;
         if (unrealizedPnl == null) return <Cell.Text text="N/A" />;
@@ -292,7 +296,7 @@ const PerpsPositions: React.FC = () => {
       },
     },
     {
-      header: "Liq. Price",
+      header: m["explorer.accounts.perps.positions.liqPrice"](),
       cell: ({ row }) => {
         const { liquidationPrice } = row.original;
         if (liquidationPrice == null) return <Cell.Text text="N/A" />;
@@ -346,32 +350,36 @@ const PerpsOrders: React.FC = () => {
 
   const columns: TableColumn<PerpsOrderRow> = [
     {
-      header: "Pair",
+      header: m["explorer.accounts.perps.orders.pair"](),
       cell: ({ row }) => (
         <Cell.Text text={formatPairLabel(row.original.pairId)} className="diatype-xs-medium" />
       ),
     },
     {
-      header: "Side",
+      header: m["explorer.accounts.perps.orders.side"](),
       cell: ({ row }) => {
         const isLong = Decimal(row.original.size).gt(0);
         return (
           <Cell.Text
-            text={isLong ? "LONG" : "SHORT"}
+            text={
+              isLong
+                ? m["explorer.accounts.perps.orders.long"]()
+                : m["explorer.accounts.perps.orders.short"]()
+            }
             className={isLong ? "text-utility-success-600" : "text-utility-error-600"}
           />
         );
       },
     },
     {
-      header: "Size",
+      header: m["explorer.accounts.perps.orders.size"](),
       cell: ({ row }) => {
         const absSize = Decimal(row.original.size).abs().toFixed();
         return <Cell.Text text={<FormattedNumber number={absSize} as="span" />} />;
       },
     },
     {
-      header: "Limit Price",
+      header: m["explorer.accounts.perps.orders.limitPrice"](),
       cell: ({ row }) => (
         <Cell.Text
           text={
@@ -385,13 +393,13 @@ const PerpsOrders: React.FC = () => {
       ),
     },
     {
-      header: "Reduce Only",
+      header: m["explorer.accounts.perps.orders.reduceOnly"](),
       cell: ({ row }) => (
         <Cell.Text text={row.original.reduceOnly ? "Yes" : "No"} />
       ),
     },
     {
-      header: "Reserved Margin",
+      header: m["explorer.accounts.perps.orders.reservedMargin"](),
       cell: ({ row }) => (
         <Cell.Text
           text={
@@ -405,7 +413,7 @@ const PerpsOrders: React.FC = () => {
       ),
     },
     {
-      header: "Created At",
+      header: m["explorer.accounts.perps.orders.createdAt"](),
       cell: ({ row }) => {
         const date = new Date(Number(row.original.createdAt) * 1000);
         return <Cell.Text text={date.toLocaleString()} />;
