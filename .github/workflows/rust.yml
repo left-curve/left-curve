@@ -30,7 +30,7 @@ on:
       - "hyperlane/**"
       - "indexer/**"
       - "pyth/**"
-      - "sdk/**"
+      - "sdk/typescript/**"
       - "ui/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -45,7 +45,7 @@ on:
       - ".force_localdango"
       - ".force_deploy"
       - "localdango/**"
-      # - "sdk/**"
+      # - "sdk/typescript/**"
       # - "ui/store/**"
       # - "ui/portal/**"
       # - "ui/applets/**"
@@ -61,7 +61,7 @@ on:
       - "hyperlane/**"
       - "indexer/**"
       - "pyth/**"
-      - "sdk/**"
+      - "sdk/typescript/**"
       - "ui/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -76,7 +76,7 @@ on:
       - ".force_localdango"
       - ".force_deploy"
       - "localdango/**"
-      # - "sdk/**"
+      # - "sdk/typescript/**"
       # - "ui/store/**"
       # - "ui/portal/**"
       # - "ui/applets/**"
@@ -115,7 +115,7 @@ jobs:
               - 'docker/dango/**'
               - '.force_backend_rebuild'
             frontend:
-              - 'sdk/**'
+              - 'sdk/typescript/**'
               - 'ui/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
