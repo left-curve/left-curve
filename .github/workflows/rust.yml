@@ -445,12 +445,12 @@ jobs:
 
       - name: Build GraphQL schema
         if: env.BACKEND_CHANGED == 'true'
-        run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
+        run: cargo run -p dango-httpd build_graphql_schema -- ./sdk/rust/src/schemas/schema.graphql
 
       - name: Check if schema is up-to-date
         if: env.BACKEND_CHANGED == 'true'
         run: |
-          if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
+          if ! git diff --exit-code ./sdk/rust/src/schemas/schema.graphql; then
             echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
             exit 1
           fi
