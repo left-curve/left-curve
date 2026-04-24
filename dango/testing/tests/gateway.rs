@@ -1230,6 +1230,127 @@ fn personal_quota_on_un_rate_limited_denom() {
         .should_succeed();
 }
 
+/// Overwriting a partially-consumed personal quota must replace the
+/// record wholesale — no carry-over of the leftover balance, no
+/// preservation of the old expiry. The stored amount and expiry reflect
+/// the admin's most recent decision.
+#[test]
+fn personal_quota_mid_consumption_overwrite() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver_addr = accounts.user2.address();
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // Reserve / supply seed.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            200_000_000,
+        )
+        .should_succeed();
+
+    // Tight global rate limit (1%) so the test leans on the personal quota.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(1)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Grant 100M with no expiry.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(100_000_000),
+                    available_for: None,
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Consume 40M — fully within personal. 60M remains.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 40_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(Some(PersonalQuota {
+            amount: Uint128::new(60_000_000),
+            expiry: None,
+        }));
+
+    // Overwrite: admin replaces with 10M + 1h expiry. The 60M leftover is
+    // discarded; the expiry is newly computed from the current block time.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(10_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    let stored = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("entry present after overwrite");
+
+    // Amount is the new 10M — no carry-over.
+    assert_eq!(stored.amount, Uint128::new(10_000_000));
+    // Expiry is Some — the new lifetime replaced the previous `None`.
+    assert!(stored.expiry.is_some());
+}
+
 fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
     suite.make_empty_block();
