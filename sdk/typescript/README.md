@@ -37,7 +37,7 @@ We are grateful to both the [Wevm] and [Confio] team for their open-source contr
 TBD
 
 [Grug]: https://grug.build/
-[Dango]: ../dango
+[Dango]: ../../dango
 [Wevm]: https://wevm.dev/
 [Wagmi]: https://github.com/wevm/wagmi
 [Viem]: https://github.com/wevm/viem
