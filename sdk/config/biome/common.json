@@ -34,7 +34,8 @@
       },
       "suspicious": {
         "noConfusingVoidType": "off",
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "useAdjacentOverloadSignatures": "off"
       }
     }
   },

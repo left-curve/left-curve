@@ -12,6 +12,12 @@ export {
 } from "./queries/getUserState.js";
 
 export {
+  type GetPerpsUserStateExtendedParameters,
+  type GetPerpsUserStateExtendedReturnType,
+  getPerpsUserStateExtended,
+} from "./queries/getUserStateExtended.js";
+
+export {
   type GetPerpsOrdersByUserParameters,
   type GetPerpsOrdersByUserReturnType,
   getPerpsOrdersByUser,

@@ -135,7 +135,10 @@ export {
 } from "./hooks/useQueryWithPagination.js";
 export { useExplorerTransaction } from "./hooks/explorer/useExplorerTransaction.js";
 export { useExplorerBlock, type ExplorerBlockState } from "./hooks/explorer/useExplorerBlock.js";
-export { useExplorerAccount, type ExplorerAccount } from "./hooks/explorer/useExplorerAccount.js";
+export {
+  useExplorerAccount,
+  type ExplorerAccount,
+} from "./hooks/explorer/useExplorerAccount.js";
 export {
   useExplorerContract,
   type ExplorerContract,
