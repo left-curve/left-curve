@@ -1767,7 +1767,7 @@ fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
             relayer,
             mock_solana::DOMAIN,
             mock_solana::USDC_WARP,
-            &mut accounts.user2,
+            &accounts.user2,
             100_000_000,
         )
         .should_succeed();
