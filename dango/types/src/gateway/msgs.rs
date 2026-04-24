@@ -8,24 +8,10 @@ use {
 pub struct WithdrawalFee {
     pub denom: Denom,
     pub remote: Remote,
+
     /// Use `Op::Insert` to add a new fee or change an existing fee; use
     /// `Op::Delete` to remove a fee.
     pub fee: Op<Uint128>,
-}
-
-/// Per-account allowance that is consumed before the global outbound quota
-/// when the user sends a remote transfer. This is the stored / returned
-/// form; `SetPersonalQuotaRequest` is the admin input.
-#[grug::derive(Borsh, Serde)]
-pub struct PersonalQuota {
-    pub amount: Uint128,
-    /// `None` means the quota never expires. `Some(t)` means the quota is
-    /// ignored once the current block timestamp reaches `t`.
-    pub expire_at: Option<Timestamp>,
-    /// The admin account that created or last overwrote this entry.
-    pub granted_by: Addr,
-    /// The block timestamp of the grant or most recent overwrite.
-    pub granted_at: Timestamp,
 }
 
 /// Admin input for `ExecuteMsg::SetPersonalQuota`. Carries the relative
@@ -34,9 +20,28 @@ pub struct PersonalQuota {
 #[grug::derive(Serde)]
 pub struct SetPersonalQuotaRequest {
     pub amount: Uint128,
+
     /// `None` means the quota never expires. `Some(d)` means the quota
     /// expires at `current_block_time + d`.
     pub available_for: Option<Duration>,
+}
+
+/// Per-account allowance that is consumed before the global outbound quota
+/// when the user sends a remote transfer. This is the stored / returned
+/// form; `SetPersonalQuotaRequest` is the admin input.
+#[grug::derive(Borsh, Serde)]
+pub struct PersonalQuota {
+    pub amount: Uint128,
+
+    /// `None` means the quota never expires. `Some(t)` means the quota is
+    /// ignored once the current block timestamp reaches `t`.
+    pub expire_at: Option<Timestamp>,
+
+    /// The admin account that created or last overwrote this entry.
+    pub granted_by: Addr,
+
+    /// The block timestamp of the grant or most recent overwrite.
+    pub granted_at: Timestamp,
 }
 
 #[grug::derive(Serde)]
@@ -114,39 +119,48 @@ pub enum QueryMsg {
     /// Given a `(bridge, remote)` tuple, find the alloyed denom it belongs to.
     #[returns(Option<Denom>)]
     Route { bridge: Addr, remote: Remote },
+
     /// Given an alloyed denom and the remote, find the bridge contract that handles it.
     #[returns(Option<Addr>)]
     ReverseRoute { denom: Denom, remote: Remote },
+
     /// Enumerate all routes.
     #[returns(Vec<QueryRoutesResponseItem>)]
     Routes {
         start_after: Option<(Addr, Remote)>,
         limit: Option<u32>,
     },
+
     /// Query the withdraw rate limits.
     #[returns(BTreeMap<Denom, RateLimit>)]
     RateLimits {},
+
     /// Given a `(bridge, remote)` tuple, find the reserve amount.
     #[returns(Uint128)]
     Reserve { bridge: Addr, remote: Remote },
+
     /// Enumerate all reserves.
     #[returns(Vec<QueryReservesResponseItem>)]
     Reserves {
         start_after: Option<(Addr, Remote)>,
         limit: Option<u32>,
     },
+
     /// Given a `(denom, remote)` tuple, find the withdrawal fee.
     #[returns(Uint128)]
     WithdrawalFee { denom: Denom, remote: Remote },
+
     /// Enumerate all withdrawal fees.
     #[returns(Vec<QueryWithdrawalFeesResponseItem>)]
     WithdrawalFees {
         start_after: Option<(Denom, Remote)>,
         limit: Option<u32>,
     },
+
     /// Look up the personal quota an account has for a given denom.
     #[returns(Option<PersonalQuota>)]
     PersonalQuota { user: Addr, denom: Denom },
+
     /// Enumerate all personal quotas.
     #[returns(Vec<QueryPersonalQuotasResponseItem>)]
     PersonalQuotas {
