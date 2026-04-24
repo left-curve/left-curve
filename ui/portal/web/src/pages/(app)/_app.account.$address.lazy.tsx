@@ -19,7 +19,10 @@ function AccountExplorerApplet() {
       <AccountExplorer address={address as Address}>
         <AccountExplorer.NotFound />
         <AccountExplorer.Details />
+        <AccountExplorer.PerpsBalance />
         <AccountExplorer.Assets />
+        <AccountExplorer.PerpsPositions />
+        <AccountExplorer.PerpsOrders />
         <AccountExplorer.Transactions />
       </AccountExplorer>
     </div>

@@ -9,6 +9,12 @@ import {
 } from "./queries/getUserState.js";
 
 import {
+  type GetPerpsUserStateExtendedParameters,
+  type GetPerpsUserStateExtendedReturnType,
+  getPerpsUserStateExtended,
+} from "./queries/getUserStateExtended.js";
+
+import {
   type GetPerpsOrdersByUserParameters,
   type GetPerpsOrdersByUserReturnType,
   getPerpsOrdersByUser,
@@ -153,6 +159,9 @@ import {
 
 export type PerpsQueryActions = {
   getPerpsUserState: (args: GetPerpsUserStateParameters) => GetPerpsUserStateReturnType;
+  getPerpsUserStateExtended: (
+    args: GetPerpsUserStateExtendedParameters,
+  ) => GetPerpsUserStateExtendedReturnType;
   getPerpsOrdersByUser: (args: GetPerpsOrdersByUserParameters) => GetPerpsOrdersByUserReturnType;
   getPerpsLiquidityDepth: (
     args: GetPerpsLiquidityDepthParameters,
@@ -175,6 +184,7 @@ export function perpsQueryActions<transport extends Transport = Transport>(
 ): PerpsQueryActions {
   return {
     getPerpsUserState: (args) => getPerpsUserState(client, args),
+    getPerpsUserStateExtended: (args) => getPerpsUserStateExtended(client, args),
     getPerpsOrdersByUser: (args) => getPerpsOrdersByUser(client, args),
     getPerpsLiquidityDepth: (args) => getPerpsLiquidityDepth(client, args),
     getPerpsPairParam: (args) => getPerpsPairParam(client, args),

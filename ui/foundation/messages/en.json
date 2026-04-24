@@ -325,6 +325,36 @@
         "contractAddress": "Contract Address:",
         "admin": "Admin:",
         "balances": "Balances:"
+      },
+      "perps": {
+        "balance": {
+          "margin": "Margin",
+          "equity": "Equity",
+          "availableMargin": "Available Margin",
+          "reservedMargin": "Reserved Margin",
+          "vaultShares": "Vault Shares"
+        },
+        "positions": {
+          "pair": "Pair",
+          "side": "Side",
+          "size": "Size",
+          "entryPrice": "Entry Price",
+          "unrealizedPnl": "Unrealized PnL",
+          "liqPrice": "Liq. Price",
+          "long": "LONG",
+          "short": "SHORT"
+        },
+        "orders": {
+          "pair": "Pair",
+          "side": "Side",
+          "size": "Size",
+          "limitPrice": "Limit Price",
+          "reduceOnly": "Reduce Only",
+          "reservedMargin": "Reserved Margin",
+          "createdAt": "Created At",
+          "long": "LONG",
+          "short": "SHORT"
+        }
       }
     },
     "user": {
