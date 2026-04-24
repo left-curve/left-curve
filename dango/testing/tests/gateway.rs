@@ -1030,7 +1030,8 @@ fn deposit_to_unregistered_address() {
 }
 
 /// Verify that a zero rate limit acts as an emergency freeze: all withdrawals
-/// are blocked. Unfreezing (setting a non-zero rate limit) re-enables them.
+/// are blocked (daily allowance = 0) and any existing credits are revoked.
+/// Unfreezing (setting a non-zero rate limit) re-enables withdrawals.
 #[test]
 fn rate_limit_zero_freeze() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
@@ -1048,6 +1049,7 @@ fn rate_limit_zero_freeze() {
 
     let mock_solana_recipient: Addr32 = Addr::mock(201).into();
     let usdc_sol_fee = 10_000;
+    let receiver_index = receiver.user_index();
 
     // Deposit 100 USDC.
     suite
@@ -1060,7 +1062,32 @@ fn rate_limit_zero_freeze() {
         )
         .should_succeed();
 
-    // Set rate limit to 0% — emergency freeze.
+    // Set rate limit 10% first, then grant credit.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index: receiver_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Insert((Uint128::new(50_000_000), Duration::from_days(1))),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Set rate limit to 0% — emergency freeze. Credits are revoked.
     suite
         .execute(
             owner,
@@ -1072,7 +1099,15 @@ fn rate_limit_zero_freeze() {
         )
         .should_succeed();
 
-    // A zero rate limit blocks all withdrawals.
+    // Credit was revoked by the zero rate limit.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+            user_index: receiver_index,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(None);
+
+    // Withdrawals are blocked (daily allowance = 0, no credit).
     suite
         .execute(
             receiver,
@@ -1086,7 +1121,7 @@ fn rate_limit_zero_freeze() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("withdrawals are frozen");
+        .should_fail_with_error("rate limit exceeded!");
 
     // Unfreeze by setting a non-zero rate limit.
     suite

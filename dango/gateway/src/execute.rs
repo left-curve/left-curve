@@ -109,10 +109,29 @@ fn set_rate_limits(
     // are left untouched. The updated withdrawal rate takes effect immediately
     // — both increases and decreases — because the check compares the new
     // allowance against the current rolling outbound.
-    for denom in rate_limits.keys() {
+    //
+    // A zero rate limit acts as an emergency freeze. When set, all withdrawal
+    // credits for that denom are revoked so no user can bypass the freeze.
+    for (denom, rate_limit) in &rate_limits {
         if !SUPPLIES.has(ctx.storage, denom) {
             let supply = ctx.querier.query_supply(denom.clone())?;
             SUPPLIES.save(ctx.storage, denom, &supply)?;
+        }
+
+        // We revoke all credits here because the owner may later want to
+        // selectively grant credits to specific users via SetWithdrawalCredit.
+        if rate_limit.into_inner() == Udec128::ZERO {
+            let keys = WITHDRAWAL_CREDITS
+                .range(ctx.storage, None, None, grug::Order::Ascending)
+                .filter_map(|res| {
+                    let ((user_index, d), _) = res.ok()?;
+                    (&d == denom).then_some(user_index)
+                })
+                .collect::<Vec<_>>();
+
+            for user_index in keys {
+                WITHDRAWAL_CREDITS.remove(ctx.storage, (user_index, denom));
+            }
         }
     }
 
@@ -311,15 +330,6 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     // contract-initiated withdrawals are needed in the future, a whitelist
     // mechanism should be added.
     if let Some(rate_limit) = RATE_LIMITS.load(ctx.storage)?.get(&coin.denom) {
-        // A zero rate limit acts as an emergency freeze — all withdrawals are
-        // blocked. This lets the owner halt outflows immediately in response
-        // to a bridge exploit.
-        ensure!(
-            rate_limit.into_inner() > Udec128::ZERO,
-            "withdrawals are frozen for denom: {}",
-            coin.denom
-        );
-
         let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
 
         // Check if the user has an active withdrawal credit. If so, use it
