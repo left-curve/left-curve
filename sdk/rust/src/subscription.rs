@@ -248,7 +248,7 @@ impl WsClient {
     ///
     /// ```ignore
     /// use futures::StreamExt;
-    /// use indexer_client::{WsClient, SubscribeTrades, subscribe_trades};
+    /// use dango_sdk::{WsClient, SubscribeTrades, subscribe_trades};
     ///
     /// let client = WsClient::new("ws://localhost:8080/graphql")?;
     ///

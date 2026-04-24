@@ -1,11 +1,11 @@
 use {
     crate::utils::{setup_client_test, setup_client_test_with_port},
+    dango_sdk::{SubscribeBlock, WsClient, subscribe_block},
     dango_types::constants::usdc,
     futures::StreamExt,
     grug::{
         BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
     },
-    indexer_client::{SubscribeBlock, WsClient, subscribe_block},
     std::time::Duration,
 };
 
@@ -35,7 +35,7 @@ async fn broadcast() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Verify that a single [`indexer_client::Session`] can host multiple
+/// Verify that a single [`dango_sdk::Session`] can host multiple
 /// subscriptions over one WebSocket: each stream is routed independently and
 /// dropping one does not disturb the others.
 ///

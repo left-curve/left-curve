@@ -49,7 +49,6 @@ members = [
   "hyperlane/testing",
   "hyperlane/va",
   "indexer/cache",
-  "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
   "indexer/httpd",
@@ -58,6 +57,7 @@ members = [
   "indexer/testing",
   "pyth/client",
   "pyth/types",
+  "sdk/rust",
   "utils/config-parser",
   "utils/dyn-event",
   "utils/error-backtrace",
@@ -219,6 +219,7 @@ dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-perps                 = { path = "dango/perps" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
+dango-sdk                   = { path = "sdk/rust" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/types" }
@@ -253,7 +254,6 @@ hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-cache               = { path = "indexer/cache" }
-indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }

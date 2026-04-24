@@ -3,6 +3,7 @@ use {
     alloy::primitives::Address,
     anyhow::{anyhow, bail},
     dango_client::{Secp256k1, SingleSigner},
+    dango_sdk::HttpClient,
     dango_types::{
         auth::Nonce,
         config::AppConfig,
@@ -13,7 +14,6 @@ use {
         SearchTxClient, StdResult,
     },
     hyperlane_types::{Addr32, isms::multisig::ValidatorSet},
-    indexer_client::HttpClient,
     std::{collections::BTreeSet, str::FromStr},
 };
 

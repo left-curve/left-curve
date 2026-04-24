@@ -1,6 +1,6 @@
 use {
+    dango_sdk::{Block, block},
     graphql_client::GraphQLQuery,
-    indexer_client::{Block, block},
     indexer_testing::{block::create_block, build_app_service, call_graphql_query},
 };
 

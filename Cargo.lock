@@ -4149,12 +4149,12 @@ dependencies = [
  "anyhow",
  "clap",
  "dango-client",
+ "dango-sdk",
  "dango-types",
  "dotenvy",
  "grug",
  "hex-literal",
  "hyperlane-types",
- "indexer-client",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
@@ -4313,6 +4313,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-sdk"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assert-json-diff",
+ "assertor",
+ "async-trait",
+ "dango-genesis",
+ "dango-mock-httpd",
+ "dango-testing",
+ "dango-types",
+ "error-backtrace",
+ "futures",
+ "graphql_client",
+ "grug",
+ "grug-testing",
+ "grug-types",
+ "indexer-testing",
+ "paste",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tendermint-rpc",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.28.0",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
@@ -4350,6 +4381,7 @@ dependencies = [
  "dango-oracle",
  "dango-perps",
  "dango-proposal-preparer",
+ "dango-sdk",
  "dango-taxman",
  "dango-types",
  "eth-utils",
@@ -4370,7 +4402,6 @@ dependencies = [
  "hyperlane-types",
  "identity",
  "indexer-cache",
- "indexer-client",
  "indexer-disk-saver",
  "indexer-hooked",
  "indexer-httpd",
@@ -6791,37 +6822,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexer-client"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assert-json-diff",
- "assertor",
- "async-trait",
- "dango-genesis",
- "dango-mock-httpd",
- "dango-testing",
- "dango-types",
- "error-backtrace",
- "futures",
- "graphql_client",
- "grug",
- "grug-testing",
- "grug-types",
- "indexer-testing",
- "paste",
- "reqwest 0.13.2",
- "serde",
- "serde_json",
- "tendermint-rpc",
- "thiserror 2.0.18",
- "tokio",
- "tokio-tungstenite 0.28.0",
- "tracing",
- "url",
-]
-
-[[package]]
 name = "indexer-disk-saver"
 version = "0.0.0"
 dependencies = [
@@ -6973,6 +6973,7 @@ dependencies = [
  "chrono",
  "dango-genesis",
  "dango-mock-httpd",
+ "dango-sdk",
  "dango-testing",
  "dango-types",
  "futures-util",
@@ -6986,7 +6987,6 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "indexer-cache",
- "indexer-client",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",

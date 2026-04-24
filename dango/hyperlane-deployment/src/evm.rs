@@ -18,9 +18,9 @@ use {
         rpc::types::TransactionRequest,
         sol_types::SolCall,
     },
+    dango_sdk::HttpClient,
     dango_types::config::AppConfig,
     grug::{Inner, QueryClientExt},
-    indexer_client::HttpClient,
 };
 
 pub async fn is_contract<P>(provider: &P, address: Address) -> anyhow::Result<bool>

@@ -64,13 +64,13 @@ dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
 dango-perps                 = { workspace = true, features = ["library"] }
+dango-sdk                   = { workspace = true, features = ["tracing"] }
 dango-taxman                = { workspace = true, features = ["library"] }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
 grug-testing                = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }
-indexer-client              = { workspace = true, features = ["tracing"] }
 indexer-disk-saver          = { workspace = true }
 indexer-testing             = { workspace = true }
 itertools                   = { workspace = true }

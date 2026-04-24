@@ -4,6 +4,7 @@ use {
         transfers_query,
     },
     assertor::*,
+    dango_sdk::{SubscribeTransfers, subscribe_transfers},
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
     },
@@ -11,7 +12,6 @@ use {
     graphql_client::GraphQLQuery,
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
-    indexer_client::{SubscribeTransfers, subscribe_transfers},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -393,7 +393,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeTransfers::build_query(subscribe_transfers::Variables::default()),
         "transfers",
@@ -505,7 +505,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeTransfers::build_query(subscribe_transfers::Variables {
             address: Some(accounts.user1.address().to_string()),

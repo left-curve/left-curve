@@ -28,11 +28,11 @@ use {
     tokio::time::{Duration, timeout},
 };
 
-// Re-export PageInfo from indexer_client for use in pagination helpers
-pub use indexer_client::PageInfo;
+// Re-export PageInfo from dango_sdk for use in pagination helpers
+pub use dango_sdk::PageInfo;
 
 // Re-export query modules for use in pagination helpers
-pub use indexer_client::{
+pub use dango_sdk::{
     Blocks, Events, Messages, Transactions, blocks as blocks_query, events as events_query,
     messages as messages_query, transactions as transactions_query,
 };
@@ -59,7 +59,7 @@ pub enum PaginationDirection {
 /// * `$fn_name` - The name of the generated function
 /// * `$context_type` - The context type (e.g., `indexer_httpd::context::Context`)
 /// * `$query_type` - The GraphQL query type (e.g., `Blocks`)
-/// * `$module` - The module containing the query types (e.g., `indexer_client::blocks`)
+/// * `$module` - The module containing the query types (e.g., `dango_sdk::blocks`)
 /// * `$field` - The response field name (e.g., `blocks`)
 /// * `$node_type` - The node type returned by the query
 /// * `$app_builder` - Expression to build the app from context

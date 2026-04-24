@@ -5,6 +5,7 @@ use {
     },
     assert_json_diff::assert_json_eq,
     assertor::*,
+    dango_sdk::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
@@ -21,7 +22,6 @@ use {
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
-    indexer_client::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -397,7 +397,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeAccounts::build_query(subscribe_accounts::Variables::default()),
         "accounts",
@@ -482,7 +482,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeAccounts::build_query(subscribe_accounts::Variables {
             user_index: Some(user_index),

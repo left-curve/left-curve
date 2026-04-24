@@ -1,9 +1,9 @@
 use {
     dango_genesis::GenesisOption,
     dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
+    dango_sdk::HttpClient,
     dango_testing::{Preset, TestAccounts, TestOption},
     grug::BlockCreation,
-    indexer_client::HttpClient,
 };
 
 pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {

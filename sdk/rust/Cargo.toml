@@ -5,7 +5,7 @@ description   = "Rust client for interacting with Grug via the indexer GraphQL s
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "indexer-client"
+name          = "dango-sdk"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }

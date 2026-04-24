@@ -2,6 +2,7 @@ use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
+    dango_sdk::{SubscribeTrades, Trades, subscribe_trades, trades},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -14,7 +15,6 @@ use {
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_client::{SubscribeTrades, Trades, subscribe_trades, trades},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -260,7 +260,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeTrades::build_query(subscribe_trades::Variables {
             base_denom: "dango".to_string(),
