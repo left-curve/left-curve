@@ -1741,6 +1741,95 @@ fn personal_quota_regrant_after_expiry() {
     assert_eq!(pq_consumed.amount, Uint128::new(19_000_000));
 }
 
+/// The cron only touches OUTBOUND_QUOTAS — it must never scrub
+/// PERSONAL_QUOTAS, even if the entry is already expired. The expired
+/// record should survive unchanged until the admin explicitly overwrites
+/// or deletes it, or the user triggers consumption.
+#[test]
+fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver_addr = accounts.user2.address();
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    // Reserve + supply seed. (No mutable ref to `receiver` needed — the
+    // test never transfers; it just grants and advances.)
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            &mut accounts.user2,
+            100_000_000,
+        )
+        .should_succeed();
+
+    // Global rate limit so cron_execute has something to reseed. This
+    // isolates the cron's effect on OUTBOUND_QUOTAS from its effect on
+    // PERSONAL_QUOTAS (which must be nil).
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Grant a 1h personal allowance.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver_addr,
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(10_000_000),
+                    available_for: Some(Duration::from_hours(1)),
+                }),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    let pq_before_cron = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("entry present");
+
+    // Advance a full day. The personal quota expired 23h ago at this point.
+    // The cron has fired at least once during this advance (24h tick).
+    advance_to_next_day(&mut suite);
+
+    let pq_after_cron = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver_addr,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed()
+        .expect("expired entry is preserved across cron");
+
+    // Every field of the expired record is untouched by cron.
+    assert_eq!(pq_after_cron.amount, pq_before_cron.amount);
+    assert_eq!(pq_after_cron.expire_at, pq_before_cron.expire_at);
+    assert_eq!(pq_after_cron.granted_by, pq_before_cron.granted_by);
+    assert_eq!(pq_after_cron.granted_at, pq_before_cron.granted_at);
+}
+
 fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
     suite.make_empty_block();
