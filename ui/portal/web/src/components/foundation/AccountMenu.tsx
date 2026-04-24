@@ -42,6 +42,7 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
+import { CountBadge } from "./CountBadge";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
 import { Activities } from "../activities/Activities";
 
@@ -297,11 +298,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           <Tab title="activities">
             <span className="flex items-center gap-1">
               {m["activities.title"]()}
-              {unseenCount > 0 && (
-                <span className="bg-red-500 text-surface-primary-rice rounded-full min-w-[22px] h-[22px] flex items-center justify-center diatype-sm-medium pt-0.5 px-2">
-                  {unseenCount}
-                </span>
-              )}
+              <CountBadge count={unseenCount} />
             </span>
           </Tab>
         </Tabs>
