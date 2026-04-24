@@ -111,7 +111,7 @@ fn rate_limit() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Inflows must no longer replenish the outbound quota. Receive 100M more
     // USDC from Ethereum; the quota should stay at zero.
@@ -152,7 +152,7 @@ fn rate_limit() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Advance one day so the cron seeds a fresh quota of 10% × 370M = 37M.
     advance_to_next_day(&mut suite);
@@ -213,7 +213,7 @@ fn rate_limit() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Raise the rate limit to 99%. In phase 1 this still only takes effect
     // after the next cron tick.
@@ -448,7 +448,7 @@ fn set_rate_limits_resets_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Owner raises the rate limit to 50% without advancing time. Supply is
     // now 90M, so the new quota is 45M, seeded in the same block.
@@ -675,7 +675,7 @@ fn personal_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // ---- Expired personal quota is ignored ----
     // Grant 100M more, this time with a 1h lifetime.
@@ -711,7 +711,7 @@ fn personal_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
-        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // The expired entry is left in storage; the handler doesn't scrub it. The
     // caller can still query it to reason about `expiry`.

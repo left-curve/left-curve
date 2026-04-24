@@ -300,8 +300,9 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
             Some(quota.checked_sub(remaining).map_err(|_| {
                 anyhow!(
-                    "insufficient outbound quota! denom: {}, amount: {}",
+                    "insufficient outbound quota! denom: {}, requested: {}, remaining after personal quota: {}",
                     coin.denom,
+                    coin.amount,
                     remaining
                 )
             }))
