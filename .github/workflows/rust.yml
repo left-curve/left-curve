@@ -1498,4 +1498,6 @@ jobs:
         if: always() && (env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true')
         run: |
           cd localdango
-          docker compose --profile dango down -v || true
+          docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml down -v || true
+          docker image prune -af --filter "until=72h" || true
+          docker volume prune -f || true
