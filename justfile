@@ -17,8 +17,12 @@ git-clear-branches:
 # ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Dango node software
-install:
+install-node:
   cargo install --path dango/cli --locked
+
+# Compile and install the Dango client CLI
+install-client:
+  cargo install --path sdk/rust/cli --locked
 
 # Run all tests
 test:
