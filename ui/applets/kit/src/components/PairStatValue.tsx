@@ -50,7 +50,7 @@ export const PairStatValue: React.FC<PairStatValueProps> = ({
         : "neutral";
 
   const baseClassName = twMerge(
-    kind !== "volume24h" && "tabular-nums lining-nums",
+    kind !== "volume24h" && "lining-nums",
     align === "end" ? "text-right" : "text-left",
     tone === "positive" && "text-status-success",
     tone === "negative" && "text-status-fail",

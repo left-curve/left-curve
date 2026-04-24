@@ -430,7 +430,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             text={
-              <span className="inline-block min-w-[6rem] tabular-nums">
+              <span className="inline-block min-w-[6rem]">
                 <FormattedNumber
                   number={row.original.currentPrice.toString()}
                   formatOptions={{ currency: "USD" }}
@@ -448,7 +448,7 @@ const PerpsPositionsTable: React.FC = () => {
           return (
             <Cell.Text
               text={
-                <span className="inline-block min-w-[7rem] tabular-nums">
+                <span className="inline-block min-w-[7rem]">
                   {isPositive ? "+" : ""}
                   <FormattedNumber
                     number={row.original.pnl.toString()}

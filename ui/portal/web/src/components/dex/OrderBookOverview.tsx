@@ -175,10 +175,14 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
         )}
         onClick={() => onSelectPrice(price)}
       >
-        <FormattedNumber number={price} formatOptions={{ fractionDigits: priceFractionDigits }} />
+        <FormattedNumber
+          number={price}
+          formatOptions={{ fractionDigits: priceFractionDigits }}
+          tabular
+        />
       </div>
       <div className="z-10 justify-end text-end hidden lg:flex gap-1">
-        <FormattedNumber number={size} />
+        <FormattedNumber number={size} tabular />
       </div>
       <div
         className={twMerge(
@@ -186,7 +190,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
           type === "bid" ? "text-start lg:text-end" : "order-1 lg:order-none text-end",
         )}
       >
-        <FormattedNumber number={total} />
+        <FormattedNumber number={total} tabular />
       </div>
     </div>
   );
@@ -360,10 +364,10 @@ const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin }) => {
                     isLong ? "text-utility-success-600" : "text-utility-error-600",
                   )}
                 >
-                  <FormattedNumber number={trade.fillPrice} />
+                  <FormattedNumber number={trade.fillPrice} tabular />
                 </div>
                 <div className="text-center z-10 flex gap-1 justify-center">
-                  <FormattedNumber number={Math.abs(Number(trade.fillSize)).toString()} />
+                  <FormattedNumber number={Math.abs(Number(trade.fillSize)).toString()} tabular />
                 </div>
                 <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
                   <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
@@ -426,10 +430,14 @@ const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin }) => {
                     baseCoin.decimals - quoteCoin.decimals,
                     true,
                   )}
+                  tabular
                 />
               </div>
               <div className="text-center z-10 flex gap-1 justify-center">
-                <FormattedNumber number={calculateTradeSize(trade, baseCoin.decimals).toFixed()} />
+                <FormattedNumber
+                  number={calculateTradeSize(trade, baseCoin.decimals).toFixed()}
+                  tabular
+                />
               </div>
 
               <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
