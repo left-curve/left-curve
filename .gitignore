@@ -23,10 +23,6 @@
 artifacts/
 target/
 
-# Python
-**/.ipynb_checkpoints/
-**/.venv/
-
 # LaTeX
 **/*.aux
 **/*.bbl
@@ -105,3 +101,4 @@ compensation_output/
 
 # Ansible
 .ansible
+**/.venv/
