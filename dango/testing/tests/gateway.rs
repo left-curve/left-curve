@@ -450,8 +450,10 @@ fn set_rate_limits_resets_quota() {
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
-    // Owner raises the rate limit to 50% without advancing time. Supply is
-    // now 90M, so the new quota is 45M, seeded in the same block.
+    // Owner raises the rate limit to 50% without advancing time. Raising
+    // must NOT take effect mid-window — otherwise a well-timed SetRateLimits
+    // call lets the same user drain `supply × limit` twice back-to-back in
+    // the same 24-hour window (once now, once after the next cron tick).
     suite
         .execute(
             owner,
@@ -463,8 +465,27 @@ fn set_rate_limits_resets_quota() {
         )
         .should_succeed();
 
-    // The exact call that failed two statements ago now succeeds — the quota
-    // was refreshed synchronously.
+    // Quota is still 0 (raise is deferred to next cron). 1 more token fails.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
+
+    // Advance one day so the cron fires and reseeds. Supply is 90M (after
+    // the 10M drain), so the new quota is 45M.
+    advance_to_next_day(&mut suite);
+
+    // The call that failed above now succeeds — quota has 45M headroom.
     suite
         .execute(
             receiver,
@@ -481,8 +502,7 @@ fn set_rate_limits_resets_quota() {
         .should_succeed();
 
     // Removing USDC from the rate limits map should drop its entry in
-    // OUTBOUND_QUOTAS (the refresh clears the map before reseeding from the
-    // new set of denoms). A transfer far above the old 50% quota should now
+    // OUTBOUND_QUOTAS. A transfer far above the old 50% quota should now
     // succeed — reserves are the only remaining constraint.
     suite
         .execute(

@@ -100,8 +100,10 @@ fn set_rate_limits(
         "only the owner can set rate limits"
     );
 
-    _set_rate_limits(ctx.storage, rate_limits)?;
-    refresh_quotas(ctx.storage, ctx.querier)?;
+    let old_rate_limits = RATE_LIMITS.load(ctx.storage)?;
+
+    _set_rate_limits(ctx.storage, rate_limits.clone())?;
+    tighten_quotas(ctx.storage, ctx.querier, &old_rate_limits, &rate_limits)?;
 
     Ok(Response::new())
 }
@@ -116,9 +118,9 @@ fn _set_rate_limits(
 }
 
 /// Clear all outbound quotas and reseed them from each rate-limited denom's
-/// current supply times its configured percentage. Called by the cron job and
-/// whenever the admin updates rate limits.
-fn refresh_quotas(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResult<()> {
+/// current supply times its configured percentage. Called by the cron job at
+/// the start of each 24-hour window.
+fn reseed_quotas(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResult<()> {
     OUTBOUND_QUOTAS.clear(storage, None, None);
 
     for (denom, limit) in RATE_LIMITS.load(storage)? {
@@ -126,6 +128,42 @@ fn refresh_quotas(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResu
         let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
 
         OUTBOUND_QUOTAS.save(storage, &denom, &quota)?;
+    }
+
+    Ok(())
+}
+
+/// Called by `set_rate_limits` to reconcile outstanding quotas with the new
+/// rate-limits map. `SetRateLimits` only ever lowers outstanding quotas;
+/// raises wait for the next cron tick. This prevents an admin from refilling
+/// a drained quota mid-window (intentionally or accidentally) and letting the
+/// same user withdraw a second full window back-to-back.
+///
+/// - Newly added denoms are seeded at `supply × limit`.
+/// - Existing denoms take the smaller of the current quota and `supply × new_limit`.
+/// - Denoms removed from the map have their quota entry dropped (become
+///   unrestricted immediately).
+fn tighten_quotas(
+    storage: &mut dyn Storage,
+    querier: QuerierWrapper,
+    old_rate_limits: &BTreeMap<Denom, RateLimit>,
+    new_rate_limits: &BTreeMap<Denom, RateLimit>,
+) -> StdResult<()> {
+    for denom in old_rate_limits.keys() {
+        if !new_rate_limits.contains_key(denom) {
+            OUTBOUND_QUOTAS.remove(storage, denom);
+        }
+    }
+
+    for (denom, limit) in new_rate_limits {
+        let supply = querier.query_supply(denom.clone())?;
+        let fresh_quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+
+        let tightened = OUTBOUND_QUOTAS
+            .may_load(storage, denom)?
+            .map_or(fresh_quota, |current| current.min(fresh_quota));
+
+        OUTBOUND_QUOTAS.save(storage, denom, &tightened)?;
     }
 
     Ok(())
@@ -355,7 +393,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    refresh_quotas(ctx.storage, ctx.querier)?;
+    reseed_quotas(ctx.storage, ctx.querier)?;
 
     Ok(Response::new())
 }
