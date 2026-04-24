@@ -1,13 +1,13 @@
 use {
     crate::{
         EPOCH, GLOBAL_OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES,
-        USER_MOVEMENTS, WITHDRAWAL_FEES,
+        USER_MOVEMENTS, WITHDRAWAL_CREDITS, WITHDRAWAL_FEES,
     },
     dango_types::{
         account_factory::UserIndex,
         gateway::{
             GlobalOutbound, Movement, QueryMsg, QueryReservesResponseItem, QueryRoutesResponseItem,
-            QueryWithdrawalFeesResponseItem, RateLimit, Remote,
+            QueryWithdrawalFeesResponseItem, RateLimit, Remote, WithdrawalCredit,
         },
     },
     grug::{
@@ -78,6 +78,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::UserAvailableWithdraw { user_index, denom } => {
             let res = query_user_available_withdraw(ctx, user_index, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::WithdrawalCredit { user_index, denom } => {
+            let res = query_withdrawal_credit(ctx, user_index, denom)?;
             res.to_json_value()
         },
     }
@@ -239,21 +243,36 @@ fn query_global_available_withdraws(ctx: ImmutableCtx) -> StdResult<BTreeMap<Den
 
 fn query_user_available_withdraw(
     ctx: ImmutableCtx,
-    _user_index: UserIndex,
+    user_index: UserIndex,
     denom: Denom,
 ) -> StdResult<Option<Uint128>> {
-    // All withdrawals count against the global limit — there is no per-user
-    // deposit credit. The user's available is the same as the global available.
     let rate_limits = RATE_LIMITS.load(ctx.storage)?;
 
-    match rate_limits.get(&denom) {
+    let global_available = match rate_limits.get(&denom) {
         Some(rate_limit) => {
             let rolling = GLOBAL_OUTBOUND
                 .may_load(ctx.storage, &denom)?
                 .map(|g| g.total_24h)
                 .unwrap_or(Uint128::ZERO);
-            compute_global_available_withdraw(ctx.storage, &denom, rate_limit, rolling).map(Some)
+            compute_global_available_withdraw(ctx.storage, &denom, rate_limit, rolling)?
         },
-        None => Ok(None),
-    }
+        None => return Ok(None),
+    };
+
+    // Add any active withdrawal credit for this user.
+    let credit_remaining = WITHDRAWAL_CREDITS
+        .may_load(ctx.storage, (user_index, &denom))?
+        .map(|c| c.remaining(ctx.block.timestamp))
+        .transpose()?
+        .unwrap_or(Uint128::ZERO);
+
+    Ok(Some(global_available.checked_add(credit_remaining)?))
+}
+
+fn query_withdrawal_credit(
+    ctx: ImmutableCtx,
+    user_index: UserIndex,
+    denom: Denom,
+) -> StdResult<Option<WithdrawalCredit>> {
+    WITHDRAWAL_CREDITS.may_load(ctx.storage, (user_index, &denom))
 }

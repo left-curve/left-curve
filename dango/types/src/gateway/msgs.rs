@@ -1,7 +1,7 @@
 use {
-    super::{Addr32, GlobalOutbound, Movement, Origin, RateLimit, Remote},
+    super::{Addr32, GlobalOutbound, Movement, Origin, RateLimit, Remote, WithdrawalCredit},
     crate::account_factory::UserIndex,
-    grug::{Addr, Denom, Op, Uint128},
+    grug::{Addr, Denom, Duration, Op, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -46,6 +46,15 @@ pub enum ExecuteMsg {
     ///
     /// Can be called by anyone.
     TransferRemote { remote: Remote, recipient: Addr32 },
+    /// Grant or revoke a withdrawal credit for a specific user and denom.
+    ///
+    /// Can only be called by the chain owner. Use `Op::Insert` to grant credit
+    /// (amount + duration) or `Op::Delete` to revoke it.
+    SetWithdrawalCredit {
+        user_index: UserIndex,
+        denom: Denom,
+        credit: Op<(Uint128, Duration)>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -103,10 +112,13 @@ pub enum QueryMsg {
     #[returns(BTreeMap<Denom, Uint128>)]
     AvailableWithdraws {},
     /// Query the total amount a user can withdraw for a denom (global allowance
-    /// remaining + personal deposit credit).
+    /// remaining + personal withdrawal credit).
     /// Returns `None` if the denom has no rate limit configured.
     #[returns(Option<Uint128>)]
     UserAvailableWithdraw { user_index: UserIndex, denom: Denom },
+    /// Query the withdrawal credit for a user and denom.
+    #[returns(Option<WithdrawalCredit>)]
+    WithdrawalCredit { user_index: UserIndex, denom: Denom },
 }
 
 #[grug::derive(Serde)]

@@ -1,5 +1,5 @@
 use {
-    grug::{Number, NumberConst, StdResult, Uint128},
+    grug::{Number, NumberConst, StdResult, Timestamp, Uint128},
     std::collections::VecDeque,
 };
 
@@ -15,6 +15,26 @@ pub const WINDOW_SIZE: u64 = 24;
 pub struct Movement {
     pub deposited: Uint128,
     pub withdrawn: Uint128,
+}
+
+/// Owner-granted withdrawal credit for a specific user and denom. Allows the
+/// user to withdraw up to `amount` without counting against the global rate
+/// limit, until `expires_at`. The `used` field tracks how much has been consumed.
+#[grug::derive(Serde, Borsh)]
+pub struct WithdrawalCredit {
+    pub amount: Uint128,
+    pub used: Uint128,
+    pub expires_at: Timestamp,
+}
+
+impl WithdrawalCredit {
+    /// Returns the remaining usable credit, or zero if expired.
+    pub fn remaining(&self, now: Timestamp) -> StdResult<Uint128> {
+        if now >= self.expires_at {
+            return Ok(Uint128::ZERO);
+        }
+        Ok(self.amount.checked_sub(self.used)?)
+    }
 }
 
 /// Global per-denom sliding window tracking outbound withdrawals.

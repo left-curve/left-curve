@@ -1,7 +1,7 @@
 use {
     dango_types::{
         account_factory::UserIndex,
-        gateway::{GlobalOutbound, Movement, RateLimit, Remote},
+        gateway::{GlobalOutbound, Movement, RateLimit, Remote, WithdrawalCredit},
     },
     grug::{Addr, Denom, Item, Map, Uint128},
     std::collections::BTreeMap,
@@ -36,3 +36,8 @@ pub const GLOBAL_OUTBOUND: Map<&Denom, GlobalOutbound> = Map::new("global_out");
 /// Per-user, per-denom all-time deposit and withdrawal totals. Observational
 /// only — not used in rate-limit checks.
 pub const USER_MOVEMENTS: Map<(UserIndex, &Denom), Movement> = Map::new("user_mvmt");
+
+/// Owner-granted withdrawal credits. Allows specific users to withdraw up to
+/// a given amount without counting against the global rate limit, until expiry.
+pub const WITHDRAWAL_CREDITS: Map<(UserIndex, &Denom), WithdrawalCredit> =
+    Map::new("withdrawal_credit");

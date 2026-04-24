@@ -10,8 +10,8 @@ use {
         gateway::{self, Origin, RateLimit, Remote},
     },
     grug::{
-        Addr, BalanceChange, Coin, Coins, Duration, MathError, NumberConst, QuerierExt, ResultExt,
-        Udec128, Uint128, btree_map, btree_set, coins,
+        Addr, BalanceChange, Coin, Coins, Duration, MathError, NumberConst, Op, QuerierExt,
+        ResultExt, Udec128, Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::MockValidatorSet,
     hyperlane_types::{Addr32, isms},
@@ -1115,6 +1115,423 @@ fn rate_limit_zero_freeze() {
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
+}
+
+/// Only the chain owner can grant or revoke withdrawal credits.
+#[test]
+fn withdrawal_credit_owner_only() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let non_owner = &mut accounts.user2;
+    let owner = &mut accounts.owner;
+    let user_index = non_owner.user_index();
+
+    suite
+        .execute(
+            non_owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Insert((Uint128::new(50_000_000), Duration::from_days(1))),
+            },
+            Coins::default(),
+        )
+        .should_fail_with_error("only the owner can set withdrawal credits");
+
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Insert((Uint128::new(50_000_000), Duration::from_days(1))),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+}
+
+/// Verify insert and delete of withdrawal credits via queries.
+#[test]
+fn withdrawal_credit_insert_delete() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let owner = &mut accounts.owner;
+    let user_index = accounts.user2.user_index();
+
+    // Insert credit.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Insert((Uint128::new(50_000_000), Duration::from_days(1))),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Query — credit exists.
+    {
+        let credit: Option<gateway::WithdrawalCredit> = suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+                user_index,
+                denom: usdc::DENOM.clone(),
+            })
+            .unwrap();
+        let credit = credit.unwrap();
+        assert_eq!(credit.amount, Uint128::new(50_000_000));
+        assert_eq!(credit.used, Uint128::ZERO);
+    }
+
+    // Delete credit.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Delete,
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Query — credit is gone.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+            user_index,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(None::<gateway::WithdrawalCredit>);
+}
+
+/// Verify that withdrawal credit bypasses the global limit, is removed when
+/// fully consumed, and expired credits are cleaned up by the cron job.
+#[test]
+fn withdrawal_credit_usage() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+    let receiver_index = receiver.user_index();
+
+    // Deposit 200 USDC.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            200_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit 10%. Daily allowance = 20.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    advance_to_next_day(&mut suite);
+
+    // Exhaust the global limit (20) before granting credit.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Now grant 30 USDC credit for 1 day.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index: receiver_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Insert((Uint128::new(30_000_000), Duration::from_days(1))),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Global is full, but credit allows 30 more. Withdraw 15 first.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 15_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Credit partially used: 15 of 30 consumed.
+    {
+        let credit: Option<gateway::WithdrawalCredit> = suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+                user_index: receiver_index,
+                denom: usdc::DENOM.clone(),
+            })
+            .unwrap();
+        let credit = credit.unwrap();
+        assert_eq!(credit.amount, Uint128::new(30_000_000));
+        assert_eq!(credit.used, Uint128::new(15_000_000));
+    }
+
+    // Withdraw the remaining 15.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 15_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Credit fully consumed → removed from storage.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+            user_index: receiver_index,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(None::<gateway::WithdrawalCredit>);
+
+    // 1 more fails — no credit left and global is full.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
+
+    // Grant a new credit with 1-day expiry.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index: receiver_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Insert((Uint128::new(10_000_000), Duration::from_days(1))),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Verify it exists.
+    {
+        let credit: Option<gateway::WithdrawalCredit> = suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+                user_index: receiver_index,
+                denom: usdc::DENOM.clone(),
+            })
+            .unwrap();
+        assert!(credit.is_some());
+    }
+
+    // Advance 24 epochs (1 day) — the credit expires and cron cleans it up.
+    advance_to_next_day(&mut suite);
+
+    // Credit is gone.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+            user_index: receiver_index,
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(None::<gateway::WithdrawalCredit>);
+}
+
+/// Verify that an expired credit no longer allows withdrawals beyond the
+/// global limit.
+#[test]
+fn withdrawal_credit_expiry() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+    let receiver_index = receiver.user_index();
+
+    // Deposit 200 USDC.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            200_000_000,
+        )
+        .should_succeed();
+
+    // Set rate limit 10%. Daily allowance = 20.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    advance_to_next_day(&mut suite);
+
+    // Exhaust the global limit.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Grant credit that expires in 2 hours.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetWithdrawalCredit {
+                user_index: receiver_index,
+                denom: usdc::DENOM.clone(),
+                credit: Op::Insert((Uint128::new(50_000_000), Duration::from_hours(2))),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Credit is active — can withdraw beyond global limit.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
+        )
+        .should_succeed();
+
+    // Credit partially used: 10 of 50. Still 40 remaining.
+    {
+        let credit: Option<gateway::WithdrawalCredit> = suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalCreditRequest {
+                user_index: receiver_index,
+                denom: usdc::DENOM.clone(),
+            })
+            .unwrap();
+        let credit = credit.unwrap();
+        assert_eq!(credit.amount, Uint128::new(50_000_000));
+        assert_eq!(credit.used, Uint128::new(10_000_000));
+    }
+
+    // Advance 3 hours — credit expires.
+    advance_one_hour(&mut suite);
+    advance_one_hour(&mut suite);
+    advance_one_hour(&mut suite);
+
+    // Credit expired — withdrawal fails (global still full).
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .should_fail_with_error("rate limit exceeded!");
 }
 
 /// Advance 24 hourly epochs (one full rate-limit day).

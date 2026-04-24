@@ -1,7 +1,7 @@
 use {
     crate::{
         EPOCH, GLOBAL_OUTBOUND, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLIES,
-        USER_MOVEMENTS, WITHDRAWAL_FEES,
+        USER_MOVEMENTS, WITHDRAWAL_CREDITS, WITHDRAWAL_FEES,
     },
     anyhow::{anyhow, ensure},
     dango_types::{
@@ -10,7 +10,7 @@ use {
         bank,
         gateway::{
             Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote, Traceable,
-            WINDOW_SIZE, WithdrawalFee,
+            WINDOW_SIZE, WithdrawalCredit, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
@@ -46,6 +46,11 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             recipient,
         } => receive_remote(ctx, remote, amount, recipient),
         ExecuteMsg::TransferRemote { remote, recipient } => transfer_remote(ctx, remote, recipient),
+        ExecuteMsg::SetWithdrawalCredit {
+            user_index,
+            denom,
+            credit,
+        } => set_withdrawal_credit(ctx, user_index, denom, credit),
     }
 }
 
@@ -155,6 +160,35 @@ fn _set_withdrawal_fees(
     }
 
     Ok(())
+}
+
+fn set_withdrawal_credit(
+    ctx: MutableCtx,
+    user_index: UserIndex,
+    denom: Denom,
+    credit: Op<(Uint128, grug::Duration)>,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only the owner can set withdrawal credits"
+    );
+
+    match credit {
+        Op::Insert((amount, duration)) => {
+            let expires_at = ctx.block.timestamp.checked_add(duration)?;
+
+            WITHDRAWAL_CREDITS.save(ctx.storage, (user_index, &denom), &WithdrawalCredit {
+                amount,
+                used: Uint128::ZERO,
+                expires_at,
+            })?;
+        },
+        Op::Delete => {
+            WITHDRAWAL_CREDITS.remove(ctx.storage, (user_index, &denom));
+        },
+    }
+
+    Ok(Response::new())
 }
 
 fn receive_remote(
@@ -286,30 +320,58 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             coin.denom
         );
 
-        let mut global = GLOBAL_OUTBOUND
-            .may_load(ctx.storage, &coin.denom)?
-            .unwrap_or_default();
+        let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
 
-        let global_available = crate::query::compute_global_available_withdraw(
-            ctx.storage,
-            &coin.denom,
-            rate_limit,
-            global.total_24h,
-        )?;
+        // Check if the user has an active withdrawal credit. If so, use it
+        // first — the covered portion bypasses the global rate limit.
+        let mut withdraw_amount = coin.amount;
 
-        ensure!(
-            global_available >= coin.amount,
-            "rate limit exceeded! denom: {}, available: {}, amount: {}",
-            coin.denom,
-            global_available,
-            coin.amount
-        );
+        if let Some(mut credit) =
+            WITHDRAWAL_CREDITS.may_load(ctx.storage, (user_index, &coin.denom))?
+        {
+            let credit_available = credit.remaining(ctx.block.timestamp)?;
+            let credit_consumed = credit_available.min(withdraw_amount);
 
-        global.add_to_current(coin.amount)?;
-        GLOBAL_OUTBOUND.save(ctx.storage, &coin.denom, &global)?;
+            // Update the credit consumed and decrease the withdraw_amount.
+            if credit_consumed > Uint128::ZERO {
+                credit.used.checked_add_assign(credit_consumed)?;
+                withdraw_amount = withdraw_amount.checked_sub(credit_consumed)?;
+            }
+
+            // Delete the credit if it's expired or fully consumed.
+            if credit.remaining(ctx.block.timestamp)? == Uint128::ZERO {
+                WITHDRAWAL_CREDITS.remove(ctx.storage, (user_index, &coin.denom));
+            } else if credit_consumed > Uint128::ZERO {
+                WITHDRAWAL_CREDITS.save(ctx.storage, (user_index, &coin.denom), &credit)?;
+            }
+        }
+
+        // Any amount not covered by credit counts against the global limit.
+        if withdraw_amount > Uint128::ZERO {
+            let mut global = GLOBAL_OUTBOUND
+                .may_load(ctx.storage, &coin.denom)?
+                .unwrap_or_default();
+
+            let global_available = crate::query::compute_global_available_withdraw(
+                ctx.storage,
+                &coin.denom,
+                rate_limit,
+                global.total_24h,
+            )?;
+
+            ensure!(
+                global_available >= withdraw_amount,
+                "rate limit exceeded! denom: {}, available: {}, amount: {}",
+                coin.denom,
+                global_available,
+                withdraw_amount
+            );
+
+            global.add_to_current(withdraw_amount)?;
+            GLOBAL_OUTBOUND.save(ctx.storage, &coin.denom, &global)?;
+        }
 
         // Record the withdrawal in per-user movement for observability.
-        let user_index = resolve_user_index(ctx.querier, ctx.sender)?;
         let mut movement = USER_MOVEMENTS
             .may_load(ctx.storage, (user_index, &coin.denom))?
             .unwrap_or_default();
@@ -389,12 +451,25 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 
     // Every WINDOW_SIZE epochs (once per day), re-snapshot the supply so the
     // daily allowance reflects current on-chain balances.
-    if epoch % WINDOW_SIZE == 0 {
+    if epoch.is_multiple_of(WINDOW_SIZE) {
         SUPPLIES.clear(ctx.storage, None, None);
 
         for denom in rate_limits.keys() {
             let supply = ctx.querier.query_supply(denom.clone())?;
             SUPPLIES.save(ctx.storage, denom, &supply)?;
+        }
+
+        // Clean up expired withdrawal credits.
+        let expired: Vec<_> = WITHDRAWAL_CREDITS
+            .range(ctx.storage, None, None, grug::Order::Ascending)
+            .filter_map(|res| {
+                let (key, credit) = res.ok()?;
+                (ctx.block.timestamp >= credit.expires_at).then_some(key)
+            })
+            .collect();
+
+        for (user_index, denom) in expired {
+            WITHDRAWAL_CREDITS.remove(ctx.storage, (user_index, &denom));
         }
     }
 
