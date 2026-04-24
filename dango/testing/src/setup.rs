@@ -8,13 +8,12 @@ use {
     },
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
+    dango_sdk::HttpClient,
     dango_types::{
         gateway::{Domain, Remote},
         warp,
     },
-    grug::{
-        Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, TendermintRpcClient, Uint128,
-    },
+    grug::{Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, Uint128},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
@@ -245,7 +244,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     clickhouse_context.start_cache().await.unwrap();
 
-    let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
+    let consensus_client = Arc::new(HttpClient::new("http://localhost:8080").unwrap());
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_cache_context,

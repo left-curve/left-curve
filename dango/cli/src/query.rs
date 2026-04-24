@@ -2,7 +2,7 @@ use {
     crate::{config::Config, home_directory::HomeDirectory, prompt::print_json_pretty},
     clap::{Parser, Subcommand},
     config_parser::parse_config,
-    grug_client::TendermintRpcClient,
+    dango_sdk::HttpClient,
     grug_types::{
         Addr, Binary, Bound, Denom, Hash256, JsonDeExt, Proof, Query, QueryClient,
         QueryWasmSmartRequest,
@@ -133,8 +133,7 @@ impl QueryCmd {
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 
-        // Create Grug client via Tendermint RPC.
-        let client = TendermintRpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
+        let client = HttpClient::new(&cfg.indexer_url)?;
 
         let req = match self.subcmd {
             SubCmd::Status => Query::status(),
@@ -226,7 +225,7 @@ struct PrintableQueryStoreResponse {
 }
 
 async fn query_store(
-    client: &TendermintRpcClient,
+    client: &HttpClient,
     key_b64: String,
     height: Option<u64>,
     prove: bool,

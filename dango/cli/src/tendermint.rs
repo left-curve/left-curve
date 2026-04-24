@@ -2,8 +2,8 @@ use {
     crate::{config::Config, home_directory::HomeDirectory, prompt::print_json_pretty},
     clap::{Parser, Subcommand},
     config_parser::parse_config,
-    grug_client::TendermintRpcClient,
-    grug_types::{BlockClient, Hash, SearchTxClient},
+    dango_sdk::HttpClient,
+    grug_types::{BlockClient, Hash, QueryClientExt, SearchTxClient},
     std::str::FromStr,
 };
 
@@ -34,12 +34,11 @@ impl TendermintCmd {
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 
-        // Create Grug client via Tendermint RPC.
-        let client = TendermintRpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
+        let client = HttpClient::new(&cfg.indexer_url)?;
 
         match self.subcmd {
             SubCmd::Status => {
-                let res = client.status().await?;
+                let res = client.query_status(None).await?;
                 print_json_pretty(res)
             },
             SubCmd::Tx { hash } => {

@@ -7,10 +7,9 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     config_parser::parse_config,
-    dango_sdk::{Keystore, Secp256k1, Secret, SingleSigner},
+    dango_sdk::{HttpClient, Keystore, Secp256k1, Secret, SingleSigner},
     dango_types::{account_factory::UserIndex, config::AppConfig},
     grug_app::GAS_COSTS,
-    grug_client::TendermintRpcClient,
     grug_types::{
         Addr, BroadcastClientExt, Coins, GasOption, Hash256, Json, JsonDeExt, Message, NonEmpty,
         QueryClient, Signer,
@@ -184,7 +183,7 @@ impl TxCmd {
             },
         };
 
-        let client = TendermintRpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
+        let client = HttpClient::new(&cfg.indexer_url)?;
 
         let mut signer = {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));

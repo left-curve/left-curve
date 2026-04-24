@@ -24,7 +24,6 @@ members = [
   "dango/vesting",
   "dango/warp",
   "grug/app",
-  "grug/client",
   "grug/crypto",
   "grug/db/disk",
   "grug/db/memory",
@@ -227,7 +226,6 @@ dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }
 grug-app                    = { path = "grug/app" }
 grug-auth                   = { path = "grug/auth" }
-grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
 grug-db-memory              = { path = "grug/db/memory" }

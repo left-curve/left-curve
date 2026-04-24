@@ -4010,7 +4010,6 @@ dependencies = [
  "dialoguer",
  "futures",
  "grug-app",
- "grug-client",
  "grug-db-disk",
  "grug-httpd",
  "grug-types",
@@ -4032,7 +4031,6 @@ dependencies = [
  "rand 0.8.5",
  "sentry",
  "serde",
- "tendermint",
  "tokio",
  "tokio-stream",
  "tower",
@@ -4376,7 +4374,6 @@ dependencies = [
  "graphql_client",
  "grug",
  "grug-app",
- "grug-client",
  "grug-db-disk",
  "grug-db-memory",
  "grug-httpd",
@@ -5701,7 +5698,6 @@ name = "grug"
 version = "0.0.0"
 dependencies = [
  "borsh",
- "grug-client",
  "grug-ffi",
  "grug-macros",
  "grug-math",
@@ -5736,18 +5732,6 @@ dependencies = [
  "tower",
  "tower-abci",
  "tracing",
-]
-
-[[package]]
-name = "grug-client"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "grug-types",
- "serde",
- "tendermint",
- "tendermint-rpc",
 ]
 
 [[package]]
