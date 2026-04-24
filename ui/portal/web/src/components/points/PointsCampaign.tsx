@@ -13,6 +13,7 @@ import type React from "react";
 
 import type { PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
+import { PageGlow } from "../foundation/PageGlow";
 import { LeaderboardTable } from "./leaderboard";
 import { PointsHeader } from "./PointsHeader";
 import { LigueLevels, PointsProfileTable } from "./profile";
@@ -79,7 +80,7 @@ const ChestOpeningProviderWrapper: React.FC<PropsWithChildren<{ userIndex?: numb
 
 const PointsCampaignHeader: React.FC = () => (
   <div className="flex flex-col gap-8 w-full items-center relative">
-    <div className="absolute top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[160rem] h-[100rem] bg-[radial-gradient(ellipse,rgba(245,221,184,0.6)_0%,rgba(245,221,184,0.2)_40%,transparent_70%)] pointer-events-none" />
+    <PageGlow />
     <div className="max-w-[15.5rem] flex flex-col gap-2 items-center text-center relative z-10">
       <p className="text-ink-tertiary-500 diatype-m-regular">{m["points.header.welcome"]()}</p>
       <h1 className="exposure-h1-italic lg:text-[48px] text-ink-primary-rice flex flex-col items-center">
