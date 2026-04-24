@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   IconButton,
+  IconChecked,
   IconClose,
   IconTwitter,
   twMerge,
@@ -195,15 +196,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
                 />
                 {idx === selectedCharacter && (
                   <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-primitives-red-light-500 flex items-center justify-center">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path
-                        d="M2 5L4 7L8 3"
-                        stroke="white"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    <IconChecked className="w-2.5 h-2.5 text-white" />
                   </div>
                 )}
               </button>
