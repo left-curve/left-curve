@@ -26,23 +26,11 @@ target/
 # Python
 **/.venv/
 
-# LaTeX
-**/*.aux
-**/*.bbl
-**/*.bcf
-**/*.blg
-**/*.log
-**/*.out
-**/*.pdf
-**/*.run.xml
-**/*.synctex.gz
-
 # Node.js
 **/node_modules
 **/tsconfig.tsbuildinfo
 **/build
 !ui/portal/app/.eas/build/
-!ui/portal/web/**/*.pdf
 ui/portal/web/public/images
 **/.turbo
 
