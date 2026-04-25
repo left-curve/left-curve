@@ -13,7 +13,7 @@ This repository manages infrastructure and app deployments using Ansible. Use th
 
 ## Build, Test, and Development Commands
 
-- `just setup`: Create venv, install Ansible, collections, and roles.
+- `just setup`: Sync the root uv venv (installs the pinned ansible) and install Ansible Galaxy collections/roles. Re-run if collections are added to `requirements.yml`.
 - `just cold-provision` | `just provision`: Run base provisioning (the latter skips `setup` tag).
 - `just deploy-devnet` | `just deploy-testnet` | `just deploy-preview-latest`: Deploy full app to targets.
 - `ansible-playbook <playbook>.yml --limit <host>`: Scope to a single host. Add `--check --diff` for dry-runs.
