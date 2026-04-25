@@ -3,6 +3,9 @@ set positional-arguments
 # (the default `sh -cu` would silently swallow ansible failures behind tee).
 set shell := ["bash", "-uo", "pipefail", "-c"]
 
+# Always load deploy/ansible.cfg, regardless of cwd or a stray ~/.ansible.cfg.
+export ANSIBLE_CONFIG := justfile_directory() + "/ansible.cfg"
+
 # List available recipes
 default:
   @just --list
