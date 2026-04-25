@@ -311,12 +311,12 @@ name = "dango"
 version = "0.0.0"
 source = { editable = "sdk/python" }
 dependencies = [
+    { name = "eth-account" },
     { name = "requests" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "eth-account" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-httpserver" },
@@ -326,11 +326,13 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "requests", specifier = ">=2.31" }]
+requires-dist = [
+    { name = "eth-account", specifier = ">=0.10" },
+    { name = "requests", specifier = ">=2.31" },
+]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "eth-account", specifier = ">=0.10" },
     { name = "mypy", specifier = ">=1.10" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-httpserver", specifier = ">=1.1" },

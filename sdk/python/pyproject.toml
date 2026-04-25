@@ -6,6 +6,7 @@ readme          = "README.md"
 requires-python = ">=3.14"
 dependencies    = [
     "requests>=2.31",
+    "eth-account>=0.10",
 ]
 
 [build-system]
@@ -22,7 +23,6 @@ dev = [
     "pytest-httpserver>=1.1",
     "mypy>=1.10",
     "ruff>=0.6",
-    "eth-account>=0.10",
     "types-requests>=2.31",
 ]
 
