@@ -73,7 +73,11 @@ scrape_configs:
       - targets:
         - 'ovh1:9101'
         - 'ovh2:9101'
-        - 'cadvisor:9101' # self
+        - 'cadvisor:9101' # self (ovh3)
+        - 'ovh4:9101'
+        - 'ovh5:9101'
+        - 'ovh6:9101'
+        - 'ovh7:9101'
         - 'hetzner1:9101'
         - 'hetzner2:9101'
         - 'hetzner3:9101'
