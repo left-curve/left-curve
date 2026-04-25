@@ -1,4 +1,5 @@
 set positional-arguments
+
 # Use bash so `pipefail` propagates ansible's exit code through `| tee ...`
 # (the default `sh -cu` would silently swallow ansible failures behind tee).
 set shell := ["bash", "-uo", "pipefail", "-c"]
