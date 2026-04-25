@@ -68,6 +68,45 @@ scrape_configs:
       target_label: instance
       replacement: 'ovh3:9100'
 
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+        - 'ovh1:9101'
+        - 'ovh2:9101'
+        - 'cadvisor:9101' # self (ovh3)
+        - 'ovh4:9101'
+        - 'ovh5:9101'
+        - 'ovh6:9101'
+        - 'ovh7:9101'
+        - 'hetzner1:9101'
+        - 'hetzner2:9101'
+        - 'hetzner3:9101'
+        - 'hetzner4:9101'
+        - 'inter1:9101'
+        - 'inter2:9101'
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: 'cadvisor:9101'
+      target_label: instance
+      replacement: 'ovh3:9101'
+    metric_relabel_configs:
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*devnet.*'
+      target_label: network
+      replacement: 'devnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*testnet.*'
+      target_label: network
+      replacement: 'testnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*mainnet.*'
+      target_label: network
+      replacement: 'mainnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '(pr-.*)'
+      target_label: network
+      replacement: '$1'
+
   - job_name: 'tempo'
     static_configs:
       - targets: ['tempo:3200']

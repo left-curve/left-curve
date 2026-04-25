@@ -16,6 +16,24 @@ services:
       - /:/rootfs:ro
     restart: unless-stopped
 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "{{ wireguard_ip }}:{{ cadvisor_port }}:8080"
+      - "{{ tailscale_ip }}:{{ cadvisor_port }}:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
 networks:
   default:
     name: monitoring
