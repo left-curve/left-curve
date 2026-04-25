@@ -1,10 +1,8 @@
 [project]
-description     = "Python devops tooling for Dango"
+description     = "Python tooling for the Dango perpetual futures exchange"
 name            = "dango"
 readme          = "README.md"
 requires-python = ">=3.14"
 version         = "0.0.0"
 
-dependencies = [
-  "ansible>=13.6.0",
-]
+dependencies = ["ansible>=13.6.0"]
