@@ -1,0 +1,33 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+description   = "Command-line client for interacting with a Dango node"
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-sdk-cli"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+anyhow        = { workspace = true }
+bip32         = { workspace = true }
+clap          = { workspace = true, features = ["derive", "wrap_help"] }
+colored       = { workspace = true }
+colored_json  = { workspace = true }
+config-parser = { workspace = true }
+dango-sdk     = { workspace = true }
+dango-types   = { workspace = true }
+dialoguer     = { workspace = true }
+grug-app      = { workspace = true }
+grug-types    = { workspace = true }
+hex           = { workspace = true }
+home          = { workspace = true }
+rand          = { workspace = true }
+serde         = { workspace = true }
+tokio         = { workspace = true }
+
+[[bin]]
+name = "dango-client"
+path = "src/main.rs"

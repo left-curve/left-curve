@@ -12,6 +12,7 @@ type FormattedNumberProps = {
   formatOptions?: Partial<FormatNumberOptions>;
   className?: string;
   as?: "p" | "span";
+  tabular?: boolean;
 };
 
 export const FormattedNumber: React.FC<FormattedNumberProps> = ({
@@ -19,6 +20,7 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
   formatOptions,
   className,
   as = "p",
+  tabular = false,
 }) => {
   const id = useId();
   const { settings } = useApp();
@@ -37,7 +39,7 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
                 // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
                 index
               }`}
-              className="tabular-nums lining-nums"
+              className={tabular ? "tabular-nums lining-nums" : "lining-nums"}
             >
               {part.value}
             </sub>
@@ -50,7 +52,7 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
               // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
               index
             }`}
-            className={isDigit ? "tabular-nums lining-nums" : ""}
+            className={isDigit ? (tabular ? "tabular-nums lining-nums" : "lining-nums") : ""}
           >
             {part.value}
           </span>

@@ -38,6 +38,7 @@ import { createPortal } from "react-dom";
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import { Cell, FormattedNumber, Table, Tabs } from "@left-curve/applets-kit";
+import { CountBadge } from "../foundation/CountBadge";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { TradeButtons } from "./TradeButtons";
@@ -236,6 +237,16 @@ const ProTradeHistory: React.FC = () => {
   const defaultTab: BottomTab = mode === "perps" ? "positions" : "open-orders";
   const [activeTab, setActiveTab] = useState<BottomTab>(defaultTab);
 
+  const userState = perpsUserStateStore((s) => s.userState);
+  const spotOrders = useOrdersByUser({ enabled: mode === "spot", initialData: [] });
+  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
+
+  const positionsCount = Object.keys(userState?.positions ?? {}).length;
+  const openOrdersCount =
+    mode === "spot"
+      ? (spotOrders.data?.length ?? 0)
+      : Object.keys(perpsOrders ?? {}).length;
+
   useEffect(() => {
     setActiveTab(mode === "perps" ? "positions" : "open-orders");
   }, [mode]);
@@ -251,9 +262,19 @@ const ProTradeHistory: React.FC = () => {
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         >
           {mode === "perps" ? (
-            <Tab title="positions">{m["dex.protrade.positions.title"]()}</Tab>
+            <Tab title="positions">
+              <span className="flex items-center gap-1">
+                {m["dex.protrade.positions.title"]()}
+                <CountBadge count={positionsCount} />
+              </span>
+            </Tab>
           ) : null}
-          <Tab title="open-orders">{m["dex.protrade.openOrders"]()}</Tab>
+          <Tab title="open-orders">
+            <span className="flex items-center gap-1">
+              {m["dex.protrade.openOrders"]()}
+              <CountBadge count={openOrdersCount} />
+            </span>
+          </Tab>
           <Tab title="trade-history">{m["dex.protrade.tradeHistory.title"]()}</Tab>
         </Tabs>
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
@@ -409,7 +430,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             text={
-              <span className="inline-block min-w-[6rem] tabular-nums">
+              <span className="inline-block min-w-[6rem]">
                 <FormattedNumber
                   number={row.original.currentPrice.toString()}
                   formatOptions={{ currency: "USD" }}
@@ -427,7 +448,7 @@ const PerpsPositionsTable: React.FC = () => {
           return (
             <Cell.Text
               text={
-                <span className="inline-block min-w-[7rem] tabular-nums">
+                <span className="inline-block min-w-[7rem]">
                   {isPositive ? "+" : ""}
                   <FormattedNumber
                     number={row.original.pnl.toString()}
@@ -586,7 +607,7 @@ const UnifiedOpenOrders: React.FC = () => {
   const { formatNumberOptions } = settings;
   const { baseCoin } = useTradeCoins();
 
-  const [showAllPairs, setShowAllPairs] = useState(false);
+  const [showAllPairs, setShowAllPairs] = useState(true);
 
   const spotOrders = useOrdersByUser({ enabled: mode === "spot", initialData: [] });
 

@@ -1,12 +1,12 @@
 use {
     assert_json_diff::assert_json_eq,
     assertor::*,
+    dango_sdk::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
     graphql_client::GraphQLQuery,
     grug_types::{
         BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt, Message, Query,
         QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
     },
-    indexer_client::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
     indexer_testing::{
         GraphQLCustomRequest, block::create_block, build_app_service, call_graphql_query,
         call_graphql_with_headers, call_ws_graphql_stream, parse_graphql_subscription_response,
@@ -70,7 +70,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let body_request = Query::Balance(QueryBalanceRequest {
         address: accounts["owner"].address,
         denom: Denom::from_str("ugrug")?,

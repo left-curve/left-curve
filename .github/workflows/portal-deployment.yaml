@@ -18,7 +18,7 @@ on:
       - "ui/release"
     paths:
       - ".github/workflows/portal-deployment.yaml"
-      - "sdk/**"
+      - "sdk/typescript/**"
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
@@ -26,7 +26,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/portal-deployment.yaml"
-      - "sdk/**"
+      - "sdk/typescript/**"
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"

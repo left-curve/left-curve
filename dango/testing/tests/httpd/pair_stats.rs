@@ -1,6 +1,9 @@
 use {
     crate::call_graphql_query,
     dango_genesis::Contracts,
+    dango_sdk::{
+        AllPairStats, PairStats, PairStatsPartial, all_pair_stats, pair_stats, pair_stats_partial,
+    },
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -13,9 +16,6 @@ use {
         StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_client::{
-        AllPairStats, PairStats, PairStatsPartial, all_pair_stats, pair_stats, pair_stats_partial,
-    },
     std::str::FromStr,
 };
 

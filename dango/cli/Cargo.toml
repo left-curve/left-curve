@@ -9,35 +9,24 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = "0.16.1"
 
-[features]
-default = []
-testing = ["pyth-client", "pyth-types", "tokio-stream"]
-
 [dependencies]
 anyhow                      = { workspace = true }
-bip32                       = { workspace = true }
 clap                        = { workspace = true, features = ["derive", "wrap_help"] }
 colored                     = { workspace = true }
-colored_json                = { workspace = true }
 config-parser               = { workspace = true }
-dango-client                = { workspace = true }
 dango-genesis               = { workspace = true, features = ["metrics"] }
 dango-httpd                 = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-clickhouse    = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-indexer-sql           = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
-dango-types                 = { workspace = true }
 dango-upgrade               = { workspace = true }
-data-encoding               = { workspace = true }
 dialoguer                   = { workspace = true }
 futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
-grug-client                 = { workspace = true }
 grug-db-disk                = { workspace = true, features = ["metrics", "tracing"] }
 grug-httpd                  = { workspace = true, features = ["metrics", "tracing"] }
 grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }
-hex                         = { workspace = true }
 home                        = { workspace = true }
 indexer-cache               = { workspace = true, features = ["http-request-details", "metrics", "s3", "tracing"] }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
@@ -49,14 +38,9 @@ metrics-exporter-prometheus = { workspace = true }
 opentelemetry               = { workspace = true }
 opentelemetry-otlp          = { workspace = true }
 opentelemetry_sdk           = { workspace = true }
-pyth-client                 = { workspace = true, optional = true }
-pyth-types                  = { workspace = true, optional = true }
-rand                        = { workspace = true }
 sentry                      = { workspace = true }
 serde                       = { workspace = true }
-tendermint                  = { workspace = true }
 tokio                       = { workspace = true }
-tokio-stream                = { workspace = true, optional = true }
 tower                       = { workspace = true, features = ["full"] }
 tower-abci                  = { workspace = true }
 tracing                     = { workspace = true }

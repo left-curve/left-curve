@@ -2,7 +2,7 @@ import { forwardRef, useMemo } from "react";
 
 import { Cell, IconButton, IconClose, Table, useApp } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAppConfig, useFeeRateOverride } from "@left-curve/store";
 
@@ -32,10 +32,7 @@ export const FeeTiers = forwardRef((_props, _ref) => {
     );
 
     const allThresholds = [
-      ...new Set([
-        ...takerTiers.map(([t]) => t),
-        ...makerTiers.map(([t]) => t),
-      ]),
+      ...new Set([...takerTiers.map(([t]) => t), ...makerTiers.map(([t]) => t)]),
     ].sort((a, b) => Number(a) - Number(b));
 
     const takerMap = Object.fromEntries(takerTiers);
@@ -45,8 +42,8 @@ export const FeeTiers = forwardRef((_props, _ref) => {
       {
         tier: "0",
         volume: "--",
-        taker: `${(Number(takerSchedule.base) * 100).toFixed(3)}%`,
-        maker: `${(Number(makerSchedule.base) * 100).toFixed(3)}%`,
+        taker: `${Decimal(takerSchedule.base).mul(100).toFixed()}%`,
+        maker: `${Decimal(makerSchedule.base).mul(100).toFixed()}%`,
       },
     ];
 
@@ -60,8 +57,8 @@ export const FeeTiers = forwardRef((_props, _ref) => {
       result.push({
         tier: String(i + 1),
         volume: formatNumber(threshold, { ...formatNumberOptions, currency: "USD" }),
-        taker: `${(Number(lastTaker) * 100).toFixed(3)}%`,
-        maker: `${(Number(lastMaker) * 100).toFixed(3)}%`,
+        taker: `${Decimal(lastTaker).mul(100).toFixed()}%`,
+        maker: `${Decimal(lastMaker).mul(100).toFixed()}%`,
       });
     });
 
@@ -89,11 +86,7 @@ export const FeeTiers = forwardRef((_props, _ref) => {
 
   return (
     <div className="flex flex-col gap-4 bg-surface-primary-rice md:border border-outline-secondary-gray rounded-xl relative px-6 py-6 md:w-[32rem]">
-      <IconButton
-        className="absolute right-4 top-4"
-        variant="link"
-        onClick={hideModal}
-      >
+      <IconButton className="absolute right-4 top-4" variant="link" onClick={hideModal}>
         <IconClose />
       </IconButton>
 
@@ -106,18 +99,18 @@ export const FeeTiers = forwardRef((_props, _ref) => {
 
       {feeRateOverride ? (
         <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary-rice p-3">
-          <p className="diatype-sm-medium text-ink-primary-900">
-            {m["dex.feeTiers.customRate"]()}
-          </p>
+          <p className="diatype-sm-medium text-ink-primary-900">{m["dex.feeTiers.customRate"]()}</p>
           <p className="diatype-xs-regular text-ink-tertiary-500">
             {m["dex.feeTiers.customRateDescription"]()}
           </p>
           <div className="flex items-center gap-4 mt-1">
             <p className="diatype-xs-medium text-ink-secondary-700">
-              {m["dex.feeTiers.perpsTaker"]()}: {(Number(feeRateOverride.takerFeeRate) * 100).toFixed(3)}%
+              {m["dex.feeTiers.perpsTaker"]()}:{" "}
+              {Decimal(feeRateOverride.takerFeeRate).mul(100).toFixed()}%
             </p>
             <p className="diatype-xs-medium text-ink-secondary-700">
-              {m["dex.feeTiers.perpsMaker"]()}: {(Number(feeRateOverride.makerFeeRate) * 100).toFixed(3)}%
+              {m["dex.feeTiers.perpsMaker"]()}:{" "}
+              {Decimal(feeRateOverride.makerFeeRate).mul(100).toFixed()}%
             </p>
           </div>
         </div>

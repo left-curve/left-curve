@@ -5,6 +5,7 @@ use {
     dango_indexer_clickhouse::{
         entities::pair_price::PairPrice, indexer::candles::cache::CandleCache,
     },
+    dango_sdk::{Candles, SubscribeCandles, candles, subscribe_candles},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -17,7 +18,6 @@ use {
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_client::{Candles, SubscribeCandles, candles, subscribe_candles},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -217,7 +217,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeCandles::build_query(subscribe_candles::Variables {
             base_denom: "dango".to_string(),
@@ -398,7 +398,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeCandles::build_query(subscribe_candles::Variables {
             base_denom: "dango".to_string(),

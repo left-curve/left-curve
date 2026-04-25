@@ -1,6 +1,6 @@
 use {
     crate::config::dango::DangoConfig,
-    dango_client::{Secp256k1, Secret, SingleSigner},
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
     dango_types::{
         account_factory::{self, UserIndexOrName},
         auth::Nonce,
@@ -8,7 +8,6 @@ use {
     },
     grug::{Addr, Defined, QueryClientExt, addr},
     hex_literal::hex,
-    indexer_client::HttpClient,
 };
 
 // Demo purpose only. Do not use for production!

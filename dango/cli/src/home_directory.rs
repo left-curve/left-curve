@@ -1,9 +1,11 @@
-use std::{
-    ops::Deref,
-    path::{Path, PathBuf},
+use {
+    anyhow::anyhow,
+    home::home_dir,
+    std::{
+        ops::Deref,
+        path::{Path, PathBuf},
+    },
 };
-
-use {anyhow::anyhow, home::home_dir};
 
 // relative to user home directory (~)
 const DEFAULT_APP_DIR: &str = ".dango";
@@ -39,12 +41,11 @@ impl HomeDirectory {
             .map(|home| Self { home })
     }
 
-    /// Return the path to the config directory.
-    pub fn config_dir(&self) -> PathBuf {
+    fn config_dir(&self) -> PathBuf {
         self.home.join("config")
     }
 
-    /// Return the path to the configuration file.
+    /// Return the path to the server configuration file.
     pub fn config_file(&self) -> PathBuf {
         self.config_dir().join("app.toml")
     }
@@ -57,10 +58,5 @@ impl HomeDirectory {
     /// Return the path to the directory used by the indexer to store blocks.
     pub fn indexer_dir(&self) -> PathBuf {
         self.home.join("indexer")
-    }
-
-    /// Return the path to the directory that stores keys.
-    pub fn keys_dir(&self) -> PathBuf {
-        self.home.join("keys")
     }
 }

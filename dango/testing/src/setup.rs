@@ -12,9 +12,7 @@ use {
         gateway::{Domain, Remote},
         warp,
     },
-    grug::{
-        Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, TendermintRpcClient, Uint128,
-    },
+    grug::{Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, Uint128},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
@@ -22,6 +20,7 @@ use {
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
+    indexer_httpd::TendermintRpcClient,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,

@@ -133,7 +133,7 @@ const HeaderPrice: React.FC = () => {
       </Tooltip>
       <p
         className={twMerge(
-          "diatype-xs-medium text-ink-secondary-700",
+          "diatype-xs-medium text-ink-secondary-700 h-[16.8px]",
           currentPrice && previousPrice
             ? Decimal(previousPrice).lte(currentPrice)
               ? "text-status-success"
@@ -158,7 +158,7 @@ const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
           {m["dex.protrade.spot.oraclePrice"]()}
         </p>
       </Tooltip>
-      <p className="diatype-xs-medium text-ink-secondary-700">
+      <p className="diatype-xs-medium text-ink-secondary-700 h-[16.8px]">
         {oraclePrice ? <FormattedNumber number={oraclePrice} as="span" /> : "-"}
       </p>
     </div>

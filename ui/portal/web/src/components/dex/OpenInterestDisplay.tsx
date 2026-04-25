@@ -55,7 +55,7 @@ export const OpenInterestDisplay: React.FC = () => {
           {m["dex.protrade.spot.openInterest"]()}
         </p>
       </Tooltip>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 diatype-xs-medium text-ink-secondary-700 h-[16.8px]">
         <p
           className={twMerge(
             "diatype-xs-medium",

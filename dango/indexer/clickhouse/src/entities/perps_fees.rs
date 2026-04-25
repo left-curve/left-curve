@@ -99,6 +99,11 @@ impl PerpsFeesAndRevenue {
         // Short ranges hit the per-block table for precise bounds. Long ranges
         // hit `perps_fees_hourly` (a SummingMergeTree MV) whose buckets make
         // a year-long scan a few thousand rows instead of tens of millions.
+        //
+        // Bounds use `fromUnixTimestamp64Micro` rather than `toDateTime64(?, 6)`:
+        // ClickHouse's `toDateTime64` treats integer inputs as seconds regardless
+        // of scale, so a microsecond-valued bind saturates to the DateTime64 max
+        // (year 2299) and silently matches nothing.
         let query = if (to - from) < Self::HOURLY_THRESHOLD {
             r#"
                 SELECT
@@ -108,8 +113,8 @@ impl PerpsFeesAndRevenue {
                     toUInt128(sum(referrer_payout)) AS referrer_payout,
                     toUInt64(sum(fee_events_count)) AS fee_events_count
                 FROM perps_fees
-                WHERE created_at >= toDateTime64(?, 6)
-                  AND created_at <= toDateTime64(?, 6)
+                WHERE created_at >= fromUnixTimestamp64Micro(?)
+                  AND created_at <= fromUnixTimestamp64Micro(?)
             "#
         } else {
             r#"
@@ -120,8 +125,8 @@ impl PerpsFeesAndRevenue {
                     toUInt128(sum(referrer_payout)) AS referrer_payout,
                     toUInt64(sum(fee_events_count)) AS fee_events_count
                 FROM perps_fees_hourly
-                WHERE hour >= toStartOfHour(toDateTime64(?, 6))
-                  AND hour <= toStartOfHour(toDateTime64(?, 6))
+                WHERE hour >= toStartOfHour(fromUnixTimestamp64Micro(?))
+                  AND hour <= toStartOfHour(fromUnixTimestamp64Micro(?))
             "#
         };
 
