@@ -1,0 +1,9 @@
+[project]
+name            = "dango-deploy"
+version         = "0.0.0"
+description     = "Ansible-based deployment tooling for Dango"
+requires-python = ">=3.14"
+dependencies    = ["ansible>=13.6.0"]
+
+[tool.uv]
+package = false

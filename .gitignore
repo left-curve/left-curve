@@ -25,6 +25,8 @@ target/
 
 # Python
 **/.venv/
+**/__pycache__/
+**/*.egg-info/
 
 # Node.js
 **/node_modules
