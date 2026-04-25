@@ -12,3 +12,27 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dango"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-recording>=0.13",
+    "mypy>=1.10",
+    "ruff>=0.6",
+    "eth-account>=0.10",
+]
+
+[tool.ruff]
+line-length    = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.14"
+strict         = true
+exclude        = ["build/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
