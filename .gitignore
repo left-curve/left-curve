@@ -71,12 +71,6 @@ ui/portal/app/android
 **/cargo-flamegraph.trace
 **/flamegraph*.svg
 **/testdata/
-dango/scripts/examples/blocks*
-dango/scripts/examples/data*
-dango/scripts/examples/*.borsh
-dango/scripts/examples/*.json
-dango/scripts/examples/*.tar
-dango/scripts/examples/*.tar.gz
 !pyth/client/testdata/
 .playwright-mcp
 

@@ -17,8 +17,12 @@ git-clear-branches:
 # ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Dango node software
-install:
+install-node:
   cargo install --path dango/cli --locked
+
+# Compile and install the Dango client CLI
+install-client:
+  cargo install --path sdk/rust/cli --locked
 
 # Run all tests
 test:
@@ -69,17 +73,11 @@ fmt:
 # Build schema
 build-graphql-schema:
   cargo run -p dango-httpd build_graphql_schema -- \
-    ./indexer/client/src/schemas/schema.graphql
+    ./sdk/rust/src/schemas/schema.graphql
 
 # Build the Dango Book
 book:
   mdbook build --open
-
-# Update CometBFT genesis files
-update-genesis:
-  cargo run -p dango-scripts --example build_genesis -- \
-    localdango/configs/cometbft/config/genesis.json \
-    deploy/roles/full-app/templates/config/cometbft/genesis.json
 
 # Update wasm artifacts used in tests
 update-testdata:

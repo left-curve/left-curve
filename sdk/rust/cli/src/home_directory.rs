@@ -45,18 +45,13 @@ impl HomeDirectory {
         self.home.join("config")
     }
 
-    /// Return the path to the server configuration file.
+    /// Return the path to the client configuration file.
     pub fn config_file(&self) -> PathBuf {
-        self.config_dir().join("app.toml")
+        self.config_dir().join("client.toml")
     }
 
-    /// Return the path to Grug's RocksDB database directory.
-    pub fn data_dir(&self) -> PathBuf {
-        self.home.join("data")
-    }
-
-    /// Return the path to the directory used by the indexer to store blocks.
-    pub fn indexer_dir(&self) -> PathBuf {
-        self.home.join("indexer")
+    /// Return the path to the directory that stores keys.
+    pub fn keys_dir(&self) -> PathBuf {
+        self.home.join("keys")
     }
 }

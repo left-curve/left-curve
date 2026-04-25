@@ -2,6 +2,7 @@ use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
+    dango_sdk::{PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles},
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},
@@ -9,7 +10,6 @@ use {
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
-    indexer_client::{PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },

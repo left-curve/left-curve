@@ -5,7 +5,6 @@ members = [
   "dango/auth",
   "dango/bank",
   "dango/cli",
-  "dango/client",
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
@@ -18,7 +17,6 @@ members = [
   "dango/oracle",
   "dango/perps",
   "dango/proposal-preparer",
-  "dango/scripts",
   "dango/taxman",
   "dango/testing",
   "dango/types",
@@ -26,7 +24,6 @@ members = [
   "dango/vesting",
   "dango/warp",
   "grug/app",
-  "grug/client",
   "grug/crypto",
   "grug/db/disk",
   "grug/db/memory",
@@ -50,7 +47,6 @@ members = [
   "hyperlane/testing",
   "hyperlane/va",
   "indexer/cache",
-  "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
   "indexer/httpd",
@@ -59,6 +55,8 @@ members = [
   "indexer/testing",
   "pyth/client",
   "pyth/types",
+  "sdk/rust",
+  "sdk/rust/cli",
   "utils/config-parser",
   "utils/dyn-event",
   "utils/error-backtrace",
@@ -207,7 +205,6 @@ dango-account-factory       = { path = "dango/account-factory" }
 dango-amm                   = { path = "dango/amm" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
-dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
@@ -220,7 +217,7 @@ dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-perps                 = { path = "dango/perps" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
-dango-scripts               = { path = "dango/scripts" }
+dango-sdk                   = { path = "sdk/rust" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/types" }
@@ -230,7 +227,6 @@ dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }
 grug-app                    = { path = "grug/app" }
 grug-auth                   = { path = "grug/auth" }
-grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
 grug-db-memory              = { path = "grug/db/memory" }
@@ -255,7 +251,6 @@ hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-cache               = { path = "indexer/cache" }
-indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
