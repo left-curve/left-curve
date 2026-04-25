@@ -1,4 +1,4 @@
-"""Wallets, SignDoc canonical JSON, and Secp256k1 signing primitives."""
+"""Wallets, SignDoc canonical JSON, Secp256k1 signing, and stateful SingleSigner."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import base64
 import hashlib
 import json
 import secrets
-from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 # eth_keys exposes raw secp256k1 with RFC 6979 deterministic-k. The stdlib
 # `cryptography` package doesn't ship secp256k1 by default (only NIST curves),
@@ -16,13 +16,22 @@ from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 # under strict mode.
 from eth_keys.datatypes import PrivateKey
 
+from dango.utils.constants import ACCOUNT_FACTORY_CONTRACT
 from dango.utils.types import (
     Addr,
     Binary,
+    Credential,
     Hash256,
     Key,
+    Message,
+    Metadata,
+    Nonce,
     Signature,
     SignDoc,
+    StandardCredential,
+    Tx,
+    UnsignedTx,
+    UserIndex,
 )
 
 if TYPE_CHECKING:
@@ -200,3 +209,196 @@ class Secp256k1Wallet:
         sig_64 = sig_65.to_bytes()[:64]
         encoded = Binary(base64.b64encode(sig_64).decode("ascii"))
         return cast(Signature, {"Secp256k1": encoded})
+
+
+# --- SingleSigner ------------------------------------------------------------
+
+
+# Phase 6 hasn't shipped yet, so we can't import `dango.info.Info` directly
+# without a circular import once it does land. A structural Protocol is the
+# stdlib answer: SingleSigner depends only on `query_app_smart`, and any
+# duck-typed object (real Info, mocks in tests, alternate transports) that
+# exposes that method will satisfy this contract. Keeping it module-private
+# (leading underscore) signals that callers should pass an `Info`, not import
+# the Protocol directly.
+class _QueryClient(Protocol):
+    """Minimal subset of Info that SingleSigner needs; Info satisfies this structurally."""
+
+    def query_app_smart(
+        self,
+        contract: Addr,
+        msg: dict[str, Any],
+        *,
+        height: int | None = None,
+    ) -> Any: ...
+
+
+class SingleSigner:
+    """Stateful per-account signer; tracks user_index and next_nonce, produces signed Txs."""
+
+    def __init__(
+        self,
+        wallet: Wallet,
+        address: Addr,
+        *,
+        user_index: int | None = None,
+        next_nonce: int | None = None,
+    ) -> None:
+        # `address` is taken explicitly rather than from `wallet.address` so
+        # that the same key can sign for multiple Dango accounts. The Wallet
+        # protocol's `address` is a per-instance default, not a binding.
+        self.wallet: Wallet = wallet
+        self.address: Addr = address
+        self.user_index: int | None = user_index
+        self.next_nonce: int | None = next_nonce
+
+    @classmethod
+    def auto_resolve(
+        cls,
+        wallet: Wallet,
+        address: Addr,
+        info: _QueryClient,
+    ) -> SingleSigner:
+        """Construct a signer and populate user_index and next_nonce by querying the chain."""
+        # We take `address` explicitly (not `wallet.address`) because the
+        # Wallet protocol's address is advisory: a single key can control
+        # multiple accounts, and the SingleSigner is bound to one of them.
+        # Resolution order doesn't matter — both queries are independent —
+        # but we resolve user_index first since failing there is the more
+        # common newbie misconfig (wrong account_factory address, account
+        # not yet activated on chain).
+        signer = cls(wallet, address)
+        signer.user_index = signer.query_user_index(info)
+        signer.next_nonce = signer.query_next_nonce(info)
+        return signer
+
+    def query_user_index(self, info: _QueryClient) -> int:
+        """Look up this address's user_index via the account-factory contract."""
+        # `account_factory` is hard-coded from constants rather than accepted
+        # as a parameter: chain-specific knowledge belongs at the constants
+        # layer, and v1 only supports the canonical Dango deployment. If
+        # multi-chain support is needed later, add a chain-aware constants
+        # lookup here, not a parameter on every signer call.
+        #
+        # `QueryAccountRequest` is an externally-tagged enum variant on
+        # `dango_account_factory::QueryMsg`, so the wire form is
+        # `{"account": {"address": "0x..."}}`. The response is a `User`
+        # struct whose `owner` field is the user_index (the User's index in
+        # the factory's USERS map). We discard the rest of the response.
+        response = info.query_app_smart(
+            Addr(ACCOUNT_FACTORY_CONTRACT),
+            {"account": {"address": self.address}},
+        )
+        return int(response["owner"])
+
+    def query_next_nonce(self, info: _QueryClient) -> int:
+        """Compute next_nonce from the account's seen-nonces sliding window."""
+        # `QuerySeenNoncesRequest` is the externally-tagged variant
+        # `{"seen_nonces": {}}` on the per-account contract's QueryMsg. The
+        # response is a JSON array of recently-seen nonces (sorted ascending
+        # by the contract). Empty array means the account has never sent a
+        # transaction, so next_nonce is 0; otherwise it's max(seen) + 1.
+        # Mirrors `signer.rs::query_next_nonce`.
+        response = info.query_app_smart(
+            self.address,
+            {"seen_nonces": {}},
+        )
+        # The Rust side calls `.last()` on the sorted vec, but defensive
+        # programming says use `max()`: if the contract ever returns an
+        # unsorted array we still get the right answer, and the cost is
+        # O(n) on a tiny array.
+        seen = cast(list[int], response)
+        return max(seen) + 1 if seen else 0
+
+    def build_unsigned_tx(self, messages: list[Message], chain_id: str) -> UnsignedTx:
+        """Wrap messages plus Metadata into an UnsignedTx ready to feed to Info.simulate()."""
+        # State must be resolved before we can build a tx. We raise
+        # RuntimeError (not ValueError) because the inputs are valid; the
+        # signer's *state* is incomplete. Encourage callers to be explicit:
+        # call query_*() / auto_resolve() rather than have us re-query
+        # under the hood (which would silently mask state-management bugs).
+        user_index = self._require_user_index()
+        next_nonce = self._require_next_nonce()
+        return UnsignedTx(
+            sender=self.address,
+            msgs=messages,
+            data=Metadata(
+                user_index=UserIndex(user_index),
+                chain_id=chain_id,
+                nonce=Nonce(next_nonce),
+                expiry=None,
+            ),
+        )
+
+    def sign_tx(self, messages: list[Message], chain_id: str, gas_limit: int) -> Tx:
+        """Sign and return a Tx; increments self.next_nonce on success or failure."""
+        user_index = self._require_user_index()
+        # Snapshot the current nonce *before* incrementing self.next_nonce.
+        # This matches the Rust source (signer.rs:271-272) and is atomic-safe:
+        # if signing throws, we still advance the local nonce so the caller
+        # cannot accidentally reuse the same nonce on retry. The chain
+        # rejects duplicate nonces, so optimistic increment is strictly safer
+        # than waiting until success.
+        nonce = self._require_next_nonce()
+        self.next_nonce = nonce + 1
+
+        metadata = Metadata(
+            user_index=UserIndex(user_index),
+            chain_id=chain_id,
+            nonce=Nonce(nonce),
+            expiry=None,
+        )
+
+        # SignDoc has a slightly different field name (`messages` vs `msgs`)
+        # from UnsignedTx/Tx — this is a quirk of the Rust types, faithfully
+        # mirrored here. SignDoc is what gets canonical-JSON encoded and
+        # SHA-256 hashed; UnsignedTx/Tx is the wire envelope.
+        sign_doc = SignDoc(
+            sender=self.address,
+            gas_limit=gas_limit,
+            messages=messages,
+            data=metadata,
+        )
+
+        signature = self.wallet.sign(sign_doc)
+        # `Credential::Standard` is an externally-tagged enum variant on
+        # `dango_types::auth::Credential`, hence the `{"Standard": ...}`
+        # outer wrapper. The inner `StandardCredential` carries `key_hash`
+        # (the on-chain identifier the contract uses to look up the pubkey)
+        # and the `signature` envelope itself. Cast through the union since
+        # the typed dict literal is a more precise type than Credential.
+        credential = cast(
+            Credential,
+            {
+                "Standard": StandardCredential(
+                    key_hash=self.wallet.key_hash,
+                    signature=signature,
+                ),
+            },
+        )
+
+        return Tx(
+            sender=self.address,
+            gas_limit=gas_limit,
+            msgs=messages,
+            data=metadata,
+            credential=credential,
+        )
+
+    def _require_user_index(self) -> int:
+        # State guards live in helpers so the call sites read as ordinary
+        # field access. RuntimeError, not ValueError: the *inputs* to
+        # build_unsigned_tx / sign_tx are well-formed; the signer itself
+        # is in an incomplete state.
+        if self.user_index is None:
+            raise RuntimeError(
+                "user_index unresolved; call query_user_index() or auto_resolve() first",
+            )
+        return self.user_index
+
+    def _require_next_nonce(self) -> int:
+        if self.next_nonce is None:
+            raise RuntimeError(
+                "next_nonce unresolved; call query_next_nonce() or auto_resolve() first",
+            )
+        return self.next_nonce
