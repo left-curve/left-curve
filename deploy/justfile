@@ -12,12 +12,10 @@ default:
 
 # ----------------------------------- Setup ------------------------------------
 
-# Set up Python environment and install Ansible + role
+# Sync the project venv and install Ansible Galaxy collections/roles.
 setup:
-  uv venv .venv
-  source .venv/bin/activate
-  uv pip install ansible
-  ansible-galaxy install -r requirements.yml
+  uv sync
+  uv run ansible-galaxy install -r requirements.yml
 
 # Lint all YAML files (playbooks, roles, templates), excluding vaults
 lint:
