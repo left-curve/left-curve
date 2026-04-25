@@ -50,8 +50,6 @@ Dango attempts to replicate this success, but for the spot market. Dango DEX ens
 
   ![concentrated pool liquidity depth chart](./concentrated.png)
 
-See [this notebook](../../notebooks/passive_liquidity.ipynb) for the algorithms and Python prototypes.
-
 ## Implementation
 
 ### Oracle
@@ -66,7 +64,7 @@ We take the following measures to reduce the likelihood of this:
 
 ### Market orders
 
-~~The discussions we've had on periodic auctions only concern limit orders. For market orders, we handle separately. In the end-block routine, _before_ the auction for limit orders, we match BUY market orders against the SELL side of the limit order book, and SELL market orders against the BUY side of the limit order book. See [this notebook](../../notebooks/market_order.ipynb) for the algorithm.~~
+~~The discussions we've had on periodic auctions only concern limit orders. For market orders, we handle separately. In the end-block routine, _before_ the auction for limit orders, we match BUY market orders against the SELL side of the limit order book, and SELL market orders against the BUY side of the limit order book.~~
 
 We have changed the way market orders work in [PR #1095](https://github.com/left-curve/left-curve/pull/1095). Now, there are no two separate order types (limit and market). A market order is treated interally as a limit order, of which the limit price is determined by the best available price in the resting order book at the time the market order is created, and the market order's maximum slippage. All orders are now handled in a single auction. You can consider market order as just a separate API for creating a limit order.
 

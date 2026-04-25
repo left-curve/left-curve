@@ -62,13 +62,13 @@ With the same approach, we can work out all the BUY orders for prices below $p_{
 
 For the xyk curve, the orders are visualized as follows (based on the state $x_0 = 1$, $y_0 = 200$ and parameters $p_{\mathrm{s}} = 0.2$, $\Delta p = 0.1$):
 
-![xyk](../../papers/dango-dex/1-xyk.png)
+![xyk](./1-xyk.png)
 
 We see the pool places orders of roughtly the same size across a wide price range. That is, the liquidity isn't concentrated.
 
 As example for a concentrated liquidity curve, the Solidly curve $I(x, y) = x^3 y + x y^3$ results in the following orders:
 
-![solidly](../../papers/dango-dex/2-solidly.png)
+![solidly](./2-solidly.png)
 
 As we see, liquidity is significantly more concentrated here.
 
@@ -94,7 +94,7 @@ $$
 
 Following the same example with Solidly above, but set oracle price to $p = 210$ (higher than the margin price of 200), the orders become:
 
-![solidly-price-jump](../../papers/dango-dex/3-solidly-price-jump.png)
+![solidly-price-jump](./3-solidly-price-jump.png)
 
 As we see, the pool now quotes around the price of 210. It places bigger orders on the SELL side than the BUY side, demonstrating that it has a tendency to reduce its holding of the base asset, so that its inventory goes closer the ratio of 1:210 as the oracle indicates.
 
