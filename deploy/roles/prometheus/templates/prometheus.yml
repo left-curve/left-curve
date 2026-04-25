@@ -9,7 +9,7 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets:
-            - alertmanager:9093
+          - alertmanager:9093
 
 remote_write:
   - url: http://victoriametrics:8428/api/v1/write
@@ -18,443 +18,443 @@ remote_write:
       batch_send_deadline: 5s
 
 scrape_configs:
-  - job_name: "loki"
+  - job_name: 'loki'
     static_configs:
-      - targets: ["loki:3100"]
+      - targets: ['loki:3100']
 
-  - job_name: "prometheus"
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ['localhost:9090']
 
-  - job_name: "traefik"
+  - job_name: 'traefik'
     static_configs:
-      - targets: ["ovh1:8888"]
-      - targets: ["ovh2:8888"]
-      - targets: ["ovh3:8888"]
-      - targets: ["hetzner1:8888"]
-      - targets: ["hetzner2:8888"]
-      - targets: ["hetzner3:8888"]
-      - targets: ["hetzner4:8888"]
-      - targets: ["inter1:8888"]
-      - targets: ["inter2:8888"]
+      - targets: ['ovh1:8888']
+      - targets: ['ovh2:8888']
+      - targets: ['ovh3:8888']
+      - targets: ['hetzner1:8888']
+      - targets: ['hetzner2:8888']
+      - targets: ['hetzner3:8888']
+      - targets: ['hetzner4:8888']
+      - targets: ['inter1:8888']
+      - targets: ['inter2:8888']
 
-  - job_name: "alertmanager"
+  - job_name: 'alertmanager'
     static_configs:
-      - targets: ["alertmanager:9093"]
+      - targets: ['alertmanager:9093']
 
-  - job_name: "grafana"
+  - job_name: 'grafana'
     static_configs:
-      - targets: ["grafana:{{ grafana_port | default(3000) }}"]
+      - targets: ['grafana:{{ grafana_port | default(3000) }}']
 
-  - job_name: "node-exporter"
+  - job_name: 'node-exporter'
     static_configs:
       - targets:
-          - "ovh1:9100"
-          - "ovh2:9100"
-          - "node-exporter:9100" # self
-          - "ovh4:9100"
-          - "ovh5:9100"
-          - "ovh6:9100"
-          - "ovh7:9100"
-          - "hetzner1:9100"
-          - "hetzner2:9100"
-          - "hetzner3:9100"
-          - "hetzner4:9100"
-          - "inter1:9100"
-          - "inter2:9100"
+        - 'ovh1:9100'
+        - 'ovh2:9100'
+        - 'node-exporter:9100' # self
+        - 'ovh4:9100'
+        - 'ovh5:9100'
+        - 'ovh6:9100'
+        - 'ovh7:9100'
+        - 'hetzner1:9100'
+        - 'hetzner2:9100'
+        - 'hetzner3:9100'
+        - 'hetzner4:9100'
+        - 'inter1:9100'
+        - 'inter2:9100'
     relabel_configs:
-      - source_labels: [__address__]
-        regex: "node-exporter:9100"
-        target_label: instance
-        replacement: "ovh3:9100"
+    - source_labels: [__address__]
+      regex: 'node-exporter:9100'
+      target_label: instance
+      replacement: 'ovh3:9100'
 
-  - job_name: "cadvisor"
+  - job_name: 'cadvisor'
     static_configs:
       - targets:
-          - "ovh1:9101"
-          - "ovh2:9101"
-          - "cadvisor:9101" # self
-          - "hetzner1:9101"
-          - "hetzner2:9101"
-          - "hetzner3:9101"
-          - "hetzner4:9101"
-          - "inter1:9101"
-          - "inter2:9101"
+        - 'ovh1:9101'
+        - 'ovh2:9101'
+        - 'cadvisor:9101' # self
+        - 'hetzner1:9101'
+        - 'hetzner2:9101'
+        - 'hetzner3:9101'
+        - 'hetzner4:9101'
+        - 'inter1:9101'
+        - 'inter2:9101'
     relabel_configs:
-      - source_labels: [__address__]
-        regex: "cadvisor:9101"
-        target_label: instance
-        replacement: "ovh3:9101"
+    - source_labels: [__address__]
+      regex: 'cadvisor:9101'
+      target_label: instance
+      replacement: 'ovh3:9101'
     metric_relabel_configs:
-      - source_labels: [container_label_com_docker_compose_project]
-        regex: ".*devnet.*"
-        target_label: network
-        replacement: "devnet"
-      - source_labels: [container_label_com_docker_compose_project]
-        regex: ".*testnet.*"
-        target_label: network
-        replacement: "testnet"
-      - source_labels: [container_label_com_docker_compose_project]
-        regex: ".*mainnet.*"
-        target_label: network
-        replacement: "mainnet"
-      - source_labels: [container_label_com_docker_compose_project]
-        regex: "(pr-.*)"
-        target_label: network
-        replacement: "$1"
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*devnet.*'
+      target_label: network
+      replacement: 'devnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*testnet.*'
+      target_label: network
+      replacement: 'testnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*mainnet.*'
+      target_label: network
+      replacement: 'mainnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '(pr-.*)'
+      target_label: network
+      replacement: '$1'
 
-  - job_name: "tempo"
+  - job_name: 'tempo'
     static_configs:
-      - targets: ["tempo:3200"]
+      - targets: ['tempo:3200']
     relabel_configs:
-      - source_labels: [__address__]
-        regex: "tempo:3200"
-        target_label: instance
-        replacement: "ovh3:3200"
+    - source_labels: [__address__]
+      regex: 'tempo:3200'
+      target_label: instance
+      replacement: 'ovh3:3200'
 
-  - job_name: "promtail"
+  - job_name: 'promtail'
     static_configs:
-      - targets: ["ovh1:9080"]
-      - targets: ["ovh2:9080"]
-      - targets: ["promtail:9080"]
-      - targets: ["ovh4:9080"]
-      - targets: ["ovh5:9080"]
-      - targets: ["ovh6:9080"]
-      - targets: ["ovh7:9080"]
-      - targets: ["hetzner1:9080"]
-      - targets: ["hetzner2:9080"]
-      - targets: ["hetzner3:9080"]
-      - targets: ["hetzner4:9080"]
-      - targets: ["inter1:9080"]
-      - targets: ["inter2:9080"]
+      - targets: ['ovh1:9080']
+      - targets: ['ovh2:9080']
+      - targets: ['promtail:9080']
+      - targets: ['ovh4:9080']
+      - targets: ['ovh5:9080']
+      - targets: ['ovh6:9080']
+      - targets: ['ovh7:9080']
+      - targets: ['hetzner1:9080']
+      - targets: ['hetzner2:9080']
+      - targets: ['hetzner3:9080']
+      - targets: ['hetzner4:9080']
+      - targets: ['inter1:9080']
+      - targets: ['inter2:9080']
     relabel_configs:
-      - source_labels: [__address__]
-        regex: "promtail:9080"
-        target_label: instance
-        replacement: "ovh3:9080"
+    - source_labels: [__address__]
+      regex: 'promtail:9080'
+      target_label: instance
+      replacement: 'ovh3:9080'
 
-  - job_name: "hyperlane-relayer"
+  - job_name: 'hyperlane-relayer'
     static_configs:
-      - targets: ["hetzner3:9501"]
+      - targets: ['hetzner3:9501']
         labels:
-          service: "hyperlane"
-          role: "relayer"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["hetzner4:9511"]
+          service: 'hyperlane'
+          role: 'relayer'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner4:9511']
         labels:
-          service: "hyperlane"
-          role: "relayer"
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
+          service: 'hyperlane'
+          role: 'relayer'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
 
-  - job_name: "hyperlane-validator"
+  - job_name: 'hyperlane-validator'
     static_configs:
-      - targets: ["inter1:9500"]
+      - targets: ['inter1:9500']
         labels:
-          service: "hyperlane"
-          role: "validator"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-          validator_index: "1"
-      - targets: ["inter2:9500"]
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '1'
+      - targets: ['inter2:9500']
         labels:
-          service: "hyperlane"
-          role: "validator"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-          validator_index: "2"
-      - targets: ["hetzner1:9500"]
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '2'
+      - targets: ['hetzner1:9500']
         labels:
-          service: "hyperlane"
-          role: "validator"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-          validator_index: "3"
-      - targets: ["hetzner3:9500"]
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '3'
+      - targets: ['hetzner3:9500']
         labels:
-          service: "hyperlane"
-          role: "validator"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-          validator_index: "4"
-      - targets: ["hetzner2:9510"]
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+          validator_index: '4'
+      - targets: ['hetzner2:9510']
         labels:
-          service: "hyperlane"
-          role: "validator"
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
-          validator_index: "1"
-      - targets: ["hetzner4:9510"]
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+          validator_index: '1'
+      - targets: ['hetzner4:9510']
         labels:
-          service: "hyperlane"
-          role: "validator"
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
-          validator_index: "2"
+          service: 'hyperlane'
+          role: 'validator'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+          validator_index: '2'
 
-  - job_name: "preview-perp-liquidator"
+  - job_name: 'preview-perp-liquidator'
     file_sd_configs:
-      - files: ["/etc/prometheus/targets/*-perp-liquidator.yml"]
+      - files: ['/etc/prometheus/targets/*-perp-liquidator.yml']
 
-  - job_name: "preview-clickhouse"
+  - job_name: 'preview-clickhouse'
     file_sd_configs:
-      - files: ["/etc/prometheus/targets/*-clickhouse.yml"]
+      - files: ['/etc/prometheus/targets/*-clickhouse.yml']
 
-  - job_name: "preview-postgres"
+  - job_name: 'preview-postgres'
     file_sd_configs:
-      - files: ["/etc/prometheus/targets/*-postgres.yml"]
+      - files: ['/etc/prometheus/targets/*-postgres.yml']
 
-  - job_name: "preview-dango"
+  - job_name: 'preview-dango'
     file_sd_configs:
-      - files: ["/etc/prometheus/targets/*-dango.yml"]
+      - files: ['/etc/prometheus/targets/*-dango.yml']
 
-  - job_name: "preview-cometbft"
+  - job_name: 'preview-cometbft'
     file_sd_configs:
-      - files: ["/etc/prometheus/targets/*-cometbft.yml"]
+      - files: ['/etc/prometheus/targets/*-cometbft.yml']
 
-  - job_name: "clickhouse"
+  - job_name: 'clickhouse'
     static_configs:
-      - targets: ["ovh1:9126"]
+      - targets: ['ovh1:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["ovh2:9126"]
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['ovh2:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner1:9126"]
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner1:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner2:9126"]
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner2:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner3:9126"]
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner3:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner4:9126"]
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner4:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["inter1:9126"]
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter1:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["inter2:9126"]
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter2:9126']
         labels:
-          service: "clickhouse"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
 
-  - job_name: "postgres"
+  - job_name: 'postgres'
     static_configs:
-      - targets: ["ovh1:9187"]
+      - targets: ['ovh1:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["ovh2:9187"]
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['ovh2:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner1:9187"]
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner1:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner2:9187"]
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner2:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner3:9187"]
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner3:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["hetzner4:9187"]
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['hetzner4:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["inter1:9187"]
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter1:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
-      - targets: ["inter2:9187"]
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['inter2:9187']
         labels:
-          service: "postgres"
-          environment: "production"
-          network: "system"
-          dango_network: "system"
+          service: 'postgres'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
 
-  - job_name: "dango"
+  - job_name: 'dango'
     static_configs:
-      - targets: ["hetzner1:8033"]
+      - targets: ['hetzner1:8033']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["hetzner3:8033"]
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner3:8033']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["inter1:8033"]
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter1:8033']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["inter2:8033"]
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter2:8033']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["hetzner2:8053"]
+          service: 'dango'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner2:8053']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
-      - targets: ["hetzner4:8053"]
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['hetzner4:8053']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
-      - targets: ["ovh1:8083"]
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['ovh1:8083']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "devnet"
-          dango_network: "devnet"
-      - targets: ["ovh2:8083"]
+          service: 'dango'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['ovh2:8083']
         labels:
-          service: "dango"
-          environment: "production"
-          network: "devnet"
-          dango_network: "devnet"
+          service: 'dango'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
 
-  - job_name: "cometbft"
+  - job_name: 'cometbft'
     static_configs:
-      - targets: ["hetzner1:46660"]
+      - targets: ['hetzner1:46660']
         labels:
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["hetzner3:46660"]
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['hetzner3:46660']
         labels:
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["inter1:46660"]
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter1:46660']
         labels:
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["inter2:46660"]
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['inter2:46660']
         labels:
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
-      - targets: ["ovh1:26660"]
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+      - targets: ['ovh1:26660']
         labels:
-          environment: "production"
-          network: "devnet"
-          dango_network: "devnet"
-      - targets: ["ovh2:26660"]
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['ovh2:26660']
         labels:
-          environment: "production"
-          network: "devnet"
-          dango_network: "devnet"
-      - targets: ["hetzner2:36660"]
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['hetzner2:36660']
         labels:
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
-      - targets: ["hetzner4:36660"]
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['hetzner4:36660']
         labels:
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
 
-  - job_name: "perp-liquidator"
+  - job_name: 'perp-liquidator'
     static_configs:
-      - targets: ["ovh1:9310"]
+      - targets: ['ovh1:9310']
         labels:
-          service: "perp-liquidator"
-          environment: "production"
-          network: "devnet"
-          dango_network: "devnet"
-      - targets: ["hetzner2:9310"]
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['hetzner2:9310']
         labels:
-          service: "perp-liquidator"
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
-      - targets: ["inter1:9310"]
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['inter1:9310']
         labels:
-          service: "perp-liquidator"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
 
-  - job_name: "points-bot"
+  - job_name: 'points-bot'
     static_configs:
-      - targets: ["ovh2:9300"]
+      - targets: ['ovh2:9300']
         labels:
-          service: "points-bot"
-          environment: "production"
-          network: "devnet"
-          dango_network: "devnet"
-      - targets: ["hetzner2:9301"]
+          service: 'points-bot'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['hetzner2:9301']
         labels:
-          service: "points-bot"
-          environment: "production"
-          network: "testnet"
-          dango_network: "testnet"
-      - targets: ["hetzner1:9302"]
+          service: 'points-bot'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['hetzner1:9302']
         labels:
-          service: "points-bot"
-          environment: "production"
-          network: "mainnet"
-          dango_network: "mainnet"
+          service: 'points-bot'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
