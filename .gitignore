@@ -24,7 +24,6 @@ artifacts/
 target/
 
 # Python
-**/.ipynb_checkpoints/
 **/.venv/
 
 # LaTeX
