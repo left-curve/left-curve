@@ -10,6 +10,7 @@ from dango.api import API
 from dango.utils.constants import PERPS_CONTRACT_MAINNET
 from dango.utils.types import (
     Addr,
+    Block,
     CandleInterval,
     Connection,
     LiquidityDepthResponse,
@@ -24,11 +25,13 @@ from dango.utils.types import (
     PerpsEventSortBy,
     PerpsPairStats,
     State,
+    Trade,
     Tx,
     UnsignedTx,
     UserState,
     UserStateExtended,
 )
+from dango.websocket_manager import WebsocketManager
 
 # Load the vendored .graphql documents at import time. importlib.resources is
 # the standard way to read package data files; it works under wheels, zip
@@ -59,6 +62,64 @@ _QUERY_PERPS_PAIR_STATS: Final[str] = _QUERIES.joinpath("perpsPairStats.graphql"
 _QUERY_ALL_PERPS_PAIR_STATS: Final[str] = _QUERIES.joinpath("allPerpsPairStats.graphql").read_text(
     encoding="utf-8"
 )
+
+# Subscription documents (Phase 10). These run over the graphql-transport-ws
+# protocol via `WebsocketManager`, not over HTTP. Loaded once at import time
+# for the same reason as the queries above — avoid the repeated disk read
+# every time `subscribe_*` is called.
+_SUBSCRIPTIONS = files("dango._graphql.subscriptions")
+_SUB_PERPS_CANDLES: Final[str] = _SUBSCRIPTIONS.joinpath("perpsCandles.graphql").read_text(
+    encoding="utf-8"
+)
+_SUB_BLOCK: Final[str] = _SUBSCRIPTIONS.joinpath("block.graphql").read_text(encoding="utf-8")
+_SUB_EVENTS: Final[str] = _SUBSCRIPTIONS.joinpath("events.graphql").read_text(encoding="utf-8")
+_SUB_QUERY_APP: Final[str] = _SUBSCRIPTIONS.joinpath("queryApp.graphql").read_text(encoding="utf-8")
+
+# perpsTrades is supported by the chain — `Subscription.perpsTrades` is
+# defined in sdk/rust/src/schemas/schema.graphql, and the API doc §8.2
+# documents the contract — but the Rust SDK does not yet vendor a
+# subscription document for it. We hand-write the document here so the
+# Python SDK can ship perps trade streams without waiting on the Rust
+# side. Once `sdk/rust/src/schemas/subscriptions/perpsTrades.graphql`
+# exists, this constant should be replaced with a symlink read alongside
+# the others above.
+_SUB_PERPS_TRADES: Final[str] = """
+subscription SubscribePerpsTrades($pairId: String!) {
+  perpsTrades(pairId: $pairId) {
+    orderId
+    pairId
+    user
+    fillPrice
+    fillSize
+    closingSize
+    openingSize
+    realizedPnl
+    fee
+    createdAt
+    blockHeight
+    tradeIdx
+    fillId
+    isMaker
+  }
+}
+""".strip()
+
+
+def _unwrap_node[T](payload: dict[str, Any], field: str, _typ: type[T]) -> Any:
+    """Pull `payload.data.<field>` from a graphql-transport-ws `next` message."""
+    # WebsocketManager wraps server-side errors as `{"_error": payload}`;
+    # forward such envelopes verbatim so the user's callback can detect
+    # them via `if "_error" in event:` and surface the failure. Any other
+    # shape is a normal `next` payload, where the GraphQL response sits
+    # under `payload.data.<root_field>` (e.g. `data.perpsCandles`).
+    #
+    # `_typ` is unused at runtime but documents the intended unwrap target
+    # at each call site and leaves room for future structural validation
+    # (e.g. via pydantic) without reshaping the call signature.
+    if "_error" in payload:
+        return payload
+    data = payload.get("data") or {}
+    return data.get(field)
 
 
 def _make_page_info(d: dict[str, Any]) -> PageInfo:
@@ -140,6 +201,11 @@ class Info(API):
         # in `Addr(...)` so the stored field is the typed alias regardless of
         # whether the caller passed a typed `Addr` or a plain `str` constant.
         self.perps_contract: Addr = Addr(perps_contract or PERPS_CONTRACT_MAINNET)
+        # WebsocketManager is created on first subscribe via the `_ws`
+        # property — see its docstring for the rationale. Storing `None`
+        # here keeps the construction cost off the hot path for callers
+        # who only do read queries or who pass `skip_ws=True`.
+        self._ws_manager: WebsocketManager | None = None
 
     def query_status(self) -> dict[str, Any]:
         """Chain ID and latest block info."""
@@ -502,3 +568,148 @@ class Info(API):
             ),
             page_size=page_size,
         )
+
+    # --- Subscriptions -------------------------------------------------------
+    #
+    # Real-time streams over graphql-transport-ws. Each `subscribe_*` method
+    # registers a callback with the underlying `WebsocketManager`, returns an
+    # int subscription id, and unwraps the GraphQL `next` payload to the
+    # natural shape (one `Trade` per fill, one `Block` per block, etc.) so
+    # callers don't have to reach into `payload["data"][...]` themselves.
+    # Server-side errors flow through the same callback as `{"_error": ...}`
+    # — see `_unwrap_node` for the convention.
+
+    @property
+    def _ws(self) -> WebsocketManager:
+        """Lazily create and start the WebsocketManager on first subscription."""
+        # Creating the connection only on first subscribe means callers who
+        # only do read queries (or who pass `skip_ws=True`) never pay the
+        # cost of an idle WebSocket — the indexer doesn't need to be reached
+        # at all unless a subscription is actually opened.
+        if self._ws_manager is None:
+            if self.skip_ws:
+                raise RuntimeError(
+                    "WebSocket disabled (skip_ws=True); "
+                    "construct Info with skip_ws=False to enable subscriptions",
+                )
+            self._ws_manager = WebsocketManager(self.base_url)
+            self._ws_manager.start()
+        return self._ws_manager
+
+    def subscribe_perps_trades(
+        self,
+        pair_id: PairId,
+        callback: Callable[[Trade], None],
+    ) -> int:
+        """Stream real-time perps trade fills for one pair."""
+        # Per API doc §8.2 the server replays cached recent trades on
+        # connect, then streams new fills as they happen. Each `next`
+        # message carries one trade; we unwrap to the inner Trade so the
+        # callback signature matches what the user expects.
+        return self._ws.subscribe(
+            _SUB_PERPS_TRADES,
+            {"pairId": pair_id},
+            lambda payload: callback(_unwrap_node(payload, "perpsTrades", Trade)),
+        )
+
+    def subscribe_perps_candles(
+        self,
+        pair_id: PairId,
+        interval: CandleInterval,
+        callback: Callable[[PerpsCandle], None],
+    ) -> int:
+        """Stream OHLCV candles for one pair at one interval."""
+        # `interval.value` rather than `interval` because the GraphQL
+        # variable is typed `CandleInterval!` and is sent as the bare
+        # uppercase enum name (e.g. `"ONE_MINUTE"`) — same convention as
+        # `perps_candles` above.
+        return self._ws.subscribe(
+            _SUB_PERPS_CANDLES,
+            {"pairId": pair_id, "interval": interval.value, "laterThan": None},
+            lambda payload: callback(_unwrap_node(payload, "perpsCandles", PerpsCandle)),
+        )
+
+    def subscribe_query_app(
+        self,
+        request: dict[str, Any],
+        callback: Callable[[dict[str, Any]], None],
+        *,
+        block_interval: int = 10,
+    ) -> int:
+        """Re-run a queryApp request every N blocks; callback gets {response, blockHeight}."""
+        # `block_interval` is in *blocks*, not seconds. The default of 10
+        # corresponds to roughly every 10 seconds at Dango's ~1s block
+        # time; callers driving a UI may want a smaller value, while
+        # background pollers can use a larger one.
+        return self._ws.subscribe(
+            _SUB_QUERY_APP,
+            {"request": request, "blockInterval": block_interval},
+            lambda payload: callback(_unwrap_node(payload, "queryApp", dict)),
+        )
+
+    def subscribe_user_events(
+        self,
+        user: Addr,
+        callback: Callable[[PerpsEvent], None],
+        *,
+        event_types: list[str] | None = None,
+    ) -> int:
+        """Stream events for one user, optionally filtered by event_type list."""
+        # The `events` subscription accepts a `[Filter!]` array. Per the
+        # indexer (`indexer/httpd/src/graphql/subscription/event.rs:138-150`),
+        # entries within one filter are AND-combined and the array of
+        # filters is OR-combined. So:
+        #   * always pin `data.user` to the given address (one check
+        #     entry inside the filter's `data` list);
+        #   * if `event_types` is provided, emit one filter entry per
+        #     type, each carrying the same user check, so the result is
+        #     `(type=A AND user=X) OR (type=B AND user=X)` — the union
+        #     of types intersected with the user.
+        user_data = {"path": ["user"], "checkMode": "EQUAL", "value": [user]}
+        if event_types:
+            filters: list[dict[str, Any]] = [{"type": t, "data": [user_data]} for t in event_types]
+        else:
+            filters = [{"data": [user_data]}]
+        return self._ws.subscribe(
+            _SUB_EVENTS,
+            {"sinceBlockHeight": None, "filter": filters},
+            lambda payload: callback(_unwrap_node(payload, "events", PerpsEvent)),
+        )
+
+    def subscribe_block(self, callback: Callable[[Block], None]) -> int:
+        """Stream every newly-finalized block."""
+        # No variables — the `block` subscription has no filter knobs,
+        # the server pushes every block as it commits. `Block` payloads
+        # include the full transaction list and flattened event list,
+        # see `subscriptions/block.graphql`.
+        return self._ws.subscribe(
+            _SUB_BLOCK,
+            {},
+            lambda payload: callback(_unwrap_node(payload, "block", Block)),
+        )
+
+    def unsubscribe(self, subscription_id: int) -> bool:
+        """Drop a subscription locally and tell the server to stop streaming."""
+        # Returning False (rather than raising) when no manager exists
+        # mirrors `WebsocketManager.unsubscribe`'s "id-not-found" return
+        # — callers can blanket-call this on shutdown without first
+        # checking whether they ever opened a subscription.
+        if self._ws_manager is None:
+            return False
+        return self._ws_manager.unsubscribe(subscription_id)
+
+    def disconnect_websocket(self) -> None:
+        """Close the WebSocket connection and clean up the manager thread."""
+        if self._ws_manager is None:
+            return
+        self._ws_manager.stop()
+        # 5s grace period is generous for the run_forever loop to exit
+        # cleanly after `stop()` calls `ws.close()`. The manager thread
+        # is also a daemon, so even if `join` returns without the thread
+        # actually finishing (e.g. socket stuck), Python won't hang on
+        # interpreter exit waiting for it.
+        self._ws_manager.join(timeout=5.0)
+        # Clearing the reference lets a future `_ws` access spin up a
+        # fresh manager — useful if the user reconnects after an explicit
+        # disconnect.
+        self._ws_manager = None

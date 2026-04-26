@@ -699,6 +699,83 @@ class PerpsPairStats(TypedDict):
     priceChange24H: str | None  # noqa: N815
 
 
+class Trade(TypedDict):  # noqa: N815
+    """Real-time perps trade fill from the perpsTrades subscription."""
+
+    # Wire shape per `Subscription.perpsTrades` on the indexer
+    # (sdk/rust/src/schemas/schema.graphql) and API doc §8.2. Keys stay
+    # camelCase for the same reasons as `PerpsCandle` / `PerpsEvent` —
+    # see the convention-boundary comment at the top of this section.
+    orderId: str  # noqa: N815
+    pairId: str  # noqa: N815
+    user: str
+    fillPrice: str  # noqa: N815
+    fillSize: str  # noqa: N815
+    closingSize: str  # noqa: N815
+    openingSize: str  # noqa: N815
+    realizedPnl: str  # noqa: N815
+    fee: str
+    createdAt: str  # noqa: N815  # ISO-8601 datetime.
+    blockHeight: int  # noqa: N815
+    tradeIdx: int  # noqa: N815
+    fillId: str | None  # noqa: N815
+    isMaker: bool | None  # noqa: N815
+
+
+class BlockTransaction(TypedDict):  # noqa: N815
+    """One transaction inside a Block (subscribe_block stream)."""
+
+    # The `data` and `credential` fields are JSON scalars whose schema
+    # depends on the transaction kind, so they're typed as opaque dicts.
+    hash: str
+    blockHeight: int  # noqa: N815
+    transactionType: str  # noqa: N815
+    transactionIdx: int  # noqa: N815
+    sender: str
+    data: dict[str, Any]
+    credential: dict[str, Any]
+    hasSucceeded: bool  # noqa: N815
+    errorMessage: str | None  # noqa: N815
+    gasWanted: int  # noqa: N815
+    gasUsed: int  # noqa: N815
+    createdAt: str  # noqa: N815  # ISO-8601 datetime.
+
+
+class BlockEvent(TypedDict):  # noqa: N815
+    """One event inside a Block; same shape as the events subscription stream."""
+
+    # Mirrors `subscriptions/events.graphql` exactly so callers can route
+    # block-embedded events through the same handlers as
+    # `subscribe_user_events` / per-event subscriptions.
+    type: str
+    method: str | None
+    eventStatus: str  # noqa: N815
+    commitmentStatus: str  # noqa: N815
+    transactionType: int  # noqa: N815
+    transactionIdx: int  # noqa: N815
+    messageIdx: int | None  # noqa: N815
+    eventIdx: int  # noqa: N815
+    data: dict[str, Any]
+    blockHeight: int  # noqa: N815
+    createdAt: str  # noqa: N815
+
+
+class Block(TypedDict):  # noqa: N815
+    """Block payload from the block subscription."""
+
+    # Each `next` message on `subscribe_block` is one of these. The
+    # nested `transactions` and `flattenEvents` lists carry the
+    # block's full content — `flattenEvents` is the indexer's already-
+    # flattened event stream (cron events, message events, ...).
+    blockHeight: int  # noqa: N815
+    hash: str
+    appHash: str  # noqa: N815
+    createdAt: str  # noqa: N815
+    cronsOutcomes: list[str]  # noqa: N815
+    transactions: list[BlockTransaction]
+    flattenEvents: list[BlockEvent]  # noqa: N815
+
+
 @dataclass(frozen=True)
 class PageInfo:
     """Cursor-pagination metadata; mirrors the GraphQL `PageInfo` object."""
