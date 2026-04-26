@@ -1,3 +1,1 @@
-mutation BroadcastTxSync($tx: Tx!) {
-  broadcastTxSync(tx: $tx)
-}
+../../../../../sdk/rust/src/schemas/mutations/broadcastTxSync.graphql

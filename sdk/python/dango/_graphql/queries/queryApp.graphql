@@ -1,3 +1,1 @@
-query QueryApp($request: GrugQueryInput!, $height: Int) {
-  queryApp(request: $request, height: $height)
-}
+../../../../../sdk/rust/src/schemas/queries/queryApp.graphql

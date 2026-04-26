@@ -1,10 +1,1 @@
-query QueryStatus {
-  queryStatus {
-    chainId
-    block {
-      blockHeight
-      timestamp
-      hash
-    }
-  }
-}
+../../../../../sdk/rust/src/schemas/queries/queryStatus.graphql

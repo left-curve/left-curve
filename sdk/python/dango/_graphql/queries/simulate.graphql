@@ -1,3 +1,1 @@
-query Simulate($tx: UnsignedTx!) {
-  simulate(tx: $tx)
-}
+../../../../../sdk/rust/src/schemas/queries/simulate.graphql

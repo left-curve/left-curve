@@ -17,6 +17,23 @@ build-backend = "hatchling.build"
 packages = ["dango"]
 include = ["dango/_graphql/**/*.graphql"]
 
+# In `sdk/python/dango/_graphql/`, the .graphql files are symlinks pointing
+# back to `sdk/rust/src/schemas/` (single source of truth). Hatch's wheel
+# build follows symlinks and embeds real content, but the sdist tarball
+# preserves them as broken cross-tree symlinks. Exclude the symlinks from
+# sdist and force-include the real files from sdk/rust instead.
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "dango/_graphql/queries/*.graphql",
+    "dango/_graphql/mutations/*.graphql",
+]
+
+[tool.hatch.build.targets.sdist.force-include]
+"../rust/src/schemas/queries/queryStatus.graphql"     = "dango/_graphql/queries/queryStatus.graphql"
+"../rust/src/schemas/queries/queryApp.graphql"        = "dango/_graphql/queries/queryApp.graphql"
+"../rust/src/schemas/queries/simulate.graphql"        = "dango/_graphql/queries/simulate.graphql"
+"../rust/src/schemas/mutations/broadcastTxSync.graphql" = "dango/_graphql/mutations/broadcastTxSync.graphql"
+
 [dependency-groups]
 dev = [
     "pytest>=8",
