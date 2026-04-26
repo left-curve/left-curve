@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal, cast
 from dango.api import API
 from dango.info import Info
 from dango.utils.constants import (
+    ACCOUNT_FACTORY_CONTRACT,
     GAS_OVERHEAD_SECP256K1,
     PERPS_CONTRACT_MAINNET,
     SETTLEMENT_DENOM,
@@ -277,16 +278,22 @@ class Exchange(API):
         # adding a runtime check would only obscure that.
         return cast("CancelOrderRequest", {"one": str(spec)})
 
-    def _wrap_trade_msg(self, inner: dict[str, Any]) -> Message:
-        """Wrap a TraderMsg payload in an execute message bound to the perps contract."""
-        # Orders never carry funds: position adjustments draw from the
-        # caller's existing margin sub-account balance. `funds={}`
-        # mirrors `withdraw_margin` — only `deposit_margin` uses a
-        # non-empty funds map.
+    def _wrap_perps_execute(self, key: str, inner: dict[str, Any]) -> Message:
+        """Wrap an inner payload under `{<key>: inner}` and target the perps contract."""
+        # ExecuteMsg is an externally-tagged enum with four variants —
+        # `Trade`, `Vault`, `Referral`, `Maintain` (see
+        # `dango/types/src/perps.rs::ExecuteMsg`) — so the dispatch key is
+        # the only thing that varies between methods. Every action that
+        # goes through this helper carries no funds: trades draw from
+        # existing margin, vault liquidity is debited from the user's
+        # margin (NOT attached as funds), and the referral / maintain
+        # variants trivially carry nothing. Only `deposit_margin` uses a
+        # non-empty funds map and so emits its execute wrapper inline
+        # rather than via this helper.
         return {
             "execute": {
                 "contract": self._perps_contract,
-                "msg": {"trade": inner},
+                "msg": {key: inner},
                 "funds": {},
             },
         }
@@ -310,7 +317,7 @@ class Exchange(API):
             tp=tp,
             sl=sl,
         )
-        return self._send_action([self._wrap_trade_msg({"submit_order": request})])
+        return self._send_action([self._wrap_perps_execute("trade", {"submit_order": request})])
 
     def cancel_order(
         self,
@@ -321,9 +328,14 @@ class Exchange(API):
         # enum, which serde encodes as either a single-key sub-object
         # (`One`/`OneByClientOrderId`) or a bare string (`All`). The
         # helper picks the right shape; we just hand the result to
-        # `_wrap_trade_msg`.
+        # `_wrap_perps_execute`.
         return self._send_action(
-            [self._wrap_trade_msg({"cancel_order": self._build_cancel_order_wire(spec)})],
+            [
+                self._wrap_perps_execute(
+                    "trade",
+                    {"cancel_order": self._build_cancel_order_wire(spec)},
+                ),
+            ],
         )
 
     def batch_update_orders(
@@ -368,7 +380,9 @@ class Exchange(API):
                         {"cancel": self._build_cancel_order_wire(action.spec)},
                     ),
                 )
-        return self._send_action([self._wrap_trade_msg({"batch_update_orders": wire})])
+        return self._send_action(
+            [self._wrap_perps_execute("trade", {"batch_update_orders": wire})],
+        )
 
     # --- Convenience helpers -------------------------------------------------
 
@@ -506,7 +520,7 @@ class Exchange(API):
                 "max_slippage": dango_decimal(max_slippage),
             },
         }
-        return self._send_action([self._wrap_trade_msg(inner)])
+        return self._send_action([self._wrap_perps_execute("trade", inner)])
 
     def cancel_conditional_order(
         self,
@@ -518,8 +532,170 @@ class Exchange(API):
         # {...}}` / `{"all_for_pair": {...}}`); we just wrap and send.
         return self._send_action(
             [
-                self._wrap_trade_msg(
+                self._wrap_perps_execute(
+                    "trade",
                     {"cancel_conditional_order": self._build_cancel_conditional_wire(spec)},
                 ),
             ],
         )
+
+    # --- Vault ---------------------------------------------------------------
+
+    def add_liquidity(
+        self,
+        amount: float | int | str | Decimal,
+        *,
+        min_shares_to_mint: int | None = None,
+    ) -> dict[str, Any]:
+        """Transfer USD margin into the counterparty vault, minting LP shares."""
+        # Wire shape (Rust source: `dango/types/src/perps.rs::VaultMsg::AddLiquidity`):
+        #
+        #   * `amount` is a `UsdValue` — 6-decimal fixed-point string,
+        #     e.g. "1000.000000". `dango_decimal` produces this canonical
+        #     form. The amount is debited from the caller's existing
+        #     trading margin, NOT attached as `funds` on the execute
+        #     message — vault deposits flow inside the contract, not
+        #     across the wallet boundary.
+        #   * `min_shares_to_mint` is an `Option<Uint128>`: `None` →
+        #     JSON null on the wire (= no slippage protection),
+        #     otherwise a base-10 integer string of the share count.
+        #     Passing `0` would also disable the guard but is wasteful;
+        #     callers who want a guard should pick a positive value.
+        #
+        # Reject `amount <= 0` client-side: zero shares of LP make no
+        # sense, and a negative amount is meaningless. The chain would
+        # also reject these but failing early surfaces a friendlier
+        # error.
+        amount_str = dango_decimal(amount)
+        if Decimal(amount_str) <= 0:
+            raise ValueError(f"add_liquidity amount must be positive, got {amount!r}")
+        # `min_shares_to_mint` is `int | None`. Bool is an int subclass
+        # in Python, so we filter it BEFORE the int branch — otherwise
+        # `add_liquidity(amount, min_shares_to_mint=True)` would
+        # silently coerce to "1" and pass the negative-check.
+        min_shares_str: str | None
+        if min_shares_to_mint is None:
+            min_shares_str = None
+        elif isinstance(min_shares_to_mint, bool) or not isinstance(min_shares_to_mint, int):
+            raise TypeError(
+                "add_liquidity min_shares_to_mint must be an int or None, "
+                f"got {type(min_shares_to_mint).__name__}",
+            )
+        elif min_shares_to_mint < 0:
+            raise ValueError(
+                f"add_liquidity min_shares_to_mint must be non-negative, got {min_shares_to_mint}",
+            )
+        else:
+            min_shares_str = str(min_shares_to_mint)
+        inner = {
+            "add_liquidity": {
+                "amount": amount_str,
+                "min_shares_to_mint": min_shares_str,
+            },
+        }
+        return self._send_action([self._wrap_perps_execute("vault", inner)])
+
+    def remove_liquidity(self, shares_to_burn: int) -> dict[str, Any]:
+        """Burn LP shares to schedule a vault withdrawal (subject to cooldown)."""
+        # Wire shape (Rust source: `dango/types/src/perps.rs::VaultMsg::RemoveLiquidity`):
+        #
+        #   * `shares_to_burn` is `Uint128` = base-10 integer string.
+        #
+        # Mirror `deposit_margin`'s int validation: bool is an int subtype,
+        # so reject it BEFORE the int branch; then enforce strictly
+        # positive. The contract would also reject zero/negative but the
+        # client-side check produces a friendlier error.
+        if isinstance(shares_to_burn, bool) or not isinstance(shares_to_burn, int):
+            raise TypeError(
+                "remove_liquidity shares_to_burn must be an int, "
+                f"got {type(shares_to_burn).__name__}",
+            )
+        if shares_to_burn <= 0:
+            raise ValueError(
+                f"remove_liquidity shares_to_burn must be positive, got {shares_to_burn}",
+            )
+        inner = {"remove_liquidity": {"shares_to_burn": str(shares_to_burn)}}
+        return self._send_action([self._wrap_perps_execute("vault", inner)])
+
+    # --- Referrals -----------------------------------------------------------
+
+    def set_referral(self, referrer: int | str) -> dict[str, Any]:
+        """Bind the signer as a referee of `referrer` (user_index or username)."""
+        # Wire shape (Rust source: `dango/types/src/perps.rs::ReferralMsg::SetReferral`):
+        #
+        #   * `referrer` is a `UserIndex` (u32) — JSON number.
+        #   * `referee` is also a `UserIndex`; we auto-fill it from the
+        #     signer's resolved index. By the time this method is
+        #     callable the Exchange constructor has already populated
+        #     `self._signer.user_index` (auto-fetched if not supplied
+        #     to `__init__`), so the value is never None here.
+        #
+        # The Python API takes `int | str`: int is used as the
+        # user_index directly, str triggers a username lookup against
+        # the account-factory contract. The lookup is intentionally
+        # not cached — usernames are theoretically rebindable per the
+        # contract docs, and a fresh query per call costs one cheap
+        # round-trip.
+        referrer_index: int
+        if isinstance(referrer, bool):
+            # Reject bool first: it is an int subclass and would
+            # otherwise silently route through the int branch as 0/1.
+            raise TypeError("set_referral referrer must not be a bool")
+        if isinstance(referrer, int):
+            if referrer < 0:
+                raise ValueError(
+                    f"set_referral referrer index must be non-negative, got {referrer}"
+                )
+            referrer_index = referrer
+        elif isinstance(referrer, str):
+            if referrer == "":
+                raise ValueError("set_referral referrer username must be non-empty")
+            # Account-factory `QueryMsg::User(UserIndexOrName::Name(_))`
+            # — wire form `{"user": {"name": "<username>"}}` — returns a
+            # `User` struct (`dango/types/src/account_factory/msg.rs`).
+            # We only need `index` from the response; the rest is
+            # discarded. Don't replicate the chain's Username regex
+            # client-side — let the chain reject malformed inputs and
+            # surface that error verbatim.
+            response = self._info.query_app_smart(
+                Addr(ACCOUNT_FACTORY_CONTRACT),
+                {"user": {"name": referrer}},
+            )
+            referrer_index = int(response["index"])
+        else:
+            raise TypeError(
+                f"set_referral referrer must be int or str, got {type(referrer).__name__}",
+            )
+        # `_require_user_index` raises a clear RuntimeError if the
+        # signer was constructed without a user_index AND the auto-
+        # resolution path was bypassed. We use it instead of `assert`
+        # because `python -O` strips asserts, which would let a None
+        # propagate into the wire dict and produce an invalid
+        # JSON-number-typed `referee` field.
+        referee_index = self._signer._require_user_index()
+        inner = {
+            "set_referral": {
+                "referrer": referrer_index,
+                "referee": referee_index,
+            },
+        }
+        return self._send_action([self._wrap_perps_execute("referral", inner)])
+
+    # --- Liquidation ---------------------------------------------------------
+
+    def liquidate(self, user: Addr) -> dict[str, Any]:
+        """Force-close an underwater user's positions (permissionless)."""
+        # Wire shape (Rust source: `dango/types/src/perps.rs::MaintainerMsg::Liquidate`):
+        #
+        #   * `user` is the target trader's account `Addr`. The contract
+        #     handler at `dango/perps/src/maintain/liquidate.rs` does
+        #     NOT check the caller's identity — anyone can submit this
+        #     message for any trader. The contract itself decides
+        #     whether the target is actually liquidatable based on
+        #     equity vs. maintenance margin.
+        #
+        # No client-side validation beyond accepting the typed Addr —
+        # the chain's liquidatable-or-not check is the authoritative
+        # one, so we don't replicate it here.
+        inner = {"liquidate": {"user": user}}
+        return self._send_action([self._wrap_perps_execute("maintain", inner)])

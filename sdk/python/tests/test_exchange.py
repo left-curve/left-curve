@@ -2,97 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from dango.exchange import Exchange
 from dango.utils.constants import PERPS_CONTRACT_MAINNET, SETTLEMENT_DENOM
-from dango.utils.signing import Secp256k1Wallet
 from dango.utils.types import Addr
+from tests._helpers import FakeInfo
+from tests._helpers import exchange as _exchange
+from tests._helpers import wallet as _wallet
 
 _DEMO_ADDRESS = Addr("0x000000000000000000000000000000000000beef")
-
-
-def _wallet() -> Secp256k1Wallet:
-    # Fixed secret keeps signature outputs deterministic across tests so
-    # we can compare credential shapes without recomputing them by hand.
-    return Secp256k1Wallet.from_bytes(b"\x01" * 32, _DEMO_ADDRESS)
-
-
-# `_FakeInfo` is a structural Info stand-in: it implements the subset
-# of `Info` that `Exchange` calls (`query_status`, `query_app_smart`,
-# `simulate`, `broadcast_tx_sync`) and records each call. The
-# constructor signature uses `info: Info | None = None`, which is a
-# concrete-class type in production; tests pass `_FakeInfo` and rely on
-# the `# type: ignore[arg-type]` escape hatch on the call site (standard
-# white-box testing pattern).
-class _FakeInfo:
-    """Captures simulate/broadcast calls and returns canned responses."""
-
-    def __init__(self) -> None:
-        self.simulated: list[dict[str, Any]] = []
-        self.broadcasted: list[dict[str, Any]] = []
-        self.queried_status_count: int = 0
-
-    def query_status(self) -> dict[str, Any]:
-        self.queried_status_count += 1
-        # Mirror the GraphQL `queryStatus` shape (see
-        # `dango/_graphql/queries/queryStatus.graphql`): a `chainId` and
-        # a `block` sub-object. Only `chainId` is consumed by Exchange,
-        # but the shape must stay realistic so future Phase-X consumers
-        # of this fake don't trip on missing fields.
-        return {
-            "chainId": "dango-mock-1",
-            "block": {"blockHeight": 1, "timestamp": "x", "hash": "y"},
-        }
-
-    def query_app_smart(
-        self,
-        contract: Addr,  # mocked: we route on `msg`'s top-level key only
-        msg: dict[str, Any],
-        **_: Any,
-    ) -> Any:
-        # Dango's query enums are externally-tagged, so the variant name
-        # is the first (and only) key in the dict. We branch on that
-        # tag rather than the contract address because both the
-        # `account_factory` lookup (variant `account`) and the per-
-        # account `seen_nonces` lookup are funneled through this single
-        # method.
-        if "account" in msg:
-            # `User` struct shape — `owner` is the user_index that
-            # SingleSigner.query_user_index reads.
-            return {"index": 0, "owner": 42}
-        if "seen_nonces" in msg:
-            # Sorted ascending list; SingleSigner takes max+1, so this
-            # produces next_nonce=6.
-            return [3, 4, 5]
-        raise AssertionError(f"unexpected query_app_smart: {msg}")
-
-    def simulate(self, tx: dict[str, Any]) -> dict[str, Any]:
-        self.simulated.append(tx)
-        # 230_000 chosen so simulate + DEFAULT_GAS_OVERHEAD = 1_000_000
-        # — a clean round number that the gas-limit assertion below
-        # checks against.
-        return {"gas_used": 230_000, "gas_limit": None, "result": {"ok": []}}
-
-    def broadcast_tx_sync(self, tx: dict[str, Any]) -> dict[str, Any]:
-        self.broadcasted.append(tx)
-        # Realistic BroadcastTxOutcome envelope — `code=0` is success,
-        # the rest is metadata. Exchange.deposit_margin returns this
-        # dict verbatim, so consumers can read e.g. `result["hash"]`.
-        return {"code": 0, "hash": "TXHASH", "gas_used": 230_000, "events": []}
-
-
-def _exchange(info: _FakeInfo, **kwargs: Any) -> Exchange:
-    """Construct an Exchange wired to a mock Info (no real network calls)."""
-    return Exchange(
-        _wallet(),
-        "http://localhost:8080",
-        account_address=_DEMO_ADDRESS,
-        info=info,  # type: ignore[arg-type]
-        **kwargs,
-    )
 
 
 class TestConstruction:
@@ -103,7 +22,7 @@ class TestConstruction:
 
     def test_auto_fetches_chain_id(self) -> None:
         """If chain_id is omitted, the constructor pulls it from query_status."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         # One query for chain_id; the `auto_resolve user_index/nonce`
         # path goes through `query_app_smart`, not `query_status`, so
@@ -116,15 +35,15 @@ class TestConstruction:
 
     def test_chain_id_override_skips_query(self) -> None:
         """Passing chain_id explicitly avoids the query_status round-trip."""
-        info = _FakeInfo()
+        info = FakeInfo()
         _exchange(info, chain_id="dango-1")
         assert info.queried_status_count == 0
 
     def test_resolves_user_index_and_nonce_from_chain(self) -> None:
         """Without explicit values, user_index and next_nonce come from the chain."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
-        # _FakeInfo.query_app_smart returns `owner=42` for the factory
+        # FakeInfo.query_app_smart returns `owner=42` for the factory
         # `account` lookup, and `[3, 4, 5]` for `seen_nonces` — so the
         # resolved next_nonce is max([3,4,5]) + 1 = 6.
         assert ex.signer.user_index == 42
@@ -132,7 +51,7 @@ class TestConstruction:
 
     def test_explicit_user_index_skips_factory_query(self) -> None:
         """Passing user_index keeps the explicit value, no factory roundtrip."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info, user_index=99)
         assert ex.signer.user_index == 99
 
@@ -143,7 +62,7 @@ class TestDepositMargin:
         # `amount` is base units (Uint128); the SDK stringifies it for
         # the wire because Uint128 serializes as a base-10 integer
         # string. 1_500_000 base units = 1.5 USDC at SETTLEMENT_DECIMALS=6.
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         ex.deposit_margin(1_500_000)
         sent = info.broadcasted[-1]
@@ -157,7 +76,7 @@ class TestDepositMargin:
         # Earlier drafts accepted float USD and converted internally;
         # the wire ambiguity ("is 1.5 USDC or 1.5 base units?") was
         # confusing, so the API now hard-rejects floats.
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(TypeError, match="int"):
             ex.deposit_margin(1.5)  # type: ignore[arg-type]
@@ -168,14 +87,14 @@ class TestDepositMargin:
         # in Python, so mypy accepts `deposit_margin(True)` at compile
         # time. The runtime guard is what catches it; without it,
         # True/False would silently be treated as 1/0 base units.
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(TypeError, match="int"):
             ex.deposit_margin(True)
 
     def test_rejects_zero_or_negative(self) -> None:
         """deposit_margin requires a strictly positive amount."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="positive"):
             ex.deposit_margin(0)
@@ -184,7 +103,7 @@ class TestDepositMargin:
 
     def test_pipeline_calls_simulate_then_broadcast(self) -> None:
         """deposit_margin runs simulate before broadcast (gas autodiscovery)."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         ex.deposit_margin(1_000_000)
         # Exactly one simulate call (to learn gas) and one broadcast
@@ -194,11 +113,11 @@ class TestDepositMargin:
 
     def test_gas_limit_is_simulated_gas_plus_overhead(self) -> None:
         """gas_limit = simulate.gas_used + DEFAULT_GAS_OVERHEAD (770_000)."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         ex.deposit_margin(1_000_000)
         sent = info.broadcasted[-1]
-        # _FakeInfo.simulate returns gas_used=230_000; the SDK adds
+        # FakeInfo.simulate returns gas_used=230_000; the SDK adds
         # 770_000 (DEFAULT_GAS_OVERHEAD) for sig verify cost; total is
         # 1_000_000. Simulate skips the auth pre-handler, so we add
         # the verify cost back manually — see the WHY-comment on
@@ -209,7 +128,7 @@ class TestDepositMargin:
 class TestWithdrawMargin:
     def test_amount_uses_six_decimal_string(self) -> None:
         """withdraw_margin(1.5) emits {'amount': '1.500000'} (UsdValue)."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         ex.withdraw_margin(1.5)
         sent = info.broadcasted[-1]
@@ -225,7 +144,7 @@ class TestWithdrawMargin:
 class TestSendActionPipeline:
     def test_increments_nonce_after_broadcast(self) -> None:
         """Successful broadcast bumps next_nonce by exactly 1."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info)
         starting = ex.signer.next_nonce
         ex.deposit_margin(1_000_000)
@@ -236,7 +155,7 @@ class TestSendActionPipeline:
 
     def test_chain_id_propagates_into_metadata(self) -> None:
         """The constructor's chain_id ends up inside `tx.data.chain_id` on broadcast."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info, chain_id="dango-explicit-test")
         ex.deposit_margin(1_000_000)
         sent = info.broadcasted[-1]
@@ -249,10 +168,10 @@ class TestSendActionPipeline:
 class TestExplicitNextNonce:
     def test_explicit_nonce_skips_seen_nonces_query(self) -> None:
         """Passing next_nonce keeps the explicit value, no chain roundtrip."""
-        info = _FakeInfo()
+        info = FakeInfo()
         ex = _exchange(info, next_nonce=99)
         # Only the user_index resolution should have hit query_app_smart;
-        # next_nonce path is skipped. _FakeInfo.query_app_smart asserts
+        # next_nonce path is skipped. FakeInfo.query_app_smart asserts
         # raises on unexpected msgs, so the test passes only if no
         # `seen_nonces` query was made.
         assert ex.signer.next_nonce == 99
@@ -266,7 +185,7 @@ class TestLocalAccountWallet:
         # sign with the same secret as a directly-constructed wallet.
         from eth_account import Account
 
-        info = _FakeInfo()
+        info = FakeInfo()
         account = Account.from_key(b"\x01" * 32)
         ex = Exchange(
             account,
