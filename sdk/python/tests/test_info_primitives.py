@@ -65,7 +65,7 @@ def _demo_tx() -> Tx:
         ),
         credential=cast(
             Any,
-            {"Standard": {"key_hash": "0" * 64, "signature": {"Secp256k1": "AAAA"}}},
+            {"standard": {"key_hash": "0" * 64, "signature": {"secp256k1": "AAAA"}}},
         ),
     )
 

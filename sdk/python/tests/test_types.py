@@ -112,7 +112,7 @@ class TestTypeShapes:
         req: SubmitOrderRequest = {
             "pair_id": PairId("perp/btcusd"),
             "size": Quantity("0.100000"),
-            "kind": {"Market": {"max_slippage": Dimensionless("0.050000")}},
+            "kind": {"market": {"max_slippage": Dimensionless("0.050000")}},
             "reduce_only": False,
             "tp": None,
             "sl": None,
@@ -124,19 +124,19 @@ class TestTypeShapes:
         req: SubmitOrderRequest = {
             "pair_id": PairId("perp/btcusd"),
             "size": Quantity("0.100000"),
-            "kind": {"Limit": {"limit_price": UsdPrice("50000.000000")}},
+            "kind": {"limit": {"limit_price": UsdPrice("50000.000000")}},
             "reduce_only": False,
             "tp": None,
             "sl": None,
         }
-        assert req["kind"] == {"Limit": {"limit_price": "50000.000000"}}
+        assert req["kind"] == {"limit": {"limit_price": "50000.000000"}}
 
     def test_submit_order_request_limit_with_optionals(self) -> None:
         req: SubmitOrderRequest = {
             "pair_id": PairId("perp/btcusd"),
             "size": Quantity("-0.500000"),
             "kind": {
-                "Limit": {
+                "limit": {
                     "limit_price": UsdPrice("50000.000000"),
                     "time_in_force": TimeInForce.IOC,
                     "client_order_id": ClientOrderId("42"),
@@ -149,13 +149,13 @@ class TestTypeShapes:
         assert req["reduce_only"] is True
 
     def test_cancel_all_is_string(self) -> None:
-        cancel: CancelOrderRequest = "All"
-        assert cancel == "All"
+        cancel: CancelOrderRequest = "all"
+        assert cancel == "all"
 
     def test_cancel_one_is_dict(self) -> None:
-        cancel = cast(CancelOrderRequest, {"One": "123"})
-        assert cancel == {"One": "123"}
+        cancel = cast(CancelOrderRequest, {"one": "123"})
+        assert cancel == {"one": "123"}
 
     def test_cancel_one_by_client_order_id(self) -> None:
-        cancel = cast(CancelOrderRequest, {"OneByClientOrderId": "42"})
-        assert cancel == {"OneByClientOrderId": "42"}
+        cancel = cast(CancelOrderRequest, {"one_by_client_order_id": "42"})
+        assert cancel == {"one_by_client_order_id": "42"}

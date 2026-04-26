@@ -84,8 +84,8 @@ class TimeInForce(StrEnum):
 
 
 class TriggerDirection(StrEnum):
-    ABOVE = "Above"
-    BELOW = "Below"
+    ABOVE = "above"
+    BELOW = "below"
 
 
 class CandleInterval(StrEnum):
@@ -102,27 +102,31 @@ class CandleInterval(StrEnum):
 
 
 class ReasonForOrderRemoval(StrEnum):
-    FILLED = "Filled"
-    CANCELED = "Canceled"
-    POSITION_CLOSED = "PositionClosed"
-    SELF_TRADE_PREVENTION = "SelfTradePrevention"
-    LIQUIDATED = "Liquidated"
-    DELEVERAGED = "Deleveraged"
-    SLIPPAGE_EXCEEDED = "SlippageExceeded"
-    PRICE_BAND_VIOLATION = "PriceBandViolation"
-    SLIPPAGE_CAP_TIGHTENED = "SlippageCapTightened"
+    FILLED = "filled"
+    CANCELED = "canceled"
+    POSITION_CLOSED = "position_closed"
+    SELF_TRADE_PREVENTION = "self_trade_prevention"
+    LIQUIDATED = "liquidated"
+    DELEVERAGED = "deleveraged"
+    SLIPPAGE_EXCEEDED = "slippage_exceeded"
+    PRICE_BAND_VIOLATION = "price_band_violation"
+    SLIPPAGE_CAP_TIGHTENED = "slippage_cap_tightened"
 
 
 class KeyType(StrEnum):
-    SECP256R1 = "Secp256r1"
-    SECP256K1 = "Secp256k1"
-    ETHEREUM = "Ethereum"
+    # `KeyType` is read at the GraphQL boundary (the indexer exposes it via
+    # `graphql(name = "SECP256K1")` etc.) rather than via Rust serde, so the
+    # wire form is uppercase, not the snake_case used by the auth Key/Signature
+    # variants below. See dango/types/src/auth/key.rs for the source mapping.
+    SECP256R1 = "SECP256R1"
+    SECP256K1 = "SECP256K1"
+    ETHEREUM = "ETHEREUM"
 
 
 class AccountStatus(StrEnum):
-    INACTIVE = "Inactive"
-    ACTIVE = "Active"
-    FROZEN = "Frozen"
+    INACTIVE = "inactive"
+    ACTIVE = "active"
+    FROZEN = "frozen"
 
 
 class PerpsEventSortBy(StrEnum):
@@ -139,15 +143,15 @@ class PerpsEventSortBy(StrEnum):
 
 
 class _KeySecp256r1(TypedDict):
-    Secp256r1: Binary
+    secp256r1: Binary
 
 
 class _KeySecp256k1(TypedDict):
-    Secp256k1: Binary
+    secp256k1: Binary
 
 
 class _KeyEthereum(TypedDict):
-    Ethereum: Addr
+    ethereum: Addr
 
 
 Key = _KeySecp256r1 | _KeySecp256k1 | _KeyEthereum
@@ -176,15 +180,15 @@ class Eip712Signature(TypedDict):
 
 
 class _SignaturePasskey(TypedDict):
-    Passkey: PasskeySignature
+    passkey: PasskeySignature
 
 
 class _SignatureSecp256k1(TypedDict):
-    Secp256k1: Binary
+    secp256k1: Binary
 
 
 class _SignatureEip712(TypedDict):
-    Eip712: Eip712Signature
+    eip712: Eip712Signature
 
 
 Signature = _SignaturePasskey | _SignatureSecp256k1 | _SignatureEip712
@@ -208,11 +212,11 @@ class SessionCredential(TypedDict):
 
 
 class _CredentialStandard(TypedDict):
-    Standard: StandardCredential
+    standard: StandardCredential
 
 
 class _CredentialSession(TypedDict):
-    Session: SessionCredential
+    session: SessionCredential
 
 
 Credential = _CredentialStandard | _CredentialSession
@@ -260,7 +264,7 @@ class _MarketPayload(TypedDict):
 
 
 class MarketKind(TypedDict):
-    Market: _MarketPayload
+    market: _MarketPayload
 
 
 class _LimitPayload(TypedDict):
@@ -270,7 +274,7 @@ class _LimitPayload(TypedDict):
 
 
 class LimitKind(TypedDict):
-    Limit: _LimitPayload
+    limit: _LimitPayload
 
 
 OrderKind = MarketKind | LimitKind
@@ -292,22 +296,22 @@ class SubmitOrderRequest(TypedDict):
 
 
 class _CancelOne(TypedDict):
-    One: OrderId
+    one: OrderId
 
 
 class _CancelOneByClientOrderId(TypedDict):
-    OneByClientOrderId: ClientOrderId
+    one_by_client_order_id: ClientOrderId
 
 
-CancelOrderRequest = _CancelOne | _CancelOneByClientOrderId | Literal["All"]
+CancelOrderRequest = _CancelOne | _CancelOneByClientOrderId | Literal["all"]
 
 
 class _SubmitOrCancelSubmit(TypedDict):
-    Submit: SubmitOrderRequest
+    submit: SubmitOrderRequest
 
 
 class _SubmitOrCancelCancel(TypedDict):
-    Cancel: CancelOrderRequest
+    cancel: CancelOrderRequest
 
 
 SubmitOrCancelOrderRequest = _SubmitOrCancelSubmit | _SubmitOrCancelCancel
@@ -319,7 +323,7 @@ class _CancelConditionalOnePayload(TypedDict):
 
 
 class _CancelConditionalOne(TypedDict):
-    One: _CancelConditionalOnePayload
+    one: _CancelConditionalOnePayload
 
 
 class _CancelConditionalAllForPairPayload(TypedDict):
@@ -327,11 +331,11 @@ class _CancelConditionalAllForPairPayload(TypedDict):
 
 
 class _CancelConditionalAllForPair(TypedDict):
-    AllForPair: _CancelConditionalAllForPairPayload
+    all_for_pair: _CancelConditionalAllForPairPayload
 
 
 CancelConditionalOrderRequest = (
-    _CancelConditionalOne | _CancelConditionalAllForPair | Literal["All"]
+    _CancelConditionalOne | _CancelConditionalAllForPair | Literal["all"]
 )
 
 

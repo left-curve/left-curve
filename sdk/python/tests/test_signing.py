@@ -141,14 +141,14 @@ class TestSecp256k1Wallet:
         assert w.public_key_compressed[0] in (0x02, 0x03)
 
     def test_key_wire_shape(self) -> None:
-        """Key wire form is `{"Secp256k1": "<base64 of 33-byte compressed pubkey>"}`."""
+        """Key wire form is `{"secp256k1": "<base64 of 33-byte compressed pubkey>"}`."""
         w = Secp256k1Wallet.from_bytes(b"\x01" * 32, _DEMO_ADDRESS)
         key = w.key
-        # The Key TypedDict union declares `Secp256k1` as one variant; we
+        # The Key TypedDict union declares `secp256k1` as one variant; we
         # narrow via cast to access it without mypy fighting the union.
         secp_key = cast(dict[str, str], key)
-        assert "Secp256k1" in secp_key
-        assert base64.b64decode(secp_key["Secp256k1"]) == w.public_key_compressed
+        assert "secp256k1" in secp_key
+        assert base64.b64decode(secp_key["secp256k1"]) == w.public_key_compressed
 
     def test_key_hash_is_sha256_of_compressed_pubkey(self) -> None:
         """key_hash is hex(sha256(compressed_pubkey)), uppercase, 64 chars."""
@@ -165,12 +165,12 @@ class TestSecp256k1Wallet:
 
 class TestSign:
     def test_returns_secp256k1_signature_envelope(self) -> None:
-        """sign() returns a `{"Secp256k1": "<base64 64 bytes>"}` envelope."""
+        """sign() returns a `{"secp256k1": "<base64 64 bytes>"}` envelope."""
         w = Secp256k1Wallet.from_bytes(b"\x01" * 32, _DEMO_ADDRESS)
         sig = w.sign(_demo_sign_doc())
         secp_sig = cast(dict[str, str], sig)
-        assert "Secp256k1" in secp_sig
-        assert len(base64.b64decode(secp_sig["Secp256k1"])) == 64
+        assert "secp256k1" in secp_sig
+        assert len(base64.b64decode(secp_sig["secp256k1"])) == 64
 
     def test_signature_is_deterministic(self) -> None:
         """RFC 6979 deterministic-k means the same key signs the same doc identically."""
@@ -187,7 +187,7 @@ class TestSign:
         # with the same inputs; deferred until we have a fixture binary.
         w = Secp256k1Wallet.from_bytes(b"\x01" * 32, _DEMO_ADDRESS)
         sig = cast(dict[str, str], w.sign(_demo_sign_doc()))
-        assert sig["Secp256k1"] == (
+        assert sig["secp256k1"] == (
             "s5obWwBxkSOXCUcLtWYZWlivkpsMCMFyA8+l3IcM5pQ9jhua08FqzmvitioFPJl5Rm7UrHByqccq+J4pASo36A=="
         )
 
@@ -196,7 +196,7 @@ class TestSign:
         w = Secp256k1Wallet.from_bytes(b"\x01" * 32, _DEMO_ADDRESS)
         doc = _demo_sign_doc()
         secp_sig = cast(dict[str, str], w.sign(doc))
-        sig_bytes = base64.b64decode(secp_sig["Secp256k1"])
+        sig_bytes = base64.b64decode(secp_sig["secp256k1"])
         digest = sign_doc_sha256(doc)
         # We dropped the recovery byte during signing, so iterate v=0,1 to
         # find which one recovers to the wallet's pubkey.

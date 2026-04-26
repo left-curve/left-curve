@@ -181,13 +181,15 @@ class Secp256k1Wallet:
 
     @property
     def key(self) -> Key:
-        """Wire-shape key as `{"Secp256k1": "<base64 of 33-byte compressed pubkey>"}`."""
+        """Wire-shape key as `{"secp256k1": "<base64 of 33-byte compressed pubkey>"}`."""
         # `ByteArray<33>` in grug serializes via Base64Encoder (see
         # `grug/types/src/binary.rs`), not hex. Cast through Key (a TypedDict
         # union) — the variant-specific dict literal is the precise type but
-        # callers want the union for polymorphic Wallet code.
+        # callers want the union for polymorphic Wallet code. The variant tag
+        # is lowercase because `#[grug::derive(Serde)]` injects
+        # `rename_all = "snake_case"` (grug/macros/src/derive.rs).
         encoded = Binary(base64.b64encode(self.public_key_compressed).decode("ascii"))
-        return cast(Key, {"Secp256k1": encoded})
+        return cast(Key, {"secp256k1": encoded})
 
     @property
     def key_hash(self) -> Hash256:
@@ -208,7 +210,9 @@ class Secp256k1Wallet:
         sig_65 = self._private_key.sign_msg_hash(digest)
         sig_64 = sig_65.to_bytes()[:64]
         encoded = Binary(base64.b64encode(sig_64).decode("ascii"))
-        return cast(Signature, {"Secp256k1": encoded})
+        # Variant tag is lowercase per `#[grug::derive(Serde)]`'s injected
+        # `rename_all = "snake_case"` (grug/macros/src/derive.rs).
+        return cast(Signature, {"secp256k1": encoded})
 
 
 # --- SingleSigner ------------------------------------------------------------
@@ -363,15 +367,17 @@ class SingleSigner:
 
         signature = self.wallet.sign(sign_doc)
         # `Credential::Standard` is an externally-tagged enum variant on
-        # `dango_types::auth::Credential`, hence the `{"Standard": ...}`
-        # outer wrapper. The inner `StandardCredential` carries `key_hash`
-        # (the on-chain identifier the contract uses to look up the pubkey)
-        # and the `signature` envelope itself. Cast through the union since
-        # the typed dict literal is a more precise type than Credential.
+        # `dango_types::auth::Credential`, hence the `{"standard": ...}`
+        # outer wrapper (variant tag is snake_case per
+        # `#[grug::derive(Serde)]`'s injected `rename_all = "snake_case"`).
+        # The inner `StandardCredential` carries `key_hash` (the on-chain
+        # identifier the contract uses to look up the pubkey) and the
+        # `signature` envelope itself. Cast through the union since the
+        # typed dict literal is a more precise type than Credential.
         credential = cast(
             Credential,
             {
-                "Standard": StandardCredential(
+                "standard": StandardCredential(
                     key_hash=self.wallet.key_hash,
                     signature=signature,
                 ),

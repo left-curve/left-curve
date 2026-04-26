@@ -193,20 +193,20 @@ class TestSignTx:
         assert tx["gas_limit"] == 100_000
 
     def test_credential_is_standard_secp256k1(self) -> None:
-        """credential is {"Standard": {"key_hash": <hex>, "signature": {"Secp256k1": <base64>}}}."""
+        """credential is {"standard": {"key_hash": <hex>, "signature": {"secp256k1": <base64>}}}."""
         wallet = _wallet()
         signer = SingleSigner(wallet, _DEMO_ADDRESS, user_index=1, next_nonce=0)
         tx = signer.sign_tx([], "dango-1", 100_000)
 
         credential = cast(dict[str, Any], tx["credential"])
-        assert "Standard" in credential
-        standard = credential["Standard"]
+        assert "standard" in credential
+        standard = credential["standard"]
         # key_hash is the on-chain identifier the contract uses to look up
         # the pubkey; here we verify it matches the wallet's key_hash.
         assert standard["key_hash"] == wallet.key_hash
-        assert "Secp256k1" in standard["signature"]
+        assert "secp256k1" in standard["signature"]
         # The Secp256k1 envelope carries 64 bytes of (r || s) base64-encoded.
-        sig_bytes = base64.b64decode(standard["signature"]["Secp256k1"])
+        sig_bytes = base64.b64decode(standard["signature"]["secp256k1"])
         assert len(sig_bytes) == 64
 
     def test_increments_nonce_on_success(self) -> None:
@@ -244,7 +244,7 @@ class TestSignTx:
         # loop would replay the same nonce.
         class _BoomWallet:
             address = _DEMO_ADDRESS
-            key = cast(Any, {"Secp256k1": "AA=="})
+            key = cast(Any, {"secp256k1": "AA=="})
             key_hash = cast(Any, "00" * 32)
 
             def sign(self, sign_doc: Any) -> Any:
@@ -266,12 +266,12 @@ class TestSignTx:
 
         class _SpyWallet:
             address = _DEMO_ADDRESS
-            key = cast(Any, {"Secp256k1": "AA=="})
+            key = cast(Any, {"secp256k1": "AA=="})
             key_hash = cast(Any, "00" * 32)
 
             def sign(self, sign_doc: Any) -> Any:
                 captured["sign_doc"] = sign_doc
-                return cast(Any, {"Secp256k1": base64.b64encode(b"\x00" * 64).decode("ascii")})
+                return cast(Any, {"secp256k1": base64.b64encode(b"\x00" * 64).decode("ascii")})
 
         signer = SingleSigner(cast(Any, _SpyWallet()), _DEMO_ADDRESS, user_index=1, next_nonce=0)
         signer.sign_tx([], "dango-1", 100_000)
