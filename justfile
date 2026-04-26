@@ -75,6 +75,19 @@ build-graphql-schema:
   cargo run -p dango-httpd build_graphql_schema -- \
     ./sdk/rust/src/schemas/schema.graphql
 
+# Copy GraphQL documents from sdk/rust to the Python SDK so they stay in sync.
+# Lists only the files the Python SDK actually loads; extend as later phases
+# (perps, indexer, subscriptions) start consuming more documents.
+copy-graphql-schemas:
+    mkdir -p sdk/python/dango/_graphql/queries
+    mkdir -p sdk/python/dango/_graphql/mutations
+    cp sdk/rust/src/schemas/queries/queryStatus.graphql sdk/python/dango/_graphql/queries/
+    cp sdk/rust/src/schemas/queries/queryApp.graphql sdk/python/dango/_graphql/queries/
+    cp sdk/rust/src/schemas/queries/simulate.graphql sdk/python/dango/_graphql/queries/
+    cp sdk/rust/src/schemas/mutations/broadcastTxSync.graphql sdk/python/dango/_graphql/mutations/
+    touch sdk/python/dango/_graphql/queries/__init__.py
+    touch sdk/python/dango/_graphql/mutations/__init__.py
+
 # Build the Dango Book
 book:
   mdbook build --open

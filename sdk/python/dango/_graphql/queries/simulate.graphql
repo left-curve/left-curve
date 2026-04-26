@@ -1,0 +1,3 @@
+query Simulate($tx: UnsignedTx!) {
+  simulate(tx: $tx)
+}

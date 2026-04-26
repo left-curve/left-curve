@@ -221,6 +221,7 @@ class Secp256k1Wallet:
 # exposes that method will satisfy this contract. Keeping it module-private
 # (leading underscore) signals that callers should pass an `Info`, not import
 # the Protocol directly.
+@runtime_checkable
 class _QueryClient(Protocol):
     """Minimal subset of Info that SingleSigner needs; Info satisfies this structurally."""
 
