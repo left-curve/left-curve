@@ -383,6 +383,31 @@ CancelConditionalOrderRequest = (
 )
 
 
+# User-facing forms of the conditional cancel primitives. Same rationale as
+# the order-side dataclasses above: the wire-shape TypedDicts (`one` /
+# `all_for_pair`) are awkward to construct inline, so callers pass these
+# dataclasses and `Exchange._build_cancel_conditional_wire` translates
+# into the externally-tagged wire shape.
+
+
+@dataclass(frozen=True)
+class ConditionalOrderRef:
+    """User-facing form of CancelConditionalOrderRequest::One — a single conditional order."""
+
+    pair_id: PairId
+    trigger_direction: TriggerDirection
+
+
+@dataclass(frozen=True)
+class AllForPair:
+    """User-facing form of CancelConditionalOrderRequest::AllForPair — every CO for one pair."""
+
+    pair_id: PairId
+
+
+CancelConditionalSpec = ConditionalOrderRef | AllForPair | Literal["all"]
+
+
 class ConditionalOrder(TypedDict):
     order_id: ConditionalOrderId
     size: Quantity | None

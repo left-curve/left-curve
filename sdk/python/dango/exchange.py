@@ -15,9 +15,13 @@ from dango.utils.constants import (
 from dango.utils.signing import Secp256k1Wallet, SingleSigner, Wallet
 from dango.utils.types import (
     Addr,
+    AllForPair,
+    CancelConditionalOrderRequest,
+    CancelConditionalSpec,
     CancelOrderRequest,
     ChildOrder,
     ClientOrderIdRef,
+    ConditionalOrderRef,
     Message,
     OrderId,
     OrderKind,
@@ -28,6 +32,7 @@ from dango.utils.types import (
     SubmitOrCancelOrderRequest,
     SubmitOrderRequest,
     TimeInForce,
+    TriggerDirection,
     dango_decimal,
 )
 
@@ -425,4 +430,96 @@ class Exchange(API):
             reduce_only=reduce_only,
             tp=tp,
             sl=sl,
+        )
+
+    # --- Conditional orders (TP/SL) ------------------------------------------
+
+    def _build_cancel_conditional_wire(
+        self,
+        spec: CancelConditionalSpec,
+    ) -> CancelConditionalOrderRequest:
+        """Construct the wire-shape CancelConditionalOrderRequest from a user-facing spec."""
+        # Mirror `_build_cancel_order_wire`: bare-string variant first,
+        # dataclass variants next, defensive raise for off-types.
+        if spec == "all":
+            return "all"
+        if isinstance(spec, ConditionalOrderRef):
+            return cast(
+                "CancelConditionalOrderRequest",
+                {
+                    "one": {
+                        "pair_id": spec.pair_id,
+                        "trigger_direction": spec.trigger_direction.value,
+                    },
+                },
+            )
+        if isinstance(spec, AllForPair):
+            return cast(
+                "CancelConditionalOrderRequest",
+                {"all_for_pair": {"pair_id": spec.pair_id}},
+            )
+        # Defensive runtime guard for callers that bypass the type
+        # checker. Mirrors the friendly-error pattern elsewhere in
+        # this module (cf. `deposit_margin`'s type check).
+        raise TypeError(  # pragma: no cover - static types prevent reaching this
+            f"unsupported cancel_conditional_order spec: {type(spec).__name__}",
+        )
+
+    def submit_conditional_order(
+        self,
+        pair_id: PairId,
+        size: float | int | str | Decimal | None,
+        trigger_price: float | int | str | Decimal,
+        trigger_direction: TriggerDirection,
+        max_slippage: float | int | str | Decimal,
+    ) -> dict[str, Any]:
+        """Place a conditional (TP/SL) order; reduce-only is implicit. size=None closes all."""
+        # Per the Rust comment on TraderMsg::SubmitConditionalOrder, the
+        # caller is responsible for the size sign: negative closes a
+        # long (sells), positive closes a short (buys). `None` means
+        # "close the entire position at trigger time" — distinct from
+        # zero (which is ambiguous and rejected). Reduce-only is NOT a
+        # parameter because conditional orders are always reduce-only
+        # by construction.
+        size_str: str | None
+        if size is None:
+            size_str = None
+        else:
+            size_str = dango_decimal(size)
+            # Same zero-guard rationale as `_build_submit_order_wire`:
+            # `dango_decimal` collapses every zero-equivalent input to
+            # `"0.000000"`, so the Decimal compare is unambiguous.
+            if Decimal(size_str) == 0:
+                raise ValueError(
+                    "conditional order size must be non-zero or None"
+                    " (None = close entire position)",
+                )
+        # Snake_case keys match the contract; `.value` unwraps the
+        # StrEnum to a plain str so `json.dumps` doesn't emit a
+        # `"TriggerDirection.ABOVE"` literal.
+        inner: dict[str, Any] = {
+            "submit_conditional_order": {
+                "pair_id": pair_id,
+                "size": size_str,
+                "trigger_price": dango_decimal(trigger_price),
+                "trigger_direction": trigger_direction.value,
+                "max_slippage": dango_decimal(max_slippage),
+            },
+        }
+        return self._send_action([self._wrap_trade_msg(inner)])
+
+    def cancel_conditional_order(
+        self,
+        spec: CancelConditionalSpec,
+    ) -> dict[str, Any]:
+        """Cancel a conditional order by ref, all-for-pair, or 'all' for every CO."""
+        # Mirrors `cancel_order`: the helper handles the three
+        # externally-tagged variants (bare string `"all"` / `{"one":
+        # {...}}` / `{"all_for_pair": {...}}`); we just wrap and send.
+        return self._send_action(
+            [
+                self._wrap_trade_msg(
+                    {"cancel_conditional_order": self._build_cancel_conditional_wire(spec)},
+                ),
+            ],
         )
