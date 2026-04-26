@@ -29,9 +29,13 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.sdist.force-include]
-"../rust/src/schemas/queries/queryStatus.graphql"     = "dango/_graphql/queries/queryStatus.graphql"
-"../rust/src/schemas/queries/queryApp.graphql"        = "dango/_graphql/queries/queryApp.graphql"
-"../rust/src/schemas/queries/simulate.graphql"        = "dango/_graphql/queries/simulate.graphql"
+"../rust/src/schemas/queries/queryStatus.graphql"       = "dango/_graphql/queries/queryStatus.graphql"
+"../rust/src/schemas/queries/queryApp.graphql"          = "dango/_graphql/queries/queryApp.graphql"
+"../rust/src/schemas/queries/simulate.graphql"          = "dango/_graphql/queries/simulate.graphql"
+"../rust/src/schemas/queries/perpsCandles.graphql"      = "dango/_graphql/queries/perpsCandles.graphql"
+"../rust/src/schemas/queries/perpsEvents.graphql"       = "dango/_graphql/queries/perpsEvents.graphql"
+"../rust/src/schemas/queries/perpsPairStats.graphql"    = "dango/_graphql/queries/perpsPairStats.graphql"
+"../rust/src/schemas/queries/allPerpsPairStats.graphql" = "dango/_graphql/queries/allPerpsPairStats.graphql"
 "../rust/src/schemas/mutations/broadcastTxSync.graphql" = "dango/_graphql/mutations/broadcastTxSync.graphql"
 
 [dependency-groups]

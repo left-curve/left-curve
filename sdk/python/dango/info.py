@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from importlib.resources import files
 from typing import Any, Final, cast
 
@@ -9,12 +10,19 @@ from dango.api import API
 from dango.utils.constants import PERPS_CONTRACT_MAINNET
 from dango.utils.types import (
     Addr,
+    CandleInterval,
+    Connection,
     LiquidityDepthResponse,
     OrderId,
+    PageInfo,
     PairId,
     PairParam,
     PairState,
     Param,
+    PerpsCandle,
+    PerpsEvent,
+    PerpsEventSortBy,
+    PerpsPairStats,
     State,
     Tx,
     UnsignedTx,
@@ -35,6 +43,76 @@ _QUERY_SIMULATE: Final[str] = _QUERIES.joinpath("simulate.graphql").read_text(en
 _MUTATION_BROADCAST_TX_SYNC: Final[str] = _MUTATIONS.joinpath("broadcastTxSync.graphql").read_text(
     encoding="utf-8"
 )
+
+# Indexer-side documents (Phase 8). These run against the indexer DB rather
+# than the chain's `query_app` endpoint, but the transport is the same
+# /graphql POST so they sit alongside the chain queries above.
+_QUERY_PERPS_CANDLES: Final[str] = _QUERIES.joinpath("perpsCandles.graphql").read_text(
+    encoding="utf-8"
+)
+_QUERY_PERPS_EVENTS: Final[str] = _QUERIES.joinpath("perpsEvents.graphql").read_text(
+    encoding="utf-8"
+)
+_QUERY_PERPS_PAIR_STATS: Final[str] = _QUERIES.joinpath("perpsPairStats.graphql").read_text(
+    encoding="utf-8"
+)
+_QUERY_ALL_PERPS_PAIR_STATS: Final[str] = _QUERIES.joinpath("allPerpsPairStats.graphql").read_text(
+    encoding="utf-8"
+)
+
+
+def _make_page_info(d: dict[str, Any]) -> PageInfo:
+    """Convert a wire `pageInfo` dict (camelCase) to the snake_case `PageInfo` dataclass."""
+    # `PageInfo` is one of the only places we cross the indexer-wire/Python
+    # convention boundary (see the section comment in `dango/utils/types.py`).
+    # Everything else (PerpsCandle, PerpsEvent, ...) keeps the camelCase wire
+    # shape verbatim, so this helper is the single rename point.
+    return PageInfo(
+        has_previous_page=d["hasPreviousPage"],
+        has_next_page=d["hasNextPage"],
+        start_cursor=d.get("startCursor"),
+        end_cursor=d.get("endCursor"),
+    )
+
+
+def _make_connection(d: dict[str, Any], node_key: str = "nodes") -> Connection[Any]:
+    """Wrap a wire `Connection`-shaped dict in a typed `Connection[Any]` dataclass."""
+    # `node_key` is parameterized only because GraphQL technically permits a
+    # connection's nodes field to be aliased; in practice every document we
+    # vendor uses the literal `nodes`. We don't narrow the type parameter
+    # here (returning `Connection[Any]`) — callers `cast()` to the precise
+    # `Connection[PerpsCandle]` / `Connection[PerpsEvent]` to avoid
+    # duplicating the helper for each node type.
+    return Connection(
+        nodes=d[node_key],
+        page_info=_make_page_info(d["pageInfo"]),
+    )
+
+
+def paginate_all[T](
+    fetch_page: Callable[[str | None, int], Connection[T]],
+    *,
+    page_size: int = 100,
+) -> Iterator[T]:
+    """Yield every node across all forward-paginated pages."""
+    # Forward-only pagination: walk via after-cursor + first-count. Mirrors
+    # `sdk/rust/src/client.rs::paginate_all` but returns a generator rather
+    # than a `Vec` so memory stays bounded over very long event histories.
+    # Backward pagination (last/before) is intentionally out of scope for v1
+    # — callers can fall back to the underlying `perps_events` query if they
+    # need a tail-anchored walk.
+    after: str | None = None
+    while True:
+        page = fetch_page(after, page_size)
+        yield from page.nodes
+        # Stop when the chain says no more, or when (defensively) the cursor
+        # is missing — both indicate the page is the last. The end-cursor
+        # check guards against a non-conforming server that returns
+        # `has_next_page=true` but no cursor: rather than spin on the same
+        # page forever, we treat it as terminal.
+        if not page.page_info.has_next_page or page.page_info.end_cursor is None:
+            break
+        after = page.page_info.end_cursor
 
 
 class Info(API):
@@ -312,4 +390,115 @@ class Info(API):
                 self.perps_contract,
                 {"volume": {"user": user, "since": since}},
             ),
+        )
+
+    # --- Indexer queries -----------------------------------------------------
+    #
+    # These methods query the indexer GraphQL API rather than the chain's
+    # `query_app` endpoint. Wire keys are camelCase (per the .graphql
+    # documents) — see the convention-boundary comment in
+    # `dango/utils/types.py`. The TypedDicts returned here keep camelCase
+    # attribute names; only `Connection`/`PageInfo` cross over to snake_case.
+
+    def perps_candles(
+        self,
+        pair_id: PairId,
+        interval: CandleInterval,
+        *,
+        later_than: str | None = None,
+        earlier_than: str | None = None,
+        first: int | None = None,
+        after: str | None = None,
+    ) -> Connection[PerpsCandle]:
+        """OHLCV candles for one pair at one interval; cursor-paginated."""
+        # `interval.value` rather than `interval` because the GraphQL enum
+        # variable is typed `CandleInterval!` and json-encodes as the bare
+        # uppercase name (e.g. `"ONE_MINUTE"`). Passing the StrEnum object
+        # directly would serialize as the enum's repr, not the wire form.
+        data = self.query(
+            _QUERY_PERPS_CANDLES,
+            variables={
+                "pairId": pair_id,
+                "interval": interval.value,
+                "laterThan": later_than,
+                "earlierThan": earlier_than,
+                "first": first,
+                "after": after,
+            },
+        )
+        return cast("Connection[PerpsCandle]", _make_connection(data["perpsCandles"]))
+
+    def perps_events(
+        self,
+        *,
+        user_addr: Addr | None = None,
+        event_type: str | None = None,
+        pair_id: PairId | None = None,
+        block_height: int | None = None,
+        first: int | None = None,
+        after: str | None = None,
+        sort_by: PerpsEventSortBy = PerpsEventSortBy.BLOCK_HEIGHT_DESC,
+    ) -> Connection[PerpsEvent]:
+        """Indexer events stream with filter + sort knobs; cursor-paginated."""
+        # The default sort matches the indexer's own default ordering
+        # (`BLOCK_HEIGHT_DESC`), so the most recent events come first when
+        # the caller doesn't override. `event_type` is left as a free-form
+        # string here because the indexer schema does not constrain it to an
+        # enum on the GraphQL side.
+        data = self.query(
+            _QUERY_PERPS_EVENTS,
+            variables={
+                "userAddr": user_addr,
+                "eventType": event_type,
+                "pairId": pair_id,
+                "blockHeight": block_height,
+                "first": first,
+                "after": after,
+                "sortBy": sort_by.value,
+            },
+        )
+        return cast("Connection[PerpsEvent]", _make_connection(data["perpsEvents"]))
+
+    def perps_pair_stats(self, pair_id: PairId) -> PerpsPairStats:
+        """24h price/volume stats for one pair."""
+        # The vendored `perpsPairStats.graphql` document declares its
+        # variable as `$pair_id` (snake_case) — this is an anomaly versus
+        # sibling indexer queries that use `$pairId`. We send `pair_id`
+        # verbatim to match the document; if the document is regenerated to
+        # camelCase upstream, this kwarg key needs to flip too.
+        data = self.query(_QUERY_PERPS_PAIR_STATS, variables={"pair_id": pair_id})
+        return cast("PerpsPairStats", data["perpsPairStats"])
+
+    def all_perps_pair_stats(self) -> list[PerpsPairStats]:
+        """24h stats for every active pair."""
+        data = self.query(_QUERY_ALL_PERPS_PAIR_STATS)
+        return cast("list[PerpsPairStats]", data["allPerpsPairStats"])
+
+    def perps_events_all(
+        self,
+        *,
+        user_addr: Addr | None = None,
+        event_type: str | None = None,
+        pair_id: PairId | None = None,
+        block_height: int | None = None,
+        sort_by: PerpsEventSortBy = PerpsEventSortBy.BLOCK_HEIGHT_DESC,
+        page_size: int = 100,
+    ) -> Iterator[PerpsEvent]:
+        """Iterate every perps event matching the filter, walking pages internally."""
+        # Thin wrapper over `paginate_all`: rebinds the filter kwargs at
+        # each fetch so they're constant across pages, and lets the cursor
+        # walker provide `(after, first)` per call. Returns the generator
+        # eagerly so callers can `for event in info.perps_events_all(...)`
+        # without an extra `()` step.
+        return paginate_all(
+            lambda after, first: self.perps_events(
+                user_addr=user_addr,
+                event_type=event_type,
+                pair_id=pair_id,
+                block_height=block_height,
+                first=first,
+                after=after,
+                sort_by=sort_by,
+            ),
+            page_size=page_size,
         )

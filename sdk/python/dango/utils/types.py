@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
-from typing import Final, Literal, NewType, NotRequired, TypedDict
+from typing import Any, Final, Literal, NewType, NotRequired, TypedDict
 
 # --- Numeric helper ----------------------------------------------------------
 
@@ -122,6 +123,16 @@ class AccountStatus(StrEnum):
     INACTIVE = "Inactive"
     ACTIVE = "Active"
     FROZEN = "Frozen"
+
+
+class PerpsEventSortBy(StrEnum):
+    """`PerpsEventSortBy` enum from the indexer GraphQL schema."""
+
+    # The indexer accepts only these two values; the GraphQL schema does NOT
+    # expose ordering by other fields. `BLOCK_HEIGHT_DESC` is the server-side
+    # default, so the SDK mirrors that as the Python kwarg default too.
+    BLOCK_HEIGHT_ASC = "BLOCK_HEIGHT_ASC"
+    BLOCK_HEIGHT_DESC = "BLOCK_HEIGHT_DESC"
 
 
 # --- Auth: Key / Signature / Credential primitives ---------------------------
@@ -610,3 +621,110 @@ class FeeDistributed(TypedDict):
 class ReferralSet(TypedDict):
     referrer: UserIndex
     referee: UserIndex
+
+
+# --- Indexer types -----------------------------------------------------------
+#
+# Convention boundary: everything above this point talks to the perps smart
+# contract and uses snake_case keys (e.g. `pair_id`, `entry_price`) because
+# Rust serde encodes contract-side structs that way. Everything below talks
+# to the indexer GraphQL API, which speaks camelCase (e.g. `pairId`,
+# `volumeUsd`, `price24HAgo`). The TypedDicts below deliberately keep the
+# camelCase wire keys instead of auto-converting to snake_case for two
+# reasons:
+#
+#   1. Fields like `volume24H` and `price24HAgo` don't round-trip cleanly
+#      between camelCase and snake_case (the digit/letter boundary is
+#      ambiguous), so any auto-conversion would either drop or duplicate
+#      casing information.
+#   2. Keeping wire-shape == Python-shape lets `cast()` be a true no-op:
+#      the indexer JSON is already a valid `PerpsCandle`/`PerpsEvent` etc.,
+#      with no field renames at the boundary. Callers can treat dict keys
+#      as exactly what the GraphQL schema documents.
+#
+# `PageInfo` and `Connection[T]` are the only types in this section that use
+# snake_case — they're frozen dataclasses, not wire shapes. They're user-
+# facing control-flow types where Python convention wins, so we cross the
+# boundary once in `_make_page_info` / `_make_connection` and keep the
+# snake_case attribute names downstream.
+
+
+class PerpsCandle(TypedDict):
+    """One OHLCV candle from the indexer; keys are camelCase (wire shape)."""
+
+    pairId: str  # noqa: N815
+    interval: str  # `CandleInterval` enum value, e.g. "ONE_MINUTE".
+    minBlockHeight: int  # noqa: N815
+    maxBlockHeight: int  # noqa: N815
+    open: str  # 6-decimal `BigDecimal` string.
+    high: str
+    low: str
+    close: str
+    volume: str
+    volumeUsd: str  # noqa: N815
+    timeStart: str  # noqa: N815  # ISO-8601 datetime.
+    timeStartUnix: int  # noqa: N815  # Unix seconds.
+    timeEnd: str  # noqa: N815
+    timeEndUnix: int  # noqa: N815
+
+
+class PerpsEvent(TypedDict):
+    """One indexer event record; keys are camelCase (wire shape)."""
+
+    idx: int
+    blockHeight: int  # noqa: N815
+    txHash: str  # noqa: N815
+    eventType: str  # noqa: N815
+    userAddr: str  # noqa: N815
+    pairId: str  # noqa: N815
+    # The event payload is intentionally typed as an opaque dict because the
+    # shape varies by `eventType` (each variant of the Rust event enum
+    # serializes its own fields). Callers that want a typed view should
+    # match on `eventType` and re-cast `data` to the corresponding TypedDict
+    # from the events section above (e.g. `OrderFilled`, `Liquidated`).
+    data: dict[str, Any]
+    createdAt: str  # noqa: N815  # ISO-8601 datetime.
+
+
+class PerpsPairStats(TypedDict):
+    """24-hour price/volume stats for a pair; keys are camelCase (wire shape)."""
+
+    pairId: str  # noqa: N815
+    # `currentPrice`, `price24HAgo`, and `priceChange24H` can be null when
+    # the pair has no recorded trades in the lookback window, so the Python
+    # types are `str | None`.
+    currentPrice: str | None  # noqa: N815
+    price24HAgo: str | None  # noqa: N815
+    volume24H: str  # noqa: N815  # Always populated; defaults to "0" on no trades.
+    priceChange24H: str | None  # noqa: N815
+
+
+@dataclass(frozen=True)
+class PageInfo:
+    """Cursor-pagination metadata; mirrors the GraphQL `PageInfo` object."""
+
+    # `frozen=True` makes instances hashable and prevents accidental mutation
+    # of cursor state mid-iteration. snake_case attribute names follow Python
+    # convention because this is a user-facing dataclass, not a wire shape —
+    # see the convention-boundary comment at the top of this section.
+    has_previous_page: bool
+    has_next_page: bool
+    start_cursor: str | None
+    end_cursor: str | None
+
+
+@dataclass(frozen=True)
+class Connection[T]:
+    """A page of results plus its `PageInfo` cursors; generic over the node type."""
+
+    # Modelled as a frozen dataclass rather than a TypedDict because:
+    #   * Generic dataclasses pair naturally with PEP 695 syntax (`class
+    #     Connection[T]:`); the equivalent on a TypedDict requires more
+    #     ceremony with `Generic` plus a workaround for runtime subscripting.
+    #   * It pairs naturally with `PageInfo` (also a dataclass) so the two
+    #     user-facing types in this section share their idiomatic shape.
+    # No methods are defined here yet, but keeping it a dataclass leaves
+    # room to add e.g. `.is_last_page` or iteration helpers without
+    # rewriting callers.
+    nodes: list[T]
+    page_info: PageInfo
