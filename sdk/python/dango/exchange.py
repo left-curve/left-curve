@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, Literal, cast
 
 from dango.api import API
 from dango.info import Info
@@ -13,7 +13,23 @@ from dango.utils.constants import (
     SETTLEMENT_DENOM,
 )
 from dango.utils.signing import Secp256k1Wallet, SingleSigner, Wallet
-from dango.utils.types import Addr, Message, dango_decimal
+from dango.utils.types import (
+    Addr,
+    CancelOrderRequest,
+    ChildOrder,
+    ClientOrderIdRef,
+    Message,
+    OrderId,
+    OrderKind,
+    PairId,
+    Quantity,
+    SubmitAction,
+    SubmitOrCancelAction,
+    SubmitOrCancelOrderRequest,
+    SubmitOrderRequest,
+    TimeInForce,
+    dango_decimal,
+)
 
 if TYPE_CHECKING:
     from eth_account.signers.local import LocalAccount
@@ -191,3 +207,222 @@ class Exchange(API):
             },
         }
         return self._send_action([message])
+
+    # --- Orders --------------------------------------------------------------
+
+    def _build_submit_order_wire(
+        self,
+        pair_id: PairId,
+        size: float | int | str | Decimal,
+        kind: OrderKind,
+        *,
+        reduce_only: bool,
+        tp: ChildOrder | None,
+        sl: ChildOrder | None,
+    ) -> SubmitOrderRequest:
+        """Construct the wire-shape SubmitOrderRequest dict; rejects size==0."""
+        # Sign convention: positive = buy, negative = sell. Zero is
+        # meaningless (the contract would reject it; we fail fast
+        # client-side for a friendlier error). `dango_decimal` already
+        # rejects NaN/Inf inputs, so we don't pre-check those here.
+        size_str = dango_decimal(size)
+        # `dango_decimal` always pads to 6 dp, so a zero check on the
+        # Decimal-equivalent form is unambiguous regardless of input
+        # type (`0`, `0.0`, `"0"`, `Decimal("0")` all collapse to
+        # `"0.000000"`).
+        if Decimal(size_str) == 0:
+            raise ValueError("order size must be non-zero (positive=buy, negative=sell)")
+        # The TypedDict enforces snake_case keys at type-check time;
+        # we also rely on grug-derived enums serializing variant tags
+        # as snake_case (`market`/`limit`) — `rename_all = "snake_case"`
+        # is injected by `grug/macros/src/derive.rs:93`.
+        return SubmitOrderRequest(
+            pair_id=pair_id,
+            size=cast("Quantity", size_str),
+            kind=kind,
+            reduce_only=reduce_only,
+            tp=tp,
+            sl=sl,
+        )
+
+    def _build_cancel_order_wire(
+        self,
+        spec: OrderId | ClientOrderIdRef | Literal["all"],
+    ) -> CancelOrderRequest:
+        """Construct the wire-shape CancelOrderRequest from a user-facing spec."""
+        # The order of these branches matters: `OrderId` is
+        # `NewType("OrderId", str)` — at runtime it's a plain `str`,
+        # which would also match `spec == "all"`. So we test for the
+        # literal `"all"` FIRST, then the dataclass wrapper, and only
+        # then fall through to the OrderId path. Reversing this order
+        # would silently route `cancel_order("all")` through the
+        # `{"one": "all"}` branch, which the contract would reject.
+        if spec == "all":
+            return "all"
+        if isinstance(spec, ClientOrderIdRef):
+            # ClientOrderId is `Uint64` on the wire = base-10 decimal
+            # *string*. We accept an `int` for ergonomics (the user
+            # types `ClientOrderIdRef(value=7)`, not `"7"`) and
+            # stringify here. Negative values are caller error and
+            # would be rejected by the chain; we don't second-guess.
+            return cast("CancelOrderRequest", {"one_by_client_order_id": str(spec.value)})
+        # Treat any remaining value as an OrderId (a Uint64 string).
+        # We don't `isinstance(spec, str)`-guard because the type
+        # checker has already narrowed it to `OrderId` (= str) here;
+        # adding a runtime check would only obscure that.
+        return cast("CancelOrderRequest", {"one": str(spec)})
+
+    def _wrap_trade_msg(self, inner: dict[str, Any]) -> Message:
+        """Wrap a TraderMsg payload in an execute message bound to the perps contract."""
+        # Orders never carry funds: position adjustments draw from the
+        # caller's existing margin sub-account balance. `funds={}`
+        # mirrors `withdraw_margin` — only `deposit_margin` uses a
+        # non-empty funds map.
+        return {
+            "execute": {
+                "contract": self._perps_contract,
+                "msg": {"trade": inner},
+                "funds": {},
+            },
+        }
+
+    def submit_order(
+        self,
+        pair_id: PairId,
+        size: float | int | str | Decimal,
+        kind: OrderKind,
+        *,
+        reduce_only: bool = False,
+        tp: ChildOrder | None = None,
+        sl: ChildOrder | None = None,
+    ) -> dict[str, Any]:
+        """Place a single perps order; size is signed (+ buy / − sell)."""
+        request = self._build_submit_order_wire(
+            pair_id,
+            size,
+            kind,
+            reduce_only=reduce_only,
+            tp=tp,
+            sl=sl,
+        )
+        return self._send_action([self._wrap_trade_msg({"submit_order": request})])
+
+    def cancel_order(
+        self,
+        spec: OrderId | ClientOrderIdRef | Literal["all"],
+    ) -> dict[str, Any]:
+        """Cancel by chain OrderId, ClientOrderIdRef, or 'all' for every open order."""
+        # The CancelOrderRequest wire form is an externally-tagged
+        # enum, which serde encodes as either a single-key sub-object
+        # (`One`/`OneByClientOrderId`) or a bare string (`All`). The
+        # helper picks the right shape; we just hand the result to
+        # `_wrap_trade_msg`.
+        return self._send_action(
+            [self._wrap_trade_msg({"cancel_order": self._build_cancel_order_wire(spec)})],
+        )
+
+    def batch_update_orders(
+        self,
+        actions: list[SubmitOrCancelAction],
+    ) -> dict[str, Any]:
+        """Submit and/or cancel multiple orders atomically in one transaction."""
+        # The contract enforces `1 <= len <= max_action_batch_size`
+        # (governance-tunable, fixture default 5). We only enforce
+        # non-empty client-side; an over-sized batch is rejected by
+        # the chain rather than the SDK so we don't have to track
+        # governance changes locally.
+        if not actions:
+            raise ValueError("batch_update_orders requires at least one action")
+        wire: list[SubmitOrCancelOrderRequest] = []
+        for action in actions:
+            if isinstance(action, SubmitAction):
+                wire.append(
+                    cast(
+                        "SubmitOrCancelOrderRequest",
+                        {
+                            "submit": self._build_submit_order_wire(
+                                action.pair_id,
+                                action.size,
+                                action.kind,
+                                reduce_only=action.reduce_only,
+                                tp=action.tp,
+                                sl=action.sl,
+                            ),
+                        },
+                    ),
+                )
+            else:
+                # `CancelAction` is the only other variant of the
+                # `SubmitOrCancelAction` union, so this branch is
+                # exhaustive — but we don't `assert isinstance(...)`
+                # because mypy already narrows `action` to
+                # `CancelAction` here.
+                wire.append(
+                    cast(
+                        "SubmitOrCancelOrderRequest",
+                        {"cancel": self._build_cancel_order_wire(action.spec)},
+                    ),
+                )
+        return self._send_action([self._wrap_trade_msg({"batch_update_orders": wire})])
+
+    # --- Convenience helpers -------------------------------------------------
+
+    def submit_market_order(
+        self,
+        pair_id: PairId,
+        size: float | int | str | Decimal,
+        *,
+        max_slippage: float | str | Decimal = 0.01,
+        reduce_only: bool = False,
+        tp: ChildOrder | None = None,
+        sl: ChildOrder | None = None,
+    ) -> dict[str, Any]:
+        """Place a market order with a slippage cap (default 1%)."""
+        # `max_slippage` is a `Dimensionless` — same 6-decimal string
+        # encoding as USD/quantity values. Passing 0.01 = 1%.
+        kind = cast(
+            "OrderKind",
+            {"market": {"max_slippage": dango_decimal(max_slippage)}},
+        )
+        return self.submit_order(
+            pair_id,
+            size,
+            kind,
+            reduce_only=reduce_only,
+            tp=tp,
+            sl=sl,
+        )
+
+    def submit_limit_order(
+        self,
+        pair_id: PairId,
+        size: float | int | str | Decimal,
+        limit_price: float | str | Decimal,
+        *,
+        time_in_force: TimeInForce = TimeInForce.GTC,
+        client_order_id: int | None = None,
+        reduce_only: bool = False,
+        tp: ChildOrder | None = None,
+        sl: ChildOrder | None = None,
+    ) -> dict[str, Any]:
+        """Place a limit order; defaults to GTC and no client-side id."""
+        # Store `time_in_force.value` rather than the enum itself so
+        # downstream `json.dumps` and equality assertions both treat
+        # it as a plain str ("GTC"/"IOC"/"POST"). `StrEnum` would
+        # round-trip through `json.dumps` correctly anyway, but the
+        # GraphQL HTTP layer doesn't always, and identity assertions
+        # in tests need the unwrapped value.
+        limit_payload: dict[str, Any] = {
+            "limit_price": dango_decimal(limit_price),
+            "time_in_force": time_in_force.value,
+            "client_order_id": str(client_order_id) if client_order_id is not None else None,
+        }
+        kind = cast("OrderKind", {"limit": limit_payload})
+        return self.submit_order(
+            pair_id,
+            size,
+            kind,
+            reduce_only=reduce_only,
+            tp=tp,
+            sl=sl,
+        )

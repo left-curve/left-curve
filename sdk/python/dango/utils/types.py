@@ -317,6 +317,50 @@ class _SubmitOrCancelCancel(TypedDict):
 SubmitOrCancelOrderRequest = _SubmitOrCancelSubmit | _SubmitOrCancelCancel
 
 
+# User-facing forms of the cancel/batch primitives. The wire-shape TypedDicts
+# above are awkward to construct inline (you'd have to remember whether the
+# inner key is `one` or `one_by_client_order_id`, and whether to wrap in
+# `{"submit": ...}` or `{"cancel": ...}`); the dataclasses below are what
+# callers actually pass into `Exchange.batch_update_orders` and
+# `Exchange.cancel_order`. Exchange's private helpers translate them into the
+# externally-tagged wire shape — so this is a pure ergonomics layer.
+#
+# `ClientOrderIdRef` is a tagged wrapper rather than a `NewType` because
+# `OrderId` is already `NewType("OrderId", str)`, and at runtime both reduce
+# to plain `str`/`int`. Without the wrapper, `cancel_order(7)` would be
+# ambiguous (is 7 an OrderId or a ClientOrderId?). The dataclass forces an
+# explicit choice at the call site without paying for inheritance.
+
+
+@dataclass(frozen=True)
+class ClientOrderIdRef:
+    """Tagged wrapper around a client-assigned order id (Uint64 on the wire)."""
+
+    value: int
+
+
+@dataclass(frozen=True)
+class SubmitAction:
+    """User-facing form of SubmitOrderRequest for batch_update_orders."""
+
+    pair_id: PairId
+    size: float | int | str | Decimal
+    kind: OrderKind
+    reduce_only: bool = False
+    tp: ChildOrder | None = None
+    sl: ChildOrder | None = None
+
+
+@dataclass(frozen=True)
+class CancelAction:
+    """User-facing form of CancelOrderRequest for batch_update_orders."""
+
+    spec: OrderId | ClientOrderIdRef | Literal["all"]
+
+
+SubmitOrCancelAction = SubmitAction | CancelAction
+
+
 class _CancelConditionalOnePayload(TypedDict):
     pair_id: PairId
     trigger_direction: TriggerDirection
