@@ -7,6 +7,7 @@ requires-python = ">=3.14"
 dependencies    = [
     "requests>=2.31",
     "eth-account>=0.10",
+    "websocket-client>=1.5",
 ]
 
 [build-system]
