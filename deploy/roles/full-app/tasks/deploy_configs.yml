@@ -1,6 +1,6 @@
 - set_fact:
     indexer_url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}"
-    faucet_url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}"
+    faucet_url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint"
     quest_url: "https://quest-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/to_fix"
     up_url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/up"
     points_url: "https://points-{{ dango_network }}.{{ dango_domain }}"
@@ -8,7 +8,7 @@
 
 - set_fact:
     indexer_url: "https://api-{{ dango_network }}.{{ dango_domain }}"
-    faucet_url: "https://faucet-{{ dango_network }}.{{ dango_domain }}"
+    faucet_url: "https://faucet-{{ dango_network }}.{{ dango_domain }}/mint"
     quest_url: "https://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
     up_url: "https://api-{{ dango_network }}.{{ dango_domain }}/up"
     points_url: "https://points-{{ dango_network }}.{{ dango_domain }}"
