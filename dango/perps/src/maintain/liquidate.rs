@@ -811,7 +811,7 @@ fn execute_adl(
             None,
         )?;
 
-        total_user_funding.checked_add_assign(user_settlement.funding)?;
+        total_user_funding.checked_add_assign(user_settlement.pnl.funding)?;
 
         all_volumes
             .entry(user)
@@ -876,27 +876,25 @@ fn execute_adl(
                 state,
                 user,
                 user_state,
-                user_settlement.pnl,
+                user_settlement.pnl.total()?,
                 user_settlement.fee,
                 counter_user,
                 &mut counter_state,
-                counter_settlement.pnl,
+                counter_settlement.pnl.total()?,
                 counter_settlement.fee,
                 vault_state_opt,
             )?;
         }
 
-        // Emit Deleveraged event for counter-party. Split funding off the
-        // total so `realized_pnl` is the closing-only component (v0.17.0+).
+        // Emit Deleveraged event for counter-party. The closing /
+        // funding split lives on `pnl` directly (no inline arithmetic).
         events.push(Deleveraged {
             user: counter_user,
             pair_id: pair_id.clone(),
             closing_size: user_close.checked_neg()?,
             fill_price: bankruptcy_price,
-            realized_pnl: counter_settlement
-                .pnl
-                .checked_sub(counter_settlement.funding)?,
-            realized_funding: Some(counter_settlement.funding),
+            realized_pnl: counter_settlement.pnl.closing,
+            realized_funding: Some(counter_settlement.pnl.funding),
         })?;
 
         remaining = remaining.checked_sub(user_close)?;
