@@ -576,7 +576,21 @@ type PerpsTrade {
 	fillSize: String!
 	closingSize: String!
 	openingSize: String!
+	"""
+	Closing PnL on the fill (price movement on the closed portion).
+	Prior to v0.17.0 (exclusive) this also included funding settled
+	on the user's pre-existing position; from v0.17.0 (inclusive)
+	onward, that funding component is reported separately as
+	`realized_funding`.
+	"""
 	realizedPnl: String!
+	"""
+	Funding settled on the user's pre-existing position immediately
+	before this fill. `None` for trades executed before v0.17.0 —
+	funding was reported as part of `realized_pnl` prior to that
+	release.
+	"""
+	realizedFunding: String
 	fee: String!
 	createdAt: String!
 	blockHeight: Int!
