@@ -1649,11 +1649,23 @@ pub struct Deleveraged {
     /// Fill price (the liquidated user's bankruptcy price).
     pub fill_price: UsdPrice,
 
-    /// PnL realized by the counter-party from this ADL fill. Includes
-    /// both the closing PnL on the ADL fill and the funding settled on
-    /// the counter-party's pre-existing position immediately before the
-    /// fill is applied. ADL fills incur no trading fees.
+    /// PnL realized by the counter-party from this ADL fill from price
+    /// movement on the closed portion. ADL fills incur no trading fees.
+    ///
+    /// Prior to v0.17.0 (exclusive) this field also bundled the funding
+    /// settled on the counter-party's pre-existing position immediately
+    /// before the fill. From v0.17.0 (inclusive) onward, that funding
+    /// component is reported separately as `realized_funding` and is no
+    /// longer included here.
     pub realized_pnl: UsdValue,
+
+    /// Funding settled on the counter-party's pre-existing position
+    /// immediately before this ADL fill is applied. Zero if the
+    /// counter-party had no funding accrued in this pair.
+    ///
+    /// `None` for ADL fills executed before v0.17.0 — funding was
+    /// reported as part of `realized_pnl` prior to that release.
+    pub realized_funding: Option<UsdValue>,
 }
 
 /// Event indicating the insurance fund absorbed bad debt from a liquidation.

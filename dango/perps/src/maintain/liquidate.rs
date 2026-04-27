@@ -886,13 +886,17 @@ fn execute_adl(
             )?;
         }
 
-        // Emit Deleveraged event for counter-party.
+        // Emit Deleveraged event for counter-party. Split funding off the
+        // total so `realized_pnl` is the closing-only component (v0.17.0+).
         events.push(Deleveraged {
             user: counter_user,
             pair_id: pair_id.clone(),
             closing_size: user_close.checked_neg()?,
             fill_price: bankruptcy_price,
-            realized_pnl: counter_settlement.pnl,
+            realized_pnl: counter_settlement
+                .pnl
+                .checked_sub(counter_settlement.funding)?,
+            realized_funding: Some(counter_settlement.funding),
         })?;
 
         remaining = remaining.checked_sub(user_close)?;

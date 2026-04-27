@@ -562,6 +562,7 @@ fn liquidation_with_adl() {
     // funding component is `Some(ZERO)` and the closing-only `adl_realized_pnl`
     // matches the full margin delta of -$1,090.
     let liquidated_events = liq_events
+        .clone()
         .search_event::<CheckedContractEvent>()
         .with_predicate(|e| e.ty == "liquidated")
         .take()
@@ -584,6 +585,35 @@ fn liquidation_with_adl() {
         liq.adl_realized_funding,
         Some(UsdValue::ZERO),
         "v0.17.0+ Liquidated events always carry Some(adl_realized_funding); \
+         with no funding accrued it must be Some(ZERO)"
+    );
+
+    // The Deleveraged event for the counter-party (Trader B) should
+    // mirror the split: closing-only `realized_pnl = +$1,090` (Trader B
+    // shorted at $2,000 and got bought back at $1,782 for 5 ETH) and
+    // `realized_funding = Some(ZERO)`.
+    let deleveraged_events = liq_events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "deleveraged")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<Deleveraged>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        deleveraged_events.len(),
+        1,
+        "exactly one Deleveraged event expected (single counter-party)"
+    );
+    let dlv = &deleveraged_events[0];
+    assert_eq!(dlv.user, accounts.user3.address());
+    assert_eq!(dlv.fill_price, UsdPrice::new_int(1_782));
+    assert_eq!(dlv.realized_pnl, UsdValue::new_int(1_090));
+    assert_eq!(
+        dlv.realized_funding,
+        Some(UsdValue::ZERO),
+        "v0.17.0+ Deleveraged events always carry Some(realized_funding); \
          with no funding accrued it must be Some(ZERO)"
     );
 
