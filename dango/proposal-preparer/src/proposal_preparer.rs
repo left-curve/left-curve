@@ -1,5 +1,8 @@
 use {
-    crate::pyth_handler::{PythHandler, QueryPythId},
+    crate::{
+        maker_priority_handler::MakerPriorityHandler,
+        pyth_handler::{PythHandler, QueryPythId},
+    },
     grug::{Lengthy, NonEmpty, QuerierWrapper, StdError},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
@@ -12,6 +15,7 @@ pub struct ProposalPreparer<P>
 where
     P: PythClientTrait + QueryPythId,
 {
+    maker_priority: MakerPriorityHandler,
     pyth: PythHandler<P>,
 }
 
@@ -21,6 +25,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
+            maker_priority: self.maker_priority,
             pyth: self.pyth.clone(),
         }
     }
@@ -34,6 +39,7 @@ impl ProposalPreparer<PythClient> {
         T: ToString,
     {
         Self {
+            maker_priority: MakerPriorityHandler,
             pyth: PythHandler::new(endpoints, access_token),
         }
     }
@@ -43,6 +49,7 @@ impl ProposalPreparer<PythClientCache> {
     pub fn new_with_cache() -> Self {
         // `LAZER_ENDPOINTS_TEST` is a static non-empty array.
         Self {
+            maker_priority: MakerPriorityHandler,
             pyth: PythHandler::new_with_cache(
                 NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
                 "lazer_token",
@@ -64,6 +71,12 @@ where
         txs: Vec<Bytes>,
         max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {
+        // Maker-priority promotion runs first; Pyth runs second so the
+        // oracle-update tx ends up at index 0, ahead of the priority maker
+        // traffic. Final layout: `[oracle, priority_makers..., others...]`.
+        let txs = self
+            .maker_priority
+            .prepare_proposal(querier, txs, max_tx_bytes)?;
         self.pyth.prepare_proposal(querier, txs, max_tx_bytes)
     }
 }
