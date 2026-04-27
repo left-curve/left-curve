@@ -955,14 +955,25 @@
         "declarations": ["input network"],
         "selectors": ["network"],
         "match": {
-          "network=11155111": "6 blocks | 1-2 minutes",
-          "network=1": "6 blocks | 3-6 minutes",
+          "network=11155111": "6 blocks | 1-2 minutes",
+          "network=1": "6 blocks | 3-6 minutes",
           "network=8453": "3-6 minutes",
           "network=42161": "3-6 minutes"
         }
       }
     ],
-    "withdrawTimeArrival": "1 block | 0.4 second",
+    "withdrawTimeArrival": [
+      {
+        "declarations": ["input network"],
+        "selectors": ["network"],
+        "match": {
+          "network=11155111": "1 block | 0.4 second",
+          "network=1": "1 block | 0.4 second",
+          "network=8453": "1 block | 0.4 second",
+          "network=42161": "1 block | 0.4 second"
+        }
+      }
+    ],
     "setDestinationAddress": "Set Destination Address",
     "destinationWallet": "Destination Wallet",
     "enterAddressManually": "Enter Address Manually",
