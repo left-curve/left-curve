@@ -1444,6 +1444,7 @@ The `data` field contains the event-specific payload as JSON. For example, an `o
   "closing_size": "0.000000",
   "opening_size": "0.100000",
   "realized_pnl": "0.000000",
+  "realized_funding": "0.000000",
   "fee": "6.500000",
   "client_order_id": "42",
   "fill_id": "17",
@@ -2200,11 +2201,11 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Order events
 
-| Event             | Fields                                                                                                                                                       | Description                     |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?` | Order partially or fully filled |
-| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                                     | Limit order placed on book      |
-| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                                  | Order removed from book         |
+| Event             | Fields                                                                                                                                                                            | Description                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `order_filled`    | `order_id`, `pair_id`, `user`, `fill_price`, `fill_size`, `closing_size`, `opening_size`, `realized_pnl`, `realized_funding?`, `fee`, `client_order_id?`, `fill_id?`, `is_maker?` | Order partially or fully filled |
+| `order_persisted` | `order_id`, `pair_id`, `user`, `limit_price`, `size`, `client_order_id?`                                                                                                          | Limit order placed on book      |
+| `order_removed`   | `order_id`, `pair_id`, `user`, `reason`, `client_order_id?`                                                                                                                       | Order removed from book         |
 
 `client_order_id` is `null` if the order was submitted without one. Off-chain consumers can use it to correlate fills, persistence, and removal with the originally-submitted client id.
 
@@ -2212,7 +2213,11 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 `is_maker` is `true` for the maker side of a match and `false` for the taker side. Within a single match's pair of `order_filled` events (sharing one `fill_id`), exactly one carries `is_maker = true` and one carries `is_maker = false`. `is_maker` is `null` for trades executed before v0.16.0 — the maker/taker flag was not recorded prior to that release.
 
-`realized_pnl` on `order_filled`, `deleveraged`, and `liquidated` (as `adl_realized_pnl`) includes both the closing PnL on the fill and the funding settled on the user's pre-existing position immediately before the fill is applied. Trading fees are reported separately in the `fee` field on `order_filled`; ADL and deleverage fills incur no trading fees.
+`realized_pnl` on `order_filled` and `deleveraged` (and `adl_realized_pnl` on `liquidated`) reports the closing PnL on the fill — price movement on the closed portion. The funding settled on the user's pre-existing position immediately before the fill is reported separately as `realized_funding` (or `adl_realized_funding` on `liquidated`).
+
+`realized_funding` is `null` for events emitted before v0.17.0 — funding was bundled into `realized_pnl` (and `adl_realized_pnl`) prior to that release. From v0.17.0 onward the field is always present and `realized_pnl + realized_funding` equals the pre-v0.17.0 lump sum.
+
+Trading fees are reported separately in the `fee` field on `order_filled`; ADL and deleverage fills incur no trading fees.
 
 ### Conditional order events
 
@@ -2224,11 +2229,11 @@ The perps contract emits the following events. These can be queried via `perpsEv
 
 ### Liquidation events
 
-| Event              | Fields                                                          | Description                      |
-| ------------------ | --------------------------------------------------------------- | -------------------------------- |
-| `liquidated`       | `user`, `pair_id`, `adl_size`, `adl_price`, `adl_realized_pnl`  | Position liquidated in a pair    |
-| `deleveraged`      | `user`, `pair_id`, `closing_size`, `fill_price`, `realized_pnl` | Counter-party hit by ADL         |
-| `bad_debt_covered` | `liquidated_user`, `amount`, `insurance_fund_remaining`         | Insurance fund absorbed bad debt |
+| Event              | Fields                                                                                  | Description                      |
+| ------------------ | --------------------------------------------------------------------------------------- | -------------------------------- |
+| `liquidated`       | `user`, `pair_id`, `adl_size`, `adl_price`, `adl_realized_pnl`, `adl_realized_funding?` | Position liquidated in a pair    |
+| `deleveraged`      | `user`, `pair_id`, `closing_size`, `fill_price`, `realized_pnl`, `realized_funding?`    | Counter-party hit by ADL         |
+| `bad_debt_covered` | `liquidated_user`, `amount`, `insurance_fund_remaining`                                 | Insurance fund absorbed bad debt |
 
 ### ReasonForOrderRemoval
 
