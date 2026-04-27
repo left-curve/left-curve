@@ -639,7 +639,7 @@ fn execute_close_schedule(
             // zero, so the margin delta equals the realized PnL from ADL).
             let user_margin_pre_adl = user_state.margin;
 
-            let (adl_size, adl_price) = execute_adl(
+            let (adl_size, adl_price, adl_funding) = execute_adl(
                 storage,
                 contract,
                 &liq_param,
@@ -660,7 +660,12 @@ fn execute_close_schedule(
             closed_notional
                 .checked_add_assign(adl_size.checked_abs()?.checked_mul(oracle_price)?)?;
 
-            let adl_realized_pnl = user_state.margin.checked_sub(user_margin_pre_adl)?;
+            // Margin delta = closing PnL + funding settled. Subtract funding
+            // to get the closing-only `adl_realized_pnl` for v0.17.0+.
+            let adl_realized_pnl = user_state
+                .margin
+                .checked_sub(user_margin_pre_adl)?
+                .checked_sub(adl_funding)?;
 
             events.push(Liquidated {
                 user,
@@ -668,6 +673,7 @@ fn execute_close_schedule(
                 adl_size,
                 adl_price: Some(adl_price),
                 adl_realized_pnl,
+                adl_realized_funding: Some(adl_funding),
             })?;
 
             #[cfg(feature = "metrics")]
@@ -685,6 +691,7 @@ fn execute_close_schedule(
                 adl_size: Quantity::ZERO,
                 adl_price: None,
                 adl_realized_pnl: UsdValue::ZERO,
+                adl_realized_funding: Some(UsdValue::ZERO),
             })?;
         }
     }
@@ -703,7 +710,10 @@ fn execute_close_schedule(
 
 /// ADL the unfilled remainder of a liquidation against counter-positions.
 ///
-/// Returns: (total ADL size, bankruptcy price used).
+/// Returns: `(total_adl_size, bankruptcy_price, total_user_funding)` —
+/// where `total_user_funding` is the funding settled on the liquidated
+/// user's position across all of this call's per-fill `settle_fill`s,
+/// summed into a single value for `Liquidated.adl_realized_funding`.
 ///
 /// This is a leaf helper private to `execute_close_schedule` and keeps `&mut`
 /// parameters by design; it is not part of the pure set.
@@ -723,7 +733,7 @@ fn execute_adl(
     all_volumes: &mut BTreeMap<Addr, UsdValue>,
     index_updates: &mut Vec<PositionIndexUpdate>,
     events: &mut EventBuilder,
-) -> anyhow::Result<(Quantity, UsdPrice)> {
+) -> anyhow::Result<(Quantity, UsdPrice, UsdValue)> {
     let mut remaining = unfilled;
     let taker_is_selling = unfilled.is_negative();
 
@@ -743,6 +753,7 @@ fn execute_adl(
     };
 
     let mut total_adl_size = Quantity::ZERO;
+    let mut total_user_funding = UsdValue::ZERO;
 
     for (entry_price, counter_user) in counter_parties {
         if remaining.is_zero() {
@@ -799,10 +810,14 @@ fn execute_adl(
             Dimensionless::ZERO,
             None,
         )?;
+
+        total_user_funding.checked_add_assign(user_settlement.pnl.funding)?;
+
         all_volumes
             .entry(user)
             .or_default()
             .checked_add_assign(user_settlement.volume)?;
+
         if let Some(diff) = compute_position_diff(
             pair_id,
             user,
@@ -861,23 +876,25 @@ fn execute_adl(
                 state,
                 user,
                 user_state,
-                user_settlement.pnl,
+                user_settlement.pnl.total()?,
                 user_settlement.fee,
                 counter_user,
                 &mut counter_state,
-                counter_settlement.pnl,
+                counter_settlement.pnl.total()?,
                 counter_settlement.fee,
                 vault_state_opt,
             )?;
         }
 
-        // Emit Deleveraged event for counter-party.
+        // Emit Deleveraged event for counter-party. The closing /
+        // funding split lives on `pnl` directly (no inline arithmetic).
         events.push(Deleveraged {
             user: counter_user,
             pair_id: pair_id.clone(),
             closing_size: user_close.checked_neg()?,
             fill_price: bankruptcy_price,
-            realized_pnl: counter_settlement.pnl,
+            realized_pnl: counter_settlement.pnl.closing,
+            realized_funding: Some(counter_settlement.pnl.funding),
         })?;
 
         remaining = remaining.checked_sub(user_close)?;
@@ -887,7 +904,7 @@ fn execute_adl(
         maker_states.insert(counter_user, counter_state);
     }
 
-    Ok((total_adl_size, bankruptcy_price))
+    Ok((total_adl_size, bankruptcy_price, total_user_funding))
 }
 
 /// Compute the liquidation fee, capped at the user's remaining margin.

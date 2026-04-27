@@ -2,7 +2,7 @@ use {
     crate::{
         MAX_ORACLE_STALENESS, VOLUME_LOOKBACK,
         core::{
-            check_margin, check_minimum_order_size, check_oi_constraint, check_price_band,
+            FillPnl, check_margin, check_minimum_order_size, check_oi_constraint, check_price_band,
             compute_available_margin, compute_notional, compute_required_margin,
             compute_target_price, compute_trading_fee, decompose_fill, execute_fill,
             is_price_constraint_violated, validate_slippage,
@@ -994,11 +994,11 @@ pub fn match_order(
                 &mut state,
                 taker,
                 &mut taker_state,
-                taker_settlement.pnl,
+                taker_settlement.pnl.total()?,
                 taker_settlement.fee,
                 maker_user,
                 &mut maker_state,
-                maker_settlement.pnl,
+                maker_settlement.pnl.total()?,
                 maker_settlement.fee,
                 vault_state_opt,
             )?
@@ -1122,12 +1122,17 @@ pub fn match_order(
 }
 
 /// Per-fill outcome returned by [`settle_fill`]. Callers typically feed
-/// `pnl` and `fee` directly into [`settle_pnls`], and accumulate `volume`
-/// across all of a taker order's fills for `apply_fee_commissions` and
-/// `flush_volumes`.
+/// `pnl.total()?` and `fee` directly into [`settle_pnls`], and accumulate
+/// `volume` across all of a taker order's fills for `apply_fee_commissions`
+/// and `flush_volumes`.
+///
+/// `pnl` is the [`FillPnl`] split into its `funding` and `closing`
+/// components so callers that report them separately — e.g. the ADL path
+/// emitting `Liquidated.adl_realized_funding` — can read each without
+/// arithmetic.
 #[derive(Debug, Clone, Copy)]
 pub struct FillSettlement {
-    pub pnl: UsdValue,
+    pub pnl: FillPnl,
     pub fee: UsdValue,
     pub volume: UsdValue,
 }
@@ -1189,7 +1194,8 @@ pub fn settle_fill(
             fill_size,
             closing_size: closing,
             opening_size: opening,
-            realized_pnl: pnl,
+            realized_pnl: pnl.closing,
+            realized_funding: Some(pnl.funding),
             fee,
             client_order_id,
             fill_id: Some(fill_id),

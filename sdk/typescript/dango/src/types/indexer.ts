@@ -102,7 +102,21 @@ export type OrderFilledData = {
   fill_size: string;
   closing_size: string;
   opening_size: string;
+  /**
+   * Closing PnL on the fill (price movement on the closed portion).
+   * Prior to v0.17.0 (exclusive) this also bundled the funding settled
+   * on the user's pre-existing position; from v0.17.0 (inclusive)
+   * onward, that funding component is reported separately as
+   * `realized_funding`.
+   */
   realized_pnl: string;
+  /**
+   * Funding settled on the user's pre-existing position immediately
+   * before this fill. `null` for trades executed before v0.17.0 —
+   * funding was reported as part of `realized_pnl` prior to that
+   * release.
+   */
+  realized_funding?: string | null;
   fee: string;
   /**
    * Identifier shared between the two `OrderFilled` events of a single
@@ -123,7 +137,23 @@ export type LiquidatedData = {
   pair_id: string;
   adl_size: string;
   adl_price: string | null;
+  /**
+   * Closing PnL realized by the liquidated user from ADL fills,
+   * accumulated across all counter-party fills for this pair. Prior to
+   * v0.17.0 (exclusive) this also bundled the funding settled on the
+   * user's position immediately before each ADL fill; from v0.17.0
+   * (inclusive) onward, that funding component is reported separately
+   * as `adl_realized_funding`.
+   */
   adl_realized_pnl: string;
+  /**
+   * Funding settled on the liquidated user's position immediately
+   * before each ADL fill, accumulated across all counter-party fills
+   * for this pair. `null` for liquidations executed before v0.17.0 —
+   * funding was reported as part of `adl_realized_pnl` prior to that
+   * release.
+   */
+  adl_realized_funding?: string | null;
 };
 
 export type DeleveragedData = {
@@ -131,7 +161,21 @@ export type DeleveragedData = {
   pair_id: string;
   closing_size: string;
   fill_price: string;
+  /**
+   * Closing PnL realized by the counter-party from this ADL fill.
+   * Prior to v0.17.0 (exclusive) this also bundled the funding settled
+   * on the counter-party's pre-existing position immediately before
+   * the fill; from v0.17.0 (inclusive) onward, that funding component
+   * is reported separately as `realized_funding`.
+   */
   realized_pnl: string;
+  /**
+   * Funding settled on the counter-party's pre-existing position
+   * immediately before this ADL fill. `null` for ADL fills executed
+   * before v0.17.0 — funding was reported as part of `realized_pnl`
+   * prior to that release.
+   */
+  realized_funding?: string | null;
 };
 
 export type PerpsEvent = {

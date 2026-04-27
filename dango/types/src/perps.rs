@@ -1431,16 +1431,27 @@ pub struct OrderFilled {
     pub closing_size: Quantity,
     pub opening_size: Quantity,
 
-    /// PnL realized by the user on this fill. Includes both:
+    /// PnL realized by the user on this fill from price movement on the
+    /// closed portion: `|closing_size| * (fill_price - entry_price)` for
+    /// longs, mirrored for shorts. Zero on pure-opening fills.
     ///
-    /// 1. Closing PnL: `|closing_size| * (fill_price - entry_price)` for
-    ///    longs, mirrored for shorts. Zero on pure-opening fills.
-    /// 2. Funding settled on the user's pre-existing position immediately
-    ///    before this fill is applied. Can be non-zero even on
-    ///    pure-opening fills if the user already held a position.
+    /// Prior to v0.17.0 (exclusive) this field also bundled the funding
+    /// settled on the user's pre-existing position immediately before the
+    /// fill. From v0.17.0 (inclusive) onward, that funding component is
+    /// reported separately as `realized_funding` and is no longer included
+    /// here.
     ///
     /// Does not include trading fees (see `fee`).
     pub realized_pnl: UsdValue,
+
+    /// Funding settled on the user's pre-existing position immediately
+    /// before this fill is applied. Can be non-zero even on pure-opening
+    /// fills if the user already held a position. Zero if the user had no
+    /// prior position in this pair.
+    ///
+    /// `None` for trades executed before v0.17.0 — funding was reported as
+    /// part of `realized_pnl` prior to that release.
+    pub realized_funding: Option<UsdValue>,
 
     /// Trading fee charged on this fill, in USD. Always non-negative.
     /// Already deducted from the user's margin in the same transaction;
@@ -1454,8 +1465,10 @@ pub struct OrderFilled {
 
     /// Identifier shared between the two `OrderFilled` events of a single
     /// order-book match (taker + maker). Strictly increasing across
-    /// matches. `None` for trades executed before v0.15.0 — fill IDs
-    /// were not assigned prior to that release.
+    /// matches.
+    ///
+    /// `None` for trades executed before v0.15.0 — fill IDs were not assigned
+    /// prior to that release.
     ///
     /// Equivalents at other venues:
     ///
@@ -1600,11 +1613,25 @@ pub struct Liquidated {
     pub adl_price: Option<UsdPrice>,
 
     /// PnL realized by the liquidated user from ADL fills, accumulated
-    /// across all counter-party fills for this pair. Includes both the
-    /// closing PnL on each ADL fill and the funding settled on the user's
-    /// position immediately before each fill. Zero if no ADL happened.
-    /// ADL fills incur no trading fees.
+    /// across all counter-party fills for this pair. Reports the closing
+    /// PnL on each ADL fill (price movement on the closed portion).
+    /// Zero if no ADL happened. ADL fills incur no trading fees.
+    ///
+    /// Prior to v0.17.0 (exclusive) this field also bundled the funding
+    /// settled on the user's position immediately before each ADL fill.
+    /// From v0.17.0 (inclusive) onward, that funding component is
+    /// reported separately as `adl_realized_funding` and is no longer
+    /// included here.
     pub adl_realized_pnl: UsdValue,
+
+    /// Funding settled on the liquidated user's position immediately
+    /// before each ADL fill, accumulated across all counter-party fills
+    /// for this pair. Zero if no ADL happened or if no funding had
+    /// accrued.
+    ///
+    /// `None` for liquidations executed before v0.17.0 — funding was
+    /// reported as part of `adl_realized_pnl` prior to that release.
+    pub adl_realized_funding: Option<UsdValue>,
 }
 
 /// Event indicating a counter-party's position was reduced during ADL.
@@ -1622,11 +1649,23 @@ pub struct Deleveraged {
     /// Fill price (the liquidated user's bankruptcy price).
     pub fill_price: UsdPrice,
 
-    /// PnL realized by the counter-party from this ADL fill. Includes
-    /// both the closing PnL on the ADL fill and the funding settled on
-    /// the counter-party's pre-existing position immediately before the
-    /// fill is applied. ADL fills incur no trading fees.
+    /// PnL realized by the counter-party from this ADL fill from price
+    /// movement on the closed portion. ADL fills incur no trading fees.
+    ///
+    /// Prior to v0.17.0 (exclusive) this field also bundled the funding
+    /// settled on the counter-party's pre-existing position immediately
+    /// before the fill. From v0.17.0 (inclusive) onward, that funding
+    /// component is reported separately as `realized_funding` and is no
+    /// longer included here.
     pub realized_pnl: UsdValue,
+
+    /// Funding settled on the counter-party's pre-existing position
+    /// immediately before this ADL fill is applied. Zero if the
+    /// counter-party had no funding accrued in this pair.
+    ///
+    /// `None` for ADL fills executed before v0.17.0 — funding was
+    /// reported as part of `realized_pnl` prior to that release.
+    pub realized_funding: Option<UsdValue>,
 }
 
 /// Event indicating the insurance fund absorbed bad debt from a liquidation.

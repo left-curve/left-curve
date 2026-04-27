@@ -5,8 +5,8 @@ use {
         Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
         perps::{
-            self, Deleveraged, OrderFilled, PairParam, Param, QueryOrdersByUserResponseItem,
-            UserState,
+            self, Deleveraged, Liquidated, OrderFilled, PairParam, Param,
+            QueryOrdersByUserResponseItem, UserState,
         },
     },
     grug::{
@@ -545,7 +545,7 @@ fn liquidation_with_adl() {
     //   margin after = $9,990 + $1,090 = $11,080.
     // -------------------------------------------------------------------------
 
-    suite
+    let liq_events = suite
         .execute(
             &mut accounts.owner,
             contracts.perps,
@@ -554,7 +554,68 @@ fn liquidation_with_adl() {
             }),
             Coins::new(),
         )
-        .should_succeed();
+        .should_succeed()
+        .events;
+
+    // The Liquidated event should report the user's PnL split. No funding
+    // accrued in this test (oracle moved without time passing), so the
+    // funding component is `Some(ZERO)` and the closing-only `adl_realized_pnl`
+    // matches the full margin delta of -$1,090.
+    let liquidated_events = liq_events
+        .clone()
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "liquidated")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<Liquidated>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        liquidated_events.len(),
+        1,
+        "exactly one Liquidated event expected for the single-pair liquidation"
+    );
+    let liq = &liquidated_events[0];
+    assert_eq!(liq.user, accounts.user1.address());
+    assert_eq!(liq.adl_size, Quantity::new_int(-5));
+    assert_eq!(liq.adl_price, Some(UsdPrice::new_int(1_782)));
+    assert_eq!(liq.adl_realized_pnl, UsdValue::new_int(-1_090));
+    assert_eq!(
+        liq.adl_realized_funding,
+        Some(UsdValue::ZERO),
+        "v0.17.0+ Liquidated events always carry Some(adl_realized_funding); \
+         with no funding accrued it must be Some(ZERO)"
+    );
+
+    // The Deleveraged event for the counter-party (Trader B) should
+    // mirror the split: closing-only `realized_pnl = +$1,090` (Trader B
+    // shorted at $2,000 and got bought back at $1,782 for 5 ETH) and
+    // `realized_funding = Some(ZERO)`.
+    let deleveraged_events = liq_events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "deleveraged")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<Deleveraged>().unwrap())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        deleveraged_events.len(),
+        1,
+        "exactly one Deleveraged event expected (single counter-party)"
+    );
+    let dlv = &deleveraged_events[0];
+    assert_eq!(dlv.user, accounts.user3.address());
+    assert_eq!(dlv.fill_price, UsdPrice::new_int(1_782));
+    assert_eq!(dlv.realized_pnl, UsdValue::new_int(1_090));
+    assert_eq!(
+        dlv.realized_funding,
+        Some(UsdValue::ZERO),
+        "v0.17.0+ Deleveraged events always carry Some(realized_funding); \
+         with no funding accrued it must be Some(ZERO)"
+    );
 
     // Trader A should have no positions and $0 margin.
     let state = suite
