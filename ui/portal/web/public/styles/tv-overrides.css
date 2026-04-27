@@ -1,4 +1,33 @@
-:root:not(.theme-dark) {
+/* Override hardcoded TradingView blue (#2962FF) */
+
+/* Selected indicator legend border */
+[class*="selected"] [class*="buttons"],
+[class*="selected"] [class*="buttonsWrapper"],
+[class*="selected"] [class*="titlesWrapper"] {
+  border-color: #ED4561 !important;
+}
+
+[class*="priceScaleModeButton_activated"] {
+  background-color: #ED4561 !important;
+  border-color: #ED4561 !important;
+}
+[class*="common-tooltip__button"],
+[class*="pane-button"][class*="restore"],
+[class*="pane-button"][class*="minimize"] {
+  background-color: #ED4561 !important;
+  border-color: #ED4561 !important;
+}
+@media (any-hover:hover) {
+  [class*="priceScaleModeButton_activated"]:hover,
+  [class*="common-tooltip__button"]:hover,
+  [class*="pane-button"][class*="restore"]:hover,
+  [class*="pane-button"][class*="minimize"]:hover {
+    background-color: #d63b54 !important;
+    border-color: #d63b54 !important;
+  }
+}
+
+html:not(.theme-dark), :root:not(.theme-dark) {
   --tv-color-platform-background: #FFFCF6;
   --tv-color-pane-background: #FFFCF6;
   --tv-color-toolbar-button-background-hover: #FFF3E1;
@@ -12,6 +41,11 @@
   --tv-color-item-active-text: #ED4561;
   --tv-color-toolbar-toggle-button-background-active: #9C4D21;
   --tv-color-toolbar-toggle-button-background-active-hover: #9C4D21;
+  --themed-color-button-bg-selected: #ED4561;
+  --themed-color-item-active-text: #ED4561;
+  --themed-color-container-fill-primary-accent: #ED4561;
+  --themed-color-container-fill-primary-accent-semi-bold: #d63b54;
+  --themed-color-overlay-accent-1-light: #ED456126;
   --tv-color-toolbar-divider-background: #453D39;
   --tv-color-toolbar-save-layout-loader: #868993;
 
@@ -31,7 +65,7 @@
   --tv-color-popup-element-toolbox-background-active-hover: #9C4D21;
 }
 
-.theme-dark:root {
+html.theme-dark, .theme-dark:root {
   --tv-color-platform-background: #2D2C2A;
   --tv-color-pane-background: #2D2C2A;
   --tv-color-toolbar-button-background-hover: #4D4B48;
@@ -45,6 +79,11 @@
   --tv-color-item-active-text: #ED4561;
   --tv-color-toolbar-toggle-button-background-active: #E3BD66;
   --tv-color-toolbar-toggle-button-background-active-hover: #E3BD66;
+  --themed-color-button-bg-selected: #ED4561;
+  --themed-color-item-active-text: #ED4561;
+  --themed-color-container-fill-primary-accent: #ED4561;
+  --themed-color-container-fill-primary-accent-semi-bold: #d63b54;
+  --themed-color-overlay-accent-1-light: #ED456133;
   --tv-color-toolbar-divider-background: #FFF9F0;
   --tv-color-toolbar-save-layout-loader: #868993;
 

@@ -4,7 +4,7 @@ import { useConfig } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useHeaderHeight } from "@left-curve/applets-kit";
 
-import { ProTrade } from "~/components/dex/ProTrade";
+import { ProTrade } from "~/components/dex/components/ProTrade";
 
 export const Route = createLazyFileRoute("/(app)/_app/trade/$pairSymbols")({
   component: ProTradeApplet,

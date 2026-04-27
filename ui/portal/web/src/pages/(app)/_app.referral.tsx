@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { ReferralCampaign } from "~/components/referral/ReferralCampaign";
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/(app)/_app/referral")({
 
 function RouteComponent() {
   const { tab } = Route.useSearch();
-  const navigate = useNavigate();
+  const navigate = Route.useNavigate();
 
   const handleTabChange = (newTab: "affiliate" | "trader") => {
     navigate({ search: { tab: newTab }, replace: true });

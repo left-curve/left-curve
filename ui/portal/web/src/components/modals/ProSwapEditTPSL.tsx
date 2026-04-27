@@ -27,7 +27,7 @@ import { forwardRef, useEffect, useMemo, useState } from "react";
 import type { SubmitConditionalOrderInput } from "@left-curve/dango/actions";
 
 import { TPSLPositionInfo } from "./TPSLPositionInfo";
-import { useTPSLPriceSync } from "../dex/useTPSLPriceSync";
+import { useTPSLPriceSync } from "../dex/hooks/useTPSLPriceSync";
 
 type ProSwapEditTPSLProps = {
   pairId: string;
