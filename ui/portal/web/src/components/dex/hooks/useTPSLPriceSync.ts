@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { priceFromRoi, roiFromPrice, type TpslKind } from "./tpslMath";
+import { priceFromRoi, roiFromPrice, type TpslKind } from "../lib/tpslMath";
 
 type UseTPSLPriceSyncParams = {
   setValue: (name: string, value: string) => void;

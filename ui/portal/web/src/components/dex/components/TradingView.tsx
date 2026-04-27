@@ -1,13 +1,22 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useApp, useTheme } from "@left-curve/applets-kit";
-import { useConfig, usePublicClient } from "@left-curve/store";
+import {
+  useConfig,
+  usePublicClient,
+  perpsUserStateExtendedStore,
+  perpsOrdersByUserStore,
+} from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
 import { createTradingViewDataFeed, createPerpsDataFeed } from "~/datafeed";
-import { Direction } from "@left-curve/dango/types";
-import { Decimal, adjustPrice } from "@left-curve/dango/utils";
+import {
+  buildPositionLines,
+  buildPerpsOrderLines,
+  buildSpotOrderLines,
+  drawLines,
+} from "../lib/chartLines";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
@@ -23,6 +32,10 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
   const pairSymbol = isPerps
     ? `${coins.base.symbol}-USD`
     : `${coins.base.symbol}-${coins.quote.symbol}`;
+  const perpsPairId = isPerps ? `perp/${coins.base.symbol.toLowerCase()}usd` : "";
+
+  const positions = perpsUserStateExtendedStore((s) => s.positions);
+  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
 
   const { theme } = useTheme();
   const publicClient = usePublicClient();
@@ -100,8 +113,12 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         "mainSeriesProperties.candleStyle.wickDownColor": "#EB5757",
         "paneProperties.backgroundType": "solid",
         "paneProperties.background": toolbar_bg,
+        "paneProperties.separatorColor": theme === "dark" ? "#666360" : "#CCC7C0",
         "paneProperties.topMargin": 10,
         "paneProperties.bottomMargin": 10,
+        "mainSeriesProperties.priceLineColor": textColor,
+        "scalesProperties.crosshairLabelBgColorLight": "#2E2521",
+        "scalesProperties.crosshairLabelBgColorDark": "#FFFCF6",
         ...(theme === "dark" && {
           "paneProperties.vertGridProperties.color": "#ffffff0F",
           "paneProperties.horzGridProperties.color": "#ffffff0F",
@@ -140,6 +157,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
       widget.subscribe("onAutoSaveNeeded", saveFn);
       widget.applyOverrides({
         "paneProperties.background": toolbar_bg,
+        "paneProperties.separatorColor": theme === "dark" ? "#666360" : "#CCC7C0",
         "scalesProperties.textColor": textColor,
         ...(theme === "dark" && {
           "paneProperties.vertGridProperties.color": "#ffffff0F",
@@ -167,38 +185,19 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
   }, [coins]);
 
   useEffect(() => {
-    if (!widgetRef.current || isPerps) return;
-
+    if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
 
-    chart.getAllShapes().forEach((shape) => chart.removeEntity(shape.id));
-    orders.forEach((order) => {
-      const price = adjustPrice(
-        +Decimal(order.price)
-          .times(Decimal(10).pow(base.decimals - quote.decimals))
-          .toFixed(),
-      );
+    const position = positions[perpsPairId];
+    const lines = isPerps
+      ? [
+          ...(position ? buildPositionLines(position) : []),
+          ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, perpsPairId) : []),
+        ]
+      : buildSpotOrderLines(orders, base, quote);
 
-      const color = order.direction === Direction.Buy ? "#27AE60" : "#EB5757";
-
-      chart.createShape(
-        { price: +price, time: Date.now() },
-        {
-          shape: "horizontal_line",
-          lock: true,
-          disableSelection: true,
-          overrides: {
-            showLabel: true,
-            textcolor: color,
-            linecolor: color,
-            linestyle: 2,
-            linewidth: 1,
-            bodybgcolor: color,
-          },
-        },
-      );
-    });
-  }, [orders]);
+    drawLines(chart, lines);
+  }, [orders, positions, perpsOrders, perpsPairId, isPerps]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

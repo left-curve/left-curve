@@ -55,7 +55,7 @@ import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants
 import type { PerpsTimeInForce } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
-import { useTPSLPriceSync } from "./useTPSLPriceSync";
+import { useTPSLPriceSync } from "../hooks/useTPSLPriceSync";
 
 import type React from "react";
 
@@ -434,7 +434,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     if (feeRateOverride) return Number(feeRateOverride.takerFeeRate);
     const schedule = appConfig?.perpsParam?.takerFeeRates;
     if (!schedule) return 0;
-    const rate = resolveRateSchedule(schedule, userVolume ?? "0");
+    const rate = Number(resolveRateSchedule(schedule, userVolume ?? "0"));
     return Number.isFinite(rate) ? rate : 0;
   }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 

@@ -1,7 +1,7 @@
 import { Table, twMerge } from "@left-curve/applets-kit";
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
+import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { GraphqlQueryResult } from "@left-curve/dango/types";

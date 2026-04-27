@@ -38,8 +38,8 @@ import { createPortal } from "react-dom";
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import { Cell, FormattedNumber, Table, Tabs } from "@left-curve/applets-kit";
-import { CountBadge } from "../foundation/CountBadge";
-import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
+import { CountBadge } from "../../foundation/CountBadge";
+import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";

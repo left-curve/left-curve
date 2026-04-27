@@ -193,7 +193,7 @@ const TransferSend: React.FC = () => {
         description={
           <p>
             {transferHintParts[0]}
-            <Button as={Link} to="/bridge" search={{ action: "withdraw" }} variant="link" size="xs" className="p-0 h-fit m-0 inline">
+            <Button as={Link} to="/bridge" search={{ action: "withdraw" } as any} variant="link" size="xs" className="p-0 h-fit m-0 inline">
               {m["transfer.warning.withdraw"]()}
             </Button>
             {transferHintParts[1]}
