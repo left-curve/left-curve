@@ -1,5 +1,5 @@
 import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction, type PairId } from "@left-curve/dango/types";
@@ -149,10 +149,11 @@ type OrderBookRowProps = {
   type: "bid" | "ask";
   priceFractionDigits: number;
   onSelectPrice: (price: string) => void;
+  flashKey?: number;
 };
 
 const OrderRow: React.FC<OrderBookRowProps> = (props) => {
-  const { price, size, total, type, max, priceFractionDigits, onSelectPrice } = props;
+  const { price, size, total, type, max, priceFractionDigits, onSelectPrice, flashKey } = props;
   const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed();
 
   const depthBarClass =
@@ -162,6 +163,15 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
 
   return (
     <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4 min-h-[19px] items-center">
+      {flashKey ? (
+        <div
+          key={flashKey}
+          className={twMerge(
+            "absolute inset-0 z-[1] pointer-events-none",
+            type === "bid" ? "animate-flash-bid" : "animate-flash-ask",
+          )}
+        />
+      ) : null}
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -495,6 +505,31 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
     return perpsLiquidityDepthMapper(perpsDepthData, bucketRecords, displayMode);
   }, [mode, spotDepth.liquidityDepth, perpsDepthData, bucketRecords, displayMode]);
 
+  const prevSizesRef = useRef<Map<string, string>>(new Map());
+  const flashCountersRef = useRef<Map<string, number>>(new Map());
+
+  const flashKeys = useMemo(() => {
+    if (!liquidityDepth) return new Map<string, number>();
+    const prev = prevSizesRef.current;
+    const counters = flashCountersRef.current;
+    const allRecords = [...liquidityDepth.bids.records, ...liquidityDepth.asks.records];
+
+    for (const record of allRecords) {
+      const prevSize = prev.get(record.price);
+      if (prevSize !== undefined && prevSize !== record.size) {
+        counters.set(record.price, (counters.get(record.price) ?? 0) + 1);
+      }
+    }
+
+    const newPrev = new Map<string, string>();
+    for (const record of allRecords) {
+      newPrev.set(record.price, record.size);
+    }
+    prevSizesRef.current = newPrev;
+
+    return new Map(counters);
+  }, [liquidityDepth]);
+
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
 
   const { bids, asks } = liquidityDepth;
@@ -514,6 +549,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             max={max}
             priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
+            flashKey={flashKeys.get(ask.price)}
           />
         ))}
       </div>
@@ -529,6 +565,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             max={max}
             priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
+            flashKey={flashKeys.get(bid.price)}
           />
         ))}
       </div>
