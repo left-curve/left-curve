@@ -1,8 +1,12 @@
 use {
-    crate::{PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
+    crate::{
+        OUTBOUND_LIMITS, PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES,
+        WITHDRAWAL_FEES, withdraw_volume,
+    },
     dango_types::gateway::{
-        PersonalQuota, QueryMsg, QueryPersonalQuotasResponseItem, QueryReservesResponseItem,
-        QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, RateLimit, Remote,
+        PersonalQuota, QueryMsg, QueryOutboundQuotaResponse, QueryOutboundQuotasResponseItem,
+        QueryPersonalQuotasResponseItem, QueryReservesResponseItem, QueryRoutesResponseItem,
+        QueryWithdrawalFeesResponseItem, RateLimit, Remote,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -52,6 +56,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::PersonalQuotas { start_after, limit } => {
             let res = query_personal_quotas(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::OutboundQuota { denom } => {
+            let res = query_outbound_quota(ctx, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::OutboundQuotas { start_after, limit } => {
+            let res = query_outbound_quotas(ctx, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -166,5 +178,46 @@ fn query_personal_quotas(
             Ok(QueryPersonalQuotasResponseItem { user, denom, quota })
         })
         .take(limit)
+        .collect()
+}
+
+fn query_outbound_quota(
+    ctx: ImmutableCtx,
+    denom: Denom,
+) -> StdResult<Option<QueryOutboundQuotaResponse>> {
+    let Some(cap) = OUTBOUND_LIMITS.may_load(ctx.storage, &denom)? else {
+        return Ok(None);
+    };
+
+    let used_in_last_24h =
+        withdraw_volume::rolling_window_sum(ctx.storage, &denom, ctx.block.timestamp)?;
+
+    Ok(Some(QueryOutboundQuotaResponse {
+        cap,
+        used_in_last_24h,
+    }))
+}
+
+fn query_outbound_quotas(
+    ctx: ImmutableCtx,
+    start_after: Option<Denom>,
+    limit: Option<u32>,
+) -> StdResult<Vec<QueryOutboundQuotasResponseItem>> {
+    let start = start_after.as_ref().map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    OUTBOUND_LIMITS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| {
+            let (denom, cap) = res?;
+            let used_in_last_24h =
+                withdraw_volume::rolling_window_sum(ctx.storage, &denom, ctx.block.timestamp)?;
+            Ok(QueryOutboundQuotasResponseItem {
+                denom,
+                cap,
+                used_in_last_24h,
+            })
+        })
         .collect()
 }

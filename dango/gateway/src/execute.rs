@@ -1,7 +1,7 @@
 use {
     crate::{
-        OUTBOUND_QUOTAS, PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES,
-        WITHDRAWAL_FEES,
+        OUTBOUND_LIMITS, PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES,
+        WITHDRAWAL_FEES, withdraw_volume,
     },
     anyhow::{anyhow, ensure},
     dango_types::{
@@ -100,7 +100,7 @@ fn set_rate_limits(
     let old_rate_limits = RATE_LIMITS.load(ctx.storage)?;
 
     _set_rate_limits(ctx.storage, rate_limits.clone())?;
-    tighten_quotas(ctx.storage, ctx.querier, &old_rate_limits, &rate_limits)?;
+    tighten_caps(ctx.storage, ctx.querier, &old_rate_limits, &rate_limits)?;
 
     Ok(Response::new())
 }
@@ -114,33 +114,32 @@ fn _set_rate_limits(
     Ok(())
 }
 
-/// Clear all outbound quotas and reseed them from each rate-limited denom's
-/// current supply times its configured percentage. Called by the cron job at
-/// the start of each 24-hour window.
-fn reseed_quotas(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResult<()> {
-    OUTBOUND_QUOTAS.clear(storage, None, None);
+/// Refresh each rate-limited denom's outbound cap from its current supply
+/// times the configured percentage. Called by the cron handler.
+fn reseed_caps(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResult<()> {
+    OUTBOUND_LIMITS.clear(storage, None, None);
 
     for (denom, limit) in RATE_LIMITS.load(storage)? {
         let supply = querier.query_supply(denom.clone())?;
-        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+        let cap = supply.checked_mul_dec_floor(limit.into_inner())?;
 
-        OUTBOUND_QUOTAS.save(storage, &denom, &quota)?;
+        OUTBOUND_LIMITS.save(storage, &denom, &cap)?;
     }
 
     Ok(())
 }
 
-/// Called by `set_rate_limits` to reconcile outstanding quotas with the new
-/// rate-limits map. `SetRateLimits` only ever lowers outstanding quotas;
-/// raises wait for the next cron tick. This prevents an admin from refilling
-/// a drained quota mid-window (intentionally or accidentally) and letting the
-/// same user withdraw a second full window back-to-back.
+/// Called by `set_rate_limits` to reconcile outstanding caps with the new
+/// rate-limits map. `SetRateLimits` only ever lowers caps; raises wait for the
+/// next cron tick. Combined with the trailing-24h rolling sum, this prevents
+/// an admin from re-opening a drained window mid-day.
 ///
 /// - Newly added denoms are seeded at `supply × limit`.
-/// - Existing denoms take the smaller of the current quota and `supply × new_limit`.
-/// - Denoms removed from the map have their quota entry dropped (become
-///   unrestricted immediately).
-fn tighten_quotas(
+/// - Existing denoms take the smaller of the current cap and `supply × new_limit`.
+/// - Denoms removed from the map have their cap entry dropped (become
+///   unrestricted immediately) and any historical `WITHDRAW_VOLUMES` entries
+///   cleared so re-adding the denom later starts with a clean rolling window.
+fn tighten_caps(
     storage: &mut dyn Storage,
     querier: QuerierWrapper,
     old_rate_limits: &BTreeMap<Denom, RateLimit>,
@@ -148,19 +147,20 @@ fn tighten_quotas(
 ) -> StdResult<()> {
     for denom in old_rate_limits.keys() {
         if !new_rate_limits.contains_key(denom) {
-            OUTBOUND_QUOTAS.remove(storage, denom);
+            OUTBOUND_LIMITS.remove(storage, denom);
+            withdraw_volume::clear_volumes(storage, denom)?;
         }
     }
 
     for (denom, limit) in new_rate_limits {
         let supply = querier.query_supply(denom.clone())?;
-        let fresh_quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+        let fresh_cap = supply.checked_mul_dec_floor(limit.into_inner())?;
 
-        let tightened = OUTBOUND_QUOTAS
+        let tightened = OUTBOUND_LIMITS
             .may_load(storage, denom)?
-            .map_or(fresh_quota, |current| current.min(fresh_quota));
+            .map_or(fresh_cap, |current| current.min(fresh_cap));
 
-        OUTBOUND_QUOTAS.save(storage, denom, &tightened)?;
+        OUTBOUND_LIMITS.save(storage, denom, &tightened)?;
     }
 
     Ok(())
@@ -338,24 +338,25 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         }
     }
 
-    // Reduce the global outbound quota by whatever the personal quota did not
-    // cover. A missing entry means the denom is not rate-limited at all.
-    if !remaining.is_zero() {
-        OUTBOUND_QUOTAS.may_modify(ctx.storage, &coin.denom, |maybe_quota| {
-            let Some(quota) = maybe_quota else {
-                return Ok(None);
-            };
-
-            Some(quota.checked_sub(remaining).map_err(|_| {
-                anyhow!(
-                    "insufficient outbound quota! denom: {}, requested: {}, remaining after personal quota: {}",
-                    coin.denom,
-                    coin.amount,
-                    remaining
-                )
-            }))
-            .transpose()
-        })?;
+    // Check the trailing-24h rolling window against the cap and record the
+    // residue. A missing `OUTBOUND_LIMITS` entry means the denom is not
+    // rate-limited at all and the rolling-window state is untouched.
+    if !remaining.is_zero()
+        && let Some(cap) = OUTBOUND_LIMITS.may_load(ctx.storage, &coin.denom)?
+    {
+        let used =
+            withdraw_volume::rolling_window_sum(ctx.storage, &coin.denom, ctx.block.timestamp)?;
+        let after = used.checked_add(remaining)?;
+        ensure!(
+            after <= cap,
+            "insufficient outbound quota! denom: {}, requested: {}, residue after personal quota: {}, rolling sum: {}, cap: {}",
+            coin.denom,
+            coin.amount,
+            remaining,
+            used,
+            cap,
+        );
+        withdraw_volume::record_withdraw(ctx.storage, &coin.denom, ctx.block.timestamp, remaining)?;
     }
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
@@ -403,7 +404,11 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    reseed_quotas(ctx.storage, ctx.querier)?;
+    reseed_caps(ctx.storage, ctx.querier)?;
+
+    for denom in RATE_LIMITS.load(ctx.storage)?.keys() {
+        withdraw_volume::prune_old_volumes(ctx.storage, denom, ctx.block.timestamp)?;
+    }
 
     Ok(Response::new())
 }

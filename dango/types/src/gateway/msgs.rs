@@ -66,18 +66,22 @@ pub enum ExecuteMsg {
     /// The map is the new complete set of rate-limited denoms:
     ///
     /// - A denom absent from the map is not rate-limited — outbound
-    ///   transfers of it are unrestricted by quota (only reserves and
-    ///   withdrawal fees still apply). Any existing quota entry for a
-    ///   dropped denom is cleared in the same block.
-    /// - A denom mapped to `0` is fully locked — the quota is set to
-    ///   zero, so no outbound transfer passes until the admin raises
-    ///   the limit or removes the denom.
-    /// - A denom mapped to a positive fraction less than `1` has its
-    ///   quota enforced at `supply × limit` per cron window.
+    ///   transfers of it are unrestricted (only reserves and withdrawal
+    ///   fees still apply). Any existing cap entry and historical
+    ///   trailing-window record for a dropped denom are cleared in the
+    ///   same block.
+    /// - A denom mapped to `0` is fully locked — the cap is set to zero,
+    ///   so no outbound transfer passes until the admin raises the limit
+    ///   or removes the denom.
+    /// - A denom mapped to a positive fraction less than `1` is enforced
+    ///   as a trailing-24h cap: a withdraw is rejected when the sum of
+    ///   withdraws over the trailing 24 hours plus the new request would
+    ///   exceed `supply × limit` (the cap is snapshotted by the cron
+    ///   handler once per refresh period).
     ///
-    /// A call only tightens outstanding quotas immediately: each denom's
-    /// quota becomes `min(current_quota, supply × new_limit)`. Raises
-    /// take effect on the next cron tick.
+    /// A call only tightens outstanding caps immediately: each denom's
+    /// cap becomes `min(current_cap, supply × new_limit)`. Raises take
+    /// effect on the next cron tick.
     ///
     /// Can only be called by the chain owner.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
@@ -167,6 +171,19 @@ pub enum QueryMsg {
         start_after: Option<(Addr, Denom)>,
         limit: Option<u32>,
     },
+
+    /// Look up the outbound cap and the trailing-24h withdraw volume for a
+    /// rate-limited denom. Returns `None` if the denom is not rate-limited.
+    #[returns(Option<QueryOutboundQuotaResponse>)]
+    OutboundQuota { denom: Denom },
+
+    /// Enumerate all rate-limited denoms with their caps and trailing-24h
+    /// withdraw volumes.
+    #[returns(Vec<QueryOutboundQuotasResponseItem>)]
+    OutboundQuotas {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde)]
@@ -195,4 +212,19 @@ pub struct QueryPersonalQuotasResponseItem {
     pub user: Addr,
     pub denom: Denom,
     pub quota: PersonalQuota,
+}
+
+/// Cap and trailing-24h withdraw volume for a single rate-limited denom.
+/// Available headroom is `cap − used_in_last_24h`.
+#[grug::derive(Serde)]
+pub struct QueryOutboundQuotaResponse {
+    pub cap: Uint128,
+    pub used_in_last_24h: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct QueryOutboundQuotasResponseItem {
+    pub denom: Denom,
+    pub cap: Uint128,
+    pub used_in_last_24h: Uint128,
 }
