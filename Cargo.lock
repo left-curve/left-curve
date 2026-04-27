@@ -3993,29 +3993,22 @@ name = "dango-cli"
 version = "0.16.1"
 dependencies = [
  "anyhow",
- "bip32",
  "clap",
  "colored",
- "colored_json",
  "config-parser",
- "dango-client",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
  "dango-proposal-preparer",
- "dango-types",
  "dango-upgrade",
- "data-encoding",
  "dialoguer",
  "futures",
  "grug-app",
- "grug-client",
  "grug-db-disk",
  "grug-httpd",
  "grug-types",
  "grug-vm-rust",
- "hex",
  "home",
  "indexer-cache",
  "indexer-hooked",
@@ -4027,40 +4020,14 @@ dependencies = [
  "opentelemetry 0.31.0",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
- "pyth-client",
- "pyth-types",
- "rand 0.8.5",
  "sentry",
  "serde",
- "tendermint",
  "tokio",
- "tokio-stream",
  "tower",
  "tower-abci",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "dango-client"
-version = "0.0.0"
-dependencies = [
- "aes-gcm",
- "alloy",
- "anyhow",
- "async-trait",
- "bip32",
- "dango-account-factory",
- "dango-auth",
- "dango-types",
- "eth-utils",
- "grug",
- "identity",
- "k256",
- "pbkdf2",
- "rand 0.8.5",
- "sha2 0.10.9",
 ]
 
 [[package]]
@@ -4148,13 +4115,12 @@ dependencies = [
  "alloy",
  "anyhow",
  "clap",
- "dango-client",
+ "dango-sdk",
  "dango-types",
  "dotenvy",
  "grug",
  "hex-literal",
  "hyperlane-types",
- "indexer-client",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
@@ -4307,41 +4273,72 @@ dependencies = [
  "pyth-client",
  "pyth-types",
  "reqwest 0.13.2",
+ "test-case",
  "tokio",
  "tokio-stream",
  "tracing",
 ]
 
 [[package]]
-name = "dango-scripts"
+name = "dango-sdk"
+version = "0.0.0"
+dependencies = [
+ "aes-gcm",
+ "alloy",
+ "anyhow",
+ "assert-json-diff",
+ "assertor",
+ "async-trait",
+ "bip32",
+ "dango-account-factory",
+ "dango-auth",
+ "dango-genesis",
+ "dango-mock-httpd",
+ "dango-testing",
+ "dango-types",
+ "error-backtrace",
+ "eth-utils",
+ "futures",
+ "graphql_client",
+ "grug",
+ "grug-testing",
+ "identity",
+ "indexer-testing",
+ "k256",
+ "paste",
+ "pbkdf2",
+ "rand 0.8.5",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.28.0",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "dango-sdk-cli"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "async-trait",
- "chrono",
+ "bip32",
  "clap",
- "dango-client",
- "dango-genesis",
- "dango-testing",
+ "colored",
+ "colored_json",
+ "config-parser",
+ "dango-sdk",
  "dango-types",
  "dialoguer",
- "futures",
- "grug",
  "grug-app",
- "grug-db-disk",
- "grug-db-memory",
- "grug-vm-rust",
+ "grug-types",
  "hex",
- "hex-literal",
  "home",
- "hyperlane-types",
- "indexer-cache",
- "indexer-client",
- "indexer-sql",
- "num-format",
- "pyth-types",
+ "rand 0.8.5",
+ "serde",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -4382,13 +4379,13 @@ dependencies = [
  "dango-oracle",
  "dango-perps",
  "dango-proposal-preparer",
+ "dango-sdk",
  "dango-taxman",
  "dango-types",
  "eth-utils",
  "graphql_client",
  "grug",
  "grug-app",
- "grug-client",
  "grug-db-disk",
  "grug-db-memory",
  "grug-httpd",
@@ -4402,7 +4399,6 @@ dependencies = [
  "hyperlane-types",
  "identity",
  "indexer-cache",
- "indexer-client",
  "indexer-disk-saver",
  "indexer-hooked",
  "indexer-httpd",
@@ -5714,7 +5710,6 @@ name = "grug"
 version = "0.0.0"
 dependencies = [
  "borsh",
- "grug-client",
  "grug-ffi",
  "grug-macros",
  "grug-math",
@@ -5749,18 +5744,6 @@ dependencies = [
  "tower",
  "tower-abci",
  "tracing",
-]
-
-[[package]]
-name = "grug-client"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "grug-types",
- "serde",
- "tendermint",
- "tendermint-rpc",
 ]
 
 [[package]]
@@ -6823,37 +6806,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexer-client"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assert-json-diff",
- "assertor",
- "async-trait",
- "dango-genesis",
- "dango-mock-httpd",
- "dango-testing",
- "dango-types",
- "error-backtrace",
- "futures",
- "graphql_client",
- "grug",
- "grug-testing",
- "grug-types",
- "indexer-testing",
- "paste",
- "reqwest 0.13.2",
- "serde",
- "serde_json",
- "tendermint-rpc",
- "thiserror 2.0.18",
- "tokio",
- "tokio-tungstenite 0.28.0",
- "tracing",
- "url",
-]
-
-[[package]]
 name = "indexer-disk-saver"
 version = "0.0.0"
 dependencies = [
@@ -7005,6 +6957,7 @@ dependencies = [
  "chrono",
  "dango-genesis",
  "dango-mock-httpd",
+ "dango-sdk",
  "dango-testing",
  "dango-types",
  "futures-util",
@@ -7018,7 +6971,6 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "indexer-cache",
- "indexer-client",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -7873,16 +7825,6 @@ name = "num-conv"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf97ec579c3c42f953ef76dbf8d55ac91fb219dde70e49aa4a6b7d74e9919050"
-
-[[package]]
-name = "num-format"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
-dependencies = [
- "arrayvec",
- "itoa",
-]
 
 [[package]]
 name = "num-integer"

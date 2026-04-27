@@ -49,13 +49,12 @@ path = "src/bin/dango/warp_to_remote.rs"
 alloy           = { workspace = true, features = ["contract", "full", "signer-mnemonic"] }
 anyhow          = { workspace = true }
 clap            = { workspace = true }
-dango-client    = { workspace = true }
+dango-sdk       = { workspace = true }
 dango-types     = { workspace = true }
 dotenvy         = { workspace = true }
 grug            = { workspace = true }
 hex-literal     = { workspace = true }
 hyperlane-types = { workspace = true }
-indexer-client  = { workspace = true }
 reqwest         = { workspace = true }
 serde           = { workspace = true, features = ["derive"] }
 serde_json      = { workspace = true }

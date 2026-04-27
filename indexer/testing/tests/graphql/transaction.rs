@@ -3,14 +3,14 @@ use {
     assertor::*,
     dango_genesis::GenesisOption,
     dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
+    dango_sdk::{
+        Block, SubscribeTransactions, Transactions, block, subscribe_transactions, transactions,
+    },
     dango_testing::{Preset, TestOption},
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
     grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
     grug_types::{BroadcastClientExt, Denom, GasOption, Inner, JsonSerExt},
-    indexer_client::{
-        Block, SubscribeTransactions, Transactions, block, subscribe_transactions, transactions,
-    },
     indexer_sql::entity,
     indexer_testing::{
         GraphQLCustomRequest, PaginationDirection,
@@ -162,7 +162,7 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeTransactions::build_query(subscribe_transactions::Variables::default()),
         "transactions",

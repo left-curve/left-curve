@@ -12,12 +12,12 @@ use {
     grug_app::{
         App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment,
     },
-    grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
     grug_types::{GIT_COMMIT, HttpdConfig},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
+    indexer_httpd::TendermintRpcClient,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::{Arc, atomic::AtomicBool},
     tokio::{

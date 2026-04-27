@@ -1,8 +1,8 @@
 use {
     assertor::*,
+    dango_sdk::{Block, Blocks, SubscribeBlock, block, blocks, subscribe_block},
     graphql_client::GraphQLQuery,
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
-    indexer_client::{Block, Blocks, SubscribeBlock, block, blocks, subscribe_block},
     indexer_testing::{
         GraphQLCustomRequest, PaginationDirection,
         block::{create_block, create_blocks},
@@ -202,7 +202,7 @@ async fn graphql_paginate_blocks() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeBlock::build_query(subscribe_block::Variables {}),
         "block",

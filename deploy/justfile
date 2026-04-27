@@ -1,7 +1,11 @@
 set positional-arguments
+
 # Use bash so `pipefail` propagates ansible's exit code through `| tee ...`
 # (the default `sh -cu` would silently swallow ansible failures behind tee).
 set shell := ["bash", "-uo", "pipefail", "-c"]
+
+# Always load deploy/ansible.cfg, regardless of cwd or a stray ~/.ansible.cfg.
+export ANSIBLE_CONFIG := justfile_directory() + "/ansible.cfg"
 
 # List available recipes
 default:
@@ -9,23 +13,21 @@ default:
 
 # ----------------------------------- Setup ------------------------------------
 
-# Set up Python environment and install Ansible + role
+# Sync the project venv and install Ansible Galaxy collections/roles.
 setup:
-  uv venv .venv
-  source .venv/bin/activate
-  uv pip install ansible
-  ansible-galaxy install -r requirements.yml
+  uv sync
+  uv run ansible-galaxy install -r requirements.yml
 
 # Lint all YAML files (playbooks, roles, templates), excluding vaults
 lint:
   find . -name '*.yml' -o -name '*.yaml' | grep -v vault | grep -v .venv | xargs uvx yamllint -d relaxed
 
 add-deploy-key:
-  ./deploy-key.sh | ssh-add - >/dev/null
+  uv run ./deploy-key.sh | ssh-add - >/dev/null
   @echo "Deploy key added to ssh-agent. You can now run ansible-playbook normally."
 
 add-debian-key:
-  ./debian-key.sh | ssh-add - >/dev/null
+  uv run ./debian-key.sh | ssh-add - >/dev/null
   @echo "debian key added to ssh-agent. You can now run ansible-playbook normally."
 
 # Pre-fetch vault passwords into environment variables (memory only, no disk)
@@ -41,33 +43,33 @@ add-passwords:
 # ---------------------------------- Secrets -----------------------------------
 
 edit-secrets:
-  ansible-vault edit group_vars/all/vault.yml
+  uv run ansible-vault edit group_vars/all/vault.yml
 
 edit-hyperlane-secrets:
-  ansible-vault edit group_vars/hyperlane/vault.yml
+  uv run ansible-vault edit group_vars/hyperlane/vault.yml
 
 edit-points-bot-secrets:
-  ansible-vault edit group_vars/points-bot/vault.yml
+  uv run ansible-vault edit group_vars/points-bot/vault.yml
 
 edit-perps-bot-secrets:
-  ansible-vault edit group_vars/perps-bot/vault.yml
+  uv run ansible-vault edit group_vars/perps-bot/vault.yml
 
 edit-root-key:
-  ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
+  uv run ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
 edit-root-secrets:
-  ansible-vault edit vaults/debian/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
+  uv run ansible-vault edit vaults/debian/root_vault.yml --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
 # -------------------------------- Provisioning --------------------------------
 
 cold-provision:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook playbook.yml \
+    && uv run ansible-playbook playbook.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-cold-provision.log
 
 provision:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook playbook.yml \
+    && uv run ansible-playbook playbook.yml \
       --skip-tags setup \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-provision.log
 
@@ -75,7 +77,7 @@ provision:
 
 deploy-devnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook full-app.yml \
+    && uv run ansible-playbook full-app.yml \
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}' \
       -e frontend_enabled_features='points' \
       --limit 100.96.253.40,100.107.248.71 \
@@ -84,7 +86,7 @@ deploy-devnet:
 reset-and-deploy-devnet:
   just stop-devnet
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook full-app.yml \
+    && uv run ansible-playbook full-app.yml \
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true, "reset_data": true}' \
       -e frontend_enabled_features='points' \
       --limit 100.96.253.40,100.107.248.71 \
@@ -92,21 +94,21 @@ reset-and-deploy-devnet:
 
 stop-devnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook stop-services.yml \
+    && uv run ansible-playbook stop-services.yml \
       -e dango_network=devnet \
       --limit 100.96.253.40,100.107.248.71 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-devnet.log
 
 restart-devnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook restart-services.yml \
+    && uv run ansible-playbook restart-services.yml \
       -e dango_network=devnet \
       --limit 100.96.253.40,100.107.248.71 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-devnet.log
 
 remove-deploy-lock-devnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook remove-deploy-locks.yml \
+    && uv run ansible-playbook remove-deploy-locks.yml \
       -e dango_network=devnet \
       --limit 100.96.253.40,100.107.248.71 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-devnet.log
@@ -115,42 +117,42 @@ remove-deploy-lock-devnet:
 
 deploy-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook points-bot.yml \
+    && uv run ansible-playbook points-bot.yml \
       -e '{"points_bot_networks": ["{{network}}"], "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-points-bot.log
 
 stop-points-bot network:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook stop-points-bot.yml \
+    && uv run ansible-playbook stop-points-bot.yml \
       -e '{"points_bot_networks": ["{{network}}"]}' \
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-points-bot.log
 
 drop-app-db-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook drop-db-points-bot.yml \
+    && uv run ansible-playbook drop-db-points-bot.yml \
       -e '{"points_bot_networks": ["{{network}}"], "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-app-db-points-bot.log
 
 drop-app-db-full-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook drop-db-points-bot.yml \
+    && uv run ansible-playbook drop-db-points-bot.yml \
       -e '{"points_bot_networks": ["{{network}}"], "drop_db_full": true, "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-app-db-full-points-bot.log
 
 drop-httpd-db-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook drop-db-points-bot.yml \
+    && uv run ansible-playbook drop-db-points-bot.yml \
       -e '{"points_bot_networks": ["{{network}}"], "drop_db_target": "httpd", "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-httpd-db-points-bot.log
 
 drop-all-dbs-points-bot network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook drop-db-points-bot.yml \
+    && uv run ansible-playbook drop-db-points-bot.yml \
       -e '{"points_bot_networks": ["{{network}}"], "drop_db_target": "all", "points_bot_tag": "{{tag}}"}' \
       --limit points-bot-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-all-dbs-points-bot.log
@@ -160,13 +162,13 @@ drop-all-dbs-points-bot network tag="latest":
 
 deploy-perps-bot tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook perps-bot.yml \
+    && uv run ansible-playbook perps-bot.yml \
       -e perps_bot_tag={{tag}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-perps-bot.log
 
 stop-perps-bot:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook stop-perps-bot.yml \
+    && uv run ansible-playbook stop-perps-bot.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-perps-bot.log
 
 # ------------------------------ Perp Liquidator -------------------------------
@@ -176,7 +178,7 @@ stop-perps-bot:
 #        just deploy-perp-liquidator testnet v1.2.3
 deploy-perp-liquidator network tag="latest":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook redeploy-perp-liquidator.yml \
+    && uv run ansible-playbook redeploy-perp-liquidator.yml \
       -e dango_network={{network}} \
       -e perp_liquidator_tag={{tag}} \
       --limit perp-liquidator-{{network}} \
@@ -186,7 +188,7 @@ deploy-perp-liquidator network tag="latest":
 
 deploy-testnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook full-app.yml \
+    && uv run ansible-playbook full-app.yml \
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
       -e frontend_enabled_features='points' \
       --limit 100.90.163.19,100.109.200.70 \
@@ -198,21 +200,21 @@ deploy-testnet:
 
 stop-testnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook stop-services.yml \
+    && uv run ansible-playbook stop-services.yml \
       -e dango_network=testnet \
       --limit 100.90.163.19,100.109.200.70 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-testnet.log
 
 restart-testnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook restart-services.yml \
+    && uv run ansible-playbook restart-services.yml \
       -e dango_network=testnet \
       --limit 100.90.163.19,100.109.200.70 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-testnet.log
 
 remove-deploy-lock-testnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook remove-deploy-locks.yml \
+    && uv run ansible-playbook remove-deploy-locks.yml \
       -e dango_network=testnet \
       --limit 100.90.163.19,100.109.200.70 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-testnet.log
@@ -224,28 +226,28 @@ remove-deploy-lock-testnet:
 
 deploy-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook full-app.yml \
+    && uv run ansible-playbook full-app.yml \
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
       --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet.log
 
 stop-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook stop-services.yml \
+    && uv run ansible-playbook stop-services.yml \
       -e dango_network=mainnet \
       --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-mainnet.log
 
 restart-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook restart-services.yml \
+    && uv run ansible-playbook restart-services.yml \
       -e dango_network=mainnet \
       --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-mainnet.log
 
 remove-deploy-lock-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook remove-deploy-locks.yml \
+    && uv run ansible-playbook remove-deploy-locks.yml \
       -e dango_network=mainnet \
       --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-mainnet.log
@@ -254,7 +256,7 @@ remove-deploy-lock-mainnet:
 
 deploy-preview-latest:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook full-app.yml \
+    && uv run ansible-playbook full-app.yml \
       -e '{"expose_ports": true, "dex_bot_enabled":true, "perps_bot_enabled": true, "faucet_bot_enabled": true, "cometbft_generate_keys":true}' \
       -e deploy_env=preview \
       -e dango_image_tag=latest \
@@ -266,7 +268,7 @@ deploy-preview-latest:
 
 delete-pr number:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook delete-full-app.yml \
+    && uv run ansible-playbook delete-full-app.yml \
       -e deployment_name=pr-{{number}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-pr.log
 
@@ -281,7 +283,7 @@ delete-pr number:
 #   index: required for validator (e.g. "1", "2"), optional for relayer
 deploy-hyperlane network agent limit index="":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook -i inventory hyperlane.yml \
+    && uv run ansible-playbook -i inventory hyperlane.yml \
       -e hyperlane_agents_network={{network}} \
       -e hyperlane_agent_type={{agent}} \
       -e hyperlane_validator_index={{index}} \
@@ -305,7 +307,7 @@ deploy-hyperlane-testnet:
 #        just stop-hyperlane testnet relayer 100.109.200.70
 stop-hyperlane network agent limit index="":
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook -i inventory stop-hyperlane.yml \
+    && uv run ansible-playbook -i inventory stop-hyperlane.yml \
       -e hyperlane_agents_network={{network}} \
       -e hyperlane_agent_type={{agent}} \
       -e hyperlane_validator_index={{index}} \
@@ -327,7 +329,7 @@ stop-hyperlane-testnet-validators:
 # Usage: just start-dango-httpd mainnet 100.89.7.33
 start-dango-httpd network limit:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook start-dango-httpd.yml \
+    && uv run ansible-playbook start-dango-httpd.yml \
       -e dango_network={{network}} \
       --limit {{limit}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-start-dango-httpd.log
@@ -336,7 +338,7 @@ start-dango-httpd network limit:
 # Usage: just hyperlane-kms-address testnet 1
 hyperlane-kms-address network index:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook hyperlane-kms-address.yml \
+    && uv run ansible-playbook hyperlane-kms-address.yml \
       -e hyperlane_agents_network={{network}} \
       -e hyperlane_validator_index={{index}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-hyperlane-kms-address.log
@@ -347,7 +349,7 @@ hyperlane-kms-address network index:
 # Usage: just update-traefik-routes mainnet 100.76.197.30
 update-traefik-routes network limit:
   mkdir -p "{{justfile_directory()}}/logs" \
-    && ansible-playbook update-traefik-routes.yml \
+    && uv run ansible-playbook update-traefik-routes.yml \
       -e dango_network={{network}} \
       --limit {{limit}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-update-traefik-routes.log"
@@ -356,35 +358,35 @@ update-traefik-routes network limit:
 
 deploy-github-runners:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook setup-github-runner-hosts.yml \
+    && uv run ansible-playbook setup-github-runner-hosts.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-github-runners.log
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook install-github-runner-hosts.yml \
+    && uv run ansible-playbook install-github-runner-hosts.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-github-runners.log
 
 deploy-dozzle:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook dozzle.yml \
+    && uv run ansible-playbook dozzle.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-dozzle.log
 
 deploy-monitoring:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook monitoring.yml \
+    && uv run ansible-playbook monitoring.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-monitoring.log
 
 deploy-tailscale:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook tailscale.yml \
+    && uv run ansible-playbook tailscale.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-tailscale.log
 
 deploy-db:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook db.yml \
+    && uv run ansible-playbook db.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-db.log
 
 deploy-clickhouse:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook clickhouse.yml \
+    && uv run ansible-playbook clickhouse.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-clickhouse.log
 
 # -------------------------------- B2 Buckets ----------------------------------
@@ -392,7 +394,7 @@ deploy-clickhouse:
 # List all B2 buckets
 b2-list-buckets:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook cleanup-b2-buckets.yml \
+    && uv run ansible-playbook cleanup-b2-buckets.yml \
       --limit 100.96.253.40 \
       --tags list \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-list-buckets.log
@@ -400,7 +402,7 @@ b2-list-buckets:
 # Delete empty B2 buckets (PR and devnet only, requires lifecycle rules)
 b2-cleanup-buckets:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook cleanup-b2-buckets.yml \
+    && uv run ansible-playbook cleanup-b2-buckets.yml \
       --limit 100.96.253.40 \
       --tags cleanup \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-cleanup-buckets.log
@@ -408,7 +410,7 @@ b2-cleanup-buckets:
 # Delete a specific B2 bucket by name (must be empty)
 b2-delete-bucket name:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook cleanup-b2-buckets.yml \
+    && uv run ansible-playbook cleanup-b2-buckets.yml \
       --limit 100.96.253.40 \
       --tags delete-bucket \
       -e b2_bucket={{name}} \
@@ -417,7 +419,7 @@ b2-delete-bucket name:
 # Mark a B2 bucket for deletion (sets lifecycle rules to drain files in ~2 days)
 b2-mark-bucket-deletable name:
   mkdir -p {{justfile_directory()}}/logs \
-    && ansible-playbook cleanup-b2-buckets.yml \
+    && uv run ansible-playbook cleanup-b2-buckets.yml \
       --limit 100.96.253.40 \
       --tags mark-bucket-deletable \
       -e b2_bucket={{name}} \
@@ -428,18 +430,18 @@ b2-mark-bucket-deletable name:
 # Download Grug RocksDB — interactive host selection (no tee, prompt needs direct stdout)
 # Usage: just download-db-dango testnet
 download-db-dango network:
-  ansible-playbook download-db-dango.yml \
+  uv run ansible-playbook download-db-dango.yml \
     -e dango_network={{network}}
 
 # Download CometBFT data — interactive host selection (no tee, prompt needs direct stdout)
 # Usage: just download-db-cometbft testnet
 download-db-cometbft network:
-  ansible-playbook download-db-cometbft.yml \
+  uv run ansible-playbook download-db-cometbft.yml \
     -e dango_network={{network}}
 
 # Download Points Bot RocksDB — interactive host selection (no tee, prompt needs direct stdout)
 # Usage: just download-db-points-bot testnet
 download-db-points-bot network restart_after="true":
-  ansible-playbook download-db-points-bot.yml \
+  uv run ansible-playbook download-db-points-bot.yml \
     -e network={{network}} \
     -e restart_after={{restart_after}}

@@ -12,6 +12,7 @@ actix-test     = { workspace = true }
 actix-web      = { workspace = true }
 anyhow         = { workspace = true }
 awc            = { workspace = true }
+dango-sdk      = { workspace = true }
 futures-util   = { workspace = true }
 graphql_client = { workspace = true }
 grug-app       = { workspace = true }
@@ -21,7 +22,6 @@ grug-testing   = { workspace = true }
 grug-types     = { workspace = true }
 grug-vm-rust   = { workspace = true }
 indexer-cache  = { workspace = true, features = ["http-request-details", "tracing"] }
-indexer-client = { workspace = true }
 indexer-hooked = { workspace = true, features = ["tracing"] }
 indexer-httpd  = { workspace = true, features = ["tracing"] }
 indexer-sql    = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }

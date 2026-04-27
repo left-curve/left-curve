@@ -1,5 +1,5 @@
 packages:
-  - sdk/*
+  - sdk/typescript/*
   - ui/applets/*
   - ui/workers/*
   - ui/portal/*

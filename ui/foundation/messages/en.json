@@ -307,6 +307,9 @@
             "contract=taxman": "**Taxman** The contract responsible for handling taxes and fees.",
             "contract=ism": "**ISM** The contract responsible for managing the interchain security model.",
             "contract=mailbox": "**Mailbox** The contract responsible for handling messages between chains.",
+            "contract=perps": "**Perps** The contract responsible for managing perpetual futures trading.",
+            "contract=bank": "**Bank** The contract responsible for managing fungible token transfers.",
+            "contract=vesting": "**Vesting** The contract responsible for managing token vesting schedules.",
             "contract=va": "**VA** The contract responsible for managing the validator set."
           }
         }
@@ -325,6 +328,36 @@
         "contractAddress": "Contract Address:",
         "admin": "Admin:",
         "balances": "Balances:"
+      },
+      "perps": {
+        "balance": {
+          "margin": "Margin",
+          "equity": "Equity",
+          "availableMargin": "Available Margin",
+          "reservedMargin": "Reserved Margin",
+          "vaultShares": "Vault Shares"
+        },
+        "positions": {
+          "pair": "Pair",
+          "side": "Side",
+          "size": "Size",
+          "entryPrice": "Entry Price",
+          "unrealizedPnl": "Unrealized PnL",
+          "liqPrice": "Liq. Price",
+          "long": "LONG",
+          "short": "SHORT"
+        },
+        "orders": {
+          "pair": "Pair",
+          "side": "Side",
+          "size": "Size",
+          "limitPrice": "Limit Price",
+          "reduceOnly": "Reduce Only",
+          "reservedMargin": "Reserved Margin",
+          "createdAt": "Created At",
+          "long": "LONG",
+          "short": "SHORT"
+        }
       }
     },
     "user": {

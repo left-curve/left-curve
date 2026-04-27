@@ -40,7 +40,7 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
             javascript:
-              - 'sdk/**'
+              - 'sdk/typescript/**'
               - 'ui/**'
               - 'package.json'
               - 'pnpm-lock.yaml'

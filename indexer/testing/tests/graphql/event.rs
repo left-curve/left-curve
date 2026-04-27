@@ -1,10 +1,8 @@
 use {
     assertor::*,
+    dango_sdk::{Events, SubscribeEvents, Transactions, events, subscribe_events, transactions},
     graphql_client::GraphQLQuery,
     grug_types::{BroadcastClientExt, Coins, Denom, ResultExt},
-    indexer_client::{
-        Events, SubscribeEvents, Transactions, events, subscribe_events, transactions,
-    },
     indexer_testing::{
         GraphQLCustomRequest, PaginationDirection,
         block::{create_block, create_blocks},
@@ -175,7 +173,7 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeEvents::build_query(subscribe_events::Variables::default()),
         "events",

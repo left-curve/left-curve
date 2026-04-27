@@ -2,10 +2,10 @@ use {
     assertor::*,
     dango_genesis::GenesisOption,
     dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
+    dango_sdk::HttpClient,
     dango_testing::Preset,
     dango_types::config::AppConfig,
     grug::QueryClientExt,
-    indexer_client::HttpClient,
 };
 
 #[tokio::test]

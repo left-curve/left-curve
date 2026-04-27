@@ -9,7 +9,7 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../sdk/dango"
+      "path": "../../sdk/typescript/dango"
     }
   ]
 }
