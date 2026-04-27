@@ -1613,11 +1613,25 @@ pub struct Liquidated {
     pub adl_price: Option<UsdPrice>,
 
     /// PnL realized by the liquidated user from ADL fills, accumulated
-    /// across all counter-party fills for this pair. Includes both the
-    /// closing PnL on each ADL fill and the funding settled on the user's
-    /// position immediately before each fill. Zero if no ADL happened.
-    /// ADL fills incur no trading fees.
+    /// across all counter-party fills for this pair. Reports the closing
+    /// PnL on each ADL fill (price movement on the closed portion).
+    /// Zero if no ADL happened. ADL fills incur no trading fees.
+    ///
+    /// Prior to v0.17.0 (exclusive) this field also bundled the funding
+    /// settled on the user's position immediately before each ADL fill.
+    /// From v0.17.0 (inclusive) onward, that funding component is
+    /// reported separately as `adl_realized_funding` and is no longer
+    /// included here.
     pub adl_realized_pnl: UsdValue,
+
+    /// Funding settled on the liquidated user's position immediately
+    /// before each ADL fill, accumulated across all counter-party fills
+    /// for this pair. Zero if no ADL happened or if no funding had
+    /// accrued.
+    ///
+    /// `None` for liquidations executed before v0.17.0 — funding was
+    /// reported as part of `adl_realized_pnl` prior to that release.
+    pub adl_realized_funding: Option<UsdValue>,
 }
 
 /// Event indicating a counter-party's position was reduced during ADL.

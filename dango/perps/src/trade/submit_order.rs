@@ -1125,9 +1125,16 @@ pub fn match_order(
 /// `pnl` and `fee` directly into [`settle_pnls`], and accumulate `volume`
 /// across all of a taker order's fills for `apply_fee_commissions` and
 /// `flush_volumes`.
+///
+/// `funding` is the funding-settlement component of `pnl` (so
+/// `pnl - funding` is the closing-PnL component). Exposed so callers
+/// that report PnL components separately — e.g. the ADL path emitting
+/// `Liquidated.adl_realized_funding` — can pull funding off without
+/// recomputing it.
 #[derive(Debug, Clone, Copy)]
 pub struct FillSettlement {
     pub pnl: UsdValue,
+    pub funding: UsdValue,
     pub fee: UsdValue,
     pub volume: UsdValue,
 }
@@ -1224,7 +1231,12 @@ pub fn settle_fill(
         .record(fee.to_f64().abs());
     }
 
-    Ok(FillSettlement { pnl, fee, volume })
+    Ok(FillSettlement {
+        pnl,
+        funding: fill_pnl.funding,
+        fee,
+        volume,
+    })
 }
 
 #[derive(Debug, Clone, Copy)]
