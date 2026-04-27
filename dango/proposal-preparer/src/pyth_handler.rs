@@ -77,18 +77,15 @@ impl PythHandler<PythClient> {
             return Self { inner: None };
         }
 
-        // `endpoints` is non-empty (length > 0 verified above), so wrapping in
-        // `NonEmpty` is infallible.
-        let client = match PythClient::new(NonEmpty::new_unchecked(endpoints), access_token) {
-            Ok(c) => c,
-            Err(err) => {
-                warn!(
-                    ?err,
-                    "Failed to construct Pyth client; oracle feeding is disabled"
-                );
-                return Self { inner: None };
-            },
-        };
+        // Infallible: `endpoints.length() == 0` ruled out above.
+        let endpoints = NonEmpty::new(endpoints).unwrap();
+
+        // Fail loudly on construction error. Silently producing a disabled
+        // handler would mean every block runs without fresh oracle prices,
+        // the market-making vault never re-quotes, and liquidation logic
+        // uses stale inputs — far worse than a noisy startup failure.
+        let client = PythClient::new(endpoints, access_token).unwrap();
+
         Self {
             inner: Some(Mutex::new(PythHandlerInner::new(client))),
         }
@@ -105,16 +102,10 @@ impl PythHandler<PythClientCache> {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = match PythClientCache::new(endpoints, access_token) {
-            Ok(c) => c,
-            Err(err) => {
-                warn!(
-                    ?err,
-                    "Failed to construct Pyth cache client; oracle feeding is disabled",
-                );
-                return Self { inner: None };
-            },
-        };
+        // Fail loudly on construction error — same rationale as
+        // `PythHandler::<PythClient>::new`.
+        let client = PythClientCache::new(endpoints, access_token).unwrap();
+
         Self {
             inner: Some(Mutex::new(PythHandlerInner::new(client))),
         }
@@ -128,15 +119,20 @@ where
     pub fn fetch_latest_price_update(&self) -> Option<PriceUpdate> {
         // Retrieve the VAAs from the shared memory and consume them in order
         // to avoid pushing the same VAAs again.
-        let inner = self.inner.as_ref()?.lock().ok()?;
+        //
+        // Panic on a poisoned mutex: it means a prior caller panicked while
+        // holding the lock — that's a real bug, and silently swallowing it
+        // would let the chain produce many blocks without fresh oracle
+        // prices.
+        let inner = self.inner.as_ref()?.lock().unwrap();
         inner.shared_vaas.replace(None)
     }
 
     pub fn close_stream(&self) {
-        if let Some(inner) = &self.inner
-            && let Ok(mut inner) = inner.lock()
-        {
-            inner.close_stream();
+        if let Some(inner) = &self.inner {
+            // Panic on a poisoned mutex — same rationale as
+            // `fetch_latest_price_update`.
+            inner.lock().unwrap().close_stream();
         }
     }
 }
@@ -150,13 +146,10 @@ where
         let Some(inner) = &self.inner else {
             return Ok(());
         };
-        match inner.lock() {
-            Ok(mut guard) => guard.update_stream(querier, oracle),
-            Err(_) => {
-                error!("PythHandler mutex poisoned; skipping stream update");
-                Ok(())
-            },
-        }
+
+        // Panic on a poisoned mutex — same rationale as
+        // `fetch_latest_price_update`.
+        inner.lock().unwrap().update_stream(querier, oracle)
     }
 }
 
