@@ -1,31 +1,22 @@
 use {
-    crate::{QueryPythId, pyth_handler::PythHandler},
-    dango_types::{config::AppConfig, oracle::ExecuteMsg},
-    grug::{
-        Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
-        Tx,
+    crate::{
+        maker_priority_handler::MakerPriorityHandler,
+        pyth_handler::{PythHandler, QueryPythId},
     },
+    grug::{Lengthy, NonEmpty, QuerierWrapper, StdError},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::constants::LAZER_ENDPOINTS_TEST,
     reqwest::IntoUrl,
-    std::{fmt::Debug, sync::Mutex},
-    tracing::{error, warn},
+    std::fmt::Debug,
 };
-#[cfg(feature = "metrics")]
-use {
-    metrics::{describe_histogram, histogram},
-    std::time::Instant,
-};
-
-const GAS_LIMIT: u64 = 50_000_000;
 
 pub struct ProposalPreparer<P>
 where
     P: PythClientTrait + QueryPythId,
 {
-    // `Option` to be able to not clone the `PythHandler`.
-    pyth_handler: Option<Mutex<PythHandler<P>>>,
+    maker_priority: MakerPriorityHandler,
+    pyth: PythHandler<P>,
 }
 
 impl<P> Clone for ProposalPreparer<P>
@@ -33,7 +24,10 @@ where
     P: PythClientTrait + QueryPythId,
 {
     fn clone(&self) -> Self {
-        Self { pyth_handler: None }
+        Self {
+            maker_priority: self.maker_priority,
+            pyth: self.pyth.clone(),
+        }
     }
 }
 
@@ -44,54 +38,22 @@ impl ProposalPreparer<PythClient> {
         U: IntoUrl,
         T: ToString,
     {
-        #[cfg(feature = "metrics")]
-        init_metrics();
-
-        let mut client = None;
-
-        if access_token.to_string().is_empty() {
-            warn!("Pyth Lazer access token is empty! Oracle feeding is disabled");
-        } else if endpoints.length() == 0 {
-            warn!("Pyth Lazer endpoints not provided! Oracle feeding is disabled");
-        } else {
-            client = Some(Mutex::new(PythHandler::new(
-                NonEmpty::new(endpoints).unwrap(),
-                access_token,
-            )));
-        }
-
         Self {
-            pyth_handler: client,
+            maker_priority: MakerPriorityHandler,
+            pyth: PythHandler::new(endpoints, access_token),
         }
     }
 }
 
 impl ProposalPreparer<PythClientCache> {
     pub fn new_with_cache() -> Self {
-        #[cfg(feature = "metrics")]
-        init_metrics();
-
-        let client = PythHandler::new_with_cache(
-            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
-            "lazer_token",
-        );
-
+        // `LAZER_ENDPOINTS_TEST` is a static non-empty array.
         Self {
-            pyth_handler: Some(Mutex::new(client)),
-        }
-    }
-}
-
-// Ensure background streaming threads are stopped when the preparer is dropped.
-impl<P> Drop for ProposalPreparer<P>
-where
-    P: PythClientTrait + QueryPythId,
-{
-    fn drop(&mut self) {
-        if let Some(handler) = &self.pyth_handler
-            && let Ok(mut h) = handler.lock()
-        {
-            h.close_stream();
+            maker_priority: MakerPriorityHandler,
+            pyth: PythHandler::new_with_cache(
+                NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
+                "lazer_token",
+            ),
         }
     }
 }
@@ -106,63 +68,15 @@ where
     fn prepare_proposal(
         &self,
         querier: QuerierWrapper,
-        mut txs: Vec<Bytes>,
-        _max_tx_bytes: usize,
+        txs: Vec<Bytes>,
+        max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {
-        #[cfg(feature = "metrics")]
-        let start = Instant::now();
-
-        let cfg: AppConfig = querier.query_app_config()?;
-
-        // Check if the PythHandler is initialized.
-        if self.pyth_handler.is_none() {
-            return Ok(txs);
-        }
-
-        // Should we find a way to start and connect the PythClientPPHandler at startup?
-        // How to know which ids should be used?
-        let mut pyth_handler = self.pyth_handler.as_ref().unwrap().lock().unwrap();
-
-        // Update the Pyth stream if the PythIds in the oracle have changed.
-        if let Err(err) = pyth_handler.update_stream(querier, cfg.addresses.oracle) {
-            error!("Failed to update Pyth stream: {:?}", err);
-        }
-
-        // Retrieve the PriceUpdate.
-        let maybe_price_update = pyth_handler.fetch_latest_price_update();
-
-        // Return if there are no new prices to feed.
-        let Some(price_update) = maybe_price_update else {
-            return Ok(txs);
-        };
-
-        // Build the tx.
-        let tx = Tx {
-            sender: cfg.addresses.oracle,
-            gas_limit: GAS_LIMIT,
-            msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                cfg.addresses.oracle,
-                &ExecuteMsg::FeedPrices(price_update),
-                Coins::new(),
-            )?]),
-            data: Json::null(),
-            credential: Json::null(),
-        };
-
-        txs.insert(0, tx.to_json_vec()?.into());
-
-        #[cfg(feature = "metrics")]
-        histogram!("proposal_preparer.prepare_proposal.duration",)
-            .record(start.elapsed().as_secs_f64());
-
-        Ok(txs)
+        // Maker-priority promotion runs first; Pyth runs second so the
+        // oracle-update tx ends up at index 0, ahead of the priority maker
+        // traffic. Final layout: `[oracle, priority_makers..., others...]`.
+        let txs = self
+            .maker_priority
+            .prepare_proposal(querier, txs, max_tx_bytes)?;
+        self.pyth.prepare_proposal(querier, txs, max_tx_bytes)
     }
-}
-
-#[cfg(feature = "metrics")]
-pub fn init_metrics() {
-    describe_histogram!(
-        "proposal_preparer.prepare_proposal.duration",
-        "Duration of the `prepare_proposal` method in seconds",
-    );
 }

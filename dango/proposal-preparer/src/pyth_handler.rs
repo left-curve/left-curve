@@ -1,13 +1,20 @@
 use {
-    dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
-    grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
+    dango_types::{
+        config::AppConfig,
+        oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
+    },
+    grug::{
+        Addr, Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper,
+        Shared, StdError, StdResult, Tx,
+    },
+    prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         fmt::Debug,
         sync::{
-            Arc,
+            Arc, Mutex,
             atomic::{AtomicBool, Ordering},
         },
         thread,
@@ -15,15 +22,32 @@ use {
     },
     tokio::{runtime::Runtime, time::sleep},
     tokio_stream::StreamExt,
-    tracing::error,
+    tracing::{error, warn},
+};
+#[cfg(feature = "metrics")]
+use {
+    metrics::{describe_histogram, histogram},
+    std::time::Instant,
 };
 
 /// Number of attempts to connect to the Pyth stream before giving up.
 const CONNECT_ATTEMPTS: usize = 3;
 
+/// Gas limit for the oracle price-feed transaction injected at the top of
+/// each block.
+const GAS_LIMIT: u64 = 50_000_000;
+
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
 /// keep all code related to Pyth for PP in a single structure.
 pub struct PythHandler<P>
+where
+    P: PythClientTrait,
+{
+    /// `None` when Pyth feeding is disabled (no token / no endpoints).
+    inner: Option<Mutex<PythHandlerInner<P>>>,
+}
+
+struct PythHandlerInner<P>
 where
     P: PythClientTrait,
 {
@@ -34,27 +58,57 @@ where
 }
 
 impl PythHandler<PythClient> {
-    pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> PythHandler<PythClient>
+    pub fn new<V, U, T>(endpoints: V, access_token: T) -> Self
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
-        Self::new_with_client(PythClient::new(endpoints, access_token).unwrap())
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        if access_token.to_string().is_empty() {
+            warn!("Pyth Lazer access token is empty! Oracle feeding is disabled");
+            return Self { inner: None };
+        }
+
+        if endpoints.length() == 0 {
+            warn!("Pyth Lazer endpoints not provided! Oracle feeding is disabled");
+            return Self { inner: None };
+        }
+
+        // Infallible: `endpoints.length() == 0` ruled out above.
+        let endpoints = NonEmpty::new(endpoints).unwrap();
+
+        // Fail loudly on construction error. Silently producing a disabled
+        // handler would mean every block runs without fresh oracle prices,
+        // the market-making vault never re-quotes, and liquidation logic
+        // uses stale inputs — far worse than a noisy startup failure.
+        let client = PythClient::new(endpoints, access_token).unwrap();
+
+        Self {
+            inner: Some(Mutex::new(PythHandlerInner::new(client))),
+        }
     }
 }
 
 impl PythHandler<PythClientCache> {
-    pub fn new_with_cache<V, U, T>(
-        endpoints: NonEmpty<V>,
-        access_token: T,
-    ) -> PythHandler<PythClientCache>
+    pub fn new_with_cache<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> Self
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
-        Self::new_with_client(PythClientCache::new(endpoints, access_token).unwrap())
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        // Fail loudly on construction error — same rationale as
+        // `PythHandler::<PythClient>::new`.
+        let client = PythClientCache::new(endpoints, access_token).unwrap();
+
+        Self {
+            inner: Some(Mutex::new(PythHandlerInner::new(client))),
+        }
     }
 }
 
@@ -62,7 +116,128 @@ impl<P> PythHandler<P>
 where
     P: PythClientTrait + QueryPythId,
 {
-    fn new_with_client(client: P) -> PythHandler<P> {
+    pub fn fetch_latest_price_update(&self) -> Option<PriceUpdate> {
+        // Retrieve the VAAs from the shared memory and consume them in order
+        // to avoid pushing the same VAAs again.
+        //
+        // Panic on a poisoned mutex: it means a prior caller panicked while
+        // holding the lock — that's a real bug, and silently swallowing it
+        // would let the chain produce many blocks without fresh oracle
+        // prices.
+        let inner = self.inner.as_ref()?.lock().unwrap();
+        inner.shared_vaas.replace(None)
+    }
+
+    pub fn close_stream(&self) {
+        if let Some(inner) = &self.inner {
+            // Panic on a poisoned mutex — same rationale as
+            // `fetch_latest_price_update`.
+            inner.lock().unwrap().close_stream();
+        }
+    }
+}
+
+impl<P> PythHandler<P>
+where
+    P: PythClientTrait + QueryPythId + Send + 'static,
+    P::Error: Debug,
+{
+    pub fn update_stream(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
+        let Some(inner) = &self.inner else {
+            return Ok(());
+        };
+
+        // Panic on a poisoned mutex — same rationale as
+        // `fetch_latest_price_update`.
+        inner.lock().unwrap().update_stream(querier, oracle)
+    }
+}
+
+impl<P> Clone for PythHandler<P>
+where
+    P: PythClientTrait,
+{
+    /// Cloning produces a "dud" copy with no inner state — the streaming
+    /// thread is never duplicated.
+    fn clone(&self) -> Self {
+        Self { inner: None }
+    }
+}
+
+impl<P> Drop for PythHandler<P>
+where
+    P: PythClientTrait,
+{
+    fn drop(&mut self) {
+        if let Some(inner) = &self.inner
+            && let Ok(mut inner) = inner.lock()
+        {
+            inner.close_stream();
+        }
+    }
+}
+
+impl<P> grug_app::ProposalPreparer for PythHandler<P>
+where
+    P: PythClientTrait + QueryPythId + Send + 'static,
+    P::Error: Debug,
+{
+    type Error = StdError;
+
+    fn prepare_proposal(
+        &self,
+        querier: QuerierWrapper,
+        mut txs: Vec<Bytes>,
+        _max_tx_bytes: usize,
+    ) -> Result<Vec<Bytes>, Self::Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        // Disabled handler — pass through.
+        if self.inner.is_none() {
+            return Ok(txs);
+        }
+
+        let cfg: AppConfig = querier.query_app_config()?;
+
+        // Update the Pyth stream if the PythIds in the oracle have changed.
+        if let Err(err) = self.update_stream(querier, cfg.addresses.oracle) {
+            error!("Failed to update Pyth stream: {:?}", err);
+        }
+
+        // Retrieve the PriceUpdate.
+        let Some(price_update) = self.fetch_latest_price_update() else {
+            return Ok(txs);
+        };
+
+        // Build the tx and insert it at the front of the block.
+        let tx = Tx {
+            sender: cfg.addresses.oracle,
+            gas_limit: GAS_LIMIT,
+            msgs: NonEmpty::new_unchecked(vec![Message::execute(
+                cfg.addresses.oracle,
+                &ExecuteMsg::FeedPrices(price_update),
+                Coins::new(),
+            )?]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
+        txs.insert(0, tx.to_json_vec()?.into());
+
+        #[cfg(feature = "metrics")]
+        histogram!("proposal_preparer.prepare_proposal.duration",)
+            .record(start.elapsed().as_secs_f64());
+
+        Ok(txs)
+    }
+}
+
+impl<P> PythHandlerInner<P>
+where
+    P: PythClientTrait,
+{
+    fn new(client: P) -> Self {
         Self {
             client,
             shared_vaas: Shared::new(None),
@@ -71,13 +246,7 @@ where
         }
     }
 
-    pub fn fetch_latest_price_update(&self) -> Option<PriceUpdate> {
-        // Retrieve the VAAs from the shared memory and consume them in order to
-        // avoid pushing the same VAAs again.
-        self.shared_vaas.replace(None)
-    }
-
-    pub fn close_stream(&mut self) {
+    fn close_stream(&mut self) {
         if let Some((keep_running, _handle)) = self.stoppable_thread.take() {
             keep_running.store(false, Ordering::SeqCst);
         }
@@ -87,7 +256,7 @@ where
     }
 }
 
-impl<P> PythHandler<P>
+impl<P> PythHandlerInner<P>
 where
     P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: Debug,
@@ -122,7 +291,7 @@ where
                         match client.stream(ids.clone()).await {
                             Ok(stream) => {
                                 break stream;
-                            }
+                            },
                             Err(err) => {
                                 attempts += 1;
 
@@ -161,7 +330,7 @@ where
         ));
     }
 
-    pub fn update_stream(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
+    fn update_stream(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
         // Retrieve the Pyth ids from the Oracle contract.
         let pyth_ids = self.client.pyth_ids(querier, oracle)?;
 
@@ -244,4 +413,51 @@ fn pyth_ids_lazer(
         .collect::<Vec<_>>();
 
     Ok(new_ids)
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_histogram!(
+        "proposal_preparer.prepare_proposal.duration",
+        "Duration of the `prepare_proposal` method in seconds",
+    );
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        grug_app::{NaiveQuerier, ProposalPreparer as _},
+    };
+
+    /// Disabled handler must short-circuit `prepare_proposal` before touching
+    /// the querier — passing `NaiveQuerier` (which panics on any query)
+    /// proves the early-return path runs.
+    #[test]
+    fn disabled_handler_when_token_empty_passes_through() {
+        let handler: PythHandler<PythClient> = PythHandler::new(["http://example.com"], "");
+        assert!(handler.inner.is_none());
+
+        let querier = QuerierWrapper::new(&NaiveQuerier);
+        let txs: Vec<Bytes> = vec![Bytes::from_static(b"tx1"), Bytes::from_static(b"tx2")];
+        let out = handler
+            .prepare_proposal(querier, txs.clone(), usize::MAX)
+            .unwrap();
+        assert_eq!(out, txs);
+    }
+
+    #[test]
+    fn disabled_handler_when_endpoints_empty_passes_through() {
+        let handler: PythHandler<PythClient> = PythHandler::new(Vec::<&str>::new(), "lazer_token");
+        assert!(handler.inner.is_none());
+
+        let querier = QuerierWrapper::new(&NaiveQuerier);
+        let txs: Vec<Bytes> = vec![Bytes::from_static(b"tx1")];
+        let out = handler
+            .prepare_proposal(querier, txs.clone(), usize::MAX)
+            .unwrap();
+        assert_eq!(out, txs);
+    }
 }
