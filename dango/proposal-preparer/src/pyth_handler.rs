@@ -422,3 +422,42 @@ pub fn init_metrics() {
         "Duration of the `prepare_proposal` method in seconds",
     );
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        grug_app::{NaiveQuerier, ProposalPreparer as _},
+    };
+
+    /// Disabled handler must short-circuit `prepare_proposal` before touching
+    /// the querier — passing `NaiveQuerier` (which panics on any query)
+    /// proves the early-return path runs.
+    #[test]
+    fn disabled_handler_when_token_empty_passes_through() {
+        let handler: PythHandler<PythClient> = PythHandler::new(["http://example.com"], "");
+        assert!(handler.inner.is_none());
+
+        let querier = QuerierWrapper::new(&NaiveQuerier);
+        let txs: Vec<Bytes> = vec![Bytes::from_static(b"tx1"), Bytes::from_static(b"tx2")];
+        let out = handler
+            .prepare_proposal(querier, txs.clone(), usize::MAX)
+            .unwrap();
+        assert_eq!(out, txs);
+    }
+
+    #[test]
+    fn disabled_handler_when_endpoints_empty_passes_through() {
+        let handler: PythHandler<PythClient> = PythHandler::new(Vec::<&str>::new(), "lazer_token");
+        assert!(handler.inner.is_none());
+
+        let querier = QuerierWrapper::new(&NaiveQuerier);
+        let txs: Vec<Bytes> = vec![Bytes::from_static(b"tx1")];
+        let out = handler
+            .prepare_proposal(querier, txs.clone(), usize::MAX)
+            .unwrap();
+        assert_eq!(out, txs);
+    }
+}

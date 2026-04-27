@@ -117,9 +117,9 @@ mod tests {
             Dimensionless, Quantity, UsdPrice, UsdValue,
             constants::btc,
             perps::{
-                CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, MaintainerMsg,
-                OrderKind, SubmitOrCancelOrderRequest, SubmitOrderRequest, TimeInForce, TraderMsg,
-                TriggerDirection,
+                CancelConditionalOrderRequest, CancelOrderRequest, ChildOrder, ExecuteMsg,
+                MaintainerMsg, OrderKind, ReferralMsg, SubmitOrCancelOrderRequest,
+                SubmitOrderRequest, TimeInForce, TraderMsg, TriggerDirection, VaultMsg,
             },
         },
         grug::{Coins, Json, JsonSerExt, MsgExecute, NonEmpty, Uint64},
@@ -148,6 +148,14 @@ mod tests {
         limit(TimeInForce::PostOnly)
     }
 
+    fn post_only_limit_with_client_id() -> OrderKind {
+        OrderKind::Limit {
+            limit_price: UsdPrice::new_int(100),
+            time_in_force: TimeInForce::PostOnly,
+            client_order_id: Some(Uint64::new(42)),
+        }
+    }
+
     fn gtc_limit() -> OrderKind {
         limit(TimeInForce::GoodTilCanceled)
     }
@@ -172,6 +180,25 @@ mod tests {
             reduce_only: false,
             tp: None,
             sl: None,
+        }
+    }
+
+    fn child_order() -> ChildOrder {
+        ChildOrder {
+            trigger_price: UsdPrice::new_int(120),
+            max_slippage: Dimensionless::new_int(0),
+            size: None,
+        }
+    }
+
+    fn submit_with_tp_sl(kind: OrderKind) -> SubmitOrderRequest {
+        SubmitOrderRequest {
+            pair_id: btc::DENOM.clone(),
+            size: Quantity::new_int(1),
+            kind,
+            reduce_only: false,
+            tp: Some(child_order()),
+            sl: Some(child_order()),
         }
     }
 
@@ -208,6 +235,14 @@ mod tests {
 
     fn submit_post_only() -> TraderMsg {
         TraderMsg::SubmitOrder(submit(post_only_limit()))
+    }
+
+    fn submit_post_only_with_tp_sl() -> TraderMsg {
+        TraderMsg::SubmitOrder(submit_with_tp_sl(post_only_limit()))
+    }
+
+    fn submit_post_only_with_client_id() -> TraderMsg {
+        TraderMsg::SubmitOrder(submit(post_only_limit_with_client_id()))
     }
 
     fn submit_market() -> TraderMsg {
@@ -314,6 +349,8 @@ mod tests {
     #[test_case(cancel_cond_all_for_pair() => true; "case_cancel_conditional_all_for_pair")]
     #[test_case(cancel_cond_all() => true; "case_cancel_conditional_all")]
     #[test_case(submit_post_only() => true; "case_submit_post_only")]
+    #[test_case(submit_post_only_with_tp_sl() => true; "case_submit_post_only_with_tp_sl")]
+    #[test_case(submit_post_only_with_client_id() => true; "case_submit_post_only_with_client_id")]
     #[test_case(batch_all_cancel() => true; "case_batch_all_cancel")]
     #[test_case(batch_all_post_only() => true; "case_batch_all_post_only")]
     #[test_case(batch_mixed_priority() => true; "case_batch_mixed")]
@@ -359,25 +396,27 @@ mod tests {
         assert!(!is_priority_tx(tx.as_ref(), &perps()));
     }
 
-    #[test]
-    fn priority_tx_non_execute_message() {
-        // Token transfer is not an Execute message.
-        let tx = tx_with_messages(vec![Message::transfer(perps(), Coins::new()).unwrap()]);
-        assert!(!is_priority_tx(tx.as_ref(), &perps()));
+    // Top-level `Message` variants other than `Execute` are never priority.
+    #[test_case(Message::transfer(perps(), Coins::new()).unwrap() => false ; "case_non_execute_transfer")]
+    #[test_case(Message::upload(vec![0u8; 8])                     => false ; "case_non_execute_upload")]
+    fn priority_tx_non_execute_message(message: Message) -> bool {
+        let tx = tx_with_messages(vec![message]);
+        is_priority_tx(tx.as_ref(), &perps())
     }
 
-    #[test]
-    fn priority_tx_non_trade_execute_msg() {
-        // A perps Execute message that isn't `Trade(...)` is not priority.
+    // A perps Execute message whose payload is not `Trade(...)` is never
+    // priority — covers all sibling variants of `ExecuteMsg`.
+    #[test_case(ExecuteMsg::Maintain(MaintainerMsg::Donate {})              => false ; "case_non_trade_maintain")]
+    #[test_case(ExecuteMsg::Vault(VaultMsg::Refresh {})                     => false ; "case_non_trade_vault")]
+    #[test_case(ExecuteMsg::Referral(ReferralMsg::SetReferral {
+        referrer: 1,
+        referee: 2,
+    })                                                                       => false ; "case_non_trade_referral")]
+    fn priority_tx_non_trade_execute_msg(execute_msg: ExecuteMsg) -> bool {
         let tx = tx_with_messages(vec![
-            Message::execute(
-                perps(),
-                &ExecuteMsg::Maintain(MaintainerMsg::Donate {}),
-                Coins::new(),
-            )
-            .unwrap(),
+            Message::execute(perps(), &execute_msg, Coins::new()).unwrap(),
         ]);
-        assert!(!is_priority_tx(tx.as_ref(), &perps()));
+        is_priority_tx(tx.as_ref(), &perps())
     }
 
     #[test]
