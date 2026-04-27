@@ -297,6 +297,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.DestinationWallet]: {
+    component: lazyWithRetry(() =>
+      import("./DestinationWallet").then(({ DestinationWallet }) => ({
+        default: DestinationWallet,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

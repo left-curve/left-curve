@@ -15,7 +15,6 @@ import {
   ConnectWalletWithModal,
   createContext,
   DepositAddressBox,
-  ethAddressMask,
   FormattedNumber,
   IconDisconnect,
   Modals,
@@ -39,17 +38,11 @@ import {
   WarningContainer,
 } from "@left-curve/applets-kit";
 
+import { useState } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { AnyCoin } from "@left-curve/store/types";
 import type { NonNullablePropertiesBy } from "@left-curve/dango/types";
-
-const masks = {
-  ethereum: ethAddressMask,
-  base: ethAddressMask,
-  arbitrum: ethAddressMask,
-  sepolia: ethAddressMask,
-};
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -303,8 +296,14 @@ const BridgeWithdraw: React.FC = () => {
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
   const { action, coin, network, config, reset } = state;
-  const { register, inputs } = controllers;
+  const { inputs } = controllers;
   const { showModal } = useApp();
+
+  const [destinationAddress, setDestinationAddress] = useState<{
+    address: string;
+    walletName?: string;
+    walletIcon?: string;
+  } | null>(null);
 
   const amount = inputs.amount?.value || "0";
   const recipient = inputs.recipient?.value || "";
@@ -329,6 +328,16 @@ const BridgeWithdraw: React.FC = () => {
       fee,
     });
 
+  const handleAddressSet = (address: string, walletName?: string, walletIcon?: string) => {
+    setDestinationAddress({ address, walletName, walletIcon });
+    controllers.setValue("recipient", address);
+  };
+
+  const handleDisconnect = () => {
+    setDestinationAddress(null);
+    controllers.setValue("recipient", "");
+  };
+
   const feeSubtraction = Decimal(amount).minus(fee);
   const youGet = feeSubtraction.gt("0") ? feeSubtraction.toFixed() : "0";
 
@@ -338,8 +347,6 @@ const BridgeWithdraw: React.FC = () => {
 
   return (
     <>
-      <BridgeSelectors />
-
       <WarningContainer
         description={
           <ul className="list-disc pl-4 flex flex-col gap-1">
@@ -361,82 +368,128 @@ const BridgeWithdraw: React.FC = () => {
         }
       />
 
+      <BridgeSelectors />
+
       {coin && network && (
         <div className="flex flex-col items-center justify-center gap-6">
           <div className="flex flex-col items-center gap-4 w-full">
-            <AssetInputWithRange
-              name="amount"
-              asset={coin}
-              balances={balances}
-              controllers={controllers}
-              showRange
-              label={m["bridge.youWithdraw"]()}
-              bottomComponent={
-                <div className="w-full flex justify-between">
-                  <p>{m["bridge.minimumWithdraw"]()}</p>
-                  <p className="flex gap-1">
-                    <span>{`> ${fee}`}</span>
-                    <span>{coin.symbol}</span>
+            {!destinationAddress ? (
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() =>
+                  showModal(Modals.DestinationWallet, {
+                    network,
+                    onAddressSet: handleAddressSet,
+                  })
+                }
+              >
+                {m["bridge.setDestinationAddress"]()}
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex justify-between items-center w-full">
+                  <p className="exposure-sm-italic text-ink-secondary-700">
+                    {m["bridge.withdrawAddress"]()}
                   </p>
+                  <div className="flex gap-2 items-center">
+                    {destinationAddress.walletName && (
+                      <>
+                        {destinationAddress.walletIcon && (
+                          <img
+                            src={destinationAddress.walletIcon}
+                            alt={destinationAddress.walletName}
+                            className="w-4 h-4 inline-block"
+                          />
+                        )}
+                        <span className="diatype-sm-medium text-ink-tertiary-500">
+                          {destinationAddress.walletName}
+                        </span>
+                      </>
+                    )}
+                    <IconDisconnect
+                      className="w-4 h-4 inline-block text-ink-tertiary-500 hover:cursor-pointer hover:text-ink-primary-900"
+                      onClick={handleDisconnect}
+                    />
+                  </div>
                 </div>
-              }
-            />
-            <div className="flex items-center justify-center">
-              <div className="flex items-center justify-center border border-fg-tertiary-400 rounded-full h-5 w-5">
-                <IconArrowDown className="h-3 w-3 text-ink-tertiary-500" />
+                <div className="diatype-sm-regular text-ink-primary-900 break-all bg-surface-secondary-rice shadow-account-card rounded-lg p-3">
+                  {destinationAddress.address}
+                </div>
               </div>
-            </div>
-            <Input
-              {...register("recipient", { mask: masks[network as keyof typeof masks] })}
-              label={m["bridge.withdrawAddress"]()}
-              placeholder={m["bridge.placeholderWithdrawAddress"]({
-                network: m["bridge.network"]({ network }),
-              })}
-            />
+            )}
           </div>
-          <Input
-            placeholder="0"
-            readOnly
-            label={m["bridge.youGet"]()}
-            value={youGet}
-            classNames={{
-              base: "z-20",
-              inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
-              inputParent: "h-[34px] h3-bold",
-              input: "!h3-bold",
-            }}
-            startText="right"
-            startContent={
-              <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
-                <div className="flex gap-2 items-center font-semibold">
-                  <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
-                  <p>{coin.symbol}</p>
+
+          {destinationAddress && (
+            <>
+              <AssetInputWithRange
+                name="amount"
+                asset={coin}
+                balances={balances}
+                controllers={controllers}
+                showRange
+                label={m["bridge.youWithdraw"]()}
+                bottomComponent={
+                  <div className="w-full flex justify-between">
+                    <p>{m["bridge.minimumWithdraw"]()}</p>
+                    <p className="flex gap-1">
+                      <span>{`> ${fee}`}</span>
+                      <span>{coin.symbol}</span>
+                    </p>
+                  </div>
+                }
+              />
+              <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center border border-fg-tertiary-400 rounded-full h-5 w-5">
+                  <IconArrowDown className="h-3 w-3 text-ink-tertiary-500" />
                 </div>
               </div>
-            }
-            bottomComponent={
-              <div className="w-full flex justify-between">
-                <p>{m["bridge.fee"]()}</p>
-                <p className="flex gap-1">
-                  <span>{fee}</span>
-                  <span>{coin.symbol}</span>
-                </p>
-              </div>
-            }
-            insideBottomComponent={
-              <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-                <FormattedNumber
-                  number={getPrice(youGet, coin.denom)}
-                  formatOptions={{ currency: "USD" }}
-                  as="p"
-                />
-              </div>
-            }
-          />
+              <Input
+                placeholder="0"
+                readOnly
+                label={m["bridge.youGet"]()}
+                value={youGet}
+                classNames={{
+                  base: "z-20",
+                  inputWrapper:
+                    "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
+                  inputParent: "h-[34px] h3-bold",
+                  input: "!h3-bold",
+                }}
+                startText="right"
+                startContent={
+                  <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
+                    <div className="flex gap-2 items-center font-semibold">
+                      <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+                      <p>{coin.symbol}</p>
+                    </div>
+                  </div>
+                }
+                bottomComponent={
+                  <div className="w-full flex justify-between">
+                    <p>{m["bridge.fee"]()}</p>
+                    <p className="flex gap-1">
+                      <span>{fee}</span>
+                      <span>{coin.symbol}</span>
+                    </p>
+                  </div>
+                }
+                insideBottomComponent={
+                  <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
+                    <FormattedNumber
+                      number={getPrice(youGet, coin.denom)}
+                      formatOptions={{ currency: "USD" }}
+                      as="p"
+                    />
+                  </div>
+                }
+              />
 
-          <Button fullWidth onClick={handleWithdraw} className="mt-4" isDisabled={!recipient}>
-            {m["bridge.withdraw.title"]()}
-          </Button>
+              <Button fullWidth onClick={handleWithdraw} className="mt-4" isDisabled={!recipient}>
+                {m["bridge.withdraw.title"]()}
+              </Button>
+            </>
+          )}
         </div>
       )}
     </>
