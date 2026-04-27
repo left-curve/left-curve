@@ -1,5 +1,7 @@
 #[cfg(feature = "tracing")]
 use async_graphql::extensions;
+#[cfg(feature = "tracing")]
+use grug_httpd::graphql::extensions::RequestLoggingExtension;
 #[cfg(feature = "metrics")]
 use indexer_httpd::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
 use {
@@ -93,6 +95,7 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
     #[cfg(feature = "tracing")]
     {
         schema_builder = schema_builder
+            .extension(RequestLoggingExtension)
             .extension(extensions::Tracing)
             .extension(extensions::Logger);
     }
