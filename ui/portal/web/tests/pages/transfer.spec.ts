@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { registerUser } from "../utils/registerUser";
+import { dismissActivateAccountModal, registerUser } from "../utils/registerUser";
 import { waitForStorageHydration } from "../utils/indexeddb";
 
 test.describe("Transfer Applet", () => {
@@ -125,6 +125,7 @@ test.describe("Transfer Applet", () => {
     test("spot-perp tab shows amount input and receive preview", async () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
+      await dismissActivateAccountModal(sharedPage);
 
       const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
       await spotPerpTab.click();
