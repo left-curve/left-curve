@@ -28,7 +28,7 @@ export async function vaultAddLiquidity<transport extends Transport>(
     vault: {
       addLiquidity: {
         amount,
-        minSharesToMint: minSharesToMint ?? null,
+        ...(minSharesToMint ? { minSharesToMint } : {}),
       },
     },
   };
@@ -39,7 +39,7 @@ export async function vaultAddLiquidity<transport extends Transport>(
       Vault: [{ name: "add_liquidity", type: "AddLiquidity" }],
       AddLiquidity: [
         { name: "amount", type: "string" },
-        { name: "min_shares_to_mint", type: "string" },
+        ...(minSharesToMint ? [{ name: "min_shares_to_mint", type: "string" }] : []),
       ],
     },
   };
