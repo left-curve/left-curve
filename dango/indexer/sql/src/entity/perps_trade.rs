@@ -28,8 +28,20 @@ pub struct PerpsTrade {
     #[cfg_attr(feature = "async-graphql", graphql(name = "openingSize"))]
     pub opening_size: String,
 
+    /// Closing PnL on the fill (price movement on the closed portion).
+    /// Prior to v0.17.0 (exclusive) this also included funding settled
+    /// on the user's pre-existing position; from v0.17.0 (inclusive)
+    /// onward, that funding component is reported separately as
+    /// `realized_funding`.
     #[cfg_attr(feature = "async-graphql", graphql(name = "realizedPnl"))]
     pub realized_pnl: String,
+
+    /// Funding settled on the user's pre-existing position immediately
+    /// before this fill. `None` for trades executed before v0.17.0 —
+    /// funding was reported as part of `realized_pnl` prior to that
+    /// release.
+    #[cfg_attr(feature = "async-graphql", graphql(name = "realizedFunding"))]
+    pub realized_funding: Option<String>,
 
     pub fee: String,
 

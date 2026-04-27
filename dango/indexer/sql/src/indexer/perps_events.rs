@@ -228,6 +228,10 @@ fn try_build_perps_trade(
         closing_size: order_filled.closing_size.to_string(),
         opening_size: order_filled.opening_size.to_string(),
         realized_pnl: order_filled.realized_pnl.to_string(),
+        realized_funding: order_filled
+            .realized_funding
+            .as_ref()
+            .map(ToString::to_string),
         fee: order_filled.fee.to_string(),
         created_at: created_at.to_string(),
         block_height,
