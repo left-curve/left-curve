@@ -3,7 +3,7 @@ use {
         config::AppConfig,
         perps::{self, SubmitOrCancelOrderRequest, TraderMsg},
     },
-    grug::{Addr, JsonDeExt, Message, QuerierExt, QuerierWrapper, StdError, Tx},
+    grug::{Addr, Inner, JsonDeExt, Message, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
 };
 
@@ -53,7 +53,7 @@ pub fn is_priority_tx(raw_tx: &[u8], perps: &Addr) -> bool {
         return false;
     };
 
-    for msg in tx.msgs.iter() {
+    for msg in tx.msgs.into_inner() {
         let Message::Execute(exec) = msg else {
             return false;
         };
@@ -62,7 +62,7 @@ pub fn is_priority_tx(raw_tx: &[u8], perps: &Addr) -> bool {
             return false;
         }
 
-        let Ok(execute_msg) = exec.msg.clone().deserialize_json::<perps::ExecuteMsg>() else {
+        let Ok(execute_msg) = exec.msg.deserialize_json::<perps::ExecuteMsg>() else {
             return false;
         };
 
