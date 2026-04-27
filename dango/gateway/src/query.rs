@@ -1,8 +1,8 @@
 use {
-    crate::{RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
+    crate::{PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
     dango_types::gateway::{
-        QueryMsg, QueryReservesResponseItem, QueryRoutesResponseItem,
-        QueryWithdrawalFeesResponseItem, RateLimit, Remote,
+        PersonalQuota, QueryMsg, QueryPersonalQuotasResponseItem, QueryReservesResponseItem,
+        QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, RateLimit, Remote,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -44,6 +44,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::WithdrawalFees { start_after, limit } => {
             let res = query_withdrawal_fees(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::PersonalQuota { user, denom } => {
+            let res = query_personal_quota(ctx, user, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::PersonalQuotas { start_after, limit } => {
+            let res = query_personal_quotas(ctx, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -128,6 +136,34 @@ fn query_withdrawal_fees(
         .map(|res| {
             let ((denom, remote), fee) = res?;
             Ok(QueryWithdrawalFeesResponseItem { denom, remote, fee })
+        })
+        .take(limit)
+        .collect()
+}
+
+fn query_personal_quota(
+    ctx: ImmutableCtx,
+    user: Addr,
+    denom: Denom,
+) -> StdResult<Option<PersonalQuota>> {
+    PERSONAL_QUOTAS.may_load(ctx.storage, (user, &denom))
+}
+
+fn query_personal_quotas(
+    ctx: ImmutableCtx,
+    start_after: Option<(Addr, Denom)>,
+    limit: Option<u32>,
+) -> StdResult<Vec<QueryPersonalQuotasResponseItem>> {
+    let start = start_after
+        .as_ref()
+        .map(|(user, denom)| Bound::Exclusive((*user, denom)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    PERSONAL_QUOTAS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .map(|res| {
+            let ((user, denom), quota) = res?;
+            Ok(QueryPersonalQuotasResponseItem { user, denom, quota })
         })
         .take(limit)
         .collect()
