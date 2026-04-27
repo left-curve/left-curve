@@ -1167,9 +1167,10 @@ pub fn settle_fill(
         decompose_fill(fill_size, current_pos)
     };
 
-    let pnl = execute_fill(
+    let fill_pnl = execute_fill(
         pair_id, pair_state, user_state, fill_price, closing, opening,
     )?;
+    let pnl = fill_pnl.total()?;
 
     // The vault is exempt from trading fees.
     let fee = if user != contract {
@@ -1189,7 +1190,8 @@ pub fn settle_fill(
             fill_size,
             closing_size: closing,
             opening_size: opening,
-            realized_pnl: pnl,
+            realized_pnl: fill_pnl.closing,
+            realized_funding: Some(fill_pnl.funding),
             fee,
             client_order_id,
             fill_id: Some(fill_id),

@@ -1383,6 +1383,18 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
         match1.into_inner() + 1,
         "fill ids increment by one per match"
     );
+
+    // None of the participants held a prior position in this pair, so
+    // funding is zero on every leg — but the field must still be `Some`
+    // (the `None` shape is reserved for pre-v0.17.0 fills).
+    for fill in &fills {
+        assert_eq!(
+            fill.realized_funding,
+            Some(UsdValue::ZERO),
+            "v0.17.0+ OrderFilled events always carry a Some(realized_funding); \
+             with no prior position it must be Some(ZERO)"
+        );
+    }
 }
 
 /// Bug reproduction: sell-side market order with partial fill is incorrectly

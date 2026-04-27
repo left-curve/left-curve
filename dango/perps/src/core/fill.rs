@@ -8,12 +8,38 @@ use {
     std::cmp::Ordering,
 };
 
+/// PnL realized by a single fill, decomposed into its two sources.
+///
+/// Positive components = user gains, negative = user loses. The total
+/// (`funding + closing`) is what gets applied to the user's margin; the
+/// decomposition is exposed so callers can report the components
+/// separately (e.g. `realized_funding` vs. `realized_pnl` on
+/// `OrderFilled`).
+#[derive(Debug, Clone, Copy)]
+pub struct FillPnl {
+    /// PnL from funding settled on the user's pre-existing position.
+    /// Zero if the user had no prior position in this pair.
+    pub funding: UsdValue,
+
+    /// PnL from price movement on the closed portion. Zero on pure-
+    /// opening fills.
+    pub closing: UsdValue,
+}
+
+impl FillPnl {
+    /// Sum of funding and closing components. This is the value that
+    /// gets applied to the user's margin.
+    pub fn total(&self) -> MathResult<UsdValue> {
+        self.funding.checked_add(self.closing)
+    }
+}
+
 /// Execute a fill for a single user. Updates position and OI; settles
 /// funding on the existing position.
 ///
-/// Returns the raw PnL (funding + realized) as a `UsdValue`.
-/// Positive = user gains, negative = user loses.
-/// Does NOT include trading fees — the caller handles those separately.
+/// Returns the funding and closing PnL components separately as
+/// [`FillPnl`]. Does NOT include trading fees — the caller handles those
+/// separately.
 pub fn execute_fill(
     pair_id: &PairId,
     pair_state: &mut PairState,
@@ -21,19 +47,18 @@ pub fn execute_fill(
     fill_price: UsdPrice,
     closing_size: Quantity,
     opening_size: Quantity,
-) -> MathResult<UsdValue> {
-    let mut total_pnl = UsdValue::ZERO;
+) -> MathResult<FillPnl> {
+    let mut funding = UsdValue::ZERO;
+    let mut closing = UsdValue::ZERO;
 
     // Settle funding on the existing position (if any).
     if let Some(position) = user_state.positions.get_mut(pair_id) {
-        let funding_pnl = settle_funding(position, pair_state)?;
-        total_pnl = total_pnl.checked_add(funding_pnl)?;
+        funding = settle_funding(position, pair_state)?;
     }
 
     // Execute the closing portion — realize PnL.
     if closing_size.is_non_zero() {
-        let closing_pnl = apply_closing(user_state, pair_id, closing_size, fill_price)?;
-        total_pnl = total_pnl.checked_add(closing_pnl)?;
+        closing = apply_closing(user_state, pair_id, closing_size, fill_price)?;
     }
 
     // Execute the opening portion — grow or create position.
@@ -44,7 +69,7 @@ pub fn execute_fill(
     // Update open interest.
     update_oi(pair_state, closing_size, opening_size)?;
 
-    Ok(total_pnl)
+    Ok(FillPnl { funding, closing })
 }
 
 /// Settle funding accrued on a position since it was last touched.
@@ -225,7 +250,8 @@ mod tests {
         .unwrap();
 
         // No PnL on opening.
-        assert_eq!(pnl, UsdValue::ZERO);
+        assert_eq!(pnl.funding, UsdValue::ZERO);
+        assert_eq!(pnl.closing, UsdValue::ZERO);
 
         // Position created.
         let pos = user_state.positions.get(&pair_id()).unwrap();
@@ -252,7 +278,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(pnl, UsdValue::ZERO);
+        assert_eq!(pnl.funding, UsdValue::ZERO);
+        assert_eq!(pnl.closing, UsdValue::ZERO);
 
         let pos = user_state.positions.get(&pair_id()).unwrap();
         assert_eq!(pos.size, Quantity::new_int(-10));
@@ -280,8 +307,9 @@ mod tests {
         )
         .unwrap();
 
-        // PnL = 10 * (55000 - 50000) = 50000 USD
-        assert_eq!(pnl, UsdValue::new_int(50_000));
+        // closing PnL = 10 * (55000 - 50000) = 50000 USD; no funding accrued.
+        assert_eq!(pnl.funding, UsdValue::ZERO);
+        assert_eq!(pnl.closing, UsdValue::new_int(50_000));
 
         // Position removed.
         assert!(!user_state.positions.contains_key(&pair_id()));
@@ -306,8 +334,9 @@ mod tests {
         )
         .unwrap();
 
-        // PnL = 10 * (48000 - 50000) = -20000 USD
-        assert_eq!(pnl, UsdValue::new_int(-20_000));
+        // closing PnL = 10 * (48000 - 50000) = -20000 USD; no funding accrued.
+        assert_eq!(pnl.funding, UsdValue::ZERO);
+        assert_eq!(pnl.closing, UsdValue::new_int(-20_000));
     }
 
     #[test]
@@ -326,8 +355,9 @@ mod tests {
         )
         .unwrap();
 
-        // PnL = 10 * (50000 - 48000) = 20000 USD
-        assert_eq!(pnl, UsdValue::new_int(20_000));
+        // closing PnL = 10 * (50000 - 48000) = 20000 USD; no funding accrued.
+        assert_eq!(pnl.funding, UsdValue::ZERO);
+        assert_eq!(pnl.closing, UsdValue::new_int(20_000));
     }
 
     // ---- execute_fill: partial close ----
@@ -398,7 +428,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(pnl, UsdValue::ZERO);
+        assert_eq!(pnl.funding, UsdValue::ZERO);
+        assert_eq!(pnl.closing, UsdValue::ZERO);
 
         let pos = user_state.positions.get(&pair_id()).unwrap();
         assert_eq!(pos.size, Quantity::new_int(20));
@@ -443,10 +474,57 @@ mod tests {
 
         // Funding accrued = 10 * (100 - 0) = 1000 USD. User pays (longs pay when funding positive).
         // settle_funding returns negated accrued = -1000 USD as PnL.
-        assert_eq!(pnl, UsdValue::new_int(-1000));
+        // No closing portion on this fill, so closing PnL is zero.
+        assert_eq!(pnl.funding, UsdValue::new_int(-1000));
+        assert_eq!(pnl.closing, UsdValue::ZERO);
 
         // Funding entry point reset.
         let pos = user_state.positions.get(&pair_id()).unwrap();
         assert_eq!(pos.entry_funding_per_unit, FundingPerUnit::new_int(100));
+    }
+
+    // ---- execute_fill: combined funding + closing ----
+
+    /// Verifies that funding and closing PnL are reported as separate
+    /// components on a fill that has both: a long position with accrued
+    /// funding, partially closed at a profitable price.
+    #[test]
+    fn funding_and_closing_reported_separately() {
+        let mut pair_state = default_pair_state();
+        // 100 USD per unit of accumulated funding.
+        pair_state.funding_per_unit = FundingPerUnit::new_int(100);
+        pair_state.long_oi = Quantity::new_int(10);
+
+        let mut positions = BTreeMap::new();
+        positions.insert(pair_id(), Position {
+            size: Quantity::new_int(10),
+            entry_price: UsdPrice::new_int(50_000),
+            entry_funding_per_unit: FundingPerUnit::ZERO,
+            conditional_order_above: None,
+            conditional_order_below: None,
+        });
+        let mut user_state = UserState {
+            positions,
+            ..Default::default()
+        };
+
+        // Close half of the long at a 5000 USD per-unit profit.
+        let pnl = execute_fill(
+            &pair_id(),
+            &mut pair_state,
+            &mut user_state,
+            UsdPrice::new_int(55_000),
+            Quantity::new_int(-5),
+            Quantity::ZERO,
+        )
+        .unwrap();
+
+        // Funding accrued on the full pre-existing 10 units, settled before
+        // closing: 10 * (100 - 0) = 1000 USD owed (negated => -1000).
+        assert_eq!(pnl.funding, UsdValue::new_int(-1000));
+        // Closing PnL: 5 * (55_000 - 50_000) = 25_000 USD profit.
+        assert_eq!(pnl.closing, UsdValue::new_int(25_000));
+        // Total applied to margin = closing - funding owed.
+        assert_eq!(pnl.total().unwrap(), UsdValue::new_int(24_000));
     }
 }

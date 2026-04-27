@@ -1431,16 +1431,27 @@ pub struct OrderFilled {
     pub closing_size: Quantity,
     pub opening_size: Quantity,
 
-    /// PnL realized by the user on this fill. Includes both:
+    /// PnL realized by the user on this fill from price movement on the
+    /// closed portion: `|closing_size| * (fill_price - entry_price)` for
+    /// longs, mirrored for shorts. Zero on pure-opening fills.
     ///
-    /// 1. Closing PnL: `|closing_size| * (fill_price - entry_price)` for
-    ///    longs, mirrored for shorts. Zero on pure-opening fills.
-    /// 2. Funding settled on the user's pre-existing position immediately
-    ///    before this fill is applied. Can be non-zero even on
-    ///    pure-opening fills if the user already held a position.
+    /// Prior to v0.17.0 (exclusive) this field also bundled the funding
+    /// settled on the user's pre-existing position immediately before the
+    /// fill. From v0.17.0 (inclusive) onward, that funding component is
+    /// reported separately as `realized_funding` and is no longer included
+    /// here.
     ///
     /// Does not include trading fees (see `fee`).
     pub realized_pnl: UsdValue,
+
+    /// Funding settled on the user's pre-existing position immediately
+    /// before this fill is applied. Can be non-zero even on pure-opening
+    /// fills if the user already held a position. Zero if the user had no
+    /// prior position in this pair.
+    ///
+    /// `None` for trades executed before v0.17.0 — funding was reported as
+    /// part of `realized_pnl` prior to that release.
+    pub realized_funding: Option<UsdValue>,
 
     /// Trading fee charged on this fill, in USD. Always non-negative.
     /// Already deducted from the user's margin in the same transaction;
@@ -1454,8 +1465,10 @@ pub struct OrderFilled {
 
     /// Identifier shared between the two `OrderFilled` events of a single
     /// order-book match (taker + maker). Strictly increasing across
-    /// matches. `None` for trades executed before v0.15.0 — fill IDs
-    /// were not assigned prior to that release.
+    /// matches.
+    ///
+    /// `None` for trades executed before v0.15.0 — fill IDs were not assigned
+    /// prior to that release.
     ///
     /// Equivalents at other venues:
     ///
