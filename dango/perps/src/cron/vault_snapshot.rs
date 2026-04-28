@@ -39,10 +39,13 @@ pub fn take_vault_snapshot(
         Ok(e) => e,
         Err(_err) => {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
-                error = %_err,
-                "Failed to compute vault equity for snapshot; skipping"
-            );
+            {
+                tracing::warn!(
+                    error = %_err,
+                    "Failed to compute vault equity for snapshot; skipping"
+                );
+            }
+
             return Ok(());
         },
     };

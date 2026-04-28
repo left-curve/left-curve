@@ -55,6 +55,7 @@ fn vault_snapshots_accrue_daily() {
             max: None,
         })
         .should_succeed();
+
     assert!(
         snapshots.is_empty(),
         "no snapshot should be written before the first cron tick fires"
@@ -74,15 +75,19 @@ fn vault_snapshots_accrue_daily() {
             max: None,
         })
         .should_succeed();
+
     assert_eq!(snapshots.len(), 1);
+
     let day_1_snapshot = snapshots
         .get(&day_1)
         .expect("a snapshot must exist for day_1");
+
     assert_eq!(
         day_1_snapshot.equity,
         UsdValue::new_int(5_000),
         "vault equity = $5,000 after AddLiquidity"
     );
+
     assert!(
         day_1_snapshot.share_supply > Uint128::ZERO,
         "share supply must be positive after AddLiquidity"
