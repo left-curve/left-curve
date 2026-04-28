@@ -54,6 +54,7 @@ from dango.utils.types import (
     SubmitAction,
     SubmitOrCancelAction,
     TimeInForce,
+    dango_decimal,
 )
 
 if TYPE_CHECKING:
@@ -109,16 +110,19 @@ def _hl_order_type_to_dango_kind(
     if "limit" in order_type:
         limit = order_type["limit"]
         tif = _hl_tif_to_dango(limit["tif"])
-        # `dango_decimal` is performed inside the native Exchange, so we
-        # forward `limit_px` as a plain float and let the native side
-        # canonicalize. `client_order_id` is the Uint64 form of the HL
-        # cloid; see the asymmetry warning in the module docstring.
+        # Format `limit_price` here: native `submit_order` formats `size`
+        # but treats `kind` as opaque pass-through, so the chain receives
+        # whatever we put in `limit_price`. The chain's `UsdPrice` is a
+        # string-encoded decimal — passing a JSON number triggers
+        # `invalid type: floating point ..., expected string-encoded decimal`.
+        # `client_order_id` is the Uint64 form of the HL cloid; see the
+        # asymmetry warning in the module docstring.
         client_order_id = str(cloid.to_uint64()) if cloid is not None else None
         return cast(
             "OrderKind",
             {
                 "limit": {
-                    "limit_price": limit_px,
+                    "limit_price": dango_decimal(limit_px),
                     "time_in_force": tif.value,
                     "client_order_id": client_order_id,
                 },

@@ -192,9 +192,12 @@ class TestHlOrderTypeToDangoKind:
         """A limit/Gtc order without cloid produces a clean kind dict."""
         order_type: OrderType = {"limit": {"tif": "Gtc"}}
         kind = _hl_order_type_to_dango_kind(order_type, 60_000.0, None)
+        # `limit_price` is the chain's `UsdPrice` — a string-encoded
+        # decimal. Passing the float verbatim trips a deserialization
+        # error on the chain (`expected string-encoded decimal`).
         assert kind == {
             "limit": {
-                "limit_price": 60_000.0,
+                "limit_price": "60000.000000",
                 "time_in_force": "GTC",
                 "client_order_id": None,
             },
@@ -209,7 +212,7 @@ class TestHlOrderTypeToDangoKind:
         kind = _hl_order_type_to_dango_kind(order_type, 50_000.0, cloid)
         assert kind == {
             "limit": {
-                "limit_price": 50_000.0,
+                "limit_price": "50000.000000",
                 "time_in_force": "IOC",
                 "client_order_id": str(cloid.to_uint64()),
             },
@@ -481,7 +484,7 @@ class TestOrder:
         assert args[1] == 0.5  # buy = positive
         assert args[2] == {
             "limit": {
-                "limit_price": 60_000.0,
+                "limit_price": "60000.000000",
                 "time_in_force": "GTC",
                 "client_order_id": None,
             },
