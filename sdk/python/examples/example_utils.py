@@ -1,26 +1,29 @@
 """Shared setup helper for the Dango Python SDK examples.
 
+Loads config from environment variables (and optionally an ``examples/.env``
+file via python-dotenv). The dotenv dep lives in the ``examples`` group —
+install with ``uv sync --group examples``. Production users injecting env
+vars from their orchestrator (Docker ``--env-file``, k8s secrets, etc.) can
+ignore the dotenv loader entirely; ``os.environ`` is the source of truth.
+
 Offers two flavors of the canonical ``setup`` factory used by HL:
 
-* :func:`setup` — returns the HL-compat trio
-  ``(address, hl_info, hl_exchange)``; mirrors the upstream
-  ``hyperliquid.example_utils.setup`` signature byte-for-byte so the HL
+* :func:`setup` — returns the HL-compat trio ``(address, hl_info, hl_exchange)``;
+  mirrors the upstream ``hyperliquid.example_utils.setup`` signature so HL
   example files only need their import lines changed.
-* :func:`setup_native` — returns the native trio
-  ``(address, native_info, native_exchange)``; used by the Dango-native
-  examples.
+* :func:`setup_native` — returns the native trio ``(address, native_info, native_exchange)``;
+  used by the Dango-native examples.
 
-Both flavors share :func:`get_secret_key` for ``secret_key`` /
-``keystore_path`` resolution, mirroring HL's pattern.
+Both flavors share :func:`get_secret_key` for ``DANGO_SECRET_KEY`` /
+``DANGO_KEYSTORE_PATH`` resolution.
 
-Differences from HL's ``example_utils.py``:
+Environment variables (see ``examples/.env.example``):
 
-* Dango is perps-only — there is no ``spot_user_state``. The "no equity"
-  guard checks the perps margin only.
-* ``account_address`` is REQUIRED in ``config.json``: Dango decouples the
-  signing key from the account address. The HL-compat ``Exchange``
-  constructor enforces this — silent auto-derivation would route trades to
-  a different address than the one the user expects.
+* ``DANGO_SECRET_KEY`` — raw hex secret, OR
+* ``DANGO_KEYSTORE_PATH`` — path to encrypted keystore JSON.
+* ``DANGO_ACCOUNT_ADDRESS`` — required for HL-compat (Dango decouples key
+  from on-chain account); falls back to the wallet's derived address only on
+  the native flavor.
 """
 
 from __future__ import annotations
@@ -28,9 +31,11 @@ from __future__ import annotations
 import getpass
 import json
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import eth_account
+from dotenv import load_dotenv
 from eth_account.signers.local import LocalAccount
 
 from dango.utils.types import Addr
@@ -47,7 +52,7 @@ def setup(
     skip_ws: bool = False,
     perp_dexs: list[str] | None = None,
 ) -> tuple[str, HlInfo, HlExchange]:
-    """Build an HL-compat ``(address, info, exchange)`` trio from ``config.json``.
+    """Build an HL-compat ``(address, info, exchange)`` trio from env vars.
 
     Mirrors HL's ``example_utils.setup`` so ports of HL examples are
     one-line import changes only.
@@ -57,9 +62,9 @@ def setup(
     from dango.hyperliquid_compatibility.exchange import Exchange as HlExchangeCls
     from dango.hyperliquid_compatibility.info import Info as HlInfoCls
 
-    config = _load_config()
-    account: LocalAccount = eth_account.Account.from_key(get_secret_key(config))
-    address = _resolve_account_address(config, account)
+    _load_env()
+    account: LocalAccount = eth_account.Account.from_key(get_secret_key())
+    address = _resolve_account_address(account)
     print("Running with account address:", address)
     if address != account.address:
         print("Running with agent address:", account.address)
@@ -77,8 +82,8 @@ def setup(
         raise Exception(
             f"No accountValue:\nIf you think this is a mistake, "
             f"make sure that {address} has a balance on {url}.\n"
-            f"If address shown is your API wallet address, update the config to specify "
-            f"the address of your account, not the address of the API wallet."
+            f"If the address shown is your API wallet address, set DANGO_ACCOUNT_ADDRESS "
+            f"to the address of your account, not the API wallet."
         )
     exchange = HlExchangeCls(
         account,
@@ -94,7 +99,7 @@ def setup_native(
     skip_ws: bool = False,
     perp_dexs: list[str] | None = None,
 ) -> tuple[str, NativeInfo, NativeExchange]:
-    """Build a native ``(address, info, exchange)`` trio from ``config.json``.
+    """Build a native ``(address, info, exchange)`` trio from env vars.
 
     Used by the ``native_*.py`` example scripts; they consume the
     Dango-native API directly (snake_case wire shapes, signed sizes,
@@ -108,9 +113,9 @@ def setup_native(
     from dango.info import Info as NativeInfoCls
     from dango.utils.constants import LOCAL_API_URL
 
-    config = _load_config()
-    account: LocalAccount = eth_account.Account.from_key(get_secret_key(config))
-    address = _resolve_account_address(config, account)
+    _load_env()
+    account: LocalAccount = eth_account.Account.from_key(get_secret_key())
+    address = _resolve_account_address(account)
     print("Running with account address:", address)
     if address != account.address:
         print("Running with agent address:", account.address)
@@ -130,8 +135,8 @@ def setup_native(
         raise Exception(
             f"No accountValue:\nIf you think this is a mistake, "
             f"make sure that {address} has a balance on {url}.\n"
-            f"If address shown is your API wallet address, update the config to specify "
-            f"the address of your account, not the address of the API wallet."
+            f"If the address shown is your API wallet address, set DANGO_ACCOUNT_ADDRESS "
+            f"to the address of your account, not the API wallet."
         )
     exchange = NativeExchangeCls(
         account,
@@ -141,14 +146,20 @@ def setup_native(
     return address, info, exchange
 
 
-def get_secret_key(config: dict) -> str | bytes:
-    """Resolve the signer's secret from a ``secret_key`` hex or a keystore."""
-    # Mirror HL's resolution order: prefer the inline `secret_key` if
-    # present (typical for tests), else decrypt the keystore at
-    # `keystore_path` after prompting for a password.
-    if config["secret_key"]:
-        return str(config["secret_key"])
-    keystore_path = config["keystore_path"]
+def get_secret_key() -> str | bytes:
+    """Resolve the signer's secret from ``DANGO_SECRET_KEY`` or a keystore path."""
+    # Resolution order: prefer the inline `DANGO_SECRET_KEY` if non-empty
+    # (typical for local dev / tests), else decrypt the keystore at
+    # `DANGO_KEYSTORE_PATH` after prompting for a password.
+    secret_key = os.environ.get("DANGO_SECRET_KEY", "").strip()
+    if secret_key:
+        return secret_key
+    keystore_path = os.environ.get("DANGO_KEYSTORE_PATH", "").strip()
+    if not keystore_path:
+        raise ValueError(
+            "Provide DANGO_SECRET_KEY (hex) or DANGO_KEYSTORE_PATH "
+            "(path to encrypted keystore) in examples/.env or your environment.",
+        )
     keystore_path = os.path.expanduser(keystore_path)
     if not os.path.isabs(keystore_path):
         keystore_path = os.path.join(os.path.dirname(__file__), keystore_path)
@@ -162,25 +173,27 @@ def get_secret_key(config: dict) -> str | bytes:
     return eth_account.Account.decrypt(keystore, password)
 
 
-def _load_config() -> dict:
-    """Load ``config.json`` from the same directory as this helper."""
-    config_path = os.path.join(os.path.dirname(__file__), "config.json")
-    with open(config_path) as f:
-        return json.load(f)
+def _load_env() -> None:
+    """Load variables from ``examples/.env`` into ``os.environ`` if present."""
+    # `load_dotenv` is a no-op when the file doesn't exist, which is the
+    # right behavior for production deployments that inject env vars via
+    # the orchestrator instead of a `.env` file. We pin the path to this
+    # module's directory so running examples from any cwd works.
+    load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
-def _resolve_account_address(config: dict, account: LocalAccount) -> str:
-    """Return the configured ``account_address`` or fall back to the wallet's address.
+def _resolve_account_address(account: LocalAccount) -> str:
+    """Return ``DANGO_ACCOUNT_ADDRESS`` or fall back to the wallet's address.
 
     Dango's HL-compat ``Exchange`` constructor REQUIRES an explicit
-    ``account_address`` — we don't silently default to the wallet's
-    derived address because the Dango-side address depends on the
-    KeyType (Secp256k1 vs Ethereum) and the activation path. This helper
-    keeps the HL-style "fall back to the wallet address" convenience for
-    the native flavor; the HL-compat `Exchange` constructor enforces the
-    explicit-address requirement at construction time.
+    ``account_address`` — we don't silently default to the wallet's derived
+    address because the Dango-side address depends on the KeyType
+    (Secp256k1 vs Ethereum) and the activation path. This helper keeps the
+    HL-style "fall back to the wallet address" convenience for the native
+    flavor; the HL-compat ``Exchange`` constructor enforces the explicit-
+    address requirement at construction time.
     """
-    address = config["account_address"]
-    if address == "":
+    address = os.environ.get("DANGO_ACCOUNT_ADDRESS", "").strip()
+    if not address:
         address = account.address
     return str(address)

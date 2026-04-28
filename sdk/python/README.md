@@ -77,7 +77,14 @@ See `examples/` for runnable scripts:
 - `hl_basic_order.py` — verbatim port of HL's `basic_order.py` (only the imports differ).
 - `hl_basic_ws.py` — verbatim port of HL's `basic_ws.py` (only the imports differ).
 
-Copy `examples/config.json.example` to `examples/config.json` and fill in your `secret_key` (or `keystore_path`) and `account_address` before running. `account_address` is required — Dango decouples the signing key from the account address, so the SDK does not auto-derive it.
+Install the example deps and copy the env template:
+
+```plain
+uv sync --group examples
+cp examples/.env.example examples/.env
+```
+
+Then fill in `examples/.env` with your `DANGO_SECRET_KEY` (or `DANGO_KEYSTORE_PATH`) and `DANGO_ACCOUNT_ADDRESS` before running. `DANGO_ACCOUNT_ADDRESS` is required — Dango decouples the signing key from the on-chain account, so the SDK does not auto-derive it. The `.env` file is gitignored at the repo root and access is denied to Claude in `.claude/settings.json`.
 
 ## Where Dango differs from HL
 

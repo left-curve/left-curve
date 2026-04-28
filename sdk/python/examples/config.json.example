@@ -1,6 +1,0 @@
-{
-  "comments": "Copy to config.json and fill in. Provide EITHER secret_key (hex) OR keystore_path. account_address is REQUIRED for Dango (no auto-derive — see the README).",
-  "secret_key": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "account_address": "0x0000000000000000000000000000000000000000",
-  "keystore_path": ""
-}

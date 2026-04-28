@@ -53,6 +53,12 @@ dev = [
     "ruff>=0.6",
     "types-requests>=2.31",
 ]
+# `examples` is opt-in (`uv sync --group examples`). Production users
+# inject env vars from their orchestrator and don't need python-dotenv;
+# only the runnable example scripts in `examples/` use it.
+examples = [
+    "python-dotenv>=1.0",
+]
 
 [tool.ruff]
 line-length    = 100
