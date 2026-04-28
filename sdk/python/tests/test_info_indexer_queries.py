@@ -264,9 +264,9 @@ class TestPerpsCandles:
             "volume": "12.500000",
             "volumeUsd": "812500.000000",
             "timeStart": "2025-01-01T00:00:00Z",
-            "timeStartUnix": 1735689600,
+            "timeStartUnix": 1_735_689_600_000,
             "timeEnd": "2025-01-01T00:01:00Z",
-            "timeEndUnix": 1735689660,
+            "timeEndUnix": 1_735_689_660_000,
         }
         page_info = {
             "hasPreviousPage": False,

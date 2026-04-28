@@ -736,9 +736,9 @@ class PerpsCandle(TypedDict):
     volume: str
     volumeUsd: str  # noqa: N815
     timeStart: str  # noqa: N815  # ISO-8601 datetime.
-    timeStartUnix: int  # noqa: N815  # Unix seconds.
+    timeStartUnix: int  # noqa: N815  # Unix milliseconds (despite the "Unix" suffix).
     timeEnd: str  # noqa: N815
-    timeEndUnix: int  # noqa: N815
+    timeEndUnix: int  # noqa: N815  # Unix milliseconds.
 
 
 class PerpsEvent(TypedDict):

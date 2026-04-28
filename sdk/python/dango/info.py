@@ -622,14 +622,31 @@ class Info(API):
         callback: Callable[[PerpsCandle], None],
     ) -> int:
         """Stream OHLCV candles for one pair at one interval."""
+
         # `interval.value` rather than `interval` because the GraphQL
         # variable is typed `CandleInterval!` and is sent as the bare
         # uppercase enum name (e.g. `"ONE_MINUTE"`) — same convention as
         # `perps_candles` above.
+        #
+        # The `perpsCandles` subscription field is GraphQL-typed as a list
+        # (the server may emit multiple candles in one push when catching
+        # up after a reconnect), but the callback contract is one candle
+        # at a time — matching `subscribe_perps_trades`. We iterate here
+        # so callers don't have to.
+        def fan_out(payload: dict[str, Any]) -> None:
+            node = _unwrap_node(payload, "perpsCandles", PerpsCandle)
+            if isinstance(node, list):
+                for candle in node:
+                    callback(cast("PerpsCandle", candle))
+            else:
+                # Error envelope (`{"_error": ...}`) or unexpected shape
+                # — forward as-is so the caller's error handling fires.
+                callback(cast("PerpsCandle", node))
+
         return self._ws.subscribe(
             _SUB_PERPS_CANDLES,
             {"pairId": pair_id, "interval": interval.value, "laterThan": None},
-            lambda payload: callback(_unwrap_node(payload, "perpsCandles", PerpsCandle)),
+            fan_out,
         )
 
     def subscribe_query_app(
@@ -644,10 +661,32 @@ class Info(API):
         # corresponds to roughly every 10 seconds at Dango's ~1s block
         # time; callers driving a UI may want a smaller value, while
         # background pollers can use a larger one.
+        #
+        # The chain wraps the response in the same kind-keyed envelope
+        # used by the HTTP path (`{"response": {"wasm_smart": <inner>},
+        # ...}` / `{"response": {"multi": [...]}, ...}`). Mirror the
+        # `query_app_smart` / `query_app_multi` HTTP-side unwrap so
+        # callbacks see the contract response directly under
+        # `payload["response"]`. Single-key requests are auto-unwrapped;
+        # the rare multi-key request passes through untouched.
+        request_kind = next(iter(request)) if len(request) == 1 else None
+
+        def unwrap(payload: dict[str, Any]) -> None:
+            unwrapped = _unwrap_node(payload, "queryApp", dict)
+            if (
+                request_kind is not None
+                and isinstance(unwrapped, dict)
+                and "_error" not in unwrapped
+            ):
+                response = unwrapped.get("response")
+                if isinstance(response, dict) and request_kind in response:
+                    unwrapped = {**unwrapped, "response": response[request_kind]}
+            callback(unwrapped)
+
         return self._ws.subscribe(
             _SUB_QUERY_APP,
             {"request": request, "blockInterval": block_interval},
-            lambda payload: callback(_unwrap_node(payload, "queryApp", dict)),
+            unwrap,
         )
 
     def subscribe_user_events(

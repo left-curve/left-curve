@@ -435,9 +435,11 @@ def _reshape_candle_to_hl(candle: PerpsCandle) -> dict[str, Any]:
     """
     pair_id = candle["pairId"]
     return {
-        # Dango candle times are unix seconds; HL uses ms.
-        "T": candle["timeEndUnix"] * 1000,
-        "t": candle["timeStartUnix"] * 1000,
+        # Despite the "Unix" suffix, Dango's `timeStartUnix`/`timeEndUnix`
+        # are already in milliseconds (matches HL's convention) — pass
+        # through unchanged.
+        "T": candle["timeEndUnix"],
+        "t": candle["timeStartUnix"],
         "s": _pair_id_to_coin(pair_id),
         "i": candle["interval"],
         "o": dango_decimal_to_hl_str(candle["open"]),
@@ -1359,7 +1361,10 @@ class Info:
             if not isinstance(payload, dict) or "_error" in payload:
                 callback(payload)
                 return
-            multi = payload.get("response", {}).get("multi") or []
+            # `subscribe_query_app` auto-unwraps the kind-keyed envelope,
+            # so `payload["response"]` is the multi list (not
+            # `{"multi": [...]}`).
+            multi = payload.get("response") or []
             user_state = multi[0].get("Ok") if multi else None
             available = _to_hl_str(user_state.get("available_margin")) if user_state else "0"
             # `markPx` should be a price; `pair_state.funding_per_unit` is a

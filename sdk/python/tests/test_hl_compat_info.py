@@ -611,9 +611,9 @@ class TestReshapeCandle:
             "volume": "10.000000",
             "volumeUsd": "601000.000000",
             "timeStart": "2024-01-01T00:00:00Z",
-            "timeStartUnix": 1704067200,
+            "timeStartUnix": 1_704_067_200_000,
             "timeEnd": "2024-01-01T00:01:00Z",
-            "timeEndUnix": 1704067260,
+            "timeEndUnix": 1_704_067_260_000,
         }
         result = _reshape_candle_to_hl(candle)
         assert result["t"] == 1_704_067_200_000
@@ -889,9 +889,9 @@ class TestCandlesSnapshot:
                 "volume": "10.000000",
                 "volumeUsd": "601000.000000",
                 "timeStart": "2024-01-01T00:00:00Z",
-                "timeStartUnix": 1704067200,
+                "timeStartUnix": 1_704_067_200_000,
                 "timeEnd": "2024-01-01T00:01:00Z",
-                "timeEndUnix": 1704067260,
+                "timeEndUnix": 1_704_067_260_000,
             }
         ]
         result = info.candles_snapshot("BTC", "1m", 0, 1)
@@ -1308,9 +1308,9 @@ class TestSubscribeCandle:
                 "volume": "10.000000",
                 "volumeUsd": "601000.000000",
                 "timeStart": "2024-01-01T00:00:00Z",
-                "timeStartUnix": 1704067200,
+                "timeStartUnix": 1_704_067_200_000,
                 "timeEnd": "2024-01-01T00:01:00Z",
-                "timeEndUnix": 1704067260,
+                "timeEndUnix": 1_704_067_260_000,
             }
         )
         assert received[0]["s"] == "BTC"
@@ -1529,14 +1529,15 @@ class TestSubscribeActiveAssetData:
             received.append,
         )
         _method, _args, callback = fake.subscriptions[-1]
+        # `subscribe_query_app` auto-unwraps the kind-keyed envelope, so
+        # the callback sees `payload["response"]` as the multi list
+        # directly (NOT `{"multi": [...]}`).
         callback(
             {
-                "response": {
-                    "multi": [
-                        {"Ok": {"available_margin": "1000.000000"}},
-                        {"Ok": {"funding_per_unit": "0.000100"}},
-                    ],
-                },
+                "response": [
+                    {"Ok": {"available_margin": "1000.000000"}},
+                    {"Ok": {"funding_per_unit": "0.000100"}},
+                ],
                 "blockHeight": 1,
             }
         )
