@@ -51,6 +51,7 @@ def main() -> None:
     if open_orders:
         first_oid = next(iter(open_orders))
         print(f"resting order {first_oid}:")
+
         order = info.order(OrderId(first_oid))
         print(json.dumps(order, indent=2))
 

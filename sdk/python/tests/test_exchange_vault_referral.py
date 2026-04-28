@@ -26,6 +26,7 @@ _TARGET_ADDRESS = Addr("0x00000000000000000000000000000000feedbeef")
 class TestAddLiquidity:
     def test_full_wire_shape_with_min_shares(self) -> None:
         """add_liquidity(amount, min_shares_to_mint=N) pins the full inner dict."""
+
         # End-to-end shape check: any rename of `amount` /
         # `min_shares_to_mint` or any wire-form regression (e.g.
         # accidentally stringifying amount as base units instead of
@@ -44,6 +45,7 @@ class TestAddLiquidity:
 
     def test_min_shares_none_is_json_null(self) -> None:
         """min_shares_to_mint=None is emitted as Python None (JSON null)."""
+
         # The contract's `Option<Uint128>` accepts `null` as "no
         # slippage protection". Any path that maps None to "0", the
         # empty string, or omits the key entirely would silently
@@ -62,6 +64,7 @@ class TestAddLiquidity:
 
     def test_amount_uses_six_decimal_string(self) -> None:
         """Float amounts go through `dango_decimal` and produce 6-decimal USD strings."""
+
         # UsdValue is a 6-decimal fixed-point string; the same
         # encoding used by `withdraw_margin`. Pin a non-integer
         # float to confirm we're going through `dango_decimal`
@@ -74,6 +77,7 @@ class TestAddLiquidity:
 
     def test_rejects_zero_amount(self) -> None:
         """add_liquidity requires a strictly positive amount."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="positive"):
@@ -81,6 +85,7 @@ class TestAddLiquidity:
 
     def test_rejects_negative_amount(self) -> None:
         """A negative amount is rejected client-side (chain would also reject)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="positive"):
@@ -88,6 +93,7 @@ class TestAddLiquidity:
 
     def test_rejects_bool_amount(self) -> None:
         """Bool amount is rejected via dango_decimal's bool guard."""
+
         # `dango_decimal` already rejects bool (see types.py). This
         # test pins that the rejection survives the validation chain
         # without being silently coerced into "1.000000".
@@ -98,6 +104,7 @@ class TestAddLiquidity:
 
     def test_rejects_non_finite_amount(self) -> None:
         """NaN/Inf amounts are rejected (delegated to dango_decimal)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError):
@@ -107,6 +114,7 @@ class TestAddLiquidity:
 
     def test_rejects_negative_min_shares(self) -> None:
         """min_shares_to_mint must be non-negative when provided."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="non-negative"):
@@ -114,6 +122,7 @@ class TestAddLiquidity:
 
     def test_rejects_bool_min_shares(self) -> None:
         """min_shares_to_mint=True is rejected (bool is technically int)."""
+
         # Without the bool guard, `True` would coerce to "1" and
         # silently bypass the negative check. Mirrors `deposit_margin`'s
         # bool defense.
@@ -124,6 +133,7 @@ class TestAddLiquidity:
 
     def test_zero_min_shares_is_allowed(self) -> None:
         """min_shares_to_mint=0 is allowed (= no slippage protection)."""
+
         # 0 is the wasteful-but-legal way to disable the guard.
         # Passing None is more idiomatic but 0 must NOT be rejected
         # by the SDK — the chain accepts it.
@@ -135,6 +145,7 @@ class TestAddLiquidity:
 
     def test_wraps_in_perps_contract_execute_with_no_funds(self) -> None:
         """The execute message targets the perps contract and carries empty funds."""
+
         # Vault liquidity is debited from the user's existing margin —
         # NOT attached as `funds` on the execute. Pin this so a
         # regression that accidentally re-routed it through the deposit
@@ -150,6 +161,7 @@ class TestAddLiquidity:
 class TestRemoveLiquidity:
     def test_full_wire_shape(self) -> None:
         """remove_liquidity(N) emits the int as a base-10 Uint128 string."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.remove_liquidity(1_000_000)
@@ -159,6 +171,7 @@ class TestRemoveLiquidity:
 
     def test_rejects_float(self) -> None:
         """remove_liquidity requires an int (Uint128); floats are ambiguous."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(TypeError, match="int"):
@@ -166,6 +179,7 @@ class TestRemoveLiquidity:
 
     def test_rejects_bool(self) -> None:
         """remove_liquidity rejects bool (subclass-of-int hazard)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(TypeError, match="int"):
@@ -173,6 +187,7 @@ class TestRemoveLiquidity:
 
     def test_rejects_zero(self) -> None:
         """Zero shares-to-burn is rejected client-side."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="positive"):
@@ -180,6 +195,7 @@ class TestRemoveLiquidity:
 
     def test_rejects_negative(self) -> None:
         """A negative share count is rejected client-side."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="positive"):
@@ -187,6 +203,7 @@ class TestRemoveLiquidity:
 
     def test_wraps_in_perps_contract_execute_with_no_funds(self) -> None:
         """remove_liquidity targets the perps contract with empty funds."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.remove_liquidity(1_000)
@@ -198,6 +215,7 @@ class TestRemoveLiquidity:
 class TestSetReferralByIndex:
     def test_int_referrer_emits_full_wire_shape(self) -> None:
         """set_referral(int) emits {referrer: <int>, referee: <signer.user_index>}."""
+
         # Both `referrer` and `referee` are u32 on the wire (JSON
         # number, NOT string). Referee is auto-filled from the signer's
         # index — the FakeInfo returns 42 from the account-factory
@@ -216,6 +234,7 @@ class TestSetReferralByIndex:
 
     def test_int_referrer_does_not_query_account_factory(self) -> None:
         """An int referrer skips the username lookup entirely."""
+
         # No round-trip to the account factory: the int is the index
         # already. Inspect the recorded smart_queries — only the
         # constructor's `account` and `seen_nonces` lookups should be
@@ -232,6 +251,7 @@ class TestSetReferralByIndex:
 
     def test_rejects_negative_int_referrer(self) -> None:
         """A negative int referrer is rejected (UserIndex is unsigned)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="non-negative"):
@@ -239,6 +259,7 @@ class TestSetReferralByIndex:
 
     def test_rejects_bool_referrer(self) -> None:
         """A bool referrer is rejected (subclass-of-int hazard)."""
+
         # Without the bool guard, `True` would silently route through
         # the int branch as 1 — a different user. Mirrors the bool
         # defense pattern in the rest of the SDK.
@@ -249,6 +270,7 @@ class TestSetReferralByIndex:
 
     def test_rejects_non_int_non_str_referrer(self) -> None:
         """Defensive TypeError for callers that bypass the static `int | str` type."""
+
         # The static union prevents legitimate callers from passing
         # e.g. a float, but the runtime raise is a friendly fallback
         # for callers that ignore type checking (JSON-fed ingest,
@@ -262,6 +284,7 @@ class TestSetReferralByIndex:
 class TestSetReferralByUsername:
     def test_username_resolves_via_account_factory(self) -> None:
         """A str referrer triggers a `{user: {name: ...}}` query and uses the resolved index."""
+
         # FakeInfo returns `{"index": 7, ...}` for any `user.name`
         # query. Test pins both the query site (call to the account-
         # factory contract with the right msg shape) and the wire
@@ -290,6 +313,7 @@ class TestSetReferralByUsername:
 
     def test_rejects_empty_username(self) -> None:
         """An empty string referrer is rejected without round-tripping to the chain."""
+
         # No reason to ship an empty username — the chain would reject
         # it anyway, and short-circuiting saves a query. The error is a
         # ValueError to match the rest of the value-domain checks.
@@ -305,6 +329,7 @@ class TestSetReferralByUsername:
 class TestSetReferralWrapper:
     def test_wraps_in_perps_contract_execute_with_no_funds(self) -> None:
         """set_referral targets the perps contract with empty funds."""
+
         # The referral message routes through perps `ExecuteMsg::Referral`,
         # so the contract is the perps contract, NOT the account factory
         # (which is only queried for username resolution).
@@ -319,6 +344,7 @@ class TestSetReferralWrapper:
 class TestLiquidate:
     def test_full_wire_shape(self) -> None:
         """liquidate(addr) emits {maintain: {liquidate: {user: <addr>}}}."""
+
         # The `user` field is the typed Addr verbatim — no transform.
         # The contract handler is permissionless (see
         # `dango/perps/src/maintain/liquidate.rs`); it's the chain's
@@ -332,6 +358,7 @@ class TestLiquidate:
 
     def test_target_address_is_distinct_from_signer(self) -> None:
         """Pin that the wire field carries the user argument, not the signer's own address."""
+
         # Regression guard: a refactor that accidentally substituted
         # `self.address` for the `user` parameter would silently make
         # every liquidate self-liquidate. The fixed _TARGET_ADDRESS
@@ -346,6 +373,7 @@ class TestLiquidate:
 
     def test_wraps_in_perps_contract_execute_with_no_funds(self) -> None:
         """liquidate targets the perps contract with empty funds."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.liquidate(_TARGET_ADDRESS)
@@ -357,6 +385,7 @@ class TestLiquidate:
 class TestPipeline:
     def test_add_liquidity_advances_nonce(self) -> None:
         """add_liquidity goes through the simulate/sign/broadcast pipeline."""
+
         # `_send_action` is shared across every Exchange method and
         # already covered extensively in test_exchange.py. Pin that
         # each of the four new methods actually delegates to it
@@ -371,6 +400,7 @@ class TestPipeline:
 
     def test_remove_liquidity_advances_nonce(self) -> None:
         """remove_liquidity goes through the simulate/sign/broadcast pipeline."""
+
         info = FakeInfo()
         ex = _exchange(info)
         starting = ex.signer.next_nonce
@@ -381,6 +411,7 @@ class TestPipeline:
 
     def test_set_referral_advances_nonce(self) -> None:
         """set_referral goes through the simulate/sign/broadcast pipeline."""
+
         info = FakeInfo()
         ex = _exchange(info)
         starting = ex.signer.next_nonce
@@ -391,6 +422,7 @@ class TestPipeline:
 
     def test_liquidate_advances_nonce(self) -> None:
         """liquidate goes through the simulate/sign/broadcast pipeline."""
+
         info = FakeInfo()
         ex = _exchange(info)
         starting = ex.signer.next_nonce

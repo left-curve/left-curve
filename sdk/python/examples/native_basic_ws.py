@@ -17,6 +17,7 @@ def main() -> None:
     )
 
     pair_id = PairId("perp/ethusd")
+
     # The perps contract holds the counterparty vault; its
     # `subscribe_user_events` stream always shows live activity. We use
     # it here so the example is runnable with no `.env` file (no
@@ -35,11 +36,13 @@ def main() -> None:
     sub_ids.append(info.subscribe_block(print))
 
     print(f"subscribed: {sub_ids}; streaming for 30s...")
+
     time.sleep(30)
 
     # Drop the subscriptions and close the WebSocket.
     for sid in sub_ids:
         info.unsubscribe(sid)
+
     info.disconnect_websocket()
 
 

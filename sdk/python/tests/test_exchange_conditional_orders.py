@@ -29,6 +29,7 @@ _DEMO_PAIR = PairId("perp/btcusd")
 class TestSubmitConditionalOrder:
     def test_full_wire_shape(self) -> None:
         """submit_conditional_order pins the entire inner submit_conditional_order dict."""
+
         # End-to-end shape check: any rename of the 5 wire keys
         # (`pair_id`, `size`, `trigger_price`, `trigger_direction`,
         # `max_slippage`) trips this exact-match.
@@ -55,6 +56,7 @@ class TestSubmitConditionalOrder:
 
     def test_size_none_emits_json_null(self) -> None:
         """size=None is emitted as Python None (JSON null) — meaning 'close all'."""
+
         # `None` is wire-distinct from `0`: contract reads `None` as
         # "close entire position at trigger". Any path that maps None
         # to an empty string or the literal "0.000000" would silently
@@ -73,6 +75,7 @@ class TestSubmitConditionalOrder:
 
     def test_negative_size_preserves_minus(self) -> None:
         """Negative size flows through with the leading minus intact."""
+
         # The user is responsible for the sign (per Rust comment), so
         # the SDK must NOT .abs() — that would silently flip a
         # close-long into a buy.
@@ -90,6 +93,7 @@ class TestSubmitConditionalOrder:
 
     def test_size_zero_is_rejected(self) -> None:
         """Zero size is rejected client-side (positive=close-short, negative=close-long)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="non-zero or None"):
@@ -111,6 +115,7 @@ class TestSubmitConditionalOrder:
 
     def test_trigger_direction_above_is_plain_str(self) -> None:
         """TriggerDirection.ABOVE serializes to bare 'above' — same regression guard as TIF."""
+
         # If we stored the StrEnum member instead of `.value`,
         # `json.dumps` would either pass (StrEnum) or fail
         # (downstream non-Python consumer); pin the unwrapped form.
@@ -129,6 +134,7 @@ class TestSubmitConditionalOrder:
 
     def test_trigger_direction_below_serializes(self) -> None:
         """TriggerDirection.BELOW serializes to bare 'below'."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_conditional_order(
@@ -144,6 +150,7 @@ class TestSubmitConditionalOrder:
 
     def test_wraps_in_perps_contract_execute(self) -> None:
         """The execute message targets the perps contract and carries empty funds."""
+
         # Conditional orders never carry funds — same as regular
         # orders, margin is consumed from the existing sub-account.
         info = FakeInfo()
@@ -161,6 +168,7 @@ class TestSubmitConditionalOrder:
 
     def test_pipeline_advances_nonce(self) -> None:
         """submit_conditional_order goes through the simulate/sign/broadcast pipeline."""
+
         # One end-to-end pipeline check is enough — `_send_action` is
         # shared across all the order methods and already covered
         # extensively in `test_exchange_orders.py`. Pin that
@@ -187,6 +195,7 @@ class TestSubmitConditionalOrder:
 class TestCancelConditionalOrder:
     def test_cancel_all_is_bare_string(self) -> None:
         """cancel_conditional_order('all') produces a bare 'all' (NOT {'all': null})."""
+
         # Same externally-tagged-unit-variant rule as the order-side
         # 'all'; pin it here to catch a wire-shape regression that
         # would otherwise only surface server-side.
@@ -197,6 +206,7 @@ class TestCancelConditionalOrder:
 
     def test_cancel_one_emits_struct_variant(self) -> None:
         """ConditionalOrderRef → {'one': {'pair_id': ..., 'trigger_direction': ...}}."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.cancel_conditional_order(
@@ -215,6 +225,7 @@ class TestCancelConditionalOrder:
 
     def test_cancel_one_below(self) -> None:
         """ConditionalOrderRef with BELOW serializes the trigger_direction unchanged."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.cancel_conditional_order(
@@ -225,6 +236,7 @@ class TestCancelConditionalOrder:
 
     def test_cancel_all_for_pair(self) -> None:
         """AllForPair → {'all_for_pair': {'pair_id': ...}}."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.cancel_conditional_order(AllForPair(_DEMO_PAIR))
@@ -236,6 +248,7 @@ class TestCancelConditionalOrder:
 
     def test_wraps_in_perps_contract_execute(self) -> None:
         """The cancel execute message targets the perps contract with empty funds."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.cancel_conditional_order(AllForPair(_DEMO_PAIR))
@@ -245,6 +258,7 @@ class TestCancelConditionalOrder:
 
     def test_pipeline_advances_nonce(self) -> None:
         """cancel_conditional_order goes through the simulate/sign/broadcast pipeline."""
+
         info = FakeInfo()
         ex = _exchange(info)
         starting_nonce = ex.signer.next_nonce

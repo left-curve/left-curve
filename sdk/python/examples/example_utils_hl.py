@@ -50,13 +50,16 @@ def setup(
     Calls in HL ports add a single ``perps_contract=...`` kwarg vs.
     upstream; the rest of the body remains verbatim.
     """
+
     from dango.hyperliquid_compatibility.exchange import Exchange
     from dango.hyperliquid_compatibility.info import Info
 
     load_env()
+
     account: LocalAccount = eth_account.Account.from_key(get_secret_key())
     address = resolve_account_address(account)
     print("Running with account address:", address)
+
     if address != account.address:
         print("Running with agent address:", account.address)
 
@@ -66,12 +69,14 @@ def setup(
         perp_dexs=perp_dexs,
         perps_contract=perps_contract,
     )
+
     # `user_state` is HL-shaped (the HL-compat Info reshapes the native
     # contract response to match HL's TypedDict): `marginSummary` carries
     # `accountValue` as a decimal string, same as upstream HL. Dango is
     # perps-only, so no `spot_user_state` companion check.
     user_state = info.user_state(address)
     margin_summary = user_state["marginSummary"]
+
     if float(margin_summary["accountValue"]) == 0:
         print("Not running the example because the provided account has no equity.")
         url = (info._native.base_url or "").split(".", 1)[-1] or info._native.base_url
@@ -81,6 +86,7 @@ def setup(
             f"If the address shown is your API wallet address, set DANGO_ACCOUNT_ADDRESS "
             f"to the address of your account, not the API wallet."
         )
+
     exchange = Exchange(
         account,
         base_url,
@@ -88,6 +94,7 @@ def setup(
         perp_dexs=perp_dexs,
         perps_contract=perps_contract,
     )
+
     return address, info, exchange
 
 
@@ -103,6 +110,7 @@ def setup_read_only(
     ``perps_contract`` must be supplied explicitly when targeting any
     chain other than the SDK's default. See :func:`setup` for rationale.
     """
+
     from dango.hyperliquid_compatibility.info import Info
 
     return Info(

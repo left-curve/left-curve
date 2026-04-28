@@ -81,6 +81,7 @@ _HL_TIF_TO_DANGO: Final[dict[str, TimeInForce]] = {
 
 def _hl_tif_to_dango(tif: str) -> TimeInForce:
     """Translate HL's TIF string ("Gtc"/"Ioc"/"Alo") to the Dango enum."""
+
     # Listed-then-raise so a typo in caller code (e.g. lowercase "ioc") fails
     # loudly rather than silently routing through the default.
     try:
@@ -104,12 +105,14 @@ def _hl_order_type_to_dango_kind(
     (``submit_conditional_order``) and is structurally different enough that
     we raise ``NotImplementedError`` with a clear message rather than guess.
     """
+
     # Dispatch on the first (and only) key. HL's `OrderType` is a TypedDict
     # with `total=False`, so we can't rely on `.get(...)` returning None
     # reliably for the unset variant — instead branch on key presence.
     if "limit" in order_type:
         limit = order_type["limit"]
         tif = _hl_tif_to_dango(limit["tif"])
+
         # Format `limit_price` here: native `submit_order` formats `size`
         # but treats `kind` as opaque pass-through, so the chain receives
         # whatever we put in `limit_price`. The chain's `UsdPrice` is a
@@ -118,6 +121,7 @@ def _hl_order_type_to_dango_kind(
         # `client_order_id` is the Uint64 form of the HL cloid; see the
         # asymmetry warning in the module docstring.
         client_order_id = str(cloid.to_uint64()) if cloid is not None else None
+
         return cast(
             "OrderKind",
             {
@@ -128,6 +132,7 @@ def _hl_order_type_to_dango_kind(
                 },
             },
         )
+
     if "trigger" in order_type:
         # The HL trigger order packages a parent (limit or market) order
         # together with a trigger condition. Native Dango splits this into
@@ -140,6 +145,7 @@ def _hl_order_type_to_dango_kind(
             "HL trigger orders (TP/SL) are deferred — "
             "use the native Exchange.submit_conditional_order until this is implemented",
         )
+
     raise ValueError(
         f"unsupported HL OrderType (must contain 'limit' or 'trigger'): {order_type!r}",
     )
@@ -147,6 +153,7 @@ def _hl_order_type_to_dango_kind(
 
 def _signed_size(is_buy: bool, sz: float) -> float:
     """Convert HL's (is_buy, positive sz) to a Dango signed size (+ buy / − sell)."""
+
     # HL exposes side as a separate `is_buy` flag with a positive `sz`.
     # Dango encodes side in the sign of `size`. The translation is just
     # `+sz` for buys, `-sz` for sells.
@@ -162,6 +169,7 @@ def _build_submit_action(
     reduce_only: bool,
 ) -> SubmitAction:
     """Construct a native ``SubmitAction`` from HL-style parts."""
+
     return SubmitAction(
         pair_id=pair_id,
         size=_signed_size(is_buy, sz),
@@ -197,15 +205,18 @@ def _native_outcome_to_resting_envelope(
     ``Info.user_fills`` reshape. A future refinement can plumb event
     parsing through once the chain-side event shapes stabilize.
     """
+
     error_message = _extract_error_message(outcome)
     if error_message is not None:
         return hl_status_envelope(response_type=response_type, error=error_message)
+
     # No usable oid information in the outcome — the chain assigns oids
     # and surfaces them via indexer events, not via the broadcast envelope.
     # Emit a `resting` entry with `oid=0` per submitted order. HL traders
     # who need the real oid should subscribe to `orderUpdates` (Phase 16)
     # or query `historical_orders` after the broadcast settles.
     statuses: list[HlStatusEntry] = [hl_resting_entry(0) for _ in range(expected_count)]
+
     return hl_status_envelope(response_type=response_type, statuses=statuses)
 
 
@@ -218,6 +229,7 @@ def _extract_error_message(outcome: dict[str, Any]) -> str | None:
     and ``result.err`` / non-zero ``code``. None of these are
     type-system-guaranteed; the chain emits whichever subset is relevant.
     """
+
     # Top-level error string: matches the `_helpers.FakeInfo.broadcast_tx_sync`
     # success shape (no `error` key) and the canonical err shape downstream
     # consumers may inject.
@@ -225,6 +237,7 @@ def _extract_error_message(outcome: dict[str, Any]) -> str | None:
         return cast("str", outcome["error"])
     if isinstance(outcome.get("err"), str):
         return cast("str", outcome["err"])
+
     # `check_tx` is the ABCI CheckTx outcome; `code != 0` means the tx was
     # rejected at the gateway. The `error` field carries the message.
     check_tx = outcome.get("check_tx")
@@ -234,10 +247,12 @@ def _extract_error_message(outcome: dict[str, Any]) -> str | None:
         code = check_tx.get("code")
         if isinstance(code, int) and code != 0:
             return f"check_tx failed with code {code}"
+
     # Top-level `code` is what the FakeInfo / our own tests emit.
     code = outcome.get("code")
     if isinstance(code, int) and code != 0:
         return f"tx failed with code {code}"
+
     # `result.err` is the GenericResult variant Dango emits when the tx
     # was simulated successfully but the on-chain handler reverted.
     result = outcome.get("result")
@@ -246,6 +261,7 @@ def _extract_error_message(outcome: dict[str, Any]) -> str | None:
             return cast("str", result["err"])
         if isinstance(result.get("Err"), str):
             return cast("str", result["Err"])
+
     return None
 
 
@@ -261,9 +277,11 @@ def _native_outcome_to_cancel_envelope(
     ``response.type``; pass the appropriate value. Per-entry status is
     ``{"status": "success"}`` regardless.
     """
+
     error_message = _extract_error_message(outcome)
     if error_message is not None:
         return hl_status_envelope(response_type=response_type, error=error_message)
+
     # Emit a `{"status": "success"}` per cancel request. We can't tell
     # from the outcome alone whether the cancel actually matched an
     # open order (the chain may have already filled or removed it); HL
@@ -272,6 +290,7 @@ def _native_outcome_to_cancel_envelope(
     statuses: list[HlStatusEntry] = [
         cast("HlStatusEntry", {"status": "success"}) for _ in range(expected_count)
     ]
+
     return hl_status_envelope(response_type=response_type, statuses=statuses)
 
 
@@ -321,6 +340,7 @@ class Exchange:
                 "via add_liquidity/remove_liquidity on the native Exchange; "
                 "trades are always signed by the wallet's own account",
             )
+
         # `spot_meta`: HL traders pass a preloaded SpotMeta to skip the
         # initial fetch. Dango is perps-only, so a non-None value indicates
         # the caller is mis-using the wrapper; raise to surface that.
@@ -328,6 +348,7 @@ class Exchange:
             raise NotImplementedError(
                 "spot_meta is not supported — Dango is perps-only",
             )
+
         # `account_address` is required for the native Exchange (it
         # signs as that account). HL allows None and defaults to the
         # wallet's own EVM address; Dango has its own account model
@@ -339,6 +360,7 @@ class Exchange:
                 "account_address is required for the Dango HL-compat Exchange; "
                 "Dango decouples the signing key from the account address",
             )
+
         # `base_url` defaults to the local URL when None — HL's default is
         # the production mainnet, but Dango has no canonical default and we
         # don't want to silently point at a real chain. Prefer LOCAL.
@@ -350,9 +372,11 @@ class Exchange:
         self.wallet: Wallet | LocalAccount = wallet
         self.account_address: str = account_address
         self.vault_address: str | None = None
+
         # `expires_after` is recorded but not currently threaded through the
         # native sign path. See `set_expires_after` for the WHY-comment.
         self.expires_after: int | None = None
+
         # The native Exchange does the actual signing + simulation +
         # broadcast. We hand it the wallet and account_address verbatim;
         # constructor-level chain_id and nonce auto-resolution happen
@@ -369,6 +393,7 @@ class Exchange:
             timeout=timeout,
             perps_contract=perps_contract,
         )
+
         # HL's Exchange holds a `self.info` for things like `market_close`
         # (which reads the user's positions). We embed an HL-shaped Info
         # over the same base_url with `skip_ws=True` because the Exchange
@@ -398,12 +423,14 @@ class Exchange:
         builder: Any = None,
     ) -> dict[str, Any]:
         """Place a single HL-style order. Routes to the native ``submit_order``."""
+
         # Builder: HL has a fee-share marketplace (the "builder fee" model)
         # where third-party UIs can take a cut. Dango has no analog —
         # raise rather than silently drop the parameter and let HL traders
         # think they're paying their UI builder.
         if builder is not None:
             raise NotImplementedError("Dango has no builder fee marketplace")
+
         return self.bulk_orders(
             [
                 cast(
@@ -429,8 +456,10 @@ class Exchange:
         grouping: Grouping = "na",
     ) -> dict[str, Any]:
         """Place multiple HL-style orders in one batched native call."""
+
         if builder is not None:
             raise NotImplementedError("Dango has no builder fee marketplace")
+
         if grouping != "na":
             # `normalTpsl` and `positionTpsl` group parent + child orders
             # under HL's TP/SL attachment semantics. Translating to native
@@ -442,8 +471,10 @@ class Exchange:
                 "use grouping='na' (default) and submit TP/SL via the native "
                 "Exchange.submit_conditional_order until this is implemented",
             )
+
         actions: list[SubmitOrCancelAction] = []
         request_list = list(order_requests)
+
         for req in request_list:
             pair_id = self.info.name_to_pair(req["coin"])
             cloid = req.get("cloid")
@@ -461,8 +492,10 @@ class Exchange:
                     reduce_only=req.get("reduce_only", False),
                 ),
             )
+
         if not actions:
             raise ValueError("bulk_orders requires at least one order request")
+
         # Single-order shortcut: avoid the batch overhead by calling
         # submit_order directly. Both paths share the same response
         # envelope shape so callers can treat them interchangeably.
@@ -477,6 +510,7 @@ class Exchange:
             )
         else:
             outcome = self._native.batch_update_orders(actions)
+
         return _native_outcome_to_resting_envelope(
             outcome,
             response_type="order",
@@ -487,6 +521,7 @@ class Exchange:
 
     def cancel(self, name: str, oid: int) -> dict[str, Any]:
         """Cancel one open order by chain ``oid``. ``name`` is verified for parity."""
+
         # `name` is HL's coin name; we resolve it to a pair_id even though
         # native cancel only needs the oid — this gives a friendlier error
         # if the caller passes a typo (KeyError on lookup) instead of
@@ -494,6 +529,7 @@ class Exchange:
         # different pair.
         _ = self.info.name_to_pair(name)
         outcome = self._native.cancel_order(OrderId(str(oid)))
+
         return _native_outcome_to_cancel_envelope(
             outcome,
             response_type="cancel",
@@ -502,15 +538,19 @@ class Exchange:
 
     def bulk_cancel(self, cancel_requests: Iterable[dict[str, Any]]) -> dict[str, Any]:
         """Cancel multiple open orders by chain ``oid`` in one batched native call."""
+
         actions: list[SubmitOrCancelAction] = []
         for req in cancel_requests:
             # Verify each `coin` so a typo fails loudly here rather than
             # silently dispatching the cancel under an unknown pair.
             _ = self.info.name_to_pair(req["coin"])
             actions.append(CancelAction(spec=OrderId(str(req["oid"]))))
+
         if not actions:
             raise ValueError("bulk_cancel requires at least one cancel request")
+
         outcome = self._native.batch_update_orders(actions)
+
         return _native_outcome_to_cancel_envelope(
             outcome,
             response_type="cancel",
@@ -519,8 +559,10 @@ class Exchange:
 
     def cancel_by_cloid(self, name: str, cloid: Cloid) -> dict[str, Any]:
         """Cancel one open order by ``cloid``. Hashes the 16-byte HL cloid to Uint64."""
+
         _ = self.info.name_to_pair(name)
         outcome = self._native.cancel_order(ClientOrderIdRef(value=cloid.to_uint64()))
+
         # `response_type="cancelByCloid"` matches HL's action type so traders
         # whose dispatch branches on `result["response"]["type"]` keep working.
         return _native_outcome_to_cancel_envelope(
@@ -531,6 +573,7 @@ class Exchange:
 
     def bulk_cancel_by_cloid(self, cancel_requests: Iterable[dict[str, Any]]) -> dict[str, Any]:
         """Cancel multiple open orders by ``cloid`` in one batched native call."""
+
         actions: list[SubmitOrCancelAction] = []
         for req in cancel_requests:
             _ = self.info.name_to_pair(req["coin"])
@@ -540,9 +583,12 @@ class Exchange:
                     f"each cancel request must carry a Cloid, got {type(cloid).__name__}",
                 )
             actions.append(CancelAction(spec=ClientOrderIdRef(value=cloid.to_uint64())))
+
         if not actions:
             raise ValueError("bulk_cancel_by_cloid requires at least one cancel request")
+
         outcome = self._native.batch_update_orders(actions)
+
         return _native_outcome_to_cancel_envelope(
             outcome,
             response_type="cancelByCloid",
@@ -569,6 +615,7 @@ class Exchange:
         ``batch_update_orders``. ``oid`` (the order to cancel) is independent
         from ``cloid`` (the new client-order-id for the resubmitted order).
         """
+
         return self.bulk_modify_orders_new(
             [
                 {
@@ -594,11 +641,14 @@ class Exchange:
         modify_requests: Iterable[dict[str, Any]],
     ) -> dict[str, Any]:
         """Batch a list of cancel+submit pairs into one ``batch_update_orders`` call."""
+
         actions: list[SubmitOrCancelAction] = []
         request_list = list(modify_requests)
+
         for req in request_list:
             oid = req["oid"]
             order_req = cast("OrderRequest", req["order"])
+
             # Cancel side: `oid` may be an int (chain order id) or a Cloid
             # (the client-assigned id used to bind the original order).
             # Native takes either via different OrderId / ClientOrderIdRef
@@ -609,7 +659,9 @@ class Exchange:
                 )
             else:
                 cancel_spec = OrderId(str(oid))
+
             actions.append(CancelAction(spec=cancel_spec))
+
             # Submit side: same path as bulk_orders.
             pair_id = self.info.name_to_pair(order_req["coin"])
             new_cloid = order_req.get("cloid")
@@ -618,6 +670,7 @@ class Exchange:
                 order_req["limit_px"],
                 new_cloid,
             )
+
             actions.append(
                 _build_submit_action(
                     pair_id,
@@ -627,9 +680,12 @@ class Exchange:
                     reduce_only=order_req.get("reduce_only", False),
                 ),
             )
+
         if not actions:
             raise ValueError("bulk_modify_orders_new requires at least one modify request")
+
         outcome = self._native.batch_update_orders(actions)
+
         # `response_type="batchModify"` matches HL's action type so traders'
         # dispatch on `result["response"]["type"]` keeps working. The per-
         # entry shape is the same as a regular order response (one entry
@@ -654,6 +710,7 @@ class Exchange:
         builder: Any = None,
     ) -> dict[str, Any]:
         """Place a market order with a slippage cap. ``px`` is ignored."""
+
         # `px` is HL's "current oracle price ± slippage = limit price" hint.
         # Dango's market order computes its own slippage band internally
         # against the contract's mark price, so HL's `px` is redundant
@@ -662,6 +719,7 @@ class Exchange:
         _ = px
         if builder is not None:
             raise NotImplementedError("Dango has no builder fee marketplace")
+
         # `cloid` doesn't flow into a native market order: Dango's
         # `submit_market_order` doesn't take a client_order_id. If a
         # caller passes one, raise so they don't silently lose it.
@@ -671,12 +729,14 @@ class Exchange:
                 "Dango's submit_market_order does not accept a client_order_id; "
                 "use a limit order with tif='Ioc' as a market-equivalent if cloid is required",
             )
+
         pair_id = self.info.name_to_pair(name)
         outcome = self._native.submit_market_order(
             pair_id,
             _signed_size(is_buy, sz),
             max_slippage=slippage,
         )
+
         return _native_outcome_to_resting_envelope(
             outcome,
             response_type="order",
@@ -694,14 +754,18 @@ class Exchange:
         builder: Any = None,
     ) -> dict[str, Any]:
         """Reduce-only market order to close the position in ``coin``."""
+
         _ = px  # See market_open — Dango ignores HL's px hint.
+
         if builder is not None:
             raise NotImplementedError("Dango has no builder fee marketplace")
+
         if cloid is not None:
             raise NotImplementedError(
                 "cloid on market orders is not supported — "
                 "Dango's submit_market_order does not accept a client_order_id",
             )
+
         # Read the user's position in `coin` to determine close direction
         # and (if not specified) close size. HL's market_close reads
         # `assetPositions` for this; we use the same path via the embedded
@@ -709,30 +773,36 @@ class Exchange:
         state = self.info.user_state(self.account_address)
         positions = state.get("assetPositions", [])
         target_position: dict[str, Any] | None = None
+
         for entry in positions:
             inner = entry.get("position", {})
             if inner.get("coin") == coin:
                 target_position = inner
                 break
+
         if target_position is None:
             return hl_status_envelope(
                 response_type="order",
                 error=f"no open position in {coin!r} to close",
             )
+
         # `szi` is HL's signed size: positive = long, negative = short.
         # Closing a long means selling (negative size); closing a short
         # means buying (positive size). The signed close size is the
         # OPPOSITE of `szi`.
         szi_str = target_position.get("szi", "0")
+
         try:
             szi = float(szi_str)
         except ValueError, TypeError:
             szi = 0.0
+
         if szi == 0:
             return hl_status_envelope(
                 response_type="order",
                 error=f"position in {coin!r} has zero size",
             )
+
         # Default `sz = abs(szi)` if not specified (HL semantics: close
         # the entire position). Caller-supplied `sz` is always positive
         # (HL convention); we apply the sign based on position direction.
@@ -745,6 +815,7 @@ class Exchange:
             max_slippage=slippage,
             reduce_only=True,
         )
+
         return _native_outcome_to_resting_envelope(
             outcome,
             response_type="order",
@@ -755,10 +826,12 @@ class Exchange:
 
     def set_referrer(self, code: str) -> dict[str, Any]:
         """Bind the signer as a referee of ``code`` (HL username form)."""
+
         # HL's `set_referrer` takes a string code (username). Native
         # `set_referral` accepts `int | str`; we forward the str directly
         # so the username-lookup happens chain-side.
         outcome = self._native.set_referral(code)
+
         # HL's response uses `type="setReferrer"`. We don't have per-entry
         # statuses to populate (the action either succeeded or failed); a
         # success is represented by an empty statuses list, an error by an
@@ -766,6 +839,7 @@ class Exchange:
         error_message = _extract_error_message(outcome)
         if error_message is not None:
             return hl_status_envelope(response_type="setReferrer", error=error_message)
+
         return hl_status_envelope(response_type="setReferrer", statuses=[])
 
     # --- Signing-time hints -----------------------------------------------
@@ -780,6 +854,7 @@ class Exchange:
         now this is a no-op-with-state-storage so HL traders' code that
         calls it doesn't crash.
         """
+
         # Stored on `self` for future plumbing (see docstring) — currently
         # not consulted by any code path. We intentionally don't add a
         # warning-on-read because callers will discover the gap when an

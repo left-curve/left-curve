@@ -55,17 +55,21 @@ def setup(
     default (mainnet) — Dango has no canonical URL → contract mapping
     and we don't try to guess.
     """
+
     # `perp_dexs` is accepted for HL-signature symmetry but unused on the
     # native side — Dango has no builder-deployed DEX abstraction.
     _ = perp_dexs
+
     from dango.exchange import Exchange
     from dango.info import Info
     from dango.utils.constants import LOCAL_API_URL
 
     load_env()
+
     account: LocalAccount = eth_account.Account.from_key(get_secret_key())
     address = resolve_account_address(account)
     print("Running with account address:", address)
+
     if address != account.address:
         print("Running with agent address:", account.address)
 
@@ -73,6 +77,7 @@ def setup(
     # internally; we mirror that here to keep the two setups feel-alike).
     resolved_url = base_url or LOCAL_API_URL
     info = Info(resolved_url, skip_ws=skip_ws, perps_contract=perps_contract)
+
     # Native `user_state` returns the raw contract response. Note
     # `margin` is a flat `UsdValue` decimal string (NOT a nested object
     # like HL's `marginSummary`); walk a single string field for the
@@ -87,6 +92,7 @@ def setup(
             f"If the address shown is your API wallet address, set DANGO_ACCOUNT_ADDRESS "
             f"to the address of your account, not the API wallet."
         )
+
     # Reuse the same `info` so the Exchange's queries hit the same
     # perps contract, and pass `perps_contract` so build-side
     # messages target the right deployment.
@@ -97,6 +103,7 @@ def setup(
         info=info,
         perps_contract=perps_contract,
     )
+
     return address, info, exchange
 
 
@@ -112,6 +119,7 @@ def setup_read_only(
     chain other than the SDK's default (mainnet). See :func:`setup` for
     the rationale.
     """
+
     # No `.env` load, no wallet, no equity guard — read-only callers shouldn't
     # be forced to maintain DANGO_* secrets just to query public chain state.
     from dango.info import Info
@@ -126,16 +134,20 @@ def setup_read_only(
 
 def get_secret_key() -> str:
     """Resolve the signer's secret from ``DANGO_SECRET_KEY``."""
+
     secret_key = os.environ.get("DANGO_SECRET_KEY", "").strip()
+
     if not secret_key:
         raise ValueError(
             "DANGO_SECRET_KEY is required — set it in examples/.env or your environment.",
         )
+
     return secret_key
 
 
 def load_env() -> None:
     """Load variables from ``examples/.env`` into ``os.environ`` if present."""
+
     # `load_dotenv` is a no-op when the file doesn't exist, which is the
     # right behavior for production deployments that inject env vars via
     # the orchestrator instead of a `.env` file. We pin the path to this
@@ -154,7 +166,9 @@ def resolve_account_address(account: LocalAccount) -> str:
     flavor; the HL-compat ``Exchange`` constructor enforces the explicit-
     address requirement at construction time.
     """
+
     address = os.environ.get("DANGO_ACCOUNT_ADDRESS", "").strip()
     if not address:
         address = account.address
+
     return str(address)

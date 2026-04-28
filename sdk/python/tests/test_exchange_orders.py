@@ -37,12 +37,14 @@ _DEMO_PAIR = PairId("perp/btcusd")
 
 def _market_kind(slippage: str = "0.010000") -> OrderKind:
     """Build a `MarketKind` TypedDict with the canonical 6-dp slippage form."""
+
     return cast("OrderKind", {"market": {"max_slippage": cast("Dimensionless", slippage)}})
 
 
 class TestSubmitOrder:
     def test_market_buy_wire_shape(self) -> None:
         """submit_order(+1.5, market) emits a positive size and snake_case kind."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_order(_DEMO_PAIR, 1.5, _market_kind())
@@ -64,6 +66,7 @@ class TestSubmitOrder:
 
     def test_sell_size_is_negative(self) -> None:
         """A negative size encodes a sell; the wire string keeps the leading minus."""
+
         # Sign convention is the user-facing API contract; this pins
         # it. A regression where size is .abs()'d server-side would
         # silently flip every sell to a buy.
@@ -74,6 +77,7 @@ class TestSubmitOrder:
 
     def test_reduce_only_propagates(self) -> None:
         """reduce_only=True flows into the wire dict unchanged."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_order(_DEMO_PAIR, 1, _market_kind(), reduce_only=True)
@@ -81,6 +85,7 @@ class TestSubmitOrder:
 
     def test_tp_sl_propagate(self) -> None:
         """tp/sl ChildOrders flow through verbatim (no key-rename or coercion)."""
+
         # ChildOrder is already a wire-shape TypedDict with the exact
         # keys the contract expects, so we hand it to the wire dict
         # by reference. Test pins that we don't accidentally re-shape
@@ -104,6 +109,7 @@ class TestSubmitOrder:
 
     def test_size_zero_is_rejected(self) -> None:
         """Zero size is rejected client-side (positive=buy, negative=sell)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="non-zero"):
@@ -113,6 +119,7 @@ class TestSubmitOrder:
 
     def test_nan_size_is_rejected(self) -> None:
         """NaN/Inf sizes raise ValueError (not silently coerced to '0' or 'inf')."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError):
@@ -122,6 +129,7 @@ class TestSubmitOrder:
 
     def test_wraps_in_perps_contract_execute(self) -> None:
         """The execute message targets the perps contract and carries empty funds."""
+
         # Orders never carry a funds map — margin is consumed from
         # the caller's existing sub-account balance. The contract is
         # the constructor-resolved perps address (production default).
@@ -136,6 +144,7 @@ class TestSubmitOrder:
 class TestCancelOrder:
     def test_cancel_all_is_bare_string(self) -> None:
         """cancel_order('all') produces a bare 'all' (NOT {'all': null})."""
+
         # Externally-tagged unit variants serialize as the bare snake_case
         # name, not as a single-key dict. This is the most common shape
         # confusion when porting across SDKs; pin it.
@@ -146,6 +155,7 @@ class TestCancelOrder:
 
     def test_cancel_by_order_id_emits_one(self) -> None:
         """cancel_order(OrderId('42')) produces {'one': '42'}."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.cancel_order(OrderId("42"))
@@ -153,6 +163,7 @@ class TestCancelOrder:
 
     def test_cancel_by_client_order_id_ref(self) -> None:
         """ClientOrderIdRef(value=7) becomes {'one_by_client_order_id': '7'}."""
+
         # The Uint64 wire type is a base-10 integer string; the
         # dataclass holds an int for ergonomics, so we stringify
         # at the boundary.
@@ -165,6 +176,7 @@ class TestCancelOrder:
 
     def test_all_check_precedes_str_fallthrough(self) -> None:
         """cancel_order('all') is NOT mistaken for an OrderId of value 'all'."""
+
         # Regression guard: `OrderId` is a NewType over str, so the
         # naive `isinstance(spec, str)` branch first would route
         # `"all"` through the `{"one": "all"}` path. The implementation
@@ -180,6 +192,7 @@ class TestCancelOrder:
 class TestBatchUpdateOrders:
     def test_empty_list_is_rejected(self) -> None:
         """An empty actions list is rejected client-side (chain requires len >= 1)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="at least one"):
@@ -187,6 +200,7 @@ class TestBatchUpdateOrders:
 
     def test_mixed_submit_and_cancel_shape(self) -> None:
         """A mixed batch produces an ordered list of {'submit':...}/{'cancel':...} dicts."""
+
         # Order preservation matters because the contract executes
         # actions in array order. A mix of submit + cancel-by-id +
         # cancel-all exercises every wire-shape branch in one assert.
@@ -223,6 +237,7 @@ class TestBatchUpdateOrders:
 
     def test_submit_action_zero_size_rejected(self) -> None:
         """Zero size inside a SubmitAction is rejected at build time."""
+
         # Same guard as `submit_order` — the helper is shared, so the
         # batch path inherits it. This test pins the inheritance: a
         # future refactor that bypasses `_build_submit_order_wire`
@@ -240,6 +255,7 @@ class TestBatchUpdateOrders:
 class TestSubmitMarketOrder:
     def test_default_slippage_is_one_percent(self) -> None:
         """submit_market_order defaults max_slippage to 0.01 (1%) on the wire."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_market_order(_DEMO_PAIR, 1.0)
@@ -248,6 +264,7 @@ class TestSubmitMarketOrder:
 
     def test_custom_slippage_propagates(self) -> None:
         """Custom max_slippage flows through dango_decimal formatting."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_market_order(_DEMO_PAIR, 1.0, max_slippage=0.05)
@@ -256,6 +273,7 @@ class TestSubmitMarketOrder:
 
     def test_kwargs_propagate_to_submit_order(self) -> None:
         """reduce_only/tp/sl flow from convenience helper to submit_order intact."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_market_order(_DEMO_PAIR, 1.0, reduce_only=True)
@@ -265,6 +283,7 @@ class TestSubmitMarketOrder:
 class TestSubmitLimitOrder:
     def test_default_gtc_post_only_ioc_serialization(self) -> None:
         """TimeInForce serializes as the upper-case enum value, not the Python name."""
+
         # The TIF wire form is `GTC`/`IOC`/`POST` per the
         # `#[serde(rename = "GTC")]` etc. attributes on the Rust
         # source. We store `TimeInForce.value` so downstream
@@ -283,6 +302,7 @@ class TestSubmitLimitOrder:
 
     def test_default_tif_is_gtc(self) -> None:
         """Limit orders default to GTC when no time_in_force is supplied."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_limit_order(_DEMO_PAIR, 1.0, 30_000.0)
@@ -291,6 +311,7 @@ class TestSubmitLimitOrder:
 
     def test_limit_price_is_six_decimal_string(self) -> None:
         """Limit price is encoded as a 6-decimal `UsdPrice` string."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_limit_order(_DEMO_PAIR, 1.0, 30_000.5)
@@ -299,6 +320,7 @@ class TestSubmitLimitOrder:
 
     def test_client_order_id_stringified(self) -> None:
         """A non-None client_order_id is sent as a base-10 decimal string."""
+
         # Uint64 wire form requires a string. The convenience helper
         # accepts an int for ergonomics and stringifies internally.
         info = FakeInfo()
@@ -309,6 +331,7 @@ class TestSubmitLimitOrder:
 
     def test_client_order_id_none_stays_none(self) -> None:
         """An omitted client_order_id is null on the wire (not the empty string)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.submit_limit_order(_DEMO_PAIR, 1.0, 30_000.0)

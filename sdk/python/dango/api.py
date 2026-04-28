@@ -34,8 +34,10 @@ class API:
             GraphQLError: when the response carries an `errors` array, or is missing
                 both `data` and `errors`.
         """
+
         url = f"{self.base_url}/graphql"
         body = {"query": document, "variables": variables or {}}
+
         try:
             response = self._session.post(url, json=body, timeout=self.timeout)
         except requests.RequestException as exc:
@@ -70,6 +72,7 @@ class API:
         data = payload.get("data")
         if data is None:
             raise GraphQLError(f"GraphQL response missing both `data` and `errors`: {payload!r}")
+
         return cast("dict[str, Any]", data)
 
     def query_typed(
@@ -80,6 +83,7 @@ class API:
         response_type: type[T],
     ) -> T:
         """Same as `query` but cast the result to `response_type`. No runtime validation."""
+
         return cast(T, self.query(document, variables))
 
 
@@ -92,4 +96,5 @@ def _format_graphql_errors(errors: list[dict[str, Any]]) -> str:
             parts.append(f"{msg} (path={path})")
         else:
             parts.append(msg)
+
     return "; ".join(parts) if parts else "GraphQL error"

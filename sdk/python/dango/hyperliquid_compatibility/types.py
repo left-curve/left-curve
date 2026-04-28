@@ -89,7 +89,9 @@ class Cloid:
         could in principle collide here (probability ~2**-32 over
         ~4e9 cloids; negligible for any realistic trading workflow).
         """
+
         digest = hashlib.sha256(self._raw_cloid.lower().encode("ascii")).digest()
+
         return int.from_bytes(digest[:8], byteorder="big")
 
 
@@ -562,12 +564,14 @@ def dango_decimal_to_hl_str(x: str) -> str:
         ``"-1.500000"`` -> ``"-1.5"``
         ``"5"`` -> ``"5"``
     """
+
     # `Decimal.normalize()` preserves the sign of zero (`Decimal("-0.000000")`
     # normalizes to `Decimal("-0")`), so a separate zero short-circuit is
     # required to collapse `"-0"` → `"0"`.
     d = Decimal(x)
     if d.is_zero():
         return "0"
+
     # `Decimal.normalize()` returns scientific notation for whole numbers
     # >= 10 (e.g. `"10"` becomes `Decimal("1E+1")`), but `format(d, "f")`
     # always produces fixed-point output, so this composition is safe.
@@ -584,16 +588,19 @@ HlStatusEntry = HlRestingEntry | HlFilledEntry | HlErrorEntry
 
 def hl_resting_entry(oid: int) -> HlRestingEntry:
     """One HL ``"resting"`` status entry: the order is on the book."""
+
     return {"resting": {"oid": oid}}
 
 
 def hl_filled_entry(*, total_sz: str, avg_px: str, oid: int) -> HlFilledEntry:
     """One HL ``"filled"`` status entry: the order matched."""
+
     return {"filled": {"totalSz": total_sz, "avgPx": avg_px, "oid": oid}}
 
 
 def hl_error_entry(message: str) -> HlErrorEntry:
     """One HL per-order error status entry."""
+
     return {"error": message}
 
 
@@ -612,8 +619,10 @@ def hl_status_envelope(
 
     HL never raises on logical errors; callers inspect ``result["status"]``.
     """
+
     if error is not None:
         return {"status": "err", "response": error}
+
     return {
         "status": "ok",
         "response": {

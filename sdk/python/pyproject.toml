@@ -1,22 +1,19 @@
 [project]
-name            = "dango"
-version         = "0.0.0"
 description     = "Python SDK for the Dango perpetual futures exchange"
+name            = "dango"
 readme          = "README.md"
 requires-python = ">=3.14"
-dependencies    = [
-    "requests>=2.31",
-    "eth-account>=0.10",
-    "websocket-client>=1.5",
-]
+version         = "0.0.0"
+
+dependencies = ["eth-account>=0.10", "requests>=2.31", "websocket-client>=1.5"]
 
 [build-system]
-requires      = ["hatchling"]
 build-backend = "hatchling.build"
+requires      = ["hatchling"]
 
 [tool.hatch.build.targets.wheel]
+include  = ["dango/_graphql/**/*.graphql"]
 packages = ["dango"]
-include = ["dango/_graphql/**/*.graphql"]
 
 # In `sdk/python/dango/_graphql/`, the .graphql files are symlinks pointing
 # back to `sdk/rust/src/schemas/` (single source of truth). Hatch's wheel
@@ -25,52 +22,51 @@ include = ["dango/_graphql/**/*.graphql"]
 # sdist and force-include the real files from sdk/rust instead.
 [tool.hatch.build.targets.sdist]
 exclude = [
-    "dango/_graphql/queries/*.graphql",
-    "dango/_graphql/mutations/*.graphql",
-    "dango/_graphql/subscriptions/*.graphql",
+  "dango/_graphql/mutations/*.graphql",
+  "dango/_graphql/queries/*.graphql",
+  "dango/_graphql/subscriptions/*.graphql",
 ]
 
 [tool.hatch.build.targets.sdist.force-include]
-"../rust/src/schemas/queries/queryStatus.graphql"        = "dango/_graphql/queries/queryStatus.graphql"
-"../rust/src/schemas/queries/queryApp.graphql"           = "dango/_graphql/queries/queryApp.graphql"
-"../rust/src/schemas/queries/simulate.graphql"           = "dango/_graphql/queries/simulate.graphql"
+"../rust/src/schemas/mutations/broadcastTxSync.graphql"  = "dango/_graphql/mutations/broadcastTxSync.graphql"
+"../rust/src/schemas/queries/allPerpsPairStats.graphql"  = "dango/_graphql/queries/allPerpsPairStats.graphql"
 "../rust/src/schemas/queries/perpsCandles.graphql"       = "dango/_graphql/queries/perpsCandles.graphql"
 "../rust/src/schemas/queries/perpsEvents.graphql"        = "dango/_graphql/queries/perpsEvents.graphql"
 "../rust/src/schemas/queries/perpsPairStats.graphql"     = "dango/_graphql/queries/perpsPairStats.graphql"
-"../rust/src/schemas/queries/allPerpsPairStats.graphql"  = "dango/_graphql/queries/allPerpsPairStats.graphql"
-"../rust/src/schemas/mutations/broadcastTxSync.graphql"  = "dango/_graphql/mutations/broadcastTxSync.graphql"
-"../rust/src/schemas/subscriptions/perpsCandles.graphql" = "dango/_graphql/subscriptions/perpsCandles.graphql"
+"../rust/src/schemas/queries/queryApp.graphql"           = "dango/_graphql/queries/queryApp.graphql"
+"../rust/src/schemas/queries/queryStatus.graphql"        = "dango/_graphql/queries/queryStatus.graphql"
+"../rust/src/schemas/queries/simulate.graphql"           = "dango/_graphql/queries/simulate.graphql"
 "../rust/src/schemas/subscriptions/block.graphql"        = "dango/_graphql/subscriptions/block.graphql"
 "../rust/src/schemas/subscriptions/events.graphql"       = "dango/_graphql/subscriptions/events.graphql"
+"../rust/src/schemas/subscriptions/perpsCandles.graphql" = "dango/_graphql/subscriptions/perpsCandles.graphql"
 "../rust/src/schemas/subscriptions/queryApp.graphql"     = "dango/_graphql/subscriptions/queryApp.graphql"
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
-    "pytest-recording>=0.13",
-    "pytest-httpserver>=1.1",
-    "mypy>=1.10",
-    "ruff>=0.6",
-    "types-requests>=2.31",
+  "mypy>=1.10",
+  "pytest-httpserver>=1.1",
+  "pytest-recording>=0.13",
+  "pytest>=8",
+  "ruff>=0.6",
+  "types-requests>=2.31",
 ]
+
 # `examples` is opt-in (`uv sync --group examples`). Production users
 # inject env vars from their orchestrator and don't need python-dotenv;
 # only the runnable example scripts in `examples/` use it.
-examples = [
-    "python-dotenv>=1.0",
-]
+examples = ["python-dotenv>=1.0"]
 
 [tool.ruff]
 line-length    = 100
 target-version = "py314"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+select = ["B", "E", "F", "I", "SIM", "UP", "W"]
 
 [tool.mypy]
+exclude        = ["build/"]
 python_version = "3.14"
 strict         = true
-exclude        = ["build/"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

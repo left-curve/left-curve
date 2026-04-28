@@ -38,9 +38,11 @@ def main() -> None:
     state = info.user_state(Addr(address))
     positions = (state or {}).get("positions") or {}
     pos = positions.get(pair_id)
+
     if pos is None:
         print(f"no open position on {pair_id}; skipping reduce-only close")
         return
+
     print("current position:")
     print(json.dumps({"pair_id": pair_id, **pos}, indent=2))
 

@@ -114,6 +114,7 @@ def _make_exchange(
     account_address: str = _DEMO_ADDRESS,
 ) -> tuple[HlExchange, _FakeNativeExchange, _FakeHlInfo]:
     """Build an HL-compat Exchange with a fake native Exchange and Info wired in."""
+
     # Patch both the native Exchange constructor and the HL Info
     # constructor at the point where the wrapper imports them. The
     # wrapper does `from dango.exchange import Exchange as NativeExchange`
@@ -151,14 +152,17 @@ def _make_exchange(
 class TestSignedSize:
     def test_buy_keeps_positive(self) -> None:
         """is_buy=True passes the positive size through unchanged."""
+
         assert _signed_size(True, 1.5) == 1.5
 
     def test_sell_negates(self) -> None:
         """is_buy=False negates the size to encode sell direction."""
+
         assert _signed_size(False, 2.0) == -2.0
 
     def test_zero_passthrough(self) -> None:
         """Zero remains zero regardless of side flag."""
+
         # Native Exchange will reject a zero size; we don't second-guess
         # here. The translation alone preserves zero.
         assert _signed_size(True, 0.0) == 0.0
@@ -168,14 +172,17 @@ class TestSignedSize:
 class TestHlTifToDango:
     def test_gtc(self) -> None:
         """HL 'Gtc' maps to TimeInForce.GTC."""
+
         assert _hl_tif_to_dango("Gtc") == TimeInForce.GTC
 
     def test_ioc(self) -> None:
         """HL 'Ioc' maps to TimeInForce.IOC."""
+
         assert _hl_tif_to_dango("Ioc") == TimeInForce.IOC
 
     def test_alo_maps_to_post(self) -> None:
         """HL 'Alo' (post-only) maps to Dango POST."""
+
         # This is the critical asymmetry: HL's TIF spelling is
         # case-sensitive ("Alo" not "alo" or "ALO"), and it maps to
         # Dango's POST variant rather than its own TIF name.
@@ -183,6 +190,7 @@ class TestHlTifToDango:
 
     def test_unknown_raises(self) -> None:
         """Unknown TIF value raises ValueError listing supported options."""
+
         with pytest.raises(ValueError, match="unsupported HL time_in_force"):
             _hl_tif_to_dango("FOK")
 
@@ -190,6 +198,7 @@ class TestHlTifToDango:
 class TestHlOrderTypeToDangoKind:
     def test_limit_gtc_no_cloid(self) -> None:
         """A limit/Gtc order without cloid produces a clean kind dict."""
+
         order_type: OrderType = {"limit": {"tif": "Gtc"}}
         kind = _hl_order_type_to_dango_kind(order_type, 60_000.0, None)
         # `limit_price` is the chain's `UsdPrice` — a string-encoded
@@ -205,6 +214,7 @@ class TestHlOrderTypeToDangoKind:
 
     def test_limit_with_cloid_hashes_to_uint64_string(self) -> None:
         """A cloid is hashed to its Uint64 form and stringified."""
+
         # `Cloid("0x..01").to_uint64()` is the deterministic SHA-256
         # prefix value (test_hl_types.py pins this golden number).
         cloid = Cloid("0x00000000000000000000000000000001")
@@ -220,6 +230,7 @@ class TestHlOrderTypeToDangoKind:
 
     def test_alo_routes_to_post_tif(self) -> None:
         """An Alo HL order produces a Dango POST limit kind."""
+
         kind = _hl_order_type_to_dango_kind({"limit": {"tif": "Alo"}}, 1.0, None)
         # `OrderKind` is `MarketKind | LimitKind`; we know the limit
         # branch was taken so cast for the dict access.
@@ -228,6 +239,7 @@ class TestHlOrderTypeToDangoKind:
 
     def test_trigger_branch_raises(self) -> None:
         """Trigger orders are deferred and raise a clear NotImplementedError."""
+
         # The trigger branch translation is non-trivial — see the spec
         # comment in `_hl_order_type_to_dango_kind`. The error message
         # must surface the alternative path so callers can recover.
@@ -239,6 +251,7 @@ class TestHlOrderTypeToDangoKind:
 
     def test_empty_order_type_raises(self) -> None:
         """An order_type missing both 'limit' and 'trigger' raises ValueError."""
+
         with pytest.raises(ValueError, match="must contain 'limit' or 'trigger'"):
             _hl_order_type_to_dango_kind({}, 1.0, None)
 
@@ -246,6 +259,7 @@ class TestHlOrderTypeToDangoKind:
 class TestBuildSubmitAction:
     def test_buy_action_signs_size_positive(self) -> None:
         """A buy action keeps size positive and forwards reduce_only."""
+
         # Cast through `OrderKind` because the literal dict shape is
         # structurally a `LimitKind` but we need the union name for
         # the function signature.
@@ -268,6 +282,7 @@ class TestBuildSubmitAction:
 
     def test_sell_action_signs_size_negative(self) -> None:
         """A sell action negates the size."""
+
         from dango.utils.types import OrderKind as _OrderKind
 
         kind = cast(
@@ -288,40 +303,48 @@ class TestBuildSubmitAction:
 class TestExtractErrorMessage:
     def test_clean_outcome_returns_none(self) -> None:
         """A success outcome ({code: 0}) yields no error."""
+
         assert _extract_error_message({"code": 0, "hash": "x", "events": []}) is None
 
     def test_top_level_error_string(self) -> None:
         """A top-level 'error' string surfaces verbatim."""
+
         outcome = {"error": "insufficient margin"}
         assert _extract_error_message(outcome) == "insufficient margin"
 
     def test_top_level_err_string(self) -> None:
         """A top-level 'err' string surfaces verbatim."""
+
         outcome = {"err": "bad nonce"}
         assert _extract_error_message(outcome) == "bad nonce"
 
     def test_check_tx_error_string(self) -> None:
         """A check_tx.error string surfaces verbatim."""
+
         outcome = {"check_tx": {"error": "bad signature"}}
         assert _extract_error_message(outcome) == "bad signature"
 
     def test_check_tx_nonzero_code(self) -> None:
         """A non-zero check_tx.code without a string error renders a default message."""
+
         outcome = {"check_tx": {"code": 17}}
         assert _extract_error_message(outcome) == "check_tx failed with code 17"
 
     def test_top_level_nonzero_code(self) -> None:
         """A non-zero top-level code surfaces as 'tx failed'."""
+
         outcome = {"code": 1, "hash": "x"}
         assert _extract_error_message(outcome) == "tx failed with code 1"
 
     def test_result_err_string(self) -> None:
         """A `result.err` string (lowercase) surfaces verbatim."""
+
         outcome = {"code": 0, "result": {"err": "panic in handler"}}
         assert _extract_error_message(outcome) == "panic in handler"
 
     def test_result_Err_string(self) -> None:
         """A `result.Err` string (capitalized) is also recognized."""
+
         # The Rust serde external tag for `Result<_, _>` produces `Err`
         # (uppercase). We accept both forms because we've seen both in
         # different parts of the stack.
@@ -332,6 +355,7 @@ class TestExtractErrorMessage:
 class TestNativeOutcomeToRestingEnvelope:
     def test_success_emits_resting_per_order(self) -> None:
         """A clean outcome produces one resting entry per submitted order."""
+
         env = _native_outcome_to_resting_envelope(
             {"code": 0, "hash": "x", "events": []},
             response_type="order",
@@ -352,6 +376,7 @@ class TestNativeOutcomeToRestingEnvelope:
 
     def test_error_short_circuits(self) -> None:
         """An error outcome produces an err envelope, ignoring expected_count."""
+
         env = _native_outcome_to_resting_envelope(
             {"code": 1, "hash": "x"},
             response_type="order",
@@ -361,6 +386,7 @@ class TestNativeOutcomeToRestingEnvelope:
 
     def test_zero_expected_count(self) -> None:
         """Zero expected orders yields an empty statuses list, not None."""
+
         env = _native_outcome_to_resting_envelope(
             {"code": 0},
             response_type="order",
@@ -372,6 +398,7 @@ class TestNativeOutcomeToRestingEnvelope:
 class TestNativeOutcomeToCancelEnvelope:
     def test_success_emits_one_status_per_cancel(self) -> None:
         """A clean outcome produces one {status: success} per cancel request."""
+
         env = _native_outcome_to_cancel_envelope(
             {"code": 0, "hash": "x"},
             response_type="cancel",
@@ -387,6 +414,7 @@ class TestNativeOutcomeToCancelEnvelope:
 
     def test_error_emits_err_envelope(self) -> None:
         """A failed cancel surfaces the error string."""
+
         env = _native_outcome_to_cancel_envelope(
             {"error": "no such order"},
             response_type="cancel",
@@ -396,6 +424,7 @@ class TestNativeOutcomeToCancelEnvelope:
 
     def test_response_type_propagates(self) -> None:
         """`response_type='cancelByCloid'` distinguishes by-cloid from by-oid envelopes."""
+
         # HL traders dispatch on `result["response"]["type"]`; the cancel
         # helper must accept the caller's chosen string verbatim so cloid
         # cancels and oid cancels surface the right action type.
@@ -413,6 +442,7 @@ class TestNativeOutcomeToCancelEnvelope:
 class TestExchangeConstructor:
     def test_basic_construction(self) -> None:
         """A clean construction stores wallet/base_url/account_address."""
+
         ex, _native, _info = _make_exchange()
         assert ex.account_address == _DEMO_ADDRESS
         assert ex.base_url == "http://test"
@@ -423,6 +453,7 @@ class TestExchangeConstructor:
 
     def test_vault_address_raises(self) -> None:
         """Passing a non-None vault_address raises NotImplementedError."""
+
         # HL's vault routing has no analog in Dango (vault liquidity is
         # debited from margin, not signed under a vault address).
         # Silently ignoring would route trades to the wrong "logical
@@ -437,6 +468,7 @@ class TestExchangeConstructor:
 
     def test_spot_meta_raises(self) -> None:
         """Passing a non-None spot_meta raises NotImplementedError."""
+
         with pytest.raises(NotImplementedError, match="spot_meta"):
             HlExchange(
                 wallet=object(),  # type: ignore[arg-type]
@@ -447,6 +479,7 @@ class TestExchangeConstructor:
 
     def test_missing_account_address_raises(self) -> None:
         """account_address is required (no silent default)."""
+
         with pytest.raises(ValueError, match="account_address is required"):
             HlExchange(
                 wallet=object(),  # type: ignore[arg-type]
@@ -455,6 +488,7 @@ class TestExchangeConstructor:
 
     def test_default_slippage_attribute_present(self) -> None:
         """DEFAULT_SLIPPAGE class attribute matches HL's value."""
+
         # Pin both the value and the location (class attribute) so
         # callers that read `Exchange.DEFAULT_SLIPPAGE` find what they
         # expect from HL.
@@ -467,6 +501,7 @@ class TestExchangeConstructor:
 class TestOrder:
     def test_single_order_routes_to_submit_order(self) -> None:
         """A single-order call uses native submit_order, not batch_update_orders."""
+
         ex, native, _info = _make_exchange()
         ex.order(
             "BTC",
@@ -493,6 +528,7 @@ class TestOrder:
 
     def test_sell_order_signs_size_negative(self) -> None:
         """is_buy=False produces a negative size on the wire."""
+
         ex, native, _info = _make_exchange()
         ex.order(
             "ETH",
@@ -506,6 +542,7 @@ class TestOrder:
 
     def test_returns_hl_status_envelope(self) -> None:
         """The response is wrapped in HL's status envelope."""
+
         ex, _native, _info = _make_exchange()
         result = ex.order(
             "BTC",
@@ -527,6 +564,7 @@ class TestOrder:
 
     def test_error_outcome_returns_err_envelope(self) -> None:
         """A non-zero broadcast code propagates as an err envelope."""
+
         ex, _native, _info = _make_exchange(
             native_return={"code": 1, "hash": "x", "error": "rejected"},
         )
@@ -541,6 +579,7 @@ class TestOrder:
 
     def test_unknown_coin_raises_keyerror(self) -> None:
         """An unknown coin trips the resolver early, before any native call."""
+
         ex, native, _info = _make_exchange()
         with pytest.raises(KeyError):
             ex.order(
@@ -556,6 +595,7 @@ class TestOrder:
 
     def test_builder_raises(self) -> None:
         """A non-None builder raises NotImplementedError without a native call."""
+
         ex, native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="builder fee"):
             ex.order(
@@ -570,6 +610,7 @@ class TestOrder:
 
     def test_cloid_hashes_through(self) -> None:
         """A cloid arrives as the Uint64-stringified form in the order kind."""
+
         ex, native, _info = _make_exchange()
         cloid = Cloid("0x00000000000000000000000000000001")
         ex.order(
@@ -585,6 +626,7 @@ class TestOrder:
 
     def test_reduce_only_flag_propagates(self) -> None:
         """reduce_only=True flows into the native submit_order call."""
+
         ex, native, _info = _make_exchange()
         ex.order(
             "BTC",
@@ -601,6 +643,7 @@ class TestOrder:
 class TestBulkOrders:
     def test_two_orders_route_to_batch_update(self) -> None:
         """Multiple orders use the batch path."""
+
         ex, native, _info = _make_exchange()
         ex.bulk_orders(
             [
@@ -636,6 +679,7 @@ class TestBulkOrders:
 
     def test_two_orders_returns_two_resting_entries(self) -> None:
         """Bulk envelope has one resting entry per submitted order."""
+
         ex, _native, _info = _make_exchange()
         result = ex.bulk_orders(
             [
@@ -664,6 +708,7 @@ class TestBulkOrders:
 
     def test_grouping_other_than_na_raises(self) -> None:
         """Non-default grouping raises NotImplementedError."""
+
         # `normalTpsl` and `positionTpsl` are HL's TP/SL attachment
         # semantics — non-trivial to translate into native
         # `submit_order(tp=..., sl=...)`. Defer rather than half-translate.
@@ -686,6 +731,7 @@ class TestBulkOrders:
 
     def test_builder_raises(self) -> None:
         """A non-None builder argument raises before any native call."""
+
         ex, native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="builder fee"):
             ex.bulk_orders(
@@ -710,6 +756,7 @@ class TestBulkOrders:
 class TestCancel:
     def test_cancel_routes_to_cancel_order(self) -> None:
         """cancel(name, oid) calls native cancel_order(OrderId(str(oid)))."""
+
         ex, native, _info = _make_exchange()
         ex.cancel("BTC", 42)
         assert len(native.calls) == 1
@@ -720,6 +767,7 @@ class TestCancel:
 
     def test_cancel_returns_cancel_envelope(self) -> None:
         """cancel() returns a HL-shaped cancel envelope with one success entry."""
+
         ex, _native, _info = _make_exchange()
         result = ex.cancel("BTC", 42)
         assert result == {
@@ -732,6 +780,7 @@ class TestCancel:
 
     def test_cancel_unknown_coin_raises(self) -> None:
         """An unknown coin fails the resolver early without a native call."""
+
         ex, native, _info = _make_exchange()
         with pytest.raises(KeyError):
             ex.cancel("DOGE", 42)
@@ -739,6 +788,7 @@ class TestCancel:
 
     def test_cancel_error_envelope(self) -> None:
         """A failed broadcast surfaces the error message."""
+
         ex, _native, _info = _make_exchange(
             native_return={"code": 0, "result": {"err": "no such order"}},
         )
@@ -749,6 +799,7 @@ class TestCancel:
 class TestBulkCancel:
     def test_routes_to_batch_with_order_id_specs(self) -> None:
         """bulk_cancel produces one CancelAction per request."""
+
         ex, native, _info = _make_exchange()
         ex.bulk_cancel(
             [
@@ -767,6 +818,7 @@ class TestBulkCancel:
 
     def test_returns_one_status_per_cancel(self) -> None:
         """Bulk cancel envelope has one success status per request."""
+
         ex, _native, _info = _make_exchange()
         result = ex.bulk_cancel(
             [
@@ -783,6 +835,7 @@ class TestBulkCancel:
 
     def test_empty_list_raises(self) -> None:
         """An empty cancel list raises ValueError before any native call."""
+
         ex, native, _info = _make_exchange()
         with pytest.raises(ValueError, match="at least one"):
             ex.bulk_cancel([])
@@ -792,6 +845,7 @@ class TestBulkCancel:
 class TestCancelByCloid:
     def test_routes_with_uint64_hashed_cloid(self) -> None:
         """cancel_by_cloid hashes the 16-byte cloid and forwards as ClientOrderIdRef."""
+
         ex, native, _info = _make_exchange()
         cloid = Cloid("0x00000000000000000000000000000001")
         ex.cancel_by_cloid("BTC", cloid)
@@ -805,6 +859,7 @@ class TestCancelByCloid:
 class TestBulkCancelByCloid:
     def test_routes_with_per_request_cloid_hashing(self) -> None:
         """Each cloid is hashed independently."""
+
         ex, native, _info = _make_exchange()
         cloid_a = Cloid("0x00000000000000000000000000000001")
         cloid_b = Cloid("0xdeadbeefdeadbeefdeadbeefdeadbeef")
@@ -824,6 +879,7 @@ class TestBulkCancelByCloid:
 
     def test_non_cloid_value_raises(self) -> None:
         """A request with a non-Cloid 'cloid' field raises TypeError."""
+
         # We deliberately catch the misuse client-side rather than letting
         # `to_uint64()` fail on a string with a more obscure error.
         ex, native, _info = _make_exchange()
@@ -833,6 +889,7 @@ class TestBulkCancelByCloid:
 
     def test_empty_list_raises(self) -> None:
         """An empty cancel-by-cloid list raises ValueError."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(ValueError, match="at least one"):
             ex.bulk_cancel_by_cloid([])
@@ -844,6 +901,7 @@ class TestBulkCancelByCloid:
 class TestModifyOrder:
     def test_emulated_as_cancel_plus_submit(self) -> None:
         """modify_order produces one cancel + one submit in batch_update_orders."""
+
         ex, native, _info = _make_exchange()
         ex.modify_order(
             42,
@@ -868,6 +926,7 @@ class TestModifyOrder:
 
     def test_oid_as_cloid_routes_to_client_order_id_ref(self) -> None:
         """An oid of type Cloid is translated to ClientOrderIdRef on the cancel side."""
+
         ex, native, _info = _make_exchange()
         cloid = Cloid("0x00000000000000000000000000000001")
         ex.modify_order(
@@ -887,6 +946,7 @@ class TestModifyOrder:
 
     def test_returns_one_resting_per_modify(self) -> None:
         """Response carries one resting entry per modify request, not per action."""
+
         ex, _native, _info = _make_exchange()
         result = ex.modify_order(
             42,
@@ -902,6 +962,7 @@ class TestModifyOrder:
 
     def test_new_cloid_independent_from_oid(self) -> None:
         """A new cloid on the resubmitted order is independent of the original oid."""
+
         ex, native, _info = _make_exchange()
         new_cloid = Cloid("0xdeadbeefdeadbeefdeadbeefdeadbeef")
         ex.modify_order(
@@ -929,6 +990,7 @@ class TestModifyOrder:
 class TestBulkModifyOrdersNew:
     def test_batches_all_pairs_into_one_call(self) -> None:
         """Multiple modifies produce a single batch with 2N actions."""
+
         ex, native, _info = _make_exchange()
         ex.bulk_modify_orders_new(
             [
@@ -964,6 +1026,7 @@ class TestBulkModifyOrdersNew:
 
     def test_empty_list_raises(self) -> None:
         """An empty modify list raises ValueError."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(ValueError, match="at least one"):
             ex.bulk_modify_orders_new([])
@@ -975,6 +1038,7 @@ class TestBulkModifyOrdersNew:
 class TestMarketOpen:
     def test_routes_to_submit_market_order(self) -> None:
         """market_open uses the native submit_market_order with signed size."""
+
         ex, native, _info = _make_exchange()
         ex.market_open("BTC", is_buy=True, sz=0.5)
         assert len(native.calls) == 1
@@ -987,12 +1051,14 @@ class TestMarketOpen:
 
     def test_sell_signs_size_negative(self) -> None:
         """A sell market_open negates the size."""
+
         ex, native, _info = _make_exchange()
         ex.market_open("BTC", is_buy=False, sz=0.5)
         assert native.calls[0][1][1] == -0.5
 
     def test_custom_slippage_propagates(self) -> None:
         """A caller-supplied slippage flows into max_slippage kwarg."""
+
         ex, native, _info = _make_exchange()
         ex.market_open("BTC", is_buy=True, sz=0.5, slippage=0.02)
         _method, _args, kwargs = native.calls[0]
@@ -1000,6 +1066,7 @@ class TestMarketOpen:
 
     def test_px_arg_is_ignored(self) -> None:
         """HL's px hint is ignored; Dango computes its own band."""
+
         # Pin that no leak of `px` makes it into the native call —
         # otherwise we'd silently double-compute slippage.
         ex, native, _info = _make_exchange()
@@ -1012,6 +1079,7 @@ class TestMarketOpen:
 
     def test_builder_raises(self) -> None:
         """A non-None builder argument raises before native call."""
+
         ex, native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="builder fee"):
             ex.market_open(
@@ -1024,6 +1092,7 @@ class TestMarketOpen:
 
     def test_cloid_raises(self) -> None:
         """A non-None cloid on a market order raises NotImplementedError."""
+
         ex, native, _info = _make_exchange()
         cloid = Cloid("0x00000000000000000000000000000001")
         with pytest.raises(NotImplementedError, match="cloid on market orders"):
@@ -1034,6 +1103,7 @@ class TestMarketOpen:
 class TestMarketClose:
     def test_close_long_signs_size_negative(self) -> None:
         """Closing a long position emits a negative (sell) market order."""
+
         ex, native, _info = _make_exchange(
             user_state={
                 "assetPositions": [
@@ -1057,6 +1127,7 @@ class TestMarketClose:
 
     def test_close_short_signs_size_positive(self) -> None:
         """Closing a short position emits a positive (buy) market order."""
+
         ex, native, _info = _make_exchange(
             user_state={
                 "assetPositions": [
@@ -1073,6 +1144,7 @@ class TestMarketClose:
 
     def test_user_supplied_sz_partial_close(self) -> None:
         """A caller-supplied sz overrides the position's full size."""
+
         ex, native, _info = _make_exchange(
             user_state={
                 "assetPositions": [
@@ -1090,6 +1162,7 @@ class TestMarketClose:
 
     def test_no_position_returns_err(self) -> None:
         """Closing a coin with no open position returns an err envelope."""
+
         ex, native, _info = _make_exchange(
             user_state={"assetPositions": []},
         )
@@ -1103,6 +1176,7 @@ class TestMarketClose:
 
     def test_zero_size_position_returns_err(self) -> None:
         """A position with zero size returns an err envelope."""
+
         ex, native, _info = _make_exchange(
             user_state={
                 "assetPositions": [
@@ -1120,12 +1194,14 @@ class TestMarketClose:
 
     def test_builder_raises(self) -> None:
         """A non-None builder raises before native call."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="builder fee"):
             ex.market_close("BTC", builder={"b": "0xbuilder", "f": 10})
 
     def test_cloid_raises(self) -> None:
         """A non-None cloid raises NotImplementedError."""
+
         ex, _native, _info = _make_exchange()
         cloid = Cloid("0x00000000000000000000000000000001")
         with pytest.raises(NotImplementedError, match="cloid on market orders"):
@@ -1138,6 +1214,7 @@ class TestMarketClose:
 class TestSetReferrer:
     def test_routes_to_set_referral(self) -> None:
         """set_referrer forwards the code (string) to native set_referral."""
+
         ex, native, _info = _make_exchange()
         ex.set_referrer("alice")
         method, args, _kwargs = native.calls[0]
@@ -1146,6 +1223,7 @@ class TestSetReferrer:
 
     def test_returns_set_referrer_envelope(self) -> None:
         """A clean response carries response.type=setReferrer with empty statuses."""
+
         ex, _native, _info = _make_exchange()
         result = ex.set_referrer("alice")
         assert result == {
@@ -1158,6 +1236,7 @@ class TestSetReferrer:
 
     def test_error_returns_err_envelope(self) -> None:
         """A failed set_referral surfaces as err envelope."""
+
         ex, _native, _info = _make_exchange(
             native_return={"code": 0, "result": {"err": "unknown referrer"}},
         )
@@ -1171,12 +1250,14 @@ class TestSetReferrer:
 class TestSetExpiresAfter:
     def test_records_value(self) -> None:
         """set_expires_after stores the value on self.expires_after."""
+
         ex, _native, _info = _make_exchange()
         ex.set_expires_after(1_700_000_000_000)
         assert ex.expires_after == 1_700_000_000_000
 
     def test_set_to_none_clears(self) -> None:
         """Passing None clears any prior value."""
+
         ex, _native, _info = _make_exchange()
         ex.set_expires_after(1)
         ex.set_expires_after(None)
@@ -1184,6 +1265,7 @@ class TestSetExpiresAfter:
 
     def test_does_not_invoke_native(self) -> None:
         """set_expires_after is a no-op-with-state-storage; no native call."""
+
         ex, native, _info = _make_exchange()
         ex.set_expires_after(1_700_000_000_000)
         assert native.calls == []
@@ -1197,96 +1279,112 @@ class TestNotImplementedStubs:
 
     def test_update_leverage(self) -> None:
         """update_leverage raises with a clear cross-margin reason."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="cross-margin only"):
             ex.update_leverage(10, "BTC")
 
     def test_update_isolated_margin(self) -> None:
         """update_isolated_margin raises with isolated-margin gap reason."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="isolated margin"):
             ex.update_isolated_margin(100.0, "BTC")
 
     def test_schedule_cancel(self) -> None:
         """schedule_cancel raises with a no-scheduled-cancellation reason."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="scheduled cancellation"):
             ex.schedule_cancel(1_700_000_000_000)
 
     def test_usd_class_transfer(self) -> None:
         """usd_class_transfer raises (perps-only)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="perps-only"):
             ex.usd_class_transfer(100.0, to_perp=True)
 
     def test_send_asset(self) -> None:
         """send_asset raises (perps-only)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="perps-only"):
             ex.send_asset("0xrecipient", "", "spot", "USDC", 100.0)
 
     def test_vault_usd_transfer(self) -> None:
         """vault_usd_transfer raises with the add/remove_liquidity hint."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="add_liquidity"):
             ex.vault_usd_transfer("0xvault", is_deposit=True, usd=100)
 
     def test_sub_account_transfer(self) -> None:
         """sub_account_transfer raises (Phase 17 deferred)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="deferred"):
             ex.sub_account_transfer("0xsub", is_deposit=True, usd=100)
 
     def test_approve_builder_fee(self) -> None:
         """approve_builder_fee raises (no builder fee marketplace)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="builder fee"):
             ex.approve_builder_fee("0xbuilder", "0.01")
 
     def test_create_sub_account(self) -> None:
         """create_sub_account raises (Phase 17 deferred)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="deferred"):
             ex.create_sub_account("subname")
 
     def test_usd_transfer(self) -> None:
         """usd_transfer raises (Phase 17 deferred)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="deferred"):
             ex.usd_transfer(100.0, "0xrecipient")
 
     def test_withdraw_from_bridge(self) -> None:
         """withdraw_from_bridge raises (Phase 17 deferred — needs Hyperlane)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="deferred"):
             ex.withdraw_from_bridge(100.0, "0xdest")
 
     def test_spot_transfer(self) -> None:
         """spot_transfer raises (Dango is perps-only)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="perps-only"):
             ex.spot_transfer(100.0, "0xdest", "USDC")
 
     def test_approve_agent(self) -> None:
         """approve_agent raises (Phase 17 deferred — session credentials)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="deferred"):
             ex.approve_agent("name")
 
     def test_convert_to_multi_sig_user(self) -> None:
         """convert_to_multi_sig_user raises (multi-sig not exposed)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="multi-sig"):
             ex.convert_to_multi_sig_user(["0xa", "0xb"], 2)
 
     def test_multi_sig(self) -> None:
         """multi_sig raises (multi-sig not exposed)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="multi-sig"):
             ex.multi_sig("0xuser", {}, [], 1)
 
     def test_agent_methods_raise(self) -> None:
         """All agent_* methods raise NotImplementedError."""
+
         # Iterate so future additions to the agent-method group are
         # auto-caught — if a new method is added without the stub, this
         # test will fail with AttributeError.
@@ -1303,18 +1401,21 @@ class TestNotImplementedStubs:
 
     def test_token_delegate(self) -> None:
         """token_delegate raises (no Dango analog)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="no Dango analog"):
             ex.token_delegate("0xvalidator", 100, is_undelegate=False)
 
     def test_use_big_blocks(self) -> None:
         """use_big_blocks raises (no Dango analog)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="no Dango analog"):
             ex.use_big_blocks(True)
 
     def test_c_signer_methods(self) -> None:
         """c_signer_unjail_self / c_signer_jail_self raise."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError):
             ex.c_signer_unjail_self()
@@ -1323,6 +1424,7 @@ class TestNotImplementedStubs:
 
     def test_c_validator_methods(self) -> None:
         """All c_validator_* methods raise."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError):
             ex.c_validator_register("ip", "n", "d", False, 0, "0xs", True, 0)
@@ -1333,18 +1435,21 @@ class TestNotImplementedStubs:
 
     def test_noop(self) -> None:
         """noop raises (no Dango analog)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="no Dango analog"):
             ex.noop(1)
 
     def test_gossip_priority_bid(self) -> None:
         """gossip_priority_bid raises (no Dango analog)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="no Dango analog"):
             ex.gossip_priority_bid(1, "ip", 100)
 
     def test_spot_deploy_methods(self) -> None:
         """All spot_deploy_* methods raise (Dango is perps-only)."""
+
         ex, _native, _info = _make_exchange()
         # Each entry is `(method_name, positional_args)`. The annotation
         # is required because mypy can't unify the heterogeneous tuples
@@ -1368,6 +1473,7 @@ class TestNotImplementedStubs:
 
     def test_perp_deploy_methods(self) -> None:
         """perp_deploy_* methods raise (no permissionless deploys)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="permissionless perp deploys"):
             ex.perp_deploy_register_asset("dex", None, "C", 6, "1.0", 1, False, None)
@@ -1376,6 +1482,7 @@ class TestNotImplementedStubs:
 
     def test_sub_account_spot_transfer(self) -> None:
         """sub_account_spot_transfer raises (perps-only)."""
+
         ex, _native, _info = _make_exchange()
         with pytest.raises(NotImplementedError, match="perps-only"):
             ex.sub_account_spot_transfer("0xs", True, "USDC", 100.0)

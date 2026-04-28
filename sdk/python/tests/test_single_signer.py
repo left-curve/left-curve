@@ -65,18 +65,21 @@ def _info_for(address: Addr, *, user_index: int, seen_nonces: list[int]) -> _Moc
 class TestConstruction:
     def test_explicit_user_index_and_nonce(self) -> None:
         """Construct with explicit values stores them as-is."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=42, next_nonce=7)
         assert signer.user_index == 42
         assert signer.next_nonce == 7
 
     def test_unresolved_state_defaults_to_none(self) -> None:
         """Without explicit values, both fields are None."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS)
         assert signer.user_index is None
         assert signer.next_nonce is None
 
     def test_address_property(self) -> None:
         """Address is taken from the constructor arg, not from the wallet."""
+
         # Use an address that differs from the wallet's _DEMO_ADDRESS to
         # confirm we don't silently pull from `wallet.address`. A single key
         # can sign for multiple Dango accounts; the signer is bound to one.
@@ -89,6 +92,7 @@ class TestConstruction:
 class TestQueryUserIndex:
     def test_calls_account_factory_contract(self) -> None:
         """query_user_index posts the right (contract, msg) tuple."""
+
         info = _info_for(_DEMO_ADDRESS, user_index=42, seen_nonces=[])
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS)
         signer.query_user_index(info)
@@ -100,12 +104,14 @@ class TestQueryUserIndex:
 
     def test_returns_owner_field(self) -> None:
         """The response's `owner` field is the user_index."""
+
         info = _info_for(_DEMO_ADDRESS, user_index=42, seen_nonces=[])
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS)
         assert signer.query_user_index(info) == 42
 
     def test_does_not_mutate_state(self) -> None:
         """Calling query_user_index does not write to self.user_index."""
+
         info = _info_for(_DEMO_ADDRESS, user_index=42, seen_nonces=[])
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS)
         signer.query_user_index(info)
@@ -117,18 +123,21 @@ class TestQueryUserIndex:
 class TestQueryNextNonce:
     def test_empty_seen_nonces_returns_zero(self) -> None:
         """An account that has never sent a tx has next_nonce=0."""
+
         info = _info_for(_DEMO_ADDRESS, user_index=0, seen_nonces=[])
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS)
         assert signer.query_next_nonce(info) == 0
 
     def test_nonzero_seen_nonces_returns_max_plus_one(self) -> None:
         """Active account: next_nonce = max(seen) + 1."""
+
         info = _info_for(_DEMO_ADDRESS, user_index=0, seen_nonces=[0, 1, 4, 5])
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS)
         assert signer.query_next_nonce(info) == 6
 
     def test_does_not_mutate_state(self) -> None:
         """Calling query_next_nonce does not write to self.next_nonce."""
+
         info = _info_for(_DEMO_ADDRESS, user_index=0, seen_nonces=[3])
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS)
         signer.query_next_nonce(info)
@@ -138,6 +147,7 @@ class TestQueryNextNonce:
 class TestAutoResolve:
     def test_populates_both_fields(self) -> None:
         """auto_resolve sets user_index and next_nonce from chain."""
+
         info = _info_for(_DEMO_ADDRESS, user_index=42, seen_nonces=[10])
         signer = SingleSigner.auto_resolve(_wallet(), _DEMO_ADDRESS, info)
         assert signer.user_index == 42
@@ -150,6 +160,7 @@ class TestAutoResolve:
 class TestBuildUnsignedTx:
     def test_returns_correct_wire_shape(self) -> None:
         """UnsignedTx has sender, msgs, data, and NO gas_limit."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=1, next_nonce=0)
         tx = signer.build_unsigned_tx([], "dango-1")
         # `gas_limit` is set by the caller via `sign_tx`, after they've
@@ -160,6 +171,7 @@ class TestBuildUnsignedTx:
 
     def test_metadata_carries_chain_state(self) -> None:
         """data field is a Metadata-shaped dict with user_index, chain_id, nonce, expiry."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=42, next_nonce=7)
         tx: UnsignedTx = signer.build_unsigned_tx([], "dango-1")
         metadata = tx["data"]
@@ -172,12 +184,14 @@ class TestBuildUnsignedTx:
 
     def test_raises_if_user_index_unresolved(self) -> None:
         """RuntimeError when user_index is None."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, next_nonce=0)
         with pytest.raises(RuntimeError, match="user_index unresolved"):
             signer.build_unsigned_tx([], "dango-1")
 
     def test_raises_if_next_nonce_unresolved(self) -> None:
         """RuntimeError when next_nonce is None."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=1)
         with pytest.raises(RuntimeError, match="next_nonce unresolved"):
             signer.build_unsigned_tx([], "dango-1")
@@ -186,6 +200,7 @@ class TestBuildUnsignedTx:
 class TestSignTx:
     def test_returns_tx_with_credential(self) -> None:
         """Tx has all UnsignedTx fields plus gas_limit and credential."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=1, next_nonce=0)
         tx: Tx = signer.sign_tx([], "dango-1", 100_000)
         keys = set(cast(dict[str, Any], tx).keys())
@@ -194,6 +209,7 @@ class TestSignTx:
 
     def test_credential_is_standard_secp256k1(self) -> None:
         """credential is {"standard": {"key_hash": <hex>, "signature": {"secp256k1": <base64>}}}."""
+
         wallet = _wallet()
         signer = SingleSigner(wallet, _DEMO_ADDRESS, user_index=1, next_nonce=0)
         tx = signer.sign_tx([], "dango-1", 100_000)
@@ -211,12 +227,14 @@ class TestSignTx:
 
     def test_increments_nonce_on_success(self) -> None:
         """After sign_tx, self.next_nonce == old_nonce + 1."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=1, next_nonce=5)
         signer.sign_tx([], "dango-1", 100_000)
         assert signer.next_nonce == 6
 
     def test_uses_old_nonce_in_metadata(self) -> None:
         """The signed Tx's data.nonce is the value BEFORE incrementing."""
+
         # Critical invariant: the tx must carry the nonce we promised when
         # we started signing, not the post-increment value. The chain will
         # reject any tx whose nonce does not match the next-expected slot.
@@ -228,6 +246,7 @@ class TestSignTx:
 
     def test_consecutive_signs_use_consecutive_nonces(self) -> None:
         """Two sign_tx calls produce txs with nonces N and N+1."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=1, next_nonce=0)
         first = signer.sign_tx([], "dango-1", 100_000)
         second = signer.sign_tx([], "dango-1", 100_000)
@@ -279,12 +298,14 @@ class TestSignTx:
 
     def test_raises_if_user_index_unresolved(self) -> None:
         """RuntimeError when user_index is None."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, next_nonce=0)
         with pytest.raises(RuntimeError, match="user_index unresolved"):
             signer.sign_tx([], "dango-1", 100_000)
 
     def test_raises_if_next_nonce_unresolved(self) -> None:
         """RuntimeError when next_nonce is None."""
+
         signer = SingleSigner(_wallet(), _DEMO_ADDRESS, user_index=1)
         with pytest.raises(RuntimeError, match="next_nonce unresolved"):
             signer.sign_tx([], "dango-1", 100_000)

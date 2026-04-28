@@ -37,6 +37,7 @@ def main():
     address, info, _ = example_utils.setup(
         constants.TESTNET_API_URL, perps_contract=Addr(PERPS_CONTRACT_TESTNET)
     )
+
     # An example showing how to subscribe to the different subscription types and prints the returned messages
     # Some subscriptions do not return snapshots, so you will not receive a message until something happens
     info.subscribe({"type": "allMids"}, print)

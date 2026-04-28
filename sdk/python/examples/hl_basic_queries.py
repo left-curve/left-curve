@@ -31,6 +31,7 @@ _VAULT_ADDR: str = PERPS_CONTRACT_MAINNET
 
 def _print(label: str, value: object) -> None:
     """Print one section header + a truncated JSON dump of the result."""
+
     # 500-char cap keeps `meta_and_asset_ctxs` and `historical_orders`
     # from drowning the rest of the output; the goal is to confirm shape,
     # not to dump full state.
@@ -40,28 +41,34 @@ def _print(label: str, value: object) -> None:
 
 def meta(info: Info) -> None:
     """HL universe metadata: ``{universe: [{name, szDecimals}, ...]}``."""
+
     _print("meta", info.meta())
 
 
 def meta_and_asset_ctxs(info: Info) -> None:
     """``[meta, ctxs]`` — static metadata plus per-asset live ctx (funding/markPx/OI)."""
+
     _print("meta_and_asset_ctxs", info.meta_and_asset_ctxs())
 
 
 def all_mids(info: Info) -> None:
     """``{coin: midPriceStr}`` — current mid for each listed coin."""
+
     _print("all_mids", info.all_mids())
 
 
 def l2_snapshot(info: Info, coin: str) -> None:
     """L2 order book: ``{coin, levels: [bids, asks], time}``."""
+
     _print(f"l2_snapshot[{coin}]", info.l2_snapshot(coin))
 
 
 def candles_snapshot(info: Info, coin: str, interval: str) -> None:
     """OHLCV candles for the last 5 minutes, HL ``{T,t,s,i,o,c,h,l,v,n}`` shape."""
+
     now_ms = int(time.time() * 1000)
     five_minutes_ms = 5 * 60 * 1000
+
     _print(
         f"candles_snapshot[{coin}, {interval}, last 5 min]",
         info.candles_snapshot(coin, interval, now_ms - five_minutes_ms, now_ms),
@@ -70,13 +77,16 @@ def candles_snapshot(info: Info, coin: str, interval: str) -> None:
 
 def user_state(info: Info, user: str) -> None:
     """HL `clearinghouseState`: assetPositions, marginSummary, withdrawable."""
+
     _print(f"user_state[{user}]", info.user_state(user))
 
 
 def open_orders(info: Info, user: str) -> list[dict[str, object]]:
     """Resting orders for one user, HL flat-list shape."""
+
     orders = info.open_orders(user)
     _print(f"open_orders[{user}]", orders)
+
     return orders
 
 
@@ -89,8 +99,10 @@ def user_fills_by_time(info: Info, user: str) -> None:
     time-bounded variant is the practical choice for a live example —
     we use the last 60 seconds.
     """
+
     now_ms = int(time.time() * 1000)
     one_minute_ms = 60 * 1000
+
     _print(
         f"user_fills_by_time[{user}, last minute]",
         info.user_fills_by_time(user, now_ms - one_minute_ms, now_ms),
@@ -99,6 +111,7 @@ def user_fills_by_time(info: Info, user: str) -> None:
 
 def query_order_by_oid(info: Info, user: str, oid: int | str) -> None:
     """Single-order lookup by chain OrderId."""
+
     _print(f"query_order_by_oid[{oid}]", info.query_order_by_oid(user, oid))
 
 

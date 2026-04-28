@@ -67,11 +67,13 @@ class Exchange(API):
         perps_contract: Addr | None = None,
     ) -> None:
         super().__init__(base_url, timeout=timeout)
+
         # `Info` is reused for queries (chain_id, user_index, nonce,
         # simulate, broadcast). Tests inject a mock; production code lets
         # us construct one over the same base_url so a single Exchange
         # only opens one HTTP session-equivalent endpoint instead of two.
         self._info: Info = info if info is not None else Info(base_url, timeout=timeout)
+
         # Wallet adapter: accept either a Wallet (Phase 4 Protocol) or an
         # eth_account.LocalAccount. The latter shows up commonly because
         # HL traders already hold one for EVM chains; we extract its raw
@@ -86,6 +88,7 @@ class Exchange(API):
             wallet_obj = wallet
         else:
             wallet_obj = Secp256k1Wallet.from_eth_account(wallet, account_address)
+
         # Auto-fetch chain_id if not supplied. The server is the
         # authoritative source — we'd rather pay one extra GraphQL round-
         # trip than ship a stale id from constants and have every signed
@@ -94,7 +97,9 @@ class Exchange(API):
         # passing `chain_id=` explicitly.
         if chain_id is None:
             chain_id = str(self._info.query_status()["chainId"])
+
         self._chain_id: str = chain_id
+
         # Per the Phase 5 SingleSigner spec, both user_index and
         # next_nonce are auto-resolved when None and respected when set.
         # user_index is stable for the account's lifetime, so caching is
@@ -108,10 +113,12 @@ class Exchange(API):
             user_index=user_index,
             next_nonce=next_nonce,
         )
+
         if user_index is None:
             self._signer.user_index = self._signer.query_user_index(self._info)
         if next_nonce is None:
             self._signer.next_nonce = self._signer.query_next_nonce(self._info)
+
         # Wrap in `Addr(...)` so the stored field is the typed alias even
         # if the caller passed a plain `str` (the constants are `str`).
         self._perps_contract: Addr = Addr(perps_contract or PERPS_CONTRACT_MAINNET)
@@ -119,11 +126,13 @@ class Exchange(API):
     @property
     def address(self) -> Addr:
         """The Dango account address this Exchange transacts as."""
+
         return self._signer.address
 
     @property
     def signer(self) -> SingleSigner:
         """The underlying SingleSigner; useful for manual nonce tweaks in tests."""
+
         return self._signer
 
     # --- Pipeline ------------------------------------------------------------
@@ -135,6 +144,7 @@ class Exchange(API):
         funds: dict[str, str] | None = None,  # reserved for Phase 12+; unused here
     ) -> dict[str, Any]:
         """Run a list of Messages through simulate -> sign -> broadcast."""
+
         # Simulate first to learn the gas cost. The chain rejects under-
         # gas txs, but we don't want to hard-code a guess: simulate
         # returns the exact post-execute gas, then we add a fixed
@@ -146,6 +156,7 @@ class Exchange(API):
         sim = self._info.simulate(unsigned)
         gas_used = int(sim["gas_used"])
         gas_limit = gas_used + self.DEFAULT_GAS_OVERHEAD
+
         # `sign_tx` increments the signer's local nonce — see the Rust
         # source signer.rs:271-272 and the Python mirror in
         # signing.py::SingleSigner.sign_tx. We deliberately do NOT
@@ -153,12 +164,14 @@ class Exchange(API):
         # nonces, so an optimistic increment is strictly safer than
         # waiting until success and risking a same-nonce retry.
         signed = self._signer.sign_tx(messages, self._chain_id, gas_limit)
+
         return self._info.broadcast_tx_sync(signed)
 
     # --- Margin --------------------------------------------------------------
 
     def deposit_margin(self, amount: int) -> dict[str, Any]:
         """Deposit USDC into the perps margin sub-account; amount is in base units."""
+
         # `amount` is base units (Uint128) — caller does the human-USD
         # conversion explicitly. 1.50 USDC = 1_500_000 base units (since
         # SETTLEMENT_DECIMALS = 6). This avoids the ambiguity of "is 1.5
@@ -180,8 +193,10 @@ class Exchange(API):
             raise TypeError(
                 f"deposit_margin amount must be an int (base units), got {type(amount).__name__}",
             )
+
         if amount <= 0:
             raise ValueError(f"deposit_margin amount must be positive, got {amount}")
+
         message: Message = {
             "execute": {
                 "contract": self._perps_contract,
@@ -189,10 +204,12 @@ class Exchange(API):
                 "funds": {SETTLEMENT_DENOM: str(amount)},
             },
         }
+
         return self._send_action([message])
 
     def withdraw_margin(self, amount: float | str | Decimal) -> dict[str, Any]:
         """Withdraw USDC from the perps margin sub-account; amount is in USD."""
+
         # Withdraw goes the OTHER direction from deposit: funds flow OUT
         # of the contract, so the surrounding execute message carries
         # empty funds. The amount lives inside the TraderMsg::Withdraw
@@ -212,6 +229,7 @@ class Exchange(API):
                 "funds": {},
             },
         }
+
         return self._send_action([message])
 
     # --- Orders --------------------------------------------------------------
@@ -227,17 +245,20 @@ class Exchange(API):
         sl: ChildOrder | None,
     ) -> SubmitOrderRequest:
         """Construct the wire-shape SubmitOrderRequest dict; rejects size==0."""
+
         # Sign convention: positive = buy, negative = sell. Zero is
         # meaningless (the contract would reject it; we fail fast
         # client-side for a friendlier error). `dango_decimal` already
         # rejects NaN/Inf inputs, so we don't pre-check those here.
         size_str = dango_decimal(size)
+
         # `dango_decimal` always pads to 6 dp, so a zero check on the
         # Decimal-equivalent form is unambiguous regardless of input
         # type (`0`, `0.0`, `"0"`, `Decimal("0")` all collapse to
         # `"0.000000"`).
         if Decimal(size_str) == 0:
             raise ValueError("order size must be non-zero (positive=buy, negative=sell)")
+
         # The TypedDict enforces snake_case keys at type-check time;
         # we also rely on grug-derived enums serializing variant tags
         # as snake_case (`market`/`limit`) — `rename_all = "snake_case"`
@@ -256,6 +277,7 @@ class Exchange(API):
         spec: OrderId | ClientOrderIdRef | Literal["all"],
     ) -> CancelOrderRequest:
         """Construct the wire-shape CancelOrderRequest from a user-facing spec."""
+
         # The order of these branches matters: `OrderId` is
         # `NewType("OrderId", str)` — at runtime it's a plain `str`,
         # which would also match `spec == "all"`. So we test for the
@@ -265,6 +287,7 @@ class Exchange(API):
         # `{"one": "all"}` branch, which the contract would reject.
         if spec == "all":
             return "all"
+
         if isinstance(spec, ClientOrderIdRef):
             # ClientOrderId is `Uint64` on the wire = base-10 decimal
             # *string*. We accept an `int` for ergonomics (the user
@@ -272,6 +295,7 @@ class Exchange(API):
             # stringify here. Negative values are caller error and
             # would be rejected by the chain; we don't second-guess.
             return cast("CancelOrderRequest", {"one_by_client_order_id": str(spec.value)})
+
         # Treat any remaining value as an OrderId (a Uint64 string).
         # We don't `isinstance(spec, str)`-guard because the type
         # checker has already narrowed it to `OrderId` (= str) here;
@@ -280,6 +304,7 @@ class Exchange(API):
 
     def _wrap_perps_execute(self, key: str, inner: dict[str, Any]) -> Message:
         """Wrap an inner payload under `{<key>: inner}` and target the perps contract."""
+
         # ExecuteMsg is an externally-tagged enum with four variants —
         # `Trade`, `Vault`, `Referral`, `Maintain` (see
         # `dango/types/src/perps.rs::ExecuteMsg`) — so the dispatch key is
@@ -309,6 +334,7 @@ class Exchange(API):
         sl: ChildOrder | None = None,
     ) -> dict[str, Any]:
         """Place a single perps order; size is signed (+ buy / − sell)."""
+
         request = self._build_submit_order_wire(
             pair_id,
             size,
@@ -317,6 +343,7 @@ class Exchange(API):
             tp=tp,
             sl=sl,
         )
+
         return self._send_action([self._wrap_perps_execute("trade", {"submit_order": request})])
 
     def cancel_order(
@@ -324,6 +351,7 @@ class Exchange(API):
         spec: OrderId | ClientOrderIdRef | Literal["all"],
     ) -> dict[str, Any]:
         """Cancel by chain OrderId, ClientOrderIdRef, or 'all' for every open order."""
+
         # The CancelOrderRequest wire form is an externally-tagged
         # enum, which serde encodes as either a single-key sub-object
         # (`One`/`OneByClientOrderId`) or a bare string (`All`). The
@@ -343,6 +371,7 @@ class Exchange(API):
         actions: list[SubmitOrCancelAction],
     ) -> dict[str, Any]:
         """Submit and/or cancel multiple orders atomically in one transaction."""
+
         # The contract enforces `1 <= len <= max_action_batch_size`
         # (governance-tunable, fixture default 5). We only enforce
         # non-empty client-side; an over-sized batch is rejected by
@@ -350,7 +379,9 @@ class Exchange(API):
         # governance changes locally.
         if not actions:
             raise ValueError("batch_update_orders requires at least one action")
+
         wire: list[SubmitOrCancelOrderRequest] = []
+
         for action in actions:
             if isinstance(action, SubmitAction):
                 wire.append(
@@ -380,6 +411,7 @@ class Exchange(API):
                         {"cancel": self._build_cancel_order_wire(action.spec)},
                     ),
                 )
+
         return self._send_action(
             [self._wrap_perps_execute("trade", {"batch_update_orders": wire})],
         )
@@ -397,12 +429,14 @@ class Exchange(API):
         sl: ChildOrder | None = None,
     ) -> dict[str, Any]:
         """Place a market order with a slippage cap (default 1%)."""
+
         # `max_slippage` is a `Dimensionless` — same 6-decimal string
         # encoding as USD/quantity values. Passing 0.01 = 1%.
         kind = cast(
             "OrderKind",
             {"market": {"max_slippage": dango_decimal(max_slippage)}},
         )
+
         return self.submit_order(
             pair_id,
             size,
@@ -425,6 +459,7 @@ class Exchange(API):
         sl: ChildOrder | None = None,
     ) -> dict[str, Any]:
         """Place a limit order; defaults to GTC and no client-side id."""
+
         # Store `time_in_force.value` rather than the enum itself so
         # downstream `json.dumps` and equality assertions both treat
         # it as a plain str ("GTC"/"IOC"/"POST"). `StrEnum` would
@@ -436,7 +471,9 @@ class Exchange(API):
             "time_in_force": time_in_force.value,
             "client_order_id": str(client_order_id) if client_order_id is not None else None,
         }
+
         kind = cast("OrderKind", {"limit": limit_payload})
+
         return self.submit_order(
             pair_id,
             size,
@@ -453,10 +490,12 @@ class Exchange(API):
         spec: CancelConditionalSpec,
     ) -> CancelConditionalOrderRequest:
         """Construct the wire-shape CancelConditionalOrderRequest from a user-facing spec."""
+
         # Mirror `_build_cancel_order_wire`: bare-string variant first,
         # dataclass variants next, defensive raise for off-types.
         if spec == "all":
             return "all"
+
         if isinstance(spec, ConditionalOrderRef):
             return cast(
                 "CancelConditionalOrderRequest",
@@ -467,11 +506,13 @@ class Exchange(API):
                     },
                 },
             )
+
         if isinstance(spec, AllForPair):
             return cast(
                 "CancelConditionalOrderRequest",
                 {"all_for_pair": {"pair_id": spec.pair_id}},
             )
+
         # Defensive runtime guard for callers that bypass the type
         # checker. Mirrors the friendly-error pattern elsewhere in
         # this module (cf. `deposit_margin`'s type check).
@@ -488,6 +529,7 @@ class Exchange(API):
         max_slippage: float | int | str | Decimal,
     ) -> dict[str, Any]:
         """Place a conditional (TP/SL) order; reduce-only is implicit. size=None closes all."""
+
         # Per the Rust comment on TraderMsg::SubmitConditionalOrder, the
         # caller is responsible for the size sign: negative closes a
         # long (sells), positive closes a short (buys). `None` means
@@ -508,6 +550,7 @@ class Exchange(API):
                     "conditional order size must be non-zero or None"
                     " (None = close entire position)",
                 )
+
         # Snake_case keys match the contract; `.value` unwraps the
         # StrEnum to a plain str so `json.dumps` doesn't emit a
         # `"TriggerDirection.ABOVE"` literal.
@@ -520,6 +563,7 @@ class Exchange(API):
                 "max_slippage": dango_decimal(max_slippage),
             },
         }
+
         return self._send_action([self._wrap_perps_execute("trade", inner)])
 
     def cancel_conditional_order(
@@ -527,6 +571,7 @@ class Exchange(API):
         spec: CancelConditionalSpec,
     ) -> dict[str, Any]:
         """Cancel a conditional order by ref, all-for-pair, or 'all' for every CO."""
+
         # Mirrors `cancel_order`: the helper handles the three
         # externally-tagged variants (bare string `"all"` / `{"one":
         # {...}}` / `{"all_for_pair": {...}}`); we just wrap and send.
@@ -548,6 +593,7 @@ class Exchange(API):
         min_shares_to_mint: int | None = None,
     ) -> dict[str, Any]:
         """Transfer USD margin into the counterparty vault, minting LP shares."""
+
         # Wire shape (Rust source: `dango/types/src/perps.rs::VaultMsg::AddLiquidity`):
         #
         #   * `amount` is a `UsdValue` — 6-decimal fixed-point string,
@@ -569,6 +615,7 @@ class Exchange(API):
         amount_str = dango_decimal(amount)
         if Decimal(amount_str) <= 0:
             raise ValueError(f"add_liquidity amount must be positive, got {amount!r}")
+
         # `min_shares_to_mint` is `int | None`. Bool is an int subclass
         # in Python, so we filter it BEFORE the int branch — otherwise
         # `add_liquidity(amount, min_shares_to_mint=True)` would
@@ -587,16 +634,19 @@ class Exchange(API):
             )
         else:
             min_shares_str = str(min_shares_to_mint)
+
         inner = {
             "add_liquidity": {
                 "amount": amount_str,
                 "min_shares_to_mint": min_shares_str,
             },
         }
+
         return self._send_action([self._wrap_perps_execute("vault", inner)])
 
     def remove_liquidity(self, shares_to_burn: int) -> dict[str, Any]:
         """Burn LP shares to schedule a vault withdrawal (subject to cooldown)."""
+
         # Wire shape (Rust source: `dango/types/src/perps.rs::VaultMsg::RemoveLiquidity`):
         #
         #   * `shares_to_burn` is `Uint128` = base-10 integer string.
@@ -610,17 +660,21 @@ class Exchange(API):
                 "remove_liquidity shares_to_burn must be an int, "
                 f"got {type(shares_to_burn).__name__}",
             )
+
         if shares_to_burn <= 0:
             raise ValueError(
                 f"remove_liquidity shares_to_burn must be positive, got {shares_to_burn}",
             )
+
         inner = {"remove_liquidity": {"shares_to_burn": str(shares_to_burn)}}
+
         return self._send_action([self._wrap_perps_execute("vault", inner)])
 
     # --- Referrals -----------------------------------------------------------
 
     def set_referral(self, referrer: int | str) -> dict[str, Any]:
         """Bind the signer as a referee of `referrer` (user_index or username)."""
+
         # Wire shape (Rust source: `dango/types/src/perps.rs::ReferralMsg::SetReferral`):
         #
         #   * `referrer` is a `UserIndex` (u32) — JSON number.
@@ -637,10 +691,12 @@ class Exchange(API):
         # contract docs, and a fresh query per call costs one cheap
         # round-trip.
         referrer_index: int
+
         if isinstance(referrer, bool):
             # Reject bool first: it is an int subclass and would
             # otherwise silently route through the int branch as 0/1.
             raise TypeError("set_referral referrer must not be a bool")
+
         if isinstance(referrer, int):
             if referrer < 0:
                 raise ValueError(
@@ -666,6 +722,7 @@ class Exchange(API):
             raise TypeError(
                 f"set_referral referrer must be int or str, got {type(referrer).__name__}",
             )
+
         # `_require_user_index` raises a clear RuntimeError if the
         # signer was constructed without a user_index AND the auto-
         # resolution path was bypassed. We use it instead of `assert`
@@ -673,18 +730,21 @@ class Exchange(API):
         # propagate into the wire dict and produce an invalid
         # JSON-number-typed `referee` field.
         referee_index = self._signer._require_user_index()
+
         inner = {
             "set_referral": {
                 "referrer": referrer_index,
                 "referee": referee_index,
             },
         }
+
         return self._send_action([self._wrap_perps_execute("referral", inner)])
 
     # --- Liquidation ---------------------------------------------------------
 
     def liquidate(self, user: Addr) -> dict[str, Any]:
         """Force-close an underwater user's positions (permissionless)."""
+
         # Wire shape (Rust source: `dango/types/src/perps.rs::MaintainerMsg::Liquidate`):
         #
         #   * `user` is the target trader's account `Addr`. The contract
@@ -698,4 +758,5 @@ class Exchange(API):
         # the chain's liquidatable-or-not check is the authoritative
         # one, so we don't replicate it here.
         inner = {"liquidate": {"user": user}}
+
         return self._send_action([self._wrap_perps_execute("maintain", inner)])

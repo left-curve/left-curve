@@ -44,6 +44,7 @@ class WebsocketManager(threading.Thread):
 
     def run(self) -> None:
         """threading.Thread entry point; blocks in run_forever() until stop()."""
+
         self._ws = websocket.WebSocketApp(
             self._ws_url,
             subprotocols=["graphql-transport-ws"],
@@ -52,6 +53,7 @@ class WebsocketManager(threading.Thread):
             on_error=self._on_error,
             on_close=self._on_close,
         )
+
         # ping_interval=0 disables websocket-client's frame-level ping
         # scheduler (per the library, 0 means "do not auto-ping"). We drive
         # keepalive at the protocol layer in `_keepalive_loop` instead — the
@@ -62,7 +64,9 @@ class WebsocketManager(threading.Thread):
 
     def stop(self) -> None:
         """Signal shutdown and close the underlying WebSocket."""
+
         self._stop_event.set()
+
         if self._ws is not None:
             self._ws.close()
 
@@ -73,10 +77,13 @@ class WebsocketManager(threading.Thread):
         callback: Callable[[dict[str, Any]], None],
     ) -> int:
         """Register a subscription and return an int id usable with unsubscribe()."""
+
         with self._lock:
             self._next_id += 1
             sub_id = self._next_id
+
             self._subscriptions[sub_id] = callback
+
             if not self._ack_event.is_set():
                 # Pre-ack: the server will reject `subscribe` frames before
                 # `connection_ack`, so defer the wire send until `_on_ack`
@@ -88,10 +95,12 @@ class WebsocketManager(threading.Thread):
         # queued and thread-safe per the websocket-client docs, and we don't
         # want to hold the lock across a blocking I/O call.
         self._send_subscribe(sub_id, document, variables)
+
         return sub_id
 
     def unsubscribe(self, subscription_id: int) -> bool:
         """Drop a subscription locally and tell the server to stop streaming."""
+
         with self._lock:
             if subscription_id not in self._subscriptions:
                 return False
@@ -104,6 +113,7 @@ class WebsocketManager(threading.Thread):
             # us safe across websocket-client minor version changes.
             with contextlib.suppress(Exception):
                 self._ws.send(json.dumps({"type": "complete", "id": str(subscription_id)}))
+
         return True
 
     # --- internals -----------------------------------------------------------
@@ -151,11 +161,14 @@ class WebsocketManager(threading.Thread):
 
     def _on_ack(self, ws: websocket.WebSocketApp) -> None:
         self._ack_event.set()
+
         with self._lock:
             queued = list(self._queued_subscribes)
             self._queued_subscribes.clear()
+
         for sub_id, document, variables in queued:
             self._send_subscribe(sub_id, document, variables)
+
         # Spawn the keepalive thread now (not at on_open) — the server only
         # starts counting against the keepalive timer once we're ack'd, and
         # pinging during the handshake would race with the server's reply.
@@ -164,6 +177,7 @@ class WebsocketManager(threading.Thread):
             name="dango-ws-keepalive",
             daemon=True,
         )
+
         self._keepalive_thread.start()
 
     def _send_subscribe(
@@ -174,6 +188,7 @@ class WebsocketManager(threading.Thread):
     ) -> None:
         if self._ws is None:
             return
+
         self._ws.send(
             json.dumps(
                 {
@@ -188,8 +203,10 @@ class WebsocketManager(threading.Thread):
         sub_id = _parse_id(msg.get("id"))
         if sub_id is None:
             return
+
         with self._lock:
             cb = self._subscriptions.get(sub_id)
+
         if cb is not None:
             cb(msg.get("payload", {}) or {})
 
@@ -197,19 +214,23 @@ class WebsocketManager(threading.Thread):
         sub_id = _parse_id(msg.get("id"))
         if sub_id is None:
             return
+
         with self._lock:
             # `error` is terminal for this subscription per spec; drop the
             # callback so the user sees exactly one error notification and
             # any late `next` (shouldn't happen, but defensive) is silently
             # ignored rather than delivered after the failure.
             cb = self._subscriptions.pop(sub_id, None)
+
         if cb is not None:
             cb({"_error": msg.get("payload")})
 
     def _dispatch_complete(self, msg: dict[str, Any]) -> None:
         sub_id = _parse_id(msg.get("id"))
+
         if sub_id is None:
             return
+
         with self._lock:
             self._subscriptions.pop(sub_id, None)
 
@@ -232,6 +253,7 @@ class WebsocketManager(threading.Thread):
         with self._lock:
             callbacks = list(self._subscriptions.values())
             self._subscriptions.clear()
+
         for cb in callbacks:
             # Swallow callback exceptions — one bad callback shouldn't
             # prevent us from notifying the others.
@@ -250,6 +272,7 @@ class WebsocketManager(threading.Thread):
 
 def _make_ws_url(base_url: str) -> str:
     """Convert an http(s) base_url to the matching ws(s)://...graphql endpoint."""
+
     if base_url.startswith("https://"):
         endpoint = "wss://" + base_url[len("https://") :]
     elif base_url.startswith("http://"):
@@ -258,14 +281,17 @@ def _make_ws_url(base_url: str) -> str:
         endpoint = base_url
     else:
         raise ValueError(f"unsupported base_url scheme: {base_url!r}")
+
     endpoint = endpoint.rstrip("/")
     if not endpoint.endswith("/graphql"):
         endpoint = endpoint + "/graphql"
+
     return endpoint
 
 
 def _parse_id(raw: object) -> int | None:
     """Parse a subscription id from a server message; None if missing/malformed."""
+
     if not isinstance(raw, str):
         return None
     try:

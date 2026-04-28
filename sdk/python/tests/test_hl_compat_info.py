@@ -180,6 +180,7 @@ def _make_info(
     **kwargs: Any,
 ) -> tuple[Info, _FakeNativeInfo]:
     """Build an HL-compat Info with a fake native Info wired in."""
+
     fake = fake or _FakeNativeInfo()
     # Patch the lazily-imported `Info` class inside the module under
     # test so the constructor wires up the fake instead of a real
@@ -197,15 +198,18 @@ def _make_info(
 class TestPairNameHelpers:
     def test_pair_id_to_coin_strips_prefix_and_suffix(self) -> None:
         """`_pair_id_to_coin` returns uppercase coin name."""
+
         assert _pair_id_to_coin("perp/btcusd") == "BTC"
         assert _pair_id_to_coin("perp/ethusd") == "ETH"
 
     def test_pair_id_to_coin_handles_missing_prefix(self) -> None:
         """Missing perp/ prefix is no-op'd; suffix still stripped."""
+
         assert _pair_id_to_coin("btcusd") == "BTC"
 
     def test_coin_to_pair_id_roundtrip(self) -> None:
         """`_coin_to_pair_id` produces the inverse of `_pair_id_to_coin`."""
+
         assert _coin_to_pair_id("BTC") == "perp/btcusd"
         assert _pair_id_to_coin(_coin_to_pair_id("ETH")) == "ETH"
 
@@ -216,6 +220,7 @@ class TestPairNameHelpers:
 class TestIntervalMapping:
     def test_supported_intervals_resolve(self) -> None:
         """Every Dango-backed HL interval string maps to the right enum."""
+
         cases = {
             "1m": CandleInterval.ONE_MINUTE,
             "5m": CandleInterval.FIVE_MINUTES,
@@ -230,11 +235,13 @@ class TestIntervalMapping:
 
     def test_unsupported_interval_raises(self) -> None:
         """HL intervals Dango doesn't support raise ValueError."""
+
         with pytest.raises(ValueError, match="unsupported candle interval '3m'"):
             _hl_interval_to_dango("3m")
 
     def test_unsupported_interval_message_lists_supported(self) -> None:
         """The error message should help the caller pick a valid interval."""
+
         with pytest.raises(ValueError, match="1m"):
             _hl_interval_to_dango("30m")
 
@@ -245,30 +252,37 @@ class TestIntervalMapping:
 class TestTimestampHelpers:
     def test_timestamp_ns_to_ms_normal(self) -> None:
         """A ns timestamp string converts cleanly to ms int."""
+
         assert _timestamp_ns_to_ms("1700000000000000000") == 1_700_000_000_000
 
     def test_timestamp_ns_to_ms_none(self) -> None:
         """None input → 0."""
+
         assert _timestamp_ns_to_ms(None) == 0
 
     def test_timestamp_ns_to_ms_invalid(self) -> None:
         """Garbage strings degrade to 0 rather than raising."""
+
         assert _timestamp_ns_to_ms("not-a-number") == 0
 
     def test_isotime_to_ms_normal(self) -> None:
         """ISO-8601 with Z suffix parses to ms."""
+
         assert _isotime_to_ms("2024-01-01T00:00:00Z") == 1_704_067_200_000
 
     def test_isotime_to_ms_offset(self) -> None:
         """ISO-8601 with +00:00 offset parses to ms."""
+
         assert _isotime_to_ms("2024-01-01T00:00:00+00:00") == 1_704_067_200_000
 
     def test_isotime_to_ms_none(self) -> None:
         """None input → 0."""
+
         assert _isotime_to_ms(None) == 0
 
     def test_ms_to_iso_str(self) -> None:
         """ms int → ISO 8601 UTC string for indexer DateTime shape."""
+
         # 1700000000123 ms = 2023-11-14T22:13:20.123Z (UTC). Round-trips
         # to ms precision; the trailing `.123Z` is what the indexer
         # parser wants.
@@ -281,6 +295,7 @@ class TestTimestampHelpers:
 class TestReshapeUserState:
     def test_none_user_state_returns_zero_envelope(self) -> None:
         """No user state on chain → HL zero-margin envelope."""
+
         result = _reshape_user_state_to_hl(None, {})
         assert result["assetPositions"] == []
         assert result["withdrawable"] == "0"
@@ -289,6 +304,7 @@ class TestReshapeUserState:
 
     def test_populated_user_state_shape(self) -> None:
         """A populated state surfaces assetPositions and margin summaries."""
+
         state: Any = {
             "margin": "1000.000000",
             "vault_shares": "0",
@@ -329,6 +345,7 @@ class TestReshapeUserState:
 
     def test_short_position_negative_size(self) -> None:
         """A short position keeps szi negative on the wire."""
+
         state: Any = {
             "margin": "1000.000000",
             "vault_shares": "0",
@@ -360,6 +377,7 @@ class TestReshapeUserState:
 class TestReshapeOrder:
     def test_buy_order_shape(self) -> None:
         """A positive-size order becomes side=B, sz=|size|."""
+
         order: Any = {
             "pair_id": "perp/btcusd",
             "size": "0.500000",
@@ -379,6 +397,7 @@ class TestReshapeOrder:
 
     def test_sell_order_shape(self) -> None:
         """Negative-size order becomes side=A, sz=|size|."""
+
         order: Any = {
             "pair_id": "perp/ethusd",
             "size": "-1.250000",
@@ -396,6 +415,7 @@ class TestReshapeOrder:
 class TestReshapeFill:
     def test_buy_fill_with_open(self) -> None:
         """An opening long fill maps to side=B, dir='Open Long'."""
+
         event: Any = {
             "idx": 1,
             "blockHeight": 100,
@@ -437,6 +457,7 @@ class TestReshapeFill:
 
     def test_sell_fill_close_long(self) -> None:
         """A closing fill on a long position maps to dir='Close Long'."""
+
         event: Any = {
             "idx": 2,
             "blockHeight": 200,
@@ -469,6 +490,7 @@ class TestReshapeFill:
 class TestDedupeFills:
     def test_keeps_taker_drops_maker(self) -> None:
         """Paired maker+taker rows collapse to a single taker fill."""
+
         events: list[Any] = [
             {
                 "idx": 1,
@@ -520,6 +542,7 @@ class TestDedupeFills:
 
     def test_keeps_unique_fill_ids(self) -> None:
         """Distinct fill_ids each survive."""
+
         events: list[Any] = [
             {
                 "idx": 1,
@@ -571,6 +594,7 @@ class TestDedupeFills:
 class TestReshapeL2:
     def test_levels_are_sorted_correctly(self) -> None:
         """Bids descend, asks ascend by numeric price."""
+
         depth = {
             "bids": {
                 "59000.000000": {"size": "1.000000", "notional": "59000.000000"},
@@ -595,6 +619,7 @@ class TestReshapeL2:
 
     def test_empty_sides(self) -> None:
         """Missing bids/asks default to empty lists."""
+
         result = _reshape_l2_to_hl({}, "BTC", time_ms=0)
         assert result["levels"] == ([], [])
 
@@ -602,6 +627,7 @@ class TestReshapeL2:
 class TestReshapeCandle:
     def test_full_shape(self) -> None:
         """All HL single-letter keys are present and converted."""
+
         candle: Any = {
             "pairId": "perp/btcusd",
             "interval": "ONE_MINUTE",
@@ -634,6 +660,7 @@ class TestReshapeCandle:
 class TestReshapePerpCtx:
     def test_with_state_and_stats(self) -> None:
         """A populated ctx pulls funding/OI from state, prices from stats."""
+
         pair_state: Any = {
             "long_oi": "5.000000",
             "short_oi": "5.000000",
@@ -661,6 +688,7 @@ class TestReshapePerpCtx:
 
     def test_no_stats(self) -> None:
         """When pair_stats is missing, prices default to 0 / midPx None."""
+
         pair_state: Any = {
             "long_oi": "5.000000",
             "short_oi": "5.000000",
@@ -679,6 +707,7 @@ class TestReshapePerpCtx:
 class TestInfoConstruction:
     def test_default_resolver_from_pair_params(self) -> None:
         """The resolver is populated from native `pair_params` at construction."""
+
         info, fake = _make_info()
         # Two pairs in the canned data → two coins in the resolver.
         assert "BTC" in info.coin_to_asset
@@ -694,6 +723,7 @@ class TestInfoConstruction:
 
     def test_resolver_from_meta(self) -> None:
         """Passing `meta` to the constructor bypasses the live fetch."""
+
         meta: Any = {
             "universe": [
                 {"name": "ETH", "szDecimals": 4},
@@ -708,12 +738,14 @@ class TestInfoConstruction:
 
     def test_name_to_pair_unknown_raises(self) -> None:
         """Asking for a pair that doesn't exist raises KeyError."""
+
         info, _fake = _make_info()
         with pytest.raises(KeyError):
             info.name_to_pair("UNKNOWN")
 
     def test_name_to_asset_lookup(self) -> None:
         """`name_to_asset` returns the integer asset index."""
+
         info, _fake = _make_info()
         assert info.name_to_asset("BTC") == info.coin_to_asset["BTC"]
 
@@ -724,6 +756,7 @@ class TestInfoConstruction:
 class TestUserState:
     def test_passes_address_to_native(self) -> None:
         """`user_state` calls native `user_state_extended` with an Addr."""
+
         info, fake = _make_info()
         fake.user_state_data = None  # No state on chain.
         result = info.user_state("0xuser")
@@ -732,6 +765,7 @@ class TestUserState:
 
     def test_populated_state(self) -> None:
         """A populated user state surfaces through the reshape."""
+
         info, fake = _make_info()
         fake.user_state_data = {
             "margin": "1000.000000",
@@ -751,6 +785,7 @@ class TestUserState:
 class TestOpenOrders:
     def test_flattens_dict_to_list(self) -> None:
         """`open_orders` returns a list, one entry per resting order."""
+
         info, fake = _make_info()
         fake.orders_by_user_data = {
             "11": {
@@ -779,12 +814,14 @@ class TestOpenOrders:
 class TestAllMids:
     def test_returns_coin_to_mid_map(self) -> None:
         """`all_mids` returns coin → currentPrice as HL strings."""
+
         info, _fake = _make_info()
         result = info.all_mids()
         assert result == {"BTC": "60000", "ETH": "3000"}
 
     def test_handles_null_current_price(self) -> None:
         """Null currentPrice degrades to '0' rather than crashing."""
+
         info, fake = _make_info()
         fake.all_pair_stats_data = [
             {
@@ -802,6 +839,7 @@ class TestAllMids:
 class TestMeta:
     def test_universe_is_synthesized(self) -> None:
         """`meta` synthesizes universe from pair_params with uniform szDecimals."""
+
         info, _fake = _make_info()
         result = info.meta()
         names = {asset["name"] for asset in result["universe"]}
@@ -812,6 +850,7 @@ class TestMeta:
 class TestMetaAndAssetCtxs:
     def test_returns_meta_and_ctxs(self) -> None:
         """`meta_and_asset_ctxs` returns the [meta, ctxs] pair."""
+
         info, _fake = _make_info()
         result = info.meta_and_asset_ctxs()
         assert isinstance(result, list)
@@ -829,6 +868,7 @@ class TestMetaAndAssetCtxs:
 class TestL2Snapshot:
     def test_uses_smallest_bucket_size(self) -> None:
         """`l2_snapshot` picks the smallest bucket_size from pair_param."""
+
         info, fake = _make_info()
         fake.liquidity_depth_data = {
             "bids": {"59000.000000": {"size": "1.0", "notional": "59000.0"}},
@@ -840,6 +880,7 @@ class TestL2Snapshot:
 
     def test_reshape(self) -> None:
         """`l2_snapshot` returns HL L2 shape."""
+
         info, fake = _make_info()
         fake.liquidity_depth_data = {
             "bids": {"59000.000000": {"size": "1.000000", "notional": "59000.0"}},
@@ -852,6 +893,7 @@ class TestL2Snapshot:
 
     def test_missing_bucket_sizes_raises(self) -> None:
         """If pair_param has no bucket_sizes, l2_snapshot raises."""
+
         info, fake = _make_info()
         fake.pair_params_data["perp/btcusd"] = {"bucket_sizes": []}
         with pytest.raises(RuntimeError, match="bucket_sizes"):
@@ -861,6 +903,7 @@ class TestL2Snapshot:
 class TestCandlesSnapshot:
     def test_passes_interval_and_time_bounds(self) -> None:
         """`candles_snapshot` translates HL interval and ms times to Dango."""
+
         info, fake = _make_info()
         fake.perps_candles_nodes = []  # type: ignore[attr-defined]
         info.candles_snapshot("BTC", "1m", 1_700_000_000_000, 1_700_000_060_000)
@@ -874,12 +917,14 @@ class TestCandlesSnapshot:
 
     def test_unsupported_interval_raises(self) -> None:
         """An HL interval Dango doesn't have raises ValueError."""
+
         info, _fake = _make_info()
         with pytest.raises(ValueError, match="unsupported"):
             info.candles_snapshot("BTC", "30m", 0, 1)
 
     def test_reshape(self) -> None:
         """`candles_snapshot` returns reshaped HL candles."""
+
         info, fake = _make_info()
         fake.perps_candles_nodes = [  # type: ignore[attr-defined]
             {
@@ -907,6 +952,7 @@ class TestCandlesSnapshot:
 class TestUserFills:
     def test_dedupes_by_fill_id(self) -> None:
         """Maker+taker rows with same fill_id collapse to one taker fill."""
+
         info, fake = _make_info()
         fake.perps_events_data = [
             {
@@ -960,6 +1006,7 @@ class TestUserFills:
 class TestUserFillsByTime:
     def test_filters_by_time(self) -> None:
         """`user_fills_by_time` drops events outside [start, end]."""
+
         # The native `perps_events_all` default-sorts BLOCK_HEIGHT_DESC, so
         # newer events come first; the early-break in `user_fills_by_time`
         # depends on this ordering. Fixture mirrors the real wire shape:
@@ -1018,6 +1065,7 @@ class TestUserFillsByTime:
 class TestQueryOrderByOid:
     def test_known_order(self) -> None:
         """A known order returns `{status: 'order', order: ...}`."""
+
         info, fake = _make_info()
         fake.order_data["1"] = {
             "pair_id": "perp/btcusd",
@@ -1034,6 +1082,7 @@ class TestQueryOrderByOid:
 
     def test_unknown_order(self) -> None:
         """An unknown oid returns `{status: 'unknownOid'}`."""
+
         info, _fake = _make_info()
         result = info.query_order_by_oid("0xuser", 999)
         assert result == {"status": "unknownOid"}
@@ -1042,6 +1091,7 @@ class TestQueryOrderByOid:
 class TestHistoricalOrders:
     def test_combines_persisted_and_removed(self) -> None:
         """`historical_orders` zips persisted+removed events into rows."""
+
         info, fake = _make_info()
         fake.perps_events_data = [
             {
@@ -1086,6 +1136,7 @@ class TestHistoricalOrders:
 
     def test_persisted_without_removed_is_open(self) -> None:
         """A persisted-only order is reported as `status='open'`."""
+
         # Coverage for the branch where an order is still resting in the
         # book at query time — no removed event has fired yet.
         info, fake = _make_info()
@@ -1115,6 +1166,7 @@ class TestHistoricalOrders:
 
     def test_removed_with_canceled_reason(self) -> None:
         """An order_removed event with reason='canceled' surfaces status='canceled'."""
+
         info, fake = _make_info()
         fake.perps_events_data = [
             {
@@ -1197,6 +1249,7 @@ class TestNotImplementedStubs:
     )
     def test_stubs_raise_not_implemented(self, method_name: str, args: tuple[Any, ...]) -> None:
         """Every documented stub raises NotImplementedError."""
+
         info = self._info()
         with pytest.raises(NotImplementedError):
             getattr(info, method_name)(*args)
@@ -1208,6 +1261,7 @@ class TestNotImplementedStubs:
 class TestSubscribeTrades:
     def test_dispatches_to_native_perps_trades(self) -> None:
         """A `trades` subscription routes to `subscribe_perps_trades`."""
+
         info, fake = _make_info()
         info.subscribe({"type": "trades", "coin": "BTC"}, lambda _: None)
         method, args, _cb = fake.subscriptions[-1]
@@ -1216,6 +1270,7 @@ class TestSubscribeTrades:
 
     def test_dedupes_maker_drops_to_taker(self) -> None:
         """Maker trade is dropped; taker is reshaped and forwarded."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe({"type": "trades", "coin": "BTC"}, received.append)
@@ -1266,6 +1321,7 @@ class TestSubscribeTrades:
 
     def test_fractional_size_does_not_truncate(self) -> None:
         """A 0.5 BTC fill emits sz='0.5', not sz=0 (int-truncation regression guard)."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe({"type": "trades", "coin": "BTC"}, received.append)
@@ -1287,6 +1343,7 @@ class TestSubscribeTrades:
 class TestSubscribeCandle:
     def test_dispatches_to_native(self) -> None:
         """A `candle` subscription routes to `subscribe_perps_candles`."""
+
         info, fake = _make_info()
         info.subscribe(
             {"type": "candle", "coin": "BTC", "interval": "1m"},
@@ -1298,6 +1355,7 @@ class TestSubscribeCandle:
 
     def test_callback_reshapes_candle(self) -> None:
         """Candle events flow through `_reshape_candle_to_hl`."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe(
@@ -1329,6 +1387,7 @@ class TestSubscribeCandle:
 class TestSubscribeUserEvents:
     def test_wraps_into_user_envelope(self) -> None:
         """`userEvents` subscription wraps the fill in the HL envelope."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe({"type": "userEvents", "user": "0xuser"}, received.append)
@@ -1367,6 +1426,7 @@ class TestSubscribeUserEvents:
 class TestSubscribeUserFills:
     def test_uses_userfills_envelope(self) -> None:
         """`userFills` subscription emits the userFills envelope."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe({"type": "userFills", "user": "0xuser"}, received.append)
@@ -1402,6 +1462,7 @@ class TestSubscribeUserFills:
 class TestSubscribeOrderUpdates:
     def test_routes_persisted_and_removed(self) -> None:
         """`orderUpdates` registers for both persisted and removed events."""
+
         info, fake = _make_info()
         info.subscribe({"type": "orderUpdates", "user": "0xuser"}, lambda _: None)
         _method, args, _cb = fake.subscriptions[-1]
@@ -1409,6 +1470,7 @@ class TestSubscribeOrderUpdates:
 
     def test_persisted_status_is_open(self) -> None:
         """An `order_persisted` event surfaces as status='open'."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe({"type": "orderUpdates", "user": "0xuser"}, received.append)
@@ -1438,6 +1500,7 @@ class TestSubscribeOrderUpdates:
 class TestSubscribeL2Book:
     def test_dispatches_to_query_app_polling(self) -> None:
         """`l2Book` subscription routes to `subscribe_query_app`."""
+
         info, fake = _make_info()
         info.subscribe({"type": "l2Book", "coin": "BTC"}, lambda _: None)
         method, args, _cb = fake.subscriptions[-1]
@@ -1449,6 +1512,7 @@ class TestSubscribeL2Book:
 
     def test_callback_reshapes_depth(self) -> None:
         """Polling responses are reshaped to HL L2 book."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe({"type": "l2Book", "coin": "BTC"}, received.append)
@@ -1470,6 +1534,7 @@ class TestSubscribeL2Book:
 class TestSubscribeBbo:
     def test_uses_limit_one(self) -> None:
         """`bbo` polls liquidity_depth with limit=1."""
+
         info, fake = _make_info()
         info.subscribe({"type": "bbo", "coin": "BTC"}, lambda _: None)
         _method, args, _cb = fake.subscriptions[-1]
@@ -1478,6 +1543,7 @@ class TestSubscribeBbo:
 
     def test_emits_top_levels(self) -> None:
         """The callback gets `{coin, time, bbo: (best_bid, best_ask)}`."""
+
         info, fake = _make_info()
         received: list[Any] = []
         info.subscribe({"type": "bbo", "coin": "BTC"}, received.append)
@@ -1500,6 +1566,7 @@ class TestSubscribeBbo:
 class TestSubscribeAllMids:
     def test_raises_not_implemented(self) -> None:
         """allMids subscription is currently not implemented."""
+
         info, _fake = _make_info()
         with pytest.raises(NotImplementedError):
             info.subscribe({"type": "allMids"}, lambda _: None)
@@ -1508,6 +1575,7 @@ class TestSubscribeAllMids:
 class TestSubscribeActiveAssetCtx:
     def test_polls_pair_state(self) -> None:
         """`activeAssetCtx` polls `pair_state` per block."""
+
         info, fake = _make_info()
         info.subscribe({"type": "activeAssetCtx", "coin": "BTC"}, lambda _: None)
         _method, args, _cb = fake.subscriptions[-1]
@@ -1518,6 +1586,7 @@ class TestSubscribeActiveAssetCtx:
 class TestSubscribeActiveAssetData:
     def test_uses_multi_request(self) -> None:
         """`activeAssetData` bundles two queries via `multi`."""
+
         info, fake = _make_info()
         info.subscribe(
             {"type": "activeAssetData", "user": "0xuser", "coin": "BTC"},
@@ -1529,6 +1598,7 @@ class TestSubscribeActiveAssetData:
 
     def test_markpx_zero_until_pair_stats_polled(self) -> None:
         """`markPx` is `"0"`, NOT `pair_state.funding_per_unit` (price ≠ funding rate)."""
+
         # Regression guard for a bug where `markPx` was sourced from
         # `funding_per_unit` (a per-unit funding accrual ~0.0001), which
         # would mislead any HL client displaying it as a price ~60_000.
@@ -1566,6 +1636,7 @@ class TestSubscribeNotImplemented:
     )
     def test_raises_not_implemented(self, subscription: Any) -> None:
         """Subscriptions Dango can't serve raise NotImplementedError."""
+
         info, _fake = _make_info()
         with pytest.raises(NotImplementedError):
             info.subscribe(subscription, lambda _: None)
@@ -1574,6 +1645,7 @@ class TestSubscribeNotImplemented:
 class TestUnsubscribe:
     def test_forwards_id_to_native(self) -> None:
         """`unsubscribe` forwards subscription_id to the native unsubscribe."""
+
         info, fake = _make_info()
         result = info.unsubscribe(
             {"type": "trades", "coin": "BTC"},
@@ -1586,6 +1658,7 @@ class TestUnsubscribe:
 class TestDisconnectWebsocket:
     def test_calls_native(self) -> None:
         """`disconnect_websocket` forwards to the native method."""
+
         info, fake = _make_info()
         info.disconnect_websocket()
         assert fake.disconnected is True

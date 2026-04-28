@@ -16,6 +16,7 @@ _DEMO_ADDRESS: Addr = Addr("0x000000000000000000000000000000000000beef")
 
 def wallet(address: Addr = _DEMO_ADDRESS) -> Secp256k1Wallet:
     """Return a deterministic Secp256k1 wallet bound to `address`."""
+
     # Fixed secret keeps signature outputs deterministic across tests so
     # we can compare credential shapes without recomputing them by hand.
     return Secp256k1Wallet.from_bytes(b"\x01" * 32, address)
@@ -43,6 +44,7 @@ class FakeInfo:
 
     def query_status(self) -> dict[str, Any]:
         self.queried_status_count += 1
+
         # Mirror the GraphQL `queryStatus` shape (see
         # `dango/_graphql/queries/queryStatus.graphql`): a `chainId` and
         # a `block` sub-object. Only `chainId` is consumed by Exchange,
@@ -66,14 +68,17 @@ class FakeInfo:
         # account `seen_nonces` lookup are funneled through this single
         # method.
         self.smart_queries.append((contract, msg))
+
         if "account" in msg:
             # `User` struct shape — `owner` is the user_index that
             # SingleSigner.query_user_index reads.
             return {"index": 0, "owner": 42}
+
         if "seen_nonces" in msg:
             # Sorted ascending list; SingleSigner takes max+1, so this
             # produces next_nonce=6.
             return [3, 4, 5]
+
         if "user" in msg:
             # `QueryMsg::User(UserIndexOrName)` on the account-factory
             # contract — see `dango/types/src/account_factory/msg.rs`.
@@ -82,10 +87,12 @@ class FakeInfo:
             # `User` struct; only `index` is consumed by `set_referral`,
             # so we hand back a small but shape-correct stub.
             return {"index": 7, "name": "alice", "accounts": {}}
+
         raise AssertionError(f"unexpected query_app_smart: {msg}")
 
     def simulate(self, tx: dict[str, Any]) -> dict[str, Any]:
         self.simulated.append(tx)
+
         # 230_000 chosen so simulate + DEFAULT_GAS_OVERHEAD = 1_000_000
         # — a clean round number that the gas-limit assertion in
         # test_exchange.py checks against.
@@ -93,6 +100,7 @@ class FakeInfo:
 
     def broadcast_tx_sync(self, tx: dict[str, Any]) -> dict[str, Any]:
         self.broadcasted.append(tx)
+
         # Realistic BroadcastTxOutcome envelope — `code=0` is success,
         # the rest is metadata. Exchange methods return this dict
         # verbatim, so consumers can read e.g. `result["hash"]`.
@@ -101,6 +109,7 @@ class FakeInfo:
 
 def exchange(info: FakeInfo, *, address: Addr = _DEMO_ADDRESS, **kwargs: Any) -> Exchange:
     """Construct an Exchange wired to a mock Info (no real network calls)."""
+
     return Exchange(
         wallet(address),
         "http://localhost:8080",
@@ -112,10 +121,12 @@ def exchange(info: FakeInfo, *, address: Addr = _DEMO_ADDRESS, **kwargs: Any) ->
 
 def last_inner_msg(info: FakeInfo) -> dict[str, Any]:
     """Pull the inner execute `msg` payload out of the most-recent broadcast."""
+
     # Every Exchange action emits a single execute message; the inner
     # `msg` field carries the contract-side dispatch enum
     # (`{"trade": ...}`, `{"vault": ...}`, etc.). The repeated dict-walk
     # in every test would be ceremony; this helper centralizes it so a
     # wire-shape change touches one line per assertion category, not N.
     sent = info.broadcasted[-1]
+
     return cast("dict[str, Any]", sent["msgs"][0]["execute"]["msg"])

@@ -30,6 +30,7 @@ _DEMO_PAIR = PairId("perp/btcusd")
 
 def _info(httpserver: HTTPServer) -> Info:
     """Build an Info bound to the local httpserver."""
+
     return Info(httpserver.url_for("/").rstrip("/"))
 
 
@@ -44,6 +45,7 @@ def _capture_request(
     caller assert on the on-the-wire query / variables shape after invoking
     the SDK method under test.
     """
+
     captured: list[dict[str, Any]] = []
 
     def handler(request: Request) -> Response:
@@ -56,6 +58,7 @@ def _capture_request(
 
 def _empty_page_info() -> dict[str, Any]:
     """Build a wire `pageInfo` dict for tests that don't care about pagination."""
+
     # Returns the minimal fully-populated pageInfo: no next or previous page,
     # both cursors null. Tests that exercise pagination override individual
     # fields by spreading this dict.
@@ -73,6 +76,7 @@ def _empty_page_info() -> dict[str, Any]:
 class TestTypes:
     def test_page_info_is_frozen(self) -> None:
         """`PageInfo` is a frozen dataclass; assignment after construction raises."""
+
         # Frozen-ness matters because `paginate_all` and downstream consumers
         # treat the cursor state as immutable; an accidental mutation could
         # send the wrong cursor on the next page request.
@@ -87,6 +91,7 @@ class TestTypes:
 
     def test_connection_is_generic(self) -> None:
         """`Connection[T]` parameterizes by node type and exposes nodes/page_info."""
+
         # Pin the public shape of the dataclass: a connection is always
         # `(nodes: list[T], page_info: PageInfo)`. The `Connection[int]`
         # subscript here is purely a static-typing exercise — it's preserved
@@ -111,6 +116,7 @@ class TestTypes:
 class TestPaginateAll:
     def test_yields_single_page_then_stops(self) -> None:
         """A single page with `has_next_page=False` is exhausted after one fetch."""
+
         # We use a small fake `fetch_page` that records its inputs so we can
         # assert (a) the helper actually invoked the callable, and (b) only
         # invoked it once.
@@ -133,6 +139,7 @@ class TestPaginateAll:
 
     def test_walks_multiple_pages(self) -> None:
         """`has_next_page=True` causes another fetch with the last `end_cursor`."""
+
         pages = [
             Connection[int](
                 nodes=[1, 2],
@@ -176,6 +183,7 @@ class TestPaginateAll:
 
     def test_stops_on_has_next_page_false(self) -> None:
         """Stopping is driven by `has_next_page`, not by an empty `nodes` list."""
+
         # The first (and only) page yields a non-empty list but signals
         # `has_next_page=False`. The helper must NOT make a second call —
         # otherwise we'd loop forever on indexers that keep returning the
@@ -199,6 +207,7 @@ class TestPaginateAll:
 
     def test_stops_when_end_cursor_is_none(self) -> None:
         """Defensive: a `has_next_page=True` with no cursor is treated as terminal."""
+
         # A non-conforming server that says "more pages exist" but provides
         # no cursor would otherwise spin on the same page forever; the
         # helper guards against that by stopping when end_cursor is null.
@@ -226,6 +235,7 @@ class TestPaginateAll:
 class TestPerpsCandles:
     def test_passes_camel_case_variables(self, httpserver: HTTPServer) -> None:
         """Each kwarg lands on the wire as the corresponding camelCase variable."""
+
         # The .graphql document declares variables `$pairId`, `$interval`,
         # `$earlierThan`, `$laterThan`, `$first`, `$after` — all camelCase.
         # We assert each one explicitly so a typo in the SDK's variables
@@ -252,6 +262,7 @@ class TestPerpsCandles:
 
     def test_unwraps_to_connection(self, httpserver: HTTPServer) -> None:
         """The response is unwrapped to a `Connection[PerpsCandle]` with snake_case PageInfo."""
+
         node: PerpsCandle = {
             "pairId": _DEMO_PAIR,
             "interval": "ONE_MINUTE",
@@ -291,6 +302,7 @@ class TestPerpsCandles:
 
     def test_interval_serializes_as_string_value(self, httpserver: HTTPServer) -> None:
         """`CandleInterval` passes its `.value` (e.g. "ONE_HOUR") on the wire."""
+
         # The GraphQL enum variable is typed `CandleInterval!`, expecting the
         # bare uppercase name. Without `.value` we'd serialize a Python repr
         # like `<CandleInterval.ONE_HOUR: 'ONE_HOUR'>`, which the indexer
@@ -309,6 +321,7 @@ class TestPerpsCandles:
 class TestPerpsEvents:
     def test_passes_filter_and_sort_variables(self, httpserver: HTTPServer) -> None:
         """All filter kwargs land on the wire as camelCase variables."""
+
         captured = _capture_request(
             httpserver,
             {"data": {"perpsEvents": {"nodes": [], "pageInfo": _empty_page_info()}}},
@@ -334,6 +347,7 @@ class TestPerpsEvents:
 
     def test_sort_by_default_is_block_height_desc(self, httpserver: HTTPServer) -> None:
         """Default `sort_by` mirrors the indexer default (`BLOCK_HEIGHT_DESC`)."""
+
         # Without an explicit kwarg, callers expect newest events first;
         # this pins that contract so a future refactor that flips the
         # default doesn't silently change semantics.
@@ -346,6 +360,7 @@ class TestPerpsEvents:
 
     def test_unwraps_to_connection(self, httpserver: HTTPServer) -> None:
         """The response is unwrapped to a `Connection[PerpsEvent]`."""
+
         node: PerpsEvent = {
             "idx": 7,
             "blockHeight": 100,
@@ -379,6 +394,7 @@ class TestPerpsEvents:
 class TestPerpsPairStats:
     def test_uses_snake_case_pair_id_variable(self, httpserver: HTTPServer) -> None:
         """The wire variable for this query is `pair_id` (snake_case), an anomaly."""
+
         # The vendored `perpsPairStats.graphql` declares its variable as
         # `$pair_id`, unlike sibling queries that use `$pairId`. We pin
         # that anomaly here so a regen of the document upstream that flips
@@ -402,6 +418,7 @@ class TestPerpsPairStats:
 
     def test_returns_typed_dict(self, httpserver: HTTPServer) -> None:
         """The response is returned verbatim as a `PerpsPairStats` TypedDict."""
+
         payload = {
             "pairId": _DEMO_PAIR,
             "currentPrice": "65000.000000",
@@ -422,6 +439,7 @@ class TestPerpsPairStats:
 class TestAllPerpsPairStats:
     def test_returns_list(self, httpserver: HTTPServer) -> None:
         """`all_perps_pair_stats()` returns a flat list of PerpsPairStats dicts."""
+
         payload = [
             {
                 "pairId": _DEMO_PAIR,
@@ -452,6 +470,7 @@ class TestAllPerpsPairStats:
 class TestPerpsEventsAll:
     def test_walks_all_pages(self, httpserver: HTTPServer) -> None:
         """`perps_events_all` chains paginated `perps_events` calls into one iterator."""
+
         # We expect exactly two fetches: page 1 returns `hasNextPage=true` and
         # an `endCursor`; page 2 returns `hasNextPage=false`. The helper
         # should walk from page 1 → page 2 and stop, yielding all four

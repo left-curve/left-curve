@@ -17,11 +17,13 @@ _DEMO_ADDRESS = Addr("0x000000000000000000000000000000000000beef")
 class TestConstruction:
     def test_account_address_is_required(self) -> None:
         """account_address has no default; constructing without it must fail."""
+
         with pytest.raises(TypeError):
             Exchange(_wallet(), "http://localhost:8080")  # type: ignore[call-arg]
 
     def test_auto_fetches_chain_id(self) -> None:
         """If chain_id is omitted, the constructor pulls it from query_status."""
+
         info = FakeInfo()
         ex = _exchange(info)
         # One query for chain_id; the `auto_resolve user_index/nonce`
@@ -35,12 +37,14 @@ class TestConstruction:
 
     def test_chain_id_override_skips_query(self) -> None:
         """Passing chain_id explicitly avoids the query_status round-trip."""
+
         info = FakeInfo()
         _exchange(info, chain_id="dango-1")
         assert info.queried_status_count == 0
 
     def test_resolves_user_index_and_nonce_from_chain(self) -> None:
         """Without explicit values, user_index and next_nonce come from the chain."""
+
         info = FakeInfo()
         ex = _exchange(info)
         # FakeInfo.query_app_smart returns `owner=42` for the factory
@@ -51,6 +55,7 @@ class TestConstruction:
 
     def test_explicit_user_index_skips_factory_query(self) -> None:
         """Passing user_index keeps the explicit value, no factory roundtrip."""
+
         info = FakeInfo()
         ex = _exchange(info, user_index=99)
         assert ex.signer.user_index == 99
@@ -59,6 +64,7 @@ class TestConstruction:
 class TestDepositMargin:
     def test_funds_carries_amount_as_string(self) -> None:
         """deposit_margin(1_500_000) emits funds={'bridge/usdc': '1500000'}."""
+
         # `amount` is base units (Uint128); the SDK stringifies it for
         # the wire because Uint128 serializes as a base-10 integer
         # string. 1_500_000 base units = 1.5 USDC at SETTLEMENT_DECIMALS=6.
@@ -73,6 +79,7 @@ class TestDepositMargin:
 
     def test_rejects_float(self) -> None:
         """deposit_margin requires an int (base units), not a float."""
+
         # Earlier drafts accepted float USD and converted internally;
         # the wire ambiguity ("is 1.5 USDC or 1.5 base units?") was
         # confusing, so the API now hard-rejects floats.
@@ -83,6 +90,7 @@ class TestDepositMargin:
 
     def test_rejects_bool(self) -> None:
         """deposit_margin rejects bool (which is technically an int subclass)."""
+
         # Same hazard guarded by `dango_decimal`: bool is an int subtype
         # in Python, so mypy accepts `deposit_margin(True)` at compile
         # time. The runtime guard is what catches it; without it,
@@ -94,6 +102,7 @@ class TestDepositMargin:
 
     def test_rejects_zero_or_negative(self) -> None:
         """deposit_margin requires a strictly positive amount."""
+
         info = FakeInfo()
         ex = _exchange(info)
         with pytest.raises(ValueError, match="positive"):
@@ -103,6 +112,7 @@ class TestDepositMargin:
 
     def test_pipeline_calls_simulate_then_broadcast(self) -> None:
         """deposit_margin runs simulate before broadcast (gas autodiscovery)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.deposit_margin(1_000_000)
@@ -113,6 +123,7 @@ class TestDepositMargin:
 
     def test_gas_limit_is_simulated_gas_plus_overhead(self) -> None:
         """gas_limit = simulate.gas_used + DEFAULT_GAS_OVERHEAD (770_000)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.deposit_margin(1_000_000)
@@ -128,6 +139,7 @@ class TestDepositMargin:
 class TestWithdrawMargin:
     def test_amount_uses_six_decimal_string(self) -> None:
         """withdraw_margin(1.5) emits {'amount': '1.500000'} (UsdValue)."""
+
         info = FakeInfo()
         ex = _exchange(info)
         ex.withdraw_margin(1.5)
@@ -144,6 +156,7 @@ class TestWithdrawMargin:
 class TestSendActionPipeline:
     def test_increments_nonce_after_broadcast(self) -> None:
         """Successful broadcast bumps next_nonce by exactly 1."""
+
         info = FakeInfo()
         ex = _exchange(info)
         starting = ex.signer.next_nonce
@@ -155,6 +168,7 @@ class TestSendActionPipeline:
 
     def test_chain_id_propagates_into_metadata(self) -> None:
         """The constructor's chain_id ends up inside `tx.data.chain_id` on broadcast."""
+
         info = FakeInfo()
         ex = _exchange(info, chain_id="dango-explicit-test")
         ex.deposit_margin(1_000_000)
@@ -168,6 +182,7 @@ class TestSendActionPipeline:
 class TestExplicitNextNonce:
     def test_explicit_nonce_skips_seen_nonces_query(self) -> None:
         """Passing next_nonce keeps the explicit value, no chain roundtrip."""
+
         info = FakeInfo()
         ex = _exchange(info, next_nonce=99)
         # Only the user_index resolution should have hit query_app_smart;
@@ -180,6 +195,7 @@ class TestExplicitNextNonce:
 class TestLocalAccountWallet:
     def test_constructs_from_eth_account(self) -> None:
         """Passing an eth_account.LocalAccount auto-wraps via Secp256k1Wallet.from_eth_account."""
+
         # Verifies the `else` branch in the wallet adapter — the most
         # common HL-trader migration path. The resulting Exchange should
         # sign with the same secret as a directly-constructed wallet.
