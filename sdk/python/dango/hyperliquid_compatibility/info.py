@@ -720,12 +720,12 @@ class Info:
         """HL ``candleSnapshot`` — OHLCV candles in a time window."""
         pair_id = self.name_to_pair(name)
         dango_interval = _hl_interval_to_dango(interval)
-        # HL takes ms timestamps; Dango's indexer takes ns ISO strings
-        # via `laterThan` / `earlierThan`. We convert ms → ns and
-        # format as `Timestamp` strings (the indexer accepts both
-        # plain ns ints and ISO strings; we pass ns ints stringified).
-        later_than = _ms_to_ns_str(start)
-        earlier_than = _ms_to_ns_str(end)
+        # HL takes ms timestamps; Dango's indexer's `laterThan` /
+        # `earlierThan` are GraphQL `DateTime` scalars (ISO 8601
+        # strings — verified against mainnet, which rejects raw ns
+        # strings).
+        later_than = _ms_to_iso_str(start)
+        earlier_than = _ms_to_iso_str(end)
         page = self._native.perps_candles(
             pair_id,
             dango_interval,
@@ -758,23 +758,23 @@ class Info:
         end: int | None = None,
     ) -> list[Fill]:
         """HL ``userFillsByTime`` — same as user_fills, with a time-range filter."""
-        # `perps_events_all` doesn't accept time bounds directly; we
-        # paginate the entire stream and filter client-side. For
-        # high-volume users this is suboptimal but correct — a future
-        # optimization could add `created_at` filter support to the
-        # indexer query.
-        all_events = list(
-            self._native.perps_events_all(
-                user_addr=Addr(addr),
-                event_type="order_filled",
-            )
-        )
+        # `perps_events_all` paginates BLOCK_HEIGHT_DESC by default, so
+        # events arrive newest-first. We collect events while their
+        # `createdAt` is `>= start` and break as soon as we cross the
+        # boundary — calling this on a high-volume user (e.g. the perps
+        # vault) without the early-break would otherwise paginate the
+        # entire fill history just to throw most of it away.
         end_ms = end if end is not None else 1 << 62  # effectively +inf
-        in_range = [
-            event
-            for event in all_events
-            if start <= _isotime_to_ms(event.get("createdAt")) <= end_ms
-        ]
+        in_range: list[PerpsEvent] = []
+        for event in self._native.perps_events_all(
+            user_addr=Addr(addr),
+            event_type="order_filled",
+        ):
+            ts = _isotime_to_ms(event.get("createdAt"))
+            if ts < start:
+                break
+            if ts <= end_ms:
+                in_range.append(event)
         return _dedupe_fills(in_range)
 
     def query_order_by_oid(self, user: str, oid: int | str) -> dict[str, Any]:
@@ -1396,14 +1396,17 @@ class Info:
 # --- Module-level helpers (private) ----------------------------------------
 
 
-def _ms_to_ns_str(ms: int) -> str:
-    """Convert ms int → ns string for Dango's indexer Timestamp wire shape."""
-    # Dango's Timestamp is a stringified ns count. The indexer
-    # accepts both `laterThan: "1700000000000000000"` (ns string)
-    # and `laterThan: "2024-01-01T00:00:00Z"` (ISO). We use ns
-    # strings here because they round-trip cleanly with the
-    # ms inputs HL traders pass in.
-    return str(ms * 1_000_000)
+def _ms_to_iso_str(ms: int) -> str:
+    """Convert ms int → ISO 8601 UTC string for the indexer's DateTime scalar."""
+    # The indexer's `laterThan` / `earlierThan` are typed as `DateTime`
+    # (graphql scalar) and only accept ISO 8601 strings — verified
+    # against mainnet, which rejects raw ns strings with
+    # `Failed to parse "DateTime": input contains invalid characters`.
+    # We format with ms precision since the HL inputs are already in ms.
+    import datetime
+
+    dt = datetime.datetime.fromtimestamp(ms / 1000, tz=datetime.UTC)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
 
 
 def _dedupe_fills(events: list[PerpsEvent]) -> list[Fill]:

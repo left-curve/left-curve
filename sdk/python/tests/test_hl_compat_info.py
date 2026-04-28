@@ -13,7 +13,7 @@ from dango.hyperliquid_compatibility.info import (
     _dedupe_fills,
     _hl_interval_to_dango,
     _isotime_to_ms,
-    _ms_to_ns_str,
+    _ms_to_iso_str,
     _pair_id_to_coin,
     _reshape_candle_to_hl,
     _reshape_fill_to_hl,
@@ -267,9 +267,12 @@ class TestTimestampHelpers:
         """None input → 0."""
         assert _isotime_to_ms(None) == 0
 
-    def test_ms_to_ns_str(self) -> None:
-        """ms int → ns string for indexer Timestamp shape."""
-        assert _ms_to_ns_str(1_700_000_000_000) == "1700000000000000000"
+    def test_ms_to_iso_str(self) -> None:
+        """ms int → ISO 8601 UTC string for indexer DateTime shape."""
+        # 1700000000123 ms = 2023-11-14T22:13:20.123Z (UTC). Round-trips
+        # to ms precision; the trailing `.123Z` is what the indexer
+        # parser wants.
+        assert _ms_to_iso_str(1_700_000_000_123) == "2023-11-14T22:13:20.123Z"
 
 
 # --- Reshape helpers --------------------------------------------------------
@@ -864,8 +867,10 @@ class TestCandlesSnapshot:
         pair_id, interval, kwargs = fake.last_perps_candles_call
         assert pair_id == "perp/btcusd"
         assert interval == CandleInterval.ONE_MINUTE
-        assert kwargs["later_than"] == "1700000000000000000"
-        assert kwargs["earlier_than"] == "1700000060000000000"
+        # Indexer's `laterThan` / `earlierThan` are GraphQL DateTime
+        # scalars; we forward the ms inputs as ISO 8601 UTC strings.
+        assert kwargs["later_than"] == "2023-11-14T22:13:20.000Z"
+        assert kwargs["earlier_than"] == "2023-11-14T22:14:20.000Z"
 
     def test_unsupported_interval_raises(self) -> None:
         """An HL interval Dango doesn't have raises ValueError."""
@@ -955,29 +960,12 @@ class TestUserFills:
 class TestUserFillsByTime:
     def test_filters_by_time(self) -> None:
         """`user_fills_by_time` drops events outside [start, end]."""
+        # The native `perps_events_all` default-sorts BLOCK_HEIGHT_DESC, so
+        # newer events come first; the early-break in `user_fills_by_time`
+        # depends on this ordering. Fixture mirrors the real wire shape:
+        # MID (newer) first, then EARLY (older).
         info, fake = _make_info()
         fake.perps_events_data = [
-            {
-                "idx": 1,
-                "blockHeight": 100,
-                "txHash": "0xa",
-                "eventType": "order_filled",
-                "userAddr": "0xuser",
-                "pairId": "perp/btcusd",
-                "data": {
-                    "order_id": "1",
-                    "pair_id": "perp/btcusd",
-                    "fill_price": "60000.000000",
-                    "fill_size": "0.500000",
-                    "closing_size": "0.000000",
-                    "opening_size": "0.500000",
-                    "realized_pnl": "0.000000",
-                    "fee": "1.000000",
-                    "fill_id": "EARLY",
-                    "is_maker": False,
-                },
-                "createdAt": "2024-01-01T00:00:00Z",  # 1704067200000 ms
-            },
             {
                 "idx": 2,
                 "blockHeight": 200,
@@ -999,8 +987,30 @@ class TestUserFillsByTime:
                 },
                 "createdAt": "2024-01-02T00:00:00Z",  # 1704153600000 ms
             },
+            {
+                "idx": 1,
+                "blockHeight": 100,
+                "txHash": "0xa",
+                "eventType": "order_filled",
+                "userAddr": "0xuser",
+                "pairId": "perp/btcusd",
+                "data": {
+                    "order_id": "1",
+                    "pair_id": "perp/btcusd",
+                    "fill_price": "60000.000000",
+                    "fill_size": "0.500000",
+                    "closing_size": "0.000000",
+                    "opening_size": "0.500000",
+                    "realized_pnl": "0.000000",
+                    "fee": "1.000000",
+                    "fill_id": "EARLY",
+                    "is_maker": False,
+                },
+                "createdAt": "2024-01-01T00:00:00Z",  # 1704067200000 ms
+            },
         ]
-        # Only the second event falls in this window.
+        # Window contains only MID. The early-break should also short-
+        # circuit before EARLY is considered (it's older than `start`).
         fills = info.user_fills_by_time("0xuser", start=1_704_153_600_000, end=1_704_240_000_000)
         assert len(fills) == 1
 
