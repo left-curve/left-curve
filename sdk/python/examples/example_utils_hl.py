@@ -13,8 +13,7 @@ perp_dexs)``).
 Environment variables (used only by :func:`setup`; see
 ``examples/.env.example``):
 
-* ``DANGO_SECRET_KEY`` — raw hex secret, OR
-* ``DANGO_KEYSTORE_PATH`` — path to encrypted keystore JSON.
+* ``DANGO_SECRET_KEY`` — raw hex secret. Required.
 * ``DANGO_ACCOUNT_ADDRESS`` — required (Dango decouples key from on-chain
   account; the HL-compat ``Exchange`` constructor enforces this).
 """
@@ -28,7 +27,7 @@ from eth_account.signers.local import LocalAccount
 
 # Reuse the env-loading + secret-resolution helpers from the native module.
 # They're identical regardless of which API flavor we're targeting; keeping
-# them in one place avoids drift if the secret/keystore policy ever changes.
+# them in one place avoids drift if the secret-handling policy ever changes.
 from example_utils import get_secret_key, load_env, resolve_account_address
 
 if TYPE_CHECKING:

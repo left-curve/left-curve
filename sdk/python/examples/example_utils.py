@@ -3,9 +3,9 @@
 Two factories:
 
 * :func:`setup` — full ``(address, info, exchange)`` trio. Loads ``.env``
-  for ``DANGO_SECRET_KEY`` / ``DANGO_KEYSTORE_PATH`` /
-  ``DANGO_ACCOUNT_ADDRESS`` and runs an equity guard. Used by the
-  mutation examples (orders, market open/close, vault deposits, etc.).
+  for ``DANGO_SECRET_KEY`` / ``DANGO_ACCOUNT_ADDRESS`` and runs an equity
+  guard. Used by the mutation examples (orders, market open/close, vault
+  deposits, etc.).
 * :func:`setup_read_only` — just an :class:`Info` instance. No creds, no
   equity guard. Used by query and public-subscription examples.
 
@@ -17,8 +17,7 @@ verbatim against upstream HL's examples (only the import line differs).
 Environment variables (used only by :func:`setup`; see
 ``examples/.env.example``):
 
-* ``DANGO_SECRET_KEY`` — raw hex secret, OR
-* ``DANGO_KEYSTORE_PATH`` — path to encrypted keystore JSON.
+* ``DANGO_SECRET_KEY`` — raw hex secret. Required.
 * ``DANGO_ACCOUNT_ADDRESS`` — required for HL-compat (Dango decouples key
   from on-chain account); falls back to the wallet's derived address only on
   the native flavor.
@@ -26,8 +25,6 @@ Environment variables (used only by :func:`setup`; see
 
 from __future__ import annotations
 
-import getpass
-import json
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -127,31 +124,14 @@ def setup_read_only(
     )
 
 
-def get_secret_key() -> str | bytes:
-    """Resolve the signer's secret from ``DANGO_SECRET_KEY`` or a keystore path."""
-    # Resolution order: prefer the inline `DANGO_SECRET_KEY` if non-empty
-    # (typical for local dev / tests), else decrypt the keystore at
-    # `DANGO_KEYSTORE_PATH` after prompting for a password.
+def get_secret_key() -> str:
+    """Resolve the signer's secret from ``DANGO_SECRET_KEY``."""
     secret_key = os.environ.get("DANGO_SECRET_KEY", "").strip()
-    if secret_key:
-        return secret_key
-    keystore_path = os.environ.get("DANGO_KEYSTORE_PATH", "").strip()
-    if not keystore_path:
+    if not secret_key:
         raise ValueError(
-            "Provide DANGO_SECRET_KEY (hex) or DANGO_KEYSTORE_PATH "
-            "(path to encrypted keystore) in examples/.env or your environment.",
+            "DANGO_SECRET_KEY is required — set it in examples/.env or your environment.",
         )
-    keystore_path = os.path.expanduser(keystore_path)
-    if not os.path.isabs(keystore_path):
-        keystore_path = os.path.join(os.path.dirname(__file__), keystore_path)
-    if not os.path.exists(keystore_path):
-        raise FileNotFoundError(f"Keystore file not found: {keystore_path}")
-    if not os.path.isfile(keystore_path):
-        raise ValueError(f"Keystore path is not a file: {keystore_path}")
-    with open(keystore_path) as f:
-        keystore = json.load(f)
-    password = getpass.getpass("Enter keystore password: ")
-    return eth_account.Account.decrypt(keystore, password)
+    return secret_key
 
 
 def load_env() -> None:
