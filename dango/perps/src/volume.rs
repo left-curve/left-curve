@@ -5,7 +5,7 @@ use {
     std::collections::BTreeMap,
 };
 
-const NANOS_PER_DAY: u128 = 24 * 60 * 60 * 1_000_000_000;
+pub const NANOS_PER_DAY: u128 = 24 * 60 * 60 * 1_000_000_000;
 
 pub fn round_to_day(ts: Timestamp) -> Timestamp {
     let nanos = ts.into_nanos();

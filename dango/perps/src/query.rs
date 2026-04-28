@@ -12,7 +12,7 @@ use {
         state::{
             ASKS, BIDS, COMMISSION_RATE_OVERRIDES, DEPTHS, FEE_RATE_OVERRIDES, FEE_SHARE_RATIO,
             PAIR_PARAMS, PAIR_STATES, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
-            USER_REFERRAL_DATA, USER_STATES, VOLUMES,
+            USER_REFERRAL_DATA, USER_STATES, VAULT_SNAPSHOTS, VOLUMES,
         },
         volume::round_to_day,
     },
@@ -26,7 +26,7 @@ use {
             PairParam, PairState, PositionExtended, QueryOrderResponse,
             QueryOrdersByUserResponseItem, Referee, RefereeStats, Referrer, ReferrerSettings,
             ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData, UserState,
-            UserStateExtended,
+            UserStateExtended, VaultSnapshot,
         },
     },
     grug::{
@@ -401,6 +401,19 @@ pub fn compute_user_volume(
     }
 
     Ok(total)
+}
+
+pub fn query_vault_snapshots(
+    storage: &dyn Storage,
+    min: Option<Timestamp>,
+    max: Option<Timestamp>,
+) -> StdResult<BTreeMap<Timestamp, VaultSnapshot>> {
+    let min = min.map(Bound::Inclusive);
+    let max = max.map(Bound::Inclusive);
+
+    VAULT_SNAPSHOTS
+        .range(storage, min, max, IterationOrder::Ascending)
+        .collect()
 }
 
 pub fn query_referrer(storage: &dyn Storage, referee: UserIndex) -> StdResult<Option<Referrer>> {
