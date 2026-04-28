@@ -22,12 +22,17 @@ type PnlShareProps = {
   pnl: number;
 };
 
-const CHARACTER_IMAGES = [
-  "cocodrile-2.svg",
-  "froggo-2.svg",
-  "alien.svg",
-  "purple-bird.svg",
-  "friends.svg",
+const CHARACTERS = [
+  "frog1",
+  "clouds",
+  "frog2",
+  "dog1",
+  "bird2",
+  "rich-cocodrile",
+  "hippo",
+  "pig",
+  "candle",
+  "bird-lost",
 ];
 
 export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
@@ -77,16 +82,13 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
         <IconClose />
       </IconButton>
 
-      {/* Shareable Card */}
       <div className="flex-1 min-w-0">
         <div
           ref={cardRef}
           className="bg-surface-secondary-rice rounded-2xl shadow-account-card p-6 relative overflow-hidden"
         >
-          {/* Logo */}
           <img src="/images/dango.svg" alt="Dango" className="h-8 mb-4" />
 
-          {/* Coin + Symbol + Badge */}
           <div className="flex items-center gap-2 mb-3">
             {logoURI && <img src={logoURI} alt={symbol} className="w-6 h-6 rounded-full" />}
             <span className="diatype-m-bold text-ink-primary-900">{symbol}</span>
@@ -97,7 +99,6 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
             />
           </div>
 
-          {/* PnL Percentage */}
           <p
             className={twMerge(
               "exposure-h1-italic leading-tight mb-4",
@@ -108,14 +109,12 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
             {displayPercent.toFixed(2)}%
           </p>
 
-          {/* Entry Price + Mark Price */}
           <div className="flex gap-6 mb-3">
             <div className="flex flex-col">
               <span className="diatype-xs-regular text-ink-tertiary-500">
                 {m["modals.pnlShare.entryPrice"]()}
               </span>
               <span className="diatype-sm-bold text-ink-primary-900">
-                $
                 {Number(entryPrice).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -136,7 +135,6 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
             </div>
           </div>
 
-          {/* Referral Code on card */}
           {referralLink && (
             <div className="mt-2">
               <span className="diatype-xs-regular text-ink-tertiary-500">
@@ -146,22 +144,17 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
             </div>
           )}
 
-          {/* Character overlay */}
           <img
-            src={`/images/characters/${CHARACTER_IMAGES[selectedCharacter]}`}
+            src={`/images/pnl-modal/${CHARACTERS[selectedCharacter]}.png`}
             alt="character"
             className={twMerge(
-              "absolute -right-8 bottom-8 lg:right-4 h-[80%] max-h-[12rem] lg:max-h-[17rem] opacity-90 pointer-events-none select-none",
-              CHARACTER_IMAGES[selectedCharacter] === "purple-bird.svg" && "-scale-x-100",
-              CHARACTER_IMAGES[selectedCharacter] === "alien.svg" && "-scale-x-100 lg:scale-x-100",
+              "absolute right-0 bottom-0 h-[80%] max-h-[12rem] lg:max-h-[17rem] opacity-90 pointer-events-none select-none",
             )}
           />
         </div>
       </div>
 
-      {/* Controls */}
       <div className="flex flex-col gap-4 md:w-[16rem] shrink-0">
-        {/* Referral Code */}
         {referralLink && (
           <div className="flex flex-col gap-1">
             <span className="exposure-sm-italic text-ink-tertiary-500">
@@ -177,21 +170,21 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
             {m["modals.pnlShare.overlay"]()}
           </span>
           <div className="grid grid-cols-5 gap-2">
-            {CHARACTER_IMAGES.map((img, idx) => (
+            {CHARACTERS.map((img, idx) => (
               <button
                 key={img}
                 type="button"
                 onClick={() => setSelectedCharacter(idx)}
                 className={twMerge(
-                  "relative w-10 h-10 rounded-lg overflow-hidden border-2 cursor-pointer transition-colors",
+                  "relative w-12 h-12 md:w-10 md:h-10 rounded-lg overflow-hidden border-2 cursor-pointer transition-colors",
                   idx === selectedCharacter
                     ? "border-primitives-red-light-500"
                     : "border-outline-secondary-gray hover:border-ink-tertiary-500",
                 )}
               >
                 <img
-                  src={`/images/characters/${img}`}
-                  alt={img.replace(".svg", "")}
+                  src={`/images/pnl-modal/${img}-thumbnail.png`}
+                  alt={img}
                   className="w-full h-full object-cover"
                 />
                 {idx === selectedCharacter && (
@@ -204,7 +197,6 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="flex flex-col gap-2 mt-auto">
           <div className="flex gap-2">
             <Button fullWidth onClick={handleSaveImage}>
