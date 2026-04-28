@@ -143,14 +143,30 @@ class TestQueryApp:
 class TestQueryAppSmart:
     def test_wraps_in_wasm_smart(self, httpserver: HTTPServer) -> None:
         """The request becomes {wasm_smart: {contract, msg}}."""
+        # Response is also wrapped: the chain returns
+        # `{"queryApp": {"wasm_smart": <inner>}}` and `query_app_smart`
+        # unwraps the `wasm_smart` envelope before returning.
         captured = _capture_request(
             httpserver,
-            {"data": {"queryApp": {"result": "ok"}}},
+            {"data": {"queryApp": {"wasm_smart": {"result": "ok"}}}},
         )
         _info(httpserver).query_app_smart(_CONTRACT_ADDRESS, {"foo": "bar"})
         assert captured[0]["variables"]["request"] == {
             "wasm_smart": {"contract": _CONTRACT_ADDRESS, "msg": {"foo": "bar"}}
         }
+
+    def test_unwraps_wasm_smart_envelope(self, httpserver: HTTPServer) -> None:
+        """The contract's response is unwrapped from the `wasm_smart` envelope."""
+        # Regression guard: a real chain returns the variant-tagged envelope
+        # for every queryApp request kind. `query_app_smart` is the typed
+        # convenience method that promises callers see the contract's own
+        # response shape, NOT the wrapper.
+        _capture_request(
+            httpserver,
+            {"data": {"queryApp": {"wasm_smart": {"some": "payload"}}}},
+        )
+        result = _info(httpserver).query_app_smart(_CONTRACT_ADDRESS, {"foo": "bar"})
+        assert result == {"some": "payload"}
 
     def test_satisfies_query_client_protocol(self) -> None:
         """Phase 5's _QueryClient Protocol is satisfied structurally."""

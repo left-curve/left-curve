@@ -218,13 +218,13 @@ class Info(API):
         *,
         height: int | None = None,
     ) -> Any:
-        """Generic `queryApp` wrapper. Return type varies by request shape."""
-        # The response shape depends entirely on the request kind: `wasm_smart`
-        # returns the contract's JSON response (any shape), `multi` returns
-        # `{multi: [...]}`, `config` returns the chain config, etc. Returning
-        # `Any` rather than `dict` lets typed callers (Phase 7's domain
-        # methods) declare their own precise return types without first
-        # casting away an inaccurate `dict[str, Any]`.
+        """Generic `queryApp` wrapper. Returns the raw kind-keyed envelope."""
+        # The chain returns `{<kind>: <data>}` for every request variant —
+        # e.g. `{"wasm_smart": <contract response>}`, `{"multi": [...]}`,
+        # `{"config": ...}`. We deliberately return the wrapped shape here
+        # so kind-specific callers can pick their own typed return shape;
+        # the convenience methods `query_app_smart` and `query_app_multi`
+        # do the unwrap.
         data = self.query(
             _QUERY_APP,
             variables={"request": request, "height": height},
@@ -238,11 +238,14 @@ class Info(API):
         *,
         height: int | None = None,
     ) -> Any:
-        """Convenience for `{wasm_smart: {contract, msg}}` queries."""
+        """Convenience for `{wasm_smart: {contract, msg}}` queries; unwraps the envelope."""
+        # `query_app` returns the kind-keyed wrapper `{"wasm_smart": <inner>}`;
+        # unwrap so callers see the contract's own response shape directly.
+        # `query_app_multi` does the same with its `["multi"]` unwrap.
         return self.query_app(
             {"wasm_smart": {"contract": contract, "msg": msg}},
             height=height,
-        )
+        )["wasm_smart"]
 
     def query_app_multi(
         self,
