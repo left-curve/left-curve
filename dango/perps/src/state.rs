@@ -5,7 +5,7 @@ use {
         perps::{
             ClientOrderId, CommissionRate, ConditionalOrderId, FeeShareRatio, FillId, LimitOrder,
             OrderId, PairId, PairParam, PairState, Param, Referee, RefereeStats, Referrer, State,
-            TriggerDirection, UserReferralData, UserState,
+            TriggerDirection, UserReferralData, UserState, VaultSnapshot,
         },
     },
     grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp, UniqueIndex},
@@ -63,6 +63,11 @@ pub const DEPTHS: Map<DepthKey, (Quantity, UsdValue)> = Map::new("depth");
 /// Cumulative trading volume per user, bucketed by day.
 /// Key: (user, day_timestamp). Value: lifetime cumulative USD notional.
 pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
+
+/// Daily snapshots of the market-making vault's `(equity, share_supply)`.
+/// Keys are block timestamps rounded down to the start of the day. Used
+/// off-chain to compute the vault's historical share-price curve / APR.
+pub const VAULT_SNAPSHOTS: Map<Timestamp, VaultSnapshot> = Map::new("vault_snap");
 
 /// Address --> (maker_fee_rate, taker_fee_rate)
 pub const FEE_RATE_OVERRIDES: Map<Addr, (Dimensionless, Dimensionless)> = Map::new("fr_override");

@@ -905,6 +905,17 @@ pub enum CancelConditionalOrderRequest {
     All,
 }
 
+/// A point-in-time snapshot of the market-making vault's redemption value.
+///
+/// Stored daily by the cron handler. The ratio `equity / share_supply` is the
+/// redemption value of one vault share, and how it varies over time describes
+/// the vault's historical profitability.
+#[grug::derive(Serde, Borsh)]
+pub struct VaultSnapshot {
+    pub equity: UsdValue,
+    pub share_supply: Uint128,
+}
+
 // --------------------------------- Messages ----------------------------------
 
 #[grug::derive(Serde)]
@@ -1214,6 +1225,15 @@ pub enum QueryMsg {
     VolumeByUser {
         user: UserIndex,
         since: Option<Timestamp>,
+    },
+
+    /// Enumerate daily snapshots of the market-making vault's
+    /// `(equity, share_supply)`. `min` and `max` are both inclusive timestamp
+    /// bounds.
+    #[returns(BTreeMap<Timestamp, VaultSnapshot>)]
+    VaultSnapshots {
+        min: Option<Timestamp>,
+        max: Option<Timestamp>,
     },
 
     /// Query the referrer of a given referee.

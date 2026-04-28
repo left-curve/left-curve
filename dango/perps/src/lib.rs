@@ -125,6 +125,16 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         &mut events,
     )?;
 
+    // Take the vault snapshot last, so equity reflects the end-of-block state
+    // — including funding application and any conditional-order fills that
+    // settled this block. Mirrors what the metrics path captures below.
+    cron::take_vault_snapshot(
+        ctx.storage,
+        ctx.block.timestamp,
+        ctx.contract,
+        &mut oracle_querier,
+    )?;
+
     #[cfg(feature = "metrics")]
     {
         cron::emit_cron_metrics(ctx.storage, ctx.contract, &mut oracle_querier, start)?;
@@ -343,6 +353,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::VolumeByUser { user, since } => {
             let res = query::query_volume_by_user(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VaultSnapshots { min, max } => {
+            let res = query::query_vault_snapshots(ctx.storage, min, max)?;
             res.to_json_value()
         },
         QueryMsg::Referrer { referee } => {
