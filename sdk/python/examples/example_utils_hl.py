@@ -46,8 +46,8 @@ def setup(
     Mirrors HL's ``example_utils.setup`` so HL examples ported into this
     repo are byte-identical except for the import lines.
     """
-    from dango.hyperliquid_compatibility.exchange import Exchange as ExchangeCls
-    from dango.hyperliquid_compatibility.info import Info as InfoCls
+    from dango.hyperliquid_compatibility.exchange import Exchange
+    from dango.hyperliquid_compatibility.info import Info
 
     load_env()
     account: LocalAccount = eth_account.Account.from_key(get_secret_key())
@@ -56,7 +56,7 @@ def setup(
     if address != account.address:
         print("Running with agent address:", account.address)
 
-    info = InfoCls(base_url=base_url, skip_ws=skip_ws, perp_dexs=perp_dexs)
+    info = Info(base_url=base_url, skip_ws=skip_ws, perp_dexs=perp_dexs)
     # `user_state` is HL-shaped (the HL-compat Info reshapes the native
     # contract response to match HL's TypedDict): `marginSummary` carries
     # `accountValue` as a decimal string, same as upstream HL. Dango is
@@ -72,7 +72,7 @@ def setup(
             f"If the address shown is your API wallet address, set DANGO_ACCOUNT_ADDRESS "
             f"to the address of your account, not the API wallet."
         )
-    exchange = ExchangeCls(
+    exchange = Exchange(
         account,
         base_url,
         account_address=address,
@@ -88,6 +88,6 @@ def setup_read_only(
     perp_dexs: list[str] | None = None,
 ) -> Info:
     """Construct a credential-free HL-compat Info for read-only examples."""
-    from dango.hyperliquid_compatibility.info import Info as InfoCls
+    from dango.hyperliquid_compatibility.info import Info
 
-    return InfoCls(base_url=base_url, skip_ws=skip_ws, perp_dexs=perp_dexs)
+    return Info(base_url=base_url, skip_ws=skip_ws, perp_dexs=perp_dexs)

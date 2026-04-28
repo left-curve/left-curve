@@ -362,9 +362,9 @@ class Exchange:
         # (which reads the user's positions). We embed an HL-shaped Info
         # over the same base_url with `skip_ws=True` because the Exchange
         # never needs websocket subscriptions.
-        from dango.hyperliquid_compatibility.info import Info as HlInfoCls
+        from dango.hyperliquid_compatibility.info import Info
 
-        self.info: HlInfo = HlInfoCls(
+        self.info: HlInfo = Info(
             base_url=base_url,
             meta=meta,
             perp_dexs=perp_dexs,

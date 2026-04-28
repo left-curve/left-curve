@@ -57,8 +57,8 @@ def setup(
     # `perp_dexs` is accepted for HL-signature symmetry but unused on the
     # native side — Dango has no builder-deployed DEX abstraction.
     _ = perp_dexs
-    from dango.exchange import Exchange as ExchangeCls
-    from dango.info import Info as InfoCls
+    from dango.exchange import Exchange
+    from dango.info import Info
     from dango.utils.constants import LOCAL_API_URL
 
     load_env()
@@ -71,7 +71,7 @@ def setup(
     # Native `Info` requires a base_url string (HL-compat coalesces None
     # internally; we mirror that here to keep the two setups feel-alike).
     resolved_url = base_url or LOCAL_API_URL
-    info = InfoCls(resolved_url, skip_ws=skip_ws)
+    info = Info(resolved_url, skip_ws=skip_ws)
     # Native `user_state` returns the raw contract response. Note
     # `margin` is a flat `UsdValue` decimal string (NOT a nested object
     # like HL's `marginSummary`); walk a single string field for the
@@ -86,7 +86,7 @@ def setup(
             f"If the address shown is your API wallet address, set DANGO_ACCOUNT_ADDRESS "
             f"to the address of your account, not the API wallet."
         )
-    exchange = ExchangeCls(
+    exchange = Exchange(
         account,
         resolved_url,
         account_address=Addr(address),
@@ -102,10 +102,10 @@ def setup_read_only(
     """Construct a credential-free native Info for read-only examples."""
     # No `.env` load, no wallet, no equity guard — read-only callers shouldn't
     # be forced to maintain DANGO_* secrets just to query public chain state.
-    from dango.info import Info as InfoCls
+    from dango.info import Info
     from dango.utils.constants import LOCAL_API_URL
 
-    return InfoCls(base_url or LOCAL_API_URL, skip_ws=skip_ws)
+    return Info(base_url or LOCAL_API_URL, skip_ws=skip_ws)
 
 
 def get_secret_key() -> str | bytes:
