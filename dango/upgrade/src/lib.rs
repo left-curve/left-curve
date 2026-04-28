@@ -1,5 +1,5 @@
 use {
-    dango_perps::state::VAULT_SNAPSHOTS,
+    dango_perps::{state::VAULT_SNAPSHOTS, volume::round_to_day},
     dango_types::{UsdValue, perps::VaultSnapshot},
     grug::{Addr, BlockInfo, StdResult, Storage, Timestamp, Uint128, addr},
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
@@ -11,13 +11,18 @@ const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbe
 const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
 
-/// Daily noon-UTC snapshots of `(timestamp_ms, equity_raw_u128, share_supply_u128)`
-/// for the market-making vault, pulled from the indexer. Covers protocol
-/// launch (Apr 9, 2026) through Apr 28, 2026.
+/// Daily snapshots of `(sample_ts_ms, equity_raw_i128, share_supply_u128)`
+/// for the market-making vault, pulled from the indexer at 12:00 UTC each
+/// day. Covers protocol launch (Apr 9, 2026) through Apr 28, 2026.
 ///
-/// Apr 13 and Apr 14 carry forward Apr 12's values: the chain was halted on
-/// those two days due to a security incident, so on-chain vault state did
-/// not change.
+/// `sample_ts_ms` is the indexer's noon-UTC sampling time. The actual
+/// storage key written to `VAULT_SNAPSHOTS` is that timestamp run through
+/// `round_to_day`, i.e. the same day's 00:00 UTC bucket — matching the
+/// keys the cron writer (`take_vault_snapshot`) produces going forward.
+///
+/// Apr 13 and Apr 14 carry forward Apr 12's values: the chain was halted
+/// on those two days due to a security incident, so on-chain vault state
+/// did not change.
 ///
 /// Equity values are the raw 6-decimal fixed-point form: e.g.
 /// `101_470_582_290` represents $101_470.582290.
@@ -68,10 +73,12 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     Ok(())
 }
 
-/// Insert pre-computed daily noon-UTC vault snapshots into `VAULT_SNAPSHOTS`.
+/// Insert pre-computed daily vault snapshots into `VAULT_SNAPSHOTS`. Each
+/// noon-UTC sample is keyed at the same day's 00:00 UTC bucket via
+/// `round_to_day`, matching the cron writer.
 fn do_vault_snapshot_backfill(storage: &mut dyn Storage) -> StdResult<()> {
-    for &(ts_ms, equity_raw, share_supply) in VAULT_SNAPSHOT_BACKFILL {
-        let key = Timestamp::from_millis(ts_ms);
+    for &(sample_ts_ms, equity_raw, share_supply) in VAULT_SNAPSHOT_BACKFILL {
+        let key = round_to_day(Timestamp::from_millis(sample_ts_ms));
         let snapshot = VaultSnapshot {
             equity: UsdValue::new_raw(equity_raw),
             share_supply: Uint128::new(share_supply),
@@ -93,11 +100,13 @@ fn do_vault_snapshot_backfill(storage: &mut dyn Storage) -> StdResult<()> {
 mod tests {
     use {
         super::*,
+        dango_perps::volume::NANOS_PER_DAY,
         grug::{MockStorage, Order},
     };
 
-    /// Backfill writes all 20 daily samples into `VAULT_SNAPSHOTS` at the
-    /// expected noon-UTC keys, with Apr 13/14 carrying forward Apr 12.
+    /// Backfill writes all 20 daily samples into `VAULT_SNAPSHOTS` at
+    /// 00:00-UTC bucket keys (matching what the cron produces), with
+    /// Apr 13/14 carrying forward Apr 12.
     #[test]
     fn vault_snapshot_backfill() {
         let mut storage = MockStorage::new();
@@ -112,30 +121,42 @@ mod tests {
         // 20 entries: Apr 9 through Apr 28, 2026.
         assert_eq!(entries.len(), 20);
 
-        // Keys are strictly ascending.
+        // Keys are strictly ascending and aligned to day boundaries
+        // (00:00 UTC), matching the cron writer's bucketing.
         for win in entries.windows(2) {
             assert!(win[0].0 < win[1].0);
         }
+        for (key, _) in &entries {
+            let nanos = key.into_nanos();
+            assert_eq!(
+                nanos % NANOS_PER_DAY,
+                0,
+                "key {nanos} ns is not aligned to a day boundary"
+            );
+        }
 
-        // Apr 9 (first entry).
-        assert_eq!(entries[0].0, Timestamp::from_millis(1_775_736_000_000));
+        // Apr 9 (first entry): noon sample 1_775_736_000_000 ms → 00:00 key
+        // 1_775_692_800_000 ms (12 h earlier).
+        assert_eq!(entries[0].0, Timestamp::from_millis(1_775_692_800_000));
         assert_eq!(entries[0].1.equity, UsdValue::new_raw(101_470_582_290));
         assert_eq!(entries[0].1.share_supply, Uint128::new(100_911_643_265));
 
-        // Apr 28 (last entry).
-        assert_eq!(entries[19].0, Timestamp::from_millis(1_777_377_600_000));
+        // Apr 28 (last entry): noon sample 1_777_377_600_000 ms → 00:00 key
+        // 1_777_334_400_000 ms.
+        assert_eq!(entries[19].0, Timestamp::from_millis(1_777_334_400_000));
         assert_eq!(entries[19].1.equity, UsdValue::new_raw(2_545_034_915_578));
         assert_eq!(entries[19].1.share_supply, Uint128::new(2_182_925_867_463));
 
-        // Apr 12, 13, 14 carry the same `(equity, share_supply)`.
+        // Apr 12, 13, 14 carry the same `(equity, share_supply)`. Look up
+        // each by its 00:00-UTC bucket key.
         let apr_12 = VAULT_SNAPSHOTS
-            .load(&storage, Timestamp::from_millis(1_775_995_200_000))
+            .load(&storage, Timestamp::from_millis(1_775_952_000_000))
             .unwrap();
         let apr_13 = VAULT_SNAPSHOTS
-            .load(&storage, Timestamp::from_millis(1_776_081_600_000))
+            .load(&storage, Timestamp::from_millis(1_776_038_400_000))
             .unwrap();
         let apr_14 = VAULT_SNAPSHOTS
-            .load(&storage, Timestamp::from_millis(1_776_168_000_000))
+            .load(&storage, Timestamp::from_millis(1_776_124_800_000))
             .unwrap();
         assert_eq!(apr_12.equity, apr_13.equity);
         assert_eq!(apr_13.equity, apr_14.equity);
