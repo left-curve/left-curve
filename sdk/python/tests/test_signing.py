@@ -80,10 +80,13 @@ class TestCanonicalJson:
     def test_golden_signdoc_byte_string(self) -> None:
         """A real-shape SignDoc encodes to a frozen byte string (regression gate)."""
         # Pins the canonical-JSON contract: object keys sorted alphabetically
-        # at every level, no whitespace, integers as numbers, null literal.
-        # Any silent change to the encoder will break this fixture.
+        # at every level, no whitespace, integers as numbers, and `None` in
+        # `data` (the chain's `Metadata` struct) STRIPPED — the chain uses
+        # `serde_with::skip_serializing_none` and our canonical bytes must
+        # match what it reconstructs for signature verification. Any silent
+        # change to the encoder will break this fixture.
         expected = (
-            b'{"data":{"chain_id":"dango-1","expiry":null,"nonce":0,"user_index":1},'
+            b'{"data":{"chain_id":"dango-1","nonce":0,"user_index":1},'
             b'"gas_limit":100000,"messages":[],'
             b'"sender":"0x000000000000000000000000000000000000beef"}'
         )
@@ -188,7 +191,7 @@ class TestSign:
         w = Secp256k1Wallet.from_bytes(b"\x01" * 32, _DEMO_ADDRESS)
         sig = cast(dict[str, str], w.sign(_demo_sign_doc()))
         assert sig["secp256k1"] == (
-            "s5obWwBxkSOXCUcLtWYZWlivkpsMCMFyA8+l3IcM5pQ9jhua08FqzmvitioFPJl5Rm7UrHByqccq+J4pASo36A=="
+            "Wa2xpNxLKznjA/wpOySinJKOzgHHRQKA4M74zo4pqycceCobIvJD1pSZ9EK7Lfly4V9gOw56WpeuAyDh596Nlg=="
         )
 
     def test_signature_recovers_to_pubkey(self) -> None:

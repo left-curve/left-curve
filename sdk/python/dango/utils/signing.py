@@ -48,8 +48,23 @@ def sign_doc_canonical_json(sign_doc: SignDoc) -> bytes:
     # json.dumps is recursive on every nested object, matching that contract.
     # `ensure_ascii=False` keeps non-ASCII chars as UTF-8 bytes (no \uXXXX
     # escapes), matching serde_json's default UTF-8 output.
+    #
+    # `data` is the chain's `Metadata` struct, decorated with
+    # `#[serde_with::skip_serializing_none]` (injected by
+    # `#[grug::derive(Serde)]` in grug/macros/src/derive.rs). When the
+    # chain re-serializes Metadata for verification, `Option::None`
+    # fields are OMITTED from the canonical bytes — most notably
+    # `expiry`. We strip `None` from `data` here so our signed bytes
+    # match the chain's reconstructed canonical exactly. Other levels
+    # (the inner `msg` of an Execute message, etc.) are `Json` pass-
+    # through on the chain side and preserve `null`s verbatim, so they
+    # don't need this treatment.
+    payload: dict[str, Any] = dict(sign_doc)
+    data = payload.get("data")
+    if isinstance(data, dict):
+        payload["data"] = {k: v for k, v in data.items() if v is not None}
     return json.dumps(
-        sign_doc,
+        payload,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
