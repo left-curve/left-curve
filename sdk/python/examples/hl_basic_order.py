@@ -1,12 +1,16 @@
 """HL-compat port of upstream ``hyperliquid-python-sdk``'s ``basic_order.py``.
 
-Verbatim except for the imports — proves the HL-compat layer delivers
-the one-line port promise.
+Body is byte-verbatim with upstream; only the imports differ:
+
+* ``import example_utils_hl as example_utils`` instead of upstream's
+  ``import example_utils``.
+* ``from dango.hyperliquid_compatibility import constants`` instead of
+  upstream's ``from hyperliquid.utils import constants``.
 """
 
 import json
 
-import example_utils
+import example_utils_hl as example_utils
 
 from dango.hyperliquid_compatibility import constants
 

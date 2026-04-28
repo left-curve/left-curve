@@ -1,10 +1,14 @@
 # ruff: noqa: E501
 # Long lines below are kept verbatim from upstream HL's example to honour
-# the "one-line port" claim of the HL-compat layer.
+# the "byte-verbatim except imports" claim of the HL-compat layer.
 """HL-compat port of upstream ``hyperliquid-python-sdk``'s ``basic_ws.py``.
 
-Verbatim except for the imports — proves the HL-compat layer delivers
-the one-line port promise for streaming code too.
+Body is byte-verbatim with upstream; only the imports differ:
+
+* ``import example_utils_hl as example_utils`` instead of upstream's
+  ``import example_utils``.
+* ``from dango.hyperliquid_compatibility import constants`` instead of
+  upstream's ``from hyperliquid.utils import constants``.
 
 Dango gaps to be aware of (relative to Hyperliquid):
 
@@ -20,7 +24,7 @@ users running on Dango should comment out those subscriptions or expect
 the corresponding ``NotImplementedError``.
 """
 
-import example_utils
+import example_utils_hl as example_utils
 
 from dango.hyperliquid_compatibility import constants
 

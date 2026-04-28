@@ -6,14 +6,19 @@ import time
 
 import example_utils
 
-from dango.utils.constants import TESTNET_API_URL
+from dango.utils.constants import PERPS_CONTRACT_MAINNET, TESTNET_API_URL
 from dango.utils.types import Addr, CandleInterval, PairId
 
 
 def main() -> None:
-    address, info, _exchange = example_utils.setup_native(base_url=TESTNET_API_URL)
+    info = example_utils.setup_read_only(base_url=TESTNET_API_URL)
 
     pair_id = PairId("perp/ethusd")
+    # The perps contract holds the counterparty vault; its
+    # `subscribe_user_events` stream always shows live activity on
+    # mainnet. We use it here so the example is runnable with no
+    # `.env` file (no DANGO_ACCOUNT_ADDRESS required).
+    user_addr = Addr(PERPS_CONTRACT_MAINNET)
 
     # Each `subscribe_*` returns an int subscription id; we keep them so
     # the script can unsubscribe explicitly on shutdown. The callback
@@ -23,7 +28,7 @@ def main() -> None:
     sub_ids: list[int] = []
     sub_ids.append(info.subscribe_perps_trades(pair_id, print))
     sub_ids.append(info.subscribe_perps_candles(pair_id, CandleInterval.ONE_MINUTE, print))
-    sub_ids.append(info.subscribe_user_events(Addr(address), print))
+    sub_ids.append(info.subscribe_user_events(user_addr, print))
     sub_ids.append(info.subscribe_block(print))
 
     print(f"subscribed: {sub_ids}; streaming for 30s...")

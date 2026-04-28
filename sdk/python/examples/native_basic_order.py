@@ -11,7 +11,7 @@ from dango.utils.types import Addr, OrderId, PairId, TimeInForce
 
 
 def main() -> None:
-    address, info, exchange = example_utils.setup_native(
+    address, info, exchange = example_utils.setup(
         base_url=TESTNET_API_URL,
         skip_ws=True,
     )
