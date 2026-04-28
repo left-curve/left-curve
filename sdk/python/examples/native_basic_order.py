@@ -6,7 +6,7 @@ import json
 
 import example_utils
 
-from dango.utils.constants import TESTNET_API_URL
+from dango.utils.constants import PERPS_CONTRACT_TESTNET, TESTNET_API_URL
 from dango.utils.types import Addr, OrderId, PairId, TimeInForce
 
 
@@ -14,6 +14,7 @@ def main() -> None:
     address, info, exchange = example_utils.setup(
         base_url=TESTNET_API_URL,
         skip_ws=True,
+        perps_contract=Addr(PERPS_CONTRACT_TESTNET),
     )
 
     # Read the user's perps state and print existing positions, if any.

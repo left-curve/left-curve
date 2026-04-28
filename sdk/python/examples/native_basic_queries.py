@@ -132,7 +132,7 @@ def order_one(info: Info, order_id: OrderId) -> None:
 
 
 def main() -> None:
-    info = example_utils.setup_read_only(MAINNET_API_URL, skip_ws=True)
+    info = example_utils.setup_read_only(MAINNET_API_URL, skip_ws=True, perps_contract=_VAULT_ADDR)
 
     # Public queries that require no inputs.
     query_status(info)

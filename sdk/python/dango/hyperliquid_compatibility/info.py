@@ -543,6 +543,7 @@ class Info:
         meta: Meta | None = None,
         perp_dexs: list[str] | None = None,
         timeout: float | None = None,
+        perps_contract: Addr | None = None,
     ) -> None:
         # Lazy import of the native Info to avoid pulling in the
         # GraphQL websocket stack at module import time. Tests patch
@@ -558,7 +559,18 @@ class Info:
             from dango.utils.constants import LOCAL_API_URL
 
             base_url = LOCAL_API_URL
-        self._native: _native_info.Info = NativeInfo(base_url, skip_ws=skip_ws, timeout=timeout)
+        # Forward `perps_contract` to the native Info so testnet (or any
+        # non-mainnet deployment with a different contract address) gets
+        # routed correctly. Native Info defaults to mainnet when None,
+        # which would otherwise produce
+        # `data not found! type: grug_types::app::ContractInfo` against
+        # any other chain.
+        self._native: _native_info.Info = NativeInfo(
+            base_url,
+            skip_ws=skip_ws,
+            timeout=timeout,
+            perps_contract=perps_contract,
+        )
         # `perp_dexs` is HL's multi-DEX knob: HL allows querying multiple
         # DEXes deployed by builders. Dango has no permissionless
         # listing, so this is a no-op. Keep the parameter to preserve

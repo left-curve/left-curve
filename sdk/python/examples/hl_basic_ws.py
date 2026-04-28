@@ -3,12 +3,14 @@
 # the "byte-verbatim except imports" claim of the HL-compat layer.
 """HL-compat port of upstream ``hyperliquid-python-sdk``'s ``basic_ws.py``.
 
-Body is byte-verbatim with upstream; only the imports differ:
+Body is verbatim with upstream except for two Dango-specific deltas:
 
-* ``import example_utils_hl as example_utils`` instead of upstream's
-  ``import example_utils``.
-* ``from dango.hyperliquid_compatibility import constants`` instead of
-  upstream's ``from hyperliquid.utils import constants``.
+* Imports — ``example_utils_hl as example_utils`` and
+  ``dango.hyperliquid_compatibility import constants`` replace HL's
+  ``example_utils`` / ``hyperliquid.utils import constants``.
+* The ``setup()`` call adds a ``perps_contract=...`` kwarg. Dango has no
+  canonical URL → contract mapping, so the deployment address has to be
+  passed in explicitly. Everything else inside ``main()`` is verbatim.
 
 Dango gaps to be aware of (relative to Hyperliquid):
 
@@ -27,10 +29,14 @@ the corresponding ``NotImplementedError``.
 import example_utils_hl as example_utils
 
 from dango.hyperliquid_compatibility import constants
+from dango.utils.constants import PERPS_CONTRACT_TESTNET
+from dango.utils.types import Addr
 
 
 def main():
-    address, info, _ = example_utils.setup(constants.TESTNET_API_URL)
+    address, info, _ = example_utils.setup(
+        constants.TESTNET_API_URL, perps_contract=Addr(PERPS_CONTRACT_TESTNET)
+    )
     # An example showing how to subscribe to the different subscription types and prints the returned messages
     # Some subscriptions do not return snapshots, so you will not receive a message until something happens
     info.subscribe({"type": "allMids"}, print)

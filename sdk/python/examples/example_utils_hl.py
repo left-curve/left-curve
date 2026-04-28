@@ -34,17 +34,22 @@ from example_utils import get_secret_key, load_env, resolve_account_address
 if TYPE_CHECKING:
     from dango.hyperliquid_compatibility.exchange import Exchange
     from dango.hyperliquid_compatibility.info import Info
+    from dango.utils.types import Addr
 
 
 def setup(
     base_url: str | None = None,
     skip_ws: bool = False,
     perp_dexs: list[str] | None = None,
+    perps_contract: Addr | None = None,
 ) -> tuple[str, Info, Exchange]:
     """Build an HL-compat ``(address, info, exchange)`` trio from env vars.
 
-    Mirrors HL's ``example_utils.setup`` so HL examples ported into this
-    repo are byte-identical except for the import lines.
+    Mirrors HL's ``example_utils.setup``. ``perps_contract`` is a
+    Dango-specific kwarg (HL doesn't have one) — supply it explicitly
+    when targeting any chain other than the SDK's default deployment.
+    Calls in HL ports add a single ``perps_contract=...`` kwarg vs.
+    upstream; the rest of the body remains verbatim.
     """
     from dango.hyperliquid_compatibility.exchange import Exchange
     from dango.hyperliquid_compatibility.info import Info
@@ -56,7 +61,12 @@ def setup(
     if address != account.address:
         print("Running with agent address:", account.address)
 
-    info = Info(base_url=base_url, skip_ws=skip_ws, perp_dexs=perp_dexs)
+    info = Info(
+        base_url=base_url,
+        skip_ws=skip_ws,
+        perp_dexs=perp_dexs,
+        perps_contract=perps_contract,
+    )
     # `user_state` is HL-shaped (the HL-compat Info reshapes the native
     # contract response to match HL's TypedDict): `marginSummary` carries
     # `accountValue` as a decimal string, same as upstream HL. Dango is
@@ -77,6 +87,7 @@ def setup(
         base_url,
         account_address=address,
         perp_dexs=perp_dexs,
+        perps_contract=perps_contract,
     )
     return address, info, exchange
 
@@ -86,8 +97,18 @@ def setup_read_only(
     *,
     skip_ws: bool = False,
     perp_dexs: list[str] | None = None,
+    perps_contract: Addr | None = None,
 ) -> Info:
-    """Construct a credential-free HL-compat Info for read-only examples."""
+    """Construct a credential-free HL-compat Info for read-only examples.
+
+    ``perps_contract`` must be supplied explicitly when targeting any
+    chain other than the SDK's default. See :func:`setup` for rationale.
+    """
     from dango.hyperliquid_compatibility.info import Info
 
-    return Info(base_url=base_url, skip_ws=skip_ws, perp_dexs=perp_dexs)
+    return Info(
+        base_url=base_url,
+        skip_ws=skip_ws,
+        perp_dexs=perp_dexs,
+        perps_contract=perps_contract,
+    )

@@ -302,6 +302,7 @@ class Exchange:
         spot_meta: Any = None,
         perp_dexs: list[str] | None = None,
         timeout: float | None = None,
+        perps_contract: Addr | None = None,
     ) -> None:
         # `vault_address`: HL routes vault-account txs through this address.
         # Dango has no vault-account abstraction at the wallet level (vault
@@ -352,11 +353,17 @@ class Exchange:
         # broadcast. We hand it the wallet and account_address verbatim;
         # constructor-level chain_id and nonce auto-resolution happen
         # inside it.
+        # Forward `perps_contract` to both the native Exchange (so build-
+        # side messages target the right deployment) and the embedded
+        # HL Info below (so query-side reads also hit the right chain).
+        # Native defaults to mainnet when None, which is fine for the
+        # default-deployment case; pass explicitly for testnet.
         self._native: NativeExchange = NativeExchange(
             wallet,
             base_url,
             account_address=Addr(account_address),
             timeout=timeout,
+            perps_contract=perps_contract,
         )
         # HL's Exchange holds a `self.info` for things like `market_close`
         # (which reads the user's positions). We embed an HL-shaped Info
@@ -370,6 +377,7 @@ class Exchange:
             perp_dexs=perp_dexs,
             timeout=timeout,
             skip_ws=True,
+            perps_contract=perps_contract,
         )
 
     # --- Single-order entry points ----------------------------------------

@@ -1,11 +1,13 @@
 """HL-compat port of upstream ``hyperliquid-python-sdk``'s ``basic_order.py``.
 
-Body is byte-verbatim with upstream; only the imports differ:
+Body is verbatim with upstream except for two Dango-specific deltas:
 
-* ``import example_utils_hl as example_utils`` instead of upstream's
-  ``import example_utils``.
-* ``from dango.hyperliquid_compatibility import constants`` instead of
-  upstream's ``from hyperliquid.utils import constants``.
+* Imports — ``example_utils_hl as example_utils`` and
+  ``dango.hyperliquid_compatibility import constants`` replace HL's
+  ``example_utils`` / ``hyperliquid.utils import constants``.
+* The ``setup()`` call adds a ``perps_contract=...`` kwarg. Dango has no
+  canonical URL → contract mapping, so the deployment address has to be
+  passed in explicitly. Everything else inside ``main()`` is verbatim.
 """
 
 import json
@@ -13,10 +15,16 @@ import json
 import example_utils_hl as example_utils
 
 from dango.hyperliquid_compatibility import constants
+from dango.utils.constants import PERPS_CONTRACT_TESTNET
+from dango.utils.types import Addr
 
 
 def main():
-    address, info, exchange = example_utils.setup(base_url=constants.TESTNET_API_URL, skip_ws=True)
+    address, info, exchange = example_utils.setup(
+        base_url=constants.TESTNET_API_URL,
+        skip_ws=True,
+        perps_contract=Addr(PERPS_CONTRACT_TESTNET),
+    )
 
     # Get the user state and print out position information
     user_state = info.user_state(address)

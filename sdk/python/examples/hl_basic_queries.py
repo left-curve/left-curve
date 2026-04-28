@@ -21,6 +21,7 @@ import example_utils_hl as example_utils
 from dango.hyperliquid_compatibility import constants
 from dango.hyperliquid_compatibility.info import Info
 from dango.utils.constants import PERPS_CONTRACT_MAINNET
+from dango.utils.types import Addr
 
 # Counterparty vault — its on-chain account always carries live positions
 # on mainnet, so we use it as the user-keyed query target. HL methods
@@ -102,7 +103,11 @@ def query_order_by_oid(info: Info, user: str, oid: int | str) -> None:
 
 
 def main() -> None:
-    info = example_utils.setup_read_only(constants.MAINNET_API_URL, skip_ws=True)
+    info = example_utils.setup_read_only(
+        constants.MAINNET_API_URL,
+        skip_ws=True,
+        perps_contract=Addr(_VAULT_ADDR),
+    )
 
     # Public queries that require no user.
     meta(info)

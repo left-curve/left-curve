@@ -48,11 +48,15 @@ def setup(
     *,
     skip_ws: bool = False,
     perp_dexs: list[str] | None = None,
+    perps_contract: Addr | None = None,
 ) -> tuple[str, Info, Exchange]:
     """Build a native ``(address, info, exchange)`` trio from env vars.
 
     Used by mutation examples; reads ``.env`` and refuses to run if the
-    configured account has zero margin.
+    configured account has zero margin. ``perps_contract`` must be
+    supplied explicitly when targeting any chain other than the SDK's
+    default (mainnet) — Dango has no canonical URL → contract mapping
+    and we don't try to guess.
     """
     # `perp_dexs` is accepted for HL-signature symmetry but unused on the
     # native side — Dango has no builder-deployed DEX abstraction.
@@ -71,7 +75,7 @@ def setup(
     # Native `Info` requires a base_url string (HL-compat coalesces None
     # internally; we mirror that here to keep the two setups feel-alike).
     resolved_url = base_url or LOCAL_API_URL
-    info = Info(resolved_url, skip_ws=skip_ws)
+    info = Info(resolved_url, skip_ws=skip_ws, perps_contract=perps_contract)
     # Native `user_state` returns the raw contract response. Note
     # `margin` is a flat `UsdValue` decimal string (NOT a nested object
     # like HL's `marginSummary`); walk a single string field for the
@@ -86,10 +90,15 @@ def setup(
             f"If the address shown is your API wallet address, set DANGO_ACCOUNT_ADDRESS "
             f"to the address of your account, not the API wallet."
         )
+    # Reuse the same `info` so the Exchange's queries hit the same
+    # perps contract, and pass `perps_contract` so build-side
+    # messages target the right deployment.
     exchange = Exchange(
         account,
         resolved_url,
         account_address=Addr(address),
+        info=info,
+        perps_contract=perps_contract,
     )
     return address, info, exchange
 
@@ -98,14 +107,24 @@ def setup_read_only(
     base_url: str | None = None,
     *,
     skip_ws: bool = False,
+    perps_contract: Addr | None = None,
 ) -> Info:
-    """Construct a credential-free native Info for read-only examples."""
+    """Construct a credential-free native Info for read-only examples.
+
+    ``perps_contract`` must be supplied explicitly when targeting any
+    chain other than the SDK's default (mainnet). See :func:`setup` for
+    the rationale.
+    """
     # No `.env` load, no wallet, no equity guard — read-only callers shouldn't
     # be forced to maintain DANGO_* secrets just to query public chain state.
     from dango.info import Info
     from dango.utils.constants import LOCAL_API_URL
 
-    return Info(base_url or LOCAL_API_URL, skip_ws=skip_ws)
+    return Info(
+        base_url or LOCAL_API_URL,
+        skip_ws=skip_ws,
+        perps_contract=perps_contract,
+    )
 
 
 def get_secret_key() -> str | bytes:
