@@ -77,5 +77,6 @@
     "direct_share": "0.2",
     "indirect_share": "0.05",
     "referral_boosts": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }}
-  }
+  },
+  "user_boosts": {{ (points_bot_user_boosts[network] | default({})) | to_nice_json(indent=2) | indent(2) }}
 }

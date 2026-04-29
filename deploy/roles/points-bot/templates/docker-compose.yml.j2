@@ -8,6 +8,10 @@ services:
     environment:
       - oat_provider__type={{ points_bot_oat_providers[network].type }}
       - oat_provider__api_key={{ points_bot_oat_providers[network].api_key }}
+{% set admin_api_key = (points_bot_admin_api_keys | default({})).get(network) %}
+{% if admin_api_key %}
+      - httpd__admin_api_key={{ admin_api_key }}
+{% endif %}
     ports:
       - "{{ points_bot_metrics_ports[network] }}:8080"
     volumes:
