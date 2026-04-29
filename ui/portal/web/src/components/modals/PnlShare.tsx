@@ -6,9 +6,9 @@ import {
   IconButton,
   IconChecked,
   IconClose,
-  IconTwitter,
   twMerge,
   useApp,
+  useTheme,
 } from "@left-curve/applets-kit";
 import { useAccount, useConfig, getReferralLink } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -38,6 +38,7 @@ const CHARACTERS = [
 export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
   const { pairId, symbol, size, entryPrice, currentPrice, pnl } = props;
   const { hideModal } = useApp();
+  const { theme } = useTheme();
   const { coins } = useConfig();
   const { userIndex } = useAccount();
 
@@ -67,11 +68,6 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
     }
   };
 
-  const handleShareOnX = () => {
-    const text = `Check out my PnL on @dangoxyz! ${displayPercent >= 0 ? "+" : ""}${displayPercent.toFixed(2)}% on ${symbol}`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
-  };
-
   return (
     <div className="flex flex-col md:flex-row bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[50rem]">
       <IconButton
@@ -87,9 +83,9 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
           ref={cardRef}
           className="bg-surface-secondary-rice rounded-2xl shadow-account-card p-6 relative overflow-hidden"
         >
-          <img src="/images/dango.svg" alt="Dango" className="h-8 mb-4" />
+          <img src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`} alt="Dango" className="relative z-10 h-8 mb-4" />
 
-          <div className="flex items-center gap-2 mb-3">
+          <div className="relative z-10 flex items-center gap-2 mb-3">
             {logoURI && <img src={logoURI} alt={symbol} className="w-6 h-6 rounded-full" />}
             <span className="diatype-m-bold text-ink-primary-900">{symbol}</span>
             <Badge
@@ -101,7 +97,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
 
           <p
             className={twMerge(
-              "exposure-h1-italic leading-tight mb-4",
+              "relative z-10 exposure-h1-italic leading-tight mb-4",
               isPositive ? "text-utility-success-600" : "text-utility-error-600",
             )}
           >
@@ -109,7 +105,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
             {displayPercent.toFixed(2)}%
           </p>
 
-          <div className="flex gap-6 mb-3">
+          <div className="relative z-10 flex flex-col md:flex-row gap-2 md:gap-6 mb-3">
             <div className="flex flex-col">
               <span className="diatype-xs-regular text-ink-tertiary-500">
                 {m["modals.pnlShare.entryPrice"]()}
@@ -136,7 +132,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
           </div>
 
           {referralLink && (
-            <div className="mt-2">
+            <div className="relative z-10 mt-2">
               <span className="diatype-xs-regular text-ink-tertiary-500">
                 {m["modals.pnlShare.referralCode"]()}
               </span>
@@ -148,7 +144,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
             src={`/images/pnl-modal/${CHARACTERS[selectedCharacter]}.png`}
             alt="character"
             className={twMerge(
-              "absolute right-0 bottom-0 h-[80%] max-h-[12rem] lg:max-h-[17rem] opacity-90 pointer-events-none select-none",
+              "absolute right-0 bottom-0 h-[60%] md:h-[80%] max-h-[9rem] md:max-h-[12rem] lg:max-h-[17rem] opacity-90 pointer-events-none select-none",
             )}
           />
         </div>
@@ -198,17 +194,8 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
         </div>
 
         <div className="flex flex-col gap-2 mt-auto">
-          <div className="flex gap-2">
-            <Button fullWidth onClick={handleSaveImage}>
-              {m["modals.pnlShare.saveImage"]()}
-            </Button>
-            <Button fullWidth disabled>
-              {m["modals.pnlShare.copyLink"]()}
-            </Button>
-          </div>
-          <Button variant="primary" fullWidth onClick={handleShareOnX}>
-            <IconTwitter className="w-4 h-4" />
-            {m["modals.pnlShare.shareOnX"]()}
+          <Button fullWidth onClick={handleSaveImage}>
+            {m["modals.pnlShare.saveImage"]()}
           </Button>
         </div>
       </div>
