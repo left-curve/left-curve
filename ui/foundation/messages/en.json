@@ -478,6 +478,15 @@
       "subDescription": "Max position size decreases the higher your leverage.",
       "confirm": "Confirm",
       "warning": "Note that setting a higher leverage increases the risk of liquidation."
+    },
+    "pnlShare": {
+      "entryPrice": "Entry Price",
+      "markPrice": "Mark Price",
+      "referralCode": "Referral Code",
+      "overlay": "Overlay",
+      "saveImage": "Save Image",
+      "copyLink": "Copy Link",
+      "shareOnX": "Share on X"
     }
   },
   "signin": {
