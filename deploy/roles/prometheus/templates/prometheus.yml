@@ -73,7 +73,7 @@ scrape_configs:
       - targets:
         - 'ovh1:9101'
         - 'ovh2:9101'
-        - 'cadvisor:9101' # self (ovh3)
+        - 'cadvisor:8080' # self (ovh3)
         - 'ovh4:9101'
         - 'ovh5:9101'
         - 'ovh6:9101'
@@ -86,7 +86,7 @@ scrape_configs:
         - 'inter2:9101'
     relabel_configs:
     - source_labels: [__address__]
-      regex: 'cadvisor:9101'
+      regex: 'cadvisor:8080'
       target_label: instance
       replacement: 'ovh3:9101'
     metric_relabel_configs:
