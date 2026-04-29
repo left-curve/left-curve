@@ -313,7 +313,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   },
   [Modals.PnlShare]: {
     component: lazyWithRetry(() =>
-      import("./PnlShare").then(({ PnlShare }) => ({
+      import("./pnl-share/PnlShare").then(({ PnlShare }) => ({
         default: PnlShare,
       })),
     ),
