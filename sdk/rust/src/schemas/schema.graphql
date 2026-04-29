@@ -533,6 +533,7 @@ type PerpsFeesAndRevenue {
 	vaultFee: BigDecimal!
 	refereeRebate: BigDecimal!
 	referrerPayout: BigDecimal!
+	volumeUsd: BigDecimal!
 }
 
 """
