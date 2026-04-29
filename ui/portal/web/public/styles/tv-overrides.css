@@ -1,5 +1,10 @@
 /* Override hardcoded TradingView blue (#2962FF) */
 
+/* Zoom notification banner */
+[class*="container-"]:has([class*="closeButton-"]) {
+  background-color: #ED4561 !important;
+}
+
 /* Selected indicator legend border */
 [class*="selected"] [class*="buttons"],
 [class*="selected"] [class*="buttonsWrapper"],

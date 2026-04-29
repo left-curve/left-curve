@@ -22,6 +22,7 @@ import {
   computeLiquidationPrice,
   useVolume,
   useFeeRateOverride,
+  useStorage,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,6 +34,7 @@ import {
   FormattedNumber,
   IconButton,
   IconChevronDownFill,
+  IconEdit,
   IconUser,
   Input,
   InputSizeWithMax,
@@ -55,6 +57,7 @@ import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants
 import type { PerpsTimeInForce } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
+import { computeOtherPairsUsedMargin } from "../helpers/math";
 import { useTPSLPriceSync } from "../hooks/useTPSLPriceSync";
 
 import type React from "react";
@@ -354,6 +357,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { override: feeRateOverride } = useFeeRateOverride({ enabled: isConnected });
 
   const [sizeCoinDenom, setSizeCoinDenom] = useState("usd");
+  const [maxSlippage] = useStorage<string>("perps-max-slippage", {
+    initialValue: PERPS_DEFAULT_SLIPPAGE,
+  });
 
   useEffect(() => {
     setSizeCoinDenom("usd");
@@ -384,27 +390,14 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const otherPairsUsedMargin = useMemo(() => {
     const positions = userState?.positions;
     if (!positions) return 0;
-    let total = 0;
-    for (const [pid, pos] of Object.entries(positions)) {
-      if (pid === perpsPairId) continue;
-      const size = Math.abs(Number(pos.size));
-      if (!(size > 0)) continue;
-      const imr = Number(appConfig.perpsPairs[pid]?.initialMarginRatio ?? 0);
-      if (!(imr > 0)) continue;
 
-      // Mirror current-pair price resolution: stats first, oracle fallback.
-      let price = Number(statsByPairId[pid]?.currentPrice ?? 0);
-      if (!(price > 0)) {
-        // Pair id format is `perp/{symbolLowerCase}usd` (see tradePairStore.ts:33).
-        const symbol = pid.match(/^perp\/(.+)usd$/)?.[1]?.toUpperCase();
-        const denom = symbol ? allCoins.bySymbol[symbol]?.denom : undefined;
-        price = denom ? Number(getPrice(1, denom) ?? 0) : 0;
-      }
-      if (!(price > 0)) continue;
-
-      total += size * price * imr;
-    }
-    return total;
+    return computeOtherPairsUsedMargin(positions, perpsPairId, appConfig.perpsPairs, (pid) => {
+      const statsPrice = Decimal(statsByPairId[pid]?.currentPrice ?? 0);
+      if (statsPrice.gt(0)) return statsPrice;
+      const symbol = pid.match(/^perp\/(.+)usd$/)?.[1]?.toUpperCase();
+      const denom = symbol ? allCoins.bySymbol[symbol]?.denom : undefined;
+      return denom ? Decimal(getPrice(1, denom) ?? 0) : Decimal(0);
+    });
   }, [
     userState?.positions,
     perpsPairId,
@@ -526,9 +519,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [maxSizeAmount]);
 
   const orderValue = useMemo(() => {
-    const s = Number(size);
-    if (s <= 0) return "-";
-    const notional = isBaseSize ? s * currentPrice : s;
+    const s = Decimal(size || 0);
+    if (s.lte(0)) return "-";
+    const notional = isBaseSize ? s.mul(currentPrice) : s;
     return `$${formatNumber(notional.toString(), formatNumberOptions)}`;
   }, [size, isBaseSize, currentPrice, formatNumberOptions]);
 
@@ -552,7 +545,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     operation,
     sizeValue,
     priceValue,
-    maxSlippage: PERPS_DEFAULT_SLIPPAGE,
+    maxSlippage,
     tpPrice: tpslEnabled && Number(tpPrice) > 0 ? tpPrice : undefined,
     slPrice: tpslEnabled && Number(slPrice) > 0 ? slPrice : undefined,
     reduceOnly,
@@ -580,10 +573,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 
   const requiredMargin = useMemo(() => {
-    const s = Number(size);
-    if (s <= 0) return null;
-    const notional = isBaseSize ? s * currentPrice : s;
-    return notional / selectedLeverage;
+    const s = Decimal(size || 0);
+    if (s.lte(0)) return null;
+    const notional = isBaseSize ? s.mul(currentPrice) : s;
+    return notional.div(selectedLeverage);
   }, [size, isBaseSize, currentPrice, selectedLeverage]);
 
   const estLiquidationPrice = useMemo(() => {
@@ -839,10 +832,22 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             />
           ) : null}
           {operation === "market" ? (
-            <InfoRow
-              label={m["dex.protrade.perps.slippage"]()}
-              value={m["dex.protrade.perps.slippageDefault"]()}
-            />
+            <div className="flex items-center justify-between gap-2">
+              <Tooltip title={m["dex.protrade.perps.slippageTooltip"]()}>
+                <p className="diatype-xs-regular text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+                  {m["dex.protrade.perps.slippage"]()}
+                </p>
+              </Tooltip>
+              <div className="flex items-center gap-1">
+                <p className="diatype-xs-medium text-ink-secondary-700">
+                  {m["dex.protrade.perps.slippageDisplay"]({ max: Decimal(maxSlippage).mul(100).toFixed(2) })}
+                </p>
+                <IconEdit
+                  className="w-4 h-4 text-ink-tertiary-500 hover:text-ink-secondary-700 cursor-pointer"
+                  onClick={() => showModal(Modals.AdjustSlippage)}
+                />
+              </div>
+            </div>
           ) : null}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">

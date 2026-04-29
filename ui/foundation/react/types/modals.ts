@@ -38,6 +38,7 @@ export const Modals = {
   PerpsAdjustLeverage: "perps-adjust-leverage",
   FeeTiers: "fee-tiers",
   DestinationWallet: "destination-wallet",
+  AdjustSlippage: "adjust-slippage",
 };
 
 export type ModalRef = {

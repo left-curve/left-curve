@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, "../../..");
 export default defineConfig({
   test: {
     environment: "jsdom",
-    include: ["tests/**/*.test.{ts,tsx}"],
+    include: ["tests/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
     globals: true,
     setupFiles: ["tests/setup.ts"],
   },

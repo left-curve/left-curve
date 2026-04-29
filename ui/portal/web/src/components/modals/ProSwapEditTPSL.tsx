@@ -18,6 +18,7 @@ import {
   useAccount,
   useAppConfig,
   useSigningClient,
+  useStorage,
   useSubmitTx,
 } from "@left-curve/store";
 import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
@@ -55,6 +56,9 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const { data: signingClient } = useSigningClient();
     const queryClient = useQueryClient();
     const { data: appConfig } = useAppConfig();
+    const [maxSlippage] = useStorage<string>("perps-max-slippage", {
+      initialValue: PERPS_DEFAULT_SLIPPAGE,
+    });
 
     const sizeNum = Number(size);
     const isLong = sizeNum > 0;
@@ -174,7 +178,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
               pairId,
               triggerPrice: tpPrice,
               triggerDirection: isLong ? "above" : "below",
-              maxSlippage: PERPS_DEFAULT_SLIPPAGE,
+              maxSlippage,
               ...sizeField,
             });
           }
@@ -184,7 +188,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
               pairId,
               triggerPrice: slPrice,
               triggerDirection: isLong ? "below" : "above",
-              maxSlippage: PERPS_DEFAULT_SLIPPAGE,
+              maxSlippage,
               ...sizeField,
             });
           }
