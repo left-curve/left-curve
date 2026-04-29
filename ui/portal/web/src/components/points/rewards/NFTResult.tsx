@@ -21,7 +21,8 @@ export const NFTResult: React.FC<NFTResultProps> = ({
   onNext,
 }) => {
   const handleShareToX = () => {
-    const text = `I just won a ${nft.label} NFT on Dango!`;
+    const article = /^[aeiou]/i.test(nft.label) ? "an" : "a";
+    const text = `I just won ${article} ${nft.label} NFT on Dango!`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
   };

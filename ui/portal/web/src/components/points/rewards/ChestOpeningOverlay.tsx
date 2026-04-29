@@ -76,6 +76,16 @@ const ALL_NFTS: NFTItem[] = [
 
 type Phase = "chest" | "carousel" | "spinning" | "result" | "bulk-result";
 
+const SOUND_CHEST = "/sounds/sound_1_chest.mp3";
+const SOUND_SPIN = "/sounds/sound_2_spin.mp3";
+const SOUND_NFT_WIN = "/sounds/sound_3_nft_win.mp3";
+
+const playSound = (src: string) => {
+  const audio = new Audio(src);
+  audio.volume = 0.5;
+  audio.play().catch(() => {});
+};
+
 export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   variant,
   loot,
@@ -94,6 +104,10 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   const [phase, setPhase] = useState<Phase>("chest");
   const [isShaking, setIsShaking] = useState(false);
   const [winningNFT, setWinningNFT] = useState<NFTItem | null>(null);
+
+  useEffect(() => {
+    playSound(SOUND_CHEST);
+  }, []);
 
   const chestImage = CHEST_ASSETS[variant];
   const hasAnimation = animationFrames !== null;
@@ -134,12 +148,14 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   }, [phase, hasAnimation]);
 
   const handleSpin = useCallback(() => {
+    playSound(SOUND_SPIN);
     onSpin?.();
     setWinningNFT(targetNFT);
     setPhase("spinning");
   }, [targetNFT, onSpin]);
 
   const handleSpinComplete = useCallback(() => {
+    playSound(SOUND_NFT_WIN);
     setPhase(isBulkMode ? "bulk-result" : "result");
   }, [isBulkMode]);
 
