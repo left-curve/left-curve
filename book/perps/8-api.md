@@ -270,19 +270,19 @@ The `credential` field wraps a `StandardCredential` or `SessionCredential`. A `S
 ```json
 {
   "standard": {
-    "key_hash": "a1b2c3d4...64hex",
+    "key_hash": "A1B2C3D4...64HEX",
     "signature": {
       "passkey": {
         "authenticator_data": "<base64>",
         "client_data": "<base64>",
-        "sig": "0102...40hex"
+        "sig": "<base64>"
       }
     }
   }
 }
 ```
 
-- `sig`: 64-byte Secp256r1 signature (hex-encoded)
+- `sig`: 64-byte Secp256r1 signature (base64-encoded)
 - `client_data`: base64-encoded WebAuthn client data JSON (challenge = base64url of SHA-256 of SignDoc)
 - `authenticator_data`: base64-encoded WebAuthn authenticator data
 
@@ -291,33 +291,33 @@ The `credential` field wraps a `StandardCredential` or `SessionCredential`. A `S
 ```json
 {
   "standard": {
-    "key_hash": "a1b2c3d4...64hex",
+    "key_hash": "A1B2C3D4...64HEX",
     "signature": {
-      "secp256k1": "0102...40hex"
+      "secp256k1": "<base64>"
     }
   }
 }
 ```
 
-- 64-byte Secp256k1 signature (hex-encoded)
+- 64-byte Secp256k1 signature (base64-encoded)
 
 **EIP-712 (Ethereum wallets):**
 
 ```json
 {
   "standard": {
-    "key_hash": "a1b2c3d4...64hex",
+    "key_hash": "A1B2C3D4...64HEX",
     "signature": {
       "eip712": {
         "typed_data": "<base64>",
-        "sig": "0102...41hex"
+        "sig": "<base64>"
       }
     }
   }
 }
 ```
 
-- `sig`: 65-byte signature (64-byte Secp256k1 + 1-byte recovery ID; hex-encoded)
+- `sig`: 65-byte signature (64-byte Secp256k1 + 1-byte recovery ID; base64-encoded)
 - `typed_data`: base64-encoded JSON of the EIP-712 typed data object
 
 ### 2.5 Session credentials
@@ -328,23 +328,23 @@ Session keys allow delegated signing without requiring the master key for every 
 {
   "session": {
     "session_info": {
-      "session_key": "02abc...33bytes",
+      "session_key": "<base64>",
       "expire_at": "1700000000000000000"
     },
-    "session_signature": "0102...40hex",
+    "session_signature": "<base64>",
     "authorization": {
-      "key_hash": "a1b2c3d4...64hex",
+      "key_hash": "A1B2C3D4...64HEX",
       "signature": { ... }
     }
   }
 }
 ```
 
-| Field               | Type                 | Description                                     |
-| ------------------- | -------------------- | ----------------------------------------------- |
-| `session_info`      | `SessionInfo`        | Session key public key + expiration             |
-| `session_signature` | `ByteArray<64>`      | SignDoc signed by the session key (hex-encoded) |
-| `authorization`     | `StandardCredential` | SessionInfo signed by the user's master key     |
+| Field               | Type                 | Description                                        |
+| ------------------- | -------------------- | -------------------------------------------------- |
+| `session_info`      | `SessionInfo`        | Session key public key + expiration                |
+| `session_signature` | `ByteArray<64>`      | SignDoc signed by the session key (base64-encoded) |
+| `authorization`     | `StandardCredential` | SessionInfo signed by the user's master key        |
 
 ### 2.6 SignDoc
 
@@ -500,15 +500,15 @@ Creating a new user profile is a two-step process:
         "msg": {
           "register_user": {
             "key": {
-              "secp256r1": "02abc123...33bytes_hex"
+              "secp256r1": "<base64>"
             },
-            "key_hash": "a1b2c3d4...64hex",
+            "key_hash": "A1B2C3D4...64HEX",
             "seed": 12345,
             "signature": {
               "passkey": {
                 "authenticator_data": "<base64>",
                 "client_data": "<base64>",
-                "sig": "0102...40hex"
+                "sig": "<base64>"
               }
             }
           }
@@ -602,10 +602,10 @@ Associate or disassociate a key with the user profile.
     "contract": "ACCOUNT_FACTORY_CONTRACT",
     "msg": {
       "update_key": {
-        "key_hash": "a1b2c3d4...64hex",
+        "key_hash": "A1B2C3D4...64HEX",
         "key": {
           "insert": {
-            "secp256k1": "03def456...33bytes_hex"
+            "secp256k1": "<base64>"
           }
         }
       }
@@ -623,7 +623,7 @@ Associate or disassociate a key with the user profile.
     "contract": "ACCOUNT_FACTORY_CONTRACT",
     "msg": {
       "update_key": {
-        "key_hash": "a1b2c3d4...64hex",
+        "key_hash": "A1B2C3D4...64HEX",
         "key": "delete"
       }
     },
@@ -2284,7 +2284,7 @@ Additional integer types:
 | `ClientOrderId`      | `Uint64` (caller-assigned)      | `"42"`                           |
 | `FillId`             | `Uint64` (per-match identifier) | `"17"`                           |
 | `Addr`               | Hex address                     | `"0x1234...abcd"`                |
-| `Hash256`            | 64-char hex                     | `"a1b2c3d4e5f6..."`              |
+| `Hash256`            | 64-char uppercase hex           | `"A1B2C3D4E5F6..."`              |
 | `UserIndex`          | `u32`                           | `0`                              |
 | `AccountIndex`       | `u32`                           | `1`                              |
 | `Username`           | 1–15 chars, `[a-z0-9_]`         | `"alice"`                        |
@@ -2409,13 +2409,13 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 
 ```json
 {
-  "secp256r1": "02abc123...33bytes_hex"
+  "secp256r1": "<base64>"
 }
 ```
 
 ```json
 {
-  "secp256k1": "03def456...33bytes_hex"
+  "secp256k1": "<base64>"
 }
 ```
 
