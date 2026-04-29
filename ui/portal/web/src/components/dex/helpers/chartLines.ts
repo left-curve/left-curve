@@ -110,7 +110,7 @@ export const drawLines = (() => {
 
       for (const { price, color, linestyle } of lines) {
         await chart.createShape(
-          { price, time: Date.now() },
+          { price, time: Math.floor(Date.now() / 1000) },
           {
             shape: "horizontal_line",
             lock: true,
