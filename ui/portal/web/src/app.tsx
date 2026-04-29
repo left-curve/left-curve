@@ -23,6 +23,9 @@ import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 import "@left-curve/foundation/fonts/Exposure/italic/400.css";
 import "@left-curve/foundation/fonts/Exposure/italic/700.css";
 
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>

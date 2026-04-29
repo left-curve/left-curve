@@ -219,5 +219,5 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
     drawLines(chart, lines);
   }, [orders, positions, perpsOrders, perpsPairId, isPerps]);
 
-  return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
+  return <div id="tv-container" className="w-full h-full flex-1 min-h-0" />;
 };

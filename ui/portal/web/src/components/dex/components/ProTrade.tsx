@@ -166,8 +166,8 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   );
 };
 
-const ProTradeHeader: React.FC = () => {
-  return <TradeHeader />;
+const ProTradeHeader: React.FC<{ actions?: React.ReactNode }> = ({ actions }) => {
+  return <TradeHeader actions={actions} />;
 };
 
 const ProTradeOverview: React.FC = () => {
@@ -203,7 +203,7 @@ const ProTradeChart: React.FC = () => {
 
   const Chart = (
     <Suspense fallback={<Spinner color="pink" size="md" />}>
-      <div className="flex w-full lg:min-h-[32.875rem] h-full" id="chart-container">
+      <div className="flex w-full h-full flex-1 min-h-0" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
           <TradingView
             coins={{ base: baseCoin, quote: quoteCoin }}
@@ -243,16 +243,14 @@ const ProTradeHistory: React.FC = () => {
 
   const positionsCount = Object.keys(userState?.positions ?? {}).length;
   const openOrdersCount =
-    mode === "spot"
-      ? (spotOrders.data?.length ?? 0)
-      : Object.keys(perpsOrders ?? {}).length;
+    mode === "spot" ? (spotOrders.data?.length ?? 0) : Object.keys(perpsOrders ?? {}).length;
 
   useEffect(() => {
     setActiveTab(mode === "perps" ? "positions" : "open-orders");
   }, [mode]);
 
   return (
-    <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 flex flex-col gap-2 pb-20 lg:pb-2 z-10 min-h-0 w-full overflow-hidden">
       <div className="relative">
         <Tabs
           color="line-red"
@@ -279,7 +277,7 @@ const ProTradeHistory: React.FC = () => {
         </Tabs>
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
-      <div className="w-full h-full relative">
+      <div className="w-full flex-1 min-h-0 relative overflow-auto">
         {activeTab === "positions" && mode === "perps" ? <PerpsPositionsTable /> : null}
         {activeTab === "open-orders" ? <UnifiedOpenOrders /> : null}
         {activeTab === "trade-history" ? <ProTradeOrdersHistory /> : null}
@@ -382,11 +380,7 @@ const PerpsPositionsTable: React.FC = () => {
             <Cell.Text
               text={
                 <>
-                  <FormattedNumber
-                    number={absSize}
-                    formatOptions={formatNumberOptions}
-                    as="span"
-                  />{" "}
+                  <FormattedNumber number={absSize} formatOptions={formatNumberOptions} as="span" />{" "}
                   {row.original.symbol}
                 </>
               }
@@ -397,15 +391,14 @@ const PerpsPositionsTable: React.FC = () => {
       {
         header: m["dex.protrade.positions.positionValue"](),
         cell: ({ row }) => {
-          const notional = Decimal(row.original.size).abs().times(Decimal(row.original.entryPrice)).toFixed();
+          const notional = Decimal(row.original.size)
+            .abs()
+            .times(Decimal(row.original.entryPrice))
+            .toFixed();
           return (
             <Cell.Text
               text={
-                <FormattedNumber
-                  number={notional}
-                  formatOptions={{ currency: "USD" }}
-                  as="span"
-                />
+                <FormattedNumber number={notional} formatOptions={{ currency: "USD" }} as="span" />
               }
             />
           );
@@ -569,7 +562,7 @@ const PerpsPositionsTable: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-[1.5rem] max-h-[18rem] overflow-y-scroll",
+        base: "pb-[1.5rem] overflow-y-auto",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !rows.length,
         }),
@@ -749,15 +742,13 @@ const UnifiedOpenOrders: React.FC = () => {
     {
       header: m["dex.protrade.orders.orderValue"](),
       cell: ({ row }) => {
-        const tradeValue = Decimal(row.original.size).times(Decimal(row.original.rawPrice)).toFixed();
+        const tradeValue = Decimal(row.original.size)
+          .times(Decimal(row.original.rawPrice))
+          .toFixed();
         return (
           <Cell.Text
             text={
-              <FormattedNumber
-                number={tradeValue}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
+              <FormattedNumber number={tradeValue} formatOptions={{ currency: "USD" }} as="span" />
             }
           />
         );
@@ -851,7 +842,7 @@ const UnifiedOpenOrders: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-[1.5rem] max-h-[18rem] overflow-y-scroll",
+        base: "pb-[1.5rem] overflow-y-auto",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !unifiedRows.length,
         }),

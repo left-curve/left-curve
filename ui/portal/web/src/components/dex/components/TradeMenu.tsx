@@ -840,7 +840,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               </Tooltip>
               <div className="flex items-center gap-1">
                 <p className="diatype-xs-medium text-ink-secondary-700">
-                  {m["dex.protrade.perps.slippageDisplay"]({ max: Decimal(maxSlippage).mul(100).toFixed(2) })}
+                  {m["dex.protrade.perps.slippageDisplay"]({
+                    max: Decimal(maxSlippage).mul(100).toFixed(2),
+                  })}
                 </p>
                 <IconEdit
                   className="w-4 h-4 text-ink-tertiary-500 hover:text-ink-secondary-700 cursor-pointer"
@@ -998,7 +1000,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
   const setOperation = tradeInfoStore((s) => s.setOperation);
 
   return (
-    <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
+    <div className={twMerge("w-full flex items-center flex-col gap-4 relative pt-2", className)}>
       {mode === "perps" ? <PerpsTopPills /> : null}
       <div className="w-full flex items-center justify-between px-4 gap-2">
         <Tabs

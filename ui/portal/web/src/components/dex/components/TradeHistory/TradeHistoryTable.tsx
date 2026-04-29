@@ -33,7 +33,7 @@ export function TradeHistoryTable<T extends { blockHeight: number }>({
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-0 max-h-[31vh] overflow-y-scroll",
+        base: "pb-0 overflow-y-auto",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !data?.nodes.length,
         }),

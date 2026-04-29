@@ -29,7 +29,11 @@ import {
 import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
 
-export const TradeHeader: React.FC = () => {
+type TradeHeaderProps = {
+  actions?: React.ReactNode;
+};
+
+export const TradeHeader: React.FC<TradeHeaderProps> = ({ actions }) => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
 
@@ -56,7 +60,7 @@ export const TradeHeader: React.FC = () => {
   };
 
   return (
-    <div className="flex bg-surface-primary-rice lg:gap-6 px-4 py-3 flex-col lg:flex-row w-full lg:justify-start shadow-account-card z-20 lg:z-10">
+    <div className="flex lg:gap-6 px-4 py-2 flex-col lg:flex-row w-full lg:justify-start z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-1">
           <SearchToken pairId={pairId} onChangePairId={handleChangePair} />
@@ -92,10 +96,15 @@ export const TradeHeader: React.FC = () => {
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
             className="lg:flex-1 lg:min-w-0"
           >
-            <HeaderMetricsScroller mode={mode} pairStatsData={pairStatsData} getPerpsPairId={getPerpsPairId} />
+            <HeaderMetricsScroller
+              mode={mode}
+              pairStatsData={pairStatsData}
+              getPerpsPairId={getPerpsPairId}
+            />
           </motion.div>
         ) : null}
       </AnimatePresence>
+      {actions && <div className="hidden lg:flex items-center">{actions}</div>}
     </div>
   );
 };
@@ -106,7 +115,11 @@ type HeaderMetricsScrollerProps = {
   getPerpsPairId: () => string;
 };
 
-const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({ mode, pairStatsData, getPerpsPairId }) => {
+const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
+  mode,
+  pairStatsData,
+  getPerpsPairId,
+}) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -154,7 +167,7 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({ mode, pai
       )}
       <div
         ref={scrollRef}
-        className="gap-2 xxl:gap-6 grid grid-cols-3 lg:flex lg:flex-nowrap lg:items-center overflow-x-auto overflow-y-hidden diatype-xxs-medium lg:diatype-xs-medium scrollbar-none"
+        className="gap-2 lg:gap-6 grid grid-cols-3 lg:flex lg:flex-nowrap lg:items-center overflow-x-auto overflow-y-hidden diatype-xxs-medium lg:diatype-xs-medium scrollbar-none"
       >
         <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
         <HeaderPrice />
@@ -164,7 +177,7 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({ mode, pai
           price24HAgo={pairStatsData?.price24HAgo}
           priceChange24H={pairStatsData?.priceChange24H}
         />
-        <div className="flex gap-1 flex-col items-start lg:w-[5rem] lg:shrink-0">
+        <div className="flex gap-1 flex-col items-start lg:max-w-[64px] lg:shrink-0">
           <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500">
             {m["dex.protrade.spot.volume"]()}
           </p>
@@ -189,7 +202,7 @@ const HeaderPrice: React.FC = () => {
   const { currentPrice, previousPrice } = useCurrentPrice();
 
   return (
-    <div className="flex gap-1 flex-col lg:w-[3.5rem] lg:shrink-0 items-start">
+    <div className="flex gap-1 flex-col lg:max-w-[50px] lg:shrink-0 items-start">
       <Tooltip title={m["dex.protrade.spot.lastPriceTooltip"]()}>
         <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.lastPrice"]()}
@@ -216,7 +229,7 @@ const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
   const oraclePrice = prices?.[denom]?.humanizedPrice ? Number(prices[denom].humanizedPrice) : null;
 
   return (
-    <div className="flex gap-1 flex-col lg:w-[3.5rem] lg:shrink-0 items-start">
+    <div className="flex gap-1 flex-col lg:max-w-[50px] lg:shrink-0 items-start">
       <Tooltip title={m["dex.protrade.spot.oraclePriceTooltip"]()}>
         <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
           {m["dex.protrade.spot.oraclePrice"]()}
@@ -261,7 +274,7 @@ const Header24hChange: React.FC<Header24hChangeProps> = ({
   }, [priceChange24H]);
 
   return (
-    <div className="flex gap-1 flex-col items-start lg:w-[7.5rem] lg:shrink-0">
+    <div className="flex gap-1 flex-col items-start lg:max-w-[90px] lg:shrink-0">
       <p className="diatype-xxs-medium lg:diatype-xs-medium text-ink-tertiary-500">
         {m["dex.protrade.spot.24hChange"]()}
       </p>

@@ -39,7 +39,7 @@ type OrderBookOverviewProps = {
 export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controllers }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
-  const { isLg, is3XlTall } = useMediaQuery();
+  const { isLg } = useMediaQuery();
 
   const mode = TradePairStore((s) => s.mode);
   const pairId = TradePairStore((s) => s.pairId);
@@ -67,29 +67,19 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
   });
 
   useEffect(() => {
-    if (is3XlTall) {
-      setActiveTab("order book");
-    } else {
-      setActiveTab(isLg ? "order book" : "graph");
-    }
-  }, [isLg, is3XlTall]);
+    setActiveTab(isLg ? "order book" : "graph");
+  }, [isLg]);
 
   const tabsKeys = useMemo(() => {
-    if (is3XlTall) {
-      return ["order book"];
-    }
     return isLg ? ["order book", "trades"] : ["graph", "order book", "trades"];
-  }, [isLg, is3XlTall]);
+  }, [isLg]);
 
   const bucketRecords = isLg ? 10 : 16;
 
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className={twMerge(
-        "overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:h-[38.65625rem] 3xl:min-h-[40rem] h-full",
-        { "3xl:min-h-[51.6875rem] 4xl:min-h-[61.6875rem]": is3XlTall },
-      )}
+      className={twMerge("overflow-hidden z-10 relative p-0 flex flex-col gap-2 w-full h-full")}
     >
       <Tabs
         color="line-red"
@@ -98,7 +88,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
         keys={tabsKeys}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
-        classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
+        classNames={{ button: "exposure-xs-italic", base: "px-4 pt-3" }}
       />
       <div
         id="chart-container-mobile"
@@ -124,19 +114,6 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
           )}
         </>
       )}
-      {is3XlTall && (
-        <>
-          <Tabs
-            color="line-red"
-            layoutId="tabs-order-history-2"
-            selectedTab={"trades"}
-            keys={["trades"]}
-            fullWidth
-            classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
-          />
-          <LiveTrades baseCoin={baseCoin} quoteCoin={quoteCoin} mode={mode} />
-        </>
-      )}
     </ResizerContainer>
   );
 };
@@ -158,7 +135,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
 
   const depthBarClass =
     type === "bid"
-      ? "bg-utility-success-500 lg:right-auto right-0"
+      ? "bg-utility-success-500 opacity-10 lg:right-auto right-0"
       : "bg-utility-error-300 opacity-[18%] lg:right-auto";
 
   return (
@@ -173,7 +150,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
         />
       ) : null}
       <div
-        className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
+        className={twMerge("absolute top-0 bottom-0 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
       />
       <div
@@ -340,19 +317,13 @@ const LiveTrades: React.FC<LiveTradesProps> = (props) => {
 const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
-  const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
 
   const livePerps = livePerpsTradesStore((s) => s.trades);
   const perpsTrades = useDeferredValue(livePerps);
 
   return (
-    <div
-      className={twMerge(
-        "flex gap-2 flex-col items-center justify-start lg:max-h-[38.75rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4",
-        is3XlTall && "max-h-[15rem] min-h-[15rem] 4xl:max-h-[20rem] 4xl:min-h-[20rem]",
-      )}
-    >
+    <div className="flex gap-2 flex-col items-center justify-start flex-1 overflow-y-auto scrollbar-none overflow-x-hidden relative px-4">
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
@@ -398,19 +369,13 @@ const PerpsLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin }) => {
 const SpotLiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, quoteCoin }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
-  const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
 
   const liveTrades = liveSpotTradesStore((s) => s.trades);
   const trades = useDeferredValue(liveTrades);
 
   return (
-    <div
-      className={twMerge(
-        "flex gap-2 flex-col items-center justify-start lg:max-h-[38.75rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4",
-        is3XlTall && "max-h-[15rem] min-h-[15rem] 4xl:max-h-[20rem] 4xl:min-h-[20rem]",
-      )}
-    >
+    <div className="flex gap-2 flex-col items-center justify-start flex-1 overflow-y-auto scrollbar-none overflow-x-hidden relative px-4">
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
@@ -540,7 +505,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
   return (
     <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full">
-      <div className="asks-container flex flex-1 flex-col w-full gap-[2px] order-2 lg:order-1 lg:justify-end">
+      <div className="asks-container flex flex-1 flex-col w-full gap-[6px] order-2 lg:order-1 lg:justify-end">
         {asksOrdered.map((ask, i) => (
           <OrderRow
             key={`ask-${ask.price}-${i}`}
@@ -556,7 +521,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
       <Spread pairId={pairId} base={base} quote={quote} mode={mode} />
 
-      <div className="bid-container flex flex-1 flex-col w-full gap-[2px] order-1 lg:order-3">
+      <div className="bid-container flex flex-1 flex-col w-full gap-[6px] order-1 lg:order-3">
         {[...bids.records].map((bid, i) => (
           <OrderRow
             key={`bid-${bid.price}-${i}`}
