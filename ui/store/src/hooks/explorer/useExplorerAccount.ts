@@ -36,15 +36,9 @@ export function useExplorerAccount(address: Address) {
           client.getAccountInfo({ address }),
           client.getContractInfo({ address }),
           client.getBalances({ address }),
-          client
-            .getPerpsUserStateExtended({ user: address, includeAll: true })
-            .catch(() => null),
-          client
-            .getPerpsOrdersByUser({ user: address })
-            .catch(() => null),
-          client
-            .getPerpsVaultState()
-            .catch(() => null),
+          client.getPerpsUserStateExtended({ user: address, includeAll: true }).catch(() => null),
+          client.getPerpsOrdersByUser({ user: address }).catch(() => null),
+          client.getPerpsVaultState().catch(() => null),
         ]);
 
       if (!account) return null;

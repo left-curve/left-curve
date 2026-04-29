@@ -45,7 +45,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
   const { base, quote } = coins;
   const { timeFormat, timeZone } = settings;
 
-  const storageKey = `tv_v1.${pairSymbol}_${mode}`;
+  const storageKey = `tv_v4.${pairSymbol}_${mode}`;
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
 
@@ -116,13 +116,33 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         "paneProperties.separatorColor": theme === "dark" ? "#666360" : "#CCC7C0",
         "paneProperties.topMargin": 10,
         "paneProperties.bottomMargin": 10,
-        "mainSeriesProperties.priceLineColor": textColor,
         "scalesProperties.crosshairLabelBgColorLight": "#2E2521",
         "scalesProperties.crosshairLabelBgColorDark": "#FFFCF6",
+        "scalesProperties.axisHighlightColor":
+          theme === "dark" ? "rgba(255, 252, 246, 0.25)" : "rgba(46, 37, 33, 0.25)",
+        "scalesProperties.axisLineToolLabelBackgroundColorCommon": textColor,
+        "scalesProperties.axisLineToolLabelBackgroundColorActive": textColor,
         ...(theme === "dark" && {
           "paneProperties.vertGridProperties.color": "#ffffff0F",
           "paneProperties.horzGridProperties.color": "#ffffff0F",
         }),
+      },
+
+      settings_overrides: {
+        "linetooltrendline.linecolor": textColor,
+        "linetooltrendline.textcolor": textColor,
+        "linetoolhorzline.linecolor": textColor,
+        "linetoolhorzline.textcolor": textColor,
+        "linetoolhorzray.linecolor": textColor,
+        "linetoolhorzray.textcolor": textColor,
+        "linetoolray.linecolor": textColor,
+        "linetoolray.textcolor": textColor,
+        "linetoolextended.linecolor": textColor,
+        "linetoolextended.textcolor": textColor,
+        "linetoolarrow.linecolor": textColor,
+        "linetoolarrow.textcolor": textColor,
+        "linetoolcrossline.linecolor": textColor,
+        "linetoolbezierquadro.linecolor": textColor,
       },
 
       studies_overrides: {

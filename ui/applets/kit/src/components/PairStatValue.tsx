@@ -80,7 +80,10 @@ export const PairStatValue: React.FC<PairStatValueProps> = ({
   return (
     <FormattedNumber
       number={value!}
-      formatOptions={{ ...formatOptions, ...(selectedCurrency ? { currency: selectedCurrency } : {}) }}
+      formatOptions={{
+        ...formatOptions,
+        ...(selectedCurrency ? { currency: selectedCurrency } : {}),
+      }}
       as={as}
       className={baseClassName}
     />

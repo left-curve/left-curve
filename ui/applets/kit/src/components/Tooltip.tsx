@@ -128,7 +128,10 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     // Auto-flip when there's not enough space
     if (placement === "top" && triggerRect.top - panelRect.height - gap < padding) {
       resolvedPlacement = "bottom";
-    } else if (placement === "bottom" && triggerRect.bottom + panelRect.height + gap > viewportHeight - padding) {
+    } else if (
+      placement === "bottom" &&
+      triggerRect.bottom + panelRect.height + gap > viewportHeight - padding
+    ) {
       resolvedPlacement = "top";
     }
 
@@ -168,7 +171,12 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     const maxOffset = panelRect.width / 2 - 20;
     const clampedOffset = Math.max(-maxOffset, Math.min(maxOffset, arrowOffset));
 
-    setPosition({ top, left, arrowOffset: clampedOffset !== 0 ? clampedOffset : undefined, resolvedPlacement });
+    setPosition({
+      top,
+      left,
+      arrowOffset: clampedOffset !== 0 ? clampedOffset : undefined,
+      resolvedPlacement,
+    });
   }, [isOpen, placement]);
 
   useLayoutEffect(() => {
@@ -203,7 +211,9 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
                 <div className="diatype-xs-medium text-primitives-white-light-100">{title}</div>
               ) : null}
               {description ? (
-                <div className="diatype-xs-regular text-primitives-gray-dark-200">{description}</div>
+                <div className="diatype-xs-regular text-primitives-gray-dark-200">
+                  {description}
+                </div>
               ) : null}
             </div>
           ) : (
