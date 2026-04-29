@@ -4,7 +4,7 @@ import {
   priceFromRoi,
   roiFromPrice,
   type TpslMathInput,
-} from "../src/components/dex/lib/tpslMath";
+} from "./math";
 
 /**
  * Helper: strict equality to ~10 decimals, which is well below any precision

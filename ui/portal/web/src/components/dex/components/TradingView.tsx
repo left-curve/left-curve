@@ -16,7 +16,7 @@ import {
   buildPerpsOrderLines,
   buildSpotOrderLines,
   drawLines,
-} from "../lib/chartLines";
+} from "../helpers/chartLines";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";

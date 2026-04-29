@@ -1,20 +1,19 @@
 /**
- * Pure math helpers for converting between an absolute TP/SL trigger price
- * and the ROI% it represents on the trader's capital.
+ * Pure math helpers for the perps trading UI — no React, no side effects.
  *
- * The key insight is that "ROI% on capital" is not the same as "% change in
- * price" — at L× leverage, a P% price move corresponds to a (P × L)% change
- * in the margin the trader has locked in the position:
+ * TP/SL ROI helpers convert between an absolute trigger price and the ROI%
+ * it represents on the trader's capital. The key insight is that "ROI% on
+ * capital" is not the same as "% change in price" — at L× leverage, a P%
+ * price move corresponds to a (P × L)% change in the margin:
  *
  *     ROI% ≈ price_change% × leverage
  *
  * This matches how Binance / Bybit / Hyperliquid / dYdX display TP/SL ROI.
- * See the plan at `.claude/plans/foamy-kindling-dongarra.md` and the
- * industry references it cites.
- *
- * These helpers are pure — no React, no side effects — so they can be
- * exhaustively unit-tested without a renderer.
  */
+
+import { Decimal } from "@left-curve/dango/utils";
+
+// --- TP/SL ROI helpers ---
 
 export type TpslKind = "tp" | "sl";
 
@@ -103,4 +102,31 @@ export function priceFromRoi(
   return isUpsideTrigger({ isLong, kind })
     ? referencePrice * (1 + priceDeltaPct)
     : referencePrice * (1 - priceDeltaPct);
+}
+
+// --- Margin helpers ---
+
+type PriceResolver = (pid: string) => ReturnType<typeof Decimal>;
+
+/**
+ * Sum of |pos_j| × price_j × IMR_j across all positions except the
+ * currently traded pair. Used to determine how much margin is consumed
+ * by other open positions when computing available-to-trade.
+ */
+export function computeOtherPairsUsedMargin(
+  positions: Record<string, { size: string }>,
+  currentPairId: string,
+  perpsPairs: Record<string, { initialMarginRatio?: string }>,
+  resolvePrice: PriceResolver,
+): number {
+  return Object.entries(positions)
+    .filter(([pid]) => pid !== currentPairId)
+    .reduce((total, [pid, pos]) => {
+      const size = Decimal(pos.size).abs();
+      const imr = Decimal(perpsPairs[pid]?.initialMarginRatio ?? 0);
+      const price = resolvePrice(pid);
+      if (size.lte(0) || imr.lte(0) || price.lte(0)) return total;
+      return total.plus(size.mul(price).mul(imr));
+    }, Decimal(0))
+    .toNumber();
 }
