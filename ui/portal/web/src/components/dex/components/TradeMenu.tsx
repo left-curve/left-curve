@@ -22,6 +22,7 @@ import {
   computeLiquidationPrice,
   useVolume,
   useFeeRateOverride,
+  useStorage,
 } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -355,7 +356,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { override: feeRateOverride } = useFeeRateOverride({ enabled: isConnected });
 
   const [sizeCoinDenom, setSizeCoinDenom] = useState("usd");
-  const [maxSlippage, setMaxSlippage] = useState(Number(PERPS_DEFAULT_SLIPPAGE));
+  const [maxSlippage] = useStorage<string>("perps-max-slippage", {
+    initialValue: PERPS_DEFAULT_SLIPPAGE,
+  });
 
   useEffect(() => {
     setSizeCoinDenom("usd");
@@ -554,7 +557,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     operation,
     sizeValue,
     priceValue,
-    maxSlippage: maxSlippage.toString(),
+    maxSlippage,
     tpPrice: tpslEnabled && Number(tpPrice) > 0 ? tpPrice : undefined,
     slPrice: tpslEnabled && Number(slPrice) > 0 ? slPrice : undefined,
     reduceOnly,
@@ -849,16 +852,11 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               </Tooltip>
               <div className="flex items-center gap-1">
                 <p className="diatype-xs-medium text-ink-secondary-700">
-                  {m["dex.protrade.perps.slippageDisplay"]({ max: (maxSlippage * 100).toFixed(2) })}
+                  {m["dex.protrade.perps.slippageDisplay"]({ max: Decimal(maxSlippage).mul(100).toFixed(2) })}
                 </p>
                 <IconEdit
                   className="w-4 h-4 text-ink-tertiary-500 hover:text-ink-secondary-700 cursor-pointer"
-                  onClick={() =>
-                    showModal(Modals.AdjustSlippage, {
-                      currentSlippage: maxSlippage,
-                      onConfirm: setMaxSlippage,
-                    })
-                  }
+                  onClick={() => showModal(Modals.AdjustSlippage)}
                 />
               </div>
             </div>

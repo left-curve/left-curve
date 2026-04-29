@@ -8,7 +8,7 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import { useAccount, useConfig, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { useAccount, useConfig, useSigningClient, useStorage, useSubmitTx } from "@left-curve/store";
 import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useCallback, useMemo, useState } from "react";
@@ -28,6 +28,9 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();
+  const [maxSlippage] = useStorage<string>("perps-max-slippage", {
+    initialValue: PERPS_DEFAULT_SLIPPAGE,
+  });
 
   const sizeNum = Math.abs(Number(size));
   const isLong = Number(size) > 0;
@@ -75,7 +78,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
           sender: account!.address,
           pairId,
           size: closeSize,
-          kind: { market: { maxSlippage: PERPS_DEFAULT_SLIPPAGE } },
+          kind: { market: { maxSlippage } },
           reduceOnly: true,
         });
       },
