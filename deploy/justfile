@@ -54,6 +54,9 @@ edit-points-bot-secrets:
 edit-perps-bot-secrets:
   uv run ansible-vault edit group_vars/perps-bot/vault.yml
 
+edit-dango-assistant-secrets:
+  uv run ansible-vault edit group_vars/dango-assistant/vault.yml
+
 edit-root-key:
   uv run ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
@@ -170,6 +173,19 @@ stop-perps-bot:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook stop-perps-bot.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-perps-bot.log
+
+# ----------------------------- Dango Assistant --------------------------------
+
+deploy-dango-assistant tag="latest":
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook dango-assistant.yml \
+      -e dango_assistant_tag={{tag}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-dango-assistant.log
+
+stop-dango-assistant:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook stop-dango-assistant.yml \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-dango-assistant.log
 
 # ------------------------------ Perp Liquidator -------------------------------
 
