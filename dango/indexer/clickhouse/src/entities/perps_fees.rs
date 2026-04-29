@@ -43,6 +43,16 @@ pub struct PerpsFees {
     /// suffices per-block; aggregate queries widen to `u64` to avoid
     /// overflow across long windows.
     pub fee_events_count: u32,
+    /// USD notional volume from `OrderFilled` and `Deleveraged` events in
+    /// this block, summed across all pairs. `OrderFilled` is counted only
+    /// for the positive-sized side of each match (the maker/taker pair
+    /// shares one `fill_id`). `Deleveraged` is counted unconditionally
+    /// (one event per ADL counter-party, no double-emission).
+    /// `Liquidated.adl_size` is intentionally excluded — its magnitude
+    /// already equals the sum of `Deleveraged.closing_size` for the same
+    /// liquidation, so counting both would double the ADL contribution.
+    #[serde(with = "crate::entities::pair_price::dec")]
+    pub volume_usd: Udec128_6,
 }
 
 #[cfg(feature = "async-graphql")]
@@ -57,6 +67,8 @@ struct FeesAggregateRow {
     #[serde(with = "dec")]
     referrer_payout: Udec128_6,
     fee_events_count: u64,
+    #[serde(with = "dec")]
+    volume_usd: Udec128_6,
 }
 
 /// Aggregated fee/revenue totals over a `[from, to]` window.
@@ -78,6 +90,8 @@ pub struct PerpsFeesAndRevenue {
     pub referrer_payout: Udec128_6,
     #[graphql(name = "feeEventsCount")]
     pub fee_events_count: u64,
+    #[graphql(skip)]
+    pub volume_usd: Udec128_6,
 }
 
 #[cfg(feature = "async-graphql")]
@@ -111,7 +125,8 @@ impl PerpsFeesAndRevenue {
                     toUInt128(sum(vault_fee))       AS vault_fee,
                     toUInt128(sum(referee_rebate))  AS referee_rebate,
                     toUInt128(sum(referrer_payout)) AS referrer_payout,
-                    toUInt64(sum(fee_events_count)) AS fee_events_count
+                    toUInt64(sum(fee_events_count)) AS fee_events_count,
+                    toUInt128(sum(volume_usd))      AS volume_usd
                 FROM perps_fees
                 WHERE created_at >= fromUnixTimestamp64Micro(?)
                   AND created_at <= fromUnixTimestamp64Micro(?)
@@ -123,7 +138,8 @@ impl PerpsFeesAndRevenue {
                     toUInt128(sum(vault_fee))       AS vault_fee,
                     toUInt128(sum(referee_rebate))  AS referee_rebate,
                     toUInt128(sum(referrer_payout)) AS referrer_payout,
-                    toUInt64(sum(fee_events_count)) AS fee_events_count
+                    toUInt64(sum(fee_events_count)) AS fee_events_count,
+                    toUInt128(sum(volume_usd))      AS volume_usd
                 FROM perps_fees_hourly
                 WHERE hour >= toStartOfHour(fromUnixTimestamp64Micro(?))
                   AND hour <= toStartOfHour(fromUnixTimestamp64Micro(?))
@@ -145,6 +161,7 @@ impl PerpsFeesAndRevenue {
             referee_rebate: row.referee_rebate,
             referrer_payout: row.referrer_payout,
             fee_events_count: row.fee_events_count,
+            volume_usd: row.volume_usd,
         })
     }
 }
@@ -177,6 +194,10 @@ impl PerpsFeesAndRevenue {
     async fn referrer_payout(&self) -> GraphqlBigDecimal {
         udec128_6_to_big_decimal(&self.referrer_payout)
     }
+
+    async fn volume_usd(&self) -> GraphqlBigDecimal {
+        udec128_6_to_big_decimal(&self.volume_usd)
+    }
 }
 
 #[cfg(feature = "async-graphql")]
@@ -184,4 +205,36 @@ fn udec128_6_to_big_decimal(v: &Udec128_6) -> GraphqlBigDecimal {
     let inner_value = v.inner();
     let bigint = BigInt::from(*inner_value);
     BigDecimal::new(bigint, 6).normalized().into()
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {super::*, chrono::SubsecRound, grug::NumberConst};
+
+    /// Round-trip the row through serde with the ClickHouse-shaped
+    /// adapters (`UInt128 ↔ Udec128_6`) to guard against accidental
+    /// breakage of the wire format when fields are added.
+    #[test]
+    fn serde_perps_fees_roundtrip_with_volume_usd() {
+        let row = PerpsFees {
+            block_height: 42,
+            // CI sometimes reports nanoseconds (9), local micros (6); truncate
+            // to the precision actually stored by ClickHouse.
+            created_at: Utc::now().trunc_subsecs(6),
+            protocol_fee: Udec128_6::MAX,
+            vault_fee: Udec128_6::MAX,
+            referee_rebate: Udec128_6::MAX,
+            referrer_payout: Udec128_6::MAX,
+            fee_events_count: 7,
+            volume_usd: Udec128_6::MAX,
+        };
+
+        let serialized = serde_json::to_string(&row).unwrap();
+        let mut deserialized: PerpsFees = serde_json::from_str(&serialized).unwrap();
+        deserialized.created_at = deserialized.created_at.trunc_subsecs(6);
+
+        assert_eq!(row, deserialized);
+    }
 }
