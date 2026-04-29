@@ -46,7 +46,7 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
               {trigger}
               {showArrow && (
                 <IconChevronDownFill
-                  className={twMerge("transition-all w-4 h-4", open && "rotate-180")}
+                  className={twMerge("transition-all w-4 h-4 ", open && "rotate-180")}
                 />
               )}
             </PopoverButton>
