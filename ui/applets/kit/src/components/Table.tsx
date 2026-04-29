@@ -225,7 +225,8 @@ const tabsVariants = tv({
       },
       simple: {
         base: "text-ink-tertiary-500 border-separate gap-2",
-        header: "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start bg-surface-primary-rice",
+        header:
+          "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start bg-surface-primary-rice",
         cell: "px-2 py-1 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-surface-tertiary-rice",
         row: "rounded-xl group",
       },

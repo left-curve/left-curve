@@ -1,4 +1,4 @@
-import * as TV from "@left-curve/tradingview";
+import type * as TV from "@left-curve/tradingview";
 import { Direction } from "@left-curve/dango/types";
 import { Decimal, adjustPrice } from "@left-curve/dango/utils";
 
@@ -12,7 +12,6 @@ import type {
 
 type ChartLine = {
   price: number;
-  text: string;
   color: string;
   linestyle: number;
 };
@@ -29,7 +28,6 @@ export function buildPositionLines(position: PerpsPositionExtended): ChartLine[]
   const lines: ChartLine[] = [
     {
       price: +Decimal(position.entryPrice).toFixed(),
-      text: "",
       color: isLong ? COLORS.buy : COLORS.sell,
       linestyle: 0,
     },
@@ -38,7 +36,6 @@ export function buildPositionLines(position: PerpsPositionExtended): ChartLine[]
   if (position.liquidationPrice) {
     lines.push({
       price: +Decimal(position.liquidationPrice).toFixed(),
-      text: "Liq. Price",
       color: COLORS.liq,
       linestyle: 1,
     });
@@ -50,7 +47,6 @@ export function buildPositionLines(position: PerpsPositionExtended): ChartLine[]
   if (tp) {
     lines.push({
       price: +Decimal(tp.triggerPrice).toFixed(),
-      text: "TP",
       color: COLORS.buy,
       linestyle: 2,
     });
@@ -59,7 +55,6 @@ export function buildPositionLines(position: PerpsPositionExtended): ChartLine[]
   if (sl) {
     lines.push({
       price: +Decimal(sl.triggerPrice).toFixed(),
-      text: "SL",
       color: COLORS.sell,
       linestyle: 2,
     });
@@ -78,7 +73,6 @@ export function buildPerpsOrderLines(
       const isBuy = Decimal(order.size).gt(0);
       return {
         price: +Decimal(order.limitPrice).toFixed(),
-        text: "",
         color: isBuy ? COLORS.buy : COLORS.sell,
         linestyle: 2,
       };
@@ -96,32 +90,42 @@ export function buildSpotOrderLines(
         .times(Decimal(10).pow(base.decimals - quote.decimals))
         .toFixed(),
     ),
-    text: "",
     color: order.direction === Direction.Buy ? COLORS.buy : COLORS.sell,
     linestyle: 2,
   }));
 }
 
-export function drawLines(chart: TV.IChartWidgetApi, lines: ChartLine[]) {
-  chart.getAllShapes().forEach((shape) => chart.removeEntity(shape.id));
-  for (const { price, text, color, linestyle } of lines) {
-    chart.createShape(
-      { price, time: Date.now() },
-      {
-        shape: "horizontal_line",
-        text,
-        lock: true,
-        disableSelection: true,
-        disableSave: true,
-        overrides: {
-          showLabel: !!text,
-          showPrice: true,
-          textcolor: color,
-          linecolor: color,
-          linestyle,
-          linewidth: 1,
-        },
-      },
-    );
-  }
-}
+export const drawLines = (() => {
+  let pending = Promise.resolve();
+
+  return (chart: TV.IChartWidgetApi, lines: ChartLine[]) => {
+    pending = pending.then(async () => {
+      for (const { id } of chart.getAllShapes()) {
+        try {
+          if (!chart.getShapeById(id).isSavingEnabled()) {
+            chart.removeEntity(id);
+          }
+        } catch {}
+      }
+
+      for (const { price, color, linestyle } of lines) {
+        await chart.createShape(
+          { price, time: Date.now() },
+          {
+            shape: "horizontal_line",
+            lock: true,
+            disableSelection: true,
+            disableSave: true,
+            overrides: {
+              showLabel: false,
+              showPrice: true,
+              linecolor: color,
+              linestyle,
+              linewidth: 1,
+            },
+          },
+        );
+      }
+    });
+  };
+})();
