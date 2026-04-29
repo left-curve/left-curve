@@ -45,6 +45,7 @@ perp_liquidator_config:
     notification_timeout: 3
     frontend_url: "https://dango.exchange"
     reinit_interval_blocks: 3600
+    block_fetch_alert_threshold: 20
     instances:
       - name: "mainnet-1"
         liquidation_delay_blocks: 0
