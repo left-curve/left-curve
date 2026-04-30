@@ -8,7 +8,7 @@ This chapter documents the complete API for the Dango perpetual futures exchange
 
 All queries and mutations use a standard GraphQL POST request.
 
-**Endpoint:** See [§11. Constants](#11-constants).
+**Endpoint:** See [§12. Constants](#12-constants).
 
 **Headers:**
 
@@ -53,7 +53,7 @@ curl -X POST https://<host>/graphql \
 
 Subscriptions (real-time data) use WebSocket with the `graphql-ws` protocol.
 
-**Endpoint:** See [§11. Constants](#11-constants).
+**Endpoint:** See [§12. Constants](#12-constants).
 
 **Connection handshake:**
 
@@ -524,7 +524,7 @@ Creating a new user profile is a two-step process:
 
 | Field       | Type        | Description                                                    |
 | ----------- | ----------- | -------------------------------------------------------------- |
-| `key`       | `Key`       | The user's initial public key (see [§10.3](#103-enums))        |
+| `key`       | `Key`       | The user's initial public key (see [§11.3](#113-enums))        |
 | `key_hash`  | `Hash256`   | Client-chosen hash identifying this key                        |
 | `seed`      | `u32`       | Arbitrary number for address variety                           |
 | `signature` | `Signature` | Signature over `{"chain_id": "dango-1"}` proving key ownership |
@@ -567,8 +567,8 @@ The preimage layout (122 bytes total):
 
 | Byte range  | Size | Field       | Description                                                                                                   |
 | ----------- | ---- | ----------- | ------------------------------------------------------------------------------------------------------------- |
-| `[0..20)`   | 20   | `deployer`  | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                                             |
-| `[20..52)`  | 32   | `code_hash` | The code hash of the Dango single-signature account contract (see [§11](#11-constants))                       |
+| `[0..20)`   | 20   | `deployer`  | The `ACCOUNT_FACTORY_CONTRACT` address (see [§12](#12-constants))                                             |
+| `[20..52)`  | 32   | `code_hash` | The code hash of the Dango single-signature account contract (see [§12](#12-constants))                       |
 | `[52..56)`  | 4    | `seed`      | User-chosen `u32`, big-endian — arbitrary value for frontrunning protection                                   |
 | `[56..88)`  | 32   | `key_hash`  | Client-chosen 32-byte identifier for the key (see [§3.8](#38-query-users-by-key) for hashing rules)           |
 | `[88..89)`  | 1    | `key_tag`   | Key type: `0` = Secp256r1, `1` = Secp256k1, `2` = Ethereum                                                    |
@@ -584,8 +584,8 @@ The preimage layout (56 bytes total):
 
 | Byte range | Size | Field           | Description                                                                             |
 | ---------- | ---- | --------------- | --------------------------------------------------------------------------------------- |
-| `[0..20)`  | 20   | `deployer`      | The `ACCOUNT_FACTORY_CONTRACT` address (see [§11](#11-constants))                       |
-| `[20..52)` | 32   | `code_hash`     | The code hash of the Dango single-signature account contract (see [§11](#11-constants)) |
+| `[0..20)`  | 20   | `deployer`      | The `ACCOUNT_FACTORY_CONTRACT` address (see [§12](#12-constants))                       |
+| `[20..52)` | 32   | `code_hash`     | The code hash of the Dango single-signature account contract (see [§12](#12-constants)) |
 | `[52..56)` | 4    | `account_index` | Global account index, `u32`, big-endian                                                 |
 
 The global account index is a chain-wide monotonic counter maintained by the account factory; it is incremented for every account created across all users, so every account has a unique index.
@@ -1425,12 +1425,12 @@ query {
 }
 ```
 
-| Parameter     | Type     | Description                                          |
-| ------------- | -------- | ---------------------------------------------------- |
-| `userAddr`    | `String` | Filter by user address                               |
-| `eventType`   | `String` | Filter by event type (see [§9](#9-events-reference)) |
-| `pairId`      | `String` | Filter by trading pair                               |
-| `blockHeight` | `Int`    | Filter by block height                               |
+| Parameter     | Type     | Description                                            |
+| ------------- | -------- | ------------------------------------------------------ |
+| `userAddr`    | `String` | Filter by user address                                 |
+| `eventType`   | `String` | Filter by event type (see [§10](#10-events-reference)) |
+| `pairId`      | `String` | Filter by trading pair                                 |
+| `blockHeight` | `Int`    | Filter by block height                                 |
 
 The `data` field contains the event-specific payload as JSON. For example, an `order_filled` event:
 
@@ -1819,7 +1819,7 @@ Apply a sequence of submit and cancel actions atomically. Actions execute in ord
 The payload is a JSON array of `SubmitOrCancelOrderRequest` values. Each entry is one of:
 
 - `{ "submit": { … } }` — same shape as [`submit_order`](#64-submit-limit-order) (every field of `SubmitOrderRequest`).
-- `{ "cancel": <CancelOrderRequest> }` — any variant of [`CancelOrderRequest`](#103-enums): `{ "one": "..." }`, `{ "one_by_client_order_id": "..." }`, or the string `"all"`.
+- `{ "cancel": <CancelOrderRequest> }` — any variant of [`CancelOrderRequest`](#113-enums): `{ "one": "..." }`, `{ "one_by_client_order_id": "..." }`, or the string `"all"`.
 
 **Constraints:**
 
@@ -2180,7 +2180,59 @@ subscription {
 | `checkMode`  | `CheckValue`   | `EQUAL` (exact match) or `CONTAINS` (substring) |
 | `value`      | `[JSON]`       | Values to match against                         |
 
-## 9. Events reference
+## 9. Statistics
+
+Aggregate statistics queries are served by the indexer (ClickHouse-backed), not the Dango chain itself. They expose long-window rollups suitable for dashboards and external integrations such as DefiLlama.
+
+### 9.1 Perps fees and revenue
+
+Sum of fees, referral commissions, and traded volume generated by the perps contract within an inclusive `[from, to]` time window:
+
+```graphql
+query {
+  perpsFeesAndRevenue(
+    from: "2026-01-01T00:00:00Z",
+    to: "2026-04-30T23:59:59Z"
+  ) {
+    feeEventsCount
+    from
+    to
+    protocolFee
+    vaultFee
+    refereeRebate
+    referrerPayout
+    volumeUsd
+  }
+}
+```
+
+| Parameter | Type        | Description                    |
+| --------- | ----------- | ------------------------------ |
+| `from`    | `DateTime!` | Window lower bound (inclusive) |
+| `to`      | `DateTime!` | Window upper bound (inclusive) |
+
+**Response fields:**
+
+| Field            | Type          | Description                                                                    |
+| ---------------- | ------------- | ------------------------------------------------------------------------------ |
+| `feeEventsCount` | `Int!`        | Number of `fee_distributed` events aggregated in the window                    |
+| `from`           | `String!`     | Echo of the request lower bound (ISO 8601)                                     |
+| `to`             | `String!`     | Echo of the request upper bound (ISO 8601)                                     |
+| `protocolFee`    | `BigDecimal!` | Total protocol fees routed to the treasury, in USD                             |
+| `vaultFee`       | `BigDecimal!` | Total fees retained by the vault, in USD (already net of referral commissions) |
+| `refereeRebate`  | `BigDecimal!` | Total commissions paid back to traders' own accounts (informational)           |
+| `referrerPayout` | `BigDecimal!` | Total commissions paid out up the referrer chain (informational)               |
+| `volumeUsd`      | `BigDecimal!` | USD notional volume from `order_filled` and `deleveraged` events in the window |
+
+**Total protocol revenue** over the window is `protocolFee + vaultFee`. `vaultFee` is already reported net of referral commissions, so no client-side subtraction is required. `refereeRebate` and `referrerPayout` are informational breakdowns; the total fee paid by users is `protocolFee + vaultFee + refereeRebate + referrerPayout`.
+
+**Volume accounting:** `volumeUsd` counts each match exactly once (via the positive-sized side of the `order_filled` pair) and each `deleveraged` event. The `adl_size` field on `liquidated` is intentionally excluded — its magnitude already equals the sum of `closing_size` on the corresponding `deleveraged` events for the same liquidation, so counting both would double the ADL contribution.
+
+**Resolution:** Query routing is adaptive. Windows shorter than 3 days are served from per-block rows with microsecond-precise bounds. Windows of 3 days or longer are served from an hourly materialized view — bounds are snapped to the enclosing hours, so a request that overlaps partial hours at either end includes those hours' full aggregates. The trade-off is hour granularity for ~4 orders of magnitude lower scan cost on long windows.
+
+**Endpoint:** See [§12. Constants](#12-constants).
+
+## 10. Events reference
 
 The perps contract emits the following events. These can be queried via `perpsEvents` ([§5.5](#55-trade-history)) or streamed via the `events` subscription ([§8.5](#85-event-stream)).
 
@@ -2251,9 +2303,9 @@ Trading fees are reported separately in the `fee` field on `order_filled`; ADL a
 
 For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl.md).
 
-## 10. Types reference
+## 11. Types reference
 
-### 10.1 Numeric types
+### 11.1 Numeric types
 
 All numeric types are **signed fixed-point decimals with 6 decimal places**, built on [`dango_types::Number`](https://github.com/left-curve/left-curve/blob/main/dango/types/src/typed_number.rs). They are serialized as strings:
 
@@ -2274,7 +2326,7 @@ Additional integer types:
 | `u64`     | Number or String | Gas limit, timestamps             |
 | `u32`     | Number           | User index, account index, nonce  |
 
-### 10.2 Identifiers
+### 11.2 Identifiers
 
 | Type                 | Format                          | Example                          |
 | -------------------- | ------------------------------- | -------------------------------- |
@@ -2291,7 +2343,7 @@ Additional integer types:
 | `Timestamp`          | Nanoseconds since epoch (`u64`) | `"1700000000000000000"`          |
 | `Duration`           | Nanoseconds (`u64`)             | `"3600000000000"` (1 hour)       |
 
-### 10.3 Enums
+### 11.3 Enums
 
 **OrderKind:**
 
@@ -2450,7 +2502,7 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 
 `ONE_SECOND` | `ONE_MINUTE` | `FIVE_MINUTES` | `FIFTEEN_MINUTES` | `ONE_HOUR` | `FOUR_HOURS` | `ONE_DAY` | `ONE_WEEK`
 
-### 10.4 Response types
+### 11.4 Response types
 
 **Param** (global parameters) — see [§4.1](#41-global-parameters) for all fields.
 
@@ -2547,7 +2599,7 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 | `index` | `AccountIndex` | Account's unique index |
 | `owner` | `UserIndex`    | Owning user's index    |
 
-## 11. Constants
+## 12. Constants
 
 ### Endpoints
 
