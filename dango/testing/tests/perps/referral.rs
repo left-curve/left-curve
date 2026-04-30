@@ -1716,6 +1716,118 @@ fn fee_distributed_event_with_referrer() {
     assert_eq!(taker_event.commissions[1], expected_referrer_share);
 }
 
+/// Regression test: when the chain owner uses the `set_referral` bypass to
+/// wire up a referee-to-referrer relationship without the referrer having
+/// opted in (no `FEE_SHARE_RATIO` entry), the referee's trades must still
+/// settle. The referrer's share ratio defaults to zero, so the full
+/// commission flows to the referrer and the referee receives no rebate.
+#[test]
+fn fee_distributed_event_with_referrer_without_share_ratio() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // Set protocol fee to 50%.
+    let mut param: perps::Param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+
+    param.protocol_fee_rate = Dimensionless::new_percent(50);
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+
+    // Note: deliberately do NOT call `set_fee_share_ratio` for user1 — the
+    // chain owner is wiring up the relationship via the bypass below.
+
+    // Owner sets User1 as User2's referrer (bypasses the opt-in requirement).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Set a known commission rate override for deterministic math.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
+                user: 1,
+                commission_rate: Op::Insert(CommissionRate::new_percent(50)),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User8 places ask (maker), User2 (referee) buys (taker).
+    // Notional = 1 × $2,000 = $2,000. Taker fee = 0.1% = $2.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user8,
+        UsdPrice::new_int(2_000),
+        1,
+    );
+    let events = place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1);
+
+    let fee_events: Vec<FeeDistributed> = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "fee_distributed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json().unwrap())
+        .collect();
+
+    let taker_event = fee_events
+        .iter()
+        .find(|e| e.payer_addr == accounts.user2.address())
+        .expect("taker must have a FeeDistributed event");
+
+    // Notional = $2,000. Taker fee = 0.1% = $2.
+    // protocol_fee = $2 × 50% = $1. vault_fee (before commissions) = $1.
+    // commission_rate = 50%, share_ratio = 0% (defaulted, no opt-in).
+    // total_commission = $1 × 50% = $0.50
+    // referee_share    = $0.50 × 0%   = $0
+    // referrer_share   = $0.50 × 100% = $0.50
+    // vault_fee (after) = $1 − $0.50 = $0.50
+    let expected_protocol_fee = UsdValue::new_int(1);
+    let expected_vault_fee_before = UsdValue::new_int(1);
+    let expected_total_commission = expected_vault_fee_before
+        .checked_mul(CommissionRate::new_percent(50))
+        .unwrap();
+    let expected_referee_share = UsdValue::ZERO;
+    let expected_referrer_share = expected_total_commission;
+    let expected_vault_fee = expected_vault_fee_before
+        .checked_sub(expected_total_commission)
+        .unwrap();
+
+    assert_eq!(taker_event.protocol_fee, expected_protocol_fee);
+    assert_eq!(taker_event.vault_fee, expected_vault_fee);
+    assert_eq!(taker_event.commissions.len(), 2);
+    assert_eq!(taker_event.commissions[0], expected_referee_share);
+    assert_eq!(taker_event.commissions[1], expected_referrer_share);
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
