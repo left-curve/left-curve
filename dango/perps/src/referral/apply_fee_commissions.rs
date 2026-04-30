@@ -12,7 +12,9 @@ use {
     dango_types::{
         UsdValue,
         account_factory::UserIndex,
-        perps::{FeeDistributed, Param, Referee, Referrer, ReferrerSettings, UserState},
+        perps::{
+            FeeDistributed, FeeShareRatio, Param, Referee, Referrer, ReferrerSettings, UserState,
+        },
     },
     grug::{Addr, EventBuilder, QuerierWrapper, StdResult, Storage, Timestamp},
     std::collections::BTreeMap,
@@ -267,7 +269,10 @@ pub fn apply_fee_commissions(
 }
 
 /// Look up or compute referrer settings for a user, with caching.
-/// N.B. This function assumes the user is a valid referrer (has set a fee share ratio).
+///
+/// A user with no `FEE_SHARE_RATIO` entry defaults to zero — the referrer
+/// receives the full post-protocol commission, and the referee gets no
+/// rebate.
 fn compute_referrer_settings(
     storage: &dyn Storage,
     user: UserIndex,
@@ -281,7 +286,9 @@ fn compute_referrer_settings(
 
     let commission_rate = calculate_commission_rate(storage, user, block_timestamp, param)?;
 
-    let share_ratio = FEE_SHARE_RATIO.load(storage, user)?;
+    let share_ratio = FEE_SHARE_RATIO
+        .may_load(storage, user)?
+        .unwrap_or(FeeShareRatio::ZERO);
 
     let settings = ReferrerSettings {
         commission_rate,
