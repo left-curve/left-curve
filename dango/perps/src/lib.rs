@@ -171,6 +171,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 user,
                 maker_taker_fee_rates,
             } => maintain::set_fee_rate_override(ctx, user, maker_taker_fee_rates),
+            MaintainerMsg::WithdrawFromTreasury {} => maintain::withdraw_from_treasury(ctx),
         },
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),
