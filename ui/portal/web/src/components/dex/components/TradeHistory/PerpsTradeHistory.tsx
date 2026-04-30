@@ -18,6 +18,9 @@ const eventTypeLabels: Record<string, string> = {
   deleveraged: "ADL",
 };
 
+const V016_CUTOFF = new Date("2026-04-22T12:00:00Z");
+const V017_CUTOFF = new Date("2026-04-30T12:00:00Z");
+
 function normalizePerpsEvent(eventType: string, data: PerpsEvent["data"]) {
   switch (eventType) {
     case "order_filled": {
@@ -75,16 +78,14 @@ export const PerpsTradeHistory: React.FC = () => {
     },
   });
 
-  const normalizedNodes = data?.nodes.map((event) => ({
-    ...event,
-    ...normalizePerpsEvent(event.eventType, event.data),
-  }));
-
   const normalizedData = data
     ? {
-        ...data,
-        nodes: normalizedNodes!,
-        edge: data.edge.map((e, i) => ({ ...e, node: normalizedNodes![i] })),
+        pageInfo: data.pageInfo,
+        edge: [] as { cursor: string; node: NormalizedPerpsEvent }[],
+        nodes: data.nodes.map((event) => ({
+          ...event,
+          ...normalizePerpsEvent(event.eventType, event.data),
+        })),
       }
     : undefined;
 
@@ -187,17 +188,19 @@ export const PerpsTradeHistory: React.FC = () => {
     {
       header: m["dex.protrade.tradeHistory.funding"](),
       cell: ({ row }) => {
-        const { funding } = row.original;
-        if (funding === undefined || funding === null) {
+        const tradeDate = new Date(row.original.createdAt);
+        if (+tradeDate < +V017_CUTOFF) {
           return (
             <Tooltip title={m["dex.protrade.tradeHistory.fundingNotAvailable"]()}>
-              <span className="text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+              <p className="diatype-xs-regular text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
                 N/A
-              </span>
+              </p>
             </Tooltip>
           );
         }
-        if (funding === "0") return <Cell.Text text="-" className="text-ink-tertiary-500" />;
+        const { funding } = row.original;
+        if (!funding || funding === "0")
+          return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         const isPositive = !funding.startsWith("-");
         return (
           <Cell.Text
@@ -230,16 +233,17 @@ export const PerpsTradeHistory: React.FC = () => {
         if (row.original.eventType !== "order_filled") {
           return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         }
-        const { isMaker } = row.original;
-        if (isMaker === undefined || isMaker === null) {
+        const tradeDate = new Date(row.original.createdAt);
+        if (tradeDate < V016_CUTOFF) {
           return (
             <Tooltip title={m["dex.protrade.tradeHistory.makerTakerNotAvailable"]()}>
-              <span className="text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+              <p className="diatype-xs-regular text-ink-tertiary-500 cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
                 N/A
-              </span>
+              </p>
             </Tooltip>
           );
         }
+        const { isMaker } = row.original;
         return (
           <Cell.Text
             text={

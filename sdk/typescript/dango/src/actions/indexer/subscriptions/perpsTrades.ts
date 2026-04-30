@@ -53,6 +53,7 @@ export function perpsTradesSubscription<
         createdAt
         blockHeight
         tradeIdx
+        isMaker
       }
     }
   `;

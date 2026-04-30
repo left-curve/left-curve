@@ -62,6 +62,7 @@ export function useLivePerpsTradesState(parameters: UseLivePerpsTradesStateParam
     const unsubscribe = subscriptions.subscribe("perpsTrades", {
       params: { pairId: getPerpsPairId() },
       listener: async ({ perpsTrades: trade }) => {
+        if (trade.isMaker === true) return;
         tradesBuffer.current.unshift(trade);
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(processBuffer, 500);
