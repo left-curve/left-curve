@@ -13,6 +13,7 @@ export function PreviewCard({
   displayPercent,
   isPositive,
   isLong,
+  leverage,
   characterImg,
   dangoLogoSrc,
   logoURI,
@@ -33,7 +34,7 @@ export function PreviewCard({
           {symbol}
         </span>
         <Badge
-          text={`${isLong ? "Long" : "Short"} 10x`}
+          text={`${isLong ? "Long" : "Short"}${leverage ? ` ${leverage}x` : ""}`}
           color={isLong ? "green" : "red"}
           size="s"
         />

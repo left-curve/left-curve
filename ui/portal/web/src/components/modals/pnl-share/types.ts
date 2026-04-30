@@ -5,6 +5,7 @@ export type PnlShareProps = {
   entryPrice: string;
   currentPrice: number;
   pnl: number;
+  equity: string | null;
 };
 
 export type PnlCardData = {
@@ -14,6 +15,7 @@ export type PnlCardData = {
   displayPercent: number;
   isPositive: boolean;
   isLong: boolean;
+  leverage: string | null;
   characterImg: string;
   dangoLogoSrc: string;
   logoURI: string | undefined;
