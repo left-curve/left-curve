@@ -63,9 +63,10 @@ export function useLivePerpsTradesState(parameters: UseLivePerpsTradesStateParam
       params: { pairId: getPerpsPairId() },
       listener: async ({ perpsTrades: trade }) => {
         // Each on-chain match emits two `OrderFilled` events sharing a `fillId` — one for
-        // the maker, one for the taker. Keep the taker side only so the public tape shows
-        // one row per match, colored by the aggressor's direction. `null` covers pre-v0.16.0
-        // fills where the flag was not recorded.
+        // the maker, one for the taker. Keep the taker side only, so the Trades tab shows
+        // one row per match, colored by the side that crossed the spread (i.e. the taker's
+        // direction: green if the taker was buying, red if selling). `null` covers
+        // pre-v0.16.0 fills where the maker/taker flag was not recorded.
         if (trade.isMaker === true) return;
         tradesBuffer.current.unshift(trade);
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
