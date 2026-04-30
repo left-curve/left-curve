@@ -90,9 +90,13 @@ export const TradeHeader: React.FC = () => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
-            className="lg:flex-1 lg:min-w-0"
+            className="lg:flex-1 lg:min-w-0 flex items-center"
           >
-            <HeaderMetricsScroller mode={mode} pairStatsData={pairStatsData} getPerpsPairId={getPerpsPairId} />
+            <HeaderMetricsScroller
+              mode={mode}
+              pairStatsData={pairStatsData}
+              getPerpsPairId={getPerpsPairId}
+            />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -106,7 +110,11 @@ type HeaderMetricsScrollerProps = {
   getPerpsPairId: () => string;
 };
 
-const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({ mode, pairStatsData, getPerpsPairId }) => {
+const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
+  mode,
+  pairStatsData,
+  getPerpsPairId,
+}) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
