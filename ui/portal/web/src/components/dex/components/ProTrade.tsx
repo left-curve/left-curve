@@ -250,7 +250,7 @@ const ProTradeHistory: React.FC = () => {
   }, [mode]);
 
   return (
-    <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10 lg:rounded-xl">
+    <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
