@@ -54,6 +54,9 @@ pub enum ExecuteMsg {
     /// Report trading volumes of users.
     /// Can only be called by the spot and perp DEX contracts.
     ReportVolumes(BTreeMap<Addr, Udec128_6>),
+    /// Transfer all accumulated fees to the chain's owner.
+    /// Can only be called by the chain's owner.
+    WithdrawFees {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
