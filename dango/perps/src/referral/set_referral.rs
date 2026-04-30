@@ -22,8 +22,8 @@ use {
 ///
 /// - the account factory (during user registration, when the user provides
 ///   a referral code at sign-up);
-/// - the chain's owner (admin override; still subject to every other
-///   constraint below);
+/// - the chain's owner (admin override — additionally bypasses the
+///   referrer-opt-in and referee-immutability checks below);
 /// - an account owned by the referee (self-service after registration).
 pub fn set_referral(
     ctx: MutableCtx,
@@ -34,34 +34,42 @@ pub fn set_referral(
     ensure!(referrer != referee, "a user cannot refer themselves");
 
     let account_factory = account_factory(ctx.querier);
+    let owner = ctx.querier.query_owner()?;
 
-    // Sender must be the account factory, the chain owner, or an account
-    // owned by the referee. The owner lookup is lazy: short-circuit `&&`
-    // skips the querier roundtrip when the cheaper comparison succeeds.
-    if ctx.sender != account_factory && ctx.sender != ctx.querier.query_owner()? {
-        // TODO: refactor to raw query (query_wasm_path).
-        let account = ctx.querier.query_wasm_smart(
-            account_factory,
-            account_factory::QueryAccountRequest {
-                address: ctx.sender,
-            },
-        )?;
-
-        ensure!(
-            account.owner == referee,
-            "caller is not the account factory, chain owner, or an account owned by the referee"
-        );
-    }
+    // Only three parties can set the referrer:
+    // - the chain owner;
+    // - the account factory contract (this is the case when the referee specifies
+    //   a referral code during registration);
+    // - the referee himself (this is the case when the referee did not specify
+    //   a referral code during registration, but later goes to the setting menu
+    //   to choose a referrer).
+    ensure!(
+        ctx.sender == owner || ctx.sender == account_factory || {
+            // The account owner lookup is lazy: only done if sender is neither
+            // the chain owner nor the account factory.
+            // TODO: refactor to raw query (query_wasm_path).
+            let sender_user_index = ctx
+                .querier
+                .query_wasm_smart(account_factory, account_factory::QueryAccountRequest {
+                    address: ctx.sender,
+                })?
+                .owner;
+            sender_user_index == referee
+        },
+        "caller is not the account factory, chain owner, or an account owned by the referee"
+    );
 
     // The referrer must have a share ratio set (i.e. has opted in as a referrer).
+    // Exception: bypass this check if sender is the owner.
     ensure!(
-        FEE_SHARE_RATIO.has(ctx.storage, referrer),
+        ctx.sender == owner || FEE_SHARE_RATIO.has(ctx.storage, referrer),
         "referrer {referrer} has no fee share ratio set"
     );
 
     // The referral relationship is immutable once set.
+    // Exception: bypass this check if sender is the owner.
     ensure!(
-        !REFEREE_TO_REFERRER.has(ctx.storage, referee),
+        ctx.sender == owner || !REFEREE_TO_REFERRER.has(ctx.storage, referee),
         "referee {referee} already has a referrer"
     );
 
@@ -69,6 +77,14 @@ pub fn set_referral(
     REFEREE_TO_REFERRER.save(ctx.storage, referee, &referrer)?;
 
     // Initialize per-referee statistics for the referrer.
+    //
+    // On owner-driven overwrite (when the referee already had a different
+    // referrer), the previous referrer's state is intentionally retained:
+    // the old `(old_referrer, referee)` row in `REFERRER_TO_REFEREE_STATISTICS`
+    // remains as the historical stats for the period that relationship was
+    // active, and the old referrer's `referee_count` is not decremented so it
+    // continues to read as "users that have been a direct referee of this
+    // referrer at one point in time".
     REFERRER_TO_REFEREE_STATISTICS.save(ctx.storage, (referrer, referee), &RefereeStats {
         registered_at: ctx.block.timestamp,
         ..Default::default()
@@ -96,7 +112,7 @@ mod tests {
         dango_types::{
             account_factory::Account,
             config::{AppAddresses, AppConfig},
-            perps::FeeShareRatio,
+            perps::{FeeShareRatio, UserReferralData},
         },
         grug::{
             Addr, Coins, Config, Duration, EventName, JsonDeExt, JsonSerExt, MockContext,
@@ -230,12 +246,13 @@ mod tests {
         );
     }
 
-    /// The owner branch is still subject to the referrer-opt-in requirement.
+    /// The referrer-opt-in requirement applies to non-owner callers.
+    /// (Owner-bypass is covered separately in `owner_bypasses_fee_share_ratio_check`.)
     #[test]
     fn referrer_without_fee_share_ratio_rejected() {
         let mut ctx = MockContext::new()
             .with_querier(base_querier())
-            .with_sender(OWNER)
+            .with_sender(ACCOUNT_FACTORY)
             .with_funds(Coins::default());
 
         // Deliberately do NOT seed FEE_SHARE_RATIO.
@@ -244,13 +261,15 @@ mod tests {
             .should_fail_with_error("has no fee share ratio set");
     }
 
-    /// Immutability still applies to the owner branch: a referee with an
-    /// existing referrer cannot be overwritten, even by the chain owner.
+    /// Immutability applies to non-owner callers: a referee with an existing
+    /// referrer cannot have it overwritten by the account factory or the
+    /// referee's own account. (Owner-bypass is covered separately in
+    /// `owner_can_overwrite_existing_referrer`.)
     #[test]
-    fn already_set_referee_rejected_for_owner() {
+    fn already_set_referee_rejected_for_non_owner() {
         let mut ctx = MockContext::new()
             .with_querier(base_querier())
-            .with_sender(OWNER)
+            .with_sender(ACCOUNT_FACTORY)
             .with_funds(Coins::default());
 
         seed_referrer(&mut ctx.storage);
@@ -260,6 +279,95 @@ mod tests {
 
         set_referral(ctx.as_mutable(), REFERRER, REFEREE)
             .should_fail_with_error("already has a referrer");
+    }
+
+    /// The chain owner can register a referral even when the referrer has
+    /// not opted in by setting a `FEE_SHARE_RATIO`.
+    #[test]
+    fn owner_bypasses_fee_share_ratio_check() {
+        let mut ctx = MockContext::new()
+            .with_querier(base_querier())
+            .with_sender(OWNER)
+            .with_funds(Coins::default())
+            .with_block_timestamp(BLOCK_TIME);
+
+        // Deliberately do NOT seed FEE_SHARE_RATIO.
+
+        set_referral(ctx.as_mutable(), REFERRER, REFEREE).should_succeed();
+
+        assert_eq!(
+            REFEREE_TO_REFERRER.load(&ctx.storage, REFEREE).unwrap(),
+            REFERRER,
+        );
+    }
+
+    /// The chain owner can overwrite an existing referee-to-referrer mapping.
+    /// The previous referrer's per-referee stats row and lifetime
+    /// `referee_count` are intentionally retained: they read as the stats
+    /// for the period that prior relationship was active, and as the count
+    /// of users that were ever a direct referee, respectively.
+    #[test]
+    fn owner_can_overwrite_existing_referrer() {
+        let mut ctx = MockContext::new()
+            .with_querier(base_querier())
+            .with_sender(OWNER)
+            .with_funds(Coins::default())
+            .with_block_timestamp(BLOCK_TIME);
+
+        seed_referrer(&mut ctx.storage);
+
+        // Pre-seed an existing OUTSIDER -> REFEREE relationship, including
+        // the per-referee stats row and the OUTSIDER's lifetime referee count.
+        REFEREE_TO_REFERRER
+            .save(&mut ctx.storage, REFEREE, &OUTSIDER)
+            .unwrap();
+        REFERRER_TO_REFEREE_STATISTICS
+            .save(&mut ctx.storage, (OUTSIDER, REFEREE), &RefereeStats {
+                registered_at: BLOCK_TIME,
+                ..Default::default()
+            })
+            .unwrap();
+        USER_REFERRAL_DATA
+            .save(
+                &mut ctx.storage,
+                (OUTSIDER, round_to_day(BLOCK_TIME)),
+                &UserReferralData {
+                    referee_count: 1,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        set_referral(ctx.as_mutable(), REFERRER, REFEREE).should_succeed();
+
+        // Mapping is overwritten to the new referrer.
+        assert_eq!(
+            REFEREE_TO_REFERRER.load(&ctx.storage, REFEREE).unwrap(),
+            REFERRER,
+        );
+
+        // New per-referee stats row created for the new (referrer, referee).
+        REFERRER_TO_REFEREE_STATISTICS
+            .load(&ctx.storage, (REFERRER, REFEREE))
+            .unwrap();
+
+        // Old per-referee stats row is retained — represents the period
+        // when REFEREE was a referee of OUTSIDER.
+        REFERRER_TO_REFEREE_STATISTICS
+            .load(&ctx.storage, (OUTSIDER, REFEREE))
+            .unwrap();
+
+        // Old referrer's lifetime referee_count is not decremented.
+        let outsider_data = USER_REFERRAL_DATA
+            .load(&ctx.storage, (OUTSIDER, round_to_day(BLOCK_TIME)))
+            .unwrap();
+        assert_eq!(outsider_data.referee_count, 1);
+
+        // New referrer's referee_count is incremented to 1.
+        let referrer_data = USER_REFERRAL_DATA
+            .load(&ctx.storage, (REFERRER, round_to_day(BLOCK_TIME)))
+            .unwrap();
+        assert_eq!(referrer_data.referee_count, 1);
     }
 
     #[test]

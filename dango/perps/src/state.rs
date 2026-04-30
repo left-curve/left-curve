@@ -74,7 +74,8 @@ pub const FEE_RATE_OVERRIDES: Map<Addr, (Dimensionless, Dimensionless)> = Map::n
 
 // --------------------------------- referral ----------------------------------
 
-/// Maps a referee to their referrer. Immutable once set.
+/// Maps a referee to their referrer. Immutable once set, except that the chain
+/// owner can override an existing mapping via `SetReferral`.
 pub const REFEREE_TO_REFERRER: Map<UserIndex, UserIndex> = Map::new("ref_r");
 
 /// Maps a referrer to their fee share ratio.
