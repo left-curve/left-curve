@@ -207,12 +207,12 @@ The `data` field contains authentication metadata:
 }
 ```
 
-| Field        | Type                | Description                                                       |
-| ------------ | ------------------- | ----------------------------------------------------------------- |
-| `user_index` | `u32`               | The user index that owns the sender account                       |
-| `chain_id`   | `String`            | Chain identifier (prevents cross-chain replay)                    |
-| `nonce`      | `u32`               | Replay protection nonce                                           |
-| `expiry`     | `Timestamp \| null` | Optional expiration (nanoseconds since epoch); `null` = no expiry |
+| Field        | Type                | Description                                    |
+| ------------ | ------------------- | ---------------------------------------------- |
+| `user_index` | `u32`               | The user index that owns the sender account    |
+| `chain_id`   | `String`            | Chain identifier (prevents cross-chain replay) |
+| `nonce`      | `u32`               | Replay protection nonce                        |
+| `expiry`     | `Timestamp \| null` | Optional expiration; `null` = no expiry        |
 
 **Nonce semantics:** Dango uses **unordered nonces** with a sliding window of 20, similar to [the approach used by Hyperliquid](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets#hyperliquid-nonces). The account tracks the 20 most recently seen nonces. A transaction is accepted if its nonce is newer than the oldest seen nonce, has not been used before, and not greater than newest seen nonce + 100. This means transactions may arrive out of order without being rejected. SDK implementations should track the next available nonce client-side by querying the account's seen nonces and choosing the next integer above the maximum.
 
@@ -329,7 +329,7 @@ Session keys allow delegated signing without requiring the master key for every 
   "session": {
     "session_info": {
       "session_key": "<base64>",
-      "expire_at": "1700000000000000000"
+      "expire_at": "1700000000"
     },
     "session_signature": "<base64>",
     "authorization": {
@@ -821,9 +821,9 @@ query {
   "protocol_fee_rate": "0.100000",
   "liquidation_fee_rate": "0.010000",
   "liquidation_buffer_ratio": "0.000000",
-  "funding_period": "3600000000000",
+  "funding_period": "3600",
   "vault_total_weight": "10.000000",
-  "vault_cooldown_period": "604800000000000",
+  "vault_cooldown_period": "604800",
   "referral_active": true,
   "min_referrer_volume": "0.000000",
   "referrer_commission_rates": {
@@ -843,9 +843,9 @@ query {
 | `protocol_fee_rate`         | `Dimensionless` | Fraction of trading fees routed to treasury                                      |
 | `liquidation_fee_rate`      | `Dimensionless` | Insurance fund fee on liquidations                                               |
 | `liquidation_buffer_ratio`  | `Dimensionless` | Post-liquidation equity buffer above maintenance margin                          |
-| `funding_period`            | `Duration`      | Interval between funding collections (nanoseconds)                               |
+| `funding_period`            | `Duration`      | Interval between funding collections                                             |
 | `vault_total_weight`        | `Dimensionless` | Sum of all pairs' vault liquidity weights                                        |
-| `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release (nanoseconds)                       |
+| `vault_cooldown_period`     | `Duration`      | Waiting time before vault withdrawal release                                     |
 | `referral_active`           | `bool`          | Whether the referral commission system is active                                 |
 | `min_referrer_volume`       | `UsdValue`      | Minimum lifetime volume to become a referrer                                     |
 | `referrer_commission_rates` | `RateSchedule`  | Volume-tiered referrer commission rates                                          |
@@ -873,7 +873,7 @@ query {
 
 ```json
 {
-  "last_funding_time": "1700000000000000000",
+  "last_funding_time": "1700000000.123456789",
   "vault_share_supply": "500000000",
   "insurance_fund": "25000.000000",
   "treasury": "12000.000000"
@@ -1310,7 +1310,7 @@ query {
     "limit_price": "63000.000000",
     "reduce_only": false,
     "reserved_margin": "1575.000000",
-    "created_at": "1700000000000000000"
+    "created_at": "1700000000"
   }
 }
 ```
@@ -1353,7 +1353,7 @@ query {
   "limit_price": "63000.000000",
   "reduce_only": false,
   "reserved_margin": "1575.000000",
-  "created_at": "1700000000000000000"
+  "created_at": "1700000000"
 }
 ```
 
@@ -1387,10 +1387,10 @@ query {
 }
 ```
 
-| Parameter | Type         | Description                                          |
-| --------- | ------------ | ---------------------------------------------------- |
-| `user`    | `Addr`       | Account address                                      |
-| `since`   | `Timestamp?` | Start time (nanoseconds); `null` for lifetime volume |
+| Parameter | Type         | Description                            |
+| --------- | ------------ | -------------------------------------- |
+| `user`    | `Addr`       | Account address                        |
+| `since`   | `Timestamp?` | Start time; `null` for lifetime volume |
 
 Returns a `UsdValue` string (e.g. `"1250000.000000"`).
 
@@ -2288,8 +2288,10 @@ Additional integer types:
 | `UserIndex`          | `u32`                           | `0`                              |
 | `AccountIndex`       | `u32`                           | `1`                              |
 | `Username`           | 1–15 chars, `[a-z0-9_]`         | `"alice"`                        |
-| `Timestamp`          | Nanoseconds since epoch (`u64`) | `"1700000000000000000"`          |
-| `Duration`           | Nanoseconds (`u64`)             | `"3600000000000"` (1 hour)       |
+| `Timestamp`          | Seconds since epoch (decimal)   | `"1700000000.123456789"`         |
+| `Duration`           | Seconds (decimal)               | `"3600"` (1 hour)                |
+
+`Timestamp` and `Duration` are encoded as fixed-point decimal strings with up to 9 fractional digits (nanosecond precision); trailing zeros are elided. So `"1700000000"`, `"1700000000.5"`, and `"1700000000.123456789"` are all valid `Timestamp` values.
 
 ### 10.3 Enums
 
