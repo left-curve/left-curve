@@ -8,7 +8,7 @@ export function Landing() {
 
   return (
     <div className="min-h-svh flex items-center justify-center relative w-full">
-      <div className="mx-auto p-4 lg:p-0 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16">
+      <div className="min-h-[calc(100svh-5svh)] mx-auto pb-[20svh] p-4 lg:p-0 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
