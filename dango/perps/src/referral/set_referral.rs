@@ -2,10 +2,7 @@ use {
     crate::{
         account_factory,
         referral::load_referral_data,
-        state::{
-            FEE_SHARE_RATIO, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
-            USER_REFERRAL_DATA,
-        },
+        state::{REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS, USER_REFERRAL_DATA},
         volume::round_to_day,
     },
     anyhow::ensure,
@@ -53,12 +50,6 @@ pub fn set_referral(
         );
     }
 
-    // The referrer must have a share ratio set (i.e. has opted in as a referrer).
-    ensure!(
-        FEE_SHARE_RATIO.has(ctx.storage, referrer),
-        "referrer {referrer} has no fee share ratio set"
-    );
-
     // The referral relationship is immutable once set.
     ensure!(
         !REFEREE_TO_REFERRER.has(ctx.storage, referee),
@@ -93,6 +84,7 @@ pub fn set_referral(
 mod tests {
     use {
         super::*,
+        crate::state::FEE_SHARE_RATIO,
         dango_types::{
             account_factory::Account,
             config::{AppAddresses, AppConfig},
@@ -230,18 +222,26 @@ mod tests {
         );
     }
 
-    /// The owner branch is still subject to the referrer-opt-in requirement.
+    /// A user can be assigned as a referrer even when they have not chosen
+    /// a fee share ratio — the missing ratio defaults to zero in
+    /// `apply_fee_commissions`.
     #[test]
-    fn referrer_without_fee_share_ratio_rejected() {
+    fn referrer_without_fee_share_ratio_accepted() {
         let mut ctx = MockContext::new()
             .with_querier(base_querier())
             .with_sender(OWNER)
-            .with_funds(Coins::default());
+            .with_funds(Coins::default())
+            .with_block_timestamp(BLOCK_TIME);
 
-        // Deliberately do NOT seed FEE_SHARE_RATIO.
+        // Deliberately do NOT seed FEE_SHARE_RATIO — the relationship should
+        // still be created.
 
-        set_referral(ctx.as_mutable(), REFERRER, REFEREE)
-            .should_fail_with_error("has no fee share ratio set");
+        set_referral(ctx.as_mutable(), REFERRER, REFEREE).should_succeed();
+
+        assert_eq!(
+            REFEREE_TO_REFERRER.load(&ctx.storage, REFEREE).unwrap(),
+            REFERRER,
+        );
     }
 
     /// Immutability still applies to the owner branch: a referee with an

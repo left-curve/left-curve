@@ -229,12 +229,14 @@ fn referral_self_refer_fails() {
         .should_fail_with_error("a user cannot refer themselves");
 }
 
-/// A referral cannot be set if the referrer has no fee share ratio.
+/// A user can be assigned as a referrer even without choosing a fee share
+/// ratio. The missing ratio defaults to zero — the referrer receives the
+/// full post-protocol commission, and the referee gets no rebate.
 #[test]
-fn referral_without_share_ratio_fails() {
+fn referral_without_share_ratio_succeeds() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    // User1 has NOT set a share ratio. Trying to set User1 as referrer should fail.
+    // User1 has NOT set a share ratio. The relationship should still be saved.
     suite
         .execute(
             &mut accounts.user2,
@@ -245,7 +247,130 @@ fn referral_without_share_ratio_fails() {
             }),
             Coins::new(),
         )
-        .should_fail_with_error("referrer 1 has no fee share ratio set");
+        .should_succeed();
+
+    assert_eq!(
+        suite
+            .query_wasm_smart(contracts.perps, perps::QueryReferrerRequest { referee: 2 })
+            .should_succeed(),
+        Some(1),
+    );
+}
+
+/// Regression: a referrer who never opted into a fee share ratio still
+/// receives commissions on referee fills. The missing ratio defaults to zero,
+/// so the referrer gets the full post-protocol commission and the referee
+/// gets no rebate.
+#[test]
+fn referrer_without_share_ratio_receives_full_commission() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    // Set protocol fee to 50% for predictable splits.
+    let mut param: perps::Param = suite
+        .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
+        .should_succeed();
+    param.protocol_fee_rate = Dimensionless::new_percent(50);
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param,
+                pair_params: Default::default(),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+
+    // User1 is set as User2's referrer — without setting a fee share ratio.
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Pin the commission rate for deterministic math; this also bypasses the
+    // volume requirement that would otherwise apply to user1.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
+                user: 1,
+                commission_rate: Op::Insert(CommissionRate::new_percent(50)),
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let user1_addr = accounts.user1.address();
+    let pre: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: user1_addr,
+        })
+        .should_succeed()
+        .expect("user1 should have a UserState after deposit");
+
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user8,
+        UsdPrice::new_int(2_000),
+        1,
+    );
+    let events = place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1);
+
+    // Notional = $2,000. Taker fee = 0.1% = $2.
+    // protocol_fee = $2 × 50% = $1. vault_fee (before commissions) = $1.
+    // commission_rate = 50%, share_ratio = 0% (defaulted because user1 never set one).
+    // total_commission = $1 × 50% = $0.50
+    // referee_share    = $0.50 × 0% = $0
+    // referrer_share   = $0.50 − $0 = $0.50
+    let expected_referee_share = UsdValue::ZERO;
+    let expected_referrer_share = UsdValue::new_int(1)
+        .checked_mul(CommissionRate::new_percent(50))
+        .unwrap();
+
+    let fee_events: Vec<FeeDistributed> = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "fee_distributed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json().unwrap())
+        .collect();
+
+    let taker_event = fee_events
+        .iter()
+        .find(|e| e.payer_addr == accounts.user2.address())
+        .expect("taker must have a FeeDistributed event");
+
+    assert_eq!(taker_event.commissions.len(), 2);
+    assert_eq!(taker_event.commissions[0], expected_referee_share);
+    assert_eq!(taker_event.commissions[1], expected_referrer_share);
+
+    // User1's UserState margin should have gained the full referrer share.
+    let post: perps::UserState = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: user1_addr,
+        })
+        .should_succeed()
+        .expect("user1 should still have a UserState");
+    assert_eq!(
+        post.margin.checked_sub(pre.margin).unwrap(),
+        expected_referrer_share,
+    );
 }
 
 /// Only the referee (or the account factory) can set the referral relationship.
