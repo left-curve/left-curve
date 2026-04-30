@@ -16,7 +16,7 @@ export function AppletsSection() {
         if (!applet) return null;
         return (
           <div
-            className="md:w-[5.5rem] h-auto flex items-start justify-center [&:nth-child(6n)]:md:justify-end [&:nth-child(6n+1)]:md:justify-start"
+            className="md:w-[5.5rem] h-auto flex items-start justify-center md:[&:nth-child(6n)]:flex-1 md:[&:nth-child(6n)]:justify-end md:[&:nth-child(6n+1)]:justify-start"
             key={`applets.section.${applet.title}}`}
           >
             <div className="flex flex-col items-center gap-2">
@@ -26,13 +26,15 @@ export function AppletsSection() {
               >
                 <img src={applet.img} alt={applet.title} className="w-full h-full" />
               </Link>
-              <p className="text-sm font-bold text-center">{applet.title}</p>
+              <div className="md:w-[5rem] h-[36.41px] relative">
+                <p className="text-sm font-bold text-center">{applet.title}</p>
+              </div>
             </div>
           </div>
         );
       })}
 
-      <div className="md:w-[5.5rem] h-auto flex items-start justify-center [&:nth-child(6n)]:md:justify-end [&:nth-child(6n+1)]:md:justify-start">
+      <div className="md:w-[5.5rem] h-auto flex items-start justify-center md:[&:nth-child(6n)]:flex-1 md:[&:nth-child(6n)]:justify-end md:[&:nth-child(6n+1)]:justify-start">
         <button
           type="button"
           onClick={() => setSearchBarVisibility(true)}
