@@ -11,9 +11,5 @@ export const Route = createFileRoute("/(app)/_app/")({
 });
 
 function OverviewComponent() {
-  return (
-    <Landing>
-      <Landing.Header />
-    </Landing>
-  );
+  return <Landing />;
 }
