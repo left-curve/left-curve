@@ -1192,6 +1192,15 @@
         "price": "Price",
         "size": "Size ({symbol})",
         "tradeValue": "Trade Value",
+        "pnl": "PnL",
+        "funding": "Funding",
+        "fundingNotAvailable": "Funding data is not available for trades before April 30, 2025.",
+        "fees": "Fees",
+        "makerTaker": "Maker/Taker",
+        "maker": "Maker",
+        "taker": "Taker",
+        "makerTakerNotAvailable": "Maker/Taker data is not available for trades before April 22, 2025.",
+        "time": "Time",
         "dateAndTime": "Date & Time"
       },
       "history": {
