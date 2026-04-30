@@ -87,7 +87,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
     <ResizerContainer
       layoutId="order-book-section"
       className={twMerge(
-        "overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:h-[38.65625rem] 3xl:min-h-[40rem] h-full lg:rounded-xl",
+        "overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:h-[38.65625rem] 3xl:min-h-[40rem] h-full",
         { "3xl:min-h-[51.6875rem] 4xl:min-h-[61.6875rem]": is3XlTall },
       )}
     >
