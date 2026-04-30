@@ -306,6 +306,7 @@ const PerpsPositionsTable: React.FC = () => {
 
   const userState = perpsUserStateStore((s) => s.userState);
   const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
+  const equity = perpsUserStateExtendedStore((s) => s.equity);
   const perpsStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
 
   const symbolToDenom = useMemo(() => {
@@ -473,6 +474,7 @@ const PerpsPositionsTable: React.FC = () => {
                         entryPrice: row.original.entryPrice,
                         currentPrice: row.original.currentPrice,
                         pnl: row.original.pnl,
+                        equity,
                       });
                     }}
                   >

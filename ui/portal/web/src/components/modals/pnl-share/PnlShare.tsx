@@ -2,6 +2,7 @@ import { forwardRef, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { Button, IconButton, IconClose, useApp, useTheme } from "@left-curve/applets-kit";
 import { useAccount, useConfig, getReferralLink } from "@left-curve/store";
+import { Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { CHARACTERS } from "./constants.js";
@@ -12,7 +13,7 @@ import { CharacterSelector } from "./CharacterSelector.js";
 import type { PnlShareProps } from "./types.js";
 
 export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
-  const { symbol, size, entryPrice, currentPrice } = props;
+  const { symbol, size, entryPrice, currentPrice, equity } = props;
   const { hideModal } = useApp();
   const { theme } = useTheme();
   const { coins } = useConfig();
@@ -21,10 +22,17 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [selectedCharacter, setSelectedCharacter] = useState(0);
 
-  const isLong = Number(size) > 0;
-  const pnlPercent = ((currentPrice - Number(entryPrice)) / Number(entryPrice)) * 100;
-  const displayPercent = isLong ? pnlPercent : -pnlPercent;
+  const sizeD = Decimal(size);
+  const entryD = Decimal(entryPrice);
+  const currentD = Decimal(currentPrice);
+
+  const isLong = sizeD.gt(0);
+  const pnlPercent = currentD.minus(entryD).div(entryD).mul(100);
+  const displayPercent = isLong ? pnlPercent.toNumber() : -pnlPercent.toNumber();
   const isPositive = displayPercent >= 0;
+
+  const equityD = equity ? Decimal(equity) : Decimal(0);
+  const leverage = equityD.gt(0) ? sizeD.abs().mul(currentD).div(equityD).toFixed(2) : null;
 
   const referralLink = getReferralLink(userIndex);
   const logoURI = coins.bySymbol[symbol]?.logoURI;
@@ -84,6 +92,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
           displayPercent={displayPercent}
           isPositive={isPositive}
           isLong={isLong}
+          leverage={leverage}
           characterImg={characterImg}
           dangoLogoSrc={dangoLogoSrc}
           logoURI={logoURI}
