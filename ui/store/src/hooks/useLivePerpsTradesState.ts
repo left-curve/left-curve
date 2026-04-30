@@ -62,6 +62,11 @@ export function useLivePerpsTradesState(parameters: UseLivePerpsTradesStateParam
     const unsubscribe = subscriptions.subscribe("perpsTrades", {
       params: { pairId: getPerpsPairId() },
       listener: async ({ perpsTrades: trade }) => {
+        // Each on-chain match emits two `OrderFilled` events sharing a `fillId` — one for
+        // the maker, one for the taker. Keep the taker side only so the public tape shows
+        // one row per match, colored by the aggressor's direction. `null` covers pre-v0.16.0
+        // fills where the flag was not recorded.
+        if (trade.isMaker === true) return;
         tradesBuffer.current.unshift(trade);
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(processBuffer, 500);
