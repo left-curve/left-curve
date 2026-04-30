@@ -32,7 +32,7 @@ export function AppletsSection() {
         );
       })}
 
-      <div className="flex flex-col items-center md:items-start gap-2 md:w-[5.5rem]">
+      <div className="md:w-[5.5rem] h-auto flex items-start justify-center [&:nth-child(6n)]:md:justify-end [&:nth-child(6n+1)]:md:justify-start">
         <button
           type="button"
           onClick={() => setSearchBarVisibility(true)}
