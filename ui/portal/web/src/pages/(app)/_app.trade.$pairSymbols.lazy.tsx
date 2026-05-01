@@ -53,7 +53,7 @@ function ProTradeApplet() {
 
   return (
     <div
-      className="flex w-full min-h-screen lg:min-h-[calc(100vh-112px)] relative overflow-visible"
+      className="flex w-full min-h-screen lg:min-h-[calc(100vh-112px)] relative overflow-visible lg:pb-[33px]"
       style={{
         minHeight: `calc(100vh - ${headerHeight}px)`,
       }}
@@ -77,9 +77,7 @@ function ProTradeApplet() {
           </div>
           <ProTrade.History />
         </div>
-        <div
-          className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] bg-surface-primary-rice shadow-account-card z-20 self-stretch"
-        >
+        <div className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] bg-surface-primary-rice shadow-account-card z-20 self-stretch">
           <ProTrade.TradeMenu />
         </div>
       </ProTrade>

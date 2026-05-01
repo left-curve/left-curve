@@ -21,10 +21,11 @@ type PopoverProps = {
     panel?: string;
   };
   showArrow?: boolean;
+  anchor?: "bottom" | "top";
 };
 
 export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
-  ({ menu, trigger, classNames, showArrow = true }, ref) => {
+  ({ menu, trigger, classNames, showArrow = true, anchor = "bottom" }, ref) => {
     const id = useId();
 
     const popoverButtonRef = useRef<HTMLButtonElement>(null);
@@ -52,7 +53,7 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
             </PopoverButton>
 
             <PopoverPanel
-              anchor="bottom"
+              anchor={anchor}
               className={twMerge(
                 "flex flex-col absolute z-50 p-2 scrollbar-none",
                 classNames?.panel,
