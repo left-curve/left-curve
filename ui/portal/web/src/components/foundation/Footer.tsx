@@ -7,12 +7,15 @@ import {
 } from "@left-curve/applets-kit";
 import { allPerpsPairStatsStore, useAllPerpsPairStats, useStorage } from "@left-curve/store";
 import { Decimal } from "@left-curve/dango/utils";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
 import { StatusBadge } from "./StatusBadge";
 
 import type { NormalizedPerpsPairStats } from "@left-curve/store";
 
 type TickerDisplayMode = "popular-perp" | "hidden";
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 function Footer() {
   const router = useRouter();
@@ -51,7 +54,7 @@ function Footer() {
 
       <div className="flex items-center gap-1 shrink-0">
         <span className="exposure-xs-italic text-primitives-blue-light-500 px-1">
-          Dango &copy; {new Date().getFullYear()}
+          Dango &copy; {CURRENT_YEAR}
         </span>
         <a
           href="/documents/Dango - Terms of Use.pdf"
@@ -59,7 +62,7 @@ function Footer() {
           rel="noopener noreferrer"
           className="exposure-xs-italic text-primitives-blue-light-500 px-1 hover:opacity-80"
         >
-          Terms
+          {m["footer.terms"]()}
         </a>
         <a
           href="/documents/Dango - Privacy Policy.pdf"
@@ -67,7 +70,7 @@ function Footer() {
           rel="noopener noreferrer"
           className="exposure-xs-italic text-primitives-blue-light-500 px-1 hover:opacity-80"
         >
-          Privacy Policy
+          {m["footer.privacyPolicy"]()}
         </a>
       </div>
     </footer>
@@ -118,34 +121,33 @@ function TickerModeDropdown({ tickerMode, onChangeMode }: TickerModeDropdownProp
       showArrow={false}
       anchor="top"
       trigger={
-        <IconSliders className="w-4 h-4 text-ink-tertiary-500 cursor-pointer hover:text-ink-secondary-700 transition-colors" />
+        <IconSliders
+          aria-label="Ticker display settings"
+          role="img"
+          className="w-4 h-4 text-ink-tertiary-500 cursor-pointer hover:text-ink-secondary-700 transition-colors"
+        />
       }
       menu={
         <div className="flex flex-col py-2">
-          <div className="px-1">
-            <button
-              type="button"
-              className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-surface-tertiary-rice cursor-pointer diatype-m-medium text-ink-secondary-700 w-full text-left"
-              onClick={() => onChangeMode("popular-perp")}
-            >
-              Popular Perp
-              {tickerMode === "popular-perp" && (
-                <IconChecked className="w-3.5 h-3.5 text-utility-success-500" />
-              )}
-            </button>
-          </div>
-          <div className="px-1">
-            <button
-              type="button"
-              className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-surface-tertiary-rice cursor-pointer diatype-m-medium text-ink-secondary-700 w-full text-left"
-              onClick={() => onChangeMode("hidden")}
-            >
-              Do Not Display
-              {tickerMode === "hidden" && (
-                <IconChecked className="w-3.5 h-3.5 text-utility-success-500" />
-              )}
-            </button>
-          </div>
+          {(
+            [
+              { label: m["footer.popularPerp"](), mode: "popular-perp" as const },
+              { label: m["footer.doNotDisplay"](), mode: "hidden" as const },
+            ] satisfies { label: string; mode: TickerDisplayMode }[]
+          ).map(({ label, mode }) => (
+            <div key={mode} className="px-1">
+              <button
+                type="button"
+                className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-surface-tertiary-rice cursor-pointer diatype-m-medium text-ink-secondary-700 w-full text-left"
+                onClick={() => onChangeMode(mode)}
+              >
+                {label}
+                {tickerMode === mode && (
+                  <IconChecked className="w-3.5 h-3.5 text-utility-success-500" />
+                )}
+              </button>
+            </div>
+          ))}
         </div>
       }
       classNames={{

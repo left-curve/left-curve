@@ -89,6 +89,12 @@
     "connectWallet": "Connect Wallet",
     "createNewUser": "Create New User"
   },
+  "footer": {
+    "terms": "Terms",
+    "privacyPolicy": "Privacy Policy",
+    "popularPerp": "Popular Perp",
+    "doNotDisplay": "Do Not Display"
+  },
   "statusBadge": {
     "status": "Status",
     "details": "See Details",
