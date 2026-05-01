@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Decimal } from "@left-curve/dango/utils";
 import { usePublicClient } from "./usePublicClient.js";
@@ -28,12 +27,12 @@ function snapshotsToPerformance(
   );
 
   return entries.map(([ts, snapshot], index) => {
-    const sharePrice = Decimal(snapshot.equity).div(snapshot.share_supply).toNumber();
+    const sharePrice = Decimal(snapshot.equity).div(snapshot.shareSupply).toNumber();
     let dailyChange = 0;
 
     if (index > 0) {
       const prevSnapshot = entries[index - 1][1];
-      const prevPrice = Decimal(prevSnapshot.equity).div(prevSnapshot.share_supply).toNumber();
+      const prevPrice = Decimal(prevSnapshot.equity).div(prevSnapshot.shareSupply).toNumber();
       dailyChange = prevPrice > 0 ? ((sharePrice - prevPrice) / prevPrice) * 100 : 0;
     }
 
