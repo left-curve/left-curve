@@ -55,7 +55,7 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
       <div
         className={twMerge(
           "w-full mx-auto flex flex-col pt-6 mb-16 gap-4 lg:gap-12 px-4 md:px-0",
-          isLoggedIn ? "md:max-w-[56rem]" : "md:max-w-[25rem]",
+          "md:max-w-[56rem]",
         )}
       >
         <MobileTitle title={m["vaultLiquidity.title"]()} />
