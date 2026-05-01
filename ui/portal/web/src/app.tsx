@@ -31,7 +31,6 @@ export const App: React.FC = () => {
           <AppRouter />
           <RootModal />
           <Toaster />
-          <StatusBadge />
         </AppProvider>
       </DangoStoreProvider>
     </QueryClientProvider>

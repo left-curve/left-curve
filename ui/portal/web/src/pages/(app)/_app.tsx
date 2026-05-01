@@ -3,12 +3,13 @@ import { useAccount, useBalances, useConfig } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Footer } from "~/components/foundation/Footer";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 import { StatusBadge } from "~/components/foundation/StatusBadge";
 import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
-import { effect, z } from "zod";
+import { z } from "zod";
 
 export const Route = createFileRoute("/(app)/_app")({
   validateSearch: z.object({
@@ -123,7 +124,7 @@ function LayoutApp() {
       <div className="flex flex-1 items-center justify-start w-full h-full relative flex-col z-30">
         <Outlet />
       </div>
-      <StatusBadge />
+      <Footer />
     </main>
   );
 }

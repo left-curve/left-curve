@@ -29,16 +29,14 @@ const textColor = {
   warning: "text-utility-warning-500",
 };
 
-export const StatusBadge: React.FC = () => {
+type StatusBadgeProps = {
+  className?: string;
+};
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ className }) => {
   const { navigate } = useApp();
-  const {
-    wsStatus,
-    chainStatus,
-    globalStatus,
-    transportMode,
-    isChainPaused,
-    isReady,
-  } = useServiceStatus({ upUrl: window.dango.urls.upUrl });
+  const { wsStatus, chainStatus, globalStatus, transportMode, isChainPaused, isReady } =
+    useServiceStatus({ upUrl: window.dango.urls.upUrl });
 
   useEffect(() => {
     if (isChainPaused === undefined) return;
@@ -49,7 +47,7 @@ export const StatusBadge: React.FC = () => {
   if (!isReady) return null;
 
   return (
-    <div className="hidden fixed bottom-4 left-4 lg:flex flex-col gap-2 z-50">
+    <div className={twMerge("hidden fixed bottom-4 left-4 lg:flex flex-col gap-2 z-50", className)}>
       <Popover
         showArrow={false}
         trigger={
