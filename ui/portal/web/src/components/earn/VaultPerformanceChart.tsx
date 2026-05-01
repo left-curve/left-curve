@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Cell,
   CartesianGrid,
+  ReferenceLine,
 } from "recharts";
 import { Select, Spinner } from "@left-curve/applets-kit";
 import { useVaultSnapshots } from "@left-curve/store";
@@ -23,28 +24,49 @@ const formatDate = (date: string) => {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
+const formatFullDate = (date: string) => {
+  const d = new Date(date);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+};
+
 const formatPrice = (value: number) =>
   `$${value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
 
 const formatPercent = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: VaultPerformancePoint }> }) {
+function ChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: VaultPerformancePoint }>;
+}) {
   if (!active || !payload?.[0]) return null;
   const data = payload[0].payload;
   return (
     <div className="bg-surface-primary-rice border border-outline-secondary-gray rounded-lg p-3 shadow-lg">
-      <p className="diatype-xs-medium text-ink-tertiary-500 mb-1">{formatDate(data.date)}</p>
-      <p className="diatype-sm-medium text-ink-secondary-700">
-        {m["vaultLiquidity.price"]()}: {formatPrice(data.sharePrice)}
+      <p className="diatype-xs-medium text-ink-tertiary-500 mb-1">{formatFullDate(data.date)}</p>
+      <p className="diatype-sm-medium">
+        <span className="text-utility-warning-600">{m["vaultLiquidity.price"]()}:</span>{" "}
+        <span className="text-ink-secondary-700">{formatPrice(data.sharePrice)}</span>
       </p>
-      <p
-        className={`diatype-sm-medium ${data.dailyChange >= 0 ? "text-utility-success-600" : "text-utility-error-600"}`}
-      >
-        {m["vaultLiquidity.dailyChange"]()}: {formatPercent(data.dailyChange)}
+      <p className="diatype-sm-medium">
+        <span className={data.dailyChange >= 0 ? "text-utility-success-600" : "text-utility-error-600"}>
+          {m["vaultLiquidity.dailyChange"]()}:
+        </span>{" "}
+        <span className={data.dailyChange >= 0 ? "text-utility-success-600" : "text-utility-error-600"}>
+          {formatPercent(data.dailyChange)}
+        </span>
       </p>
     </div>
   );
 }
+
+const AXIS_TICK_STYLE = {
+  fontSize: 11,
+  fontFamily: "var(--font-diatype)",
+  fill: "var(--color-ink-tertiary-500)",
+};
 
 export function VaultPerformanceChart() {
   const [period, setPeriod] = useState<VaultPerformancePeriod>("30D");
@@ -65,18 +87,18 @@ export function VaultPerformanceChart() {
             <span className="diatype-sm-bold">{formatPrice(latestPrice)}</span>
           </p>
           <div className="flex gap-4 diatype-xs-medium text-ink-tertiary-500">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-[2px] bg-utility-warning-600 rounded" />
-          <span>{m["vaultLiquidity.price"]()}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-utility-success-500 rounded-sm" />
-          <span>{m["vaultLiquidity.dailyGain"]()}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-utility-error-300 rounded-sm" />
-          <span>{m["vaultLiquidity.dailyLoss"]()}</span>
-        </div>
+            <div className="flex items-center gap-1">
+              <div className="w-8 h-[2px] bg-[#D4882C] rounded" />
+              <span>{m["vaultLiquidity.price"]()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-[2px] bg-[#AFB244] border-[0.5px] border-[#D2D184]" />
+              <span>{m["vaultLiquidity.dailyGain"]()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-[2px] bg-primitives-red-light-500 border-[0.5px] border-primitives-red-light-300" />
+              <span>{m["vaultLiquidity.dailyLoss"]()}</span>
+            </div>
           </div>
         </div>
         <Select
@@ -121,7 +143,7 @@ export function VaultPerformanceChart() {
             <XAxis
               dataKey="date"
               tickFormatter={formatDate}
-              tick={{ fontSize: 11 }}
+              tick={AXIS_TICK_STYLE}
               stroke="var(--color-outline-secondary-gray)"
               tickLine={false}
             />
@@ -129,7 +151,7 @@ export function VaultPerformanceChart() {
               yAxisId="change"
               orientation="left"
               tickFormatter={(v: number) => `${v.toFixed(1)}%`}
-              tick={{ fontSize: 11 }}
+              tick={AXIS_TICK_STYLE}
               stroke="var(--color-outline-secondary-gray)"
               tickLine={false}
               axisLine={false}
@@ -138,22 +160,24 @@ export function VaultPerformanceChart() {
               yAxisId="price"
               orientation="right"
               tickFormatter={(v: number) => `$${v.toFixed(3)}`}
-              tick={{ fontSize: 11 }}
+              tick={AXIS_TICK_STYLE}
               stroke="var(--color-outline-secondary-gray)"
               tickLine={false}
               axisLine={false}
               domain={["auto", "auto"]}
             />
-            <Tooltip content={<ChartTooltip />} />
-            <Bar yAxisId="change" dataKey="dailyChange" radius={[2, 2, 0, 0]} maxBarSize={12}>
+            <Tooltip
+              content={<ChartTooltip />}
+              cursor={{ stroke: "var(--color-ink-tertiary-500)", strokeDasharray: "4 4" }}
+            />
+            <ReferenceLine yAxisId="change" y={0} stroke="var(--color-outline-secondary-gray)" />
+            <Bar yAxisId="change" dataKey="dailyChange" radius={[2, 2, 0, 0]} barSize={30}>
               {data.map((entry, index) => (
                 <Cell
                   key={`bar-${index}`}
-                  fill={
-                    entry.dailyChange >= 0
-                      ? "var(--color-utility-success-500, #22c55e)"
-                      : "var(--color-utility-error-300, #fca5a5)"
-                  }
+                  fill={entry.dailyChange >= 0 ? "#AFB244" : "var(--color-primitives-red-light-500, #E54E6B)"}
+                  stroke={entry.dailyChange >= 0 ? "#D2D184" : "var(--color-primitives-red-light-300, #F9A9B2)"}
+                  strokeWidth={0.5}
                 />
               ))}
             </Bar>
@@ -161,10 +185,10 @@ export function VaultPerformanceChart() {
               yAxisId="price"
               type="monotone"
               dataKey="sharePrice"
-              stroke="var(--color-utility-warning-600, #d97706)"
+              stroke="#D4882C"
               strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
+              dot={{ r: 3, fill: "#D4882C", strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: "#D4882C", strokeWidth: 2, stroke: "var(--color-surface-primary-rice)" }}
             />
           </ComposedChart>
         </ResponsiveContainer>
