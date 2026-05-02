@@ -1,4 +1,5 @@
 use {
+    dango_order_book::{OrderKind, TimeInForce},
     dango_types::{
         config::AppConfig,
         perps::{self, SubmitOrCancelOrderRequest, TraderMsg},
@@ -100,9 +101,9 @@ fn is_priority_submit_or_cancel_order_request(req: &SubmitOrCancelOrderRequest) 
     }
 }
 
-fn is_post_only(kind: &perps::OrderKind) -> bool {
-    matches!(kind, perps::OrderKind::Limit {
-        time_in_force: perps::TimeInForce::PostOnly,
+fn is_post_only(kind: &OrderKind) -> bool {
+    matches!(kind, OrderKind::Limit {
+        time_in_force: TimeInForce::PostOnly,
         ..
     },)
 }
@@ -113,13 +114,15 @@ fn is_post_only(kind: &perps::OrderKind) -> bool {
 mod tests {
     use {
         super::*,
-        dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+        dango_order_book::{
+            ChildOrder, Dimensionless, OrderKind, Quantity, TimeInForce, TriggerDirection,
+            UsdPrice, UsdValue,
+        },
         dango_types::{
             constants::btc,
             perps::{
-                CancelConditionalOrderRequest, CancelOrderRequest, ChildOrder, ExecuteMsg,
-                MaintainerMsg, OrderKind, ReferralMsg, SubmitOrCancelOrderRequest,
-                SubmitOrderRequest, TimeInForce, TraderMsg, TriggerDirection, VaultMsg,
+                CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, MaintainerMsg,
+                ReferralMsg, SubmitOrCancelOrderRequest, SubmitOrderRequest, TraderMsg, VaultMsg,
             },
         },
         grug::{Coins, Json, JsonSerExt, MsgExecute, NonEmpty, Uint64},

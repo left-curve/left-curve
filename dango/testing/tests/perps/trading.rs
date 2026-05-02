@@ -1,10 +1,13 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+    dango_order_book::{
+        ChildOrder, Dimensionless, LiquidityDepthResponse, OrderId, OrderKind, Quantity,
+        QueryOrdersByUserResponseItem, TimeInForce, UsdPrice, UsdValue,
+    },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
-        perps::{self, LiquidityDepthResponse, OrderFilled, PairParam, Param, UserState},
+        perps::{self, OrderFilled, PairParam, Param, RateSchedule, UserState},
     },
     grug::{
         Addressable, CheckedContractEvent, Coins, Inner, JsonDeExt, QuerierExt, ResultExt,
@@ -75,9 +78,9 @@ fn trading_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10), // sell / ask
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -89,7 +92,7 @@ fn trading_lifecycle() {
         .should_succeed();
 
     // Verify ask exists on the book.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -109,7 +112,7 @@ fn trading_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -141,7 +144,7 @@ fn trading_lifecycle() {
     );
 
     // Maker's ask should be removed.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -245,9 +248,9 @@ fn limit_order_partial_fill_and_cancel() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask 5 ETH
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -271,9 +274,9 @@ fn limit_order_partial_fill_and_cancel() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy 10 ETH
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    time_in_force: TimeInForce::GoodTilCanceled,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -315,7 +318,7 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 1, "should have 1 open order");
 
     // Verify bid exists on the book.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -356,7 +359,7 @@ fn limit_order_partial_fill_and_cancel() {
     assert_eq!(state.open_order_count, 0, "should have 0 open orders");
 
     // Verify bid removed from book.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -452,9 +455,9 @@ fn liquidity_depth_tracking() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-3),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -491,9 +494,9 @@ fn liquidity_depth_tracking() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -534,9 +537,9 @@ fn liquidity_depth_tracking() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    time_in_force: TimeInForce::GoodTilCanceled,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -661,9 +664,9 @@ fn protocol_fee_accumulates_across_fills() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -681,7 +684,7 @@ fn protocol_fee_accumulates_across_fills() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -713,9 +716,9 @@ fn protocol_fee_accumulates_across_fills() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -733,7 +736,7 @@ fn protocol_fee_accumulates_across_fills() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -783,11 +786,11 @@ fn negative_maker_fee_rebate_lifecycle() {
             contracts.perps,
             &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: Param {
-                    taker_fee_rates: perps::RateSchedule {
+                    taker_fee_rates: RateSchedule {
                         base: Dimensionless::new_raw(300), // 3 bps
                         ..Default::default()
                     },
-                    maker_fee_rates: perps::RateSchedule {
+                    maker_fee_rates: RateSchedule {
                         base: Dimensionless::new_raw(-100), // -1 bps (rebate)
                         ..Default::default()
                     },
@@ -835,9 +838,9 @@ fn negative_maker_fee_rebate_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-50),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -863,7 +866,7 @@ fn negative_maker_fee_rebate_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(50),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -974,9 +977,9 @@ fn ioc_limit_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1000,9 +1003,9 @@ fn ioc_limit_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::ImmediateOrCancel,
+                    time_in_force: TimeInForce::ImmediateOrCancel,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1046,7 +1049,7 @@ fn ioc_limit_order_partial_fill() {
     assert_eq!(state.open_order_count, 0, "should have 0 open orders");
 
     // Verify no resting orders on book.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -1087,9 +1090,9 @@ fn ioc_limit_order_no_fill_rejected() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_900),
-                    time_in_force: perps::TimeInForce::ImmediateOrCancel,
+                    time_in_force: TimeInForce::ImmediateOrCancel,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1162,7 +1165,7 @@ fn slippage_cap_market_at_cap_accepted_at_submission() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_permille(50),
                 },
                 reduce_only: false,
@@ -1189,7 +1192,7 @@ fn slippage_cap_market_above_cap_rejected() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_permille(60),
                 },
                 reduce_only: false,
@@ -1216,11 +1219,11 @@ fn slippage_cap_tpsl_child_order_above_cap_rejected() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_permille(10), // 1%, within cap
                 },
                 reduce_only: false,
-                tp: Some(perps::ChildOrder {
+                tp: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(2_500),
                     max_slippage: Dimensionless::new_permille(60), // 6%, above cap
                     size: None,
@@ -1249,9 +1252,9 @@ fn slippage_cap_does_not_affect_limit_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    time_in_force: TimeInForce::GoodTilCanceled,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1307,9 +1310,9 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
                     perps::SubmitOrderRequest {
                         pair_id: pair.clone(),
                         size: Quantity::new_int(-2), // ask
-                        kind: perps::OrderKind::Limit {
+                        kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(price),
-                            time_in_force: perps::TimeInForce::PostOnly,
+                            time_in_force: TimeInForce::PostOnly,
                             client_order_id: None,
                         },
                         reduce_only: false,
@@ -1330,7 +1333,7 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(4),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1450,9 +1453,9 @@ fn sell_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy / bid
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1479,7 +1482,7 @@ fn sell_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10), // sell 10 ETH
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1510,7 +1513,7 @@ fn sell_side_market_order_partial_fill() {
     );
 
     // Maker's bid should be fully consumed.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -1569,9 +1572,9 @@ fn buy_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1595,7 +1598,7 @@ fn buy_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10), // buy 10 ETH
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1626,7 +1629,7 @@ fn buy_side_market_order_partial_fill() {
     );
 
     // Maker's ask should be fully consumed.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })

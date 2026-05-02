@@ -1,7 +1,7 @@
 use {
     crate::{TestAccounts, TestSuiteWithIndexer},
     dango_genesis::Contracts,
-    dango_order_book::{Dimensionless, Quantity, UsdPrice},
+    dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_types::{
         constants::usdc,
         oracle::{self, PriceSource},
@@ -72,9 +72,9 @@ pub fn create_perps_fill(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id.clone(),
                 size: Quantity::new_int(-(size as i128)),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price as i128),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -92,7 +92,7 @@ pub fn create_perps_fill(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id.clone(),
                 size: Quantity::new_int(size as i128),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,

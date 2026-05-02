@@ -11,8 +11,8 @@
 use {
     crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
     dango_oracle::OracleQuerier,
-    dango_order_book::{Dimensionless, Quantity, UsdValue},
-    dango_types::perps::{PairId, UserState},
+    dango_order_book::{Dimensionless, PairId, Quantity, UsdValue},
+    dango_types::perps::UserState,
     grug::MathResult,
 };
 

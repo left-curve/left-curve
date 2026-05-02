@@ -4,8 +4,7 @@ use {
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     },
     dango_oracle::OracleQuerier,
-    dango_order_book::{Days, Quantity},
-    dango_types::perps::PairId,
+    dango_order_book::{Days, PairId, Quantity},
     grug::{Addr, Storage, Timestamp},
 };
 

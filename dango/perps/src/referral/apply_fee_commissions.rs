@@ -7,9 +7,8 @@ use {
             USER_REFERRAL_DATA, USER_STATES,
         },
         trade::FeeBreakdown,
-        volume::round_to_day,
     },
-    dango_order_book::UsdValue,
+    dango_order_book::{UsdValue, round_to_day},
     dango_types::{
         account_factory::UserIndex,
         perps::{

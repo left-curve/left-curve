@@ -48,7 +48,7 @@
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+    dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
@@ -120,9 +120,9 @@ fn adl_bug_absurd_book_price() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // bid (buy)
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -157,7 +157,7 @@ fn adl_bug_absurd_book_price() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // ask (sell)
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -213,9 +213,9 @@ fn adl_bug_absurd_book_price() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-1), // ask (sell) 1 ETH
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(3_900),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,

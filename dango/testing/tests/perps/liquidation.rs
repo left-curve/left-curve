@@ -1,12 +1,14 @@
 use {
     crate::{default_pair_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+    dango_order_book::{
+        Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
+        TriggerDirection, UsdPrice, UsdValue,
+    },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{
-            self, Deleveraged, Liquidated, OrderFilled, PairParam, Param,
-            QueryOrdersByUserResponseItem, UserState,
+            self, Deleveraged, Liquidated, OrderFilled, PairParam, Param, RateSchedule, UserState,
         },
     },
     grug::{
@@ -24,7 +26,7 @@ use {
 /// health.
 fn default_param_no_liq_fee() -> Param {
     Param {
-        taker_fee_rates: perps::RateSchedule {
+        taker_fee_rates: RateSchedule {
             base: Dimensionless::new_permille(1), // 0.1%
             ..Default::default()
         },
@@ -119,9 +121,9 @@ fn liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // sell / ask
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -144,7 +146,7 @@ fn liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -202,9 +204,9 @@ fn liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5), // buy / bid
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -407,9 +409,9 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -432,7 +434,7 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -473,9 +475,9 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -497,7 +499,7 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -728,9 +730,9 @@ fn liquidation_cancels_conditional_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -749,7 +751,7 @@ fn liquidation_cancels_conditional_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -769,7 +771,7 @@ fn liquidation_cancels_conditional_orders() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(2_500),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
             }),
             Coins::new(),
@@ -784,7 +786,7 @@ fn liquidation_cancels_conditional_orders() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_500),
-                trigger_direction: perps::TriggerDirection::Below,
+                trigger_direction: TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
             }),
             Coins::new(),
@@ -828,9 +830,9 @@ fn liquidation_cancels_conditional_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -861,7 +863,7 @@ fn liquidation_cancels_conditional_orders() {
         .should_succeed();
 
     // All limit orders should have been canceled during liquidation.
-    let all_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let all_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -980,7 +982,7 @@ fn vault_liquidation_on_order_book() {
         )
         .should_succeed();
 
-    let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
+    let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -1014,7 +1016,7 @@ fn vault_liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: bid_size.checked_neg().unwrap(),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1108,9 +1110,9 @@ fn vault_liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: bid_size, // buy same size as vault's long
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_600),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1280,9 +1282,9 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1300,7 +1302,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1330,9 +1332,9 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1350,7 +1352,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1376,9 +1378,9 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(2),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_450),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,

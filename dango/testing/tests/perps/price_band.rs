@@ -5,7 +5,10 @@
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice},
+    dango_order_book::{
+        Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
+        UsdPrice,
+    },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
@@ -63,7 +66,7 @@ macro_rules! submit_limit {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: $pair.clone(),
                 size: Quantity::new_int($size),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int($price),
                     time_in_force: $tif,
                     client_order_id: None,
@@ -90,7 +93,7 @@ fn banding_gtc_at_upper_bound_accepted() {
         pair,
         1,
         2_200,
-        perps::TimeInForce::GoodTilCanceled
+        TimeInForce::GoodTilCanceled
     )
     .should_succeed();
 }
@@ -107,7 +110,7 @@ fn banding_gtc_just_above_upper_bound_rejected() {
         pair,
         1,
         2_201,
-        perps::TimeInForce::GoodTilCanceled
+        TimeInForce::GoodTilCanceled
     )
     .should_fail_with_error("deviates too far");
 }
@@ -124,7 +127,7 @@ fn banding_gtc_below_lower_bound_rejected() {
         pair,
         -1,
         1_799,
-        perps::TimeInForce::GoodTilCanceled
+        TimeInForce::GoodTilCanceled
     )
     .should_fail_with_error("deviates too far");
 }
@@ -141,7 +144,7 @@ fn banding_ioc_out_of_band_rejected() {
         pair,
         1,
         3_000,
-        perps::TimeInForce::ImmediateOrCancel
+        TimeInForce::ImmediateOrCancel
     )
     .should_fail_with_error("deviates too far");
 }
@@ -159,7 +162,7 @@ fn banding_post_only_out_of_band_rejected() {
         pair,
         -1,
         1_000,
-        perps::TimeInForce::PostOnly
+        TimeInForce::PostOnly
     )
     .should_fail_with_error("deviates too far");
 }
@@ -178,7 +181,7 @@ fn banding_does_not_affect_market_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_permille(500), // 50%
                 },
                 reduce_only: false,
@@ -207,7 +210,7 @@ fn banding_blocks_pathological_post_only_trap() {
         pair,
         1,
         200,
-        perps::TimeInForce::PostOnly
+        TimeInForce::PostOnly
     )
     .should_fail_with_error("deviates too far");
 }
@@ -240,7 +243,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
         pair,
         -1,
         2_199,
-        perps::TimeInForce::PostOnly
+        TimeInForce::PostOnly
     )
     .should_succeed();
 
@@ -266,9 +269,9 @@ fn banding_drift_maker_cancelled_at_match_time() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-1),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_400),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -298,7 +301,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(2),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -310,7 +313,7 @@ fn banding_drift_maker_cancelled_at_match_time() {
         .should_succeed();
 
     // user1's stale ask was cancelled by the match-time check.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })

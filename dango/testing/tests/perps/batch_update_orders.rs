@@ -1,13 +1,16 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice},
+    dango_order_book::{
+        Dimensionless, OrderId, OrderKind, OrderRemoved, Quantity, QueryOrdersByUserResponseItem,
+        ReasonForOrderRemoval, TimeInForce, UsdPrice,
+    },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         oracle::{self, PriceSource},
         perps::{
-            self, CancelOrderRequest, OrderRemoved, Param, SubmitOrCancelOrderRequest,
-            SubmitOrderRequest, UserReferralData,
+            self, CancelOrderRequest, Param, SubmitOrCancelOrderRequest, SubmitOrderRequest,
+            UserReferralData,
         },
     },
     grug::{
@@ -21,9 +24,9 @@ fn limit_bid(price: i128, size: i128, cid: Option<u64>) -> SubmitOrderRequest {
     SubmitOrderRequest {
         pair_id: pair_id(),
         size: Quantity::new_int(size),
-        kind: perps::OrderKind::Limit {
+        kind: OrderKind::Limit {
             limit_price: UsdPrice::new_int(price),
-            time_in_force: perps::TimeInForce::PostOnly,
+            time_in_force: TimeInForce::PostOnly,
             client_order_id: cid.map(Uint64::new),
         },
         reduce_only: false,
@@ -36,9 +39,9 @@ fn limit_ask(price: i128, size: i128, cid: Option<u64>) -> SubmitOrderRequest {
     SubmitOrderRequest {
         pair_id: pair_id(),
         size: Quantity::new_int(-size),
-        kind: perps::OrderKind::Limit {
+        kind: OrderKind::Limit {
             limit_price: UsdPrice::new_int(price),
-            time_in_force: perps::TimeInForce::PostOnly,
+            time_in_force: TimeInForce::PostOnly,
             client_order_id: cid.map(Uint64::new),
         },
         reduce_only: false,
@@ -84,7 +87,7 @@ fn batch_submit_then_cancel() {
         )
         .should_succeed();
 
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -123,13 +126,13 @@ fn batch_atomic_replace() {
             .should_succeed();
     }
 
-    let old_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let old_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
         .should_succeed();
     assert_eq!(old_orders.len(), 3);
-    let old_ids: Vec<perps::OrderId> = old_orders.keys().copied().collect();
+    let old_ids: Vec<OrderId> = old_orders.keys().copied().collect();
 
     // Batch: cancel all + 3 new submits at different prices.
     suite
@@ -149,7 +152,7 @@ fn batch_atomic_replace() {
         )
         .should_succeed();
 
-    let new_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let new_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -215,7 +218,7 @@ fn batch_reuse_client_order_id() {
         )
         .should_succeed();
 
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -248,7 +251,7 @@ fn batch_atomicity_on_submit_failure() {
         })
         .should_succeed()
         .unwrap();
-    let orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders_before: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -278,7 +281,7 @@ fn batch_atomicity_on_submit_failure() {
         })
         .should_succeed()
         .unwrap();
-    let orders_after: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders_after: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -311,7 +314,7 @@ fn batch_atomicity_on_cancel_failure() {
         })
         .should_succeed()
         .unwrap();
-    let orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders_before: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -340,7 +343,7 @@ fn batch_atomicity_on_cancel_failure() {
         })
         .should_succeed()
         .unwrap();
-    let orders_after: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders_after: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -397,7 +400,7 @@ fn batch_fill_reverts_on_later_failure() {
         })
         .should_succeed()
         .unwrap();
-    let user1_orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let user1_orders_before: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -408,7 +411,7 @@ fn batch_fill_reverts_on_later_failure() {
         })
         .should_succeed()
         .unwrap();
-    let user2_orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let user2_orders_before: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -426,7 +429,7 @@ fn batch_fill_reverts_on_later_failure() {
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
                         pair_id: pair_id(),
                         size: Quantity::new_int(1),
-                        kind: perps::OrderKind::Market {
+                        kind: OrderKind::Market {
                             max_slippage: Dimensionless::new_percent(50),
                         },
                         reduce_only: false,
@@ -452,7 +455,7 @@ fn batch_fill_reverts_on_later_failure() {
         })
         .should_succeed()
         .unwrap();
-    let user1_orders_after: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let user1_orders_after: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -463,7 +466,7 @@ fn batch_fill_reverts_on_later_failure() {
         })
         .should_succeed()
         .unwrap();
-    let user2_orders_after: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let user2_orders_after: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -519,7 +522,7 @@ fn batch_single_action() {
         )
         .should_succeed();
 
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -689,9 +692,9 @@ fn batch_across_two_pairs() {
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
                         pair_id: eth_pair.clone(),
                         size: Quantity::new_int(1),
-                        kind: perps::OrderKind::Limit {
+                        kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(1_900),
-                            time_in_force: perps::TimeInForce::PostOnly,
+                            time_in_force: TimeInForce::PostOnly,
                             client_order_id: Some(Uint64::new(eth_cid)),
                         },
                         reduce_only: false,
@@ -701,9 +704,9 @@ fn batch_across_two_pairs() {
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
                         pair_id: btc_pair.clone(),
                         size: Quantity::new_int(1),
-                        kind: perps::OrderKind::Limit {
+                        kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(58_000),
-                            time_in_force: perps::TimeInForce::PostOnly,
+                            time_in_force: TimeInForce::PostOnly,
                             client_order_id: None,
                         },
                         reduce_only: false,
@@ -722,7 +725,7 @@ fn batch_across_two_pairs() {
 
     // Only the BTC bid remains; the ETH bid was cancelled by its
     // just-written cid.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -770,9 +773,9 @@ fn batch_stp_fires_for_self_match() {
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
                         pair_id: pair_id(),
                         size: Quantity::new_int(-1),
-                        kind: perps::OrderKind::Limit {
+                        kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(1_800),
-                            time_in_force: perps::TimeInForce::GoodTilCanceled,
+                            time_in_force: TimeInForce::GoodTilCanceled,
                             client_order_id: None,
                         },
                         reduce_only: false,
@@ -799,13 +802,13 @@ fn batch_stp_fires_for_self_match() {
     assert_eq!(removed.len(), 1, "expected one OrderRemoved event from STP");
     assert_eq!(
         removed[0].reason,
-        perps::ReasonForOrderRemoval::SelfTradePrevention
+        ReasonForOrderRemoval::SelfTradePrevention
     );
     assert_eq!(removed[0].user, accounts.user1.address());
     assert_eq!(removed[0].client_order_id, Some(Uint64::new(bid_cid)));
 
     // Post-batch: only the rested ask remains.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -860,7 +863,7 @@ fn batch_cancel_fails_for_filled_order() {
         })
         .should_succeed()
         .unwrap();
-    let user2_orders_before: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let user2_orders_before: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -881,9 +884,9 @@ fn batch_cancel_fails_for_filled_order() {
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
                         pair_id: pair_id(),
                         size: Quantity::new_int(1),
-                        kind: perps::OrderKind::Limit {
+                        kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(2_000),
-                            time_in_force: perps::TimeInForce::GoodTilCanceled,
+                            time_in_force: TimeInForce::GoodTilCanceled,
                             client_order_id: Some(Uint64::new(cid)),
                         },
                         reduce_only: false,
@@ -914,7 +917,7 @@ fn batch_cancel_fails_for_filled_order() {
         })
         .should_succeed()
         .unwrap();
-    let user2_orders_after: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let user2_orders_after: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user2.address(),
         })
@@ -1016,7 +1019,7 @@ fn batch_referral_commissions_rollback() {
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
                         pair_id: pair_id(),
                         size: Quantity::new_int(1),
-                        kind: perps::OrderKind::Market {
+                        kind: OrderKind::Market {
                             max_slippage: Dimensionless::new_percent(10),
                         },
                         reduce_only: false,

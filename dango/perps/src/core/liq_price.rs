@@ -4,8 +4,8 @@ use {
         querier::NoCachePerpQuerier,
     },
     dango_oracle::OracleQuerier,
-    dango_order_book::{UsdPrice, UsdValue},
-    dango_types::perps::{PairId, UserState},
+    dango_order_book::{PairId, UsdPrice, UsdValue},
+    dango_types::perps::UserState,
 };
 
 /// Compute the liquidation price for a single position in a cross-margin account.

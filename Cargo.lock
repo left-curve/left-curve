@@ -4063,6 +4063,7 @@ dependencies = [
  "dango-dex",
  "dango-gateway",
  "dango-oracle",
+ "dango-order-book",
  "dango-perps",
  "dango-taxman",
  "dango-types",

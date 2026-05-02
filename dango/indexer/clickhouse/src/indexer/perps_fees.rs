@@ -472,8 +472,7 @@ fn to_non_negative(
 mod tests {
     use {
         super::*,
-        dango_order_book::{Quantity, UsdPrice, UsdValue},
-        dango_types::perps::PairId,
+        dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
         grug::{Denom, Uint64},
         std::str::FromStr,
     };

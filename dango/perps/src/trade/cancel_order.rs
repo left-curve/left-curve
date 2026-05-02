@@ -1,15 +1,12 @@
 use {
-    crate::{
-        liquidity_depth::decrease_liquidity_depths,
-        state::{ASKS, BIDS, OrderKey, PAIR_PARAMS},
-        trade::update_user_state_with,
-    },
+    crate::{state::PAIR_PARAMS, trade::update_user_state_with},
     anyhow::{anyhow, ensure},
-    dango_order_book::may_invert_price,
-    dango_types::perps::{
-        ClientOrderId, LimitOrder, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval,
-        UserState,
+    dango_order_book::{
+        ClientOrderId, LimitOrder, OrderId, OrderRemoved, PairId, ReasonForOrderRemoval,
+        decrease_liquidity_depths, may_invert_price,
+        state::{ASKS, BIDS, OrderKey},
     },
+    dango_types::perps::{PairParam, UserState},
     grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -288,12 +285,12 @@ pub fn compute_cancel_all_orders_outcome(
 mod tests {
     use {
         super::*,
-        crate::{
-            PAIR_PARAMS, USER_STATES,
+        crate::state::{PAIR_PARAMS, USER_STATES},
+        dango_order_book::{
+            FundingPerUnit, LimitOrder, PairId, Quantity, UsdPrice, UsdValue,
             state::{ASKS, BIDS, OrderKey},
         },
-        dango_order_book::{FundingPerUnit, Quantity, UsdPrice, UsdValue},
-        dango_types::perps::{LimitOrder, PairId, PairParam, Position, UserState},
+        dango_types::perps::{PairParam, Position, UserState},
         grug::{
             Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp, Uint64,
         },
@@ -426,7 +423,7 @@ mod tests {
         user: Addr,
         open_order_count: usize,
         reserved_margin: i128,
-        positions: BTreeMap<dango_types::perps::PairId, Position>,
+        positions: BTreeMap<PairId, Position>,
     ) {
         let state = UserState {
             unlocks: VecDeque::new(),

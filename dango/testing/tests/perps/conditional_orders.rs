@@ -1,6 +1,9 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+    dango_order_book::{
+        ChildOrder, Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem,
+        TimeInForce, TriggerDirection, UsdPrice, UsdValue,
+    },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
@@ -50,9 +53,9 @@ fn conditional_order_tp_triggers_on_price_rise() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -71,7 +74,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -104,7 +107,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-10)),
                 trigger_price: UsdPrice::new_int(2_500),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
             }),
             Coins::new(),
@@ -135,9 +138,9 @@ fn conditional_order_tp_triggers_on_price_rise() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -220,9 +223,9 @@ fn conditional_order_sl_triggers_on_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -240,7 +243,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -260,7 +263,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_800),
-                trigger_direction: perps::TriggerDirection::Below,
+                trigger_direction: TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
             }),
             Coins::new(),
@@ -275,9 +278,9 @@ fn conditional_order_sl_triggers_on_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -380,9 +383,9 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -404,7 +407,7 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -426,7 +429,7 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -449,7 +452,7 @@ fn conditional_orders_follow_price_time_priority() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_900),
-                trigger_direction: perps::TriggerDirection::Below,
+                trigger_direction: TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
             }),
             Coins::new(),
@@ -468,7 +471,7 @@ fn conditional_orders_follow_price_time_priority() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_800),
-                trigger_direction: perps::TriggerDirection::Below,
+                trigger_direction: TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
             }),
             Coins::new(),
@@ -488,9 +491,9 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_790),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -508,9 +511,9 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_770),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -648,9 +651,9 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -668,7 +671,7 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -690,9 +693,9 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -710,7 +713,7 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -759,7 +762,7 @@ fn conditional_order_failure_does_not_block_others() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_900),
-                trigger_direction: perps::TriggerDirection::Below,
+                trigger_direction: TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
             }),
             Coins::new(),
@@ -779,7 +782,7 @@ fn conditional_order_failure_does_not_block_others() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(5)),
                 trigger_price: UsdPrice::new_int(1_800),
-                trigger_direction: perps::TriggerDirection::Below,
+                trigger_direction: TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(2),
             }),
             Coins::new(),
@@ -798,9 +801,9 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -925,9 +928,9 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -946,7 +949,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -966,9 +969,9 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(1),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_950),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1007,7 +1010,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(1_960),
-                trigger_direction: perps::TriggerDirection::Below,
+                trigger_direction: TriggerDirection::Below,
                 max_slippage: Dimensionless::new_percent(5),
             }),
             Coins::new(),
@@ -1062,12 +1065,11 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
     );
 
     // User1's resting bid must still be on the book.
-    let orders: std::collections::BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> =
-        suite
-            .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
-                user: accounts.user1.address(),
-            })
-            .should_succeed();
+    let orders: std::collections::BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
     assert_eq!(
         orders.len(),
         1,
@@ -1083,7 +1085,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-1),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1140,9 +1142,9 @@ fn child_order_market_with_tp_triggers() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1161,11 +1163,11 @@ fn child_order_market_with_tp_triggers() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
-                tp: Some(perps::ChildOrder {
+                tp: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(2_500),
                     max_slippage: Dimensionless::new_percent(1),
                     size: None,
@@ -1199,9 +1201,9 @@ fn child_order_market_with_tp_triggers() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1260,9 +1262,9 @@ fn child_order_market_with_sl_triggers() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1281,12 +1283,12 @@ fn child_order_market_with_sl_triggers() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
                 tp: None,
-                sl: Some(perps::ChildOrder {
+                sl: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(1_800),
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
@@ -1319,9 +1321,9 @@ fn child_order_market_with_sl_triggers() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_800),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1377,9 +1379,9 @@ fn child_order_ignored_when_position_closed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1397,7 +1399,7 @@ fn child_order_ignored_when_position_closed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1416,9 +1418,9 @@ fn child_order_ignored_when_position_closed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1436,16 +1438,16 @@ fn child_order_ignored_when_position_closed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5), // close the long
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
-                tp: Some(perps::ChildOrder {
+                tp: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(1_800),
                     max_slippage: Dimensionless::new_percent(1),
                     size: None,
                 }),
-                sl: Some(perps::ChildOrder {
+                sl: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(2_200),
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
@@ -1495,9 +1497,9 @@ fn child_order_overwrites_existing() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1515,7 +1517,7 @@ fn child_order_overwrites_existing() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1535,7 +1537,7 @@ fn child_order_overwrites_existing() {
                 pair_id: pair.clone(),
                 size: None,
                 trigger_price: UsdPrice::new_int(3_000),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
             }),
             Coins::new(),
@@ -1550,16 +1552,16 @@ fn child_order_overwrites_existing() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
-                tp: Some(perps::ChildOrder {
+                tp: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(2_500),
                     max_slippage: Dimensionless::new_percent(1),
                     size: None,
                 }),
-                sl: Some(perps::ChildOrder {
+                sl: Some(ChildOrder {
                     trigger_price: UsdPrice::new_int(1_800),
                     max_slippage: Dimensionless::new_percent(2),
                     size: None,
@@ -1622,9 +1624,9 @@ fn conditional_order_overwrite_same_direction() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1642,7 +1644,7 @@ fn conditional_order_overwrite_same_direction() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1662,7 +1664,7 @@ fn conditional_order_overwrite_same_direction() {
                 pair_id: pair.clone(),
                 size: None,
                 trigger_price: UsdPrice::new_int(2_500),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
             }),
             Coins::new(),
@@ -1678,7 +1680,7 @@ fn conditional_order_overwrite_same_direction() {
                 pair_id: pair.clone(),
                 size: None,
                 trigger_price: UsdPrice::new_int(3_000),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
             }),
             Coins::new(),
@@ -1736,9 +1738,9 @@ fn conditional_order_size_exceeds_position_allowed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-3),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1756,7 +1758,7 @@ fn conditional_order_size_exceeds_position_allowed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(3),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1776,7 +1778,7 @@ fn conditional_order_size_exceeds_position_allowed() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(2_500),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(1),
             }),
             Coins::new(),
@@ -1856,9 +1858,9 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1876,7 +1878,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1896,7 +1898,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-10)),
                 trigger_price: UsdPrice::new_int(2_500),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(10),
             }),
             Coins::new(),
@@ -1931,9 +1933,9 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(10),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -2009,9 +2011,9 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(-5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_000),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -2029,7 +2031,7 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -2048,7 +2050,7 @@ fn conditional_order_trigger_fills_carry_fill_id() {
                 pair_id: pair.clone(),
                 size: Some(Quantity::new_int(-5)),
                 trigger_price: UsdPrice::new_int(2_500),
-                trigger_direction: perps::TriggerDirection::Above,
+                trigger_direction: TriggerDirection::Above,
                 max_slippage: Dimensionless::new_percent(5),
             }),
             Coins::new(),
@@ -2063,9 +2065,9 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(2_500),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -2170,9 +2172,9 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                     perps::SubmitOrderRequest {
                         pair_id: pair.clone(),
                         size: Quantity::new_int(-5),
-                        kind: perps::OrderKind::Limit {
+                        kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(2_000),
-                            time_in_force: perps::TimeInForce::PostOnly,
+                            time_in_force: TimeInForce::PostOnly,
                             client_order_id: None,
                         },
                         reduce_only: false,
@@ -2194,7 +2196,7 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                     perps::SubmitOrderRequest {
                         pair_id: pair.clone(),
                         size: Quantity::new_int(5),
-                        kind: perps::OrderKind::Market {
+                        kind: OrderKind::Market {
                             max_slippage: Dimensionless::new_percent(50),
                         },
                         reduce_only: false,
@@ -2220,7 +2222,7 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                     pair_id: pair.clone(),
                     size: Some(Quantity::new_int(-5)),
                     trigger_price: UsdPrice::new_int(2_500),
-                    trigger_direction: perps::TriggerDirection::Above,
+                    trigger_direction: TriggerDirection::Above,
                     max_slippage: Dimensionless::new_percent(5),
                 }),
                 Coins::new(),
@@ -2238,9 +2240,9 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                     perps::SubmitOrderRequest {
                         pair_id: pair.clone(),
                         size: Quantity::new_int(5),
-                        kind: perps::OrderKind::Limit {
+                        kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(2_500),
-                            time_in_force: perps::TimeInForce::PostOnly,
+                            time_in_force: TimeInForce::PostOnly,
                             client_order_id: None,
                         },
                         reduce_only: false,

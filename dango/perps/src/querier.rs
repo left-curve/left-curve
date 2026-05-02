@@ -1,8 +1,9 @@
 #[cfg(test)]
 use std::collections::HashMap;
 use {
-    crate::{PAIR_PARAMS, PAIR_STATES},
-    dango_types::perps::{PairId, PairParam, PairState},
+    crate::state::{PAIR_PARAMS, PAIR_STATES},
+    dango_order_book::PairId,
+    dango_types::perps::{PairParam, PairState},
     grug::Storage,
 };
 

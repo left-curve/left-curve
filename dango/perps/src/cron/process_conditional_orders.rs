@@ -1,21 +1,18 @@
 use {
     crate::{
-        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
-        state::{
-            ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM,
-            STATE, USER_STATES,
-        },
+        state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
         trade::{SubmitOrderOutcome, compute_submit_order_outcome},
-        volume::flush_volumes,
     },
     dango_oracle::OracleQuerier,
-    dango_order_book::{UsdPrice, may_invert_price},
-    dango_types::perps::{
-        ConditionalOrderRemoved, ConditionalOrderTriggered, OrderKind, PairId, PairParam,
-        PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
+    dango_order_book::{
+        ConditionalOrderRemoved, ConditionalOrderTriggered, OrderKind, PairId,
+        ReasonForOrderRemoval, TriggerDirection, UsdPrice, decrease_liquidity_depths,
+        flush_volumes, increase_liquidity_depths, may_invert_price,
+        state::{ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID},
     },
+    dango_types::perps::{PairParam, PairState, Param, State},
     grug::{
         Addr, EventBuilder, NumberConst, Order as IterationOrder, PrefixBound, QuerierWrapper,
         StdResult, Storage, Timestamp, Uint64,

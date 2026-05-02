@@ -1,7 +1,7 @@
 use {
     crate::core::compute_position_unrealized_funding,
-    dango_order_book::{Quantity, UsdPrice, UsdValue},
-    dango_types::perps::{PairId, PairState, Position, UserState},
+    dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{PairState, Position, UserState},
     grug::MathResult,
     std::cmp::Ordering,
 };

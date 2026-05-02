@@ -4,8 +4,8 @@ use {
         querier::NoCachePerpQuerier,
     },
     dango_oracle::OracleQuerier,
-    dango_order_book::{Quantity, UsdPrice, UsdValue},
-    dango_types::perps::{PairId, PairParam, UserState},
+    dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{PairParam, UserState},
     grug::MathResult,
     std::collections::BTreeMap,
 };

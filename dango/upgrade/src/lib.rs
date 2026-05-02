@@ -1,6 +1,6 @@
 use {
-    dango_order_book::UsdValue,
-    dango_perps::{state::VAULT_SNAPSHOTS, volume::round_to_day},
+    dango_order_book::{UsdValue, round_to_day},
+    dango_perps::state::VAULT_SNAPSHOTS,
     dango_types::perps::VaultSnapshot,
     grug::{Addr, BlockInfo, StdResult, Storage, Timestamp, Uint128, addr},
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
@@ -101,7 +101,7 @@ fn do_vault_snapshot_backfill(storage: &mut dyn Storage) -> StdResult<()> {
 mod tests {
     use {
         super::*,
-        dango_perps::volume::NANOS_PER_DAY,
+        dango_order_book::NANOS_PER_DAY,
         grug::{MockStorage, Order},
     };
 

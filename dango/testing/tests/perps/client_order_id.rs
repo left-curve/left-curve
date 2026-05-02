@@ -1,11 +1,11 @@
 use {
     crate::register_oracle_prices,
-    dango_order_book::{Quantity, UsdPrice},
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
-    dango_types::{
-        constants::usdc,
-        perps::{self, ClientOrderId},
+    dango_order_book::{
+        ClientOrderId, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
+        UsdPrice,
     },
+    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_types::{constants::usdc, perps},
     grug::{Addressable, Coins, QuerierExt, ResultExt, Uint64, Uint128},
     std::collections::BTreeMap,
 };
@@ -44,9 +44,9 @@ fn submit_cancel_resubmit_by_client_order_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_500),
-                    time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    time_in_force: TimeInForce::GoodTilCanceled,
                     client_order_id: Some(cid),
                 },
                 reduce_only: false,
@@ -58,7 +58,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
         .should_succeed();
 
     // Sanity: exactly one resting order, carrying `cid`.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -79,7 +79,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
         .should_succeed();
 
     // The order is gone.
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })
@@ -96,9 +96,9 @@ fn submit_cancel_resubmit_by_client_order_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: Quantity::new_int(5),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(1_400),
-                    time_in_force: perps::TimeInForce::GoodTilCanceled,
+                    time_in_force: TimeInForce::GoodTilCanceled,
                     client_order_id: Some(cid),
                 },
                 reduce_only: false,
@@ -109,7 +109,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
         )
         .should_succeed();
 
-    let orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: accounts.user1.address(),
         })

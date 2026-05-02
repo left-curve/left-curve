@@ -1,9 +1,7 @@
 use {
     crate::USER_STATES,
     anyhow::anyhow,
-    dango_types::perps::{
-        ConditionalOrderRemoved, PairId, ReasonForOrderRemoval, TriggerDirection,
-    },
+    dango_order_book::{ConditionalOrderRemoved, PairId, ReasonForOrderRemoval, TriggerDirection},
     grug::{MutableCtx, Response},
 };
 
@@ -116,10 +114,11 @@ mod tests {
     use {
         super::*,
         crate::{NEXT_ORDER_ID, PARAM, USER_STATES},
-        dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
-        dango_types::perps::{
-            ConditionalOrder, OrderId, PairId, Param, Position, TriggerDirection, UserState,
+        dango_order_book::{
+            ConditionalOrder, Dimensionless, FundingPerUnit, OrderId, PairId, Quantity,
+            TriggerDirection, UsdPrice, UsdValue,
         },
+        dango_types::perps::{Param, Position, UserState},
         grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},
         std::collections::BTreeMap,
     };

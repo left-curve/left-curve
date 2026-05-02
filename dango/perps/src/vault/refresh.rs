@@ -2,19 +2,18 @@ use {
     crate::{
         MAX_ORACLE_STALENESS,
         core::{compute_available_margin, compute_vault_quotes},
-        liquidity_depth::increase_liquidity_depths,
         oracle,
         querier::NoCachePerpQuerier,
-        state::{
-            ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
-            USER_STATES,
-        },
+        state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PARAM, USER_STATES},
         trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_order_book::{Quantity, UsdValue, may_invert_price},
-    dango_types::perps::{LimitOrder, ReasonForOrderRemoval},
+    dango_order_book::{
+        LimitOrder, Quantity, ReasonForOrderRemoval, UsdValue, increase_liquidity_depths,
+        may_invert_price,
+        state::{ASKS, BIDS, NEXT_ORDER_ID},
+    },
     grug::{
         MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64,
     },

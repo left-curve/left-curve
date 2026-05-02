@@ -1,6 +1,5 @@
 use {
-    crate::state::VOLUMES,
-    dango_order_book::UsdValue,
+    crate::{UsdValue, state::VOLUMES},
     grug::{Addr, Bound, Order as IterationOrder, StdResult, Storage, Timestamp},
     std::collections::BTreeMap,
 };

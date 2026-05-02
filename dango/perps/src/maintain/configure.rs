@@ -4,8 +4,8 @@ use {
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
     },
     anyhow::ensure,
-    dango_order_book::{Dimensionless, FundingRate, UsdPrice, UsdValue},
-    dango_types::perps::{PairId, PairParam, PairState, Param, RateSchedule},
+    dango_order_book::{Dimensionless, FundingRate, PairId, UsdPrice, UsdValue},
+    dango_types::perps::{PairParam, PairState, Param, RateSchedule},
     grug::{Duration, GENESIS_SENDER, MutableCtx, QuerierExt, Response},
     std::collections::BTreeMap,
 };

@@ -1,11 +1,14 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+    dango_order_book::{
+        Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
+        UsdValue,
+    },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         oracle::{self, PriceSource, QueryPriceRequest},
-        perps::{self, PairParam, Param, QueryOrdersByUserResponseItem},
+        perps::{self, PairParam, Param},
     },
     grug::{
         Addressable, Binary, ByteArray, Coins, Duration, NonEmpty, NumberConst, QuerierExt,
@@ -138,7 +141,7 @@ fn vault_lp_lifecycle() {
         .should_succeed();
 
     // Vault should have orders on the book.
-    let vault_orders: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -187,7 +190,7 @@ fn vault_lp_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: vault_bid_size.checked_neg().unwrap(), // sell
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -248,7 +251,7 @@ fn vault_lp_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: vault_long_size, // buy same amount (closes taker's short)
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -464,7 +467,7 @@ fn oracle_triggers_on_oracle_update() {
         .should_succeed();
 
     // Vault should have no orders before any price is fed.
-    let vault_orders_0: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let vault_orders_0: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -514,7 +517,7 @@ fn oracle_triggers_on_oracle_update() {
     );
 
     // Vault should have orders on the book (placed by OnOracleUpdate).
-    let vault_orders_1: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let vault_orders_1: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -616,7 +619,7 @@ fn oracle_triggers_on_oracle_update() {
     // Vault orders should be unchanged — the failed OnOracleUpdate rolled back
     // any state changes it attempted (cancel + re-place). Compare order IDs to
     // prove these are the exact same orders, not new ones at the same price.
-    let vault_orders_2: BTreeMap<perps::OrderId, perps::QueryOrdersByUserResponseItem> = suite
+    let vault_orders_2: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -753,7 +756,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
         )
         .should_succeed();
 
-    let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
+    let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -789,7 +792,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: round1_bid_size.checked_neg().unwrap(),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -888,7 +891,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
     //     .find(|o| o.size.is_positive())
     //     .expect("vault should have a bid");
     // let round2_bid_size = vault_bid.size;
-    let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
+    let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -915,7 +918,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: round1_bid_size.checked_neg().unwrap(),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,

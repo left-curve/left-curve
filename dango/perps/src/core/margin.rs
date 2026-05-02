@@ -2,8 +2,8 @@ use {
     crate::{core::compute_trading_fee, querier::NoCachePerpQuerier},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
-    dango_types::perps::{PairId, PairParam, PairState, Position, UserState},
+    dango_order_book::{Dimensionless, PairId, Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{PairParam, PairState, Position, UserState},
 };
 
 /// Compute the unrealized PnL of a single position at the given oracle price.

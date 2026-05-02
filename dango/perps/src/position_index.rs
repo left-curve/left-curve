@@ -1,7 +1,7 @@
 use {
     crate::state::{LONGS, SHORTS},
-    dango_order_book::UsdPrice,
-    dango_types::perps::{PairId, Position},
+    dango_order_book::{PairId, UsdPrice},
+    dango_types::perps::Position,
     grug::{Addr, StdResult, Storage},
 };
 

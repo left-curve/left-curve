@@ -1,10 +1,13 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
-    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+    dango_order_book::{
+        Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
+        UsdValue,
+    },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
-        perps::{self, PairParam, Param, QueryOrdersByUserResponseItem},
+        perps::{self, PairParam, Param},
     },
     grug::{
         Addressable, Coins, MultiplyRatio, NumberConst, QuerierExt, ResultExt, Uint128, btree_map,
@@ -116,7 +119,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
         )
         .should_succeed();
 
-    let vault_orders: BTreeMap<perps::OrderId, QueryOrdersByUserResponseItem> = suite
+    let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
             user: contracts.perps,
         })
@@ -160,7 +163,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair.clone(),
                 size: vault_bid_size.checked_neg().unwrap(), // sell
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(10),
                 },
                 reduce_only: false,
