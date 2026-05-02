@@ -119,10 +119,13 @@ pub struct LimitOrder {
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
+
     /// Take-profit child order to apply when this order fills.
     pub tp: Option<ChildOrder>,
+
     /// Stop-loss child order to apply when this order fills.
     pub sl: Option<ChildOrder>,
+
     /// Caller-assigned id used to look this order up via the
     /// `client_order_id` index on `BIDS`/`ASKS`. `None` if the order was
     /// submitted without one.

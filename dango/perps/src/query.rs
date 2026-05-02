@@ -18,9 +18,9 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_order_book::{
-        Dimensionless, LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId,
-        QueryOrderResponse, QueryOrdersByUserResponseItem, UsdPrice, UsdValue, round_to_day,
-        state::{ASKS, BIDS, DEPTHS, VOLUMES},
+        ASKS, BIDS, DEPTHS, Dimensionless, LimitOrder, LiquidityDepth, LiquidityDepthResponse,
+        OrderId, PairId, QueryOrderResponse, QueryOrdersByUserResponseItem, UsdPrice, UsdValue,
+        VOLUMES, round_to_day,
     },
     dango_types::{
         account_factory::UserIndex,

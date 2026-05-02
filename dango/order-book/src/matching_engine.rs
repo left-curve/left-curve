@@ -20,9 +20,9 @@
 
 use {
     crate::{
-        ClientOrderId, Dimensionless, LimitOrder, OrderId, PairId, Quantity, ReasonForOrderRemoval,
-        UsdPrice, check_price_band, is_price_constraint_violated, may_invert_price,
-        state::{ASKS, BIDS},
+        ASKS, BIDS, ClientOrderId, Dimensionless, LimitOrder, OrderId, PairId, Quantity,
+        ReasonForOrderRemoval, TriggerDirection, UsdPrice, check_price_band,
+        is_price_constraint_violated, may_invert_price,
     },
     grug::{Addr, Order as IterationOrder, StdResult, Storage},
 };
@@ -339,8 +339,8 @@ pub fn is_conditional_order_triggered(
     oracle_price: UsdPrice,
 ) -> bool {
     match trigger_direction {
-        crate::TriggerDirection::Above => oracle_price >= trigger_price,
-        crate::TriggerDirection::Below => oracle_price <= trigger_price,
+        TriggerDirection::Above => oracle_price >= trigger_price,
+        TriggerDirection::Below => oracle_price <= trigger_price,
     }
 }
 
@@ -348,7 +348,7 @@ pub fn is_conditional_order_triggered(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::TriggerDirection, test_case::test_case};
+    use {super::*, test_case::test_case};
 
     // (trigger_price, direction, oracle_price, expected)
     #[test_case(100, TriggerDirection::Above,  99, false ; "above oracle below trigger")]

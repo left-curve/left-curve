@@ -15,10 +15,7 @@ use {
     crate::state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_order_book::{
-        FillId, OrderId, UsdValue,
-        state::{NEXT_FILL_ID, NEXT_ORDER_ID},
-    },
+    dango_order_book::{FillId, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, UsdValue},
     dango_types::{
         DangoQuerier,
         perps::{

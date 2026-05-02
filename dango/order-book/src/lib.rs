@@ -12,7 +12,7 @@ mod min_size;
 mod price;
 mod price_band;
 mod slippage;
-pub mod state;
+mod state;
 mod target_price;
 mod typed_number;
 mod types;
@@ -20,5 +20,6 @@ mod volume;
 
 pub use {
     cancel::*, decompose::*, events::*, liquidity_depth::*, matching_engine::*, min_size::*,
-    price::*, price_band::*, slippage::*, target_price::*, typed_number::*, types::*, volume::*,
+    price::*, price_band::*, slippage::*, state::*, target_price::*, typed_number::*, types::*,
+    volume::*,
 };

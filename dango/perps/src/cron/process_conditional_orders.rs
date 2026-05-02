@@ -7,10 +7,10 @@ use {
     },
     dango_oracle::OracleQuerier,
     dango_order_book::{
-        ConditionalOrderRemoved, ConditionalOrderTriggered, OrderKind, PairId,
-        ReasonForOrderRemoval, TriggerDirection, UsdPrice, decrease_liquidity_depths,
-        flush_volumes, increase_liquidity_depths, is_conditional_order_triggered, may_invert_price,
-        state::{ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID},
+        ASKS, BIDS, ConditionalOrderRemoved, ConditionalOrderTriggered, NEXT_FILL_ID,
+        NEXT_ORDER_ID, OrderKind, PairId, ReasonForOrderRemoval, TriggerDirection, UsdPrice,
+        decrease_liquidity_depths, flush_volumes, increase_liquidity_depths,
+        is_conditional_order_triggered, may_invert_price,
     },
     dango_types::perps::{PairParam, PairState, Param, State},
     grug::{
@@ -111,6 +111,7 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
+
         *state = updated_state;
         pair_state = updated_pair_state;
     }
@@ -157,6 +158,7 @@ fn process_conditional_orders_for_pair(
             oracle_price,
             events,
         )?;
+
         *state = updated_state;
         pair_state = updated_pair_state;
     }

@@ -113,10 +113,10 @@ pub fn cancel_all_conditional_orders(ctx: MutableCtx) -> anyhow::Result<Response
 mod tests {
     use {
         super::*,
-        crate::{NEXT_ORDER_ID, PARAM, USER_STATES},
+        crate::{PARAM, USER_STATES},
         dango_order_book::{
-            ConditionalOrder, Dimensionless, FundingPerUnit, OrderId, PairId, Quantity,
-            TriggerDirection, UsdPrice, UsdValue,
+            ConditionalOrder, Dimensionless, FundingPerUnit, NEXT_ORDER_ID, OrderId, PairId,
+            Quantity, TriggerDirection, UsdPrice, UsdValue,
         },
         dango_types::perps::{Param, Position, UserState},
         grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},

@@ -1,5 +1,5 @@
 use {
-    crate::{UsdValue, state::VOLUMES},
+    crate::{UsdValue, VOLUMES},
     grug::{Addr, Bound, Order as IterationOrder, StdResult, Storage, Timestamp},
     std::collections::BTreeMap,
 };

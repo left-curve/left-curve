@@ -1,9 +1,9 @@
 use {
-    crate::{NEXT_ORDER_ID, PAIR_PARAMS, USER_STATES},
+    crate::{PAIR_PARAMS, USER_STATES},
     anyhow::{anyhow, ensure},
     dango_order_book::{
-        ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced, Dimensionless, PairId,
-        Quantity, TriggerDirection, UsdPrice, validate_slippage,
+        ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced, Dimensionless, NEXT_ORDER_ID,
+        PairId, Quantity, TriggerDirection, UsdPrice, validate_slippage,
     },
     grug::{MutableCtx, NumberConst, Response},
 };
@@ -87,9 +87,10 @@ pub fn submit_conditional_order(
 mod tests {
     use {
         super::*,
-        crate::{NEXT_ORDER_ID, PAIR_PARAMS, PARAM, USER_STATES},
+        crate::{PAIR_PARAMS, PARAM, USER_STATES},
         dango_order_book::{
-            Dimensionless, FundingPerUnit, OrderId, Quantity, TriggerDirection, UsdPrice, UsdValue,
+            Dimensionless, FundingPerUnit, NEXT_ORDER_ID, OrderId, Quantity, TriggerDirection,
+            UsdPrice, UsdValue,
         },
         dango_types::perps::{PairParam, Param, Position, UserState},
         grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},

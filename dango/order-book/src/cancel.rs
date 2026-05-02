@@ -2,9 +2,8 @@
 
 use {
     crate::{
-        LimitOrder, OrderRemoved, PairId, ReasonForOrderRemoval, decrease_liquidity_depths,
-        may_invert_price,
-        state::{ASKS, BIDS, OrderKey},
+        ASKS, BIDS, LimitOrder, OrderKey, OrderRemoved, ReasonForOrderRemoval,
+        decrease_liquidity_depths, may_invert_price,
     },
     grug::{EventBuilder, StdResult, Storage},
     std::collections::BTreeSet,
@@ -31,7 +30,7 @@ pub fn remove_order(
     bucket_sizes: &BTreeSet<crate::UsdPrice>,
     events: Option<&mut EventBuilder>,
 ) -> StdResult<()> {
-    let (pair_id, stored_price, order_id): (PairId, _, _) = order_key.clone();
+    let (pair_id, stored_price, order_id) = order_key.clone();
     let is_bid = order.size.is_positive();
     let real_price = may_invert_price(stored_price, is_bid);
 

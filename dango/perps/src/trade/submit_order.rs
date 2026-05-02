@@ -17,18 +17,17 @@ use {
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_order_book::{
-        ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, Dimensionless, FillId,
-        LimitOrder, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId, Quantity, RawFill,
-        ReasonForOrderRemoval, RemovedMaker, TimeInForce, TriggerDirection, UsdPrice, UsdValue,
-        WalkBookOutcome, WalkStep, check_minimum_order_size, check_price_band,
-        compute_target_price, decompose_fill, decrease_liquidity_depths, flush_volumes,
-        increase_liquidity_depths, may_invert_price,
-        state::{ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID},
+        ASKS, BIDS, ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced,
+        Dimensionless, FillId, LimitOrder, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, OrderKind,
+        OrderPersisted, OrderRemoved, PairId, Quantity, RawFill, ReasonForOrderRemoval,
+        RemovedMaker, TimeInForce, TriggerDirection, UsdPrice, UsdValue, WalkBookOutcome, WalkStep,
+        check_minimum_order_size, check_price_band, compute_target_price, decompose_fill,
+        decrease_liquidity_depths, flush_volumes, increase_liquidity_depths, may_invert_price,
         validate_slippage, walk_book,
     },
     dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
     grug::{
-        Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder,
+        Addr, EventBuilder, MathResult, MutableCtx, Number, NumberConst, Order as IterationOrder,
         QuerierWrapper, Response, Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
@@ -778,18 +777,16 @@ pub fn match_order(
             // unconditional removal, and push `OrderRemoved` with the reason
             // the walker supplied so STP and out-of-band cancels stay
             // distinguishable in the event stream.
-            WalkStep::Removed(removed) => {
-                let RemovedMaker {
-                    maker_order_id,
-                    maker_addr,
-                    maker_client_order_id,
-                    maker_pre_fill_size,
-                    maker_stored_price,
-                    maker_real_price: _,
-                    maker_order,
-                    reason,
-                } = removed;
-
+            WalkStep::Removed(RemovedMaker {
+                maker_order_id,
+                maker_addr,
+                maker_client_order_id,
+                maker_pre_fill_size,
+                maker_stored_price,
+                maker_real_price: _,
+                maker_order,
+                reason,
+            }) => {
                 // STP touches the taker's own state; out-of-band cancels
                 // touch the maker's state (loaded from `maker_states` /
                 // `USER_STATES` if absent).
@@ -831,19 +828,17 @@ pub fn match_order(
             },
 
             // ---------------------- Settle one fill --------------------------
-            WalkStep::Fill(fill) => {
-                let RawFill {
-                    maker_order_id,
-                    maker_addr: maker_user,
-                    maker_client_order_id,
-                    maker_pre_fill_size,
-                    maker_post_fill_size,
-                    maker_stored_price,
-                    fill_price,
-                    fill_size: taker_fill_size,
-                    maker_order,
-                } = fill;
-
+            WalkStep::Fill(RawFill {
+                maker_order_id,
+                maker_addr: maker_user,
+                maker_client_order_id,
+                maker_pre_fill_size,
+                maker_post_fill_size,
+                maker_stored_price,
+                fill_price,
+                fill_size: taker_fill_size,
+                maker_order,
+            }) => {
                 let maker_fill_size = taker_fill_size.checked_neg()?;
 
                 // ---------------- Allocate a shared fill id ------------------
@@ -1243,14 +1238,14 @@ pub fn merge_fee_breakdown(
     map: &mut BTreeMap<Addr, FeeBreakdown>,
     addr: Addr,
     bd: FeeBreakdown,
-) -> grug::StdResult<()> {
+) -> MathResult<()> {
     let entry = map.entry(addr).or_insert(FeeBreakdown {
         protocol_fee: UsdValue::ZERO,
         vault_fee: UsdValue::ZERO,
     });
+
     entry.protocol_fee.checked_add_assign(bd.protocol_fee)?;
-    entry.vault_fee.checked_add_assign(bd.vault_fee)?;
-    Ok(())
+    entry.vault_fee.checked_add_assign(bd.vault_fee)
 }
 
 /// Settle one fill's PnLs and fees on the taker's and maker's margins.

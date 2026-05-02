@@ -10,9 +10,8 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_order_book::{
-        LimitOrder, Quantity, ReasonForOrderRemoval, UsdValue, increase_liquidity_depths,
-        may_invert_price,
-        state::{ASKS, BIDS, NEXT_ORDER_ID},
+        ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
+        increase_liquidity_depths, may_invert_price,
     },
     grug::{
         MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64,

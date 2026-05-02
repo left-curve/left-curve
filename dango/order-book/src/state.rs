@@ -35,13 +35,15 @@ pub type OrderKey = (PairId, UsdPrice, OrderId);
 #[grug::index_list(OrderKey, LimitOrder)]
 pub struct OrderIndexes<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
-    pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
+
     /// Lets a trader cancel an order in the same block it was submitted, by
     /// the caller-assigned `client_order_id`. The index function returns at
     /// most one key — empty `Vec` for orders submitted without a
     /// `client_order_id`. Uniqueness is per-sender, enforced by
     /// `UniqueIndex` (returns `StdError::duplicate_data` on collision).
     pub client_order_id: UniqueIndex<'a, OrderKey, (Addr, ClientOrderId), LimitOrder>,
+
+    pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
 }
 
 impl OrderIndexes<'static> {
@@ -57,7 +59,6 @@ impl OrderIndexes<'static> {
                 pk_namespace,
                 order_id_namespace,
             ),
-            user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
             client_order_id: UniqueIndex::new2(
                 |_, order| match order.client_order_id {
                     Some(cid) => vec![(order.user, cid)],
@@ -66,6 +67,7 @@ impl OrderIndexes<'static> {
                 pk_namespace,
                 client_order_id_namespace,
             ),
+            user: MultiIndex::new(|_, order| order.user, pk_namespace, user_namespace),
         }
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::{PairId, Quantity, UsdPrice, state::DEPTHS},
+    crate::{DEPTHS, PairId, Quantity, UsdPrice},
     grug::{MathResult, StdResult, Storage},
     std::collections::BTreeSet,
 };

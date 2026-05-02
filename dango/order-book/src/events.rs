@@ -12,6 +12,7 @@ pub struct OrderPersisted {
     pub user: Addr,
     pub limit_price: UsdPrice,
     pub size: Quantity,
+
     /// Caller-assigned id from the originally-submitted order, or `None`
     /// if the order was submitted without one.
     pub client_order_id: Option<ClientOrderId>,
@@ -25,6 +26,7 @@ pub struct OrderRemoved {
     pub pair_id: PairId,
     pub user: Addr,
     pub reason: ReasonForOrderRemoval,
+
     /// Caller-assigned id from the originally-submitted order, or `None`
     /// if the order was submitted without one.
     pub client_order_id: Option<ClientOrderId>,

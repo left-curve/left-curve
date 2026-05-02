@@ -20,10 +20,10 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_order_book::{
-        ConditionalOrderRemoved, Dimensionless, FillId, LimitOrder, OrderId, PairId, Quantity,
-        ReasonForOrderRemoval, TriggerDirection, UsdPrice, UsdValue, decrease_liquidity_depths,
-        flush_volumes, increase_liquidity_depths, may_invert_price,
-        state::{ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID},
+        ASKS, BIDS, ConditionalOrderRemoved, Dimensionless, FillId, LimitOrder, NEXT_FILL_ID,
+        NEXT_ORDER_ID, OrderId, PairId, Quantity, ReasonForOrderRemoval, TriggerDirection,
+        UsdPrice, UsdValue, decrease_liquidity_depths, flush_volumes, increase_liquidity_depths,
+        may_invert_price,
     },
     dango_types::perps::{
         BadDebtCovered, Deleveraged, Liquidated, PairParam, PairState, Param, RateSchedule, State,
@@ -927,8 +927,8 @@ mod tests {
             FEE_RATE_OVERRIDES, LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES,
         },
         dango_order_book::{
-            ChildOrder, Dimensionless, FundingPerUnit, LimitOrder, Quantity, UsdPrice, UsdValue,
-            state::OrderKey,
+            ChildOrder, Dimensionless, FundingPerUnit, LimitOrder, OrderKey, Quantity, UsdPrice,
+            UsdValue,
         },
         dango_types::perps::{PairParam, PairState, Param, Position, State, UserState},
         grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},

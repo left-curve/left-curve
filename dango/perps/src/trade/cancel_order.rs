@@ -2,8 +2,8 @@ use {
     crate::{state::PAIR_PARAMS, trade::update_user_state_with},
     anyhow::{anyhow, ensure},
     dango_order_book::{
-        ClientOrderId, LimitOrder, OrderId, PairId, ReasonForOrderRemoval, remove_order,
-        state::{ASKS, BIDS, OrderKey},
+        ASKS, BIDS, ClientOrderId, LimitOrder, OrderId, OrderKey, PairId, ReasonForOrderRemoval,
+        remove_order,
     },
     dango_types::perps::{PairParam, UserState},
     grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
@@ -268,8 +268,8 @@ mod tests {
         super::*,
         crate::state::{PAIR_PARAMS, USER_STATES},
         dango_order_book::{
-            FundingPerUnit, LimitOrder, OrderRemoved, PairId, Quantity, UsdPrice, UsdValue,
-            state::{ASKS, BIDS, OrderKey},
+            ASKS, BIDS, FundingPerUnit, LimitOrder, OrderKey, OrderRemoved, PairId, Quantity,
+            UsdPrice, UsdValue,
         },
         dango_types::perps::{PairParam, Position, UserState},
         grug::{
