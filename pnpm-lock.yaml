@@ -526,9 +526,6 @@ importers:
 
   ui/portal/web:
     dependencies:
-      '@fullpage/react-fullpage':
-        specifier: ^0.1.45
-        version: 0.1.45
       '@left-curve/applets-convert':
         specifier: workspace:^
         version: link:../../applets/convert
@@ -1546,10 +1543,6 @@ packages:
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0
-
-  '@babel/polyfill@7.12.1':
-    resolution: {integrity: sha512-X0pi0V6gxLi6lFZpGmeNa4zxtwEmCs42isWLNjZZDE0Y8yVfgu0T2OAHlzBbdYlqbW/YXVvoBHpATEM+goCj8g==}
-    deprecated: 🚨 This package has been deprecated in favor of separate inclusion of a polyfill and regenerator-runtime (when needed). See the @babel/polyfill docs (https://babeljs.io/docs/en/babel-polyfill) for more information.
 
   '@babel/preset-env@7.28.3':
     resolution: {integrity: sha512-ROiDcM+GbYVPYBOeCR6uBXKkQpBExLl8k9HO1ygXEyds39j+vCCsjmj7S8GOniZQlEs81QlkdJZe76IpLSiqpg==}
@@ -2579,9 +2572,6 @@ packages:
 
   '@formatjs/intl-pluralrules@5.4.6':
     resolution: {integrity: sha512-2HlOq+c7KsSps829SJ3B5987coX5mzKx9NbPcNwQ07eq8FBHgB3HfMoxt5HvLsdk4oQwCjAEnocbtd+wVwZ2Kg==}
-
-  '@fullpage/react-fullpage@0.1.45':
-    resolution: {integrity: sha512-N6DLBW6Q17shPeier3UGHjAxgbA4qy3G25YccNANsToJuipGUs1Rz6WZXfdfMZ4y0O1WD6a0bLme/O+sBjUXnA==}
 
   '@gerrit0/mini-shiki@3.21.0':
     resolution: {integrity: sha512-9PrsT5DjZA+w3lur/aOIx3FlDeHdyCEFlv9U+fmsVyjPZh61G5SYURQ/1ebe2U63KbDmI2V8IhIUegWb8hjOyg==}
@@ -5431,10 +5421,6 @@ packages:
   core-js-compat@3.45.0:
     resolution: {integrity: sha512-gRoVMBawZg0OnxaVv3zpqLLxaHmsubEGyTnqdpI/CEBvX4JadI1dMSHxagThprYRtSVbuQxvi6iUatdPxohHpA==}
 
-  core-js@2.6.12:
-    resolution: {integrity: sha512-Kb2wC0fvsWfQrgk8HU5lW6U/Lcs8+9aaYcy4ZFc6DDlo4nZ7n70dEgE5rtR0oG6ufKDUnrwfWL1mXR5ljDatrQ==}
-    deprecated: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
-
   core-js@3.42.0:
     resolution: {integrity: sha512-Sz4PP4ZA+Rq4II21qkNqOEDTDrCvcANId3xpIgB34NDkWc3UduWj2dqEtN9yZIq8Dk3HyPI33x9sqqU5C8sr0g==}
 
@@ -6339,9 +6325,6 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
-
-  fullpage.js@4.0.30:
-    resolution: {integrity: sha512-FsLn0AJrK4mv53X/Ovm7BaLQgXMxJOLKbfOXCZfNoHsmngYATJya4Pm8BSWgBaPICl+DoX+GoI/KX8o6rdH3GA==}
 
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
@@ -10866,11 +10849,6 @@ snapshots:
       '@babel/helper-create-regexp-features-plugin': 7.27.1(@babel/core@7.26.8)
       '@babel/helper-plugin-utils': 7.27.1
 
-  '@babel/polyfill@7.12.1':
-    dependencies:
-      core-js: 2.6.12
-      regenerator-runtime: 0.13.11
-
   '@babel/preset-env@7.28.3(@babel/core@7.26.8)':
     dependencies:
       '@babel/compat-data': 7.28.0
@@ -11884,11 +11862,6 @@ snapshots:
       '@formatjs/intl-localematcher': 0.6.2
       decimal.js: 10.6.0
       tslib: 2.8.1
-
-  '@fullpage/react-fullpage@0.1.45':
-    dependencies:
-      '@babel/polyfill': 7.12.1
-      fullpage.js: 4.0.30
 
   '@gerrit0/mini-shiki@3.21.0':
     dependencies:
@@ -15036,8 +15009,6 @@ snapshots:
     dependencies:
       browserslist: 4.25.2
 
-  core-js@2.6.12: {}
-
   core-js@3.42.0: {}
 
   core-util-is@1.0.3: {}
@@ -16101,8 +16072,6 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
-
-  fullpage.js@4.0.30: {}
 
   function-bind@1.1.2: {}
 
