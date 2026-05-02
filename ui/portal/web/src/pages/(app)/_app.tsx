@@ -103,7 +103,6 @@ function LayoutApp() {
 
   const { theme } = useTheme();
 
-  const isHomePage = location.pathname === "/";
   const lockedY = Number(document.body.dataset.scrollLockY || 0);
 
   const effectiveIsScrolled = isSidebarVisible ? lockedY > headerThreshold : isScrolled;
@@ -113,10 +112,7 @@ function LayoutApp() {
       <img
         src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"
-        className={twMerge(
-          "pointer-events-none drag-none select-none h-[20vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0 object-cover object-bottom",
-          { hidden: isHomePage && !isLg },
-        )}
+        className="pointer-events-none drag-none select-none h-[20vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0 object-cover object-bottom"
       />
       {!isLg ? <div id="quest-banner-mobile" /> : null}
       {!isLg ? <TestnetBanner /> : null}

@@ -12,7 +12,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@fullpage/react-fullpage": "^0.1.45",
     "@left-curve/applets-convert": "workspace:^",
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/dango": "workspace:^",
