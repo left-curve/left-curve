@@ -1,0 +1,91 @@
+@import "tailwindcss";
+@import "uniwind";
+@import "@left-curve/foundation/tailwind/global.css";
+
+@theme {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --radius-card: 10px;
+  --radius-field: 8px;
+  --radius-btn: 8px;
+  --radius-chip: 999px;
+
+  --font-display: "ABC Diatype Rounded", "DM Sans", "Inter", system-ui, sans-serif;
+  --font-text: "Inter", "ABC Diatype Rounded", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "ABC Diatype Rounded Mono", ui-monospace, monospace;
+
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 40px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semi: 600;
+  --fw-bold: 700;
+
+  --tracking-tight: -0.01em;
+  --tracking-flat: 0;
+  --tracking-wide: 0.02em;
+  --tracking-caps: 0.06em;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  --color-up: oklch(0.66 0.13 145);
+  --color-up-bg: oklch(0.66 0.13 145 / 0.10);
+  --color-down: oklch(0.62 0.18 25);
+  --color-down-bg: oklch(0.62 0.18 25 / 0.10);
+  --color-warn: oklch(0.78 0.13 75);
+  --color-warn-bg: oklch(0.78 0.13 75 / 0.10);
+
+  --color-bg-app: var(--bg-app);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elev: var(--bg-elev);
+  --color-bg-sunk: var(--bg-sunk);
+  --color-bg-tint: var(--bg-tint);
+
+  --color-fg-primary: var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-tertiary: var(--fg-tertiary);
+  --color-fg-quaternary: var(--fg-quaternary);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-bg: var(--accent-bg);
+
+  --color-btn-primary-bg: var(--btn-primary-bg);
+  --color-btn-primary-fg: var(--btn-primary-fg);
+  --color-btn-primary-hover: var(--btn-primary-hover);
+
+  --shadow-sm: var(--_shadow-sm);
+  --shadow-md: var(--_shadow-md);
+  --shadow-lg: var(--_shadow-lg);
+}
+
+@layer base {
+  /* React Native Web Text components set their own font-size (14px default),
+     preventing CSS inheritance from parent Views. Override the RNW default so
+     Tailwind font-size utilities on Text elements win the specificity battle. */
+  .css-text-146c3p1 {
+    font-size: unset;
+    font-weight: unset;
+    letter-spacing: unset;
+  }
+}

@@ -416,7 +416,7 @@ export const tailwindConfig: Partial<Config> = {
         "btn-shadow-gradient": "var(--shadow-btn-shadow-gradient)",
         "btn-secondary-shadow-gradient": "var(--shadow-btn-secondary-shadow-gradient)",
         "btn-shadow-disabled":
-          "0px -1px 3px -2px var(rgba(0,0,0,0.7)) inset, 0px 2px 3px -1px var(rgba(255,255,255,0.7)) inset, 0px 1px 1px -0.5px var(rgba(0,0,0,0.4))",
+          "0px -1px 3px -2px rgba(0,0,0,0.7) inset, 0px 2px 3px -1px rgba(255,255,255,0.7) inset, 0px 1px 1px -0.5px rgba(0,0,0,0.4)",
         "input-shadow": "0px 1px 3px 0px #2E25210A inset, 0px 2px 6px 0px #C7C2B666",
         none: "0 0 #0000",
       },

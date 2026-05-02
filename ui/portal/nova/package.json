@@ -1,0 +1,54 @@
+{
+  "name": "@left-curve/portal-nova",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@left-curve/applets-kit": "workspace:^",
+    "@left-curve/dango": "workspace:^",
+    "@left-curve/foundation": "workspace:^",
+    "@left-curve/store": "workspace:^",
+    "@sentry/react": "^9.10.1",
+    "@sentry/vite-plugin": "^3.2.0",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-table": "^8.21.2",
+    "cmdk": "^1.1.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "catalog:",
+    "fs-extra": "^11.3.1",
+    "graphql-ws": "^6.0.4",
+    "idb-keyval": "^6.2.2",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native": "0.81.5",
+    "react-native-web": "0.21.2",
+    "uniwind": "^1.6.2",
+    "vite-plugin-pwa": "^0.21.1",
+    "vite-plugin-rnw": "^0.0.11",
+    "zod": "catalog:"
+  },
+  "optionalDependencies": {
+    "@left-curve/tradingview": "^29.4.0"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^4.4.1",
+    "postcss": "catalog:",
+    "tailwindcss": "^4.2.2",
+    "typescript": "catalog:",
+    "vite": "^6.3.4",
+    "vite-plugin-node-polyfills": "^0.26.0"
+  }
+}

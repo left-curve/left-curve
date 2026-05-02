@@ -1,0 +1,25 @@
+{
+  "extends": ["@left-curve/config/ts/react.json"],
+  "compilerOptions": {
+    "paths": {
+      "~/*": ["./src/*"],
+      "~/constants": ["./constants.config.ts"],
+      "~/store": ["./store.config.ts"],
+      "~/datafeed": ["./datafeed.config.ts"]
+    },
+    "noEmit": true
+  },
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../applets/kit"
+    },
+    {
+      "path": "../../../sdk/typescript/dango"
+    },
+    {
+      "path": "../../store"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 # Git
 .gitattributes
+redesign
 
 # Editors
 .idea/
@@ -38,6 +39,8 @@ target/
 **/build
 !ui/portal/app/.eas/build/
 ui/portal/web/public/images
+ui/portal/nova/public/images
+ui/portal/nova/public/static/charting_library
 **/.turbo
 
 # SDK
