@@ -1,6 +1,6 @@
 use {
+    crate::{Quantity, UsdPrice, UsdValue},
     anyhow::ensure,
-    dango_types::{Quantity, UsdPrice, perps::PairParam},
 };
 
 /// Ensure the total order notional is no smaller than the pair's minimum order
@@ -8,15 +8,15 @@ use {
 pub fn check_minimum_order_size(
     size: Quantity,
     oracle_price: UsdPrice,
-    pair_param: &PairParam,
+    min_order_size: UsdValue,
 ) -> anyhow::Result<()> {
     let notional = size.checked_abs()?.checked_mul(oracle_price)?;
 
     ensure!(
-        notional >= pair_param.min_order_size,
+        notional >= min_order_size,
         "order size is below minimum: {} < {}",
         notional,
-        pair_param.min_order_size
+        min_order_size
     );
 
     Ok(())
@@ -26,7 +26,7 @@ pub fn check_minimum_order_size(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::UsdValue, test_case::test_case};
+    use {super::*, test_case::test_case};
 
     // (size, oracle_price, min_order_size, should_pass)
     #[test_case( 1, 100, 100, true  ; "notional exactly at minimum")]
@@ -45,10 +45,7 @@ mod tests {
             check_minimum_order_size(
                 Quantity::new_int(size),
                 UsdPrice::new_int(oracle_price),
-                &PairParam {
-                    min_order_size: UsdValue::new_int(min_order_size),
-                    ..Default::default()
-                }
+                UsdValue::new_int(min_order_size),
             )
             .is_ok(),
             should_pass

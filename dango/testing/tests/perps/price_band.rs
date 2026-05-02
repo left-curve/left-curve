@@ -5,9 +5,9 @@
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
-        Dimensionless, Quantity, UsdPrice,
         constants::usdc,
         perps::{self, PairParam, UserState},
     },

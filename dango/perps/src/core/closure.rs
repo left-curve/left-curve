@@ -4,10 +4,8 @@ use {
         querier::NoCachePerpQuerier,
     },
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Quantity, UsdPrice, UsdValue,
-        perps::{PairId, PairParam, UserState},
-    },
+    dango_order_book::{Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{PairId, PairParam, UserState},
     grug::MathResult,
     std::collections::BTreeMap,
 };
@@ -179,8 +177,8 @@ pub fn compute_bankruptcy_price(
 mod tests {
     use {
         super::*,
+        dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
-            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             constants::eth,
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, Position},

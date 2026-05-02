@@ -1,6 +1,7 @@
 use {
     crate::state::DEPTHS,
-    dango_types::{Quantity, UsdPrice, perps::PairId},
+    dango_order_book::{Quantity, UsdPrice},
+    dango_types::perps::PairId,
     grug::{MathResult, StdResult, Storage},
     std::collections::BTreeSet,
 };

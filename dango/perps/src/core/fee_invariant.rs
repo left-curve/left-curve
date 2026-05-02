@@ -1,10 +1,8 @@
 use {
     crate::state::FEE_RATE_OVERRIDES,
     anyhow::ensure,
-    dango_types::{
-        Dimensionless,
-        perps::{Param, RateSchedule},
-    },
+    dango_order_book::Dimensionless,
+    dango_types::perps::{Param, RateSchedule},
     grug::{Addr, Order as IterationOrder, Storage},
 };
 
@@ -89,7 +87,7 @@ fn schedule_min(schedule: &RateSchedule) -> Dimensionless {
 mod tests {
     use {
         super::*,
-        dango_types::UsdValue,
+        dango_order_book::UsdValue,
         grug::{MockStorage, btree_map},
         std::collections::BTreeMap,
     };

@@ -1,0 +1,20 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-order-book"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+anyhow  = { workspace = true }
+borsh   = { workspace = true }
+grug    = { workspace = true }
+serde   = { workspace = true }
+typenum = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }

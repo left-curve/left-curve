@@ -10,13 +10,13 @@ use {
         },
         indexer::perps_candles::cache::{PerpsCandleCache, PerpsCandleCacheKey},
     },
+    dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_testing::{
         Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
         perps::{create_perps_fill, pair_id, setup_perps_env},
         setup_test_with_indexer, setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
-        Dimensionless, Quantity, UsdPrice,
         constants::usdc,
         oracle::{self, PriceSource},
         perps::{self, PairParam},

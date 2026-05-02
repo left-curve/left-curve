@@ -1,8 +1,8 @@
 use {
     crate::{default_pair_param, default_param},
+    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
     dango_testing::{Factory, Preset, TestAccount, TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::{self, RegisterUserData},
         constants::usdc,
         oracle::{self, PriceSource},

@@ -1,8 +1,8 @@
 use {
     crate::register_oracle_prices,
+    dango_order_book::{Quantity, UsdPrice},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
-        Quantity, UsdPrice,
         constants::usdc,
         perps::{self, ClientOrderId},
     },

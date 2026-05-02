@@ -113,8 +113,8 @@ fn is_post_only(kind: &perps::OrderKind) -> bool {
 mod tests {
     use {
         super::*,
+        dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
         dango_types::{
-            Dimensionless, Quantity, UsdPrice, UsdValue,
             constants::btc,
             perps::{
                 CancelConditionalOrderRequest, CancelOrderRequest, ChildOrder, ExecuteMsg,

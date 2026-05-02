@@ -1,8 +1,8 @@
 use {
     dango_genesis::Contracts,
+    dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_testing::perps::pair_id,
     dango_types::{
-        Dimensionless, Quantity, UsdPrice,
         constants::usdc,
         oracle::{self, PriceSource},
         perps::{self, PairParam, Param},

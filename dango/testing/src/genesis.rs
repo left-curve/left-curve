@@ -11,8 +11,8 @@ use {
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
         GrugOption, HyperlaneOption, OracleOption, PerpsOption, VestingOption,
     },
+    dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_types::{
-        Dimensionless, Quantity, UsdPrice,
         account_factory::NewUserSalt,
         auth::Key,
         bank::Metadata,

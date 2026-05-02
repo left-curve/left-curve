@@ -4,7 +4,7 @@ use {
         state::{FEE_RATE_OVERRIDES, PARAM},
     },
     anyhow::ensure,
-    dango_types::Dimensionless,
+    dango_order_book::Dimensionless,
     grug::{Addr, MutableCtx, Op, QuerierExt, Response},
 };
 

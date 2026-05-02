@@ -2,17 +2,15 @@ use {
     crate::{
         MAX_ORACLE_STALENESS, VOLUME_LOOKBACK,
         core::{
-            FillPnl, check_margin, check_minimum_order_size, check_oi_constraint, check_price_band,
-            compute_available_margin, compute_notional, compute_required_margin,
-            compute_target_price, compute_trading_fee, decompose_fill, execute_fill,
-            is_price_constraint_violated, validate_slippage,
+            FillPnl, check_margin, check_oi_constraint, compute_available_margin, compute_notional,
+            compute_required_margin, compute_target_price, compute_trading_fee, execute_fill,
+            is_price_constraint_violated,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
-        price::may_invert_price,
         querier::NoCachePerpQuerier,
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
@@ -24,14 +22,14 @@ use {
     },
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{
-            ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, FillId,
-            LimitOrder, OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId,
-            PairParam, PairState, Param, ReasonForOrderRemoval, State, TimeInForce,
-            TriggerDirection, UserState,
-        },
+    dango_order_book::{
+        Dimensionless, Quantity, UsdPrice, UsdValue, check_minimum_order_size, check_price_band,
+        decompose_fill, may_invert_price, validate_slippage,
+    },
+    dango_types::perps::{
+        ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, FillId, LimitOrder,
+        OrderFilled, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId, PairParam,
+        PairState, Param, ReasonForOrderRemoval, State, TimeInForce, TriggerDirection, UserState,
     },
     grug::{
         Addr, EventBuilder, MutableCtx, Number, NumberConst, Order as IterationOrder,
@@ -396,7 +394,7 @@ pub(crate) fn compute_submit_order_outcome(
     // -------------- Step 1. Check minimum order size -------------------------
 
     if !reduce_only {
-        check_minimum_order_size(size, oracle_price, pair_param)?;
+        check_minimum_order_size(size, oracle_price, pair_param.min_order_size)?;
     }
 
     // ----------------------- Step 2. Decompose order -------------------------
@@ -1664,8 +1662,8 @@ mod tests {
     use {
         super::*,
         crate::USER_STATES,
+        dango_order_book::{Dimensionless, FundingPerUnit},
         dango_types::{
-            Dimensionless, FundingPerUnit,
             oracle::PrecisionedPrice,
             perps::{Position, RateSchedule},
         },

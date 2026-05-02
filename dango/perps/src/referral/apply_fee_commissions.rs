@@ -9,8 +9,8 @@ use {
         trade::FeeBreakdown,
         volume::round_to_day,
     },
+    dango_order_book::UsdValue,
     dango_types::{
-        UsdValue,
         account_factory::UserIndex,
         perps::{
             FeeDistributed, FeeShareRatio, Param, Referee, Referrer, ReferrerSettings, UserState,

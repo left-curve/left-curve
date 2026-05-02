@@ -18,8 +18,8 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
+    dango_order_book::{Dimensionless, UsdPrice, UsdValue},
     dango_types::{
-        Dimensionless, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
             CommissionRate, LimitOrder, LiquidityDepth, LiquidityDepthResponse, OrderId, PairId,

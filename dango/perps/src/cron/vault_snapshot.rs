@@ -65,8 +65,8 @@ mod tests {
     use {
         super::*,
         crate::state::PAIR_STATES,
+        dango_order_book::{FundingPerUnit, Quantity, UsdPrice},
         dango_types::{
-            FundingPerUnit, Quantity, UsdPrice,
             oracle::PrecisionedPrice,
             perps::{PairId, PairState, Position, State, UserState},
         },

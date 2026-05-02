@@ -10,7 +10,6 @@ use {
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
-        price::may_invert_price,
         querier::NoCachePerpQuerier,
         state::{
             ASKS, BIDS, LONGS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM,
@@ -25,13 +24,11 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{
-            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, FillId, LimitOrder, Liquidated,
-            OrderId, PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval,
-            State, TriggerDirection, UserState,
-        },
+    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue, may_invert_price},
+    dango_types::perps::{
+        BadDebtCovered, ConditionalOrderRemoved, Deleveraged, FillId, LimitOrder, Liquidated,
+        OrderId, PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval, State,
+        TriggerDirection, UserState,
     },
     grug::{
         Addr, EventBuilder, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage,
@@ -931,11 +928,9 @@ mod tests {
             PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
             state::{FEE_RATE_OVERRIDES, LONGS, OrderKey, SHORTS},
         },
-        dango_types::{
-            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{
-                ChildOrder, LimitOrder, PairParam, PairState, Param, Position, State, UserState,
-            },
+        dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
+        dango_types::perps::{
+            ChildOrder, LimitOrder, PairParam, PairState, Param, Position, State, UserState,
         },
         grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
         std::collections::BTreeMap,
@@ -1036,7 +1031,7 @@ mod tests {
         size: i128,
         price: i128,
     ) {
-        use crate::price::may_invert_price;
+        use dango_order_book::may_invert_price;
         let stored_price = may_invert_price(UsdPrice::new_int(price), true);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
         let order = LimitOrder {
@@ -2238,7 +2233,7 @@ mod tests {
             .unwrap();
 
         {
-            use crate::price::may_invert_price;
+            use dango_order_book::may_invert_price;
             let stored_price = may_invert_price(UsdPrice::new_int(47_500), true);
             let key: OrderKey = (pair_btc(), stored_price, Uint64::new(1));
             let order = LimitOrder {

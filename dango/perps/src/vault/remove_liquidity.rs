@@ -8,10 +8,8 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        UsdValue,
-        perps::{LiquidityUnlocking, Param, State, Unlock, UserState},
-    },
+    dango_order_book::UsdValue,
+    dango_types::perps::{LiquidityUnlocking, Param, State, Unlock, UserState},
     grug::{
         Dec128_6, Int128, IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Timestamp,
         Uint128,
@@ -197,7 +195,7 @@ fn _remove_liquidity(
 mod tests {
     use {
         super::*,
-        dango_types::UsdValue,
+        dango_order_book::UsdValue,
         grug::{Duration, MockStorage, Uint128, hash_map},
         std::collections::VecDeque,
     };

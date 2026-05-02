@@ -1,8 +1,6 @@
 use {
-    crate::{
-        Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
-        account_factory::UserIndex,
-    },
+    crate::account_factory::UserIndex,
+    dango_order_book::{Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
     grug::{
         Addr, Denom, Duration, MathResult, NonEmpty, Op, Order as IterationOrder, Part, Timestamp,
         Uint64, Uint128,

@@ -1,8 +1,8 @@
 use {
     crate::{TestAccounts, TestSuiteWithIndexer},
     dango_genesis::Contracts,
+    dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_types::{
-        Dimensionless, Quantity, UsdPrice,
         constants::usdc,
         oracle::{self, PriceSource},
         perps,

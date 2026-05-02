@@ -2,7 +2,6 @@ use {
     crate::{
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         position_index::apply_position_index_updates,
-        price::may_invert_price,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{
             ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM,
@@ -12,12 +11,10 @@ use {
         volume::flush_volumes,
     },
     dango_oracle::OracleQuerier,
-    dango_types::{
-        UsdPrice,
-        perps::{
-            ConditionalOrderRemoved, ConditionalOrderTriggered, OrderKind, PairId, PairParam,
-            PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
-        },
+    dango_order_book::{UsdPrice, may_invert_price},
+    dango_types::perps::{
+        ConditionalOrderRemoved, ConditionalOrderTriggered, OrderKind, PairId, PairParam,
+        PairState, Param, ReasonForOrderRemoval, State, TriggerDirection,
     },
     grug::{
         Addr, EventBuilder, NumberConst, Order as IterationOrder, PrefixBound, QuerierWrapper,

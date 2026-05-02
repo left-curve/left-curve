@@ -1,5 +1,6 @@
 use {
-    dango_types::{Dimensionless, UsdPrice, perps::OrderKind},
+    dango_order_book::{Dimensionless, UsdPrice},
+    dango_types::perps::OrderKind,
     grug::MathResult,
 };
 

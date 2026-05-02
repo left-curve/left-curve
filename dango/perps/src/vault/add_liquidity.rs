@@ -8,10 +8,8 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        UsdValue,
-        perps::{LiquidityAdded, Param, State, UserState},
-    },
+    dango_order_book::UsdValue,
+    dango_types::perps::{LiquidityAdded, Param, State, UserState},
     grug::{IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Signed, Uint128},
 };
 
@@ -194,8 +192,8 @@ fn _add_liquidity(
 mod tests {
     use {
         super::*,
+        dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice},
         dango_types::{
-            Dimensionless, FundingPerUnit, Quantity, UsdPrice,
             constants::eth,
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, Position, UserState},

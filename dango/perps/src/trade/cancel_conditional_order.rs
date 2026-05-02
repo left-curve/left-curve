@@ -116,11 +116,9 @@ mod tests {
     use {
         super::*,
         crate::{NEXT_ORDER_ID, PARAM, USER_STATES},
-        dango_types::{
-            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{
-                ConditionalOrder, OrderId, PairId, Param, Position, TriggerDirection, UserState,
-            },
+        dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
+        dango_types::perps::{
+            ConditionalOrder, OrderId, PairId, Param, Position, TriggerDirection, UserState,
         },
         grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},
         std::collections::BTreeMap,

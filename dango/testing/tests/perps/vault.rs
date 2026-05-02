@@ -1,8 +1,8 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
         constants::usdc,
         oracle::{self, PriceSource, QueryPriceRequest},
         perps::{self, PairParam, Param, QueryOrdersByUserResponseItem},

@@ -4,7 +4,6 @@ use {
         core::{compute_available_margin, compute_vault_quotes},
         liquidity_depth::increase_liquidity_depths,
         oracle,
-        price::may_invert_price,
         querier::NoCachePerpQuerier,
         state::{
             ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
@@ -14,10 +13,8 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Quantity, UsdValue,
-        perps::{LimitOrder, ReasonForOrderRemoval},
-    },
+    dango_order_book::{Quantity, UsdValue, may_invert_price},
+    dango_types::perps::{LimitOrder, ReasonForOrderRemoval},
     grug::{
         MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64,
     },

@@ -5,10 +5,8 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        UsdValue,
-        perps::{SETTLEMENT_CURRENCY_PRICE, Withdrew, settlement_currency},
-    },
+    dango_order_book::UsdValue,
+    dango_types::perps::{SETTLEMENT_CURRENCY_PRICE, Withdrew, settlement_currency},
     grug::{IsZero, Message, MutableCtx, Response, coins},
 };
 

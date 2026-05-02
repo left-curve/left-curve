@@ -1,4 +1,4 @@
-use {anyhow::ensure, dango_types::Dimensionless};
+use {crate::Dimensionless, anyhow::ensure};
 
 /// Validate that `max_slippage` is in the range `[0, pair_cap]`, where
 /// `pair_cap` is the per-pair `max_market_slippage` parameter.

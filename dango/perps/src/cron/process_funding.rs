@@ -4,7 +4,8 @@ use {
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     },
     dango_oracle::OracleQuerier,
-    dango_types::{Days, Quantity, perps::PairId},
+    dango_order_book::{Days, Quantity},
+    dango_types::perps::PairId,
     grug::{Addr, Storage, Timestamp},
 };
 
@@ -138,8 +139,8 @@ fn process_funding_for_pair(
 mod tests {
     use {
         super::*,
+        dango_order_book::{Dimensionless, FundingPerUnit, FundingRate, UsdPrice},
         dango_types::{
-            Dimensionless, FundingPerUnit, FundingRate, UsdPrice,
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, Param, Position, State, UserState},
         },

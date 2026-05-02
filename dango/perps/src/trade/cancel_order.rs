@@ -1,11 +1,11 @@
 use {
     crate::{
         liquidity_depth::decrease_liquidity_depths,
-        price::may_invert_price,
         state::{ASKS, BIDS, OrderKey, PAIR_PARAMS},
         trade::update_user_state_with,
     },
     anyhow::{anyhow, ensure},
+    dango_order_book::may_invert_price,
     dango_types::perps::{
         ClientOrderId, LimitOrder, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval,
         UserState,
@@ -292,10 +292,8 @@ mod tests {
             PAIR_PARAMS, USER_STATES,
             state::{ASKS, BIDS, OrderKey},
         },
-        dango_types::{
-            FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{LimitOrder, PairId, PairParam, Position, UserState},
-        },
+        dango_order_book::{FundingPerUnit, Quantity, UsdPrice, UsdValue},
+        dango_types::perps::{LimitOrder, PairId, PairParam, Position, UserState},
         grug::{
             Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp, Uint64,
         },

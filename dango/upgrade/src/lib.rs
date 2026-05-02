@@ -1,6 +1,7 @@
 use {
+    dango_order_book::UsdValue,
     dango_perps::{state::VAULT_SNAPSHOTS, volume::round_to_day},
-    dango_types::{UsdValue, perps::VaultSnapshot},
+    dango_types::perps::VaultSnapshot,
     grug::{Addr, BlockInfo, StdResult, Storage, Timestamp, Uint128, addr},
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
 };

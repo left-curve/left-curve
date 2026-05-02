@@ -1,9 +1,7 @@
 use {
     crate::core::compute_position_unrealized_funding,
-    dango_types::{
-        Quantity, UsdPrice, UsdValue,
-        perps::{PairId, PairState, Position, UserState},
-    },
+    dango_order_book::{Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{PairId, PairState, Position, UserState},
     grug::MathResult,
     std::cmp::Ordering,
 };
@@ -204,8 +202,7 @@ fn compute_pnl_to_realize(
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        dango_types::{FundingPerUnit, perps::PairState},
+        super::*, dango_order_book::FundingPerUnit, dango_types::perps::PairState,
         std::collections::BTreeMap,
     };
 

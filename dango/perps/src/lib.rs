@@ -5,7 +5,6 @@ pub mod maintain;
 #[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod position_index;
-pub mod price;
 pub mod querier;
 pub mod query;
 pub mod referral;
@@ -21,8 +20,9 @@ use {
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
+    dango_order_book::UsdValue,
     dango_types::{
-        DangoQuerier, UsdValue,
+        DangoQuerier,
         perps::{
             CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, FillId, InstantiateMsg,
             MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg,

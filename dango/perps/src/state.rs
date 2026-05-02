@@ -1,6 +1,6 @@
 use {
+    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
     dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::UserIndex,
         perps::{
             ClientOrderId, CommissionRate, ConditionalOrderId, FeeShareRatio, FillId, LimitOrder,
