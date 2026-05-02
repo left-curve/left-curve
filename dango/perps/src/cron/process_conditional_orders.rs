@@ -9,7 +9,7 @@ use {
     dango_order_book::{
         ConditionalOrderRemoved, ConditionalOrderTriggered, OrderKind, PairId,
         ReasonForOrderRemoval, TriggerDirection, UsdPrice, decrease_liquidity_depths,
-        flush_volumes, increase_liquidity_depths, may_invert_price,
+        flush_volumes, increase_liquidity_depths, is_conditional_order_triggered, may_invert_price,
         state::{ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID},
     },
     dango_types::perps::{PairParam, PairState, Param, State},
@@ -278,6 +278,18 @@ fn process_triggered_order(
     // ------------------- Pre-trigger check 2. price banding ------------------
 
     let order = order.unwrap();
+
+    // Sanity check: this branch is only reachable from the prefix-bounded
+    // iteration above, which uses `oracle_price` (Above) or `!oracle_price`
+    // (Below) as its upper bound. The stored ordering of the index keys
+    // is what determines whether an order is in range; the generic
+    // `is_conditional_order_triggered` helper expresses the same predicate
+    // over the un-inverted `(trigger_price, direction, oracle_price)`.
+    // If these ever drift out of agreement, the iteration is wrong.
+    debug_assert!(
+        is_conditional_order_triggered(order.trigger_price, trigger_direction, oracle_price),
+        "iterated conditional order is not actually triggered"
+    );
 
     // If governance has tightened `max_market_slippage` since the order
     // was submitted, the stored `order.max_slippage` may now exceed the

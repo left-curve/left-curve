@@ -2,8 +2,7 @@ use {
     crate::{state::PAIR_PARAMS, trade::update_user_state_with},
     anyhow::{anyhow, ensure},
     dango_order_book::{
-        ClientOrderId, LimitOrder, OrderId, OrderRemoved, PairId, ReasonForOrderRemoval,
-        decrease_liquidity_depths, may_invert_price,
+        ClientOrderId, LimitOrder, OrderId, PairId, ReasonForOrderRemoval, remove_order,
         state::{ASKS, BIDS, OrderKey},
     },
     dango_types::perps::{PairParam, UserState},
@@ -75,42 +74,24 @@ fn compute_cancel_one_order_outcome<F>(
 where
     F: FnOnce(&dyn Storage, &PairId) -> StdResult<PairParam>,
 {
-    let (pair_id, stored_price, order_id) = order_key.clone();
-    let is_bid = order.size.is_positive();
+    let (pair_id, ..) = &order_key;
+    let pair_param = pair_param(storage, pair_id)?;
 
-    let pair_param = pair_param(storage, &pair_id)?;
-    let real_price = may_invert_price(stored_price, is_bid);
-
-    // Update user state.
+    // Perp-side: release reserved margin and decrement the user's
+    // open-order count. The generic order-book primitive below handles
+    // the rest (depth decrement, removing the entry from BIDS/ASKS,
+    // emitting `OrderRemoved`).
     (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
     user_state.open_order_count -= 1;
 
-    // Remove liquidity contributed by this order.
-    decrease_liquidity_depths(
+    remove_order(
         storage,
-        &pair_id,
-        is_bid,
-        real_price,
-        order.size.checked_abs()?,
+        order_key,
+        &order,
+        reason,
         &pair_param.bucket_sizes,
+        events,
     )?;
-
-    // Remove the order from storage.
-    if is_bid {
-        BIDS.remove(storage, order_key)?;
-    } else {
-        ASKS.remove(storage, order_key)?;
-    }
-
-    if let Some(events) = events {
-        events.push(OrderRemoved {
-            order_id,
-            pair_id,
-            user: order.user,
-            reason,
-            client_order_id: order.client_order_id,
-        })?;
-    }
 
     Ok(())
 }
@@ -287,7 +268,7 @@ mod tests {
         super::*,
         crate::state::{PAIR_PARAMS, USER_STATES},
         dango_order_book::{
-            FundingPerUnit, LimitOrder, PairId, Quantity, UsdPrice, UsdValue,
+            FundingPerUnit, LimitOrder, OrderRemoved, PairId, Quantity, UsdPrice, UsdValue,
             state::{ASKS, BIDS, OrderKey},
         },
         dango_types::perps::{PairParam, Position, UserState},

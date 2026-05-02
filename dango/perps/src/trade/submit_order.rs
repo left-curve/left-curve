@@ -18,13 +18,13 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::{
         ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced, Dimensionless, FillId,
-        LimitOrder, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId, Quantity,
-        ReasonForOrderRemoval, TimeInForce, TriggerDirection, UsdPrice, UsdValue,
-        check_minimum_order_size, check_price_band, compute_target_price, decompose_fill,
-        decrease_liquidity_depths, flush_volumes, increase_liquidity_depths,
-        is_price_constraint_violated, may_invert_price,
+        LimitOrder, OrderId, OrderKind, OrderPersisted, OrderRemoved, PairId, Quantity, RawFill,
+        ReasonForOrderRemoval, RemovedMaker, TimeInForce, TriggerDirection, UsdPrice, UsdValue,
+        WalkBookOutcome, WalkStep, check_minimum_order_size, check_price_band,
+        compute_target_price, decompose_fill, decrease_liquidity_depths, flush_volumes,
+        increase_liquidity_depths, may_invert_price,
         state::{ASKS, BIDS, NEXT_FILL_ID, NEXT_ORDER_ID},
-        validate_slippage,
+        validate_slippage, walk_book,
     },
     dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
     grug::{
@@ -715,7 +715,7 @@ pub fn match_order(
     target_price: UsdPrice,
     oracle_price: UsdPrice,
     max_limit_price_deviation: Dimensionless,
-    mut remaining_size: Quantity,
+    remaining_size: Quantity,
     mut next_order_id: OrderId,
     mut next_fill_id: FillId,
     events: &mut EventBuilder,
@@ -747,357 +747,348 @@ pub fn match_order(
     let mut order_mutations = Vec::new();
     let mut index_updates = Vec::new();
 
-    // Create iterator over the maker side of the order book.
-    // The iteration follows price-time priority.
-    let maker_book = if taker_is_bid {
-        ASKS
-    } else {
-        BIDS
-    };
+    // Walk the book in price-time priority. The walker is generic over
+    // perp settlement: it returns `WalkStep`s as data, and we apply
+    // perp-specific mutations (margin release, position update, fee /
+    // PnL settlement, OI bookkeeping, OrderFilled / OrderRemoved
+    // events) in the same chronological order, matching the legacy
+    // interleaved engine's event sequence byte-for-byte.
+    let WalkBookOutcome {
+        steps,
+        remaining_size,
+    } = walk_book(
+        storage,
+        pair_id,
+        taker,
+        contract,
+        taker_is_bid,
+        target_price,
+        oracle_price,
+        max_limit_price_deviation,
+        remaining_size,
+    )?;
 
-    let maker_orders =
-        maker_book
-            .prefix(pair_id.clone())
-            .range(storage, None, None, IterationOrder::Ascending);
+    for step in steps {
+        match step {
+            // ---------------------- Walked-past removal ----------------------
+            //
+            // Self-trade prevention or out-of-band cancellation. Update the
+            // affected user's state (release reserved margin, decrement
+            // `open_order_count`), record the storage mutation as an
+            // unconditional removal, and push `OrderRemoved` with the reason
+            // the walker supplied so STP and out-of-band cancels stay
+            // distinguishable in the event stream.
+            WalkStep::Removed(removed) => {
+                let RemovedMaker {
+                    maker_order_id,
+                    maker_addr,
+                    maker_client_order_id,
+                    maker_pre_fill_size,
+                    maker_stored_price,
+                    maker_real_price: _,
+                    maker_order,
+                    reason,
+                } = removed;
 
-    for record in maker_orders {
-        let ((stored_price, maker_order_id), mut maker_order) = record?;
+                // STP touches the taker's own state; out-of-band cancels
+                // touch the maker's state (loaded from `maker_states` /
+                // `USER_STATES` if absent).
+                if maker_addr == taker {
+                    taker_state.open_order_count -= 1;
+                    (taker_state.reserved_margin)
+                        .checked_sub_assign(maker_order.reserved_margin)?;
+                } else {
+                    let maker_state = match maker_states.entry(maker_addr) {
+                        Entry::Vacant(e) => {
+                            let s = USER_STATES
+                                .may_load(storage, maker_addr)?
+                                .unwrap_or_default();
+                            e.insert(s)
+                        },
+                        Entry::Occupied(e) => e.into_mut(),
+                    };
 
-        // If the maker is bid (i.e. taker is ask), we need to "un-invert" the price.
-        let resting_price = may_invert_price(stored_price, !taker_is_bid);
+                    maker_state.open_order_count -= 1;
+                    maker_state
+                        .reserved_margin
+                        .checked_sub_assign(maker_order.reserved_margin)?;
+                }
 
-        // ----------------------- Termination condition -----------------------
+                order_mutations.push((
+                    maker_stored_price,
+                    maker_order_id,
+                    None,
+                    maker_pre_fill_size,
+                ));
 
-        if remaining_size.is_zero() {
-            break;
-        }
-
-        if is_price_constraint_violated(resting_price, target_price, taker_is_bid) {
-            break;
-        }
-
-        // ----------------------- Self-trade prevention -----------------------
-
-        // If we come across a maker order that was placed by the taker himself,
-        // cancel the maker order and move on.
-        // This is consistent with industry standard practice. Specifically, it
-        // corresponds to Binance's EXPIRE_MAKER mode:
-        // https://developers.binance.com/docs/binance-spot-api-docs/faqs/stp_faq
-        if maker_order.user == taker {
-            let pre_fill_abs_size = maker_order.size.checked_abs()?;
-
-            taker_state.open_order_count -= 1;
-            (taker_state.reserved_margin).checked_sub_assign(maker_order.reserved_margin)?;
-
-            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
-
-            events.push(OrderRemoved {
-                order_id: maker_order_id,
-                pair_id: pair_id.clone(),
-                user: taker,
-                reason: ReasonForOrderRemoval::SelfTradePrevention,
-                client_order_id: maker_order.client_order_id,
-            })?;
-
-            continue;
-        }
-
-        // ----------------------- Price-band re-check -------------------------
-
-        // The maker's price was within the band when placed, but the oracle
-        // may have drifted since. Cancel out-of-band makers and walk deeper.
-        //
-        // Vault quotes are exempt — their prices are algorithmically bounded
-        // by `vault_half_spread * (1 + vault_spread_skew_factor)` and are
-        // refreshed on every oracle update, so cancelling them during
-        // matching would cause continuous churn without security gain (the
-        // vault cannot be part of an attacker's coordinated setup).
-        if maker_order.user != contract
-            && check_price_band(resting_price, oracle_price, max_limit_price_deviation).is_err()
-        {
-            let pre_fill_abs_size = maker_order.size.checked_abs()?;
-
-            let maker_state = match maker_states.entry(maker_order.user) {
-                Entry::Vacant(e) => {
-                    let s = USER_STATES
-                        .may_load(storage, maker_order.user)?
-                        .unwrap_or_default();
-                    e.insert(s)
-                },
-                Entry::Occupied(e) => e.into_mut(),
-            };
-
-            maker_state.open_order_count -= 1;
-            maker_state
-                .reserved_margin
-                .checked_sub_assign(maker_order.reserved_margin)?;
-
-            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
-
-            events.push(OrderRemoved {
-                order_id: maker_order_id,
-                pair_id: pair_id.clone(),
-                user: maker_order.user,
-                reason: ReasonForOrderRemoval::PriceBandViolation,
-                client_order_id: maker_order.client_order_id,
-            })?;
-
-            continue;
-        }
-
-        // ---------------------- Determine fillable size ----------------------
-
-        let opposite = maker_order.size.checked_neg()?;
-
-        let taker_fill_size = if taker_is_bid {
-            remaining_size.min(opposite)
-        } else {
-            remaining_size.max(opposite)
-        };
-
-        let maker_fill_size = taker_fill_size.checked_neg()?;
-
-        // -------------------- Allocate a shared fill id ----------------------
-
-        // Both `OrderFilled` events below carry this `fill_id`, so downstream
-        // consumers can group the two sides of the match.
-        let fill_id = next_fill_id;
-        next_fill_id = next_fill_id.checked_add(FillId::ONE)?;
-
-        // ------------------------ Settle taker side -------------------------
-
-        let old_taker_pos = taker_state.positions.get(pair_id).cloned();
-
-        let taker_settlement = settle_fill(
-            contract,
-            pair_id,
-            &mut pair_state,
-            &mut taker_state,
-            taker,
-            taker_fill_size,
-            resting_price,
-            taker_fee_rate,
-            Some((
-                events,
-                taker_order_id,
-                taker_client_order_id,
-                fill_id,
-                false,
-            )),
-        )?;
-
-        volumes
-            .entry(taker)
-            .or_default()
-            .checked_add_assign(taker_settlement.volume)?;
-
-        if let Some(diff) = compute_position_diff(
-            pair_id,
-            taker,
-            old_taker_pos.as_ref(),
-            taker_state.positions.get(pair_id),
-        ) {
-            index_updates.push(diff);
-        }
-
-        // ------------------------ Settle maker side -------------------------
-
-        // Determine the maker's fee rate.
-        // - If the caller forces a rate (e.g. zero during liquidation), use it
-        //   and bypass both the override and the tier schedule so the
-        //   zero-fee invariant cannot be defeated by a pre-existing override.
-        // - Else if the admin has configured a fee rate override for the
-        //   maker, use it.
-        // - Otherwise, resolve it based on recent volume.
-        let maker_fee_rate = if let Some(forced) = force_maker_fee_rate {
-            forced
-        } else if let Some((maker_rate_override, _taker_rate_override)) =
-            FEE_RATE_OVERRIDES.may_load(storage, maker_order.user)?
-        {
-            maker_rate_override
-        } else {
-            let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
-            let maker_volume = query_volume(storage, maker_order.user, volume_since)?;
-            param.maker_fee_rates.resolve(maker_volume)
-        };
-
-        // Take the maker's user state out of the map so the later
-        // `settle_pnls` call can borrow the vault's state from the map
-        // disjointly. We reinsert it at the end of the loop iteration.
-        let maker_user = maker_order.user;
-        let mut maker_state = match maker_states.remove(&maker_user) {
-            Some(s) => s,
-            None => USER_STATES
-                .may_load(storage, maker_user)?
-                .unwrap_or_default(),
-        };
-
-        let old_maker_pos = maker_state.positions.get(pair_id).cloned();
-
-        let maker_settlement = settle_fill(
-            contract,
-            pair_id,
-            &mut pair_state,
-            &mut maker_state,
-            maker_user,
-            maker_fill_size,
-            resting_price,
-            maker_fee_rate,
-            Some((
-                events,
-                maker_order_id,
-                maker_order.client_order_id,
-                fill_id,
-                true,
-            )),
-        )?;
-
-        volumes
-            .entry(maker_user)
-            .or_default()
-            .checked_add_assign(maker_settlement.volume)?;
-
-        if let Some(diff) = compute_position_diff(
-            pair_id,
-            maker_user,
-            old_maker_pos.as_ref(),
-            maker_state.positions.get(pair_id),
-        ) {
-            index_updates.push(diff);
-        }
-
-        // ----------------- Per-fill net-fee settlement ------------------
-
-        let fill_breakdowns = {
-            // vault_state_opt carries the vault's state only when neither
-            // side of the fill is the vault itself. When the taker or
-            // maker IS the vault, that party's own state holds the vault's
-            // balance and settle_pnls routes the vault fee there.
-            let vault_state_opt = if taker != contract && maker_user != contract {
-                Some(
-                    maker_states
-                        .get_mut(&contract)
-                        .expect("vault inserted at match_order entry"),
-                )
-            } else {
-                None
-            };
-            settle_pnls(
-                contract,
-                param,
-                &mut state,
-                taker,
-                &mut taker_state,
-                taker_settlement.pnl.total()?,
-                taker_settlement.fee,
-                maker_user,
-                &mut maker_state,
-                maker_settlement.pnl.total()?,
-                maker_settlement.fee,
-                vault_state_opt,
-            )?
-        };
-
-        if let Some(bd) = fill_breakdowns.taker {
-            merge_fee_breakdown(&mut fee_breakdowns, taker, bd)?;
-        }
-        if let Some(bd) = fill_breakdowns.maker {
-            merge_fee_breakdown(&mut fee_breakdowns, maker_user, bd)?;
-        }
-
-        // ------------- Apply maker's child orders after fill -----------------
-
-        if (maker_order.tp.is_some() || maker_order.sl.is_some())
-            && let Some(maker_pos) = maker_state.positions.get_mut(pair_id)
-            && maker_pos.size.is_positive() == maker_order.size.is_positive()
-        {
-            let (above, below) = map_child_orders(
-                maker_pos.size,
-                &maker_order.tp,
-                &maker_order.sl,
-                &mut next_order_id,
-            );
-
-            maker_pos.conditional_order_above = above;
-            maker_pos.conditional_order_below = below;
-
-            emit_child_order_events(
-                events,
-                pair_id,
-                maker_user,
-                &maker_order.tp,
-                &maker_order.sl,
-                maker_pos.size,
-            )?;
-        }
-
-        // ---------------- Update maker's order and user state ----------------
-
-        let pre_fill_abs_size = maker_order.size.checked_abs()?;
-
-        // Compute the new size first so we can detect a full fill below.
-        let new_maker_size = maker_order.size.checked_sub(maker_fill_size)?;
-
-        // Release reserved margin. On a full fill, release everything that's
-        // left in the order: the proportional formula truncates toward zero
-        // and would otherwise orphan the residual in `maker_state` when the
-        // order is removed from storage a few lines below.
-        let margin_to_release = if new_maker_size.is_zero() {
-            maker_order.reserved_margin
-        } else {
-            (maker_order.reserved_margin)
-                .checked_mul(maker_fill_size)?
-                .checked_div(maker_order.size)?
-        };
-
-        maker_state
-            .reserved_margin
-            .checked_sub_assign(margin_to_release)?;
-
-        maker_order
-            .reserved_margin
-            .checked_sub_assign(margin_to_release)?;
-
-        maker_order.size = new_maker_size;
-
-        if maker_order.size.is_zero() {
-            maker_state.open_order_count -= 1;
-
-            order_mutations.push((stored_price, maker_order_id, None, pre_fill_abs_size));
-
-            // Vault order removal is internal churn — suppress the event.
-            if maker_user != contract {
                 events.push(OrderRemoved {
                     order_id: maker_order_id,
                     pair_id: pair_id.clone(),
-                    user: maker_user,
-                    reason: ReasonForOrderRemoval::Filled,
-                    client_order_id: maker_order.client_order_id,
+                    user: maker_addr,
+                    reason,
+                    client_order_id: maker_client_order_id,
                 })?;
-            }
+            },
 
-            #[cfg(feature = "metrics")]
-            {
-                metrics::counter!(
-                    crate::metrics::LABEL_ORDERS_FILLED,
-                    "pair_id" => pair_id.to_string()
-                )
-                .increment(1);
-            }
-        } else {
-            order_mutations.push((
-                stored_price,
-                maker_order_id,
-                Some(maker_order),
-                pre_fill_abs_size,
-            ));
+            // ---------------------- Settle one fill --------------------------
+            WalkStep::Fill(fill) => {
+                let RawFill {
+                    maker_order_id,
+                    maker_addr: maker_user,
+                    maker_client_order_id,
+                    maker_pre_fill_size,
+                    maker_post_fill_size,
+                    maker_stored_price,
+                    fill_price,
+                    fill_size: taker_fill_size,
+                    maker_order,
+                } = fill;
+
+                let maker_fill_size = taker_fill_size.checked_neg()?;
+
+                // ---------------- Allocate a shared fill id ------------------
+                //
+                // Both `OrderFilled` events below carry this `fill_id`, so
+                // downstream consumers can group the two sides of the match.
+                let fill_id = next_fill_id;
+                next_fill_id = next_fill_id.checked_add(FillId::ONE)?;
+
+                // -------------------- Settle taker side ----------------------
+
+                let old_taker_pos = taker_state.positions.get(pair_id).cloned();
+
+                let taker_settlement = settle_fill(
+                    contract,
+                    pair_id,
+                    &mut pair_state,
+                    &mut taker_state,
+                    taker,
+                    taker_fill_size,
+                    fill_price,
+                    taker_fee_rate,
+                    Some((
+                        events,
+                        taker_order_id,
+                        taker_client_order_id,
+                        fill_id,
+                        false,
+                    )),
+                )?;
+
+                volumes
+                    .entry(taker)
+                    .or_default()
+                    .checked_add_assign(taker_settlement.volume)?;
+
+                if let Some(diff) = compute_position_diff(
+                    pair_id,
+                    taker,
+                    old_taker_pos.as_ref(),
+                    taker_state.positions.get(pair_id),
+                ) {
+                    index_updates.push(diff);
+                }
+
+                // -------------------- Settle maker side ----------------------
+                //
+                // Determine the maker's fee rate.
+                // - If the caller forces a rate (e.g. zero during
+                //   liquidation), use it and bypass both the override and
+                //   the tier schedule so the zero-fee invariant cannot be
+                //   defeated by a pre-existing override.
+                // - Else if the admin has configured a fee rate override
+                //   for the maker, use it.
+                // - Otherwise, resolve it based on recent volume.
+                let maker_fee_rate = if let Some(forced) = force_maker_fee_rate {
+                    forced
+                } else if let Some((maker_rate_override, _taker_rate_override)) =
+                    FEE_RATE_OVERRIDES.may_load(storage, maker_user)?
+                {
+                    maker_rate_override
+                } else {
+                    let volume_since = Some(current_time.saturating_sub(VOLUME_LOOKBACK));
+                    let maker_volume = query_volume(storage, maker_user, volume_since)?;
+                    param.maker_fee_rates.resolve(maker_volume)
+                };
+
+                // Take the maker's user state out of the map so the later
+                // `settle_pnls` call can borrow the vault's state from the
+                // map disjointly. We reinsert it at the end of the iteration.
+                let mut maker_state = match maker_states.remove(&maker_user) {
+                    Some(s) => s,
+                    None => USER_STATES
+                        .may_load(storage, maker_user)?
+                        .unwrap_or_default(),
+                };
+
+                let old_maker_pos = maker_state.positions.get(pair_id).cloned();
+
+                let maker_settlement = settle_fill(
+                    contract,
+                    pair_id,
+                    &mut pair_state,
+                    &mut maker_state,
+                    maker_user,
+                    maker_fill_size,
+                    fill_price,
+                    maker_fee_rate,
+                    Some((events, maker_order_id, maker_client_order_id, fill_id, true)),
+                )?;
+
+                volumes
+                    .entry(maker_user)
+                    .or_default()
+                    .checked_add_assign(maker_settlement.volume)?;
+
+                if let Some(diff) = compute_position_diff(
+                    pair_id,
+                    maker_user,
+                    old_maker_pos.as_ref(),
+                    maker_state.positions.get(pair_id),
+                ) {
+                    index_updates.push(diff);
+                }
+
+                // ----------------- Per-fill net-fee settlement ---------------
+
+                let fill_breakdowns = {
+                    // vault_state_opt carries the vault's state only when
+                    // neither side of the fill is the vault itself. When
+                    // the taker or maker IS the vault, that party's own
+                    // state holds the vault's balance and settle_pnls
+                    // routes the vault fee there.
+                    let vault_state_opt = if taker != contract && maker_user != contract {
+                        Some(
+                            maker_states
+                                .get_mut(&contract)
+                                .expect("vault inserted at match_order entry"),
+                        )
+                    } else {
+                        None
+                    };
+                    settle_pnls(
+                        contract,
+                        param,
+                        &mut state,
+                        taker,
+                        &mut taker_state,
+                        taker_settlement.pnl.total()?,
+                        taker_settlement.fee,
+                        maker_user,
+                        &mut maker_state,
+                        maker_settlement.pnl.total()?,
+                        maker_settlement.fee,
+                        vault_state_opt,
+                    )?
+                };
+
+                if let Some(bd) = fill_breakdowns.taker {
+                    merge_fee_breakdown(&mut fee_breakdowns, taker, bd)?;
+                }
+                if let Some(bd) = fill_breakdowns.maker {
+                    merge_fee_breakdown(&mut fee_breakdowns, maker_user, bd)?;
+                }
+
+                // ----------- Apply maker's child orders after fill -----------
+
+                if (maker_order.tp.is_some() || maker_order.sl.is_some())
+                    && let Some(maker_pos) = maker_state.positions.get_mut(pair_id)
+                    && maker_pos.size.is_positive() == maker_order.size.is_positive()
+                {
+                    let (above, below) = map_child_orders(
+                        maker_pos.size,
+                        &maker_order.tp,
+                        &maker_order.sl,
+                        &mut next_order_id,
+                    );
+
+                    maker_pos.conditional_order_above = above;
+                    maker_pos.conditional_order_below = below;
+
+                    emit_child_order_events(
+                        events,
+                        pair_id,
+                        maker_user,
+                        &maker_order.tp,
+                        &maker_order.sl,
+                        maker_pos.size,
+                    )?;
+                }
+
+                // ------------ Update maker's order and user state ------------
+                //
+                // Release reserved margin. On a full fill, release
+                // everything that's left in the order: the proportional
+                // formula truncates toward zero and would otherwise
+                // orphan the residual in `maker_state` when the order is
+                // removed from storage a few lines below.
+                let margin_to_release = if maker_post_fill_size.is_zero() {
+                    maker_order.reserved_margin
+                } else {
+                    (maker_order.reserved_margin)
+                        .checked_mul(maker_fill_size)?
+                        .checked_div(maker_order.size)?
+                };
+
+                maker_state
+                    .reserved_margin
+                    .checked_sub_assign(margin_to_release)?;
+
+                if maker_post_fill_size.is_zero() {
+                    maker_state.open_order_count -= 1;
+
+                    order_mutations.push((
+                        maker_stored_price,
+                        maker_order_id,
+                        None,
+                        maker_pre_fill_size,
+                    ));
+
+                    // Vault order removal is internal churn — suppress the event.
+                    if maker_user != contract {
+                        events.push(OrderRemoved {
+                            order_id: maker_order_id,
+                            pair_id: pair_id.clone(),
+                            user: maker_user,
+                            reason: ReasonForOrderRemoval::Filled,
+                            client_order_id: maker_client_order_id,
+                        })?;
+                    }
+
+                    #[cfg(feature = "metrics")]
+                    {
+                        metrics::counter!(
+                            crate::metrics::LABEL_ORDERS_FILLED,
+                            "pair_id" => pair_id.to_string()
+                        )
+                        .increment(1);
+                    }
+                } else {
+                    // Build the post-fill maker order: same fields as the
+                    // pre-fill snapshot, with `size` and `reserved_margin`
+                    // decremented by the fill's share. The walker handed
+                    // back the original order by value, so we mutate the
+                    // local copy to avoid an unnecessary clone.
+                    let mut updated_maker_order = maker_order;
+                    updated_maker_order
+                        .reserved_margin
+                        .checked_sub_assign(margin_to_release)?;
+                    updated_maker_order.size =
+                        updated_maker_order.size.checked_sub(maker_fill_size)?;
+
+                    order_mutations.push((
+                        maker_stored_price,
+                        maker_order_id,
+                        Some(updated_maker_order),
+                        maker_pre_fill_size,
+                    ));
+                }
+
+                // Reinsert the maker's state now that we no longer need
+                // disjoint access to the vault state.
+                maker_states.insert(maker_user, maker_state);
+            },
         }
-
-        // Reinsert the maker's state now that we no longer need disjoint
-        // access to the vault state.
-        maker_states.insert(maker_user, maker_state);
-
-        remaining_size.checked_sub_assign(taker_fill_size)?;
     }
 
     Ok(MatchOrderOutcome {

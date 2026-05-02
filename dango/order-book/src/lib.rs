@@ -3,9 +3,11 @@
 //! it depends only on `grug` and external crates, never on `dango-types`
 //! or any contract crate.
 
+mod cancel;
 mod decompose;
 mod events;
 mod liquidity_depth;
+mod matching_engine;
 mod min_size;
 mod price;
 mod price_band;
@@ -17,6 +19,6 @@ mod types;
 mod volume;
 
 pub use {
-    decompose::*, events::*, liquidity_depth::*, min_size::*, price::*, price_band::*, slippage::*,
-    target_price::*, typed_number::*, types::*, volume::*,
+    cancel::*, decompose::*, events::*, liquidity_depth::*, matching_engine::*, min_size::*,
+    price::*, price_band::*, slippage::*, target_price::*, typed_number::*, types::*, volume::*,
 };
