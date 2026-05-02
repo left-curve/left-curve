@@ -4,10 +4,8 @@ use {
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
     },
     anyhow::ensure,
-    dango_types::{
-        Dimensionless, FundingRate, UsdPrice, UsdValue,
-        perps::{PairId, PairParam, PairState, Param, RateSchedule},
-    },
+    dango_order_book::{Dimensionless, FundingRate, PairId, UsdPrice, UsdValue},
+    dango_types::perps::{PairParam, PairState, Param, RateSchedule},
     grug::{Duration, GENESIS_SENDER, MutableCtx, QuerierExt, Response},
     std::collections::BTreeMap,
 };
@@ -409,7 +407,7 @@ fn validate_rate_schedule(
 mod tests {
     use {
         super::*,
-        dango_types::{FundingRate, Quantity},
+        dango_order_book::{FundingRate, Quantity},
         grug::{Duration, Number as _, btree_map, btree_set},
     };
 

@@ -1,5 +1,7 @@
 use {
-    dango_types::{Days, Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue},
+    dango_order_book::{
+        Days, Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
+    },
     grug::{MathResult, StdResult},
 };
 
@@ -105,7 +107,7 @@ pub fn compute_funding_delta(
 mod tests {
     use {
         super::*,
-        dango_types::{Days, Dimensionless, FundingPerUnit, FundingRate, UsdPrice, UsdValue},
+        dango_order_book::{Days, Dimensionless, FundingPerUnit, FundingRate, UsdPrice, UsdValue},
         grug::{Duration, StdResult},
         test_case::test_case,
     };

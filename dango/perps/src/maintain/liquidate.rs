@@ -5,33 +5,29 @@ use {
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
             compute_user_equity, compute_user_equity_with_pnl, is_liquidatable,
         },
-        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
         oracle,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
-        price::may_invert_price,
         querier::NoCachePerpQuerier,
-        state::{
-            ASKS, BIDS, LONGS, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM,
-            SHORTS, STATE, USER_STATES,
-        },
+        state::{LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES},
         trade::{
             CancelAllOrdersOutcome, FeeBreakdown, MatchOrderOutcome,
             compute_cancel_all_orders_outcome, match_order, merge_fee_breakdown, settle_fill,
             settle_pnls,
         },
-        volume::flush_volumes,
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{
-            BadDebtCovered, ConditionalOrderRemoved, Deleveraged, FillId, LimitOrder, Liquidated,
-            OrderId, PairId, PairParam, PairState, Param, RateSchedule, ReasonForOrderRemoval,
-            State, TriggerDirection, UserState,
-        },
+    dango_order_book::{
+        ASKS, BIDS, ConditionalOrderRemoved, Dimensionless, FillId, LimitOrder, NEXT_FILL_ID,
+        NEXT_ORDER_ID, OrderId, PairId, Quantity, ReasonForOrderRemoval, TriggerDirection,
+        UsdPrice, UsdValue, decrease_liquidity_depths, flush_volumes, increase_liquidity_depths,
+        may_invert_price,
+    },
+    dango_types::perps::{
+        BadDebtCovered, Deleveraged, Liquidated, PairParam, PairState, Param, RateSchedule, State,
+        UserState,
     },
     grug::{
         Addr, EventBuilder, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage,
@@ -927,16 +923,14 @@ fn compute_liquidation_fee(
 mod tests {
     use {
         super::*,
-        crate::{
-            PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES,
-            state::{FEE_RATE_OVERRIDES, LONGS, OrderKey, SHORTS},
+        crate::state::{
+            FEE_RATE_OVERRIDES, LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES,
         },
-        dango_types::{
-            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{
-                ChildOrder, LimitOrder, PairParam, PairState, Param, Position, State, UserState,
-            },
+        dango_order_book::{
+            ChildOrder, Dimensionless, FundingPerUnit, LimitOrder, OrderKey, Quantity, UsdPrice,
+            UsdValue,
         },
+        dango_types::perps::{PairParam, PairState, Param, Position, State, UserState},
         grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
         std::collections::BTreeMap,
     };
@@ -1036,7 +1030,7 @@ mod tests {
         size: i128,
         price: i128,
     ) {
-        use crate::price::may_invert_price;
+        use dango_order_book::may_invert_price;
         let stored_price = may_invert_price(UsdPrice::new_int(price), true);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
         let order = LimitOrder {
@@ -2238,7 +2232,7 @@ mod tests {
             .unwrap();
 
         {
-            use crate::price::may_invert_price;
+            use dango_order_book::may_invert_price;
             let stored_price = may_invert_price(UsdPrice::new_int(47_500), true);
             let key: OrderKey = (pair_btc(), stored_price, Uint64::new(1));
             let order = LimitOrder {

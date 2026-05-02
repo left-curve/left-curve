@@ -1,4 +1,4 @@
-use dango_types::UsdPrice;
+use crate::UsdPrice;
 
 /// When storing a bid order, we "invert" the price such that orders are sorted
 /// according to price-time priority. Conversely, when reading orders from the

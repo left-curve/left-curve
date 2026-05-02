@@ -1,9 +1,7 @@
 use {
     crate::state::USER_STATES,
-    dango_types::{
-        UsdValue,
-        perps::{LiquidityReleased, UserState},
-    },
+    dango_order_book::UsdValue,
+    dango_types::perps::{LiquidityReleased, UserState},
     grug::{EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage, Timestamp},
 };
 

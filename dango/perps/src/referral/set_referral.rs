@@ -6,9 +6,9 @@ use {
             FEE_SHARE_RATIO, REFEREE_TO_REFERRER, REFERRER_TO_REFEREE_STATISTICS,
             USER_REFERRAL_DATA,
         },
-        volume::round_to_day,
     },
     anyhow::ensure,
+    dango_order_book::round_to_day,
     dango_types::{
         account_factory::{self, UserIndex},
         perps::{RefereeStats, ReferralSet},

@@ -1,14 +1,15 @@
 use {
     crate::{default_pair_param, default_param},
+    dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
     dango_testing::{Factory, Preset, TestAccount, TestOption, perps::pair_id, setup_test_naive},
     dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
         account_factory::{self, RegisterUserData},
         constants::usdc,
         oracle::{self, PriceSource},
         perps::{
-            self, CommissionRate, FeeDistributed, FeeShareRatio, QueryParamRequest, Referee,
-            ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex, UserReferralData,
+            self, CommissionRate, FeeDistributed, FeeShareRatio, QueryParamRequest, RateSchedule,
+            Referee, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
+            UserReferralData,
         },
     },
     grug::{
@@ -642,7 +643,7 @@ fn commission_rate_override() {
         .query_wasm_smart(contracts.perps, perps::QueryParamRequest {})
         .should_succeed();
 
-    param.referrer_commission_rates = perps::RateSchedule {
+    param.referrer_commission_rates = RateSchedule {
         base: CommissionRate::new_percent(10),
         tiers: btree_map! {
             UsdValue::new_int(100) => CommissionRate::new_percent(20),
@@ -1351,16 +1352,16 @@ fn negative_maker_fee_does_not_debit_referrers() {
             contracts.perps,
             &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: perps::Param {
-                    taker_fee_rates: perps::RateSchedule {
+                    taker_fee_rates: RateSchedule {
                         base: Dimensionless::new_raw(300),
                         ..Default::default()
                     },
-                    maker_fee_rates: perps::RateSchedule {
+                    maker_fee_rates: RateSchedule {
                         base: Dimensionless::new_raw(-100),
                         ..Default::default()
                     },
                     protocol_fee_rate: Dimensionless::new_percent(20),
-                    referrer_commission_rates: perps::RateSchedule {
+                    referrer_commission_rates: RateSchedule {
                         base: Dimensionless::new_percent(10),
                         ..Default::default()
                     },
@@ -1904,9 +1905,9 @@ fn place_ask_order(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(-(size as i128)),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: price,
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -1931,7 +1932,7 @@ fn place_market_buy(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(size as i128),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -1974,7 +1975,7 @@ fn place_market_buy_with_events(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: dango_testing::perps::pair_id(),
                 size: Quantity::new_int(size as i128),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,

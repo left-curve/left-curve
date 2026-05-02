@@ -10,16 +10,16 @@ use {
         },
         indexer::perps_candles::cache::{PerpsCandleCache, PerpsCandleCacheKey},
     },
+    dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_testing::{
         Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
         perps::{create_perps_fill, pair_id, setup_perps_env},
         setup_test_with_indexer, setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
-        Dimensionless, Quantity, UsdPrice,
         constants::usdc,
         oracle::{self, PriceSource},
-        perps::{self, PairParam},
+        perps::{self, PairParam, RateSchedule},
     },
     grug::{
         BlockInfo, Coins, Denom, Duration, Hash256, NumberConst, ResultExt, Timestamp, Udec128,
@@ -44,9 +44,9 @@ fn place_limit_ask(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id(),
                 size: Quantity::new_int(-(size as i128)),
-                kind: perps::OrderKind::Limit {
+                kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price as i128),
-                    time_in_force: perps::TimeInForce::PostOnly,
+                    time_in_force: TimeInForce::PostOnly,
                     client_order_id: None,
                 },
                 reduce_only: false,
@@ -72,7 +72,7 @@ fn market_buy(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
                 pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
-                kind: perps::OrderKind::Market {
+                kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
                 },
                 reduce_only: false,
@@ -621,7 +621,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
             contracts.perps,
             &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
                 param: perps::Param {
-                    taker_fee_rates: perps::RateSchedule {
+                    taker_fee_rates: RateSchedule {
                         base: Dimensionless::new_permille(1),
                         ..Default::default()
                     },

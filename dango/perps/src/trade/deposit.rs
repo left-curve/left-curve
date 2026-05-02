@@ -1,10 +1,8 @@
 use {
     crate::USER_STATES,
     anyhow::ensure,
-    dango_types::{
-        Quantity,
-        perps::{Deposited, SETTLEMENT_CURRENCY_PRICE, settlement_currency},
-    },
+    dango_order_book::Quantity,
+    dango_types::perps::{Deposited, SETTLEMENT_CURRENCY_PRICE, settlement_currency},
     grug::{Addr, IsZero, MutableCtx, Response},
 };
 
@@ -63,7 +61,7 @@ mod tests {
     use {
         super::*,
         crate::USER_STATES,
-        dango_types::UsdValue,
+        dango_order_book::UsdValue,
         grug::{Addr, Coins, MockContext, ResultExt, Uint128},
     };
 

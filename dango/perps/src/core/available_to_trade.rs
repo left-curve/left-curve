@@ -11,10 +11,8 @@
 use {
     crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Dimensionless, Quantity, UsdValue,
-        perps::{PairId, UserState},
-    },
+    dango_order_book::{Dimensionless, PairId, Quantity, UsdValue},
+    dango_types::perps::UserState,
     grug::MathResult,
 };
 
@@ -159,8 +157,8 @@ mod tests {
     use {
         super::*,
         crate::core::check_margin,
+        dango_order_book::{FundingPerUnit, UsdPrice},
         dango_types::{
-            FundingPerUnit, UsdPrice,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, Position},

@@ -1,6 +1,6 @@
 use {
+    crate::{Dimensionless, UsdPrice},
     anyhow::ensure,
-    dango_types::{Dimensionless, UsdPrice},
 };
 
 /// Validate that `limit_price` is within the allowed deviation of `oracle_price`.

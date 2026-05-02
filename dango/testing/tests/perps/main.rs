@@ -1,11 +1,11 @@
 use {
     dango_genesis::Contracts,
+    dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_testing::perps::pair_id,
     dango_types::{
-        Dimensionless, Quantity, UsdPrice,
         constants::usdc,
         oracle::{self, PriceSource},
-        perps::{self, PairParam, Param},
+        perps::{PairParam, Param, RateSchedule},
     },
     grug::{Coins, Duration, NumberConst, ResultExt, Timestamp, Udec128, btree_map},
 };
@@ -25,7 +25,7 @@ mod vault_withdrawal_health;
 /// Return the genesis-default global params (mirrors `PerpsOption::preset_test()`).
 pub fn default_param() -> Param {
     Param {
-        taker_fee_rates: perps::RateSchedule {
+        taker_fee_rates: RateSchedule {
             base: Dimensionless::new_permille(1), // 0.1%
             ..Default::default()
         },

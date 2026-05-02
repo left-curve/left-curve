@@ -2,10 +2,8 @@ use {
     crate::{core::compute_trading_fee, querier::NoCachePerpQuerier},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Dimensionless, Quantity, UsdPrice, UsdValue,
-        perps::{PairId, PairParam, PairState, Position, UserState},
-    },
+    dango_order_book::{Dimensionless, PairId, Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{PairParam, PairState, Position, UserState},
 };
 
 /// Compute the unrealized PnL of a single position at the given oracle price.
@@ -285,8 +283,8 @@ pub fn check_margin(
 mod tests {
     use {
         super::*,
+        dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
-            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             constants::{btc, eth},
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, Param, Position, RateSchedule},

@@ -6,10 +6,8 @@ use {
         indexer::Indexer,
     },
     chrono::{DateTime, Utc},
-    dango_types::{
-        Quantity, UsdPrice, UsdValue,
-        perps::{Deleveraged, FeeDistributed, OrderFilled},
-    },
+    dango_order_book::{Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{Deleveraged, FeeDistributed, OrderFilled},
     grug::{
         Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
         EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, IsZero,
@@ -474,7 +472,7 @@ fn to_non_negative(
 mod tests {
     use {
         super::*,
-        dango_types::{Quantity, UsdPrice, UsdValue, perps::PairId},
+        dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
         grug::{Denom, Uint64},
         std::str::FromStr,
     };

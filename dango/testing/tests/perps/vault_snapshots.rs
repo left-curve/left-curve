@@ -1,9 +1,8 @@
 use {
     crate::register_oracle_prices,
-    dango_perps::volume::round_to_day,
+    dango_order_book::{UsdValue, round_to_day},
     dango_testing::{TestOption, setup_test_naive},
     dango_types::{
-        UsdValue,
         constants::usdc,
         perps::{self, VaultSnapshot},
     },

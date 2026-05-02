@@ -1,5 +1,6 @@
 use {
-    dango_types::{Dimensionless, Quantity, perps::PairParam},
+    dango_order_book::{Dimensionless, Quantity},
+    dango_types::perps::PairParam,
     grug::MathResult,
 };
 
@@ -47,7 +48,8 @@ pub fn compute_vault_premium(
 mod tests {
     use {
         super::*,
-        dango_types::{Dimensionless, Quantity, perps::PairParam},
+        dango_order_book::{Dimensionless, Quantity},
+        dango_types::perps::PairParam,
     };
 
     /// Default pair param with vault skew enabled.

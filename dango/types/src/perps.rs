@@ -1,11 +1,12 @@
 use {
-    crate::{
-        Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
-        account_factory::UserIndex,
+    crate::account_factory::UserIndex,
+    dango_order_book::{
+        ChildOrder, ClientOrderId, ConditionalOrder, Dimensionless, FillId, FundingPerUnit,
+        FundingRate, LiquidityDepthResponse, OrderId, OrderKind, PairId, Quantity,
+        QueryOrderResponse, QueryOrdersByUserResponseItem, TriggerDirection, UsdPrice, UsdValue,
     },
     grug::{
-        Addr, Denom, Duration, MathResult, NonEmpty, Op, Order as IterationOrder, Part, Timestamp,
-        Uint64, Uint128,
+        Addr, Duration, MathResult, NonEmpty, Op, Order as IterationOrder, Part, Timestamp, Uint128,
     },
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
@@ -26,46 +27,6 @@ pub const SETTLEMENT_CURRENCY_PRICE: UsdPrice = UsdPrice::new_int(1);
 /// Denomination of the asset used to settle perpetual futures contracts.
 pub use crate::constants::usdc as settlement_currency;
 
-/// Identifier of a trading pair. It should be a string that looks like e.g. "perp/btcusd".
-pub type PairId = Denom;
-
-/// Identifier for a resting limit order.
-///
-/// Order Id has two purposes:
-///
-/// 1. For uniquely identifying an order.
-/// 2. For determining an order's seniority. Orders matching follows **price-time
-///    priority**: orders with the better prices are executed first; for orders
-///    with the same price, those submitted earlier are executed first. Order IDs
-///    are allocated in incremental order, so orders with smaller IDs are more senior.
-///    It's also for this reason, that the order ID is included as a sub-key in
-///    the `BIDS` and `ASKS` maps, as well as in the index key of `UserStateIndex::conditional_orders`
-///    (see `dango/perps/src/state.rs`).
-///    Timestamp doesn't work for this case, because two orders submitted in the
-///    same block have the same timestamp.
-pub type OrderId = Uint64;
-
-/// Shares the same ID space as `OrderId` (same `NEXT_ORDER_ID` counter).
-pub type ConditionalOrderId = OrderId;
-
-/// Identifier for an order-book match. Both `OrderFilled` events emitted
-/// for a single match (taker side + maker side) carry the same `FillId`,
-/// so consumers can group the two sides by this field. Strictly
-/// increasing across matches.
-///
-/// Not assigned to ADL fills — those are emitted via the `Deleveraged`
-/// and `Liquidated` events, which have no `fill_id` field.
-pub type FillId = Uint64;
-
-/// Client-assigned order id. Lets a trader cancel an order in the same block
-/// it was submitted, without round-tripping through the server response to
-/// learn the system-assigned `OrderId`.
-///
-/// Scope of uniqueness: per-sender, across the sender's *active* (resting)
-/// limit orders only. The contract does not remember client order ids of
-/// orders that have been canceled or filled, so they can be reused freely.
-pub type ClientOrderId = Uint64;
-
 /// Type alias for a referrer's user index.
 pub type Referrer = UserIndex;
 
@@ -79,95 +40,6 @@ pub type FeeShareRatio = Dimensionless;
 /// Commission rate — the fraction of the post-protocol-cut fee distributed
 /// to the referral chain when a user with an active referral trades.
 pub type CommissionRate = Dimensionless;
-
-#[grug::derive(Serde)]
-#[derive(Copy, Default)]
-pub enum TimeInForce {
-    /// Persist the unfilled portion in the order book.
-    #[default]
-    #[serde(rename = "GTC")]
-    GoodTilCanceled,
-
-    /// Cancel the unfilled portion immediately.
-    #[serde(rename = "IOC")]
-    ImmediateOrCancel,
-
-    /// Insert into the book without matching. The limit price must not cross
-    /// the best offer on the other side; reject if violated.
-    #[serde(rename = "POST")]
-    PostOnly,
-}
-
-#[grug::derive(Serde)]
-#[derive(Copy)]
-pub enum OrderKind {
-    /// Trade at the best available prices in the order book, optionally
-    /// with a slippage tolerance relative to the oracle price.
-    ///
-    /// If the order cannot be fully filled, the unfilled portion is
-    /// canceled (immediate-or-cancel behavior).
-    Market { max_slippage: Dimensionless },
-
-    /// Trade at the specified limit price.
-    Limit {
-        limit_price: UsdPrice,
-
-        /// Controls what happens to the unfilled portion:
-        ///
-        /// - GTC: persist in the order book;
-        /// - IOC: cancel;
-        /// - PostOnly: skip matching, rest entire order on book (reject if
-        ///   limit price crosses best offer).
-        #[serde(default)]
-        time_in_force: TimeInForce,
-
-        /// Caller-assigned id used to cancel this order via
-        /// `CancelOrderRequest::OneByClientOrderId` before the system-assigned
-        /// `OrderId` is known. Must be unique across the sender's *active*
-        /// orders. Not allowed with `TimeInForce::ImmediateOrCancel`, which
-        /// never enters the book.
-        #[serde(default)]
-        client_order_id: Option<ClientOrderId>,
-    },
-}
-
-/// For a conditional (TP/SL) order, direction the oracle price must cross to
-/// trigger it.
-#[grug::derive(Serde, Borsh)]
-#[derive(Copy, grug::PrimaryKey)]
-pub enum TriggerDirection {
-    /// Trigger when oracle_price >= trigger_price (TP for longs, SL for shorts).
-    Above,
-
-    /// Trigger when oracle_price <= trigger_price (SL for longs, TP for shorts).
-    Below,
-}
-
-/// A base rate with optional volume-tiered overrides.
-///
-/// The highest qualifying tier (by volume threshold) wins;
-/// if no tier is met, the base rate applies.
-#[grug::derive(Serde, Borsh)]
-#[derive(Default)]
-pub struct RateSchedule {
-    /// The rate applied when no volume tier qualifies.
-    pub base: Dimensionless,
-
-    /// Volume-tiered rates. Key = minimum USD volume threshold;
-    /// value = rate. Highest qualifying tier wins.
-    pub tiers: BTreeMap<UsdValue, Dimensionless>,
-}
-
-impl RateSchedule {
-    /// Resolve the applicable rate for the given volume.
-    pub fn resolve(&self, volume: UsdValue) -> Dimensionless {
-        self.tiers
-            .range(..=volume)
-            .next_back()
-            .map(|(_, &rate)| rate)
-            .unwrap_or(self.base)
-    }
-}
 
 /// Referrer settings for a referrer.
 #[grug::derive(Serde)]
@@ -208,6 +80,32 @@ pub enum ReferrerStatsOrderIndex {
     Commission { start_after: Option<UsdValue> },
     RegisterAt { start_after: Option<Timestamp> },
     Volume { start_after: Option<UsdValue> },
+}
+
+/// A base rate with optional volume-tiered overrides.
+///
+/// The highest qualifying tier (by volume threshold) wins;
+/// if no tier is met, the base rate applies.
+#[grug::derive(Serde, Borsh)]
+#[derive(Default)]
+pub struct RateSchedule {
+    /// The rate applied when no volume tier qualifies.
+    pub base: Dimensionless,
+
+    /// Volume-tiered rates. Key = minimum USD volume threshold;
+    /// value = rate. Highest qualifying tier wins.
+    pub tiers: BTreeMap<UsdValue, Dimensionless>,
+}
+
+impl RateSchedule {
+    /// Resolve the applicable rate for the given volume.
+    pub fn resolve(&self, volume: UsdValue) -> Dimensionless {
+        self.tiers
+            .range(..=volume)
+            .next_back()
+            .map(|(_, &rate)| rate)
+            .unwrap_or(self.base)
+    }
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
@@ -782,60 +680,6 @@ impl UserReferralData {
     }
 }
 
-/// A resting limit order, waiting to be fulfilled.
-///
-/// This struct does not contain the pair ID, order ID, and the limit price,
-/// which are instead included in the storage key, with which this struct is
-/// saved in the contract storage.
-#[grug::derive(Serde, Borsh)]
-pub struct LimitOrder {
-    pub user: Addr,
-    pub size: Quantity,
-    pub reduce_only: bool,
-    pub reserved_margin: UsdValue,
-    pub created_at: Timestamp,
-    /// Take-profit child order to apply when this order fills.
-    pub tp: Option<ChildOrder>,
-    /// Stop-loss child order to apply when this order fills.
-    pub sl: Option<ChildOrder>,
-    /// Caller-assigned id used to look this order up via the
-    /// `client_order_id` index on `BIDS`/`ASKS`. `None` if the order was
-    /// submitted without one.
-    pub client_order_id: Option<ClientOrderId>,
-}
-
-/// A conditional order stored off-book until triggered.
-#[grug::derive(Serde, Borsh)]
-pub struct ConditionalOrder {
-    /// Internal ID for price-time priority tiebreaking during cron execution.
-    pub order_id: ConditionalOrderId,
-
-    /// Size to close. If `Some`, the sign must oppose the position (negative for
-    /// closing longs, positive for closing shorts). If `None`, closes the entire
-    /// position at trigger time.
-    pub size: Option<Quantity>,
-
-    /// Oracle price that activates this order.
-    pub trigger_price: UsdPrice,
-
-    /// Max slippage for the market order executed at trigger.
-    pub max_slippage: Dimensionless,
-}
-
-/// TP or SL parameters attached to a parent order as a "child order".
-/// Applied to the resulting position when the parent order fills.
-#[grug::derive(Serde, Borsh)]
-pub struct ChildOrder {
-    /// Oracle price that activates this order.
-    pub trigger_price: UsdPrice,
-
-    /// Max slippage for the market order executed at trigger.
-    pub max_slippage: Dimensionless,
-
-    /// Size to close. If `None`, closes the entire position at trigger time.
-    pub size: Option<Quantity>,
-}
-
 /// Parameters for submitting an order. Shared between
 /// `TraderMsg::SubmitOrder` and (upcoming) `TraderMsg::BatchUpdateOrders`
 /// so the two message variants carry exactly the same shape.
@@ -1298,42 +1142,6 @@ pub enum QueryMsg {
     },
 }
 
-#[grug::derive(Serde)]
-pub struct QueryOrderResponse {
-    pub user: Addr,
-    pub pair_id: PairId,
-    pub size: Quantity,
-    pub limit_price: UsdPrice,
-    pub reduce_only: bool,
-    pub reserved_margin: UsdValue,
-    pub created_at: Timestamp,
-}
-
-#[grug::derive(Serde)]
-pub struct QueryOrdersByUserResponseItem {
-    pub pair_id: PairId,
-    pub size: Quantity,
-    pub limit_price: UsdPrice,
-    pub reduce_only: bool,
-    pub reserved_margin: UsdValue,
-    pub created_at: Timestamp,
-}
-
-#[grug::derive(Serde)]
-pub struct LiquidityDepth {
-    /// Absolute order size aggregated in this bucket.
-    pub size: Quantity,
-
-    /// USD notional value aggregated in this bucket (size × price).
-    pub notional: UsdValue,
-}
-
-#[grug::derive(Serde)]
-pub struct LiquidityDepthResponse {
-    pub bids: BTreeMap<UsdPrice, LiquidityDepth>,
-    pub asks: BTreeMap<UsdPrice, LiquidityDepth>,
-}
-
 // ---------------------------------- Events -----------------------------------
 
 // Events are emitted when:
@@ -1511,108 +1319,6 @@ pub struct OrderFilled {
     /// `None` for trades executed before v0.16.0 — the maker/taker flag was not
     /// recorded prior to that release.
     pub is_maker: Option<bool>,
-}
-
-/// Event indicating an order have been inserted into the order book.
-#[grug::event("order_persisted")]
-#[grug::derive(Serde)]
-pub struct OrderPersisted {
-    pub order_id: OrderId,
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub limit_price: UsdPrice,
-    pub size: Quantity,
-    /// Caller-assigned id from the originally-submitted order, or `None`
-    /// if the order was submitted without one.
-    pub client_order_id: Option<ClientOrderId>,
-}
-
-/// Event indicating an order has been removed from the order book.
-#[grug::event("order_removed")]
-#[grug::derive(Serde)]
-pub struct OrderRemoved {
-    pub order_id: OrderId,
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub reason: ReasonForOrderRemoval,
-    /// Caller-assigned id from the originally-submitted order, or `None`
-    /// if the order was submitted without one.
-    pub client_order_id: Option<ClientOrderId>,
-}
-
-/// Event indicating a conditional (TP/SL) order has been placed.
-#[grug::event("conditional_order_placed")]
-#[grug::derive(Serde)]
-pub struct ConditionalOrderPlaced {
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub trigger_price: UsdPrice,
-    pub trigger_direction: TriggerDirection,
-    pub size: Option<Quantity>,
-    pub max_slippage: Dimensionless,
-}
-
-/// Event indicating a conditional order was triggered by an oracle price move.
-#[grug::event("conditional_order_triggered")]
-#[grug::derive(Serde)]
-pub struct ConditionalOrderTriggered {
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub trigger_price: UsdPrice,
-    pub trigger_direction: TriggerDirection,
-    pub oracle_price: UsdPrice,
-}
-
-/// Event indicating a conditional order was removed.
-#[grug::event("conditional_order_removed")]
-#[grug::derive(Serde)]
-pub struct ConditionalOrderRemoved {
-    pub pair_id: PairId,
-    pub user: Addr,
-    pub trigger_direction: TriggerDirection,
-    pub reason: ReasonForOrderRemoval,
-}
-
-#[grug::derive(Serde)]
-#[derive(Copy)]
-pub enum ReasonForOrderRemoval {
-    /// The order was fully filled.
-    Filled,
-
-    /// The user voluntarily canceled the order.
-    Canceled,
-
-    /// In case of conditional (TP/SL) orders, the position was closed or flipped.
-    PositionClosed,
-
-    /// The user submitted an order on the other side of the order book whose
-    /// price crossed this order's. Following the principle of self-trade prevention,
-    /// this order was canceled.
-    SelfTradePrevention,
-
-    /// The user was liquidated.
-    Liquidated,
-
-    /// The user was hit by auto-deleveraging (ADL).
-    Deleveraged,
-
-    /// The conditional order was triggered but could not fill within the
-    /// user's max_slippage tolerance (insufficient book liquidity).
-    SlippageExceeded,
-
-    /// The resting order's price fell outside the pair's
-    /// `max_limit_price_deviation` band at the time it was about to match
-    /// (i.e. the oracle moved after the order was placed). The matching
-    /// engine cancels such stale orders and walks deeper in the book.
-    PriceBandViolation,
-
-    /// A conditional (TP/SL) order was triggered but its stored
-    /// `max_slippage` now exceeds the pair's `max_market_slippage` cap —
-    /// governance tightened the cap between the order's submission and
-    /// its trigger. The order is cancelled rather than submitted. Distinct
-    /// from `SlippageExceeded` so the event stream can tell a policy
-    /// tightening apart from a liquidity shortfall.
-    SlippageCapTightened,
 }
 
 /// Event indicating a user has been liquidated in a specific pair.

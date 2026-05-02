@@ -1,5 +1,6 @@
 use {
-    dango_types::{Dimensionless, Quantity, UsdPrice, UsdValue, perps::PairParam},
+    dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
+    dango_types::perps::PairParam,
     grug::MathResult,
 };
 
@@ -193,7 +194,7 @@ fn compute_ask(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::Dimensionless};
+    use {super::*, dango_order_book::Dimensionless};
 
     fn default_pair_param() -> PairParam {
         PairParam {

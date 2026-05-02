@@ -1,4 +1,4 @@
-use dango_types::Quantity;
+use crate::Quantity;
 
 /// Given the user's current position, decompose an order's size into closing
 /// portion (that reduces existing exposure) and opening portion (that creates

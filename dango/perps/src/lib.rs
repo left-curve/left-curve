@@ -1,32 +1,26 @@
 pub mod core;
 pub mod cron;
-pub mod liquidity_depth;
 pub mod maintain;
 #[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod position_index;
-pub mod price;
 pub mod querier;
 pub mod query;
 pub mod referral;
 pub mod state;
 pub mod trade;
 pub mod vault;
-pub mod volume;
 
 use {
-    crate::state::{
-        FEE_RATE_OVERRIDES, NEXT_FILL_ID, NEXT_ORDER_ID, PAIR_PARAMS, PAIR_STATES, PARAM, STATE,
-        USER_STATES,
-    },
+    crate::state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
+    dango_order_book::{FillId, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, UsdValue},
     dango_types::{
-        DangoQuerier, UsdValue,
+        DangoQuerier,
         perps::{
-            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, FillId, InstantiateMsg,
-            MaintainerMsg, OrderId, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg,
-            VaultMsg,
+            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
+            MaintainerMsg, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg, VaultMsg,
         },
     },
     grug::{

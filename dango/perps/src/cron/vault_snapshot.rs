@@ -3,9 +3,9 @@ use {
         core::compute_user_equity,
         querier::NoCachePerpQuerier,
         state::{STATE, USER_STATES, VAULT_SNAPSHOTS},
-        volume::round_to_day,
     },
     dango_oracle::OracleQuerier,
+    dango_order_book::round_to_day,
     dango_types::perps::VaultSnapshot,
     grug::{Addr, Storage, Timestamp},
 };
@@ -65,10 +65,10 @@ mod tests {
     use {
         super::*,
         crate::state::PAIR_STATES,
+        dango_order_book::{FundingPerUnit, PairId, Quantity, UsdPrice},
         dango_types::{
-            FundingPerUnit, Quantity, UsdPrice,
             oracle::PrecisionedPrice,
-            perps::{PairId, PairState, Position, State, UserState},
+            perps::{PairState, Position, State, UserState},
         },
         grug::{MockStorage, Order, Udec128, Uint128, hash_map},
         std::collections::BTreeMap,

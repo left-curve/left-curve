@@ -1,15 +1,11 @@
 use {
-    crate::{
-        liquidity_depth::decrease_liquidity_depths,
-        price::may_invert_price,
-        state::{ASKS, BIDS, OrderKey, PAIR_PARAMS},
-        trade::update_user_state_with,
-    },
+    crate::{state::PAIR_PARAMS, trade::update_user_state_with},
     anyhow::{anyhow, ensure},
-    dango_types::perps::{
-        ClientOrderId, LimitOrder, OrderId, OrderRemoved, PairId, PairParam, ReasonForOrderRemoval,
-        UserState,
+    dango_order_book::{
+        ASKS, BIDS, ClientOrderId, LimitOrder, OrderId, OrderKey, PairId, ReasonForOrderRemoval,
+        remove_order,
     },
+    dango_types::perps::{PairParam, UserState},
     grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -78,42 +74,24 @@ fn compute_cancel_one_order_outcome<F>(
 where
     F: FnOnce(&dyn Storage, &PairId) -> StdResult<PairParam>,
 {
-    let (pair_id, stored_price, order_id) = order_key.clone();
-    let is_bid = order.size.is_positive();
+    let (pair_id, ..) = &order_key;
+    let pair_param = pair_param(storage, pair_id)?;
 
-    let pair_param = pair_param(storage, &pair_id)?;
-    let real_price = may_invert_price(stored_price, is_bid);
-
-    // Update user state.
+    // Perp-side: release reserved margin and decrement the user's
+    // open-order count. The generic order-book primitive below handles
+    // the rest (depth decrement, removing the entry from BIDS/ASKS,
+    // emitting `OrderRemoved`).
     (user_state.reserved_margin).checked_sub_assign(order.reserved_margin)?;
     user_state.open_order_count -= 1;
 
-    // Remove liquidity contributed by this order.
-    decrease_liquidity_depths(
+    remove_order(
         storage,
-        &pair_id,
-        is_bid,
-        real_price,
-        order.size.checked_abs()?,
+        order_key,
+        &order,
+        reason,
         &pair_param.bucket_sizes,
+        events,
     )?;
-
-    // Remove the order from storage.
-    if is_bid {
-        BIDS.remove(storage, order_key)?;
-    } else {
-        ASKS.remove(storage, order_key)?;
-    }
-
-    if let Some(events) = events {
-        events.push(OrderRemoved {
-            order_id,
-            pair_id,
-            user: order.user,
-            reason,
-            client_order_id: order.client_order_id,
-        })?;
-    }
 
     Ok(())
 }
@@ -288,14 +266,12 @@ pub fn compute_cancel_all_orders_outcome(
 mod tests {
     use {
         super::*,
-        crate::{
-            PAIR_PARAMS, USER_STATES,
-            state::{ASKS, BIDS, OrderKey},
+        crate::state::{PAIR_PARAMS, USER_STATES},
+        dango_order_book::{
+            ASKS, BIDS, FundingPerUnit, LimitOrder, OrderKey, OrderRemoved, PairId, Quantity,
+            UsdPrice, UsdValue,
         },
-        dango_types::{
-            FundingPerUnit, Quantity, UsdPrice, UsdValue,
-            perps::{LimitOrder, PairId, PairParam, Position, UserState},
-        },
+        dango_types::perps::{PairParam, Position, UserState},
         grug::{
             Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp, Uint64,
         },
@@ -428,7 +404,7 @@ mod tests {
         user: Addr,
         open_order_count: usize,
         reserved_margin: i128,
-        positions: BTreeMap<dango_types::perps::PairId, Position>,
+        positions: BTreeMap<PairId, Position>,
     ) {
         let state = UserState {
             unlocks: VecDeque::new(),

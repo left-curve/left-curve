@@ -1,4 +1,5 @@
 use {
+    dango_order_book::PairId,
     dango_types::{
         account_factory::{NewUserSalt, UserIndex},
         bank,
@@ -6,7 +7,7 @@ use {
         dex::PairUpdate,
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         oracle::PriceSource,
-        perps::{self, PairId, PairParam},
+        perps::{self, PairParam},
         taxman,
     },
     grug::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp, Uint128},

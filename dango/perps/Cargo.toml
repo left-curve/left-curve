@@ -20,6 +20,7 @@ tracing = ["dep:tracing"]
 anyhow                = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
+dango-order-book      = { workspace = true }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
 metrics               = { workspace = true, optional = true }

@@ -1,5 +1,5 @@
 use {
-    dango_types::{Dimensionless, UsdPrice, perps::OrderKind},
+    crate::{Dimensionless, OrderKind, UsdPrice},
     grug::MathResult,
 };
 
@@ -48,7 +48,7 @@ pub fn is_price_constraint_violated(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, dango_types::perps::TimeInForce, test_case::test_case};
+    use {super::*, crate::TimeInForce, test_case::test_case};
 
     // oracle_price = 100
     #[test_case(  0, true,  100_000_000 ; "zero slippage bid")]

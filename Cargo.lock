@@ -4063,6 +4063,7 @@ dependencies = [
  "dango-dex",
  "dango-gateway",
  "dango-oracle",
+ "dango-order-book",
  "dango-perps",
  "dango-taxman",
  "dango-types",
@@ -4141,6 +4142,7 @@ dependencies = [
  "borsh",
  "chrono",
  "clickhouse",
+ "dango-order-book",
  "dango-types",
  "error-backtrace",
  "futures",
@@ -4236,6 +4238,7 @@ name = "dango-oracle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-order-book",
  "dango-types",
  "grug",
  "hex",
@@ -4247,12 +4250,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-order-book"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "grug",
+ "serde",
+ "test-case",
+ "typenum",
+]
+
+[[package]]
 name = "dango-perps"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-account-factory",
  "dango-oracle",
+ "dango-order-book",
  "dango-types",
  "grug",
  "metrics",
@@ -4265,6 +4281,7 @@ name = "dango-proposal-preparer"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-order-book",
  "dango-types",
  "grug",
  "grug-app",
@@ -4377,6 +4394,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-mock-httpd",
  "dango-oracle",
+ "dango-order-book",
  "dango-perps",
  "dango-proposal-preparer",
  "dango-sdk",
@@ -4431,6 +4449,7 @@ dependencies = [
  "async-trait",
  "bnum 0.14.2",
  "borsh",
+ "dango-order-book",
  "grug",
  "hyperlane-types",
  "paste",
@@ -4439,7 +4458,6 @@ dependencies = [
  "serde",
  "sha2 0.10.9",
  "test-case",
- "typenum",
 ]
 
 [[package]]
@@ -4447,6 +4465,7 @@ name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "dango-order-book",
  "dango-perps",
  "dango-types",
  "grug",
