@@ -6,7 +6,7 @@ use {
     metrics_exporter_prometheus::PrometheusBuilder,
     std::{
         sync::{Arc, Mutex},
-        time::Instant,
+        time::{Duration, Instant},
     },
     tokio::task::JoinSet,
 };
@@ -21,6 +21,7 @@ pub struct IndexerCmd {
 enum SubCmd {
     /// View a block and results
     Block { height: u64 },
+
     /// View a range of blocks and results
     Blocks {
         /// Start height (inclusive)
@@ -28,6 +29,7 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
+
     /// Search for a pattern in the given inclusive range of blocks
     // TODO: make block range optional and figure it out automatically
     Find {
@@ -37,12 +39,19 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
+
     /// Start the metrics HTTP server
     MetricsHttpd,
+
     /// Verify integrity of candle data in ClickHouse
     CheckCandles,
+
     /// Sync the indexer block cache to S3
-    S3Sync,
+    S3Sync {
+        /// Wallclock ceiling for the whole sync, in seconds.
+        #[arg(long, default_value_t = 480)]
+        timeout_secs: u64,
+    },
 }
 
 impl IndexerCmd {
@@ -160,7 +169,7 @@ impl IndexerCmd {
 
                 clickhouse_indexer.check_all().await?;
             },
-            SubCmd::S3Sync => {
+            SubCmd::S3Sync { timeout_secs } => {
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
                 let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
@@ -173,14 +182,32 @@ impl IndexerCmd {
 
                 let start = Instant::now();
 
-                tracing::info!(last_synced_height, "Starting S3 sync");
+                tracing::info!(last_synced_height, timeout_secs, "Starting S3 sync");
 
-                let new_height = indexer_cache::Cache::sync_to_s3(
-                    &indexer_cache.context,
-                    indexer_cache.s3_bitmap.clone(),
-                    last_synced_height,
+                // Wrap the sync in a wallclock timeout. Without this a single
+                // unreachable bucket lets a `*/10` cron stack invocations on
+                // top of each other forever — the prod incident on
+                // 2026-05-03 saw 30+ accumulated processes after 7h. The
+                // `JoinSet` in `sync_to_s3` ensures hitting the deadline
+                // actually cancels the spawned upload tasks rather than
+                // leaking them on the runtime.
+                let new_height = match tokio::time::timeout(
+                    Duration::from_secs(timeout_secs),
+                    indexer_cache::Cache::sync_to_s3(
+                        &indexer_cache.context,
+                        indexer_cache.s3_bitmap.clone(),
+                        last_synced_height,
+                    ),
                 )
-                .await?;
+                .await
+                {
+                    Ok(Ok(h)) => h,
+                    Ok(Err(e)) => return Err(e.into()),
+                    Err(_elapsed) => {
+                        tracing::error!(timeout_secs, "S3 sync exceeded deadline; aborting");
+                        anyhow::bail!("s3 sync timed out after {timeout_secs}s");
+                    },
+                };
 
                 // Only store the new height if sync succeeded and made progress
                 if let Some(height) = new_height {

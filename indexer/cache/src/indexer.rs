@@ -624,3 +624,74 @@ impl grug_app::Indexer for Cache {
         Ok(())
     }
 }
+
+#[cfg(all(test, feature = "s3"))]
+mod tests {
+    use {super::*, crate::S3Config};
+
+    /// Regression test for the production hang on 2026-05-03: with an
+    /// unreachable S3 endpoint, `sync_to_s3` must return `Err` quickly
+    /// rather than running indefinitely. If this ever takes >15s the
+    /// pile-up bug is back. The outer `tokio::time::timeout` is the
+    /// safety net so a regression fails the test rather than hangs CI.
+    ///
+    /// We point the SDK at `127.0.0.1:1` so connect attempts are refused
+    /// immediately (no DNS, no real wait) — this exercises the
+    /// SDK-timeout / outer-retry / `JoinSet` chain end to end without
+    /// requiring any network. Happy-path runtime is ~3s; the 15s ceiling
+    /// is ~4× margin and caps CI cost on regression.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn sync_to_s3_fails_fast_when_s3_unreachable() {
+        let cache = Cache {
+            context: Context {
+                s3: S3Config {
+                    enabled: true,
+                    path: "test/".to_string(),
+                    endpoint: "http://127.0.0.1:1".to_string(),
+                    access_key: "access".to_string(),
+                    secret_key: "secret".to_string(),
+                    bucket: "test-bucket".to_string(),
+                    region: "us-east-1".to_string(),
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        cache
+            .context
+            .indexer_path
+            .create_dirs_if_needed()
+            .expect("create blocks dir");
+
+        // Put one block on disk and record it as the highest stored height,
+        // so `sync_to_s3` finds work to do and actually exercises the S3
+        // client.
+        {
+            let block_height: u64 = 1;
+            let block_file_path =
+                CacheFile::file_path(cache.context.indexer_path.block_path(block_height));
+
+            std::fs::create_dir_all(block_file_path.parent().expect("block parent dir"))
+                .expect("create block subdir");
+            std::fs::write(&block_file_path, b"placeholder").expect("write block file");
+
+            Cache::store_last_block_height(&cache.context, block_height, HIGHEST_BLOCK_FILENAME)
+                .expect("store last block height")
+        };
+
+        let result = tokio::time::timeout(
+            Duration::from_secs(15),
+            Cache::sync_to_s3(&cache.context, cache.s3_bitmap.clone(), 0),
+        )
+        .await;
+
+        match result {
+            Err(_elapsed) => {
+                panic!("sync_to_s3 hung past 15s — fail-fast regression is back")
+            },
+            Ok(Ok(_)) => panic!("sync_to_s3 unexpectedly succeeded against a dead endpoint"),
+            Ok(Err(_)) => {},
+        }
+    }
+}
