@@ -10,6 +10,7 @@ use {
         future::Future,
         num::NonZeroU32,
         pin::Pin,
+        sync::Arc,
         task::{Context, Poll},
     },
     tendermint::{
@@ -23,12 +24,32 @@ use {
     tower_abci::BoxError,
 };
 
-impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
+/// ABCI [`tower::Service`] adapter for [`App`]. Wraps the app in an `Arc`
+/// so each per-request future captures a cheap [`Arc::clone`] instead of
+/// cloning the `App` itself — cloning the `App` would also clone its
+/// sub-fields, including `PythHandler` (whose `Clone` intentionally
+/// produces a "dud" copy with no live streaming thread) and `HookedIndexer`
+/// (whose `Drop` runs per clone). Keeping a single live `App` behind the
+/// `Arc` preserves the `PythHandler`'s streaming thread and avoids
+/// spurious `HookedIndexer` drops during request handling.
+pub struct AbciService<DB, VM, PP, ID> {
+    inner: Arc<App<DB, VM, PP, ID>>,
+}
+
+impl<DB, VM, PP, ID> AbciService<DB, VM, PP, ID> {
+    pub fn new(app: App<DB, VM, PP, ID>) -> Self {
+        Self {
+            inner: Arc::new(app),
+        }
+    }
+}
+
+impl<DB, VM, PP, ID> Service<Request> for AbciService<DB, VM, PP, ID>
 where
-    DB: Db + Clone + Send + Sync + 'static,
+    DB: Db + Send + Sync + 'static,
     VM: Vm + Clone + Send + Sync + 'static,
-    ID: Indexer + Clone + Send + Sync + 'static,
-    PP: ProposalPreparer + Clone + Send + Sync + 'static,
+    ID: Indexer + Send + Sync + 'static,
+    PP: ProposalPreparer + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = BoxError;
@@ -41,7 +62,7 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        let this = self.clone();
+        let this = self.inner.clone();
         Box::pin(async move {
             this.tower_call(req)
                 .await

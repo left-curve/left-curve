@@ -10,7 +10,8 @@ use {
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{
-        App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment,
+        AbciService, App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer,
+        SimpleCommitment,
     },
     grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
@@ -466,7 +467,7 @@ impl StartCmd {
         httpd_shutdown_flags: Vec<Arc<AtomicBool>>,
     ) -> anyhow::Result<()>
     where
-        ID: Indexer + Clone + Send + Sync + 'static,
+        ID: Indexer + Send + Sync + 'static,
     {
         // Channel used by the app to request a graceful shutdown from inside
         // `finalize_block` (see `grug_app::HaltReason`). Initial value is
@@ -474,18 +475,24 @@ impl StartCmd {
         let (halt_tx, mut halt_rx) = watch::channel::<Option<HaltReason>>(None);
         let halt_tx = Arc::new(halt_tx);
 
-        let app = App::new(
-            db,
-            vm,
-            ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
-            indexer,
-            grug_cfg.query_gas_limit,
-            Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
-            env!("CARGO_PKG_VERSION"),
-        )
-        .with_shutdown_trigger(halt_tx);
+        // `AbciService` wraps the `App` in an `Arc` internally so each
+        // per-request future captures a cheap `Arc::clone` instead of
+        // cloning the `App` (which would clone `PythHandler` to a "dud"
+        // copy and trigger `HookedIndexer::Drop` on every request).
+        let service = AbciService::new(
+            App::new(
+                db,
+                vm,
+                ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
+                indexer,
+                grug_cfg.query_gas_limit,
+                Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
+                env!("CARGO_PKG_VERSION"),
+            )
+            .with_shutdown_trigger(halt_tx),
+        );
 
-        let (consensus, mempool, snapshot, info) = split::service(app, 1);
+        let (consensus, mempool, snapshot, info) = split::service(service, 1);
 
         let abci_server = Server::builder()
             .consensus(consensus)

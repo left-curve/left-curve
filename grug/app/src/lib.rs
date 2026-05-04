@@ -18,6 +18,8 @@ mod tracing;
 mod traits;
 mod vm;
 
+#[cfg(feature = "abci")]
+pub use crate::abci::*;
 pub use crate::{
     app::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*, providers::*,
     query::*, state::*, submessage::*, tracing::*, traits::*, vm::*,

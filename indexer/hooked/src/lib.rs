@@ -426,17 +426,9 @@ impl Indexer for HookedIndexer {
 
 impl Drop for HookedIndexer {
     fn drop(&mut self) {
-        // Only flip the shared `is_running` flag when this is the last clone
-        // holding the `Arc<AtomicBool>`. Without this guard, dropping a
-        // transient clone — e.g. the per-request `App.clone()` inside
-        // `tower::Service::call` — would silently disable the indexer for
-        // every other holder of the same `Arc`.
-        //
-        // Async `shutdown()` cannot be invoked from `Drop`, so this is a
-        // best-effort marker for the genuine last-drop case.
-        if Arc::strong_count(&self.is_running) == 1 {
-            self.is_running.store(false, Ordering::Relaxed);
-        }
+        // Since shutdown is now async, we can't call it from Drop
+        // Just mark as not running - the actual cleanup will happen when the async context completes
+        self.is_running.store(false, Ordering::Relaxed);
     }
 }
 
