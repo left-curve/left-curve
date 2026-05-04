@@ -91,9 +91,7 @@
   },
   "footer": {
     "terms": "Terms",
-    "privacyPolicy": "Privacy Policy",
-    "popularPerp": "Popular Perp",
-    "doNotDisplay": "Do Not Display"
+    "privacyPolicy": "Privacy Policy"
   },
   "statusBadge": {
     "status": "Status",
