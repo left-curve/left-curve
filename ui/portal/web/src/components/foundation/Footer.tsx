@@ -1,4 +1,10 @@
-import { FormattedNumber, Marquee, twMerge } from "@left-curve/applets-kit";
+import {
+  FormattedNumber,
+  IconDiscord,
+  IconTwitter,
+  Marquee,
+  twMerge,
+} from "@left-curve/applets-kit";
 import { allPerpsPairStatsStore, useAllPerpsPairStats } from "@left-curve/store";
 import { Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -56,6 +62,24 @@ function Footer() {
           className="exposure-xs-italic text-primitives-blue-light-500 px-1 hover:opacity-80"
         >
           {m["footer.privacyPolicy"]()}
+        </a>
+        <a
+          href="https://discord.gg/BWJtyySxBM"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Discord"
+          className="text-primitives-blue-light-500 px-1 hover:opacity-80 flex items-center"
+        >
+          <IconDiscord className="w-4 h-4" />
+        </a>
+        <a
+          href="https://x.com/dango"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Twitter"
+          className="text-primitives-blue-light-500 px-1 hover:opacity-80 flex items-center"
+        >
+          <IconTwitter className="w-4 h-4" />
         </a>
       </div>
     </footer>
