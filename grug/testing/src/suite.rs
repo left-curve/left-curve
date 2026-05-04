@@ -271,10 +271,10 @@ where
         // so they can `.await` the indexer trait directly; we bridge them to
         // the sync `TestSuite` API with a single `block_on`.
         let block_outcome = futures::executor::block_on(async {
-            let outcome = self.app.do_finalize_block(block).await?;
+            let outcome = self.app.do_finalize_block(block).await?; // TODO: drop uncommitted changes if errors
             self.app.do_commit().await?;
             AppResult::Ok(outcome)
-        })?; // TODO: drop uncommitted changes if errors
+        })?;
 
         self.block = new_block;
 
