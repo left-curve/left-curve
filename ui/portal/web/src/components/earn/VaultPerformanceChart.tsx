@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
 import { useState } from "react";
 import {
   ComposedChart,
@@ -51,10 +52,14 @@ function ChartTooltip({
         <span className="text-ink-secondary-700">{formatPrice(data.sharePrice)}</span>
       </p>
       <p className="diatype-sm-medium">
-        <span className={data.dailyChange >= 0 ? "text-utility-success-600" : "text-utility-error-600"}>
+        <span
+          className={data.dailyChange >= 0 ? "text-utility-success-600" : "text-utility-error-600"}
+        >
           {m["vaultLiquidity.dailyChange"]()}:
         </span>{" "}
-        <span className={data.dailyChange >= 0 ? "text-utility-success-600" : "text-utility-error-600"}>
+        <span
+          className={data.dailyChange >= 0 ? "text-utility-success-600" : "text-utility-error-600"}
+        >
           {formatPercent(data.dailyChange)}
         </span>
       </p>
@@ -88,11 +93,11 @@ export function VaultPerformanceChart() {
           </p>
           <div className="flex gap-4 diatype-xs-medium text-ink-tertiary-500">
             <div className="flex items-center gap-1">
-              <div className="w-8 h-[2px] bg-[#D4882C] rounded" />
+              <div className="w-8 h-[2px] bg-primitives-rice-light-500 rounded" />
               <span>{m["vaultLiquidity.price"]()}</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-[2px] bg-[#AFB244] border-[0.5px] border-[#D2D184]" />
+              <div className="w-3 h-3 rounded-[2px] bg-utility-success-600 border-[0.5px] border-utility-success-300" />
               <span>{m["vaultLiquidity.dailyGain"]()}</span>
             </div>
             <div className="flex items-center gap-1">
@@ -175,8 +180,16 @@ export function VaultPerformanceChart() {
               {data.map((entry, index) => (
                 <Cell
                   key={`bar-${index}`}
-                  fill={entry.dailyChange >= 0 ? "#AFB244" : "var(--color-primitives-red-light-500, #E54E6B)"}
-                  stroke={entry.dailyChange >= 0 ? "#D2D184" : "var(--color-primitives-red-light-300, #F9A9B2)"}
+                  fill={
+                    entry.dailyChange >= 0
+                      ? "#AFB244"
+                      : "var(--color-primitives-red-light-500, #E54E6B)"
+                  }
+                  stroke={
+                    entry.dailyChange >= 0
+                      ? "#D2D184"
+                      : "var(--color-primitives-red-light-300, #F9A9B2)"
+                  }
                   strokeWidth={0.5}
                 />
               ))}
@@ -188,7 +201,12 @@ export function VaultPerformanceChart() {
               stroke="#D4882C"
               strokeWidth={2}
               dot={{ r: 3, fill: "#D4882C", strokeWidth: 0 }}
-              activeDot={{ r: 5, fill: "#D4882C", strokeWidth: 2, stroke: "var(--color-surface-primary-rice)" }}
+              activeDot={{
+                r: 5,
+                fill: "#D4882C",
+                strokeWidth: 2,
+                stroke: "var(--color-surface-primary-rice)",
+              }}
             />
           </ComposedChart>
         </ResponsiveContainer>
