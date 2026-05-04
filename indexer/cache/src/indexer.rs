@@ -625,6 +625,8 @@ impl grug_app::Indexer for Cache {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(all(test, feature = "s3"))]
 mod tests {
     use {super::*, crate::S3Config};
