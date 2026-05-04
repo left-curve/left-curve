@@ -15,13 +15,12 @@ use {
 use {
     crate::error::IndexerError,
     crate::s3,
-    futures::future::try_join_all,
     roaring::RoaringTreemap,
     std::fs::File,
     std::io::{BufReader, BufWriter},
     std::time::Duration,
     std::time::Instant,
-    tokio::{sync::Semaphore, time::sleep},
+    tokio::{sync::Semaphore, task::JoinSet, time::sleep},
 };
 
 #[cfg(feature = "http-request-details")]
@@ -373,7 +372,21 @@ impl Cache {
         }
 
         let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_S3_UPLOADS));
-        let mut tasks = Vec::new();
+        // Use a `JoinSet` instead of collecting `JoinHandle`s into a `Vec` and
+        // joining via `try_join_all`. Two reasons, both about cancellation:
+        //
+        // 1. `try_join_all` short-circuits on the first `Err`, but the dropped
+        //    `JoinHandle`s for the other in-flight uploads do NOT get
+        //    cancelled — they keep running on the runtime, wasting work
+        //    against a bucket we already know is broken.
+        // 2. Dropping a `JoinSet` aborts all of its tasks. That's what makes
+        //    an outer `tokio::time::timeout(...)` actually free resources
+        //    rather than leak them. The CLI handler relies on this for the
+        //    wallclock timeout.
+        //
+        // We also `set.shutdown().await` on the first error so siblings stop
+        // immediately rather than running until natural completion.
+        let mut set: JoinSet<Result<()>> = JoinSet::new();
 
         for block_height in (last_synced_height + 1)..=last_stored_height {
             let context = context.clone();
@@ -384,17 +397,24 @@ impl Cache {
                 .expect("Semaphore should not be acquired");
             let s3_bitmap = s3_bitmap.clone();
 
-            let task = tokio::spawn(async move {
+            set.spawn(async move {
                 let _permit = permit;
                 Self::sync_block_to_s3(&context, s3_bitmap, block_height).await
             });
-
-            tasks.push(task);
         }
 
-        let results = try_join_all(tasks).await?;
-        for result in results {
-            result?;
+        while let Some(joined) = set.join_next().await {
+            match joined {
+                Ok(Ok(())) => {},
+                Ok(Err(err)) => {
+                    set.shutdown().await;
+                    return Err(err);
+                },
+                Err(join_err) => {
+                    set.shutdown().await;
+                    return Err(join_err.into());
+                },
+            }
         }
 
         #[cfg(feature = "tracing")]
