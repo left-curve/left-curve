@@ -7,8 +7,6 @@ import { StatusBadge } from "./StatusBadge";
 
 import type { NormalizedPerpsPairStats } from "@left-curve/store";
 
-const CURRENT_YEAR = new Date().getFullYear();
-
 function Footer() {
   const router = useRouter();
   const isTradeRoute = router.state.location.pathname.includes("trade");
@@ -43,9 +41,6 @@ function Footer() {
       <div className="h-[17px] w-px bg-outline-secondary-gray shrink-0" />
 
       <div className="flex items-center gap-1 shrink-0">
-        <span className="exposure-xs-italic text-primitives-blue-light-500 px-1">
-          Dango &copy; {CURRENT_YEAR}
-        </span>
         <a
           href="/documents/Dango - Terms of Use.pdf"
           target="_blank"
