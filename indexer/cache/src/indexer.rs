@@ -245,8 +245,15 @@ impl Cache {
         #[cfg(feature = "tracing")]
         let path = file_path.clone();
 
-        // Naive retries, in case of network error.
-        for _ in 0..=10 {
+        // Outer retry loop on top of the SDK's own retry budget (configured
+        // in `s3::S3Config::client`, currently 3 attempts). Three outer
+        // attempts × ~30s SDK ceiling × 100 concurrent blocks is already a
+        // worst case of several minutes when S3 is unreachable; eleven outer
+        // attempts × 1s sleep was on top of that and turned a single bad
+        // bucket into a half-hour-long process. Exponential backoff (200ms,
+        // 400ms, 800ms) instead of a flat 1s sleep so we recover faster from
+        // transient blips without hammering on persistent failure.
+        for attempt in 0u32..3 {
             // When restarting the node, we could have some already copied over blocks. Skipping those.
             match s3_client.exists(&s3_key).await {
                 Ok(false) => {
@@ -338,7 +345,7 @@ impl Cache {
                     #[cfg(feature = "metrics")]
                     metrics::counter!("indexer.s3.upload.failure").increment(1);
 
-                    sleep(Duration::from_secs(1)).await;
+                    sleep(Duration::from_millis(200u64 << attempt)).await;
                 },
             }
         }
