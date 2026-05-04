@@ -667,8 +667,9 @@ mod tests {
         // Put one block on disk and record it as the highest stored height,
         // so `sync_to_s3` finds work to do and actually exercises the S3
         // client.
+        let block_height: u64 = 1;
+
         {
-            let block_height: u64 = 1;
             let block_file_path =
                 CacheFile::file_path(cache.context.indexer_path.block_path(block_height));
 
@@ -688,10 +689,27 @@ mod tests {
 
         match result {
             Err(_elapsed) => {
-                panic!("sync_to_s3 hung past 15s — fail-fast regression is back")
+                panic!("sync_to_s3 hung past 15s — fail-fast regression is back");
             },
-            Ok(Ok(_)) => panic!("sync_to_s3 unexpectedly succeeded against a dead endpoint"),
-            Ok(Err(_)) => {},
+            Ok(Ok(_)) => {
+                panic!("sync_to_s3 unexpectedly succeeded against a dead endpoint");
+            },
+            // The dead endpoint causes `sync_block_to_s3` to exhaust
+            // its outer retry budget and return `S3UploadFailed`. The
+            // `JoinSet` arm then propagates that exact error out of
+            // `sync_to_s3`. With only one block in the test
+            // (`block_height = 1`), the error must reference that
+            // block — anything else means we're failing for a reason
+            // other than what this test is supposed to cover.
+            Ok(Err(IndexerError::S3UploadFailed {
+                block_height: failed_height,
+                ..
+            })) => {
+                assert_eq!(failed_height, block_height, "wrong block in S3UploadFailed");
+            },
+            Ok(Err(other)) => {
+                panic!("expected IndexerError::S3UploadFailed, got: {other:?}")
+            },
         }
     }
 }
