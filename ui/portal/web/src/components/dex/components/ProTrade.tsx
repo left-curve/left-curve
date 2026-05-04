@@ -522,7 +522,7 @@ const PerpsPositionsTable: React.FC = () => {
           const tpDisplay = tp ? formatNumber(tp.triggerPrice, formatNumberOptions) : "--";
           const slDisplay = sl ? formatNumber(sl.triggerPrice, formatNumberOptions) : "--";
           return (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 justify-end">
               <Cell.Text text={`${tpDisplay}/${slDisplay}`} />
               <button
                 type="button"
