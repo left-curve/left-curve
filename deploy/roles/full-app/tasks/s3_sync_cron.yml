@@ -1,18 +1,19 @@
-# Defense-in-depth wrapper around the s3-sync invocation. The dango binary
-# itself now has a wallclock timeout (`--timeout-secs`, default 480s) and
-# bounded SDK timeouts, but this cron line still has to be safe even when
-# running against an old binary that hasn't been redeployed yet — that gap
-# is exactly how the 2026-05-03 prod incident accumulated 30+ processes
-# after a reboot.
+# On 2026-05-03 ovh1 became unresponsive: 30+ `dango indexer s3-sync` processes
+# accumulated and dockerd hit 805% CPU. Two bugs combined:
 #
-# `flock -n` on a per-deployment lock makes a new firing exit immediately
-# if the previous one is still running. This alone would have prevented
-# the pile-up: even with a hung binary, only one process exists at a time.
+# 1. Tailscale had overwritten the host's `/etc/resolv.conf` so the S3 bucket no
+#    longer resolved;
+# 2. `dango indexer s3-sync` retried failed uploads indefinitely instead of
+#    bailing out, so each cron firing stacked on top of the previous one.
 #
-# `timeout --kill-after=30s 540s` is the outermost ceiling. It sits just
-# under the 10-min cron interval and just above the Rust-side 480s, so
-# the in-binary deadline fires first under normal conditions and `timeout`
-# is the SIGKILL safety net for binaries that ignore SIGTERM.
+# The dango-cli side is fixed at `dango/cli/src/indexer.rs:194` with a
+# `tokio::time::timeout` wrap (default 480s via `--timeout-secs`).
+#
+# Below employs a defense-in-depth at the cron layer:
+#
+# - `flock -n` skips the firing if the previous one is still running;
+# - `timeout --kill-after=30s 540s` sits just under the 10-min cron interval as
+#   a SIGKILL safety net.
 - name: Setup S3 sync cron job
   ansible.builtin.cron:
     name: "dango s3 sync - {{ deployment_name }}"
