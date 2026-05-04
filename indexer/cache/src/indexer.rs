@@ -15,13 +15,12 @@ use {
 use {
     crate::error::IndexerError,
     crate::s3,
-    futures::future::try_join_all,
     roaring::RoaringTreemap,
     std::fs::File,
     std::io::{BufReader, BufWriter},
     std::time::Duration,
     std::time::Instant,
-    tokio::{sync::Semaphore, time::sleep},
+    tokio::{sync::Semaphore, task::JoinSet, time::sleep},
 };
 
 #[cfg(feature = "http-request-details")]
@@ -246,8 +245,15 @@ impl Cache {
         #[cfg(feature = "tracing")]
         let path = file_path.clone();
 
-        // Naive retries, in case of network error.
-        for _ in 0..=10 {
+        // Outer retry loop on top of the SDK's own retry budget (configured
+        // in `s3::S3Config::client`, currently 3 attempts). Three outer
+        // attempts × ~30s SDK ceiling × 100 concurrent blocks is already a
+        // worst case of several minutes when S3 is unreachable; eleven outer
+        // attempts × 1s sleep was on top of that and turned a single bad
+        // bucket into a half-hour-long process. Exponential backoff (200ms,
+        // 400ms, 800ms) instead of a flat 1s sleep so we recover faster from
+        // transient blips without hammering on persistent failure.
+        for attempt in 0u32..3 {
             // When restarting the node, we could have some already copied over blocks. Skipping those.
             match s3_client.exists(&s3_key).await {
                 Ok(false) => {
@@ -339,7 +345,7 @@ impl Cache {
                     #[cfg(feature = "metrics")]
                     metrics::counter!("indexer.s3.upload.failure").increment(1);
 
-                    sleep(Duration::from_secs(1)).await;
+                    sleep(Duration::from_millis(200u64 << attempt)).await;
                 },
             }
         }
@@ -373,7 +379,21 @@ impl Cache {
         }
 
         let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_S3_UPLOADS));
-        let mut tasks = Vec::new();
+        // Use a `JoinSet` instead of collecting `JoinHandle`s into a `Vec` and
+        // joining via `try_join_all`. Two reasons, both about cancellation:
+        //
+        // 1. `try_join_all` short-circuits on the first `Err`, but the dropped
+        //    `JoinHandle`s for the other in-flight uploads do NOT get
+        //    cancelled — they keep running on the runtime, wasting work
+        //    against a bucket we already know is broken.
+        // 2. Dropping a `JoinSet` aborts all of its tasks. That's what makes
+        //    an outer `tokio::time::timeout(...)` actually free resources
+        //    rather than leak them. The CLI handler relies on this for the
+        //    wallclock timeout.
+        //
+        // We also `set.shutdown().await` on the first error so siblings stop
+        // immediately rather than running until natural completion.
+        let mut set: JoinSet<Result<()>> = JoinSet::new();
 
         for block_height in (last_synced_height + 1)..=last_stored_height {
             let context = context.clone();
@@ -384,17 +404,24 @@ impl Cache {
                 .expect("Semaphore should not be acquired");
             let s3_bitmap = s3_bitmap.clone();
 
-            let task = tokio::spawn(async move {
+            set.spawn(async move {
                 let _permit = permit;
                 Self::sync_block_to_s3(&context, s3_bitmap, block_height).await
             });
-
-            tasks.push(task);
         }
 
-        let results = try_join_all(tasks).await?;
-        for result in results {
-            result?;
+        while let Some(joined) = set.join_next().await {
+            match joined {
+                Ok(Ok(())) => {},
+                Ok(Err(err)) => {
+                    set.shutdown().await;
+                    return Err(err);
+                },
+                Err(join_err) => {
+                    set.shutdown().await;
+                    return Err(join_err.into());
+                },
+            }
         }
 
         #[cfg(feature = "tracing")]
@@ -595,5 +622,96 @@ impl grug_app::Indexer for Cache {
         }
 
         Ok(())
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(all(test, feature = "s3"))]
+mod tests {
+    use {super::*, crate::S3Config};
+
+    /// Regression test for the production hang on 2026-05-03: with an
+    /// unreachable S3 endpoint, `sync_to_s3` must return `Err` quickly
+    /// rather than running indefinitely. If this ever takes >15s the
+    /// pile-up bug is back. The outer `tokio::time::timeout` is the
+    /// safety net so a regression fails the test rather than hangs CI.
+    ///
+    /// We point the SDK at `127.0.0.1:1` so connect attempts are refused
+    /// immediately (no DNS, no real wait) — this exercises the
+    /// SDK-timeout / outer-retry / `JoinSet` chain end to end without
+    /// requiring any network. Happy-path runtime is ~3s; the 15s ceiling
+    /// is ~4× margin and caps CI cost on regression.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn sync_to_s3_fails_fast_when_s3_unreachable() {
+        let cache = Cache {
+            context: Context {
+                s3: S3Config {
+                    enabled: true,
+                    path: "test/".to_string(),
+                    endpoint: "http://127.0.0.1:1".to_string(),
+                    access_key: "access".to_string(),
+                    secret_key: "secret".to_string(),
+                    bucket: "test-bucket".to_string(),
+                    region: "us-east-1".to_string(),
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        cache
+            .context
+            .indexer_path
+            .create_dirs_if_needed()
+            .expect("create blocks dir");
+
+        // Put one block on disk and record it as the highest stored height,
+        // so `sync_to_s3` finds work to do and actually exercises the S3
+        // client.
+        let block_height: u64 = 1;
+
+        {
+            let block_file_path =
+                CacheFile::file_path(cache.context.indexer_path.block_path(block_height));
+
+            std::fs::create_dir_all(block_file_path.parent().expect("block parent dir"))
+                .expect("create block subdir");
+            std::fs::write(&block_file_path, b"placeholder").expect("write block file");
+
+            Cache::store_last_block_height(&cache.context, block_height, HIGHEST_BLOCK_FILENAME)
+                .expect("store last block height")
+        };
+
+        let result = tokio::time::timeout(
+            Duration::from_secs(15),
+            Cache::sync_to_s3(&cache.context, cache.s3_bitmap.clone(), 0),
+        )
+        .await;
+
+        match result {
+            Err(_elapsed) => {
+                panic!("sync_to_s3 hung past 15s — fail-fast regression is back");
+            },
+            Ok(Ok(_)) => {
+                panic!("sync_to_s3 unexpectedly succeeded against a dead endpoint");
+            },
+            // The dead endpoint causes `sync_block_to_s3` to exhaust
+            // its outer retry budget and return `S3UploadFailed`. The
+            // `JoinSet` arm then propagates that exact error out of
+            // `sync_to_s3`. With only one block in the test
+            // (`block_height = 1`), the error must reference that
+            // block — anything else means we're failing for a reason
+            // other than what this test is supposed to cover.
+            Ok(Err(IndexerError::S3UploadFailed {
+                block_height: failed_height,
+                ..
+            })) => {
+                assert_eq!(failed_height, block_height, "wrong block in S3UploadFailed");
+            },
+            Ok(Err(other)) => {
+                panic!("expected IndexerError::S3UploadFailed, got: {other:?}")
+            },
+        }
     }
 }

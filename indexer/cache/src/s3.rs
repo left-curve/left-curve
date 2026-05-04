@@ -1,13 +1,13 @@
 use {
     crate::error::{IndexerError, Result},
-    aws_config::{BehaviorVersion, Region},
+    aws_config::{BehaviorVersion, Region, retry::RetryConfig, timeout::TimeoutConfig},
     aws_credential_types::Credentials,
     aws_sdk_s3::{
         Client as AwsS3Client, config::Builder as S3ConfigBuilder, error::SdkError,
         operation::head_object::HeadObjectError, primitives::ByteStream,
     },
     serde::{Deserialize, Serialize},
-    std::path::Path,
+    std::{path::Path, time::Duration},
 };
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -31,9 +31,36 @@ impl S3Config {
             None,
             "static",
         );
+
+        // Bound every S3 operation in wall-clock terms. Without this the SDK
+        // inherits its built-in defaults (effectively no read timeout for
+        // large bodies, ~30s connect), so a network black-hole — DNS that
+        // returns timeouts instead of NXDOMAIN, an unreachable bucket, a
+        // stalled TLS handshake — leaves each call hanging until something
+        // upstream gives up. Combined with the per-block retry loop in
+        // `sync_block_to_s3`, that turns a single failed bucket into minutes
+        // of wasted work per cron firing and processes pile up.
+        //
+        // `operation_timeout` caps the whole call including SDK-level retries;
+        // `operation_attempt_timeout` caps a single attempt. With
+        // `RetryConfig::standard().with_max_attempts(3)` the worst case is
+        // bounded at ~30s per S3 op.
+        let timeout_cfg = TimeoutConfig::builder()
+            .connect_timeout(Duration::from_secs(3))
+            .read_timeout(Duration::from_secs(10))
+            .operation_attempt_timeout(Duration::from_secs(15))
+            .operation_timeout(Duration::from_secs(30))
+            .build();
+
+        let retry_cfg = RetryConfig::standard()
+            .with_max_attempts(3)
+            .with_initial_backoff(Duration::from_millis(200));
+
         let base_cfg = aws_config::defaults(BehaviorVersion::latest())
             .region(Region::new(self.region.clone()))
             .credentials_provider(creds)
+            .timeout_config(timeout_cfg)
+            .retry_config(retry_cfg)
             .load()
             .await;
 
