@@ -7,14 +7,14 @@ use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
-        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
-        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
-        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
-        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
-        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
-        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        Indexer, IndexerContext, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE,
+        NaiveProposalPreparer, NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer,
+        QuerierProviderImpl, TraceOption, Vm, catch_and_push_event, catch_and_update_event,
+        do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
+        do_instantiate, do_migrate, do_transfer, do_upgrade, do_upload, do_withhold_fee,
+        query_app_config, query_balance, query_balances, query_code, query_codes, query_config,
+        query_contract, query_contracts, query_next_upgrade, query_past_upgrades, query_status,
+        query_supplies, query_supply, query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -491,9 +491,8 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        let mut indexer_ctx = crate::IndexerContext::new();
         self.indexer
-            .pre_indexing(block.info.height, &mut indexer_ctx)
+            .pre_indexing(block.info.height, &mut IndexerContext::new())
             .await
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
@@ -668,9 +667,8 @@ where
             tx_outcomes,
         };
 
-        let mut indexer_ctx = crate::IndexerContext::new();
         self.indexer
-            .index_block(&block, &block_outcome, &mut indexer_ctx)
+            .index_block(&block, &block_outcome, &mut IndexerContext::new())
             .await
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
@@ -708,9 +706,8 @@ where
         let cfg = CONFIG.load(&storage)?;
         let app_cfg = APP_CONFIG.load(&storage)?;
 
-        let mut indexer_ctx = crate::IndexerContext::new();
         self.indexer
-            .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
+            .post_indexing(version, cfg, app_cfg, &mut IndexerContext::new())
             .await
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
