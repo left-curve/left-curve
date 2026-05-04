@@ -466,7 +466,7 @@ impl StartCmd {
         httpd_shutdown_flags: Vec<Arc<AtomicBool>>,
     ) -> anyhow::Result<()>
     where
-        ID: Indexer + Send + 'static,
+        ID: Indexer + Clone + Send + Sync + 'static,
     {
         // Channel used by the app to request a graceful shutdown from inside
         // `finalize_block` (see `grug_app::HaltReason`). Initial value is

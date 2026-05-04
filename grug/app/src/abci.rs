@@ -25,10 +25,10 @@ use {
 
 impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
 where
-    DB: Db,
+    DB: Db + Clone + Send + Sync + 'static,
     VM: Vm + Clone + Send + Sync + 'static,
-    ID: Indexer,
-    PP: ProposalPreparer,
+    ID: Indexer + Clone + Send + Sync + 'static,
+    PP: ProposalPreparer + Clone + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = BoxError;
@@ -41,8 +41,12 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        let res = self.tower_call(req);
-        Box::pin(async move { res.map_err(|err| Box::new(err) as BoxError) })
+        let this = self.clone();
+        Box::pin(async move {
+            this.tower_call(req)
+                .await
+                .map_err(|err| Box::new(err) as BoxError)
+        })
     }
 }
 
@@ -54,7 +58,7 @@ where
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
-    fn tower_call(&self, req: Request) -> AppResult<Response> {
+    async fn tower_call(&self, req: Request) -> AppResult<Response> {
         match req {
             // -------------------- block execution methods --------------------
             Request::InitChain(req) => {
@@ -83,11 +87,11 @@ where
                 Ok(Response::VerifyVoteExtension(res))
             },
             Request::FinalizeBlock(req) => {
-                let res = self.tower_finalize_block(req)?;
+                let res = self.tower_finalize_block(req).await?;
                 Ok(Response::FinalizeBlock(res))
             },
             Request::Commit => {
-                let res = self.tower_commit()?;
+                let res = self.tower_commit().await?;
                 Ok(Response::Commit(res))
             },
 
@@ -169,8 +173,8 @@ where
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument("abci::commit", skip_all))]
-    fn tower_commit(&self) -> AppResult<response::Commit> {
-        match self.do_commit() {
+    async fn tower_commit(&self) -> AppResult<response::Commit> {
+        match self.do_commit().await {
             Ok(()) => Ok(response::Commit {
                 // This field is ignored since CometBFT 0.38.
                 // TODO: Can we omit this?????
@@ -183,13 +187,13 @@ where
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument("abci::finalize_block", skip_all, fields(height = req.height.value(), hash = ?req.hash)))]
-    fn tower_finalize_block(
+    async fn tower_finalize_block(
         &self,
         req: request::FinalizeBlock,
     ) -> AppResult<response::FinalizeBlock> {
         let block = from_tm_block(req.height.value(), req.time, Some(req.hash));
 
-        match self.do_finalize_block_raw(block, &req.txs) {
+        match self.do_finalize_block_raw(block, &req.txs).await {
             Ok(outcome) => {
                 let tx_results = outcome
                     .tx_outcomes

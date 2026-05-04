@@ -267,11 +267,14 @@ where
             txs: txs.clone(),
         };
 
-        // Call ABCI `FinalizeBlock` method
-        let block_outcome = self.app.do_finalize_block(block)?; // TODO: drop uncommitted changes if errors
-
-        // Call ABCI `Commit` method
-        self.app.do_commit()?;
+        // Call ABCI `FinalizeBlock` then `Commit`. The `App` methods are async
+        // so they can `.await` the indexer trait directly; we bridge them to
+        // the sync `TestSuite` API with a single `block_on`.
+        let block_outcome = futures::executor::block_on(async {
+            let outcome = self.app.do_finalize_block(block).await?;
+            self.app.do_commit().await?;
+            AppResult::Ok(outcome)
+        })?; // TODO: drop uncommitted changes if errors
 
         self.block = new_block;
 

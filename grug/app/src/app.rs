@@ -353,7 +353,7 @@ where
     // 4. remove orphaned nodes
     // 5. flush (but not commit) state changes to DB
     // 5. indexer `index_block`
-    pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
+    pub async fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
         #[cfg(feature = "tracing")]
         {
             tracing::info!(
@@ -492,17 +492,15 @@ where
         let mut tx_outcomes = vec![];
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .pre_indexing(block.info.height, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `pre_indexing`");
-            }
-        })?;
+        self.indexer
+            .pre_indexing(block.info.height, &mut indexer_ctx)
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `pre_indexing`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -671,17 +669,15 @@ where
         };
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .index_block(&block, &block_outcome, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `index_block`");
-            }
-        })?;
+        self.indexer
+            .index_block(&block, &block_outcome, &mut indexer_ctx)
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `index_block`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -692,7 +688,7 @@ where
         Ok(block_outcome)
     }
 
-    pub fn do_commit(&self) -> AppResult<()> {
+    pub async fn do_commit(&self) -> AppResult<()> {
         #[cfg(feature = "tracing")]
         {
             tracing::info!("Received Commit request");
@@ -713,17 +709,15 @@ where
         let app_cfg = APP_CONFIG.load(&storage)?;
 
         let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `post_indexing`");
-            }
-        })?;
+        self.indexer
+            .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `post_indexing`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -956,7 +950,7 @@ where
         self.do_init_chain(chain_id, block, genesis_state)
     }
 
-    pub fn do_finalize_block_raw<T>(
+    pub async fn do_finalize_block_raw<T>(
         &self,
         block_info: BlockInfo,
         raw_txs: &[T],
@@ -999,7 +993,7 @@ where
             txs,
         };
 
-        self.do_finalize_block(block)
+        self.do_finalize_block(block).await
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<CheckTxOutcome> {
