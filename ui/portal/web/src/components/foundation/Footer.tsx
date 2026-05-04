@@ -1,11 +1,11 @@
 import {
   FormattedNumber,
-  IconChecked,
-  IconSliders,
-  Popover,
+  IconDiscord,
+  IconTwitter,
+  Marquee,
   twMerge,
 } from "@left-curve/applets-kit";
-import { allPerpsPairStatsStore, useAllPerpsPairStats, useStorage } from "@left-curve/store";
+import { allPerpsPairStatsStore, useAllPerpsPairStats } from "@left-curve/store";
 import { Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
@@ -13,17 +13,9 @@ import { StatusBadge } from "./StatusBadge";
 
 import type { NormalizedPerpsPairStats } from "@left-curve/store";
 
-type TickerDisplayMode = "popular-perp" | "hidden";
-
-const CURRENT_YEAR = new Date().getFullYear();
-
 function Footer() {
   const router = useRouter();
   const isTradeRoute = router.state.location.pathname.includes("trade");
-
-  const [tickerMode, setTickerMode] = useStorage<TickerDisplayMode>("footer-ticker-mode", {
-    initialValue: "popular-perp",
-  });
 
   useAllPerpsPairStats();
   const perpsPairStats = allPerpsPairStatsStore((s) => s.perpsPairStats);
@@ -36,26 +28,25 @@ function Footer() {
       )}
     >
       <div className="flex flex-1 items-center gap-2 min-w-0">
-        <div className="flex items-center gap-4 shrink-0">
-          <StatusBadge className="static flex" />
-          <TickerModeDropdown tickerMode={tickerMode} onChangeMode={setTickerMode} />
-        </div>
+        <StatusBadge className="static flex" />
 
-        {tickerMode === "popular-perp" && (
-          <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            {perpsPairStats.map((stats) => (
-              <TickerItem key={stats.pairId} stats={stats} />
-            ))}
-          </div>
-        )}
+        <Marquee
+          className="flex-1 min-w-0"
+          direction="left"
+          speed={40}
+          item={
+            <div className="flex items-center gap-3 pr-3">
+              {perpsPairStats.map((stats) => (
+                <TickerItem key={stats.pairId} stats={stats} />
+              ))}
+            </div>
+          }
+        />
       </div>
 
       <div className="h-[17px] w-px bg-outline-secondary-gray shrink-0" />
 
       <div className="flex items-center gap-1 shrink-0">
-        <span className="exposure-xs-italic text-primitives-blue-light-500 px-1">
-          Dango &copy; {CURRENT_YEAR}
-        </span>
         <a
           href="/documents/Dango - Terms of Use.pdf"
           target="_blank"
@@ -71,6 +62,24 @@ function Footer() {
           className="exposure-xs-italic text-primitives-blue-light-500 px-1 hover:opacity-80"
         >
           {m["footer.privacyPolicy"]()}
+        </a>
+        <a
+          href="https://discord.gg/BWJtyySxBM"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Discord"
+          className="text-primitives-blue-light-500 px-1 hover:opacity-80 flex items-center"
+        >
+          <IconDiscord className="w-4 h-4" />
+        </a>
+        <a
+          href="https://x.com/dango"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Twitter"
+          className="text-primitives-blue-light-500 px-1 hover:opacity-80 flex items-center"
+        >
+          <IconTwitter className="w-4 h-4" />
         </a>
       </div>
     </footer>
@@ -107,53 +116,6 @@ function TickerItem({ stats }: TickerItemProps) {
         {stats.currentPrice ? <FormattedNumber number={stats.currentPrice} as="span" /> : "-"}
       </span>
     </div>
-  );
-}
-
-type TickerModeDropdownProps = {
-  tickerMode: TickerDisplayMode;
-  onChangeMode: (mode: TickerDisplayMode) => void;
-};
-
-function TickerModeDropdown({ tickerMode, onChangeMode }: TickerModeDropdownProps) {
-  return (
-    <Popover
-      showArrow={false}
-      anchor="top"
-      trigger={
-        <IconSliders
-          aria-label="Ticker display settings"
-          role="img"
-          className="w-4 h-4 text-ink-tertiary-500 cursor-pointer hover:text-ink-secondary-700 transition-colors"
-        />
-      }
-      menu={
-        <div className="flex flex-col py-2">
-          {(
-            [
-              { label: m["footer.popularPerp"](), mode: "popular-perp" as const },
-              { label: m["footer.doNotDisplay"](), mode: "hidden" as const },
-            ] satisfies { label: string; mode: TickerDisplayMode }[]
-          ).map(({ label, mode }) => (
-            <div key={mode} className="px-1">
-              <button
-                type="button"
-                className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-surface-tertiary-rice cursor-pointer diatype-m-medium text-ink-secondary-700 w-full text-left"
-                onClick={() => onChangeMode(mode)}
-              >
-                {label}
-                {tickerMode === mode && (
-                  <IconChecked className="w-3.5 h-3.5 text-utility-success-500" />
-                )}
-              </button>
-            </div>
-          ))}
-        </div>
-      }
-      classNames={{
-        menu: "!rounded-[20px] p-0 min-w-[10rem]",
-      }}
-    />
   );
 }
 

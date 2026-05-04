@@ -90,10 +90,8 @@
     "createNewUser": "Create New User"
   },
   "footer": {
-    "terms": "Terms",
-    "privacyPolicy": "Privacy Policy",
-    "popularPerp": "Popular Perp",
-    "doNotDisplay": "Do Not Display"
+    "terms": "Terms of Use",
+    "privacyPolicy": "Privacy Policy"
   },
   "statusBadge": {
     "status": "Status",
