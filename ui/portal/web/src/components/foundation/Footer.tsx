@@ -1,4 +1,4 @@
-import { FormattedNumber, twMerge } from "@left-curve/applets-kit";
+import { FormattedNumber, Marquee, twMerge } from "@left-curve/applets-kit";
 import { allPerpsPairStatsStore, useAllPerpsPairStats } from "@left-curve/store";
 import { Decimal } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -26,11 +26,18 @@ function Footer() {
       <div className="flex flex-1 items-center gap-2 min-w-0">
         <StatusBadge className="static flex" />
 
-        <div className="flex items-center gap-3 overflow-hidden min-w-0">
-          {perpsPairStats.map((stats) => (
-            <TickerItem key={stats.pairId} stats={stats} />
-          ))}
-        </div>
+        <Marquee
+          className="flex-1 min-w-0"
+          direction="left"
+          speed={40}
+          item={
+            <div className="flex items-center gap-3 pr-3">
+              {perpsPairStats.map((stats) => (
+                <TickerItem key={stats.pairId} stats={stats} />
+              ))}
+            </div>
+          }
+        />
       </div>
 
       <div className="h-[17px] w-px bg-outline-secondary-gray shrink-0" />
