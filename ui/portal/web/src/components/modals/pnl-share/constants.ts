@@ -9,4 +9,10 @@ export const CHARACTERS = [
   "pig",
   "candle",
   "bird-lost",
+  "bird-militar",
+  "cocodrile_winner",
+  "dango-king",
+  "dango_winner",
+  "pirate",
+  "smoke-cocodrile",
 ] as const;
