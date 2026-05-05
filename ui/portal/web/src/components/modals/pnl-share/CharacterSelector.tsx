@@ -29,7 +29,7 @@ export function CharacterSelector({
             )}
           >
             <img
-              src={`/images/pnl-modal/${img}-thumbnail.png`}
+              src={`/images/pnl-modal/${img}.png`}
               alt={img}
               className="w-full h-full object-cover"
             />
