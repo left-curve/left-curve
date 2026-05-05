@@ -13,32 +13,16 @@
 use {
     anyhow::{Context, Result},
     dango_sdk::{HttpClient, PageInfo, perps_events},
-    serde::{Deserialize, Serialize},
+    dango_types::perps::OrderFilled,
+    grug::EventName,
+    serde::Serialize,
 };
 
 const HTTP_URL: &str = "https://api-mainnet.dango.zone";
-const USER_ADDR: &str = "0x0000000000000000000000000000000000000000";
+const USER_ADDR: &str = "0x0000000000000000000000000000000000000000"; // replace with the actual address of interest
 const OUTPUT_PATH: &str = "trades.csv";
 // The indexer caps `first` at 100.
 const PAGE_SIZE: i64 = 100;
-
-// Mirrors the `data` payload of an `order_filled` event
-// (`dango_types::perps::OrderFilled`). Defined locally so the example
-// stays self-contained and does not depend on dango-types.
-#[derive(Debug, Deserialize)]
-struct OrderFilledData {
-    order_id: String,
-    fill_price: String,
-    fill_size: String,
-    closing_size: String,
-    opening_size: String,
-    realized_pnl: String,
-    realized_funding: Option<String>,
-    fee: String,
-    client_order_id: Option<String>,
-    fill_id: Option<String>,
-    is_maker: Option<bool>,
-}
 
 #[derive(Debug, Serialize)]
 struct CsvRow {
@@ -77,7 +61,7 @@ async fn main() -> Result<()> {
                 first,
                 last,
                 user_addr: Some(USER_ADDR.to_string()),
-                event_type: Some("order_filled".to_string()),
+                event_type: Some(OrderFilled::EVENT_NAME.to_string()),
                 ..Default::default()
             },
             |data| {
@@ -98,8 +82,9 @@ async fn main() -> Result<()> {
         .with_context(|| format!("opening {OUTPUT_PATH} for writing"))?;
 
     for ev in events {
-        let parsed: OrderFilledData = serde_json::from_value(ev.data.clone())
+        let parsed: OrderFilled = serde_json::from_value(ev.data.clone())
             .with_context(|| format!("decoding order_filled data at idx={}", ev.idx))?;
+
         writer.serialize(CsvRow {
             block_height: ev.block_height,
             created_at: ev.created_at,
@@ -107,21 +92,23 @@ async fn main() -> Result<()> {
             pair_id: ev.pair_id,
             user_addr: ev.user_addr,
             idx: ev.idx,
-            order_id: parsed.order_id,
-            fill_id: parsed.fill_id,
+            order_id: parsed.order_id.to_string(),
+            fill_id: parsed.fill_id.map(|v| v.to_string()),
             is_maker: parsed.is_maker,
-            fill_price: parsed.fill_price,
-            fill_size: parsed.fill_size,
-            closing_size: parsed.closing_size,
-            opening_size: parsed.opening_size,
-            realized_pnl: parsed.realized_pnl,
-            realized_funding: parsed.realized_funding,
-            fee: parsed.fee,
-            client_order_id: parsed.client_order_id,
+            fill_price: parsed.fill_price.to_string(),
+            fill_size: parsed.fill_size.to_string(),
+            closing_size: parsed.closing_size.to_string(),
+            opening_size: parsed.opening_size.to_string(),
+            realized_pnl: parsed.realized_pnl.to_string(),
+            realized_funding: parsed.realized_funding.map(|v| v.to_string()),
+            fee: parsed.fee.to_string(),
+            client_order_id: parsed.client_order_id.map(|v| v.to_string()),
         })?;
     }
 
     writer.flush()?;
+
     println!("done; wrote {OUTPUT_PATH}");
+
     Ok(())
 }
