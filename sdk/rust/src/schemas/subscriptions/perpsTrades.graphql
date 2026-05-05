@@ -1,0 +1,19 @@
+subscription SubscribePerpsTrades($pairId: String!) {
+  perpsTrades(pairId: $pairId) {
+    orderId
+    pairId
+    user
+    fillPrice
+    fillSize
+    closingSize
+    openingSize
+    realizedPnl
+    realizedFunding
+    fee
+    createdAt
+    blockHeight
+    tradeIdx
+    fillId
+    isMaker
+  }
+}

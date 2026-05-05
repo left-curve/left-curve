@@ -539,6 +539,17 @@ generate_subscription_types! {
         require_data: false  // Event-driven
     },
     {
+        name: SubscribePerpsTrades,
+        path: "src/schemas/subscriptions/perpsTrades.graphql",
+        test_with: crate::subscribe_perps_trades::Variables {
+            pair_id: "perp/ethusd".to_string(),
+        },
+        expect: |data: crate::subscribe_perps_trades::ResponseData| {
+            data.perps_trades.pair_id == "perp/ethusd"
+        },
+        require_data: false  // Event-driven
+    },
+    {
         name: SubscribeQueryApp,
         path: "src/schemas/subscriptions/queryApp.graphql",
         test_with: crate::subscribe_query_app::Variables {
@@ -580,9 +591,9 @@ generate_subscription_types! {
 pub mod subscriptions {
     pub use super::{
         subscribe_accounts, subscribe_block, subscribe_candles, subscribe_event_by_addresses,
-        subscribe_events, subscribe_messages, subscribe_perps_candles, subscribe_query_app,
-        subscribe_query_status, subscribe_query_store, subscribe_trades, subscribe_transactions,
-        subscribe_transfers,
+        subscribe_events, subscribe_messages, subscribe_perps_candles, subscribe_perps_trades,
+        subscribe_query_app, subscribe_query_status, subscribe_query_store, subscribe_trades,
+        subscribe_transactions, subscribe_transfers,
     };
 }
 
