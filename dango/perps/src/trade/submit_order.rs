@@ -21,7 +21,7 @@ use {
         Dimensionless, FillId, LimitOrder, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, OrderKind,
         OrderPersisted, OrderRemoved, PairId, Quantity, RawFill, ReasonForOrderRemoval,
         RemovedMaker, TimeInForce, TriggerDirection, UsdPrice, UsdValue, WalkBookOutcome, WalkStep,
-        check_minimum_order_size, check_price_band, compute_target_price, decompose_fill,
+        check_minimum_order_value, check_price_band, compute_target_price, decompose_fill,
         decrease_liquidity_depths, flush_volumes, increase_liquidity_depths, may_invert_price,
         validate_slippage, walk_book,
     },
@@ -386,10 +386,10 @@ pub(crate) fn compute_submit_order_outcome(
         validate_slippage(child_order.max_slippage, pair_param.max_market_slippage)?;
     }
 
-    // -------------- Step 1. Check minimum order size -------------------------
+    // -------------- Step 1. Check minimum order value -----------------------
 
     if !reduce_only {
-        check_minimum_order_size(size, oracle_price, pair_param.min_order_size)?;
+        check_minimum_order_value(size, oracle_price, pair_param.min_order_value)?;
     }
 
     // ----------------------- Step 2. Decompose order -------------------------

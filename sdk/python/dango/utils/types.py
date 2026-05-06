@@ -510,7 +510,7 @@ class State(TypedDict):
 
 class PairParam(TypedDict):
     tick_size: UsdPrice
-    min_order_size: UsdValue
+    min_order_value: UsdValue
     max_limit_price_deviation: Dimensionless
     max_market_slippage: Dimensionless
     max_abs_oi: Quantity

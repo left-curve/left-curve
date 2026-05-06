@@ -184,10 +184,10 @@ fn validate_pair_param(pair_id: &PairId, pair_param: &PairParam) -> anyhow::Resu
     );
 
     ensure!(
-        pair_param.min_order_size >= UsdValue::ZERO,
-        "invalid `min_order_size`! pair id: {}, bounds: >= 0, found: {}",
+        pair_param.min_order_value >= UsdValue::ZERO,
+        "invalid `min_order_value`! pair id: {}, bounds: >= 0, found: {}",
         pair_id,
-        pair_param.min_order_size,
+        pair_param.min_order_value,
     );
 
     ensure!(
@@ -437,7 +437,7 @@ mod tests {
     fn valid_pair_param() -> PairParam {
         PairParam {
             tick_size: UsdPrice::new_int(1),
-            min_order_size: UsdValue::ZERO,
+            min_order_value: UsdValue::ZERO,
             max_limit_price_deviation: Dimensionless::new_permille(100), // 10%
             max_market_slippage: Dimensionless::new_permille(100),       // 10%
             max_abs_oi: Quantity::new_int(1_000_000),
@@ -1188,13 +1188,13 @@ mod tests {
     }
 
     #[test]
-    fn pair_param_negative_min_order_size_rejected() {
+    fn pair_param_negative_min_order_value_rejected() {
         let p = PairParam {
-            min_order_size: UsdValue::new_raw(-1),
+            min_order_value: UsdValue::new_raw(-1),
             ..valid_pair_param()
         };
         let err = validate_pair_param(&pair(), &p).unwrap_err().to_string();
-        assert!(err.contains("`min_order_size`"), "{err}");
+        assert!(err.contains("`min_order_value`"), "{err}");
     }
 
     #[test]

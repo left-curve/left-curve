@@ -256,7 +256,7 @@ pub struct PairParam {
     /// Prevents dust orders from cluttering the order book.
     ///
     /// Bounds: `>= 0`. Zero disables the minimum.
-    pub min_order_size: UsdValue,
+    pub min_order_value: UsdValue,
 
     /// Maximum deviation of a limit order's `limit_price` from the oracle
     /// price, expressed as a fraction. A limit order is accepted only if

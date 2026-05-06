@@ -880,7 +880,7 @@
                 "max_abs_oi": "1000000",
                 "max_limit_price_deviation": "0.05",
                 "max_market_slippage": "0.05",
-                "min_order_size": "0",
+                "min_order_value": "0",
                 "tick_size": "1",
                 "vault_half_spread": "0.0006",
                 "vault_liquidity_weight": "3",

@@ -121,9 +121,9 @@ fn compute_bid(
         return Ok(None);
     }
 
-    // Check minimum order size.
+    // Check minimum order value.
     let notional = size.checked_mul(bid_price)?;
-    if notional < pair_param.min_order_size {
+    if notional < pair_param.min_order_value {
         return Ok(None);
     }
 
@@ -177,9 +177,9 @@ fn compute_ask(
         return Ok(None);
     }
 
-    // Check minimum order size.
+    // Check minimum order value.
     let notional = size.checked_mul(ask_price)?;
-    if notional < pair_param.min_order_size {
+    if notional < pair_param.min_order_value {
         return Ok(None);
     }
 
@@ -201,7 +201,7 @@ mod tests {
             tick_size: UsdPrice::new_int(1),
             vault_half_spread: Dimensionless::new_permille(10), // 1%
             vault_max_quote_size: Quantity::new_int(100),
-            min_order_size: UsdValue::ZERO,
+            min_order_value: UsdValue::ZERO,
             initial_margin_ratio: Dimensionless::new_permille(100), // 10%
             vault_liquidity_weight: Dimensionless::new_int(1),
             ..Default::default()
