@@ -14,6 +14,7 @@ import {
 } from "@left-curve/applets-kit";
 import { perpsMarginAsset, useAccount, useVaultLiquidityState } from "@left-curve/store";
 import { formatNumber } from "@left-curve/dango/utils";
+import { APY_WINDOW_DAYS } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
@@ -37,7 +38,12 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   onChangeAction,
 }) => {
   const controllers = useInputs({ strategy: "onChange" });
-  const state = useVaultLiquidityState({ action, onChangeAction, controllers });
+  const state = useVaultLiquidityState({
+    action,
+    onChangeAction,
+    apyWindowDays: APY_WINDOW_DAYS,
+    controllers,
+  });
   const { account } = useAccount();
   const isLoggedIn = !!account;
 
@@ -67,7 +73,7 @@ const VaultLiquidityHeader: React.FC = () => {
   const { state } = useVaultLiquidity();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { isPaused, isTvlCapReached, vaultState, isLoading } = state;
+  const { isPaused, isTvlCapReached, vaultState, isLoading, vaultApy } = state;
   const equity = vaultState?.equity ?? "0";
 
   return (
@@ -87,7 +93,9 @@ const VaultLiquidityHeader: React.FC = () => {
         <div className="flex flex-row gap-6 items-center">
           <div className="flex items-center gap-1">
             <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.apy"]()}</p>
-            <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
+            <p className="text-ink-secondary-700 diatype-sm-bold">
+              {vaultApy != null ? `${vaultApy}%` : "-"}
+            </p>
           </div>
           <div className="flex items-center gap-1">
             <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.tvl"]()}</p>
@@ -236,10 +244,7 @@ const DepositForm: React.FC = () => {
       </div>
 
       {isTvlCapReached ? (
-        <WarningContainer
-          color="error"
-          description={m["vaultLiquidity.tvlCapReached"]()}
-        />
+        <WarningContainer color="error" description={m["vaultLiquidity.tvlCapReached"]()} />
       ) : (
         <WarningContainer
           color="error"

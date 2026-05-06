@@ -150,6 +150,11 @@ export type PerpsVaultState = {
   openOrderCount: number;
 };
 
+export type VaultSnapshot = {
+  equity: string;
+  shareSupply: string;
+};
+
 export type PerpsOrderResponse = {
   orderId: string;
   pairId: string;
@@ -216,6 +221,7 @@ export type PerpsQueryMsg =
   | { liquidityDepth: { pairId: string; bucketSize: string; limit?: number } }
   | { volume: { user: Address; since?: string } }
   | { vaultState: Record<string, never> }
+  | { vaultSnapshots: { min?: string; max?: string } }
   | { feeRateOverride: { user: Address } };
 
 export type GetPerpsQueryMsg<K extends KeyOfUnion<PerpsQueryMsg>> = ExtractFromUnion<

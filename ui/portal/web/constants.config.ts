@@ -21,6 +21,9 @@ export const PERPS_DEFAULT_SLIPPAGE = "0.005";
 /** 14-day lookback window (in seconds), matching the backend VOLUME_LOOKBACK. */
 export const FEE_VOLUME_LOOKBACK_SECONDS = 14 * 24 * 60 * 60;
 
+/** Number of trailing days used to compute vault APY from daily snapshots. */
+export const APY_WINDOW_DAYS = 7;
+
 const translations = m as unknown as Record<string, () => string>;
 export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
   .filter((k) => /^applets\..*\.id$/.test(k))
