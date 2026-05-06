@@ -209,6 +209,17 @@ $$
 
 In words: an order that only *reduces* existing exposure is allowed regardless of notional; an order that adds new exposure (opens from flat, grows an existing position, or flips direction) must clear `min_order_value` on the full order notional.
 
+##### When the exemption applies
+
+The decomposition above is computed at submission against the user's current position. For the exemption to be safe, the protocol needs that decomposition to still hold at fill time — otherwise the user could pass the submission check as a "pure reduction" and later fill against a different position state, ending up with a sub-min open position the value floor was supposed to prevent.
+
+Two cases:
+
+- **Market and IOC orders** fill in the same transaction as submission, so the decomposition is exact. The pure-reduction exemption applies whenever the decomposition is purely closing.
+- **Resting limits (GTC, PostOnly)** can fill against any future position state — the user might open or close other positions between submission and fill. The submission-time decomposition is just a prediction. For these orders the exemption applies *only* when the `reduce_only` flag is set, because that flag is enforced at fill time by truncating the opening portion to zero. It guarantees the order can never grow exposure regardless of how the user's position changes between submission and fill.
+
+Coverage table for **market and IOC** orders (decomposition known at fill):
+
 | Scenario                                              | `closing` | `opening` (post-truncation) | `min_order_value` check |
 | ----------------------------------------------------- | --------- | --------------------------- | ----------------------- |
 | Long 100, sell 30 (non-reduce-only)                   | $-30$     | 0                           | exempt — pure reduction |
@@ -217,6 +228,16 @@ In words: an order that only *reduces* existing exposure is allowed regardless o
 | Long 100, sell 150 (reduce-only, truncates to close)  | $-100$    | 0                           | exempt — pure reduction |
 | Long 0, buy 50 (open from flat)                       | 0         | 50                          | enforced                |
 | Long 100, buy 20 (increase long)                      | 0         | 20                          | enforced                |
+
+For **GTC / PostOnly** limits, the rule collapses to "exempt iff `reduce_only` is set":
+
+| Scenario                                              | `reduce_only` | `min_order_value` check                     |
+| ----------------------------------------------------- | ------------- | ------------------------------------------- |
+| Long 100, limit sell 30 (any decomposition)           | true          | exempt — fill-time truncation guarantees it |
+| Long 100, limit sell 30                               | false         | enforced — submission decomposition unsafe  |
+| Long 100, limit sell 150                              | true          | exempt — overshoot truncates at fill        |
+| Long 100, limit sell 150                              | false         | enforced                                    |
+| Long 0, limit buy 50                                  | either        | enforced                                    |
 
 #### Implications of the exemption
 

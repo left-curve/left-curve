@@ -386,20 +386,15 @@ pub(crate) fn compute_submit_order_outcome(
         validate_slippage(child_order.max_slippage, pair_param.max_market_slippage)?;
     }
 
-    // -------------- Step 1. Check lot size and minimum order value ----------
+    // -------------- Step 1. Check lot size ----------------------------------
     //
-    // `check_lot_size` is the precision floor — it applies to every order
-    // regardless of direction, so resting orders, market orders, and
-    // triggered conditionals all stay lot-aligned by induction.
-    //
-    // `check_minimum_order_value` is the value floor — reduce-only orders
-    // are exempt so users can always close sub-min positions.
+    // The precision floor — applies unconditionally to every order, so
+    // resting orders, market orders, and triggered conditionals all stay
+    // lot-aligned by induction. Distinct from the value floor below: lot
+    // alignment is *unconditional*, while `min_order_value` carries a
+    // pure-reduction exemption.
 
     check_lot_size(size, pair_param.lot_size)?;
-
-    if !reduce_only {
-        check_minimum_order_value(size, oracle_price, pair_param.min_order_value)?;
-    }
 
     // ----------------------- Step 2. Decompose order -------------------------
 
@@ -420,7 +415,59 @@ pub(crate) fn compute_submit_order_outcome(
 
     ensure!(fillable_size.is_non_zero(), "fillable size is zero");
 
-    // -------------- Step 3. Check OI constraint for opening ------------------
+    // -------------- Step 3. Check minimum order value -----------------------
+    //
+    // Skip the value floor for **pure reductions** — orders whose
+    // decomposition yields `opening_size == 0 && closing_size != 0` after
+    // the reduce-only truncation above. This is the close-always-allowed
+    // exemption documented in book/perps/7-risk.md §4.3.
+    //
+    // The exemption can only apply when the protocol can be sure of the
+    // decomposition at fill time:
+    //
+    //   - **Market and IOC orders** fill in the same transaction as
+    //     submission, so the decomposition we computed above is exactly
+    //     what the matching engine will see. Pure-reduction is a safe
+    //     basis for the exemption.
+    //
+    //   - **Resting limits (GTC, PostOnly)** can fill against any future
+    //     position state — the user might open / close other positions
+    //     between submission and fill. The submission-time decomposition
+    //     is just a prediction. We can only exempt these orders when the
+    //     `reduce_only` flag is set, because that flag is enforced at
+    //     fill time by truncating the opening portion to zero — it
+    //     guarantees the order can never grow exposure regardless of
+    //     state changes.
+    //
+    // Without this distinction, a non-reduce-only resting limit could
+    // be accepted at submission as a "pure reduction" and later fill
+    // against a different position state, opening sub-min exposure that
+    // the value floor was supposed to prevent.
+
+    let is_pure_reduction = opening_size.is_zero() && !closing_size.is_zero();
+
+    let executes_immediately = matches!(
+        kind,
+        OrderKind::Market { .. }
+            | OrderKind::Limit {
+                time_in_force: TimeInForce::ImmediateOrCancel,
+                ..
+            }
+    );
+
+    let exempt_from_min_order_value = if executes_immediately {
+        is_pure_reduction
+    } else {
+        // Resting limits: only the `reduce_only` flag's fill-time
+        // enforcement is reliable.
+        reduce_only
+    };
+
+    if !exempt_from_min_order_value {
+        check_minimum_order_value(size, oracle_price, pair_param.min_order_value)?;
+    }
+
+    // -------------- Step 4. Check OI constraint for opening ------------------
 
     check_oi_constraint(opening_size, &pair_state, pair_param)?;
 
@@ -7308,12 +7355,27 @@ mod tests {
         }
     }
 
-    /// Helper: invoke `compute_submit_order_outcome` with a market order.
-    /// Returns the `Result` so tests can assert on the error variant /
-    /// message directly.
-    fn submit_market_with_lot_size(
+    /// Helper: build a pair_param with a non-zero min_order_value. Same
+    /// shape as the lot-size builder above; lets the value-floor tests
+    /// reuse a single submission helper without re-doing the storage setup.
+    fn test_pair_param_with_min_value(min_value: i128) -> PairParam {
+        PairParam {
+            min_order_value: UsdValue::new_int(min_value),
+            ..test_pair_param()
+        }
+    }
+
+    /// Helper: invoke `compute_submit_order_outcome` with the given order
+    /// kind against the given `pair_param`. Returns the `Result` so tests
+    /// can assert on the error variant / message via `ResultExt`.
+    ///
+    /// Sets up a maker book deep enough that fillable orders always match,
+    /// so any rejection bubbling out of the call must come from the
+    /// pre-match validation steps (lot size, min order value, OI, …).
+    fn submit_with_pair_param(
+        pair_param: &PairParam,
         size: i128,
-        lot: i128,
+        kind: OrderKind,
         reduce_only: bool,
         taker_position: Option<Quantity>,
     ) -> anyhow::Result<SubmitOrderOutcome> {
@@ -7326,7 +7388,6 @@ mod tests {
         place_bid(&mut ctx.storage, MAKER_B, 50_000, 1_000_000, 101);
 
         let param = test_param();
-        let pair_param = test_pair_param_with_lot_size(lot);
         let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let mut taker_state = UserState {
             margin: LARGE_COLLATERAL,
@@ -7352,18 +7413,88 @@ mod tests {
             &param,
             &State::default(),
             &pair_id(),
-            &pair_param,
+            pair_param,
             &pair_state,
             &taker_state,
             UsdPrice::new_int(50_000),
             Quantity::new_int(size),
-            OrderKind::Market {
-                max_slippage: Dimensionless::new_permille(100),
-            },
+            kind,
             reduce_only,
             None,
             None,
             &mut EventBuilder::new(),
+        )
+    }
+
+    /// Default `OrderKind::Market` used by the lot-size and min-value tests
+    /// — wide slippage so the matching engine never rejects on the price
+    /// band before our validation steps.
+    fn market_kind() -> OrderKind {
+        OrderKind::Market {
+            max_slippage: Dimensionless::new_permille(100),
+        }
+    }
+
+    /// Convenience wrapper for lot-size tests (always Market kind).
+    fn submit_market_with_lot_size(
+        size: i128,
+        lot: i128,
+        reduce_only: bool,
+        taker_position: Option<Quantity>,
+    ) -> anyhow::Result<SubmitOrderOutcome> {
+        submit_with_pair_param(
+            &test_pair_param_with_lot_size(lot),
+            size,
+            market_kind(),
+            reduce_only,
+            taker_position,
+        )
+    }
+
+    /// Convenience wrapper for min-order-value tests with a market order.
+    fn submit_market_with_min_value(
+        size: i128,
+        min_value: i128,
+        reduce_only: bool,
+        taker_position: Option<Quantity>,
+    ) -> anyhow::Result<SubmitOrderOutcome> {
+        submit_with_pair_param(
+            &test_pair_param_with_min_value(min_value),
+            size,
+            market_kind(),
+            reduce_only,
+            taker_position,
+        )
+    }
+
+    /// Convenience wrapper for min-order-value tests with a limit order.
+    /// Picks a limit price in the matchable range for IOC/Market-like
+    /// behavior, but the only thing the value-floor check cares about is
+    /// `time_in_force` — the price never matters here.
+    fn submit_limit_with_min_value(
+        size: i128,
+        min_value: i128,
+        time_in_force: TimeInForce,
+        reduce_only: bool,
+        taker_position: Option<Quantity>,
+    ) -> anyhow::Result<SubmitOrderOutcome> {
+        let limit_price = if size > 0 {
+            // buy: pick a price at oracle so it would match against the ask
+            UsdPrice::new_int(50_000)
+        } else {
+            // sell: same — at oracle, matches the bid
+            UsdPrice::new_int(50_000)
+        };
+        submit_with_pair_param(
+            &test_pair_param_with_min_value(min_value),
+            size,
+            OrderKind::Limit {
+                limit_price,
+                time_in_force,
+                client_order_id: None,
+            },
+            reduce_only,
+            taker_position,
         )
     }
 
@@ -7426,5 +7557,181 @@ mod tests {
     #[test]
     fn submit_accepts_anything_when_lot_size_zero() {
         submit_market_with_lot_size(7, 0, false, None).should_succeed();
+    }
+
+    // ============= Min order value: pure-reduction exemption ===============
+    //
+    // §4.3 of book/perps/7-risk.md: orders whose decomposition yields
+    // `opening_size == 0 && closing_size != 0` (after reduce-only
+    // truncation) are exempt from `min_order_value`. The tests below mirror
+    // the coverage table in that section.
+    //
+    // Oracle is fixed at $50,000 across the test suite; the helpers use
+    // `Quantity::new_int(size)` so each unit of `size` corresponds to
+    // $50,000 of notional. To force the value-floor check to fail without
+    // the exemption, the tests pick `min_order_value` larger than the
+    // submitted notional.
+    //
+    // The key gap this section closes: a *non-reduce-only* sell against a
+    // long position (a regular partial close) used to be rejected when
+    // notional fell below the floor; the pure-reduction rule now exempts
+    // it without the user needing to know about the reduce-only flag.
+    //
+    // Test scenarios:
+    //   - non-reduce-only pure reduction below min      → exempt (NEW)
+    //   - non-reduce-only full close below min          → exempt (NEW)
+    //   - reduce-only overshoot below min               → exempt (regression)
+    //   - non-reduce-only flip below min                → enforced
+    //   - pure open below min                           → enforced
+    //   - non-reduce-only grow below min                → enforced
+
+    /// **The gap this section closes.** A regular sell of 1 against a long
+    /// 100 is purely reductive (`closing = -1`, `opening = 0`), so the
+    /// value floor must skip even though the order is *not* flagged
+    /// reduce-only. Notional `1 * $50k = $50k` is well below the
+    /// `min_order_value = $200k`, so without the exemption this would
+    /// reject; with it, the order succeeds.
+    #[test]
+    fn submit_accepts_non_reduce_only_pure_reduction_below_min() {
+        submit_market_with_min_value(-1, 200_000, false, Some(Quantity::new_int(100)))
+            .should_succeed();
+    }
+
+    /// Non-reduce-only full close: `closing = -100`, `opening = 0` →
+    /// pure reduction, exempt. Notional `100 * $50k = $5M` would clear
+    /// any reasonable min, so this test uses a deliberately huge min
+    /// (`$10M`) to force a rejection without the exemption — the assertion
+    /// is that the exemption fires regardless.
+    #[test]
+    fn submit_accepts_non_reduce_only_full_close_below_min() {
+        submit_market_with_min_value(-100, 10_000_000, false, Some(Quantity::new_int(100)))
+            .should_succeed();
+    }
+
+    /// Reduce-only overshoot: user has long 1, submits reduce-only sell
+    /// of 2. `decompose_fill(-2, 1)` yields `closing = -1`, `opening = -1`;
+    /// the reduce-only flag truncates `opening` to zero, leaving a pure
+    /// reduction → exempt. Without the truncation step the flip-and-open
+    /// portion (`-1 * $50k = $50k`) would be the order's effective notional
+    /// and the value floor `$200k` would reject; the exemption fires
+    /// because the truncated opening is zero.
+    #[test]
+    fn submit_accepts_reduce_only_overshoot_below_min() {
+        submit_market_with_min_value(-2, 200_000, true, Some(Quantity::new_int(1)))
+            .should_succeed();
+    }
+
+    /// Non-reduce-only flip: user has long 1, submits non-reduce-only sell
+    /// of 2. `decompose_fill(-2, 1)` yields `closing = -1`, `opening = -1`
+    /// — opening is non-zero → not a pure reduction → value floor enforced
+    /// on the full `|size| * oracle = 2 * $50k = $100k` notional. With
+    /// `min_order_value = $200k`, the order is rejected.
+    #[test]
+    fn submit_rejects_non_reduce_only_flip_below_min() {
+        submit_market_with_min_value(-2, 200_000, false, Some(Quantity::new_int(1)))
+            .should_fail_with_error("order value is below minimum");
+    }
+
+    /// Pure open from flat: `closing = 0`, `opening = 1` → not a pure
+    /// reduction (`closing == 0`) → value floor enforced. Notional
+    /// `1 * $50k = $50k` < `min_order_value $200k` → rejected. This pins
+    /// down that the exemption rule's `closing != 0` requirement actually
+    /// fires.
+    #[test]
+    fn submit_rejects_pure_opening_below_min() {
+        submit_market_with_min_value(1, 200_000, false, None)
+            .should_fail_with_error("order value is below minimum");
+    }
+
+    /// Adding to an existing long: user has long 100, buys another 1.
+    /// `decompose_fill(1, 100)` yields `closing = 0`, `opening = 1` —
+    /// pure opening, the exemption does not apply. Notional below min →
+    /// rejected.
+    #[test]
+    fn submit_rejects_grow_position_below_min() {
+        submit_market_with_min_value(1, 200_000, false, Some(Quantity::new_int(100)))
+            .should_fail_with_error("order value is below minimum");
+    }
+
+    // ============= Min order value: order-kind branching ===================
+    //
+    // The pure-reduction exemption is gated by order kind because the
+    // submission-time decomposition is only trustworthy for orders that
+    // fill in the same transaction:
+    //
+    //   - Market & IOC limits: immediate execution → pure-reduction
+    //     exemption applies as written.
+    //   - GTC / PostOnly limits: rest on the book → user position can
+    //     change before fill → exemption only applies when `reduce_only`
+    //     is set (its truncation is enforced at fill time).
+    //
+    // The market-order tests above cover the immediate branch. These
+    // tests pin down the limit-order branches.
+
+    /// **The hole this rule closes.** Without the order-kind distinction,
+    /// a user could submit a non-reduce-only GTC limit sell of 1 against
+    /// long 100, get exempted as a "pure reduction", then close their
+    /// position via another order. When the resting limit later fills, it
+    /// opens a sub-min short — bypassing the value floor entirely.
+    ///
+    /// With the resting-limit branch in place, the exemption no longer
+    /// applies; submission-time decomposition is treated as a prediction
+    /// only, and the value floor enforces on the full notional.
+    #[test]
+    fn submit_rejects_resting_limit_non_reduce_only_pure_reduction_below_min() {
+        submit_limit_with_min_value(
+            -1,
+            200_000,
+            TimeInForce::GoodTilCanceled,
+            false,
+            Some(Quantity::new_int(100)),
+        )
+        .should_fail_with_error("order value is below minimum");
+    }
+
+    /// Resting limit with `reduce_only` set: exemption applies, because
+    /// the flag is enforced at fill time by truncating the opening
+    /// portion to zero. State changes between submission and fill cannot
+    /// turn this into a sub-min open.
+    #[test]
+    fn submit_accepts_resting_limit_reduce_only_below_min() {
+        submit_limit_with_min_value(
+            -1,
+            200_000,
+            TimeInForce::GoodTilCanceled,
+            true,
+            Some(Quantity::new_int(100)),
+        )
+        .should_succeed();
+    }
+
+    /// IOC limit is immediate-execution, so the pure-reduction exemption
+    /// applies even without the `reduce_only` flag — the decomposition
+    /// computed at submission is exactly what the matching engine sees.
+    #[test]
+    fn submit_accepts_ioc_limit_non_reduce_only_pure_reduction_below_min() {
+        submit_limit_with_min_value(
+            -1,
+            200_000,
+            TimeInForce::ImmediateOrCancel,
+            false,
+            Some(Quantity::new_int(100)),
+        )
+        .should_succeed();
+    }
+
+    /// IOC limit non-reduce-only flip: opening_size is non-zero (mixed
+    /// decomposition), so the exemption doesn't apply — the value floor
+    /// fires on the full notional.
+    #[test]
+    fn submit_rejects_ioc_limit_non_reduce_only_flip_below_min() {
+        submit_limit_with_min_value(
+            -2,
+            200_000,
+            TimeInForce::ImmediateOrCancel,
+            false,
+            Some(Quantity::new_int(1)),
+        )
+        .should_fail_with_error("order value is below minimum");
     }
 }
