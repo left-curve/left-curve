@@ -30,6 +30,7 @@ target/
 **/.pytest_cache/
 **/.ruff_cache/
 **/.venv/
+**/dist/
 **/*.egg-info/
 
 # Node.js
