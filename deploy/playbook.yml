@@ -20,6 +20,7 @@
 
 - hosts: all
   become: true
+  remote_user: debian
   become_user: "{{ deploy_user }}"
   vars:
     ansible_ssh_common_args: >-
