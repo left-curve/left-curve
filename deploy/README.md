@@ -168,36 +168,7 @@ flowchart TD
 
 ### Install a new server
 
-- Add the debian-deploy key:
-
-  ```bash
-  ssh-copy-id -i ~/.ssh/debian_deploy.pub username@public_ip
-  ```
-
-- Add the host in `inventory` using its public IP
-
-  ```bash
-  ansible-playbook init-debian-user.yml --limit <public IP> -e ansible_user=<your remote user account>
-  ansible-playbook common.yml --limit <public IP>
-  ansible-playbook tailscale.yml --limit <public IP>
-  ```
-
-- Ensure tailscale IP is up and you can see the server
-
-- Replace the public IP with the private IP in `inventory`, create a file
-`host_vars/<tailscale IP>.yml` and `hostname`, `wireguard_ip`, `tailscale_ip`.
-
-- Enable Wireguard on all hosts
-
-  ```bash
-  ansible-playbook wireguard.yml
-  ```
-
-- Install default packages, users, and things like docker using:
-
-  ```bash
-  ansible-playbook playbook.yml --limit <tailscale IP>
-  ```
+See [`NEW_SERVER_SETUP.md`](NEW_SERVER_SETUP.md).
 
 ### Setup Ansible Vault
 

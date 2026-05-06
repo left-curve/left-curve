@@ -1,0 +1,5 @@
+---
+tailscale_ip: "100.72.62.100"
+hostname: "hetzner5"
+wireguard_ip: "10.99.0.14"
+reboot_time: "12:30"
