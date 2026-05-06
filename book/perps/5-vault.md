@@ -174,6 +174,7 @@ The mirror applies when short.
 | Parameter                  | Role                                         |
 | -------------------------- | -------------------------------------------- |
 | `initial_margin_ratio`     | Used to compute margin-constrained size      |
+| `lot_size`                 | Quantity precision; zero disables            |
 | `min_order_value`          | Minimum notional to place an order           |
 | `tick_size`                | Price granularity for snapping               |
 | `vault_half_spread`        | Base half bid-ask spread around oracle price |

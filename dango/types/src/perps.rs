@@ -258,6 +258,21 @@ pub struct PairParam {
     /// Bounds: `>= 0`. Zero disables the minimum.
     pub min_order_value: UsdValue,
 
+    /// Precision constraint on order quantities for this pair. The submitted
+    /// `size` must satisfy both `|size| >= lot_size` and `|size| % lot_size
+    /// == 0` — i.e., one lot is the minimum tradable size, and every order
+    /// is an integer multiple of that minimum. By induction every position
+    /// is also a non-negative multiple of `lot_size`, so the smallest
+    /// non-zero position is exactly one lot.
+    ///
+    /// This is the protocol's primary dust-prevention mechanism — see
+    /// `book/perps/7-risk.md` §4.2 for the design rationale.
+    ///
+    /// Bounds: `>= 0`. Zero disables the precision constraint (treats every
+    /// `size` as valid). Tuning to a meaningful per-asset value is a
+    /// chain-config decision rather than a strict invariant at this layer.
+    pub lot_size: Quantity,
+
     /// Maximum deviation of a limit order's `limit_price` from the oracle
     /// price, expressed as a fraction. A limit order is accepted only if
     ///

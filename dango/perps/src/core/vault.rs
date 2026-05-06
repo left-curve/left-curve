@@ -121,6 +121,24 @@ fn compute_bid(
         return Ok(None);
     }
 
+    // Round size down to a multiple of `lot_size` so the resulting fill (and
+    // any taker's resulting position when matching against this quote) stays
+    // lot-aligned. The vault's quotes bypass `compute_submit_order_outcome` —
+    // they're written directly to BIDS/ASKS — so this rounding is the only
+    // thing that keeps the lot-alignment invariant intact across the matching
+    // engine. `lot_size = 0` disables the constraint and we keep the raw
+    // size; if rounding produces a zero-size quote (sub-lot at this skew),
+    // skip the side entirely.
+    let size = if pair_param.lot_size.is_zero() {
+        size
+    } else {
+        size.checked_floor_multiple(pair_param.lot_size)?
+    };
+
+    if size.is_zero() {
+        return Ok(None);
+    }
+
     // Check minimum order value.
     let notional = size.checked_mul(bid_price)?;
     if notional < pair_param.min_order_value {
@@ -174,6 +192,19 @@ fn compute_ask(
 
     // Skip if size is zero or negative (fully skewed away).
     if size.is_zero() || size.is_negative() {
+        return Ok(None);
+    }
+
+    // Round size down to a multiple of `lot_size`. See the matching block in
+    // `compute_bid` for the rationale — same invariant applies on the ask
+    // side.
+    let size = if pair_param.lot_size.is_zero() {
+        size
+    } else {
+        size.checked_floor_multiple(pair_param.lot_size)?
+    };
+
+    if size.is_zero() {
         return Ok(None);
     }
 
@@ -703,5 +734,88 @@ mod tests {
         assert!(ask.price < oracle, "ask should cross below oracle");
         assert!(bid.price > UsdPrice::ZERO, "bid must stay positive");
         assert!(bid.price < ask.price, "bid < ask invariant must hold");
+    }
+
+    // ============================ lot_size rounding ===========================
+    //
+    // The vault writes quotes directly to BIDS / ASKS without going through
+    // `compute_submit_order_outcome`, so the lot-alignment invariant has to
+    // be enforced inside `compute_bid` / `compute_ask`. These tests pin
+    // down that behavior.
+
+    /// With a non-zero `lot_size`, the vault's bid and ask sizes are floored
+    /// to a multiple of the lot. The base size in `default_pair_param` is
+    /// `(margin / 2) / oracle / imr = 5000 / 1000 / 0.1 = 50`. Rounding 50
+    /// to a multiple of `lot_size = 7` (deliberately awkward) gives 49 —
+    /// `floor(50 / 7) * 7`.
+    #[test]
+    fn quote_size_rounds_down_to_lot_size() {
+        let pair_param = PairParam {
+            lot_size: Quantity::new_int(7),
+            ..default_pair_param()
+        };
+
+        let (bid, ask) = compute_vault_quotes(
+            UsdPrice::new_int(1000),
+            &pair_param,
+            None,
+            None,
+            UsdValue::new_int(10_000),
+            Quantity::ZERO,
+        )
+        .unwrap();
+
+        let bid = bid.unwrap();
+        let ask = ask.unwrap();
+
+        assert_eq!(bid.size, Quantity::new_int(49), "bid floored to 7 * 7");
+        assert_eq!(ask.size, Quantity::new_int(-49), "ask floored to 7 * 7");
+    }
+
+    /// If `lot_size` is so large that the computed base size would round
+    /// down to zero, the vault skips that side entirely (returns `None`).
+    /// Base size = 50 here; with `lot_size = 100`, floor(50, 100) = 0.
+    #[test]
+    fn quote_skipped_when_size_below_one_lot() {
+        let pair_param = PairParam {
+            lot_size: Quantity::new_int(100),
+            ..default_pair_param()
+        };
+
+        let (bid, ask) = compute_vault_quotes(
+            UsdPrice::new_int(1000),
+            &pair_param,
+            None,
+            None,
+            UsdValue::new_int(10_000),
+            Quantity::ZERO,
+        )
+        .unwrap();
+
+        assert!(bid.is_none(), "sub-lot bid must be skipped");
+        assert!(ask.is_none(), "sub-lot ask must be skipped");
+    }
+
+    /// Sanity check: `lot_size = 0` (the disabled default) leaves quote sizes
+    /// untouched, matching all other vault tests above.
+    #[test]
+    fn quote_size_unchanged_when_lot_size_zero() {
+        let pair_param = default_pair_param(); // lot_size defaults to ZERO
+
+        let (bid, ask) = compute_vault_quotes(
+            UsdPrice::new_int(1000),
+            &pair_param,
+            None,
+            None,
+            UsdValue::new_int(10_000),
+            Quantity::ZERO,
+        )
+        .unwrap();
+
+        let bid = bid.unwrap();
+        let ask = ask.unwrap();
+
+        assert_eq!(bid.size, Quantity::new_int(50));
+        assert_eq!(ask.size, Quantity::new_int(-50));
     }
 }

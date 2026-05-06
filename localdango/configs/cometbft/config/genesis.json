@@ -875,6 +875,7 @@
                 "funding_rate_multiplier": "1",
                 "impact_size": "10000",
                 "initial_margin_ratio": "0.1",
+                "lot_size": "0.0001",
                 "maintenance_margin_ratio": "0.05",
                 "max_abs_funding_rate": "0",
                 "max_abs_oi": "1000000",

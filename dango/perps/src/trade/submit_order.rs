@@ -21,9 +21,9 @@ use {
         Dimensionless, FillId, LimitOrder, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, OrderKind,
         OrderPersisted, OrderRemoved, PairId, Quantity, RawFill, ReasonForOrderRemoval,
         RemovedMaker, TimeInForce, TriggerDirection, UsdPrice, UsdValue, WalkBookOutcome, WalkStep,
-        check_minimum_order_value, check_price_band, compute_target_price, decompose_fill,
-        decrease_liquidity_depths, flush_volumes, increase_liquidity_depths, may_invert_price,
-        validate_slippage, walk_book,
+        check_lot_size, check_minimum_order_value, check_price_band, compute_target_price,
+        decompose_fill, decrease_liquidity_depths, flush_volumes, increase_liquidity_depths,
+        may_invert_price, validate_slippage, walk_book,
     },
     dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
     grug::{
@@ -386,7 +386,16 @@ pub(crate) fn compute_submit_order_outcome(
         validate_slippage(child_order.max_slippage, pair_param.max_market_slippage)?;
     }
 
-    // -------------- Step 1. Check minimum order value -----------------------
+    // -------------- Step 1. Check lot size and minimum order value ----------
+    //
+    // `check_lot_size` is the precision floor — it applies to every order
+    // regardless of direction, so resting orders, market orders, and
+    // triggered conditionals all stay lot-aligned by induction.
+    //
+    // `check_minimum_order_value` is the value floor — reduce-only orders
+    // are exempt so users can always close sub-min positions.
+
+    check_lot_size(size, pair_param.lot_size)?;
 
     if !reduce_only {
         check_minimum_order_value(size, oracle_price, pair_param.min_order_value)?;
@@ -7276,5 +7285,146 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    // =================== Lot size enforcement at submission ====================
+    //
+    // `compute_submit_order_outcome` calls `check_lot_size` as the first
+    // sizing check (Step 1 in the function). These tests pin down that it
+    // fires for both directions, both failure modes, and that the disabled
+    // path (lot_size = 0) doesn't reject anything new.
+    //
+    // The submission must reject *before* any state mutation, so we don't
+    // need to set up makers / oracle prices / etc. — the rejection happens
+    // ahead of the matching engine.
+
+    /// Helper: build a pair_param with a non-zero lot_size. The base
+    /// `test_pair_param()` defaults `lot_size` to zero (disabled), so every
+    /// other test in this module is unaffected by lot-size enforcement.
+    fn test_pair_param_with_lot_size(lot: i128) -> PairParam {
+        PairParam {
+            lot_size: Quantity::new_int(lot),
+            ..test_pair_param()
+        }
+    }
+
+    /// Helper: invoke `compute_submit_order_outcome` with a market order.
+    /// Returns the `Result` so tests can assert on the error variant /
+    /// message directly.
+    fn submit_market_with_lot_size(
+        size: i128,
+        lot: i128,
+        reduce_only: bool,
+        taker_position: Option<Quantity>,
+    ) -> anyhow::Result<SubmitOrderOutcome> {
+        let mut ctx = MockContext::new()
+            .with_sender(TAKER)
+            .with_funds(Coins::default());
+
+        setup_storage(&mut ctx.storage);
+        place_ask(&mut ctx.storage, MAKER_A, 50_000, 1_000_000, 100);
+        place_bid(&mut ctx.storage, MAKER_B, 50_000, 1_000_000, 101);
+
+        let param = test_param();
+        let pair_param = test_pair_param_with_lot_size(lot);
+        let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
+        let mut taker_state = UserState {
+            margin: LARGE_COLLATERAL,
+            ..Default::default()
+        };
+        if let Some(pos_size) = taker_position {
+            taker_state.positions.insert(pair_id(), Position {
+                size: pos_size,
+                entry_price: UsdPrice::new_int(50_000),
+                entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
+            });
+        }
+        let mut oq = test_oracle_querier();
+
+        compute_submit_order_outcome(
+            &ctx.storage,
+            TAKER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &mut oq,
+            &param,
+            &State::default(),
+            &pair_id(),
+            &pair_param,
+            &pair_state,
+            &taker_state,
+            UsdPrice::new_int(50_000),
+            Quantity::new_int(size),
+            OrderKind::Market {
+                max_slippage: Dimensionless::new_permille(100),
+            },
+            reduce_only,
+            None,
+            None,
+            &mut EventBuilder::new(),
+        )
+    }
+
+    /// Sub-lot order is rejected with the lot-size error message. With
+    /// `lot_size = 5`, a buy of 3 has `|size| < lot_size`, so the lower-
+    /// bound check inside `check_lot_size` fires.
+    #[test]
+    fn submit_rejects_below_lot_size() {
+        submit_market_with_lot_size(3, 5, false, None)
+            .should_fail_with_error("order size is below lot size");
+    }
+
+    /// Lot-aligned but non-multiple order is rejected with the modulo error.
+    /// `lot_size = 5`, size 7: `|7| >= 5` passes the lower bound, but
+    /// `7 % 5 == 2` fails the alignment check.
+    #[test]
+    fn submit_rejects_non_aligned_size() {
+        submit_market_with_lot_size(7, 5, false, None)
+            .should_fail_with_error("order size is not a multiple of lot size");
+    }
+
+    /// Negative (sell) sub-lot order is rejected the same way as positive.
+    #[test]
+    fn submit_rejects_negative_below_lot_size() {
+        submit_market_with_lot_size(-3, 5, false, None)
+            .should_fail_with_error("order size is below lot size");
+    }
+
+    /// Reduce-only flag does NOT exempt from lot-size enforcement. Lot
+    /// alignment is unconditional — only `min_order_value` has the
+    /// pure-reduction exemption. This pins down that the close-always-
+    /// allowed rule does not leak into precision enforcement.
+    ///
+    /// User has long 100; submits reduce-only sell of -3 (sub-lot for
+    /// lot_size = 5). Even though this is a pure reduction (which would
+    /// exempt from min_order_value), it must still reject for lot size.
+    #[test]
+    fn submit_rejects_reduce_only_below_lot_size() {
+        submit_market_with_lot_size(-3, 5, true, Some(Quantity::new_int(100)))
+            .should_fail_with_error("order size is below lot size");
+    }
+
+    /// Lot-aligned order at the minimum (one lot) succeeds. `lot_size = 5`,
+    /// size 5: passes both `|size| >= lot_size` and `|size| % lot_size == 0`.
+    #[test]
+    fn submit_accepts_exactly_one_lot() {
+        submit_market_with_lot_size(5, 5, false, None).should_succeed();
+    }
+
+    /// Lot-aligned order at multiple lots succeeds. `lot_size = 5`, size 50.
+    #[test]
+    fn submit_accepts_multiple_lots() {
+        submit_market_with_lot_size(50, 5, false, None).should_succeed();
+    }
+
+    /// `lot_size = 0` disables the check — sizes that would fail with a
+    /// non-zero lot size are accepted. This guards against accidentally
+    /// breaking the disabled path during refactors. Size 7 with `lot_size
+    /// = 0` passes the (skipped) lot check.
+    #[test]
+    fn submit_accepts_anything_when_lot_size_zero() {
+        submit_market_with_lot_size(7, 0, false, None).should_succeed();
     }
 }
