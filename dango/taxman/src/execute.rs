@@ -8,9 +8,9 @@ use {
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
     },
     grug::{
-        Addr, AuthCtx, AuthMode, Coins, ContractEvent, IsZero, Map, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdResult, Storage,
-        Timestamp, Tx, TxOutcome, Udec128_6, Uint128, coins,
+        Addr, AuthCtx, AuthMode, Coin, Coins, ContractEvent, IsZero, Map, Message,
+        MultiplyFraction, MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdResult,
+        Storage, Timestamp, Tx, TxOutcome, Udec128_6, Uint128, coins,
     },
     std::collections::BTreeMap,
 };
@@ -28,6 +28,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
         ExecuteMsg::Pay { ty, payments } => pay(ctx, ty, payments),
         ExecuteMsg::ReportVolumes(volumes) => report_volumes(ctx, volumes),
+        ExecuteMsg::WithdrawFees {} => withdraw_fees(ctx),
     }
 }
 
@@ -41,6 +42,34 @@ fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     CONFIG.save(ctx.storage, &new_cfg)?;
 
     Ok(Response::new())
+}
+
+fn withdraw_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
+    // Only the chain's owner can withdraw collected fees.
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // Read all denoms taxman currently holds.
+    let mut balances = ctx
+        .querier
+        .query_balances(ctx.contract, None, Some(u32::MAX))?;
+
+    // `withhold_fee` runs at the auth phase before this handler executes, so
+    // taxman's balance includes funds that `finalize_fee` must refund. Reserve
+    // those so the refund won't fail.
+    if let Some((fee_cfg, withheld)) = WITHHELD_FEE.may_load(ctx.storage)?
+        && withheld.is_non_zero()
+    {
+        balances.saturating_deduct(Coin::new(fee_cfg.fee_denom, withheld)?)?;
+    }
+
+    if balances.is_empty() {
+        return Ok(Response::new());
+    }
+
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, balances)?))
 }
 
 fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow::Result<Response> {
