@@ -294,13 +294,11 @@ If a rsync gets interrupted (network blip, server restart, etc.), re-run the sam
 
     Expected: `config/` includes `node_key.json`, `priv_validator_key.json`, `genesis.json`, `app.toml`, `config.toml`, `addrbook.json`. `data/` includes `priv_validator_state.json` plus the cometbft block-store files (`blockstore.db`, `state.db`, `cs.wal/`, etc.).
 
-2. Confirm the target's `node_key.json` matches source's. Both ends use `docker compose run --rm --no-deps` since neither has a running cometbft container — source's was stopped in step 1, and target hasn't deployed yet. The compose file's `${COMETBFT_DIRECTORY}` mount comes from the `.env`, so the container reads the right `node_key.json` on each side.
+2. Confirm the target's `node_key.json` matches source's. We use plain `docker run` (not `docker compose run`) because the compose service has an `entrypoint: sh -c '... cometbft start'` that ignores any appended command — `cometbft show-node-id` would silently turn into `cometbft start`. `docker run` against the image directly only inherits the image's `CMD` (which `cometbft show-node-id` cleanly overrides).
 
    ```bash
-   ssh deploy@$SOURCE_IP "cd ~/deployments/$DEPLOY && \
-     docker compose -p $DEPLOY run --rm --no-deps cometbft cometbft show-node-id"
-   ssh deploy@$TARGET_IP "cd ~/deployments/$DEPLOY && \
-     docker compose -p $DEPLOY run --rm --no-deps cometbft cometbft show-node-id"
+   ssh deploy@$SOURCE_IP "docker run --rm -v $DATA_DIR/cometbft:/root/.cometbft ghcr.io/left-curve/left-curve/cometbft:v0.38.21 cometbft show-node-id --home /root/.cometbft"
+   ssh deploy@$TARGET_IP "docker run --rm -v $DATA_DIR/cometbft:/root/.cometbft ghcr.io/left-curve/left-curve/cometbft:v0.38.21 cometbft show-node-id --home /root/.cometbft"
    ```
 
    Expected: same id printed by both.
