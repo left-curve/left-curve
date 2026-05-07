@@ -13,7 +13,18 @@ use {
 ///
 /// A transaction qualifies as priority if every one of its messages is a
 /// perps trade message that is either a cancel or a post-only submit.
-/// Inspired by Hyperliquid's protection of market makers from toxic flow:
+/// Within the priority group, transactions that contain at least one
+/// post-only placement come before pure-cancellation transactions; other
+/// transactions follow.
+///
+/// The placement-before-cancellation order ensures a user's
+/// `[place X, cancel X]` broadcast pair is replayed in the right order
+/// inside a block, regardless of CometBFT mempool gossip reordering
+/// (CometBFT's per-peer FIFO is best-effort, not guaranteed across the
+/// network).
+///
+/// Inspired by Hyperliquid's protection of market makers from toxic flow,
+/// although Hyperliquid orders cancels first; see:
 /// <https://hyperliquid.medium.com/latency-and-transaction-ordering-on-hyperliquid-cf28df3648eb>
 #[derive(Default, Clone, Copy)]
 pub struct MakerPriorityHandler;
@@ -32,72 +43,144 @@ impl grug_app::ProposalPreparer for MakerPriorityHandler {
     }
 }
 
-/// Move all priority transactions to the front of the vector, preserving
-/// relative order within each group.
-fn promote_priority_txs(mut txs: Vec<Bytes>, perps: &Addr) -> Vec<Bytes> {
-    let (priority, other): (Vec<_>, Vec<_>) = txs
-        .drain(..)
-        .partition(|raw| is_priority_tx(raw.as_ref(), perps));
+/// Bucket assigned to a transaction during proposal preparation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PriorityClass {
+    /// Priority tx that contains at least one post-only placement.
+    /// May also contain cancellations (in which case the placement and
+    /// cancellation execute atomically inside the tx, in the order chosen
+    /// by the user).
+    Placement,
 
-    txs.extend(priority);
-    txs.extend(other);
-    txs
+    /// Priority tx that contains only cancellations.
+    Cancel,
+
+    /// Anything else: malformed bytes, non-perps targets, non-trade
+    /// execute messages, or any tx with at least one non-priority
+    /// message (market, GTC, IOC, deposit, withdraw, conditional submit).
+    Other,
 }
 
-/// Returns `true` iff every message in the transaction is a perps trade
-/// message that is either a cancel or a post-only submit.
-///
-/// Malformed bytes, non-perps targets, non-trade execute messages, and any
-/// disqualifying message all return `false`.
-pub fn is_priority_tx(raw_tx: &[u8], perps: &Addr) -> bool {
-    let Ok(tx) = raw_tx.deserialize_json::<Tx>() else {
-        return false;
-    };
+/// Per-message classification used while scanning a tx.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MsgClass {
+    /// The message contains at least one post-only placement. May also
+    /// contain cancellations (e.g. inside a `BatchUpdateOrders`).
+    HasPlacement,
 
-    for msg in tx.msgs.into_inner() {
-        let Message::Execute(exec) = msg else {
-            return false;
-        };
+    /// The message is purely a cancellation.
+    CancelOnly,
 
-        if exec.contract != *perps {
-            return false;
-        }
+    /// The message disqualifies the entire tx from priority status.
+    NotPriority,
+}
 
-        let Ok(execute_msg) = exec.msg.deserialize_json::<perps::ExecuteMsg>() else {
-            return false;
-        };
+/// Reorder transactions: post-only placements first, then cancellations,
+/// then everything else. Relative order within each bucket is preserved.
+fn promote_priority_txs(txs: Vec<Bytes>, perps: &Addr) -> Vec<Bytes> {
+    let mut placements = Vec::new();
+    let mut cancels = Vec::new();
+    let mut others = Vec::new();
 
-        let perps::ExecuteMsg::Trade(trader_msg) = execute_msg else {
-            return false;
-        };
-
-        if !is_priority_trader_msg(&trader_msg) {
-            return false;
+    for raw in txs {
+        match classify_tx(raw.as_ref(), perps) {
+            PriorityClass::Placement => placements.push(raw),
+            PriorityClass::Cancel => cancels.push(raw),
+            PriorityClass::Other => others.push(raw),
         }
     }
 
-    true
+    placements.extend(cancels);
+    placements.extend(others);
+    placements
 }
 
-fn is_priority_trader_msg(msg: &perps::TraderMsg) -> bool {
+/// Classify a raw tx into one of the three priority buckets.
+///
+/// `Other` covers malformed bytes, non-perps execute targets, non-trade
+/// execute payloads, top-level non-execute messages, and any tx with at
+/// least one non-priority message.
+pub fn classify_tx(raw_tx: &[u8], perps: &Addr) -> PriorityClass {
+    let Ok(tx) = raw_tx.deserialize_json::<Tx>() else {
+        return PriorityClass::Other;
+    };
+
+    let mut has_placement = false;
+
+    for msg in tx.msgs.into_inner() {
+        let Message::Execute(exec) = msg else {
+            return PriorityClass::Other;
+        };
+
+        if exec.contract != *perps {
+            return PriorityClass::Other;
+        }
+
+        let Ok(execute_msg) = exec.msg.deserialize_json::<perps::ExecuteMsg>() else {
+            return PriorityClass::Other;
+        };
+
+        let perps::ExecuteMsg::Trade(trader_msg) = execute_msg else {
+            return PriorityClass::Other;
+        };
+
+        match classify_trader_msg(&trader_msg) {
+            MsgClass::HasPlacement => has_placement = true,
+            MsgClass::CancelOnly => {},
+            MsgClass::NotPriority => return PriorityClass::Other,
+        }
+    }
+
+    if has_placement {
+        PriorityClass::Placement
+    } else {
+        PriorityClass::Cancel
+    }
+}
+
+fn classify_trader_msg(msg: &perps::TraderMsg) -> MsgClass {
     match msg {
-        TraderMsg::CancelOrder(_) | TraderMsg::CancelConditionalOrder(_) => true,
-        TraderMsg::SubmitOrder(req) => is_post_only(&req.kind),
+        TraderMsg::CancelOrder(_) | TraderMsg::CancelConditionalOrder(_) => MsgClass::CancelOnly,
+        TraderMsg::SubmitOrder(req) => {
+            if is_post_only(&req.kind) {
+                MsgClass::HasPlacement
+            } else {
+                MsgClass::NotPriority
+            }
+        },
         TraderMsg::BatchUpdateOrders(batch) => {
-            batch.iter().all(is_priority_submit_or_cancel_order_request)
+            let mut has_placement = false;
+            for req in batch.iter() {
+                match classify_submit_or_cancel(req) {
+                    MsgClass::HasPlacement => has_placement = true,
+                    MsgClass::CancelOnly => {},
+                    MsgClass::NotPriority => return MsgClass::NotPriority,
+                }
+            }
+            if has_placement {
+                MsgClass::HasPlacement
+            } else {
+                MsgClass::CancelOnly
+            }
         },
         // Explicit non-priority arms — no `_` wildcard, so adding a new
         // `TraderMsg` variant forces an explicit decision at compile time.
         TraderMsg::Deposit { .. }
         | TraderMsg::Withdraw { .. }
-        | TraderMsg::SubmitConditionalOrder { .. } => false,
+        | TraderMsg::SubmitConditionalOrder { .. } => MsgClass::NotPriority,
     }
 }
 
-fn is_priority_submit_or_cancel_order_request(req: &SubmitOrCancelOrderRequest) -> bool {
+fn classify_submit_or_cancel(req: &SubmitOrCancelOrderRequest) -> MsgClass {
     match req {
-        SubmitOrCancelOrderRequest::Cancel(_) => true,
-        SubmitOrCancelOrderRequest::Submit(req) => is_post_only(&req.kind),
+        SubmitOrCancelOrderRequest::Cancel(_) => MsgClass::CancelOnly,
+        SubmitOrCancelOrderRequest::Submit(req) => {
+            if is_post_only(&req.kind) {
+                MsgClass::HasPlacement
+            } else {
+                MsgClass::NotPriority
+            }
+        },
     }
 }
 
@@ -343,46 +426,50 @@ mod tests {
         tx.to_json_vec().unwrap().into()
     }
 
-    // --- is_priority_trader_msg --------------------------------------------
+    // --- classify_trader_msg -----------------------------------------------
 
-    #[test_case(cancel_one() => true; "case_cancel_order_one")]
-    #[test_case(cancel_one_by_client_id() => true; "case_cancel_order_by_client_id")]
-    #[test_case(cancel_all() => true; "case_cancel_order_all")]
-    #[test_case(cancel_cond_one() => true; "case_cancel_conditional_one")]
-    #[test_case(cancel_cond_all_for_pair() => true; "case_cancel_conditional_all_for_pair")]
-    #[test_case(cancel_cond_all() => true; "case_cancel_conditional_all")]
-    #[test_case(submit_post_only() => true; "case_submit_post_only")]
-    #[test_case(submit_post_only_with_tp_sl() => true; "case_submit_post_only_with_tp_sl")]
-    #[test_case(submit_post_only_with_client_id() => true; "case_submit_post_only_with_client_id")]
-    #[test_case(batch_all_cancel() => true; "case_batch_all_cancel")]
-    #[test_case(batch_all_post_only() => true; "case_batch_all_post_only")]
-    #[test_case(batch_mixed_priority() => true; "case_batch_mixed")]
-    #[test_case(submit_market() => false; "case_submit_market")]
-    #[test_case(submit_gtc() => false; "case_submit_gtc")]
-    #[test_case(submit_ioc() => false; "case_submit_ioc")]
-    #[test_case(batch_with_market() => false; "case_batch_with_market")]
-    #[test_case(batch_with_gtc() => false; "case_batch_with_gtc")]
-    #[test_case(batch_with_ioc() => false; "case_batch_with_ioc")]
-    #[test_case(deposit() => false; "case_deposit")]
-    #[test_case(withdraw() => false; "case_withdraw")]
-    #[test_case(submit_conditional() => false; "case_submit_conditional")]
-    fn priority_trader_msg(msg: TraderMsg) -> bool {
-        is_priority_trader_msg(&msg)
+    #[test_case(cancel_one()                      => MsgClass::CancelOnly   ; "case_cancel_order_one")]
+    #[test_case(cancel_one_by_client_id()         => MsgClass::CancelOnly   ; "case_cancel_order_by_client_id")]
+    #[test_case(cancel_all()                      => MsgClass::CancelOnly   ; "case_cancel_order_all")]
+    #[test_case(cancel_cond_one()                 => MsgClass::CancelOnly   ; "case_cancel_conditional_one")]
+    #[test_case(cancel_cond_all_for_pair()        => MsgClass::CancelOnly   ; "case_cancel_conditional_all_for_pair")]
+    #[test_case(cancel_cond_all()                 => MsgClass::CancelOnly   ; "case_cancel_conditional_all")]
+    #[test_case(submit_post_only()                => MsgClass::HasPlacement ; "case_submit_post_only")]
+    #[test_case(submit_post_only_with_tp_sl()     => MsgClass::HasPlacement ; "case_submit_post_only_with_tp_sl")]
+    #[test_case(submit_post_only_with_client_id() => MsgClass::HasPlacement ; "case_submit_post_only_with_client_id")]
+    #[test_case(batch_all_cancel()                => MsgClass::CancelOnly   ; "case_batch_all_cancel")]
+    #[test_case(batch_all_post_only()             => MsgClass::HasPlacement ; "case_batch_all_post_only")]
+    #[test_case(batch_mixed_priority()            => MsgClass::HasPlacement ; "case_batch_mixed")]
+    #[test_case(submit_market()                   => MsgClass::NotPriority  ; "case_submit_market")]
+    #[test_case(submit_gtc()                      => MsgClass::NotPriority  ; "case_submit_gtc")]
+    #[test_case(submit_ioc()                      => MsgClass::NotPriority  ; "case_submit_ioc")]
+    #[test_case(batch_with_market()               => MsgClass::NotPriority  ; "case_batch_with_market")]
+    #[test_case(batch_with_gtc()                  => MsgClass::NotPriority  ; "case_batch_with_gtc")]
+    #[test_case(batch_with_ioc()                  => MsgClass::NotPriority  ; "case_batch_with_ioc")]
+    #[test_case(deposit()                         => MsgClass::NotPriority  ; "case_deposit")]
+    #[test_case(withdraw()                        => MsgClass::NotPriority  ; "case_withdraw")]
+    #[test_case(submit_conditional()              => MsgClass::NotPriority  ; "case_submit_conditional")]
+    fn priority_trader_msg(msg: TraderMsg) -> MsgClass {
+        classify_trader_msg(&msg)
     }
 
-    // --- is_priority_tx ----------------------------------------------------
+    // --- classify_tx -------------------------------------------------------
 
-    #[test_case(perps_tx(vec![cancel_all()])                              => true  ; "single_cancel")]
-    #[test_case(perps_tx(vec![submit_post_only()])                        => true  ; "single_post_only")]
-    #[test_case(perps_tx(vec![batch_all_cancel()])                        => true  ; "single_batch_all_cancel")]
-    #[test_case(perps_tx(vec![cancel_all(), submit_post_only()])          => true  ; "multi_msg_all_priority")]
-    #[test_case(perps_tx(vec![cancel_all(), cancel_one(), cancel_cond_all()]) => true ; "multi_cancel_only")]
-    #[test_case(perps_tx(vec![submit_market()])                           => false ; "single_market")]
-    #[test_case(perps_tx(vec![cancel_all(), submit_market()])             => false ; "multi_msg_one_disqualifies")]
-    #[test_case(perps_tx(vec![cancel_all(), deposit()])                   => false ; "multi_msg_deposit_disqualifies")]
-    #[test_case(perps_tx(vec![submit_conditional()])                      => false ; "single_conditional_submit")]
-    fn priority_tx_perps(tx: Bytes) -> bool {
-        is_priority_tx(tx.as_ref(), &perps())
+    #[test_case(perps_tx(vec![cancel_all()])                                  => PriorityClass::Cancel    ; "single_cancel")]
+    #[test_case(perps_tx(vec![submit_post_only()])                            => PriorityClass::Placement ; "single_post_only")]
+    #[test_case(perps_tx(vec![batch_all_cancel()])                            => PriorityClass::Cancel    ; "single_batch_all_cancel")]
+    #[test_case(perps_tx(vec![batch_all_post_only()])                         => PriorityClass::Placement ; "single_batch_all_post_only")]
+    #[test_case(perps_tx(vec![batch_mixed_priority()])                        => PriorityClass::Placement ; "single_batch_mixed")]
+    #[test_case(perps_tx(vec![cancel_all(), submit_post_only()])              => PriorityClass::Placement ; "multi_msg_all_priority_with_placement")]
+    #[test_case(perps_tx(vec![cancel_all(), cancel_one(), cancel_cond_all()]) => PriorityClass::Cancel    ; "multi_cancel_only")]
+    #[test_case(perps_tx(vec![submit_post_only(), submit_post_only()])        => PriorityClass::Placement ; "multi_placement_only")]
+    #[test_case(perps_tx(vec![submit_market()])                               => PriorityClass::Other     ; "single_market")]
+    #[test_case(perps_tx(vec![cancel_all(), submit_market()])                 => PriorityClass::Other     ; "multi_msg_one_disqualifies")]
+    #[test_case(perps_tx(vec![submit_post_only(), submit_market()])           => PriorityClass::Other     ; "multi_msg_placement_with_non_priority")]
+    #[test_case(perps_tx(vec![cancel_all(), deposit()])                       => PriorityClass::Other     ; "multi_msg_deposit_disqualifies")]
+    #[test_case(perps_tx(vec![submit_conditional()])                          => PriorityClass::Other     ; "single_conditional_submit")]
+    fn priority_tx_perps(tx: Bytes) -> PriorityClass {
+        classify_tx(tx.as_ref(), &perps())
     }
 
     #[test]
@@ -396,36 +483,33 @@ mod tests {
             )
             .unwrap(),
         ]);
-        assert!(!is_priority_tx(tx.as_ref(), &perps()));
+        assert_eq!(classify_tx(tx.as_ref(), &perps()), PriorityClass::Other);
     }
 
     // Top-level `Message` variants other than `Execute` are never priority.
-    #[test_case(Message::transfer(perps(), Coins::new()).unwrap() => false ; "case_non_execute_transfer")]
-    #[test_case(Message::upload(vec![0u8; 8])                     => false ; "case_non_execute_upload")]
-    fn priority_tx_non_execute_message(message: Message) -> bool {
+    #[test_case(Message::transfer(perps(), Coins::new()).unwrap() => PriorityClass::Other ; "case_non_execute_transfer")]
+    #[test_case(Message::upload(vec![0u8; 8])                     => PriorityClass::Other ; "case_non_execute_upload")]
+    fn priority_tx_non_execute_message(message: Message) -> PriorityClass {
         let tx = tx_with_messages(vec![message]);
-        is_priority_tx(tx.as_ref(), &perps())
+        classify_tx(tx.as_ref(), &perps())
     }
 
     // A perps Execute message whose payload is not `Trade(...)` is never
     // priority — covers all sibling variants of `ExecuteMsg`.
-    #[test_case(ExecuteMsg::Maintain(MaintainerMsg::Donate {})              => false ; "case_non_trade_maintain")]
-    #[test_case(ExecuteMsg::Vault(VaultMsg::Refresh {})                     => false ; "case_non_trade_vault")]
-    #[test_case(ExecuteMsg::Referral(ReferralMsg::SetReferral {
-        referrer: 1,
-        referee: 2,
-    })                                                                       => false ; "case_non_trade_referral")]
-    fn priority_tx_non_trade_execute_msg(execute_msg: ExecuteMsg) -> bool {
+    #[test_case(ExecuteMsg::Maintain(MaintainerMsg::Donate {})                             => PriorityClass::Other ; "case_non_trade_maintain")]
+    #[test_case(ExecuteMsg::Vault(VaultMsg::Refresh {})                                    => PriorityClass::Other ; "case_non_trade_vault")]
+    #[test_case(ExecuteMsg::Referral(ReferralMsg::SetReferral { referrer: 1, referee: 2 }) => PriorityClass::Other ; "case_non_trade_referral")]
+    fn priority_tx_non_trade_execute_msg(execute_msg: ExecuteMsg) -> PriorityClass {
         let tx = tx_with_messages(vec![
             Message::execute(perps(), &execute_msg, Coins::new()).unwrap(),
         ]);
-        is_priority_tx(tx.as_ref(), &perps())
+        classify_tx(tx.as_ref(), &perps())
     }
 
     #[test]
     fn priority_tx_malformed_bytes() {
         let raw: &[u8] = b"not a tx";
-        assert!(!is_priority_tx(raw, &perps()));
+        assert_eq!(classify_tx(raw, &perps()), PriorityClass::Other);
     }
 
     #[test]
@@ -444,7 +528,7 @@ mod tests {
             credential: Json::null(),
         };
         let raw: Bytes = tx.to_json_vec().unwrap().into();
-        assert!(!is_priority_tx(raw.as_ref(), &perps()));
+        assert_eq!(classify_tx(raw.as_ref(), &perps()), PriorityClass::Other);
     }
 
     // --- promote_priority_txs ----------------------------------------------
@@ -456,9 +540,18 @@ mod tests {
     }
 
     #[test]
-    fn promote_all_priority_unchanged() {
-        let a = perps_tx(vec![cancel_all()]);
+    fn promote_all_placements_unchanged() {
+        let a = perps_tx(vec![submit_post_only()]);
         let b = perps_tx(vec![submit_post_only()]);
+        let c = perps_tx(vec![batch_all_post_only()]);
+        let txs = promote_priority_txs(vec![a.clone(), b.clone(), c.clone()], &perps());
+        assert_eq!(txs, vec![a, b, c]);
+    }
+
+    #[test]
+    fn promote_all_cancels_unchanged() {
+        let a = perps_tx(vec![cancel_all()]);
+        let b = perps_tx(vec![cancel_one()]);
         let c = perps_tx(vec![batch_all_cancel()]);
         let txs = promote_priority_txs(vec![a.clone(), b.clone(), c.clone()], &perps());
         assert_eq!(txs, vec![a, b, c]);
@@ -473,26 +566,60 @@ mod tests {
         assert_eq!(txs, vec![a, b, c]);
     }
 
+    /// Mainnet incident: user broadcasts a placement then a cancel-by-
+    /// client-id, but the proposer's mempool sees them swapped. After
+    /// reordering, the placement must come first so the cancel can find
+    /// the order.
     #[test]
-    fn promote_mixed_preserves_relative_order() {
-        // Input order: P1, N1, P2, N2, P3
-        // Expected output: P1, P2, P3, N1, N2
-        let p1 = perps_tx(vec![cancel_all()]);
-        let n1 = perps_tx(vec![submit_market()]);
-        let p2 = perps_tx(vec![submit_post_only()]);
-        let n2 = perps_tx(vec![deposit()]);
-        let p3 = perps_tx(vec![cancel_one()]);
+    fn promote_mainnet_incident() {
+        let cancel = perps_tx(vec![cancel_one_by_client_id()]);
+        let placement = perps_tx(vec![submit_post_only_with_client_id()]);
+        let txs = promote_priority_txs(vec![cancel.clone(), placement.clone()], &perps());
+        assert_eq!(txs, vec![placement, cancel]);
+    }
+
+    #[test]
+    fn promote_three_way_preserves_relative_order() {
+        // Input:  C1, P1, O1, C2, P2, O2
+        // Expect: P1, P2, C1, C2, O1, O2
+        let p1 = perps_tx(vec![submit_post_only()]);
+        let p2 = perps_tx(vec![batch_all_post_only()]);
+        let c1 = perps_tx(vec![cancel_all()]);
+        let c2 = perps_tx(vec![cancel_one()]);
+        let o1 = perps_tx(vec![submit_market()]);
+        let o2 = perps_tx(vec![deposit()]);
         let txs = promote_priority_txs(
-            vec![p1.clone(), n1.clone(), p2.clone(), n2.clone(), p3.clone()],
+            vec![
+                c1.clone(),
+                p1.clone(),
+                o1.clone(),
+                c2.clone(),
+                p2.clone(),
+                o2.clone(),
+            ],
             &perps(),
         );
-        assert_eq!(txs, vec![p1, p2, p3, n1, n2]);
+        assert_eq!(txs, vec![p1, p2, c1, c2, o1, o2]);
+    }
+
+    /// A mixed-priority tx (one whose messages include both post-only
+    /// placements and cancellations) clusters with the placement bucket.
+    #[test]
+    fn promote_mixed_clusters_with_placements() {
+        let mixed = perps_tx(vec![batch_mixed_priority()]);
+        let pure_cancel = perps_tx(vec![cancel_all()]);
+        let pure_placement = perps_tx(vec![submit_post_only()]);
+        let txs = promote_priority_txs(
+            vec![mixed.clone(), pure_cancel.clone(), pure_placement.clone()],
+            &perps(),
+        );
+        assert_eq!(txs, vec![mixed, pure_placement, pure_cancel]);
     }
 
     #[test]
     fn promote_single_priority_among_non_priority() {
         let n1 = perps_tx(vec![submit_market()]);
-        let p = perps_tx(vec![cancel_all()]);
+        let p = perps_tx(vec![submit_post_only()]);
         let n2 = perps_tx(vec![withdraw()]);
         let txs = promote_priority_txs(vec![n1.clone(), p.clone(), n2.clone()], &perps());
         assert_eq!(txs, vec![p, n1, n2]);
