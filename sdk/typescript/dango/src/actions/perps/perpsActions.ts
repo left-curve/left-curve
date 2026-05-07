@@ -134,12 +134,6 @@ import {
 } from "./queries/getFeeRateOverride.js";
 
 import {
-  type GetVaultSnapshotsParameters,
-  type GetVaultSnapshotsReturnType,
-  getVaultSnapshots,
-} from "./queries/getVaultSnapshots.js";
-
-import {
   type VaultAddLiquidityParameters,
   type VaultAddLiquidityReturnType,
   vaultAddLiquidity,
@@ -190,7 +184,6 @@ export type PerpsQueryActions = {
   getPerpsVaultState: (args?: GetPerpsVaultStateParameters) => GetPerpsVaultStateReturnType;
   getVaultSnapshots: (args?: GetVaultSnapshotsParameters) => GetVaultSnapshotsReturnType;
   getFeeRateOverride: (args: GetFeeRateOverrideParameters) => GetFeeRateOverrideReturnType;
-  getVaultSnapshots: (args?: GetVaultSnapshotsParameters) => GetVaultSnapshotsReturnType;
 };
 
 export function perpsQueryActions<transport extends Transport = Transport>(
@@ -213,7 +206,6 @@ export function perpsQueryActions<transport extends Transport = Transport>(
     getPerpsVaultState: (args) => getPerpsVaultState(client, args),
     getVaultSnapshots: (args) => getVaultSnapshots(client, args),
     getFeeRateOverride: (args) => getFeeRateOverride(client, args),
-    getVaultSnapshots: (args) => getVaultSnapshots(client, args),
   };
 }
 
