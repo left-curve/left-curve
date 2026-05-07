@@ -10,7 +10,7 @@ import {
 import * as Sentry from "@sentry/react";
 import { Modals, useApp } from "@left-curve/applets-kit";
 import { createPortal } from "react-dom";
-import { Maintenance } from "~/components/foundation/Maintenance";
+import { ErrorPage } from "~/components/foundation/ErrorPage";
 
 import type { RouterContext } from "~/app.router";
 
@@ -79,11 +79,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       </>
     );
   },
-  errorComponent: ({ error }) => {
-    useEffect(() => {
-      Sentry.captureException(error);
-    }, []);
-
-    return <Maintenance />;
+  errorComponent: ({ error, reset }) => {
+    return <ErrorPage error={error} reset={reset} />;
   },
 });
