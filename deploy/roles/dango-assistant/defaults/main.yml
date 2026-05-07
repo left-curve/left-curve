@@ -1,0 +1,11 @@
+---
+dango_assistant_dir: "{{ deploy_home }}/dango-assistant"
+dango_assistant_image: "ghcr.io/left-curve/dango-assistant"
+dango_assistant_tag: "latest"
+dango_assistant_container_name: "dango-assistant-mainnet"
+
+# Required secrets — define in group_vars/dango-assistant/vault.yml:
+#   dango_assistant_ghcr_user
+#   dango_assistant_ghcr_token
+#   dango_assistant_discord_token
+#   dango_assistant_claude_oauth_token
