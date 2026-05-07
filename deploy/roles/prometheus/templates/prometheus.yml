@@ -37,6 +37,7 @@ scrape_configs:
       - targets: ['hetzner4:8888']
       - targets: ['inter1:8888']
       - targets: ['inter2:8888']
+      - targets: ['hetzner5:8888']
 
   - job_name: 'alertmanager'
     static_configs:
@@ -60,6 +61,7 @@ scrape_configs:
         - 'hetzner2:9100'
         - 'hetzner3:9100'
         - 'hetzner4:9100'
+        - 'hetzner5:9100'
         - 'inter1:9100'
         - 'inter2:9100'
     relabel_configs:
@@ -82,6 +84,7 @@ scrape_configs:
         - 'hetzner2:9101'
         - 'hetzner3:9101'
         - 'hetzner4:9101'
+        - 'hetzner5:9101'
         - 'inter1:9101'
         - 'inter2:9101'
     relabel_configs:
@@ -129,6 +132,7 @@ scrape_configs:
       - targets: ['hetzner2:9080']
       - targets: ['hetzner3:9080']
       - targets: ['hetzner4:9080']
+      - targets: ['hetzner5:9080']
       - targets: ['inter1:9080']
       - targets: ['inter2:9080']
     relabel_configs:
@@ -275,6 +279,12 @@ scrape_configs:
           environment: 'production'
           network: 'system'
           dango_network: 'system'
+      # - targets: ['hetzner5:9126']
+      #   labels:
+      #     service: 'clickhouse'
+      #     environment: 'production'
+      #     network: 'system'
+      #     dango_network: 'system'
 
   - job_name: 'postgres'
     static_configs:
@@ -326,6 +336,12 @@ scrape_configs:
           environment: 'production'
           network: 'system'
           dango_network: 'system'
+      # - targets: ['hetzner5:9187']
+      #   labels:
+      #     service: 'postgres'
+      #     environment: 'production'
+      #     network: 'system'
+      #     dango_network: 'system'
 
   - job_name: 'dango'
     static_configs:
@@ -353,6 +369,12 @@ scrape_configs:
           environment: 'production'
           network: 'mainnet'
           dango_network: 'mainnet'
+      # - targets: ['hetzner5:8033']
+      #   labels:
+      #     service: 'dango'
+      #     environment: 'production'
+      #     network: 'mainnet'
+      #     dango_network: 'mainnet'
       - targets: ['hetzner2:8053']
         labels:
           service: 'dango'
@@ -400,6 +422,11 @@ scrape_configs:
           environment: 'production'
           network: 'mainnet'
           dango_network: 'mainnet'
+      # - targets: ['hetzner5:46660']
+      #   labels:
+      #     environment: 'production'
+      #     network: 'mainnet'
+      #     dango_network: 'mainnet'
       - targets: ['ovh1:26660']
         labels:
           environment: 'production'
