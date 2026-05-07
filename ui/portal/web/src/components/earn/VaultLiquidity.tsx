@@ -10,6 +10,7 @@ import {
   WarningContainer,
   createContext,
   numberMask,
+  twMerge,
   useApp,
   useInputs,
 } from "@left-curve/applets-kit";
@@ -20,6 +21,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 import { UserWithdrawals } from "./UserWithdrawals";
+import { VaultPerformanceChart } from "./VaultPerformanceChart";
 
 const [VaultLiquidityProvider, useVaultLiquidity] = createContext<{
   state: ReturnType<typeof useVaultLiquidityState>;
@@ -51,19 +53,22 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   return (
     <VaultLiquidityProvider value={{ state, controllers }}>
       <div
-        className={`w-full mx-auto flex flex-col pt-6 mb-16 gap-4 px-4 md:px-0 ${
-          isLoggedIn ? "md:max-w-[50rem]" : "md:max-w-[25rem]"
-        }`}
+        className={twMerge(
+          "w-full mx-auto flex flex-col pt-6 mb-16 gap-4 lg:gap-12 px-4 md:px-0",
+          "md:max-w-[56rem]",
+        )}
       >
         <MobileTitle title={m["vaultLiquidity.title"]()} />
         <VaultLiquidityHeader />
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          <div className="flex flex-col gap-4 w-full md:max-w-[25rem]">{children}</div>
-          {isLoggedIn && (
-            <div className="flex flex-col gap-4 w-full md:max-w-[24rem]">
-              <UserPosition />
-            </div>
-          )}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+          <div className="flex flex-col gap-4 w-full md:hidden">{children}</div>
+
+          <div className="flex flex-col gap-4 w-full md:w-[55%]">
+            {isLoggedIn && <UserPosition />}
+            <VaultPerformanceChart />
+          </div>
+
+          <div className="hidden md:flex flex-col gap-4 w-full md:w-[45%]">{children}</div>
         </div>
       </div>
     </VaultLiquidityProvider>

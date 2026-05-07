@@ -177,6 +177,7 @@ export type {
   TriggerDirection,
   ChildOrder,
   ConditionalOrder,
+  VaultSnapshot,
 } from "./perps.js";
 
 export type {

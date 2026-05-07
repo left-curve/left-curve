@@ -17,8 +17,9 @@ const COLOR_STYLES = {
     icon: "text-utility-warning-600",
   },
   error: {
-    container: "bg-surface-secondary-red text-ink-secondary-red border border-outline-primary-red",
-    icon: "text-ink-secondary-red",
+    container:
+      "bg-surface-secondary-red text-primitives-red-light-500 border border-outline-primary-red",
+    icon: "text-primitives-red-light-500",
   },
 } as const;
 
@@ -33,7 +34,7 @@ export const WarningContainer: React.FC<WarningContainerProps> = ({
   return (
     <div
       className={twMerge(
-        "rounded-xl diatype-sm-regular py-2 px-3 flex gap-2",
+        "rounded-xl diatype-sm-regular py-2 px-3 flex gap-2 ",
         styles.container,
         className,
       )}

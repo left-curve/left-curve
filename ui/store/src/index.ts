@@ -186,6 +186,12 @@ export {
 export { usePerpsVaultUserShares } from "./hooks/usePerpsVaultUserShares.js";
 
 export {
+  type VaultPerformancePoint,
+  type VaultPerformancePeriod,
+  useVaultSnapshots,
+} from "./hooks/useVaultSnapshots.js";
+
+export {
   type UsePairStatsParameters,
   type UseAllPairStatsParameters,
   type NormalizedPairStats,
