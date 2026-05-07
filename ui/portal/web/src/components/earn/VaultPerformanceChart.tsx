@@ -45,7 +45,7 @@ function ChartTooltip({
     <div className="bg-surface-primary-rice border border-outline-secondary-gray rounded-lg p-3 shadow-lg">
       <p className="diatype-xs-medium text-ink-tertiary-500 mb-1">{formatFullDate(data.date)}</p>
       <p className="diatype-sm-medium">
-        <span className="text-utility-warning-600">{m["vaultLiquidity.price"]()}:</span>{" "}
+        <span className="text-primitives-rice-light-500">{m["vaultLiquidity.price"]()}:</span>{" "}
         <FormattedNumber number={data.sharePrice.toString()} as="span" className="text-ink-secondary-700" />
       </p>
       <p className="diatype-sm-medium">
@@ -146,7 +146,7 @@ export function VaultPerformanceChart() {
         </div>
       ) : data.length === 0 ? (
         <div className="flex items-center justify-center h-[200px] text-ink-tertiary-500 diatype-sm-regular">
-          No data available
+          {m["vaultLiquidity.noData"]()}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={200}>

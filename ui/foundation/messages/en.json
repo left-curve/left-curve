@@ -876,6 +876,7 @@
     "dailyLoss": "Daily loss",
     "price": "Price",
     "dailyChange": "Daily change",
+    "noData": "No data available",
     "modal": {
       "addLiquidity": "Add Liquidity",
       "depositing": "Depositing",
