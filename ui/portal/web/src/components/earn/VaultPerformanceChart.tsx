@@ -127,7 +127,7 @@ export function VaultPerformanceChart() {
           <span>{m["vaultLiquidity.price"]()}</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-[2px] bg-[#AFB244] border-[0.5px] border-[#D2D184]" />
+          <div className="w-3 h-3 rounded-[2px] bg-primitives-green-light-500 border-[0.5px] border-primitives-green-light-300" />
           <span>{m["vaultLiquidity.dailyGain"]()}</span>
         </div>
         <div className="flex items-center gap-1">
@@ -192,12 +192,12 @@ export function VaultPerformanceChart() {
                   key={`bar-${index}`}
                   fill={
                     entry.dailyChange >= 0
-                      ? "#AFB244"
+                      ? "var(--color-primitives-green-light-500, #AFB244)"
                       : "var(--color-primitives-red-light-500, #E54E6B)"
                   }
                   stroke={
                     entry.dailyChange >= 0
-                      ? "#D2D184"
+                      ? "var(--color-primitives-green-light-300, #D2D184)"
                       : "var(--color-primitives-red-light-300, #F9A9B2)"
                   }
                   strokeWidth={0.5}
