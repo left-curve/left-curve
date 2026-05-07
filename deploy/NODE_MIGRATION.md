@@ -190,17 +190,19 @@ Six transfers run via `sudo rsync` on `debian@source`.
 
 - `--rsync-path='sudo rsync'` makes the receiving rsync also run as root, so it can write into target's root-owned cometbft dirs (and source's `-a` preserves root ownership of the rsynced files). Paths are absolute (`/home/deploy/...` rather than `~`) because sudo resets `HOME` to root's, and the SSH user on target is debian — neither expands to `/home/deploy`.
 
+- `--mkpath` lets rsync create missing parent directories on target. Without it, transfers fail because `/home/deploy/deployments/`, `/home/deploy/mainnet/<deploy>/`, `/home/deploy/psql/`, and `/home/deploy/clickhouse/` don't exist on a fresh host yet — they're only created during the infra deploys in step 6, which run _after_ this rsync.
+
 - `--info=progress2` shows a per-rsync progress line: `<bytes> <pct>%  <speed>  <eta>  (xfr#N, ir-chk=K/M)` — `xfr#N` is files transferred so far, `ir-chk=K/M` is remaining-to-check / total-discovered-so-far (the total grows as rsync recurses). For an accurate total upfront, add `--no-inc-recursive` (rsync enumerates everything before transferring, which adds wall time on large dirs). With non-TTY stdout (we're writing to a log), rsync emits one line per progress update instead of `\r`-overwriting, so the log scrolls cleanly.
 
 ```bash
 # 1. mainnet.json pointer.
-ssh debian@$SOURCE_IP "sudo rsync -aH \
+ssh debian@$SOURCE_IP "sudo rsync -aH --mkpath \
   -e 'ssh -i /home/debian/.ssh/migrate_key' \
   --rsync-path='sudo rsync' \
   /home/deploy/deployments/mainnet.json debian@$TARGET_IP:/home/deploy/deployments/mainnet.json"
 
 # 2. orchestration dir for the current deployment (compose file + .env).
-ssh debian@$SOURCE_IP "sudo rsync -aHv --delete \
+ssh debian@$SOURCE_IP "sudo rsync -aHv --mkpath --delete \
   -e 'ssh -i /home/debian/.ssh/migrate_key' \
   --rsync-path='sudo rsync' \
   /home/deploy/deployments/$DEPLOY/ debian@$TARGET_IP:/home/deploy/deployments/$DEPLOY/"
@@ -208,7 +210,7 @@ ssh debian@$SOURCE_IP "sudo rsync -aHv --delete \
 # 3. mainnet data: cometbft state + dango app state. Excludes the indexer block archive
 # and the validator-identity files.
 ssh debian@$SOURCE_IP "
-  nohup sudo rsync -aH --info=progress2 --delete \
+  nohup sudo rsync -aH --mkpath --info=progress2 --delete \
     -e 'ssh -i /home/debian/.ssh/migrate_key -o StrictHostKeyChecking=accept-new' \
     --rsync-path='sudo rsync' \
     --exclude=cometbft/config/priv_validator_key.json \
@@ -221,7 +223,7 @@ ssh debian@$SOURCE_IP "
 # 4. dango indexer block archive — hundreds of GB of small files. Slow due to per-file
 # rsync overhead. Does not block restarting the chain — can be done at a later time.
 ssh debian@$SOURCE_IP "
-  nohup sudo rsync -aH --info=progress2 --delete \
+  nohup sudo rsync -aH --mkpath --info=progress2 --delete \
     -e 'ssh -i /home/debian/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
     $DATA_DIR/dango/indexer/blocks/ debian@$TARGET_IP:$DATA_DIR/dango/indexer/blocks/ \
@@ -230,7 +232,7 @@ ssh debian@$SOURCE_IP "
 
 # 5. postgres data.
 ssh debian@$SOURCE_IP "
-  nohup sudo rsync -aH --info=progress2 --delete \
+  nohup sudo rsync -aH --mkpath --info=progress2 --delete \
     -e 'ssh -i /home/debian/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
     /home/deploy/psql/data/ debian@$TARGET_IP:/home/deploy/psql/data/ \
@@ -239,7 +241,7 @@ ssh debian@$SOURCE_IP "
 
 # 6. clickhouse data.
 ssh debian@$SOURCE_IP "
-  nohup sudo rsync -aH --info=progress2 --delete \
+  nohup sudo rsync -aH --mkpath --info=progress2 --delete \
     -e 'ssh -i /home/debian/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
     /home/deploy/clickhouse/data/ debian@$TARGET_IP:/home/deploy/clickhouse/data/ \
@@ -403,10 +405,6 @@ This is the slashable step — the validator key must exist on **exactly one** r
 > **Do not skip `priv_validator_state.json`.** Skipping it is the textbook double-sign mistake.
 
 ```bash
-# Re-capture if you've started a fresh shell since step 0.
-DEPLOY=$(ssh deploy@$SOURCE_IP 'jq -r .current_deployment ~/deployments/mainnet.json')
-DATA_DIR=$(ssh deploy@$SOURCE_IP "dirname \$(grep '^COMETBFT_DIRECTORY=' ~/deployments/$DEPLOY/.env | cut -d= -f2)")
-
 # 8a. priv_validator_key.json: source → target via the migrate_key from step 3 so the
 # validator private key never transits through your laptop. sudo on both ends because the
 # files are root-owned 0600. -a preserves the 0600 file mode.
