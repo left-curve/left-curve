@@ -2,7 +2,7 @@
 
 Step-by-step runbook for moving an existing mainnet validator role from one server to another. The **source** server is currently running the chain (validating, hosting traefik/cloudflared/postgres/clickhouse, running its hyperlane validator instance, etc.). The **target** server has finished [`NEW_SERVER_SETUP.md`](NEW_SERVER_SETUP.md) — i.e. it's on the tailnet, in the WireGuard mesh, has the deploy user and Docker, and is running node-exporter + promtail, but has no application services yet.
 
-The objective is to move all chain data, indexer state, and the validator identity from source to target with minimal disruption to mainnet.
+The objective is to move all chain data, indexer state, and the validator identity from source to target with minimal disruption to mainnet. The other 3 mainnet validators are not touched during the migration — they keep running with their current config. Target inherits source's cometbft p2p identity (via the rsynced `node_key.json`), so once target comes online the rest of the fleet talks to it without any peer-list reconfiguration.
 
 ## Prerequisites
 
@@ -11,34 +11,11 @@ The objective is to move all chain data, indexer state, and the validator identi
 - **Source and target hostnames** (e.g. `inter1`, `hetzner5`).
 - **Vault access** and keys in agent (`just add-deploy-key && just add-debian-key`).
 - **Disk space on target**: at least 1.5× the sum of source's `~/mainnet/`, `~/psql/data/`, and `~/clickhouse/data/`. Run `ssh deploy@<source IP> 'du -sh ~/mainnet ~/psql/data ~/clickhouse/data'` to check.
-- **Time window**: budget ~60–90 minutes. Source is offline for the duration of steps 1, 5–10. The chain runs on 3/4 quorum during that window — every block is slower because source's proposer slot times out, and a single additional validator failure halts consensus.
+- **Time window**: budget ~60–90 minutes. Source is offline from step 3 onward; the chain runs on 3/4 quorum during that window, with source's proposer slot timing out every ~4 blocks.
 
 All commands assume `deploy/` is your working directory. Ansible runs through `uv`.
 
-## Step 1. Stop all services on source
-
-Stop dango + cometbft via the existing playbook (`just stop-mainnet`'s `--limit` is hardcoded for the full validator set, so call ansible directly to scope to source). Then stop postgres and clickhouse — no playbook covers stop for those.
-
-```bash
-uv run ansible-playbook stop-services.yml -e dango_network=mainnet --limit <source IP>
-ssh deploy@<source IP> 'cd ~/psql && docker compose stop'
-ssh deploy@<source IP> 'cd ~/clickhouse && docker compose stop'
-```
-
-> [!NOTE]
-> Source remains in inventory and Justfile for now — we still need ansible-playbook to know how to reach it for the stop above. We'll remove it in step 2 once everything that touches source via ansible is done.
-
-**Verify**:
-
-```bash
-ssh deploy@<source IP> 'docker ps --format "{{.Names}}"'
-```
-
-Expected: empty (or only `node-exporter` / `promtail`, which we leave running until step 12).
-
-The rest of the fleet should now be on 3/4 validator quorum. Check Grafana: blocks still being produced, just slower (proposer times out every ~4 blocks until handover completes).
-
-## Step 2. Update inventory, host_vars, and Justfile
+## Step 1. Update inventory, host_vars, and Justfile
 
 Swap source out, target in. From here on, source is reached only by direct SSH; ansible no longer knows about it.
 
@@ -52,8 +29,8 @@ Swap source out, target in. From here on, source is reached only by direct SSH; 
    ```
 
 3. Delete `host_vars/<source IP>.yml`.
-4. Edit `Justfile`: in the four mainnet recipes (`deploy-mainnet`, `stop-mainnet`, `restart-mainnet`, `remove-deploy-lock-mainnet`), replace `<source IP>` with `<target IP>` in `--limit`.
-5. Edit `deploy-hyperlane-mainnet`: replace the `validator <source IP> 1` line with `validator <target IP> 1`.
+4. Edit `Justfile`: in the four mainnet recipes (`deploy-mainnet`, `stop-mainnet`, `restart-mainnet`, `remove-deploy-lock-mainnet`), replace `<source IP>` with `<target IP>` in each `--limit` list.
+5. Edit `deploy-hyperlane-mainnet`: replace `validator <source IP> 1` with `validator <target IP> 1`.
 
 **Verify**:
 
@@ -62,7 +39,7 @@ grep -c "<source IP>" inventory Justfile host_vars/  # should print 0 each
 grep "<target IP>" inventory                          # should print one line per group
 ```
 
-## Step 3. Deploy infrastructure services on target
+## Step 2. Deploy infrastructure services on target
 
 Postgres, ClickHouse, Traefik, Cloudflared, and Dozzle each have their own playbook. Run them all with `--limit <target IP>` so the existing fleet hosts are left alone.
 
@@ -82,6 +59,28 @@ ssh deploy@<target IP> 'docker ps --format "{{.Names}}" | sort'
 
 Expected: includes `postgres`, `postgres-exporter`, `clickhouse`, `traefik`, `dozzle`, and one `cloudflared-…` container. (The cloudflared container name varies by tunnel ID.)
 
+## Step 3. Stop all services on source
+
+Source is no longer needed for consensus from this point — it just hosts data we're about to copy off. Stop everything to make the data quiescent for rsync. Use direct `docker compose` because step 1 removed source from inventory.
+
+```bash
+ssh deploy@<source IP> 'cd ~/deployments && \
+  DEPLOY=$(jq -r .current_deployment mainnet.json) && \
+  docker compose -p "$DEPLOY" -f "$DEPLOY/docker-compose.yml" stop'
+ssh deploy@<source IP> 'cd ~/psql       && docker compose stop'
+ssh deploy@<source IP> 'cd ~/clickhouse && docker compose stop'
+```
+
+**Verify**:
+
+```bash
+ssh deploy@<source IP> 'docker ps --format "{{.Names}}"'
+```
+
+Expected: empty (or only `node-exporter` / `promtail`, which we leave running until step 12).
+
+The rest of the fleet is now on 3/4 validator quorum. Check Grafana: blocks still being produced, just slower because the proposer slot of `<source>` will time out every ~4 blocks. (PR #1983 already reduced these timeouts; this is the budget the runbook spends.)
+
 ## Step 4. Set up temporary SSH from source to target
 
 The deploy user's private key only exists encrypted in the vault, so we generate a one-shot ed25519 keypair on source for the rsync transfer in step 6. The comment `node-migrate-temp` makes it easy to remove from target's `authorized_keys` in step 12.
@@ -100,12 +99,12 @@ ssh deploy@<source IP> 'ssh -i ~/.ssh/migrate_key -o StrictHostKeyChecking=accep
 
 Expected: prints target's hostname.
 
-## Step 5. Stop postgres and clickhouse on target
+## Step 5. Stop postgres + clickhouse on target
 
-Step 3 left them running; rsync needs a quiescent data directory.
+Step 2 left them running; rsync needs a quiescent target.
 
 ```bash
-ssh deploy@<target IP> 'cd ~/psql && docker compose stop'
+ssh deploy@<target IP> 'cd ~/psql       && docker compose stop'
 ssh deploy@<target IP> 'cd ~/clickhouse && docker compose stop'
 ```
 
@@ -117,60 +116,95 @@ ssh deploy@<target IP> 'docker ps --format "{{.Names}}" | grep -E "postgres|clic
 
 Expected: empty.
 
-## Step 6. Rsync chain and database data from source to target
+## Step 6. Initialize target's cometbft dir, then rsync chain and database data
 
-Four directories to copy. The cometbft rsync excludes the three validator-identity files — those move separately in step 9 to ensure the validator key exists on exactly one node at every point in time.
+Four directories to copy, plus one preparatory `cometbft init` on target. The init creates a non-validator `priv_validator_key.json` + a fresh `priv_validator_state.json` (height 0) — both of which the subsequent rsync deliberately leaves in place via excludes. (We need them present to keep the deploy's `cometbft_keys.yml` happy in step 8: that role's `cometbft init` shim is gated on `node_key.json` existing, not on `priv_validator_key.json` existing, so without this pre-init the validator key wouldn't get generated and cometbft would refuse to start.)
+
+`node_key.json` (the p2p identity) **is** overwritten by the rsync: target inherits source's network identity so the other validators' `addrbook` keeps trusting the same `cometbft_node_id`.
+
+Capture source's deployment timestamp once — used in this step and again in step 9.
+
+```bash
+SRC_DEPLOY=$(ssh deploy@<source IP> 'jq -r .current_deployment ~/deployments/mainnet.json')
+echo "$SRC_DEPLOY"
+```
+
+### 6a. Pre-initialize target's cometbft directory
+
+```bash
+ssh deploy@<target IP> "mkdir -p ~/mainnet/$SRC_DEPLOY/cometbft && \
+  docker run --rm \
+  -v ~/mainnet/$SRC_DEPLOY/cometbft:/root/.cometbft \
+  ghcr.io/left-curve/left-curve/cometbft:v0.38.21 \
+  cometbft init --home /root/.cometbft"
+```
+
+After this, target has:
+
+- `config/node_key.json` — target's, will be overwritten by rsync below.
+- `config/priv_validator_key.json` — target's, **non-validator** key. Stays through rsync; gets overwritten by source's actual validator key in step 9.
+- `config/genesis.json`, `config/config.toml` — target's defaults; rsync overwrites both.
+- `data/priv_validator_state.json` — `{"height":"0",...}`. Stays through rsync; gets overwritten in step 9.
+
+### 6b. Rsync data from source to target
 
 Run from your laptop; each command opens an SSH session on source which then rsyncs to target via the temporary key from step 4.
 
 ```bash
-# 6a. cometbft (block store, addrbook, wal) — exclude validator identity files
+# cometbft (block store, addrbook, wal, source's node_key) — `--exclude` protects target's
+# freshly-init'd priv_validator_key.json and priv_validator_state.json from BOTH being copied
+# and being deleted (`--delete` honors the exclude list — see rsync(1) on `--delete-excluded`).
 ssh deploy@<source IP> 'rsync -aHv --delete \
   -e "ssh -i ~/.ssh/migrate_key -o StrictHostKeyChecking=accept-new" \
   --exclude=cometbft/config/priv_validator_key.json \
-  --exclude=cometbft/config/node_key.json \
   --exclude=cometbft/data/priv_validator_state.json \
   ~/mainnet/ deploy@<target IP>:~/mainnet/'
 
-# 6b. ~/deployments/ — orchestration metadata + .env. Target's next deploy (step 8) reads
+# ~/deployments/ — orchestration metadata + .env. Target's next deploy (step 8) reads
 # POSTGRES_DATABASE, CLICKHOUSE_DATABASE, DANGO_DIRECTORY, COMETBFT_DIRECTORY out of the rsynced .env
-# via read_current_deploy.yml. HOSTNAME/WIREGUARD_IP/TAILSCALE_IP get re-templated by the deploy
-# (no need to edit them here).
+# via read_current_deploy.yml. HOSTNAME/WIREGUARD_IP/TAILSCALE_IP get re-templated by the deploy.
 ssh deploy@<source IP> 'rsync -aHv --delete \
   -e "ssh -i ~/.ssh/migrate_key" \
   ~/deployments/ deploy@<target IP>:~/deployments/'
 
-# 6c. postgres (indexer state)
+# postgres (indexer state)
 ssh deploy@<source IP> 'rsync -aHv --delete \
   -e "ssh -i ~/.ssh/migrate_key" \
   ~/psql/data/ deploy@<target IP>:~/psql/data/'
 
-# 6d. clickhouse (analytics)
+# clickhouse (analytics)
 ssh deploy@<source IP> 'rsync -aHv --delete \
   -e "ssh -i ~/.ssh/migrate_key" \
   ~/clickhouse/data/ deploy@<target IP>:~/clickhouse/data/'
 ```
 
-**Verify**:
+**Verify** that source's data is on target, and that target's freshly-init'd validator-identity files survived:
 
 ```bash
-SRC_DEPLOY=$(ssh deploy@<source IP> 'jq -r .current_deployment ~/deployments/mainnet.json')
 ssh deploy@<target IP> "ls ~/mainnet/$SRC_DEPLOY/cometbft/config/"
+ssh deploy@<target IP> "ls ~/mainnet/$SRC_DEPLOY/cometbft/data/"
 ```
 
-Expected: lists `addrbook.json`, `app.toml`, `config.toml`, `genesis.json` — but **not** `priv_validator_key.json` or `node_key.json` (those were excluded).
+Expected: `config/` includes `node_key.json`, `priv_validator_key.json`, `genesis.json`, `app.toml`, `config.toml`, `addrbook.json`. `data/` includes `priv_validator_state.json` plus the cometbft block-store files (`blockstore.db`, `state.db`, `cs.wal/`, etc.).
+
+Confirm the target's `node_key.json` matches source's:
 
 ```bash
-ssh deploy@<target IP> "ls ~/mainnet/$SRC_DEPLOY/cometbft/data/" | grep -v priv_validator_state.json
-ssh deploy@<target IP> "du -sh ~/mainnet/$SRC_DEPLOY/cometbft/data ~/mainnet/$SRC_DEPLOY/dango/data ~/psql/data ~/clickhouse/data"
+ssh deploy@<source IP> "cd ~/deployments && \
+  DEPLOY=\$(jq -r .current_deployment mainnet.json) && \
+  docker compose -p \$DEPLOY exec cometbft cometbft show-node-id"
+ssh deploy@<target IP> "docker run --rm \
+  -v ~/mainnet/$SRC_DEPLOY/cometbft:/root/.cometbft \
+  ghcr.io/left-curve/left-curve/cometbft:v0.38.21 \
+  cometbft show-node-id --home /root/.cometbft"
 ```
 
-Expected: data sizes roughly match source.
+Expected: same id printed by both.
 
-## Step 7. Restart postgres and clickhouse on target
+## Step 7. Restart postgres + clickhouse on target
 
 ```bash
-ssh deploy@<target IP> 'cd ~/psql && docker compose start'
+ssh deploy@<target IP> 'cd ~/psql       && docker compose start'
 ssh deploy@<target IP> 'cd ~/clickhouse && docker compose start'
 ```
 
@@ -186,30 +220,30 @@ Expected: `postgres`, `postgres-exporter`, `clickhouse` all show `(healthy)` aft
 ssh deploy@<target IP> "docker exec postgres psql -U postgres -lqt | grep dango_$SRC_DEPLOY"
 ```
 
-Expected: lists the database `dango_<source-deployment>` (rsynced from source). Target's next deploy will read this name from the rsynced `.env` and connect dango to it.
+Expected: lists the database `dango_<source-deployment>` (rsynced from source).
 
-## Step 8. Deploy mainnet (target + 3 other validators)
+## Step 8. First mainnet deploy on target
 
-This is target's first dango+cometbft deploy. It also re-templates configs on the other three validators — they pick up target's node ID into their `persistent_peers` and drop source.
+Run the full-app play scoped to target only, with `-e cometbft_peers=<the 3 healthy IPs>` so target's `persistent_peers` lists them by their actual node IDs. Target dials them; they accept inbound (cometbft's addrbook is non-strict) and PEX gossips target's identity through the cluster.
+
+`just deploy-mainnet` won't work here because its `--limit` is hardcoded for the full validator set. Run `ansible-playbook` directly:
 
 ```bash
-just deploy-mainnet
+mkdir -p logs && uv run ansible-playbook full-app.yml \
+  -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
+  -e cometbft_peers=100.126.8.2,100.66.234.16,100.76.197.30 \
+  --limit <target IP> \
+  2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-target.log
 ```
-
-> [!WARNING]
-> **Brief consensus pause during deploy.**
->
-> The play runs in parallel; cometbft restarts on all four nodes within a few seconds of each other. Quorum is briefly lost. A single missed block is normal; sustained halt means a container is stuck somewhere — check Grafana and `docker logs`.
 
 What happens on target during this play:
 
+- `prep_after_lock.yml` sees `cometbft_peers` is supplied. It looks up each external peer's `cometbft_node_id` via `delegate_to: <peer>` running `docker compose -p $DEPLOY exec cometbft cometbft show-node-id`. The 3 healthy validators are running, so all three fetches succeed. `persistent_peers` is built with all three siblings.
 - `read_current_deploy.yml` reads `~/deployments/mainnet.json` (rsynced from source) and pulls `DANGO_DIRECTORY`, `COMETBFT_DIRECTORY`, `POSTGRES_DATABASE`, `CLICKHOUSE_DATABASE` from source's `.env` — so target's dango talks to the rsynced data and rsynced databases.
-- `cometbft_keys.yml` finds no `priv_validator_key.json` (we excluded it in step 6) → generates a fresh **non-validator** keypair (own node_key.json + a new priv_validator_key.json that is _not_ in the validator set). Target joins as a regular full node.
-- The play's `check_cometbft_sync.yml` waits for target to sync to head and to have 3 peers (the other validators); it'll fail the deploy if either condition isn't met within ~5 minutes.
+- `cometbft_keys.yml` finds `priv_validator_key.json` already present (from step 6a's manual init) — its `when: not validator_private_key_exists` short-circuits the entire `Generate CometBFT keys` task. `node_key.json` (rsynced from source, with source's id) and `priv_validator_key.json` (target's freshly-init'd non-validator key) are both read by the subsequent `show-node-id` / `show-validator` tasks and surface as facts.
+- The play's `check_cometbft_sync.yml` waits for target to sync to head and to have `>= 3` peers; it'll fail the deploy if those don't happen within ~5 minutes.
 
 **Verify**:
-
-Mainnet runs with `expose_ports: false`, so cometbft RPC is **not** bound to the host's localhost — query it inside the container, with `jq` on your laptop:
 
 ```bash
 ssh deploy@<target IP> \
@@ -227,7 +261,7 @@ ssh deploy@<target IP> \
   | jq .result.n_peers
 ```
 
-Expected: `3` (the other three mainnet validators).
+Expected: `3` (the three healthy mainnet validators).
 
 ## Step 9. Validator key + state handover
 
@@ -241,46 +275,47 @@ This is the slashable step — the validator key must exist on **exactly one** r
 
 ```bash
 SRC_DEPLOY=$(ssh deploy@<source IP> 'jq -r .current_deployment ~/deployments/mainnet.json')
-TGT_DEPLOY=$(ssh deploy@<target IP> 'jq -r .current_deployment ~/deployments/mainnet.json')
 
 # 9a. priv_validator_key.json: source → target (pipe via your laptop)
 ssh deploy@<source IP> "cat ~/mainnet/$SRC_DEPLOY/cometbft/config/priv_validator_key.json" \
-  | ssh deploy@<target IP> "cat > ~/mainnet/$TGT_DEPLOY/cometbft/config/priv_validator_key.json && chmod 600 ~/mainnet/$TGT_DEPLOY/cometbft/config/priv_validator_key.json"
+  | ssh deploy@<target IP> "cat > ~/mainnet/$SRC_DEPLOY/cometbft/config/priv_validator_key.json && chmod 600 ~/mainnet/$SRC_DEPLOY/cometbft/config/priv_validator_key.json"
 
 # 9b. priv_validator_state.json: source → target
 ssh deploy@<source IP> "cat ~/mainnet/$SRC_DEPLOY/cometbft/data/priv_validator_state.json" \
-  | ssh deploy@<target IP> "cat > ~/mainnet/$TGT_DEPLOY/cometbft/data/priv_validator_state.json && chmod 600 ~/mainnet/$TGT_DEPLOY/cometbft/data/priv_validator_state.json"
+  | ssh deploy@<target IP> "cat > ~/mainnet/$SRC_DEPLOY/cometbft/data/priv_validator_state.json && chmod 600 ~/mainnet/$SRC_DEPLOY/cometbft/data/priv_validator_state.json"
 
 # 9c. Delete the key on source (so source can never sign again, even if started)
 ssh deploy@<source IP> "rm ~/mainnet/$SRC_DEPLOY/cometbft/config/priv_validator_key.json"
 ```
 
 > [!NOTE]
-> `$TGT_DEPLOY` will equal `$SRC_DEPLOY` — target inherited source's deployment timestamp via the rsynced `mainnet.json` in step 6. The `du` paths are the same on both sides.
+> Target's deployment paths are the same as source's — target inherited source's `~/deployments/mainnet.json` and `.env` via the step 6 rsync, so `$SRC_DEPLOY` is the directory name on both sides.
 
 **Verify**:
 
 ```bash
-# the file is gone on source:
 ssh deploy@<source IP> "ls ~/mainnet/$SRC_DEPLOY/cometbft/config/priv_validator_key.json" 2>&1
 # expected: "No such file or directory"
 
-# the validator address on target now matches what source's was:
-ssh deploy@<target IP> "docker run --rm -v ~/mainnet/$TGT_DEPLOY/cometbft:/root/.cometbft \
+ssh deploy@<target IP> "docker run --rm \
+  -v ~/mainnet/$SRC_DEPLOY/cometbft:/root/.cometbft \
   ghcr.io/left-curve/left-curve/cometbft:v0.38.21 \
   cometbft show-validator --home /root/.cometbft"
-# expected: prints the public key your validator slot expected (cross-check Grafana / chain validator list)
+# expected: prints the public key your validator slot has historically used
+# (cross-check against Grafana / chain validator list)
 ```
 
 ## Step 10. Restart target's cometbft and verify signing
 
-Cometbft has the new key on disk but needs to be restarted to load it.
+CometBFT now has the new key on disk but needs to be restarted to load it. `just restart-mainnet`'s `--limit` is hardcoded for the full validator set, so we run the restart play directly to scope to target only.
 
 ```bash
-uv run ansible-playbook restart-services.yml -e dango_network=mainnet --limit <target IP>
+uv run ansible-playbook restart-services.yml \
+  -e dango_network=mainnet \
+  --limit <target IP>
 ```
 
-**Verify** that target is signing recent blocks. Query a peer (e.g. hetzner1 at `100.126.8.2`) — same docker-exec pattern as step 8:
+**Verify** target is signing recent blocks. Query a peer (e.g. hetzner1 at `100.126.8.2`) — same docker-exec pattern as step 8:
 
 ```bash
 ssh deploy@100.126.8.2 \
@@ -291,11 +326,11 @@ ssh deploy@100.126.8.2 \
 
 Expected: target's validator address appears in the signatures list within ~10–30 seconds. Repeat the query a few times to confirm it consistently signs.
 
-Also check Grafana's "validator missed blocks" panel — your slot should drop from 100% missed (during steps 1–9) back to ~0%.
+Also check Grafana's "validator missed blocks" panel — your slot should drop from 100% missed (during steps 3–9) back to ~0%.
 
 ## Step 11. Migrate hyperlane validator role to target
 
-Source ran `mainnet-validator-1` (per its position in `[hyperlane]`). Stop it on source via direct `docker compose` — `just stop-hyperlane` won't work here because source is no longer in inventory, so ansible's `--limit` would match nothing. Then deploy on target via the parameterized just recipe (which targets by IP).
+Source ran `mainnet-validator-1` (per its position in `[hyperlane]`). Stop it on source via direct `docker compose` — `just stop-hyperlane` won't work here because source is no longer in inventory. Then deploy on target via the parameterized just recipe (which targets by IP).
 
 ```bash
 ssh deploy@<source IP> 'cd ~/hyperlane-agents/mainnet-validator-1 && docker compose down'
@@ -332,7 +367,7 @@ ssh debian@<source IP> 'sudo rm -rf /home/deploy/{mainnet,deployments,psql,click
 ssh deploy@<target IP> 'sed -i.bak "/node-migrate-temp$/d" ~/.ssh/authorized_keys && rm ~/.ssh/authorized_keys.bak'
 ```
 
-Remove the host from tailscale (admin console: <https://login.tailscale.com/admin/machines> → select source → Remove). Re-running `wireguard.yml` after step 2's inventory edit already pulled source out of every other host's `wg0.conf`.
+Remove the host from tailscale (admin console: <https://login.tailscale.com/admin/machines> → select source → Remove). Re-running `wireguard.yml` after step 1's inventory edit already pulled source out of every other host's `wg0.conf`.
 
 ## Done
 
