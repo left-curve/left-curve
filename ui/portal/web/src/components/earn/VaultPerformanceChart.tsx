@@ -12,7 +12,7 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts";
-import { Select, Spinner } from "@left-curve/applets-kit";
+import { FormattedNumber, Select, Spinner } from "@left-curve/applets-kit";
 import { useVaultSnapshots } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -30,9 +30,6 @@ const formatFullDate = (date: string) => {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 };
 
-const formatPrice = (value: number) =>
-  `$${value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
-
 const formatPercent = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 
 function ChartTooltip({
@@ -49,7 +46,7 @@ function ChartTooltip({
       <p className="diatype-xs-medium text-ink-tertiary-500 mb-1">{formatFullDate(data.date)}</p>
       <p className="diatype-sm-medium">
         <span className="text-utility-warning-600">{m["vaultLiquidity.price"]()}:</span>{" "}
-        <span className="text-ink-secondary-700">{formatPrice(data.sharePrice)}</span>
+        <FormattedNumber number={data.sharePrice.toString()} as="span" className="text-ink-secondary-700" />
       </p>
       <p className="diatype-sm-medium">
         <span
@@ -73,6 +70,21 @@ const AXIS_TICK_STYLE = {
   fill: "var(--color-ink-tertiary-500)",
 };
 
+function PriceTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: number } }) {
+  if (!payload) return null;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <foreignObject x={0} y={-8} width={80} height={16}>
+        <FormattedNumber
+          number={payload.value.toString()}
+          as="span"
+          className="diatype-xs-medium text-ink-tertiary-500"
+        />
+      </foreignObject>
+    </g>
+  );
+}
+
 export function VaultPerformanceChart() {
   const [period, setPeriod] = useState<VaultPerformancePeriod>("30D");
   const { data, isLoading, error } = useVaultSnapshots({ period });
@@ -85,27 +97,11 @@ export function VaultPerformanceChart() {
         {m["vaultLiquidity.performance"]()}
       </p>
 
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
-          <p className="diatype-sm-medium text-ink-secondary-700">
-            {m["vaultLiquidity.shareTokenPrice"]()}{" "}
-            <span className="diatype-sm-bold">{formatPrice(latestPrice)}</span>
-          </p>
-          <div className="flex gap-4 diatype-xs-medium text-ink-tertiary-500">
-            <div className="flex items-center gap-1">
-              <div className="w-8 h-[2px] bg-primitives-rice-light-500 rounded" />
-              <span>{m["vaultLiquidity.price"]()}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-[2px] bg-utility-success-600 border-[0.5px] border-utility-success-300" />
-              <span>{m["vaultLiquidity.dailyGain"]()}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-[2px] bg-primitives-red-light-500 border-[0.5px] border-primitives-red-light-300" />
-              <span>{m["vaultLiquidity.dailyLoss"]()}</span>
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center justify-between">
+        <p className="diatype-sm-regular text-ink-tertiary-500">
+          {m["vaultLiquidity.shareTokenPrice"]()}{" "}
+          <FormattedNumber number={latestPrice.toString()} as="span" className="diatype-sm-bold text-ink-secondary-700" />
+        </p>
         <Select
           value={period}
           onChange={(v) => setPeriod(v as VaultPerformancePeriod)}
@@ -123,6 +119,21 @@ export function VaultPerformanceChart() {
             </Select.Item>
           ))}
         </Select>
+      </div>
+
+      <div className="flex gap-4 diatype-xs-medium text-ink-tertiary-500">
+        <div className="flex items-center gap-1">
+          <div className="w-8 h-[2px] bg-primitives-rice-light-500 rounded" />
+          <span>{m["vaultLiquidity.price"]()}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-[2px] bg-[#AFB244] border-[0.5px] border-[#D2D184]" />
+          <span>{m["vaultLiquidity.dailyGain"]()}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-[2px] bg-primitives-red-light-500 border-[0.5px] border-primitives-red-light-300" />
+          <span>{m["vaultLiquidity.dailyLoss"]()}</span>
+        </div>
       </div>
 
       {error ? (
@@ -164,8 +175,7 @@ export function VaultPerformanceChart() {
             <YAxis
               yAxisId="price"
               orientation="right"
-              tickFormatter={(v: number) => `$${v.toFixed(3)}`}
-              tick={AXIS_TICK_STYLE}
+              tick={<PriceTick />}
               stroke="var(--color-outline-secondary-gray)"
               tickLine={false}
               axisLine={false}

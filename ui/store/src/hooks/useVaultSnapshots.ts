@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Decimal } from "@left-curve/dango/utils";
 import { usePublicClient } from "./usePublicClient.js";
@@ -19,12 +20,8 @@ const PERIOD_DAYS: Record<VaultPerformancePeriod, number> = {
   "90D": 90,
 };
 
-function snapshotsToPerformance(
-  snapshots: Record<string, VaultSnapshot>,
-): VaultPerformancePoint[] {
-  const entries = Object.entries(snapshots).sort(
-    ([a], [b]) => Number(a) - Number(b),
-  );
+function snapshotsToPerformance(snapshots: Record<string, VaultSnapshot>): VaultPerformancePoint[] {
+  const entries = Object.entries(snapshots).sort(([a], [b]) => Number(a) - Number(b));
 
   return entries.map(([ts, snapshot], index) => {
     const sharePrice = Decimal(snapshot.equity).div(snapshot.shareSupply).toNumber();
