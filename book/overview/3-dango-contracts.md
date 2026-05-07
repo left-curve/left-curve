@@ -298,7 +298,7 @@ PARAM: Item<Param> {
 
 ```rust
 PAIR_PARAMS: Map<&PairId, PairParam> {
-    tick_size, min_order_size, max_abs_oi,
+    tick_size, min_order_value, lot_size, max_abs_oi,
     max_abs_funding_rate,
     initial_margin_ratio,               // 1/leverage (e.g., 0.1 = 10x)
     maintenance_margin_ratio,           // Liquidation trigger

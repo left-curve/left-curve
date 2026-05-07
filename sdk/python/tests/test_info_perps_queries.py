@@ -143,7 +143,8 @@ class TestPairQueries:
 
         pair_payload = {
             "tick_size": "1.000000",
-            "min_order_size": "10.000000",
+            "min_order_value": "10.000000",
+            "lot_size": "0.000000",
             "max_limit_price_deviation": "0.100000",
             "max_market_slippage": "0.100000",
             "max_abs_oi": "1000000.000000",

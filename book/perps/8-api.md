@@ -929,7 +929,8 @@ query {
 ```json
 {
   "tick_size": "1.000000",
-  "min_order_size": "10.000000",
+  "min_order_value": "10.000000",
+  "lot_size": "0.000100",
   "max_abs_oi": "1000000.000000",
   "max_abs_funding_rate": "0.000500",
   "initial_margin_ratio": "0.050000",
@@ -947,7 +948,8 @@ query {
 | Field                       | Type            | Description                                                        |
 | --------------------------- | --------------- | ------------------------------------------------------------------ |
 | `tick_size`                 | `UsdPrice`      | Minimum price increment for limit orders                           |
-| `min_order_size`            | `UsdValue`      | Minimum notional value (reduce-only exempt)                        |
+| `min_order_value`           | `UsdValue`      | Minimum notional value (reduce-only exempt)                        |
+| `lot_size`                  | `Quantity`      | Order size precision; zero disables                                |
 | `max_abs_oi`                | `Quantity`      | Maximum open interest per side                                     |
 | `max_abs_funding_rate`      | `FundingRate`   | Daily funding rate cap                                             |
 | `initial_margin_ratio`      | `Dimensionless` | Margin to open (e.g. 0.05 = 20x max leverage)                      |
