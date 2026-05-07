@@ -173,6 +173,9 @@ pub struct QueryOrderResponse {
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
+    pub tp: Option<ChildOrder>,
+    pub sl: Option<ChildOrder>,
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 #[grug::derive(Serde)]
@@ -183,6 +186,9 @@ pub struct QueryOrdersByUserResponseItem {
     pub reduce_only: bool,
     pub reserved_margin: UsdValue,
     pub created_at: Timestamp,
+    pub tp: Option<ChildOrder>,
+    pub sl: Option<ChildOrder>,
+    pub client_order_id: Option<ClientOrderId>,
 }
 
 #[grug::derive(Serde)]
