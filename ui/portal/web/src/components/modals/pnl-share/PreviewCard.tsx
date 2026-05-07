@@ -64,7 +64,7 @@ export function PreviewCard({
             {m["modals.pnlShare.markPrice"]()}
           </span>
           <span data-pnl="mark-price" className="diatype-sm-bold text-ink-primary-900">
-            ${formatPrice(currentPrice)}
+            {formatPrice(currentPrice)}
           </span>
         </div>
       </div>

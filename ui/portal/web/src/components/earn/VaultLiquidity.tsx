@@ -6,6 +6,7 @@ import {
   RangeWithButtons,
   Skeleton,
   Tabs,
+  Tooltip,
   WarningContainer,
   createContext,
   numberMask,
@@ -85,20 +86,32 @@ const VaultLiquidityHeader: React.FC = () => {
           </p>
         </div>
       )}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
+      <div className="flex flex-col gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
         <div className="flex gap-2 items-center">
           <img src="/images/coins/usd.svg" alt="vault" className="w-8 h-8 rounded-full" />
           <p className="text-ink-secondary-700 h4-bold">{m["vaultLiquidity.title"]()}</p>
         </div>
-        <div className="flex flex-row gap-6 items-center">
-          <div className="flex items-center gap-1">
-            <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.apy"]()}</p>
-            <p className="text-ink-secondary-700 diatype-sm-bold">
-              {vaultApy != null ? `${vaultApy}%` : "-"}
-            </p>
+        <div className="flex flex-row justify-between items-end">
+          <div className="flex flex-col gap-0.5">
+            <Tooltip title={m["vaultLiquidity.apyTooltip"]()}>
+              <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+                {m["vaultLiquidity.apy"]()}
+              </p>
+            </Tooltip>
+            {isLoading ? (
+              <Skeleton className="w-12 h-5" />
+            ) : (
+              <p className="text-ink-secondary-700 diatype-sm-bold min-w-[3rem]">
+                {vaultApy != null ? `${vaultApy}%` : "-"}
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.tvl"]()}</p>
+          <div className="flex flex-col gap-0.5 items-end">
+            <Tooltip title={m["vaultLiquidity.tvlTooltip"]()}>
+              <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+                {m["vaultLiquidity.tvl"]()}
+              </p>
+            </Tooltip>
             {isLoading ? (
               <Skeleton className="w-16 h-5" />
             ) : (
@@ -118,7 +131,7 @@ const VaultLiquidityHeader: React.FC = () => {
         <img
           src="/images/characters/hippo.svg"
           alt="dango-hippo"
-          className="max-w-[200px] absolute opacity-10 right-[-2rem] top-[-1rem] select-none drag-none"
+          className="max-w-[200px] absolute opacity-10 right-[-2rem] bottom-0 select-none drag-none pointer-events-none"
         />
       </div>
     </div>
