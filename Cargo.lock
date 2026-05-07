@@ -4486,8 +4486,12 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
+ "dango-order-book",
+ "dango-perps",
+ "dango-types",
  "grug",
  "grug-app",
+ "tracing",
 ]
 
 [[package]]
