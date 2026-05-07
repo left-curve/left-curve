@@ -420,7 +420,6 @@ const PerpsPositionsTable: React.FC = () => {
             text={
               <FormattedNumber
                 number={row.original.entryPrice}
-                formatOptions={{ currency: "USD" }}
                 as="span"
               />
             }
@@ -438,7 +437,6 @@ const PerpsPositionsTable: React.FC = () => {
             text={
               <FormattedNumber
                 number={row.original.currentPrice.toString()}
-                formatOptions={{ currency: "USD" }}
                 as="span"
               />
             }

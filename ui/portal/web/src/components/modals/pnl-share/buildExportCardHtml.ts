@@ -21,7 +21,7 @@ export function cloneCardForExport(
     symbol: values.symbol,
     percent: pctText,
     "entry-price": formatPrice(Number(values.entryPrice)),
-    "mark-price": `$${formatPrice(values.currentPrice)}`,
+    "mark-price": formatPrice(values.currentPrice),
   };
 
   if (values.referralLink) {
