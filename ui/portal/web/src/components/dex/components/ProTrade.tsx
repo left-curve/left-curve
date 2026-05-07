@@ -417,12 +417,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             className="text-right"
-            text={
-              <FormattedNumber
-                number={row.original.entryPrice}
-                as="span"
-              />
-            }
+            text={<FormattedNumber number={row.original.entryPrice} as="span" />}
           />
         ),
       },
@@ -434,12 +429,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             className="text-right"
-            text={
-              <FormattedNumber
-                number={row.original.currentPrice.toString()}
-                as="span"
-              />
-            }
+            text={<FormattedNumber number={row.original.currentPrice.toString()} as="span" />}
           />
         ),
       },

@@ -9,10 +9,7 @@ type TrustedValues = {
   referralLink: string | undefined;
 };
 
-export function cloneCardForExport(
-  source: HTMLElement,
-  values: TrustedValues,
-): HTMLElement {
+export function cloneCardForExport(source: HTMLElement, values: TrustedValues): HTMLElement {
   const clone = source.cloneNode(true) as HTMLElement;
 
   const pctText = `${values.isPositive ? "+" : ""}${values.displayPercent.toFixed(2)}%`;
@@ -41,7 +38,8 @@ export function cloneCardForExport(
   }
 
   // Force desktop layout for the prices row
-  const pricesRow = clone.querySelector("[data-pnl='entry-price']")?.closest("div.flex.flex-col") ?.parentElement as HTMLElement | null;
+  const pricesRow = clone.querySelector("[data-pnl='entry-price']")?.closest("div.flex.flex-col")
+    ?.parentElement as HTMLElement | null;
   if (pricesRow) {
     pricesRow.style.flexDirection = "row";
     pricesRow.style.gap = "1.5rem";

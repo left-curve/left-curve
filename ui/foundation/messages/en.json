@@ -839,7 +839,9 @@
   "vaultLiquidity": {
     "title": "Dango Liquidity Provider",
     "apy": "APY",
+    "apyTooltip": "Annual Percentage Yield — the projected yearly return based on performance over the last 7-day window.",
     "tvl": "TVL",
+    "tvlTooltip": "Total Value Locked — the total amount of assets deposited in the vault.",
     "toDeposit": "You deposit",
     "availableToDeposit": "Available to deposit",
     "toGet": "You get",
