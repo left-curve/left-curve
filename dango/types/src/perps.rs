@@ -818,6 +818,12 @@ pub enum MaintainerMsg {
         /// First element is maker rate, second is taker rate.
         maker_taker_fee_rates: Op<(Dimensionless, Dimensionless)>,
     },
+
+    /// Move the entire `state.treasury` balance into the chain owner's
+    /// `UserState.margin`. The owner can then convert it to USDC via the
+    /// regular `TraderMsg::Withdraw` flow.
+    /// Only callable by the chain owner.
+    WithdrawFromTreasury {},
 }
 
 #[grug::derive(Serde)]

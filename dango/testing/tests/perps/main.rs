@@ -18,6 +18,7 @@ mod liquidation;
 mod price_band;
 mod referral;
 mod trading;
+mod treasury;
 mod vault;
 mod vault_snapshots;
 mod vault_withdrawal_health;
