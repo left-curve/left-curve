@@ -171,6 +171,15 @@ const NetworkSection: React.FC = () => {
               {chain.urls.indexer.replace(/\/graphql$/, "")}
             </p>
           </div>
+
+          <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
+            <p className="md:min-w-[10rem] text-ink-tertiary-500">
+              {m["settings.session.network.frontendVersion"]()}
+            </p>
+            <p className="break-all whitespace-normal">
+              {import.meta.env.GIT_COMMIT}
+            </p>
+          </div>
         </div>
       </div>
     </div>

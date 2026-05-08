@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,6 +32,17 @@ const environment = process.env.CONFIG_ENVIRONMENT || "test";
 const enabledFeatures = process.env.ENABLED_FEATURES
   ? process.env.ENABLED_FEATURES.split(",").map((f) => f.trim())
   : [];
+
+const gitCommit = (() => {
+  if (process.env.GIT_COMMIT) return process.env.GIT_COMMIT;
+  try {
+    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "unknown";
+  }
+})();
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
@@ -168,6 +180,7 @@ export default defineConfig({
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
       "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
+      "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "process.env": {},
       "import.meta.env": {},
     },
