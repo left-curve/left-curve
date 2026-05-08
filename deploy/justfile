@@ -291,7 +291,7 @@ deploy-hyperlane network agent limit index="":
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-hyperlane.log
 
 deploy-hyperlane-mainnet:
-  just deploy-hyperlane mainnet validator 100.89.7.33 1
+  just deploy-hyperlane mainnet validator 100.72.62.100 1
   just deploy-hyperlane mainnet validator 100.66.234.16 2
   just deploy-hyperlane mainnet validator 100.126.8.2 3
   just deploy-hyperlane mainnet validator 100.76.197.30 4
@@ -303,7 +303,7 @@ deploy-hyperlane-testnet:
   just deploy-hyperlane testnet relayer 100.109.200.70
 
 # Stop a single Hyperlane instance
-# Usage: just stop-hyperlane mainnet validator 100.89.7.33 1
+# Usage: just stop-hyperlane mainnet validator 100.72.62.100 1
 #        just stop-hyperlane testnet relayer 100.109.200.70
 stop-hyperlane network agent limit index="":
   mkdir -p {{justfile_directory()}}/logs \
@@ -315,7 +315,7 @@ stop-hyperlane network agent limit index="":
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-hyperlane.log
 
 stop-hyperlane-mainnet-validators:
-  just stop-hyperlane mainnet validator 100.89.7.33 1
+  just stop-hyperlane mainnet validator 100.72.62.100 1
   just stop-hyperlane mainnet validator 100.66.234.16 2
   just stop-hyperlane mainnet validator 100.126.8.2 3
   just stop-hyperlane mainnet validator 100.76.197.30 4
