@@ -46,7 +46,7 @@ export function CharacterSelector({
             )}
           >
             <img
-              src={`/images/pnl-modal/${img}.png`}
+              src={`/images/pnl-modal-thumb/${img}.png`}
               alt={img}
               className="w-full h-full object-cover"
             />
