@@ -1304,21 +1304,8 @@ pub fn settle_pnls(
         "vault as maker must be fee-exempt",
     );
 
-    // Net fee and sum of positive contributions (rebaters contribute zero weight).
+    // Net fee, protocol cut, vault cut.
     let net_fee = taker_fee.checked_add(maker_fee)?;
-    let taker_positive = if taker_fee.is_positive() {
-        taker_fee
-    } else {
-        UsdValue::ZERO
-    };
-    let maker_positive = if maker_fee.is_positive() {
-        maker_fee
-    } else {
-        UsdValue::ZERO
-    };
-    let total_positive = taker_positive.checked_add(maker_positive)?;
-
-    // Protocol and vault cuts on the net.
     let protocol_fee = net_fee.checked_mul(param.protocol_fee_rate)?;
     let vault_fee = net_fee.checked_sub(protocol_fee)?;
 
@@ -1349,34 +1336,47 @@ pub fn settle_pnls(
         maker_state.margin.checked_add_assign(maker_pnl)?;
     }
 
-    // Per-party FeeBreakdown. Positive-fee parties split the pool by weight;
-    // rebaters get zeros (apply_fee_commissions still runs volume tracking).
-    let breakdown_for = |fee: UsdValue| -> anyhow::Result<FeeBreakdown> {
-        if fee.is_positive() && total_positive.is_positive() {
-            let weight = fee.checked_div(total_positive)?;
-            Ok(FeeBreakdown {
-                protocol_fee: protocol_fee.checked_mul(weight)?,
-                vault_fee: vault_fee.checked_mul(weight)?,
-            })
-        } else {
-            Ok(FeeBreakdown {
-                protocol_fee: UsdValue::ZERO,
-                vault_fee: UsdValue::ZERO,
-            })
-        }
+    // Per-party FeeBreakdown. When both sides pay positive fees, the taker
+    // takes a weighted slice and the maker the exact residual so the
+    // breakdowns sum to `protocol_fee` and `vault_fee` precisely. When only
+    // one side has a positive contribution, that side takes the full pool
+    // directly — no weight-multiply runs, so no rounding can drift onto the
+    // rebater.
+    let zero = FeeBreakdown {
+        protocol_fee: UsdValue::ZERO,
+        vault_fee: UsdValue::ZERO,
     };
+    let (taker_breakdown, maker_breakdown) =
+        match (taker_fee.is_positive(), maker_fee.is_positive()) {
+            (true, true) => {
+                let weight = taker_fee.checked_div(net_fee)?;
+                let taker = FeeBreakdown {
+                    protocol_fee: protocol_fee.checked_mul(weight)?,
+                    vault_fee: vault_fee.checked_mul(weight)?,
+                };
+                let maker = FeeBreakdown {
+                    protocol_fee: protocol_fee.checked_sub(taker.protocol_fee)?,
+                    vault_fee: vault_fee.checked_sub(taker.vault_fee)?,
+                };
+                (taker, maker)
+            },
+            (true, false) => (
+                FeeBreakdown {
+                    protocol_fee,
+                    vault_fee,
+                },
+                zero,
+            ),
+            (false, true) => (zero, FeeBreakdown {
+                protocol_fee,
+                vault_fee,
+            }),
+            (false, false) => (zero, zero),
+        };
 
     Ok(FillFeeBreakdowns {
-        taker: if taker == contract || taker_fee.is_zero() {
-            None
-        } else {
-            Some(breakdown_for(taker_fee)?)
-        },
-        maker: if maker == contract || maker_fee.is_zero() {
-            None
-        } else {
-            Some(breakdown_for(maker_fee)?)
-        },
+        taker: (taker != contract && !taker_fee.is_zero()).then_some(taker_breakdown),
+        maker: (maker != contract && !maker_fee.is_zero()).then_some(maker_breakdown),
     })
 }
 
@@ -3742,6 +3742,193 @@ mod tests {
         assert_eq!(state.treasury, UsdValue::new_int(20));
     }
 
+    // =========== FeeBreakdown match-arm tests ===============
+    //
+    // One dedicated test per arm of the
+    // `(taker_fee.is_positive(), maker_fee.is_positive())` match in
+    // `settle_pnls`. Each isolates the breakdown invariant for that arm.
+
+    #[test]
+    fn settle_pnls_breakdown_both_positive() {
+        // (true, true): taker takes weight × pool, maker takes the residual,
+        // sum equals the credited amount exactly — even when the weight
+        // isn't representable in Dec128_6.
+        //
+        // taker_fee = 7 µUSD, maker_fee = 3 µUSD, protocol_fee_rate = 20%
+        //   → net_fee = 10, protocol_fee = 2, vault_fee = 8
+        //   → weight_taker = 0.7, vault_fee × 0.7 = 5.6 → truncates to 5
+        //   → weight_maker = 0.3, vault_fee × 0.3 = 2.4 → truncates to 2
+        //   → independent multiplies leak 1 µUSD; subtraction does not.
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+        let mut state = State::default();
+
+        let breakdowns = settle_one_fill(
+            &mut state,
+            &param,
+            taker,
+            &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_raw(7),
+            Addr::mock(2),
+            &mut maker_states,
+            UsdValue::ZERO,
+            UsdValue::new_raw(3),
+        )
+        .unwrap();
+
+        let taker_bd = breakdowns.taker.unwrap();
+        let maker_bd = breakdowns.maker.unwrap();
+
+        // Chain credited treasury with full protocol_fee, vault with full
+        // vault_fee.
+        assert_eq!(state.treasury, UsdValue::new_raw(2));
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::new_raw(8));
+
+        // Per-payer breakdowns sum exactly to the credited amounts.
+        assert_eq!(
+            taker_bd
+                .protocol_fee
+                .checked_add(maker_bd.protocol_fee)
+                .unwrap(),
+            state.treasury,
+        );
+        assert_eq!(
+            taker_bd.vault_fee.checked_add(maker_bd.vault_fee).unwrap(),
+            maker_states[&CONTRACT].margin,
+        );
+    }
+
+    #[test]
+    fn settle_pnls_breakdown_only_taker_positive() {
+        // (true, false): taker takes the full pool literally (no
+        // weight-multiply); maker (rebater) breakdown is exactly zero so
+        // no rounding can drift onto it.
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+        let mut state = State::default();
+
+        // Taker fee = +$30, maker fee = −$10 (rebate).
+        let breakdowns = settle_one_fill(
+            &mut state,
+            &param,
+            taker,
+            &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(30),
+            Addr::mock(2),
+            &mut maker_states,
+            UsdValue::ZERO,
+            UsdValue::new_int(-10),
+        )
+        .unwrap();
+
+        let taker_bd = breakdowns.taker.unwrap();
+        let maker_bd = breakdowns.maker.unwrap();
+
+        // Taker absorbs the full pool; rebater is exactly zero. Rebater is
+        // emitted as `Some(zero)` so apply_fee_commissions still tracks
+        // their referral volume.
+        assert_eq!(taker_bd.protocol_fee, state.treasury);
+        assert_eq!(taker_bd.vault_fee, maker_states[&CONTRACT].margin);
+        assert_eq!(maker_bd.protocol_fee, UsdValue::ZERO);
+        assert_eq!(maker_bd.vault_fee, UsdValue::ZERO);
+    }
+
+    #[test]
+    fn settle_pnls_breakdown_only_maker_positive() {
+        // (false, true): maker takes the full pool; taker (rebater) is
+        // exactly zero. Symmetric to `only_taker_positive`.
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+        let mut state = State::default();
+
+        // Taker fee = −$10 (rebate), maker fee = +$30.
+        let breakdowns = settle_one_fill(
+            &mut state,
+            &param,
+            taker,
+            &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::new_int(-10),
+            Addr::mock(2),
+            &mut maker_states,
+            UsdValue::ZERO,
+            UsdValue::new_int(30),
+        )
+        .unwrap();
+
+        let taker_bd = breakdowns.taker.unwrap();
+        let maker_bd = breakdowns.maker.unwrap();
+
+        // Maker absorbs the full pool; rebater is exactly zero.
+        assert_eq!(maker_bd.protocol_fee, state.treasury);
+        assert_eq!(maker_bd.vault_fee, maker_states[&CONTRACT].margin);
+        assert_eq!(taker_bd.protocol_fee, UsdValue::ZERO);
+        assert_eq!(taker_bd.vault_fee, UsdValue::ZERO);
+    }
+
+    #[test]
+    fn settle_pnls_breakdown_neither_positive() {
+        // (false, false): both fees zero → both breakdowns zero; both emit
+        // `None` (no per-payer event for parties that owed no fee). Treasury
+        // and vault see no movement.
+        let taker = Addr::mock(1);
+        let mut taker_state = UserState::default();
+        let param = Param {
+            protocol_fee_rate: Dimensionless::new_percent(20),
+            ..Default::default()
+        };
+        let mut maker_states = BTreeMap::from([
+            (CONTRACT, UserState::default()),
+            (Addr::mock(2), UserState::default()),
+        ]);
+        let mut state = State::default();
+
+        let breakdowns = settle_one_fill(
+            &mut state,
+            &param,
+            taker,
+            &mut taker_state,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+            Addr::mock(2),
+            &mut maker_states,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        assert!(breakdowns.taker.is_none());
+        assert!(breakdowns.maker.is_none());
+        assert_eq!(state.treasury, UsdValue::ZERO);
+        assert_eq!(maker_states[&CONTRACT].margin, UsdValue::ZERO);
+    }
+
     // =========== Negative maker fee (rebate) settle_pnls tests ===============
 
     #[test]
@@ -3797,7 +3984,7 @@ mod tests {
         let mut state = State::default();
 
         // Taker fee = +$30, maker fee = -$10 (rebate). Net = $20.
-        settle_one_fill(
+        let breakdowns = settle_one_fill(
             &mut state,
             &param,
             taker,
@@ -3828,6 +4015,17 @@ mod tests {
         //   from maker: -$10 * 20% = -$2
         //   total = $4
         assert_eq!(state.treasury, UsdValue::new_int(4));
+
+        // Rebater's breakdown is exactly zero — the (true, false) match arm
+        // assigns the full pool to the taker and a literal zero to the
+        // maker, so no `checked_mul` runs that could drift a rounding
+        // residual onto the rebater.
+        let taker_bd = breakdowns.taker.unwrap();
+        let maker_bd = breakdowns.maker.unwrap();
+        assert_eq!(maker_bd.protocol_fee, UsdValue::ZERO);
+        assert_eq!(maker_bd.vault_fee, UsdValue::ZERO);
+        assert_eq!(taker_bd.protocol_fee, state.treasury);
+        assert_eq!(taker_bd.vault_fee, maker_states[&CONTRACT].margin);
     }
 
     // ====== Negative maker fee: full compute_submit_order_outcome integration ===============
