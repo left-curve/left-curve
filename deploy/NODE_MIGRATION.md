@@ -511,6 +511,18 @@ This is the slashable step — the validator key must exist on **exactly one** r
 > [!WARNING]
 > **Do not skip `priv_validator_state.json`.** Skipping it is the textbook double-sign mistake.
 
+**Pre-checks**:
+
+1. **Source's cometbft must NOT be running.** It was stopped in step 1, but verify — if both source and target have the validator key in memory at the same time, both could sign and the cluster will slash you.
+
+   ```bash
+   ssh deploy@$SOURCE_IP 'docker ps --format "{{.Names}}" | grep cometbft || echo "no cometbft on source"'
+   ```
+
+   Expected: `no cometbft on source`. If a cometbft container is listed, stop it before proceeding (`uv run ansible-playbook stop-services.yml -e dango_network=mainnet --limit $SOURCE_IP` — same as step 1).
+
+2. **Target's cometbft can stay running** — no need to stop it. cometbft loads `priv_validator_key.json` only at startup, not on every block, so replacing the file on disk leaves target's running process operating with its in-memory non-validator key (which can't double-sign because that pubkey isn't in the active validator set). The actual switchover happens in step 9 when cometbft restarts and loads the new key. `priv_validator_state.json` is updated only when cometbft signs, and a non-validator never signs — so the rsync overwrite below has no race.
+
 ```bash
 # 8a. priv_validator_key.json: source → target via the migrate_key from step 3 so the
 # validator private key never transits through your laptop. sudo on both ends because the
@@ -541,12 +553,18 @@ ssh debian@$SOURCE_IP "sudo rm $DATA_DIR/cometbft/config/priv_validator_key.json
 ssh debian@$SOURCE_IP "sudo ls $DATA_DIR/cometbft/config/priv_validator_key.json" 2>&1
 # expected: "No such file or directory"
 
-ssh deploy@$TARGET_IP "cd ~/deployments/$DEPLOY && \
-  docker compose -p $DEPLOY exec cometbft cometbft show-validator"
-# expected: prints the public key your validator slot has historically used
-# (cross-check against Grafana / chain validator list).
+ssh deploy@$TARGET_IP 'docker exec $(docker ps -q --filter label=service_name=cometbft | head -1) cometbft show-validator'
+# expected: prints the public key your validator slot has historically used.
 # Note: cometbft is still loaded with the non-validator key in memory at this point —
 # show-validator reads from disk so it'll already show the handed-over pubkey.
+
+# Confirm the pubkey is in the chain's active validator set. Query a healthy validator
+# (hetzner1 here) so this cross-checks against what the rest of the cluster sees, not just
+# target's own view.
+TARGET_PUBKEY=$(ssh deploy@$TARGET_IP 'docker exec $(docker ps -q --filter label=service_name=cometbft | head -1) cometbft show-validator' | jq -r .value)
+
+ssh deploy@100.126.8.2 'docker exec $(docker ps -q --filter label=service_name=cometbft | head -1) curl -s "http://localhost:26657/validators?per_page=100"' | jq -r '.result.validators[].pub_key.value' | grep -F "$TARGET_PUBKEY" && echo "✓ in validator set" || echo "✗ NOT in validator set"
+# expected: ✓ in validator set
 ```
 
 ## Step 9. Restart target's cometbft and verify signing
