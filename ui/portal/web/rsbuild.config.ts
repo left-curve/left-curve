@@ -293,17 +293,7 @@ export default defineConfig({
             skipWaiting: true,
             cleanupOutdatedCaches: true,
             navigationPreload: false,
-            navigateFallback: "/index.html",
-            runtimeCaching: [
-              {
-                urlPattern: ({ request }) => request.mode === "navigate",
-                handler: "NetworkFirst",
-                options: {
-                  cacheName: "html-cache",
-                  networkTimeoutSeconds: 3,
-                },
-              },
-            ],
+            importScripts: ["/sw-disable-nav-preload.js"],
           }),
         );
       }
