@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
-import { useState } from "react";
 import {
   ComposedChart,
   Bar,
@@ -18,7 +17,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { VaultPerformancePeriod, VaultPerformancePoint } from "@left-curve/store";
 
-const PERIODS: VaultPerformancePeriod[] = ["7D", "30D", "90D"];
+const PERIODS: VaultPerformancePeriod[] = ["7D", "14D", "30D", "90D"];
 
 const formatDate = (date: string) => {
   const d = new Date(date);
@@ -85,8 +84,12 @@ function PriceTick({ x, y, payload }: { x?: number; y?: number; payload?: { valu
   );
 }
 
-export function VaultPerformanceChart() {
-  const [period, setPeriod] = useState<VaultPerformancePeriod>("30D");
+type VaultPerformanceChartProps = {
+  period: VaultPerformancePeriod;
+  onPeriodChange: (period: VaultPerformancePeriod) => void;
+};
+
+export function VaultPerformanceChart({ period, onPeriodChange }: VaultPerformanceChartProps) {
   const { data, isLoading, error } = useVaultSnapshots({ period });
 
   const latestPrice = data?.length ? data[data.length - 1].sharePrice : 0;
@@ -104,7 +107,7 @@ export function VaultPerformanceChart() {
         </p>
         <Select
           value={period}
-          onChange={(v) => setPeriod(v as VaultPerformancePeriod)}
+          onChange={(v) => onPeriodChange(v as VaultPerformancePeriod)}
           classNames={{
             listboxWrapper: "right-0",
             trigger: "py-2 px-4 max-w-[9.375rem]",
