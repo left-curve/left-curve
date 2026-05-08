@@ -16,16 +16,26 @@ import {
 } from "@left-curve/applets-kit";
 import { perpsMarginAsset, useAccount, useVaultLiquidityState } from "@left-curve/store";
 import { formatNumber } from "@left-curve/dango/utils";
-import { APY_WINDOW_DAYS } from "~/constants";
+
+import type { VaultPerformancePeriod } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 import { UserWithdrawals } from "./UserWithdrawals";
 import { VaultPerformanceChart } from "./VaultPerformanceChart";
 
+const PERIOD_DAYS: Record<VaultPerformancePeriod, number> = {
+  "7D": 7,
+  "14D": 14,
+  "30D": 30,
+  "90D": 90,
+};
+
 const [VaultLiquidityProvider, useVaultLiquidity] = createContext<{
   state: ReturnType<typeof useVaultLiquidityState>;
   controllers: ReturnType<typeof useInputs>;
+  period: VaultPerformancePeriod;
+  setPeriod: (period: VaultPerformancePeriod) => void;
 }>({
   name: "VaultLiquidityContext",
 });
@@ -40,18 +50,19 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   action,
   onChangeAction,
 }) => {
+  const [period, setPeriod] = useState<VaultPerformancePeriod>("14D");
   const controllers = useInputs({ strategy: "onChange" });
   const state = useVaultLiquidityState({
     action,
     onChangeAction,
-    apyWindowDays: APY_WINDOW_DAYS,
+    apyWindowDays: PERIOD_DAYS[period],
     controllers,
   });
   const { account } = useAccount();
   const isLoggedIn = !!account;
 
   return (
-    <VaultLiquidityProvider value={{ state, controllers }}>
+    <VaultLiquidityProvider value={{ state, controllers, period, setPeriod }}>
       <div
         className={twMerge(
           "w-full mx-auto flex flex-col pt-6 mb-16 gap-4 lg:gap-12 px-4 md:px-0",
@@ -65,7 +76,7 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
 
           <div className="flex flex-col gap-4 w-full md:w-[55%]">
             {isLoggedIn && <UserPosition />}
-            <VaultPerformanceChart />
+            <VaultPerformanceChart period={period} onPeriodChange={setPeriod} />
           </div>
 
           <div className="hidden md:flex flex-col gap-4 w-full md:w-[45%]">{children}</div>
