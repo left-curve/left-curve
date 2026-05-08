@@ -1,0 +1,70 @@
+set positional-arguments
+
+# Use bash so `pipefail` propagates ansible's exit code through `| tee ...`
+# (the default `sh -cu` would silently swallow ansible failures behind tee).
+set shell := ["bash", "-uo", "pipefail", "-c"]
+
+# Always load deploy/ansible.cfg, regardless of cwd or a stray ~/.ansible.cfg.
+export ANSIBLE_CONFIG := justfile_directory() + "/../../ansible.cfg"
+
+# Tailscale IPs. Mirrors the constants in deploy/justfile.
+inter2   := "100.66.234.16"
+hetzner1 := "100.126.8.2"
+hetzner3 := "100.76.197.30"
+hetzner5 := "100.72.62.100"
+
+# Dango docker image tag. The build pipeline tags images with the git commit
+# SHA, so this is the commit hash for tag v0.17.1.
+dango_image_tag := "b1976dad387d03bbd0628b4926fa697a9be1f253"
+
+# List available recipes
+default:
+  @just --list
+
+# Notes for the recipes below:
+# - dango_image_tag is pinned to v0.17.1 (the const above).
+# - For each recipe, persistent_peers is set to the *other three* validators
+#   via -e cometbft_peers, so the target dials them on startup. (See
+#   deploy/NODE_MIGRATION.md step 7 for context on the cometbft_peers override.)
+# - Use these when (re)joining one validator to a fleet that's already
+#   running, without touching the other three.
+
+# Deploy mainnet only on inter2, pinned to v0.17.1
+deploy-mainnet-inter2:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest"}' \
+      -e cometbft_peers={{hetzner1}},{{hetzner3}},{{hetzner5}} \
+      --limit {{inter2}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-inter2.log
+
+# Deploy mainnet only on hetzner1, pinned to v0.17.1
+deploy-mainnet-hetzner1:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest"}' \
+      -e cometbft_peers={{inter2}},{{hetzner3}},{{hetzner5}} \
+      --limit {{hetzner1}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner1.log
+
+# Deploy mainnet only on hetzner3, pinned to v0.17.1
+deploy-mainnet-hetzner3:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest"}' \
+      -e cometbft_peers={{inter2}},{{hetzner1}},{{hetzner5}} \
+      --limit {{hetzner3}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner3.log
+
+# Deploy mainnet only on hetzner5, pinned to v0.17.1
+deploy-mainnet-hetzner5:
+  cd ../.. \
+    && mkdir -p logs \
+    && uv run ansible-playbook full-app.yml \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{dango_image_tag}}", "frontend_image_tag": "latest"}' \
+      -e cometbft_peers={{inter2}},{{hetzner1}},{{hetzner3}} \
+      --limit {{hetzner5}} \
+      2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet-hetzner5.log
