@@ -415,26 +415,82 @@ Expected: `200`.
 
 Run the full-app play scoped to target only, with `-e cometbft_peers=<the 3 healthy IPs>` so target's `persistent_peers` lists them by their actual node IDs. Target dials them; they accept inbound (cometbft's addrbook is non-strict) and PEX gossips target's identity through the cluster.
 
-`just deploy-mainnet` won't work here because its `--limit` is hardcoded for the full validator set. Run `ansible-playbook` directly:
+**Pin to the in-prod images.** `full-app.yml` defaults `dango_image_tag` and `frontend_image_tag` to the local checkout's `git rev-parse HEAD`. The other validators were deployed with `DANGO_TAG=latest` / `FRONTEND_TAG=latest`, but `latest` is mutable — by the time of a migration, it usually points at a newer commit, and the old image's manifest may have been removed from ghcr (`docker manifest inspect` returns `manifest unknown`). The reliable path is to copy the exact images from source's local docker cache — source ran the same version before step 1 stopped it, and its docker still has them.
 
-```bash
-mkdir -p logs && uv run ansible-playbook full-app.yml \
-  -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
-  -e cometbft_peers=100.126.8.2,100.66.234.16,100.76.197.30 \
-  --limit $TARGET_IP \
-  2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-target.log
-```
+1. Capture the digests from source. Source's containers are stopped, so use `docker ps -a` (not `docker ps`):
 
-**Verify**:
+   ```bash
+   DANGO_DIGEST=$(ssh deploy@$SOURCE_IP 'docker image inspect $(docker ps -a --filter name=dango-1 --format "{{.Image}}" | head -1) --format "{{ index .RepoDigests 0 }}"' | cut -d@ -f2)
+   FRONTEND_DIGEST=$(ssh deploy@$SOURCE_IP 'docker image inspect $(docker ps -a --filter name=dango-frontend-1 --format "{{.Image}}" | head -1) --format "{{ index .RepoDigests 0 }}"' | cut -d@ -f2)
+   echo "$DANGO_DIGEST"     # sha256:<64-char hex>
+   echo "$FRONTEND_DIGEST"  # sha256:<64-char hex>
+   ```
 
-```bash
-ssh deploy@$TARGET_IP \
-  'docker exec $(docker ps -q --filter label=service_name=cometbft | head -1) \
-  curl -s http://localhost:26657/status' \
-  | jq '.result.sync_info | {catching_up, latest_block_height}'
-```
+2. Cross-check with another running validator to confirm source wasn't stale relative to the cluster:
 
-Expected: `catching_up: false`, height matches the rest of the fleet.
+   ```bash
+   for host in 100.126.8.2 100.66.234.16 100.76.197.30; do
+     echo "===== $host =====" && ssh deploy@$host "sudo -u deploy bash -c 'cd ~/deployments && DEPLOY=\$(jq -r .current_deployment mainnet.json) && docker compose -p \$DEPLOY exec dango dango --version'"
+   done
+   ```
+
+   The 40-char commit hash printed by each healthy validator's `dango --version` should be the same. (No automatic mapping from commit hash → image digest, but if the commits all match, source's digest is the right one to use.)
+
+3. Save the source images and load them on target via the migrate_key from step 3. Bytes flow source → target directly over tailscale; nothing routes through your laptop. `sudo` because `debian` isn't in the docker group; `debian` because the migrate_key is registered for that user.
+
+   ```bash
+   ssh debian@$SOURCE_IP "sudo docker save ghcr.io/left-curve/left-curve/dango@$DANGO_DIGEST | ssh -i ~/.ssh/migrate_key debian@$TARGET_IP 'sudo docker load'"
+   ssh debian@$SOURCE_IP "sudo docker save ghcr.io/left-curve/left-curve/dango-frontend@$FRONTEND_DIGEST | ssh -i ~/.ssh/migrate_key debian@$TARGET_IP 'sudo docker load'"
+   ```
+
+   Each prints `Loaded image ID: sha256:<digest>` matching the one we passed.
+
+4. `docker save image@digest` strips the repo+tag binding, so on target the images land as `<untagged>` (note: newer docker hides untagged images from `docker images` without `-a`). Re-tag them with `:latest` so docker-compose can find them by name, using the 12-char IDs from step 1's digests:
+
+   ```bash
+   ssh debian@$TARGET_IP "sudo docker tag ${DANGO_DIGEST#sha256:} ghcr.io/left-curve/left-curve/dango:latest && sudo docker tag ${FRONTEND_DIGEST#sha256:} ghcr.io/left-curve/left-curve/dango-frontend:latest"
+   ```
+
+   (`${VAR#sha256:}` strips the prefix; what's left is the 64-char hex, of which docker accepts the leading 12 chars as a short-ID.) Verify:
+
+   ```bash
+   ssh deploy@$TARGET_IP "docker images | grep -E 'dango\b|dango-frontend'"
+   ```
+
+   Both should show TAG `latest`.
+
+5. Run the deploy with four flags that together short-circuit every registry-side check (manifests for the in-prod images are gone from ghcr) and the post-deploy sync wait (target will be many hours behind):
+
+   - `verify_signatures: false` — skips `docker manifest inspect` for cosign verification (would fail on a deleted manifest).
+   - `pull_images: false` — skips the role's explicit `docker compose pull` step, which would also try to resolve digests against ghcr. The actual `docker compose up` task already runs with `pull: never`, so once the explicit pull is gated, no registry call is made.
+   - `cosign_verified_images: {}` — forces the fact that `resolve_digests.yml` would otherwise build to be empty, which makes the `when: ... | length > 0` guard on the override-template task evaluate false → no `docker-compose.override.yml` is written → compose uses the base file with `image: ghcr.io/...:${DANGO_TAG}` (tag-based). Extra-vars beat `set_fact` in ansible's variable precedence, so this override sticks even though `resolve_digests.yml` runs.
+   - `skip_cometbft_sync: true` — skips `check_cometbft_sync.yml` entirely (sync-wait + peer-count assert + indexer-lag assert). Target is starting from the chain height where source was stopped (step 1) and has hours of blocks to catch up; the role's hardcoded `retries: 30 × delay: 10s = 5 min` window won't be enough, and a timeout would trigger `full-app.yml`'s rescue block which stops the just-started stack. With the skip on, we verify sync manually in sub-step 6.
+
+   With the first three set, the version target ends up running is determined entirely by what's tagged locally as `ghcr.io/.../dango:latest` on target — which we deliberately pinned to source's image-ID in sub-step 4.
+
+   The flags must go inside the JSON `-e` blob (booleans + objects); the `-e key=value` form passes strings, and newer ansible refuses to evaluate string-typed values in `when:` conditionals.
+
+   This depends on small role changes: `pull_images` requires gating the pull task in `roles/full-app/tasks/deploy_standalone.yml`; `skip_cometbft_sync` requires gating the `check_cometbft_sync.yml` import in `roles/full-app/tasks/main.yml` and the inline sync-wait task in `restart-services.yml`. All three gates use `when: not (<flag> | default(false) | bool)`.
+
+   ```bash
+   mkdir -p logs && uv run ansible-playbook full-app.yml \
+     -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "verify_signatures": false, "pull_images": false, "cosign_verified_images": {}, "skip_cometbft_sync": true}' \
+     -e dango_image_tag=latest \
+     -e frontend_image_tag=latest \
+     -e cometbft_peers=100.126.8.2,100.66.234.16,100.76.197.30 \
+     --limit $TARGET_IP \
+     2>&1 | tee logs/$(date -u +%Y%m%d%H%M%S)-deploy-target.log
+   ```
+
+6. Wait for target to finish catching up. The playbook completes immediately (no sync wait), but target's cometbft is still syncing — the chain only becomes safe to take over the validator role in step 8 once target has reached the current chain head. Poll periodically:
+
+   ```bash
+   ssh deploy@$TARGET_IP 'docker exec $(docker ps -q --filter label=service_name=cometbft) curl -s http://localhost:26657/status | jq ".result.sync_info | {catching_up, latest_block_height}"'
+   ```
+
+   Expected eventually: `catching_up: false` and `latest_block_height` matches the rest of the fleet (compare against any healthy validator's `/status`). Until then, target is just a non-validator full node syncing in.
+
+**Verify** (post-sync, before moving to step 8):
 
 ```bash
 ssh deploy@$TARGET_IP \
