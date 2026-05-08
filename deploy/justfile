@@ -11,7 +11,6 @@ export ANSIBLE_CONFIG := justfile_directory() + "/ansible.cfg"
 ovh1     := "100.96.253.40"
 ovh2     := "100.107.248.71"
 ovh3     := "100.122.37.57"
-inter1   := "100.89.7.33"
 inter2   := "100.66.234.16"
 hetzner1 := "100.126.8.2"
 hetzner2 := "100.90.163.19"
@@ -240,28 +239,28 @@ deploy-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook full-app.yml \
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
-      --limit {{inter1}},{{inter2}},{{hetzner1}},{{hetzner3}} \
+      --limit {{hetzner5}},{{inter2}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet.log
 
 stop-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook stop-services.yml \
       -e dango_network=mainnet \
-      --limit {{inter1}},{{inter2}},{{hetzner1}},{{hetzner3}} \
+      --limit {{hetzner5}},{{inter2}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-mainnet.log
 
 restart-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook restart-services.yml \
       -e dango_network=mainnet \
-      --limit {{inter1}},{{inter2}},{{hetzner1}},{{hetzner3}} \
+      --limit {{hetzner5}},{{inter2}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-mainnet.log
 
 remove-deploy-lock-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook remove-deploy-locks.yml \
       -e dango_network=mainnet \
-      --limit {{inter1}},{{inter2}},{{hetzner1}},{{hetzner3}} \
+      --limit {{hetzner5}},{{inter2}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-mainnet.log
 
 # ---------------------------------- Preview -----------------------------------
@@ -338,7 +337,7 @@ stop-hyperlane-testnet-validators:
 
 # Start only the dango container (httpd + indexer) without CometBFT.
 # Useful for querying blocks/state when the chain can't run.
-# Usage: just start-dango-httpd mainnet 100.89.7.33
+# Usage: just start-dango-httpd mainnet <IP>
 start-dango-httpd network limit:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook start-dango-httpd.yml \
