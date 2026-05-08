@@ -38,6 +38,7 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         indexed_block_height,
         git_commit: GIT_COMMIT,
         chain_id: var("CHAIN_ID").unwrap_or_default().as_str(),
+        hostname: var("HOSTNAME").unwrap_or_default().as_str(),
     }))
 }
 
