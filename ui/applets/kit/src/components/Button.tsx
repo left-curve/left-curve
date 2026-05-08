@@ -7,6 +7,7 @@ import type { VariantProps } from "tailwind-variants";
 
 const SpinnerColor = {
   link: "blue",
+  "link-red": "current",
   primary: "white",
   secondary: "white",
   tertiary: "white",
@@ -83,6 +84,7 @@ const buttonVariants = tv(
           "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
         link: "rounded-xl transition-all duration-300 w-fit mx-1",
+        "link-red": "rounded-xl transition-all duration-300 w-fit mx-1",
       },
       size: {
         xs: "h-[25px] py-1 px-[6px] exposure-xs-italic text-xs gap-[2px]",
@@ -149,6 +151,17 @@ const buttonVariants = tv(
         class: "text-fg-disabled",
       },
       {
+        variant: "link-red",
+        isDisabled: false,
+        class:
+          "bg-transparent text-utility-error-600 hover:text-utility-error-700 focus:[box-shadow:0px_0px_0px_3px_#F575893D]",
+      },
+      {
+        variant: "link-red",
+        isDisabled: true,
+        class: "text-fg-disabled",
+      },
+      {
         variant: "primary",
         isDisabled: true,
         class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
@@ -182,27 +195,27 @@ const buttonVariants = tv(
           "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
-        variant: ["utility", "link"],
+        variant: ["utility", "link", "link-red"],
         size: "xs",
         class: "rounded-xs",
       },
       {
-        variant: ["utility", "link"],
+        variant: ["utility", "link", "link-red"],
         size: "sm",
         class: "rounded-sm",
       },
       {
-        variant: ["utility", "link"],
+        variant: ["utility", "link", "link-red"],
         size: "md",
         class: "rounded-md",
       },
       {
-        variant: ["utility", "link"],
+        variant: ["utility", "link", "link-red"],
         size: "lg",
         class: "rounded-lg",
       },
       {
-        variant: ["utility", "link"],
+        variant: ["utility", "link", "link-red"],
         size: "xl",
         class: "rounded-xl",
       },
