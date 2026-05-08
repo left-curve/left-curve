@@ -29,7 +29,9 @@ function MaintenanceApplet() {
   });
 
   useEffect(() => {
-    if (isChainRunning) navigate({ to: "/" });
+    if (isChainRunning && window.location.pathname === "/maintenance") {
+      navigate({ to: "/" });
+    }
   }, [isChainRunning]);
 
   if (!isFetched) {

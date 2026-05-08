@@ -292,7 +292,8 @@ export default defineConfig({
             clientsClaim: true,
             skipWaiting: true,
             cleanupOutdatedCaches: true,
-            navigationPreload: true,
+            navigationPreload: false,
+            navigateFallback: "/index.html",
             runtimeCaching: [
               {
                 urlPattern: ({ request }) => request.mode === "navigate",
