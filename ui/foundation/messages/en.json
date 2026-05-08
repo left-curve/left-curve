@@ -1026,7 +1026,8 @@
         "chainId": "Chain ID",
         "latestBlockHeight": "Latest Block Height",
         "latestBlockTime": "Latest Block Time",
-        "endpoint": "Endpoint"
+        "endpoint": "Endpoint",
+        "frontendVersion": "Frontend Version"
       },
       "time": { "hours": "h", "minutes": "m", "seconds": "s" },
       "username": {
