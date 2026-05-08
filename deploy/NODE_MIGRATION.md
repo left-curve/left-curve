@@ -113,6 +113,16 @@ Swap source out, target in. From here on, source is reached only by direct SSH; 
 
    The verify below catches any stragglers.
 
+5. Swap traefik per-host template symlinks. The traefik role looks up `docker-compose-{{ hostname }}.yml` and `traefik-{{ hostname }}.yml`; existing dango validator hosts use symlinks to the shared `docker-compose-dango.yml` / `traefik-dango.yml`. Add target's pair and remove source's. From `deploy/`:
+
+   ```bash
+   cd roles/traefik/templates && \
+     ln -s docker-compose-dango.yml docker-compose-<target hostname>.yml && \
+     ln -s traefik-dango.yml traefik-<target hostname>.yml && \
+     rm docker-compose-<source hostname>.yml traefik-<source hostname>.yml && \
+     cd -
+   ```
+
 **Verify**:
 
 ```bash
@@ -230,21 +240,22 @@ ssh debian@$SOURCE_IP "
     > /home/debian/rsync-blocks.log 2>&1 </dev/null &
 "
 
-# 5. postgres data.
+# 5. postgres: full dir (data/ + config/ + docker-compose.yml). Ansible's db.yml needs
+# the deploy-managed config/ and compose file alongside the data dir.
 ssh debian@$SOURCE_IP "
   nohup sudo rsync -aH --mkpath --info=progress2 --delete \
     -e 'ssh -i /home/debian/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
-    /home/deploy/psql/data/ debian@$TARGET_IP:/home/deploy/psql/data/ \
+    /home/deploy/psql/ debian@$TARGET_IP:/home/deploy/psql/ \
     > /home/debian/rsync-psql.log 2>&1 </dev/null &
 "
 
-# 6. clickhouse data.
+# 6. clickhouse: full dir (data/ + config/ + docker-compose.yml). Same reasoning as #5.
 ssh debian@$SOURCE_IP "
   nohup sudo rsync -aH --mkpath --info=progress2 --delete \
     -e 'ssh -i /home/debian/.ssh/migrate_key' \
     --rsync-path='sudo rsync' \
-    /home/deploy/clickhouse/data/ debian@$TARGET_IP:/home/deploy/clickhouse/data/ \
+    /home/deploy/clickhouse/ debian@$TARGET_IP:/home/deploy/clickhouse/ \
     > /home/debian/rsync-clickhouse.log 2>&1 </dev/null &
 "
 ```
@@ -322,13 +333,21 @@ If a rsync gets interrupted (network blip, server restart, etc.), re-run the sam
    ssh debian@$SOURCE_IP "sudo rsync -aH --checksum --dry-run --itemize-changes \
      -e 'ssh -i /home/debian/.ssh/migrate_key' \
      --rsync-path='sudo rsync' \
-     /home/deploy/psql/data/ debian@$TARGET_IP:/home/deploy/psql/data/"
+     /home/deploy/psql/ debian@$TARGET_IP:/home/deploy/psql/"
 
    ssh debian@$SOURCE_IP "sudo rsync -aH --checksum --dry-run --itemize-changes \
      -e 'ssh -i /home/debian/.ssh/migrate_key' \
      --rsync-path='sudo rsync' \
-     /home/deploy/clickhouse/data/ debian@$TARGET_IP:/home/deploy/clickhouse/data/"
+     /home/deploy/clickhouse/ debian@$TARGET_IP:/home/deploy/clickhouse/"
    ```
+
+**Fix parent directory ownership**:
+
+The rsyncs of `/home/deploy/psql/` and `/home/deploy/clickhouse/` (transfers #5 and #6) sync the parent dir's own metadata too, so those end up `deploy:deploy` automatically. But `/home/deploy/deployments/` and `/home/deploy/mainnet/` only got created by `--mkpath` as intermediate paths for transfers #1–#4 (which target subdirs, not these parents) — so they're left as root-owned. Step 7's full-app deploy will fail trying to create a new `~/deployments/<new-timestamp>/` under a root-owned parent. Chown them (non-recursive — leaves the timestamp subdirs alone, since cometbft expects its data files to stay root-owned):
+
+```bash
+ssh debian@$TARGET_IP "sudo chown deploy:deploy /home/deploy/deployments /home/deploy/mainnet"
+```
 
 ## Step 6. Deploy infrastructure services on target
 
@@ -352,11 +371,45 @@ ssh deploy@$TARGET_IP 'docker ps --format "{{.Names}}" | sort'
 
 Expected: includes `postgres`, `postgres-exporter`, `clickhouse`, `traefik`, `dozzle`, and one `cloudflared-…` container. (The cloudflared container name varies by tunnel ID.)
 
+_Postgres_ — confirm the rsynced dango database is present:
+
 ```bash
-ssh deploy@$TARGET_IP "docker exec postgres psql -U postgres -lqt | grep dango_$DEPLOY"
+ssh deploy@$TARGET_IP "docker exec postgres psql -U postgres -lqt | grep dango_$(basename $DATA_DIR)"
 ```
 
-Expected: lists the database `dango_<source-deployment>` (rsynced from source). If this prints nothing, postgres re-initialized instead of picking up the rsynced data — check that `~/psql/data/PG_VERSION` exists on target.
+Expected: lists `dango_<data-dir-timestamp>` (rsynced from source). The dango database name is keyed off the data-dir timestamp (`$(basename $DATA_DIR)`, e.g. `20260105173049`) — not the orchestration timestamp `$DEPLOY` — because dango's database lifecycle follows `DANGO_DIRECTORY` from the original deploy that created the data. If this prints nothing, postgres re-initialized instead of picking up the rsynced data — check that `~/psql/data/PG_VERSION` exists on target.
+
+_ClickHouse_ — confirm the rsynced indexer database is present. The default user has a password set in the rsynced `users.xml`, sourced at template-time from `~/clickhouse/.env`'s `CLICKHOUSE_PASSWORD`; we re-read it inline so it never lands in your local shell:
+
+```bash
+ssh deploy@$TARGET_IP "docker exec clickhouse clickhouse-client --user default --password \"\$(grep '^CLICKHOUSE_PASSWORD=' ~/clickhouse/.env | cut -d= -f2-)\" --query \"SHOW DATABASES LIKE 'dango%'\""
+```
+
+Expected: prints multiple `dango_<timestamp>` rows. The active one is `dango_$(basename $DATA_DIR)` (matches the postgres dango DB — both follow `DANGO_DIRECTORY`); the rest are leftover databases from prior deploys, same as the postgres listing. If you get _no_ dango rows, clickhouse re-initialized instead of loading the rsynced data. If you get `AUTHENTICATION_FAILED`, the rsynced `users.xml` and the .env's password are out of sync — fall back to `docker inspect --format '{{.State.Health.Status}}' clickhouse` (should print `healthy`, since the healthcheck uses the same password and would tell you).
+
+_Traefik_ — confirm the API is up and routers loaded from config:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://$TARGET_IP:8888/ping
+```
+
+Expected: `200`. If `000` or connection refused, traefik isn't binding to the tailscale IP — check `docker logs traefik-traefik-1`.
+
+_Cloudflared_ — confirm the tunnel registered with Cloudflare:
+
+```bash
+ssh deploy@$TARGET_IP "docker logs \$(docker ps --format '{{.Names}}' | grep cloudflared) 2>&1 | grep -iE 'registered tunnel connection' | tail -5"
+```
+
+Expected: recent (post-deploy timestamp) "Registered tunnel connection" lines. If the output is empty, the tunnel didn't authenticate — check the full logs and verify the `CLOUDFLARED_TOKEN` in `~/cloudflared/.env`.
+
+_Dozzle_ — confirm the web UI responds:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://$TARGET_IP:9090/
+```
+
+Expected: `200`.
 
 ## Step 7. First mainnet deploy on target
 
