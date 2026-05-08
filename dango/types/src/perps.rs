@@ -220,6 +220,16 @@ pub struct Param {
     /// Bounds: `>= 1`. Governance-tunable via `Configure`; no hard
     /// upper bound is enforced.
     pub max_action_batch_size: usize,
+
+    /// Minimum total notional value that must be closed during a single
+    /// liquidation. When the deficit-driven close schedule would close less
+    /// than this amount, additional position size is closed (largest-MM-first)
+    /// until the cumulative notional reaches this floor or all positions are
+    /// fully closed. Prevents dust-sized liquidations whose fees fail to
+    /// compensate liquidators.
+    ///
+    /// Bounds: `>= 0`. Zero disables the floor.
+    pub min_liquidation_value: UsdValue,
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.

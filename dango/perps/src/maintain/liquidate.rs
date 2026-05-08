@@ -341,8 +341,15 @@ fn _liquidate(
         mm.checked_sub(effective_equity)?
     };
 
-    // Compute which positions to close and how much to close based on the deficit.
-    let schedule = compute_close_schedule(&user_state, pair_params, oracle_prices, deficit)?;
+    // Compute which positions to close and how much to close based on the
+    // deficit, with a minimum-notional floor enforced from the global param.
+    let schedule = compute_close_schedule(
+        &user_state,
+        pair_params,
+        oracle_prices,
+        deficit,
+        param.min_liquidation_value,
+    )?;
 
     // `compute_close_schedule` is supposed to produce at least one entry
     // whenever `deficit > 0`, which is implied by `is_liquidatable` passing above.

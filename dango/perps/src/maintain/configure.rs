@@ -169,6 +169,12 @@ fn validate_param(param: &Param) -> anyhow::Result<()> {
         );
     }
 
+    ensure!(
+        param.min_liquidation_value >= UsdValue::ZERO,
+        "invalid `min_liquidation_value`! bounds: >= 0, found: {}",
+        param.min_liquidation_value,
+    );
+
     Ok(())
 }
 
@@ -430,6 +436,7 @@ mod tests {
             referrer_commission_rates: RateSchedule::default(),
             vault_deposit_cap: None,
             max_action_batch_size: 5,
+            min_liquidation_value: UsdValue::ZERO,
         }
     }
 
@@ -1003,6 +1010,16 @@ mod tests {
         };
         let err = validate_param(&param).unwrap_err().to_string();
         assert!(err.contains("`min_referrer_volume`"), "{err}");
+    }
+
+    #[test]
+    fn param_negative_min_liquidation_value_rejected() {
+        let param = Param {
+            min_liquidation_value: UsdValue::new_raw(-1),
+            ..valid_param()
+        };
+        let err = validate_param(&param).unwrap_err().to_string();
+        assert!(err.contains("`min_liquidation_value`"), "{err}");
     }
 
     #[test]

@@ -131,6 +131,7 @@ export type PerpsParam = {
   minReferrerVolume: string;
   referrerCommissionRates: RateSchedule;
   vaultDepositCap: string | null;
+  minLiquidationValue: string;
 };
 
 export type PerpsState = {

@@ -30,7 +30,13 @@ pub fn is_liquidatable(
 
 /// A policy for selecting which position(s) to close during liquidation.
 /// We start from the position that contributes the most to maintenance margin
-/// and go down, until the maintenance margin deficit is covered.
+/// and go down, until the maintenance margin deficit is covered AND the
+/// cumulative closed notional is at least `min_liquidation_value`.
+///
+/// The minimum-notional floor exists so that dust-sized liquidations — where
+/// the deficit alone would close less than a meaningful amount — still close
+/// enough size for the liquidation fee to compensate the liquidator. Set
+/// `min_liquidation_value = ZERO` to disable the floor (deficit-only behavior).
 ///
 /// Returns:
 ///
@@ -40,8 +46,10 @@ pub fn compute_close_schedule(
     pair_params: &BTreeMap<PairId, PairParam>,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     deficit: UsdValue,
+    min_liquidation_value: UsdValue,
 ) -> MathResult<Vec<(PairId, Quantity)>> {
     let mut deficit = deficit;
+    let mut closed_notional = UsdValue::ZERO;
 
     // Build (mm_contribution, pair_id) list, sorted descending by MM.
     let mut mm_entries = Vec::new();
@@ -66,7 +74,12 @@ pub fn compute_close_schedule(
     let mut schedule = Vec::new();
 
     for (_, pair_id) in &mm_entries {
-        if deficit <= UsdValue::ZERO {
+        // Two independent requirements drive each iteration: the maintenance
+        // margin deficit must be cleared, and the cumulative closed notional
+        // must reach `min_liquidation_value`. Stop only when both are met.
+        let need_deficit_requirement = deficit > UsdValue::ZERO;
+        let need_value_requirement = closed_notional < min_liquidation_value;
+        if !need_deficit_requirement && !need_value_requirement {
             break;
         }
 
@@ -75,16 +88,34 @@ pub fn compute_close_schedule(
         let pair_param = &pair_params[pair_id];
         let abs_size = position.size.checked_abs()?;
 
-        // close_amount = min(ceil(deficit / (P × mmr)), |size|)
+        // Amount this position must close to satisfy the deficit requirement.
         //
         // Ceiling rounding is load-bearing: with floor division, a sub-ULP
-        // deficit collapses `close_amount` to zero, leaves the schedule
-        // empty, and causes `liquidate` to silently exit with no events.
-        // Ceil guarantees at least 1 ULP of progress whenever `deficit > 0`.
-        let close_amount = {
+        // deficit collapses to zero, leaves the schedule empty, and causes
+        // `liquidate` to silently exit with no events. Ceil guarantees at
+        // least 1 ULP of progress whenever `deficit > 0`.
+        let deficit_requirement_amount = if need_deficit_requirement {
             let denominator = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
-            deficit.checked_div_ceil(denominator)?.min(abs_size)
+            deficit.checked_div_ceil(denominator)?
+        } else {
+            Quantity::ZERO
         };
+
+        // Amount this position must close to satisfy the value requirement
+        // (top the cumulative notional up to `min_liquidation_value`). Ceil
+        // so a sub-ULP shortfall still forces at least 1 ULP of progress.
+        let value_requirement_amount = if need_value_requirement {
+            let remaining = min_liquidation_value.checked_sub(closed_notional)?;
+            remaining.checked_div_ceil(oracle_price)?
+        } else {
+            Quantity::ZERO
+        };
+
+        // Satisfy the stricter of the two requirements, capped by the
+        // position size — we never synthesize size that doesn't exist.
+        let close_amount = deficit_requirement_amount
+            .max(value_requirement_amount)
+            .min(abs_size);
 
         // close_size = -sign(size) × close_amount (opposite direction to close)
         let close_size = if position.size.is_positive() {
@@ -100,13 +131,11 @@ pub fn compute_close_schedule(
             deficit.checked_sub(mm_to_remove)?.max(UsdValue::ZERO)
         };
 
+        closed_notional.checked_add_assign(close_amount.checked_mul(oracle_price)?)?;
+
         if close_size.is_non_zero() {
             schedule.push((pair_id.clone(), close_size));
         }
-
-        // If the full position is being closed, deficit should be exactly cleared for
-        // that contribution. But if we're doing partial, deficit might still be > 0
-        // only if there are precision issues. The guard at the top handles this.
     }
 
     Ok(schedule)
@@ -469,6 +498,7 @@ mod tests {
             &pair_params,
             &oracle_prices,
             UsdValue::new_int(30_000),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -520,6 +550,7 @@ mod tests {
             &pair_params,
             &oracle_prices,
             UsdValue::new_int(4_750),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -560,6 +591,7 @@ mod tests {
             &pair_params,
             &oracle_prices,
             UsdValue::new_int(5_000),
+            UsdValue::ZERO,
         )
         .unwrap();
 
@@ -609,8 +641,14 @@ mod tests {
         // $0.001 — one milli-dollar, well below `denominator × 1 ULP = $0.003`.
         let deficit = UsdValue::new_raw(1_000);
 
-        let schedule =
-            compute_close_schedule(&user_state, &pair_params, &oracle_prices, deficit).unwrap();
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            deficit,
+            UsdValue::ZERO,
+        )
+        .unwrap();
 
         // With ceil division, the schedule contains exactly one entry of the
         // smallest representable close size (1 raw ULP = 0.000001 Quantity),
@@ -618,6 +656,156 @@ mod tests {
         assert_eq!(schedule.len(), 1);
         assert_eq!(schedule[0].0, pair_btc());
         assert_eq!(schedule[0].1, Quantity::new_raw(-1));
+    }
+
+    /// `min_liquidation_value` raises a small deficit-driven close to the
+    /// configured floor.
+    ///
+    /// 1000 BTC long @ price $1, MMR 5%. With deficit $5 and zero floor the
+    /// schedule closes 100 BTC ($100 notional). Setting a $200 floor raises
+    /// the close to 200 BTC ($200 notional).
+    #[test]
+    fn min_liquidation_value_extends_close() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(1_000),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! { pair_btc() => btc_pair_param() };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(1) };
+
+        // No floor → deficit-only close of 100 BTC.
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(5),
+            UsdValue::ZERO,
+        )
+        .unwrap();
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].1, Quantity::new_int(-100));
+
+        // $200 floor → close raised to 200 BTC.
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(5),
+            UsdValue::new_int(200),
+        )
+        .unwrap();
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].1, Quantity::new_int(-200));
+    }
+
+    /// When the user's total notional is below the min-liquidation floor,
+    /// the close is capped at the position size — we never synthesize size
+    /// that doesn't exist.
+    #[test]
+    fn min_liquidation_value_capped_by_position_size() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(50),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! { pair_btc() => btc_pair_param() };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(1) };
+
+        // Position notional $50; floor $1000 → close the whole position.
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(1),
+            UsdValue::new_int(1_000),
+        )
+        .unwrap();
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].1, Quantity::new_int(-50));
+    }
+
+    /// The floor causes the schedule to spill into the second-highest-MM
+    /// position once the first is exhausted. Asserted against the same
+    /// fixture both with and without a floor, to make the contrast explicit.
+    ///
+    /// BTC (mm=$10) is liquidated first; ETH (mm=$5) second.
+    #[test]
+    fn min_liquidation_value_spans_multiple_pairs() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(2),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+                pair_eth() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => btc_pair_param(),
+            pair_eth() => eth_pair_param(),
+        };
+        let oracle_prices = btree_map! {
+            pair_btc() => UsdPrice::new_int(2),
+            pair_eth() => UsdPrice::new_int(1),
+        };
+
+        // Without floor: deficit alone requires closing 10 BTC ($20
+        // notional) — partial BTC close, ETH untouched.
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(1),
+            UsdValue::ZERO,
+        )
+        .unwrap();
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_int(-10));
+
+        // With $250 floor: BTC fully closes ($200 notional), then the
+        // schedule spills into ETH for the remaining $50.
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(1),
+            UsdValue::new_int(250),
+        )
+        .unwrap();
+        assert_eq!(schedule.len(), 2);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_int(-100));
+        assert_eq!(schedule[1].0, pair_eth());
+        assert_eq!(schedule[1].1, Quantity::new_int(-50));
     }
 
     // ==================== `compute_bankruptcy_price` tests ====================
