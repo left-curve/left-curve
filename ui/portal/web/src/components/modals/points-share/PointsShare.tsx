@@ -7,10 +7,14 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { CharacterSelector } from "../../foundation/CharacterSelector";
 import { cloneCardForExport } from "./buildExportCardHtml.js";
 import { PreviewCard } from "./PreviewCard.js";
-import type { PnlShareProps } from "./types.js";
 
-export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
-  const { symbol, size, entryPrice, currentPrice, equity } = props;
+export type PointsShareProps = {
+  points: number;
+  weekNumber: number;
+};
+
+export const PointsShare = forwardRef<unknown, PointsShareProps>((props, _ref) => {
+  const { points, weekNumber } = props;
   const { hideModal } = useApp();
   const { userIndex } = useAccount();
   const referralLink = getReferralLink(userIndex);
@@ -24,7 +28,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
       await saveCardAsImage({
         source: cardRef.current,
         prepareClone: cloneCardForExport,
-        filename: `pnl-${symbol}.png`,
+        filename: `points-week-${weekNumber}.png`,
       });
     } catch (err) {
       console.error("Failed to save image", err);
@@ -43,11 +47,8 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
 
       <PreviewCard
         ref={cardRef}
-        symbol={symbol}
-        size={size}
-        entryPrice={entryPrice}
-        currentPrice={currentPrice}
-        equity={equity}
+        points={points}
+        weekNumber={weekNumber}
         selectedCharacter={selectedCharacter}
       />
 
