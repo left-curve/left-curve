@@ -14,12 +14,12 @@ exposed to the public internet through Cloudflare tunnels.
 | ovh1     | 100.96.253.40  | 10.99.0.1    | devnet         |
 | ovh2     | 100.107.248.71 | 10.99.0.2    | devnet         |
 | ovh3     | 100.122.37.57  | 10.99.0.3    | monitoring hub |
-| inter1   | 100.89.7.33    | 10.99.0.12   | mainnet        |
 | inter2   | 100.66.234.16  | 10.99.0.13   | mainnet        |
 | hetzner1 | 100.126.8.2    | 10.99.0.8    | mainnet        |
 | hetzner2 | 100.90.163.19  | 10.99.0.9    | testnet        |
 | hetzner3 | 100.76.197.30  | 10.99.0.10   | mainnet        |
 | hetzner4 | 100.109.200.70 | 10.99.0.11   | testnet        |
+| hetzner5 | 100.72.62.100  | 10.99.0.14   | mainnet        |
 
 > ovh4-7 are GitHub Actions runners (not application servers).
 
@@ -62,7 +62,7 @@ exposed to the public internet through Cloudflare tunnels.
 
 | Service     | Description                               | Location                   |
 | ----------- | ----------------------------------------- | -------------------------- |
-| hyperlane   | Cross-chain message validators + relayers | inter1, inter2, hetzner1-4 |
+| hyperlane   | Cross-chain message validators + relayers | inter2, hetzner1-5         |
 | minio       | S3-compatible object storage              | ovh3                       |
 | uptimekuma  | Service health monitoring                 | ovh3                       |
 | vaultwarden | Password manager                          | ovh3                       |
