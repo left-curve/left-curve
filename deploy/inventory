@@ -134,7 +134,7 @@ perp-liquidator-testnet
 perp-liquidator-mainnet
 
 [hyperlane]
-100.89.7.33    # inter1
+100.72.62.100  # hetzner5
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2

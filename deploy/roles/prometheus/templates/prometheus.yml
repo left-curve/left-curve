@@ -160,7 +160,7 @@ scrape_configs:
 
   - job_name: 'hyperlane-validator'
     static_configs:
-      - targets: ['inter1:9500']
+      - targets: ['hetzner5:9500']
         labels:
           service: 'hyperlane'
           role: 'validator'
