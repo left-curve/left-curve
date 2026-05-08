@@ -1,5 +1,6 @@
 import {
   Badge,
+  Button,
   createContext,
   Modals,
   Spinner,
@@ -32,6 +33,8 @@ import {
   allPerpsPairStatsStore,
   useCurrentPrice,
   useOraclePrices,
+  usePublicClient,
+  useAccount,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
@@ -46,6 +49,12 @@ import { TradeMenu } from "./TradeMenu";
 import { TradeHeader } from "./TradeHeader";
 import { ErrorBoundary } from "react-error-boundary";
 import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
+import {
+  buildPerpsTradeHistoryCsv,
+  buildSpotTradeHistoryCsv,
+  downloadCsv,
+  tradeHistoryCsvFilename,
+} from "./TradeHistory/exportCsv";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
@@ -251,7 +260,7 @@ const ProTradeHistory: React.FC = () => {
 
   return (
     <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
-      <div className="relative">
+      <div className="relative flex items-center justify-between">
         <Tabs
           color="line-red"
           layoutId="tabs-open-orders"
@@ -275,6 +284,7 @@ const ProTradeHistory: React.FC = () => {
           </Tab>
           <Tab title="trade-history">{m["dex.protrade.tradeHistory.title"]()}</Tab>
         </Tabs>
+        {activeTab === "trade-history" ? <ExportTradeHistoryCsv mode={mode} /> : null}
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
       <div className="w-full h-full relative">
@@ -283,6 +293,73 @@ const ProTradeHistory: React.FC = () => {
         {activeTab === "trade-history" ? <ProTradeOrdersHistory /> : null}
       </div>
     </div>
+  );
+};
+
+const EXPORT_CSV_FETCH_LIMIT = 1000;
+
+const ExportTradeHistoryCsv: React.FC<{ mode: "spot" | "perps" }> = ({ mode }) => {
+  const { account } = useAccount();
+  const publicClient = usePublicClient();
+  const { coins } = useConfig();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const headers = useMemo(
+    () => ({
+      perps: {
+        pair: m["dex.protrade.tradeHistory.pair"](),
+        type: m["dex.protrade.history.type"](),
+        direction: m["dex.protrade.tradeHistory.direction"](),
+        size: "Size",
+        tradeValue: m["dex.protrade.tradeHistory.tradeValue"](),
+        price: m["dex.protrade.history.price"](),
+        pnl: m["dex.protrade.tradeHistory.pnl"](),
+        funding: m["dex.protrade.tradeHistory.funding"](),
+        fees: m["dex.protrade.tradeHistory.fees"](),
+        makerTaker: m["dex.protrade.tradeHistory.makerTaker"](),
+        time: m["dex.protrade.tradeHistory.time"](),
+      },
+      spot: {
+        pair: m["dex.protrade.tradeHistory.pair"](),
+        direction: m["dex.protrade.tradeHistory.direction"](),
+        type: m["dex.protrade.history.type"](),
+        size: "Size",
+        price: m["dex.protrade.history.price"](),
+        time: m["dex.protrade.tradeHistory.time"](),
+      },
+    }),
+    [],
+  );
+
+  const handleExport = useCallback(async () => {
+    if (!account || isExporting) return;
+    setIsExporting(true);
+    try {
+      if (mode === "perps") {
+        const result = await publicClient.queryPerpsEvents({
+          userAddr: account.address,
+          sortBy: "BLOCK_HEIGHT_DESC",
+          first: EXPORT_CSV_FETCH_LIMIT,
+        });
+        const csv = buildPerpsTradeHistoryCsv(result.nodes, headers.perps);
+        downloadCsv(tradeHistoryCsvFilename("perps"), csv);
+      } else {
+        const result = await publicClient.queryTrades({
+          address: account.address,
+          first: EXPORT_CSV_FETCH_LIMIT,
+        });
+        const csv = buildSpotTradeHistoryCsv(result.nodes, coins.byDenom, headers.spot);
+        downloadCsv(tradeHistoryCsvFilename("spot"), csv);
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  }, [account, coins.byDenom, headers, isExporting, mode, publicClient]);
+
+  return (
+    <Button type="button" variant="link-red" size="xs" onClick={handleExport} isDisabled={!account}>
+      {m["dex.protrade.tradeHistory.exportCsv"]()}
+    </Button>
   );
 };
 
