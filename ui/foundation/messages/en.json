@@ -1220,7 +1220,8 @@
         "makerTakerNotAvailable": "Maker/Taker data is not available for trades before April 22, 2025.",
         "time": "Time",
         "dateAndTime": "Date & Time",
-        "exportCsv": "Export CSV"
+        "exportCsv": "Export CSV",
+        "customDate": "Custom date"
       },
       "history": {
         "id": "ID",

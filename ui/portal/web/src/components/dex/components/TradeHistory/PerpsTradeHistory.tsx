@@ -3,6 +3,7 @@ import { usePublicClient, useAccount, useQueryWithPagination } from "@left-curve
 import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TradeHistoryTable } from "./TradeHistoryTable";
+import { useTradeHistoryFilter } from "./tradeHistoryFilterContext";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type {
@@ -66,14 +67,21 @@ type NormalizedPerpsEvent = PerpsEvent & ReturnType<typeof normalizePerpsEvent>;
 export const PerpsTradeHistory: React.FC = () => {
   const { account } = useAccount();
   const publicClient = usePublicClient();
+  const { filter } = useTradeHistoryFilter();
+
+  const earlierThan = filter.to.toISOString();
+  const laterThan = filter.from.toISOString();
+
   const { data, pagination, isLoading } = useQueryWithPagination({
     enabled: !!account,
-    queryKey: ["perpsTradeHistory", account?.address as string],
+    queryKey: ["perpsTradeHistory", account?.address as string, earlierThan, laterThan],
     queryFn: async () => {
       if (!account) throw new Error();
       return await publicClient.queryPerpsEvents({
         userAddr: account.address,
         sortBy: "BLOCK_HEIGHT_DESC",
+        earlierThan,
+        laterThan,
       });
     },
   });
