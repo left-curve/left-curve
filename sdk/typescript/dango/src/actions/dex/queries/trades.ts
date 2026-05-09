@@ -6,6 +6,10 @@ export type QueryTradesParameters = {
   after?: string;
   first?: number;
   address?: Address;
+  /** ISO 8601 timestamp — only return trades created at or before this date. */
+  earlierThan?: string;
+  /** ISO 8601 timestamp — only return trades created at or after this date. */
+  laterThan?: string;
 };
 
 export type QueryTradesReturnType = Promise<GraphqlQueryResult<Trade>>;
@@ -15,8 +19,20 @@ export async function queryTrades(
   parameters: QueryTradesParameters,
 ): QueryTradesReturnType {
   const document = /* GraphQL */ `
-    query trades($after: String, $first: Int, $address: String) {
-      trades(after: $after, first: $first, addr: $address) {
+    query trades(
+      $after: String
+      $first: Int
+      $address: String
+      $earlierThan: DateTime
+      $laterThan: DateTime
+    ) {
+      trades(
+        after: $after
+        first: $first
+        addr: $address
+        earlierThan: $earlierThan
+        laterThan: $laterThan
+      ) {
         pageInfo {
           hasNextPage
           hasPreviousPage
