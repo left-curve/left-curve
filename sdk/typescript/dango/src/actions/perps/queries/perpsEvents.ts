@@ -12,6 +12,10 @@ export type QueryPerpsEventsParameters = {
   eventType?: string;
   pairId?: string;
   blockHeight?: number;
+  /** ISO 8601 timestamp — only return events created at or before this date. */
+  earlierThan?: string;
+  /** ISO 8601 timestamp — only return events created at or after this date. */
+  laterThan?: string;
 };
 
 export type QueryPerpsEventsReturnType = Promise<GraphqlQueryResult<PerpsEvent>>;
@@ -31,6 +35,8 @@ export async function queryPerpsEvents(
       $eventType: String
       $pairId: String
       $blockHeight: Int
+      $earlierThan: DateTime
+      $laterThan: DateTime
     ) {
       perpsEvents(
         after: $after
@@ -42,6 +48,8 @@ export async function queryPerpsEvents(
         eventType: $eventType
         pairId: $pairId
         blockHeight: $blockHeight
+        earlierThan: $earlierThan
+        laterThan: $laterThan
       ) {
         pageInfo {
           hasNextPage
