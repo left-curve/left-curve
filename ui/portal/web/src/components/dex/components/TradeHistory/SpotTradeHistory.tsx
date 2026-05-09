@@ -10,6 +10,7 @@ import { calculateTradeSize, Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TimeInForceOption, type Trade } from "@left-curve/types";
 import { TradeHistoryTable } from "./TradeHistoryTable";
+import { useTradeHistoryFilter } from "./tradeHistoryFilterContext";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 
@@ -21,13 +22,21 @@ export const SpotTradeHistory: React.FC = () => {
 
   const { baseCoin } = useTradeCoins();
   const { formatNumberOptions } = settings;
+  const { filter } = useTradeHistoryFilter();
+
+  const earlierThan = filter.to.toISOString();
+  const laterThan = filter.from.toISOString();
 
   const { data, pagination, isLoading } = useQueryWithPagination({
     enabled: !!account,
-    queryKey: ["tradeHistory", account?.address as string],
+    queryKey: ["tradeHistory", account?.address as string, earlierThan, laterThan],
     queryFn: async () => {
       if (!account) throw new Error();
-      return await publicClient.queryTrades({ address: account.address });
+      return await publicClient.queryTrades({
+        address: account.address,
+        earlierThan,
+        laterThan,
+      });
     },
   });
 
@@ -110,11 +119,5 @@ export const SpotTradeHistory: React.FC = () => {
     },
   ];
 
-  return (
-    <TradeHistoryTable
-      data={data}
-      columns={columns}
-      isLoading={isLoading}
-    />
-  );
+  return <TradeHistoryTable data={data} columns={columns} isLoading={isLoading} />;
 };

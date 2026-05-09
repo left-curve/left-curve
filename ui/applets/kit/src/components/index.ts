@@ -37,6 +37,11 @@ export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
 export { Popover, type PopoverRef } from "./Popover";
+export {
+  DateRangePicker,
+  type DateRangePickerProps,
+  type DateRangePickerValue,
+} from "./DateRangePicker";
 export { Pagination, CursorPagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
