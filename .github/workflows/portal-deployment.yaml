@@ -80,6 +80,9 @@ jobs:
       - name: Linter checks
         run: pnpm lint
 
+      - name: Build SDK
+        run: pnpm build:sdk
+
       - name: Unit tests
         run: pnpm test
 
