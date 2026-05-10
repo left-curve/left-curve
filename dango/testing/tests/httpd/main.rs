@@ -13,8 +13,8 @@ use {
 // Re-export PaginationDirection from indexer_testing
 pub use indexer_testing::PaginationDirection;
 
-// Re-export query modules from dango_sdk for use in tests
-pub use dango_sdk::{
+// Re-export query modules from dango_graphql_types for use in tests
+pub use dango_graphql_types::{
     Accounts, Blocks, Events, Messages, Transactions, Transfers, accounts as accounts_query,
     blocks as blocks_query, events as events_query, messages as messages_query,
     transactions as transactions_query, transfers as transfers_query,
@@ -22,7 +22,6 @@ pub use dango_sdk::{
 
 mod accounts;
 mod candles;
-mod grug;
 mod metrics;
 mod pair_stats;
 mod perps_candles;

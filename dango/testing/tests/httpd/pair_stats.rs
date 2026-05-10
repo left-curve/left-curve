@@ -1,7 +1,7 @@
 use {
     crate::call_graphql_query,
     dango_genesis::Contracts,
-    dango_sdk::{
+    dango_graphql_types::{
         AllPairStats, PairStats, PairStatsPartial, all_pair_stats, pair_stats, pair_stats_partial,
     },
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
