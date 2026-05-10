@@ -8,7 +8,6 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
-  "dango/hyperlane-deployment",
   "dango/indexer/clickhouse",
   "dango/indexer/graphql-types",
   "dango/indexer/httpd",
@@ -213,7 +212,6 @@ dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-graphql-types         = { path = "dango/indexer/graphql-types" }
 dango-httpd                 = { path = "dango/indexer/httpd" }
-dango-hyperlane-deployment  = { path = "dango/hyperlane-deployment" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
