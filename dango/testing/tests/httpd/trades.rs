@@ -2,7 +2,7 @@ use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
-    dango_sdk::{SubscribeTrades, Trades, subscribe_trades, trades},
+    dango_graphql_types::{SubscribeTrades, Trades, subscribe_trades, trades},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},

@@ -1,8 +1,10 @@
 use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
+    dango_graphql_types::{
+        PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles,
+    },
     dango_indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
-    dango_sdk::{PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles},
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},

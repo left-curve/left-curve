@@ -1,6 +1,6 @@
 use {
     crate::call_graphql_query,
-    dango_sdk::{
+    dango_graphql_types::{
         AllPerpsPairStats, PerpsPairStats, PerpsPairStatsPartial, all_perps_pair_stats,
         perps_pair_stats, perps_pair_stats_partial,
     },

@@ -4101,6 +4101,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-graphql-types"
+version = "0.0.0"
+dependencies = [
+ "graphql_client",
+ "paste",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "dango-httpd"
 version = "0.0.0"
 dependencies = [
@@ -4332,6 +4342,7 @@ dependencies = [
  "dango-account-factory",
  "dango-auth",
  "dango-genesis",
+ "dango-graphql-types",
  "dango-mock-httpd",
  "dango-testing",
  "dango-types",
@@ -4344,7 +4355,6 @@ dependencies = [
  "identity",
  "indexer-testing",
  "k256",
- "paste",
  "pbkdf2",
  "rand 0.8.5",
  "reqwest 0.13.2",
@@ -4411,6 +4421,7 @@ dependencies = [
  "dango-dex",
  "dango-gateway",
  "dango-genesis",
+ "dango-graphql-types",
  "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
@@ -4419,7 +4430,6 @@ dependencies = [
  "dango-order-book",
  "dango-perps",
  "dango-proposal-preparer",
- "dango-sdk",
  "dango-taxman",
  "dango-types",
  "eth-utils",

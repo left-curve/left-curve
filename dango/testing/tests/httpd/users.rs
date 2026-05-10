@@ -1,7 +1,7 @@
 use {
     super::call_graphql_query,
     assertor::*,
-    dango_sdk::{User, Users, user, users},
+    dango_graphql_types::{User, Users, user, users},
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
         setup_test_with_indexer,

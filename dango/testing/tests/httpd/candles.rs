@@ -2,10 +2,10 @@ use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
+    dango_graphql_types::{Candles, SubscribeCandles, candles, subscribe_candles},
     dango_indexer_clickhouse::{
         entities::pair_price::PairPrice, indexer::candles::cache::CandleCache,
     },
-    dango_sdk::{Candles, SubscribeCandles, candles, subscribe_candles},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},

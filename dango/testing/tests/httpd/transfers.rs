@@ -4,7 +4,7 @@ use {
         transfers_query,
     },
     assertor::*,
-    dango_sdk::{SubscribeTransfers, subscribe_transfers},
+    dango_graphql_types::{SubscribeTransfers, subscribe_transfers},
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
     },
