@@ -34,7 +34,7 @@ export type AppState = {
   navigate: (to: string, options?: { replace?: boolean }) => void;
 };
 
-export const [AppContextProvider, useApp] = createContext<AppState>();
+export const [AppContextProvider, , AppContext] = createContext<AppState>();
 
 export type AppProviderProps = {
   toast: ToastController;
