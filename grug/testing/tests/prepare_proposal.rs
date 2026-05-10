@@ -15,8 +15,8 @@ mod mock_oracle {
     use {
         grug_storage::Map,
         grug_types::{
-            AuthCtx, AuthResponse, Empty, ImmutableCtx, Json, JsonSerExt, MutableCtx, Order,
-            QueryRequest, Response, StdResult, Tx,
+            AuthCtx, Empty, ImmutableCtx, Json, JsonSerExt, MutableCtx, Order, QueryRequest,
+            Response, StdResult, Tx,
         },
         serde::{Deserialize, Serialize},
         std::collections::BTreeMap,
@@ -51,11 +51,11 @@ mod mock_oracle {
         Ok(Response::new())
     }
 
-    pub fn authenticate(_ctx: AuthCtx, _tx: Tx) -> StdResult<AuthResponse> {
+    pub fn authenticate(_ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
         // In practice, the contract should make sure the transaction only
         // contains oracle updates.
         // In this test however, for simplicity, we skip this.
-        Ok(AuthResponse::new())
+        Ok(Response::new())
     }
 
     pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {

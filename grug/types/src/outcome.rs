@@ -239,6 +239,12 @@ impl CheckTxEvents {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgsAndBackrunEvents {
     pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
+    // FIXME: The transaction backrunning mechanism has been removed. For all
+    // historical blocks on mainnet and testnet, this field is exclusively
+    // `EventStatus::NotReached`. A future migration should rewrite cached
+    // block files to drop this field and remove the `MsgsAndBackrunEvents`
+    // wrapper, collapsing `TxEvents.msgs_and_backrun` to
+    // `msgs: CommitmentStatus<Vec<EventStatus<Event>>>`.
     pub backrun: EventStatus<EvtBackrun>,
 }
 

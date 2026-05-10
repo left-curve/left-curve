@@ -283,7 +283,6 @@ Full transaction processing:
    - `taxman.withhold_fee()` -- **must succeed** (withholds gas fee).
    - `sender.authenticate()` -- If fails, skip to step 5.
    - Execute messages one-by-one, atomically.
-   - `sender.backrun()` -- If fails, discard steps 2--4.
    - `taxman.finalize_fee()` -- **must succeed** (settles the fee).
 3. **Run cronjobs.** Each scheduled cronjob runs in an isolated buffer; failures are
    silently discarded.

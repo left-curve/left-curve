@@ -13,8 +13,8 @@ use {
         perps,
     },
     grug::{
-        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Response, StdResult, Storage, Tx, btree_map,
+        Addr, AuthCtx, AuthMode, Coins, Hash256, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
+        Op, Response, StdResult, Storage, Tx, btree_map,
     },
 };
 
@@ -58,7 +58,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 // exactly one message, to execute the factory itself with `Execute::RegisterUser`.
 // This transaction does not need to include any metadata or credential.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let mut msgs = tx.msgs.iter();
 
     let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
@@ -104,9 +104,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         None
     };
 
-    Ok(AuthResponse::new()
-        .may_add_message(maybe_msg)
-        .request_backrun(false))
+    Ok(Response::new().may_add_message(maybe_msg))
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]

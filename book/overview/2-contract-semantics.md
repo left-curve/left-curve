@@ -23,8 +23,7 @@ lifecycle. Each entry point receives a typed context and returns a typed respons
 
 | Entry Point    | Context        | Signature                                                  | Purpose                               |
 | -------------- | -------------- | ---------------------------------------------------------- | ------------------------------------- |
-| `authenticate` | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<AuthResponse>`                  | Tx authentication (account contracts) |
-| `backrun`      | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<Response>`                      | Post-tx hook (account contracts)      |
+| `authenticate` | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<Response>`                      | Tx authentication (account contracts) |
 | `withhold_fee` | `AuthCtx`      | `fn(AuthCtx, Tx) -> Result<Response>`                      | Fee withholding (taxman only)         |
 | `finalize_fee` | `AuthCtx`      | `fn(AuthCtx, Tx, TxOutcome) -> Result<Response>`           | Fee settlement (taxman only)          |
 | `bank_execute` | `SudoCtx`      | `fn(SudoCtx, BankMsg) -> Result<Response>`                 | Token ops (bank only)                 |
@@ -76,7 +75,7 @@ pub struct SudoCtx<'a> {
     pub contract: Addr,
 }
 
-// Authentication context (authenticate, backrun, withhold_fee, finalize_fee)
+// Authentication context (authenticate, withhold_fee, finalize_fee)
 pub struct AuthCtx<'a> {
     pub storage:  &'a mut dyn Storage,
     pub api:      &'a dyn Api,
@@ -130,11 +129,6 @@ pub struct MsgExecute {
 pub struct Response {
     pub submsgs: Vec<SubMessage>,
     pub subevents: Vec<ContractEvent>,
-}
-
-pub struct AuthResponse {
-    pub response: Response,
-    pub request_backrun: bool,  // Whether to call backrun() after tx finalization
 }
 ```
 
