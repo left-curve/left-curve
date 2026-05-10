@@ -60,13 +60,13 @@ fs.copySync(
 
 const hyperlaneConfig = async () => {
   const mainFiles = {
-    config: "../../../dango/hyperlane-deployment/config.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments.json",
+    config: "./config/hyperlane/config.json",
+    deployment: "./config/hyperlane/deployments.json",
   };
 
   const testFiles = {
-    config: "../../../dango/hyperlane-deployment/config.testnet.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments-testnet.json",
+    config: "./config/hyperlane/config.testnet.json",
+    deployment: "./config/hyperlane/deployments-testnet.json",
   };
 
   const files = environment === "prod" ? mainFiles : testFiles;
