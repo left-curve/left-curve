@@ -2,6 +2,15 @@ pub trait Variables {
     type Query: graphql_client::GraphQLQuery<Variables = Self>;
 }
 
+#[allow(clippy::upper_case_acronyms)]
+type JSON = serde_json::Value;
+type GrugQueryInput = serde_json::Value;
+type UnsignedTx = serde_json::Value;
+type Tx = serde_json::Value;
+type DateTime = String;
+type BigDecimal = String;
+type NaiveDateTime = String;
+
 /// Page info for cursor-based pagination in GraphQL responses.
 ///
 /// This struct provides a common type for pagination metadata that can be
@@ -14,6 +23,8 @@ pub struct PageInfo {
     pub has_next_page: bool,
     pub has_previous_page: bool,
 }
+
+// ----------------------------------- Types -----------------------------------
 
 macro_rules! generate_types {
     ($({name: $name:ident, path: $path:literal $(,)?}), * $(,)? ) => {
@@ -35,15 +46,6 @@ macro_rules! generate_types {
         )*
     };
 }
-
-#[allow(clippy::upper_case_acronyms)]
-type JSON = serde_json::Value;
-type GrugQueryInput = serde_json::Value;
-type UnsignedTx = serde_json::Value;
-type Tx = serde_json::Value;
-type DateTime = String;
-type BigDecimal = String;
-type NaiveDateTime = String;
 
 generate_types! {
     {
@@ -148,20 +150,8 @@ generate_types! {
     }
 }
 
-// Implement Default for enum types used as required fields in Variables
-impl Default for candles::CandleInterval {
-    fn default() -> Self {
-        Self::ONE_MINUTE
-    }
-}
+// ---------------------------- Subscription types -----------------------------
 
-impl Default for perps_candles::CandleInterval {
-    fn default() -> Self {
-        Self::ONE_MINUTE
-    }
-}
-
-// Subscription types - generated separately since they follow a different pattern
 macro_rules! generate_subscription_types {
     ($({name: $name:ident, path: $path:literal $(,)?}), * $(,)? ) => {
         $(
@@ -252,7 +242,20 @@ pub mod subscriptions {
     };
 }
 
-// Implement Default for subscription enum types
+// --------------------- Implement Default for enum types ----------------------
+
+impl Default for candles::CandleInterval {
+    fn default() -> Self {
+        Self::ONE_MINUTE
+    }
+}
+
+impl Default for perps_candles::CandleInterval {
+    fn default() -> Self {
+        Self::ONE_MINUTE
+    }
+}
+
 impl Default for subscribe_candles::CandleInterval {
     fn default() -> Self {
         Self::ONE_MINUTE
