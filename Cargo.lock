@@ -6974,7 +6974,7 @@ dependencies = [
 
 [[package]]
 name = "indexer-sql-migration"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "async-std",
  "sea-orm-migration",
@@ -6983,7 +6983,7 @@ dependencies = [
 
 [[package]]
 name = "indexer-testing"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "actix-codec",
  "actix-http",
