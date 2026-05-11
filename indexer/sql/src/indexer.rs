@@ -572,25 +572,53 @@ impl IndexerTrait for Indexer {
             crate::write::perps_events::save_perps_events(&self.context, block, app_cfg),
         );
 
-        if transfers_result.is_err() {
+        // Dango-side write failures are logged and counted but do not abort
+        // the function before the pubsub publish below. The grug-side rows
+        // committed in step 1 are still valid; subscribers should see "block N
+        // is indexed at the grug level" notifications even if a dango-side
+        // write transiently failed. (Without this, a null `app_cfg` — possible
+        // in grug-only test harnesses that don't write APP_CONFIG to storage —
+        // would short-circuit every block's notification, hanging GraphQL
+        // subscribers indefinitely.)
+        if let Err(_err) = transfers_result {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err = %_err,
+                indexer_id = id,
+                block_height,
+                "save_transfers failed",
+            );
+
             #[cfg(feature = "metrics")]
             metrics::counter!("indexer.dango.hooks.transfers.errors.total").increment(1);
         }
-        if accounts_result.is_err() {
+        if let Err(_err) = accounts_result {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err = %_err,
+                indexer_id = id,
+                block_height,
+                "save_accounts failed",
+            );
+
             #[cfg(feature = "metrics")]
             metrics::counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
         }
-        if perps_result.is_err() {
+        if let Err(_err) = perps_result {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err = %_err,
+                indexer_id = id,
+                block_height,
+                "save_perps_events failed",
+            );
+
             #[cfg(feature = "metrics")]
             metrics::counter!("indexer.dango.hooks.perps_events.errors.total").increment(1);
         }
 
-        transfers_result.map_err(grug_app::IndexerError::from)?;
-        accounts_result.map_err(grug_app::IndexerError::from)?;
-        perps_result.map_err(grug_app::IndexerError::from)?;
-
-        // 3. Single pubsub publish, after both grug-side and dango-side writes
-        //    have committed. Subscribers see "block N fully indexed" semantics.
+        // 3. Single pubsub publish, after grug-side and dango-side writes have
+        //    been attempted. Fires whether dango-side writes succeeded or not.
         if let Err(_err) = self.context.pubsub.publish(block_height).await {
             #[cfg(feature = "tracing")]
             tracing::error!(
