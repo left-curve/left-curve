@@ -6,22 +6,36 @@ import {
   RangeWithButtons,
   Skeleton,
   Tabs,
+  Tooltip,
   WarningContainer,
   createContext,
   numberMask,
+  twMerge,
   useApp,
   useInputs,
 } from "@left-curve/applets-kit";
 import { perpsMarginAsset, useAccount, useVaultLiquidityState } from "@left-curve/store";
 import { formatNumber } from "@left-curve/dango/utils";
+
+import type { VaultPerformancePeriod } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 import { UserWithdrawals } from "./UserWithdrawals";
+import { VaultPerformanceChart } from "./VaultPerformanceChart";
+
+const PERIOD_DAYS: Record<VaultPerformancePeriod, number> = {
+  "7D": 7,
+  "14D": 14,
+  "30D": 30,
+  "90D": 90,
+};
 
 const [VaultLiquidityProvider, useVaultLiquidity] = createContext<{
   state: ReturnType<typeof useVaultLiquidityState>;
   controllers: ReturnType<typeof useInputs>;
+  period: VaultPerformancePeriod;
+  setPeriod: (period: VaultPerformancePeriod) => void;
 }>({
   name: "VaultLiquidityContext",
 });
@@ -36,27 +50,36 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   action,
   onChangeAction,
 }) => {
+  const [period, setPeriod] = useState<VaultPerformancePeriod>("14D");
   const controllers = useInputs({ strategy: "onChange" });
-  const state = useVaultLiquidityState({ action, onChangeAction, controllers });
+  const state = useVaultLiquidityState({
+    action,
+    onChangeAction,
+    apyWindowDays: PERIOD_DAYS[period],
+    controllers,
+  });
   const { account } = useAccount();
   const isLoggedIn = !!account;
 
   return (
-    <VaultLiquidityProvider value={{ state, controllers }}>
+    <VaultLiquidityProvider value={{ state, controllers, period, setPeriod }}>
       <div
-        className={`w-full mx-auto flex flex-col pt-6 mb-16 gap-4 px-4 md:px-0 ${
-          isLoggedIn ? "md:max-w-[50rem]" : "md:max-w-[25rem]"
-        }`}
+        className={twMerge(
+          "w-full mx-auto flex flex-col pt-6 mb-16 gap-4 lg:gap-12 px-4 md:px-0",
+          "md:max-w-[56rem]",
+        )}
       >
         <MobileTitle title={m["vaultLiquidity.title"]()} />
         <VaultLiquidityHeader />
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          <div className="flex flex-col gap-4 w-full md:max-w-[25rem]">{children}</div>
-          {isLoggedIn && (
-            <div className="flex flex-col gap-4 w-full md:max-w-[24rem]">
-              <UserPosition />
-            </div>
-          )}
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+          <div className="flex flex-col gap-4 w-full md:hidden">{children}</div>
+
+          <div className="flex flex-col gap-4 w-full md:w-[55%]">
+            {isLoggedIn && <UserPosition />}
+            <VaultPerformanceChart period={period} onPeriodChange={setPeriod} />
+          </div>
+
+          <div className="hidden md:flex flex-col gap-4 w-full md:w-[45%]">{children}</div>
         </div>
       </div>
     </VaultLiquidityProvider>
@@ -67,7 +90,7 @@ const VaultLiquidityHeader: React.FC = () => {
   const { state } = useVaultLiquidity();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { isPaused, isTvlCapReached, vaultState, isLoading } = state;
+  const { isPaused, isTvlCapReached, vaultState, isLoading, vaultApy } = state;
   const equity = vaultState?.equity ?? "0";
 
   return (
@@ -79,18 +102,32 @@ const VaultLiquidityHeader: React.FC = () => {
           </p>
         </div>
       )}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
+      <div className="flex flex-col gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
         <div className="flex gap-2 items-center">
           <img src="/images/coins/usd.svg" alt="vault" className="w-8 h-8 rounded-full" />
           <p className="text-ink-secondary-700 h4-bold">{m["vaultLiquidity.title"]()}</p>
         </div>
-        <div className="flex flex-row gap-6 items-center">
-          <div className="flex items-center gap-1">
-            <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.apy"]()}</p>
-            <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
+        <div className="flex flex-row justify-between items-end">
+          <div className="flex flex-col gap-0.5">
+            <Tooltip title={m["vaultLiquidity.apyTooltip"]()}>
+              <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+                {m["vaultLiquidity.apy"]()}
+              </p>
+            </Tooltip>
+            {isLoading ? (
+              <Skeleton className="w-12 h-5" />
+            ) : (
+              <p className="text-ink-secondary-700 diatype-sm-bold min-w-[3rem]">
+                {vaultApy != null ? `${vaultApy}%` : "-"}
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-1">
-            <p className="text-ink-tertiary-500 diatype-xs-medium">{m["vaultLiquidity.tvl"]()}</p>
+          <div className="flex flex-col gap-0.5 items-end">
+            <Tooltip title={m["vaultLiquidity.tvlTooltip"]()}>
+              <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
+                {m["vaultLiquidity.tvl"]()}
+              </p>
+            </Tooltip>
             {isLoading ? (
               <Skeleton className="w-16 h-5" />
             ) : (
@@ -110,7 +147,7 @@ const VaultLiquidityHeader: React.FC = () => {
         <img
           src="/images/characters/hippo.svg"
           alt="dango-hippo"
-          className="max-w-[200px] absolute opacity-10 right-[-2rem] top-[-1rem] select-none drag-none"
+          className="max-w-[200px] absolute opacity-10 right-[-2rem] bottom-0 select-none drag-none pointer-events-none"
         />
       </div>
     </div>
@@ -236,10 +273,7 @@ const DepositForm: React.FC = () => {
       </div>
 
       {isTvlCapReached ? (
-        <WarningContainer
-          color="error"
-          description={m["vaultLiquidity.tvlCapReached"]()}
-        />
+        <WarningContainer color="error" description={m["vaultLiquidity.tvlCapReached"]()} />
       ) : (
         <WarningContainer
           color="error"

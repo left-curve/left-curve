@@ -20,6 +20,7 @@ anyhow            = { workspace = true }
 async-trait       = { workspace = true }
 bip32             = { workspace = true }
 dango-auth        = { workspace = true }
+dango-graphql-types = { workspace = true }
 dango-types       = { workspace = true }
 error-backtrace   = { workspace = true }
 eth-utils         = { workspace = true }
@@ -28,7 +29,6 @@ graphql_client    = { workspace = true }
 grug              = { workspace = true }
 identity          = { workspace = true }
 k256              = { workspace = true }
-paste             = { workspace = true }
 pbkdf2            = { workspace = true }
 rand              = { workspace = true }
 reqwest           = { workspace = true, features = ["json"] }
@@ -44,6 +44,7 @@ url               = { workspace = true }
 [dev-dependencies]
 assert-json-diff      = { workspace = true }
 assertor              = { workspace = true }
+csv                   = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-genesis         = { workspace = true }
 dango-mock-httpd      = { workspace = true }

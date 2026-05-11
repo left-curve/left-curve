@@ -8,11 +8,12 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { perpsUserStateStore } from "./usePerpsUserState.js";
 import { perpsUserStateExtendedStore } from "./usePerpsUserStateExtended.js";
 
-import { Decimal, sharesToUsd, usdToShares } from "@left-curve/dango/utils";
+import { Decimal, computeVaultApy, sharesToUsd, usdToShares } from "@left-curve/dango/utils";
 
 export type UseVaultLiquidityStateParameters = {
   action: "deposit" | "withdraw";
   onChangeAction: (action: "deposit" | "withdraw") => void;
+  apyWindowDays: number;
   controllers: {
     inputs: Record<string, { value: string }>;
     reset: () => void;
@@ -21,7 +22,7 @@ export type UseVaultLiquidityStateParameters = {
 };
 
 export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParameters) {
-  const { action, controllers, onChangeAction } = parameters;
+  const { action, controllers, onChangeAction, apyWindowDays } = parameters;
   const { inputs } = controllers;
   const publicClient = usePublicClient();
   const { account } = useAccount();
@@ -42,6 +43,21 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
     },
     refetchInterval: 10_000,
   });
+
+  const snapshotMin = useMemo(
+    () => Math.floor(Date.now() / 1000) - apyWindowDays * 86_400,
+    [apyWindowDays],
+  );
+
+  const vaultSnapshots = useQuery({
+    queryKey: ["vaultSnapshots", snapshotMin],
+    queryFn: () => publicClient.getVaultSnapshots({ min: snapshotMin }),
+  });
+
+  const vaultApy = useMemo(
+    () => (vaultSnapshots.data ? computeVaultApy(vaultSnapshots.data) : null),
+    [vaultSnapshots.data],
+  );
 
   const userVaultShares = account ? (perpsUserState?.vaultShares ?? "0") : "0";
   const userMargin = account ? (availableMargin ?? "0") : "0";
@@ -121,6 +137,7 @@ export function useVaultLiquidityState(parameters: UseVaultLiquidityStateParamet
     isTvlCapReached,
     vaultState: vaultState.data,
     isLoading: vaultState.isLoading,
+    vaultApy,
     userVaultShares,
     userSharesValue,
     userMargin,

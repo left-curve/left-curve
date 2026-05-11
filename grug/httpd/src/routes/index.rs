@@ -26,6 +26,7 @@ pub struct UpResponse<'a> {
     pub git_commit: &'a str,
     pub indexed_block_height: Option<u64>,
     pub chain_id: &'a str,
+    pub hostname: &'a str,
 }
 
 #[get("/up")]
@@ -46,5 +47,6 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         git_commit: GIT_COMMIT,
         indexed_block_height: None,
         chain_id: var("CHAIN_ID").unwrap_or_default().as_str(),
+        hostname: var("HOSTNAME").unwrap_or_default().as_str(),
     }))
 }

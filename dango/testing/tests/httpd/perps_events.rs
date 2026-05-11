@@ -1,7 +1,7 @@
 use {
     crate::call_graphql_query,
     assertor::*,
-    dango_sdk::{PerpsEvents, perps_events},
+    dango_graphql_types::{PerpsEvents, perps_events},
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},

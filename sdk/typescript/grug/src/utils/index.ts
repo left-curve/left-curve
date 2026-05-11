@@ -45,4 +45,6 @@ export { uid } from "./uid.js";
 
 export { tryCatch } from "./tryCatch.js";
 
+export { randomBetween } from "./numbers.js";
+
 export { default as Decimal } from "./decimal.js";

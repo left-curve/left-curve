@@ -776,7 +776,7 @@ class Trade(TypedDict):  # noqa: N815
     """Real-time perps trade fill from the perpsTrades subscription."""
 
     # Wire shape per `Subscription.perpsTrades` on the indexer
-    # (sdk/rust/src/schemas/schema.graphql) and API doc §8.2. Keys stay
+    # (dango/indexer/graphql-types/src/schemas/schema.graphql) and API doc §8.2. Keys stay
     # camelCase for the same reasons as `PerpsCandle` / `PerpsEvent` —
     # see the convention-boundary comment at the top of this section.
     orderId: str  # noqa: N815

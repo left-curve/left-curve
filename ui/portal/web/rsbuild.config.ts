@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,6 +33,17 @@ const enabledFeatures = process.env.ENABLED_FEATURES
   ? process.env.ENABLED_FEATURES.split(",").map((f) => f.trim())
   : [];
 
+const gitCommit = (() => {
+  if (process.env.GIT_COMMIT) return process.env.GIT_COMMIT;
+  try {
+    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "unknown";
+  }
+})();
+
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
 const tradingViewPath = path.resolve(
@@ -48,13 +60,13 @@ fs.copySync(
 
 const hyperlaneConfig = async () => {
   const mainFiles = {
-    config: "../../../dango/hyperlane-deployment/config.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments.json",
+    config: "./config/hyperlane/config.json",
+    deployment: "./config/hyperlane/deployments.json",
   };
 
   const testFiles = {
-    config: "../../../dango/hyperlane-deployment/config.testnet.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments-testnet.json",
+    config: "./config/hyperlane/config.testnet.json",
+    deployment: "./config/hyperlane/deployments-testnet.json",
   };
 
   const files = environment === "prod" ? mainFiles : testFiles;
@@ -168,6 +180,7 @@ export default defineConfig({
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
       "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
+      "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "process.env": {},
       "import.meta.env": {},
     },
@@ -292,17 +305,8 @@ export default defineConfig({
             clientsClaim: true,
             skipWaiting: true,
             cleanupOutdatedCaches: true,
-            navigationPreload: true,
-            runtimeCaching: [
-              {
-                urlPattern: ({ request }) => request.mode === "navigate",
-                handler: "NetworkFirst",
-                options: {
-                  cacheName: "html-cache",
-                  networkTimeoutSeconds: 3,
-                },
-              },
-            ],
+            navigationPreload: false,
+            importScripts: ["/sw-disable-nav-preload.js"],
           }),
         );
       }

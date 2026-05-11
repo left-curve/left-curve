@@ -486,11 +486,17 @@
     "pnlShare": {
       "entryPrice": "Entry Price",
       "markPrice": "Mark Price",
-      "referralCode": "Referral Code",
-      "overlay": "Overlay",
-      "saveImage": "Save Image",
       "copyLink": "Copy Link",
       "shareOnX": "Share on X"
+    },
+    "pointsShare": {
+      "weekLabel": "Week",
+      "programLabel": "Points Program"
+    },
+    "shareCard": {
+      "referralCode": "Referral Code",
+      "overlay": "Overlay",
+      "saveImage": "Save Image"
     }
   },
   "signin": {
@@ -839,7 +845,9 @@
   "vaultLiquidity": {
     "title": "Dango Liquidity Provider",
     "apy": "APY",
+    "apyTooltip": "Annual Percentage Yield — the projected yearly return based on performance over the last 7-day window.",
     "tvl": "TVL",
+    "tvlTooltip": "Total Value Locked — the total amount of assets deposited in the vault.",
     "toDeposit": "You deposit",
     "availableToDeposit": "Available to deposit",
     "toGet": "You get",
@@ -867,6 +875,14 @@
     "tvlCapReached": "This vault has reached its TVL limit. Deposits are temporarily unavailable.",
     "full": "Full",
     "paused": "This vault has paused activity due to abnormal risk conditions. Your funds remain safe.",
+    "performance": "Vault performance",
+    "shareTokenPrice": "Share token price",
+    "period": "Period",
+    "dailyGain": "Daily gain",
+    "dailyLoss": "Daily loss",
+    "price": "Price",
+    "dailyChange": "Daily change",
+    "noData": "No data available",
     "modal": {
       "addLiquidity": "Add Liquidity",
       "depositing": "Depositing",
@@ -1016,7 +1032,8 @@
         "chainId": "Chain ID",
         "latestBlockHeight": "Latest Block Height",
         "latestBlockTime": "Latest Block Time",
-        "endpoint": "Endpoint"
+        "endpoint": "Endpoint",
+        "frontendVersion": "Frontend Version"
       },
       "time": { "hours": "h", "minutes": "m", "seconds": "s" },
       "username": {
@@ -1464,6 +1481,7 @@
       "titlePoints": "PO{icon}NTS",
       "titleProgram": "PROGRAM",
       "readRules": "Read Rules",
+      "share": "Share",
       "myPoints": "My points",
       "myVolume": "My volume",
       "myRank": "My rank",

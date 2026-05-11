@@ -1,10 +1,10 @@
 use {
-    crate::{
+    anyhow::{anyhow, bail, ensure},
+    async_trait::async_trait,
+    dango_graphql_types::{
         PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
         query_store, search_tx, simulate, transactions, transfers,
     },
-    anyhow::{anyhow, bail, ensure},
-    async_trait::async_trait,
     error_backtrace::BacktracedError,
     graphql_client::{GraphQLQuery, Response},
     grug::{
@@ -46,7 +46,7 @@ impl HttpClient {
     ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
     where
         V: Variables + Serialize + std::fmt::Debug,
-        <<V as crate::types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
+        <<V as dango_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
             std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);

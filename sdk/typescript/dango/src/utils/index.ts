@@ -41,4 +41,4 @@ export {
   resolveRateSchedule,
 } from "./dex.js";
 
-export { sharesToUsd, usdToShares } from "./vault.js";
+export { sharesToUsd, usdToShares, computeVaultApy } from "./vault.js";

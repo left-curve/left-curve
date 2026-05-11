@@ -1,9 +1,9 @@
 use {
-    dango_order_book::{UsdValue, round_to_day},
-    dango_perps::state::VAULT_SNAPSHOTS,
-    dango_types::perps::VaultSnapshot,
-    grug::{Addr, BlockInfo, StdResult, Storage, Timestamp, Uint128, addr},
+    dango_order_book::{ASKS, BIDS, increase_liquidity_depths, may_invert_price},
+    dango_perps::state::{PAIR_IDS, PAIR_PARAMS},
+    grug::{Addr, BlockInfo, Order, StdResult, Storage, addr},
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
+    std::collections::BTreeSet,
 };
 
 const MAINNET_CHAIN_ID: &str = "dango-1";
@@ -11,46 +11,6 @@ const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbe
 
 const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
 const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
-
-/// Daily snapshots of `(sample_ts_ms, equity_raw_i128, share_supply_u128)`
-/// for the market-making vault, pulled from the indexer at 12:00 UTC each
-/// day. Covers protocol launch (Apr 9, 2026) through Apr 28, 2026.
-///
-/// `sample_ts_ms` is the indexer's noon-UTC sampling time. The actual
-/// storage key written to `VAULT_SNAPSHOTS` is that timestamp run through
-/// `round_to_day`, i.e. the same day's 00:00 UTC bucket — matching the
-/// keys the cron writer (`take_vault_snapshot`) produces going forward.
-///
-/// Apr 13 and Apr 14 carry forward Apr 12's values: the chain was halted
-/// on those two days due to a security incident, so on-chain vault state
-/// did not change.
-///
-/// Equity values are the raw 6-decimal fixed-point form: e.g.
-/// `101_470_582_290` represents $101_470.582290.
-const VAULT_SNAPSHOT_BACKFILL: &[(u128, i128, u128)] = &[
-    (1_775_736_000_000, 101_470_582_290, 100_911_643_265),
-    (1_775_822_400_000, 234_857_408_905, 221_237_371_759),
-    (1_775_908_800_000, 499_173_687_995, 475_080_160_193),
-    (1_775_995_200_000, 1_007_026_275_440, 951_591_253_818),
-    // Apr 13 — chain halted; values carried forward from Apr 12.
-    (1_776_081_600_000, 1_007_026_275_440, 951_591_253_818),
-    // Apr 14 — chain halted; values carried forward from Apr 12.
-    (1_776_168_000_000, 1_007_026_275_440, 951_591_253_818),
-    (1_776_254_400_000, 1_000_880_038_081, 940_005_123_389),
-    (1_776_340_800_000, 1_744_977_009_463, 1_614_965_273_200),
-    (1_776_427_200_000, 1_926_781_167_149, 1_755_314_975_011),
-    (1_776_513_600_000, 1_894_929_651_138, 1_719_929_571_778),
-    (1_776_600_000_000, 1_890_817_127_571, 1_718_648_755_135),
-    (1_776_686_400_000, 1_510_057_853_266, 1_374_879_845_175),
-    (1_776_772_800_000, 1_667_591_153_086, 1_476_350_771_486),
-    (1_776_859_200_000, 1_896_622_916_169, 1_636_508_129_302),
-    (1_776_945_600_000, 2_034_941_574_815, 1_747_008_495_896),
-    (1_777_032_000_000, 2_387_017_475_313, 2_035_857_630_119),
-    (1_777_118_400_000, 2_413_036_742_261, 2_059_773_218_897),
-    (1_777_204_800_000, 2_412_398_372_203, 2_053_401_794_842),
-    (1_777_291_200_000, 2_429_661_573_824, 2_070_384_602_696),
-    (1_777_377_600_000, 2_545_034_915_578, 2_182_925_867_463),
-];
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
     // Find the address of the perps contract corresponding to the current chain.
@@ -64,33 +24,89 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     // Create the prefixed storage for the perps contract.
     let mut perps_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
 
-    // The CSV-sourced backfill values are mainnet-specific. Testnet has its
-    // own vault state, so its snapshots accumulate forward only from the
-    // upgrade onwards.
-    if chain_id.as_str() == MAINNET_CHAIN_ID {
-        do_vault_snapshot_backfill(&mut perps_storage)?;
-    }
+    do_bucket_size_backfill(&mut perps_storage)?;
 
     Ok(())
 }
 
-/// Insert pre-computed daily vault snapshots into `VAULT_SNAPSHOTS`. Each
-/// noon-UTC sample is keyed at the same day's 00:00 UTC bucket via
-/// `round_to_day`, matching the cron writer.
-fn do_vault_snapshot_backfill(storage: &mut dyn Storage) -> StdResult<()> {
-    for &(sample_ts_ms, equity_raw, share_supply) in VAULT_SNAPSHOT_BACKFILL {
-        let key = round_to_day(Timestamp::from_millis(sample_ts_ms));
-        let snapshot = VaultSnapshot {
-            equity: UsdValue::new_raw(equity_raw),
-            share_supply: Uint128::new(share_supply),
-        };
-        VAULT_SNAPSHOTS.save(storage, key, &snapshot)?;
+/// Walk every pair's resting order book and populate `DEPTHS` for a new
+/// bucket size equal to `tick_size`, then add `tick_size` to the pair's
+/// `bucket_sizes`.
+///
+/// This recovers the original "smallest bucket equals tick" property of
+/// the depth query: the tick was reduced 10× after deploy, but the
+/// matching small bucket was never added because populating its depths
+/// requires walking the entire book.
+///
+/// Idempotent: pairs whose `bucket_sizes` already contain `tick_size` are
+/// skipped, so re-running is a no-op.
+fn do_bucket_size_backfill(storage: &mut dyn Storage) -> StdResult<()> {
+    let pair_ids = PAIR_IDS.load(storage)?;
+    let mut backfilled = 0usize;
+
+    for pair_id in pair_ids {
+        let mut pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
+
+        // Skip pairs that already have `tick_size` as a configured bucket
+        // size; their depths are maintained incrementally by the trade
+        // path and need no migration.
+        if pair_param.bucket_sizes.contains(&pair_param.tick_size) {
+            continue;
+        }
+
+        // Only populate the *new* bucket size. Existing bucket sizes have
+        // correct depths already; including them here would double-count.
+        let new_buckets = BTreeSet::from([pair_param.tick_size]);
+
+        // Bids store the inverted price (`!real_price`), so iteration in
+        // ascending stored order visits them best-first. Un-invert before
+        // passing the price to `increase_liquidity_depths`, which expects
+        // the real (un-inverted) price.
+        let bids = BIDS
+            .prefix(pair_id.clone())
+            .range(storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        for ((stored_price, _order_id), order) in bids {
+            let real_price = may_invert_price(stored_price, true);
+            let abs_size = order.size.checked_abs()?;
+            increase_liquidity_depths(storage, &pair_id, true, real_price, abs_size, &new_buckets)?;
+        }
+
+        // Asks store the price as-is.
+        let asks = ASKS
+            .prefix(pair_id.clone())
+            .range(storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        for ((stored_price, _order_id), order) in asks {
+            let real_price = may_invert_price(stored_price, false);
+            let abs_size = order.size.checked_abs()?;
+            increase_liquidity_depths(
+                storage,
+                &pair_id,
+                false,
+                real_price,
+                abs_size,
+                &new_buckets,
+            )?;
+        }
+
+        pair_param.bucket_sizes.insert(pair_param.tick_size);
+        PAIR_PARAMS.save(storage, &pair_id, &pair_param)?;
+
+        for bucket_size in &new_buckets {
+            tracing::info!(
+                %pair_id,
+                %bucket_size,
+                "Backfilled liquidity depth bucket"
+            );
+        }
+
+        backfilled += 1;
     }
 
-    tracing::info!(
-        "Backfilled {} vault snapshots",
-        VAULT_SNAPSHOT_BACKFILL.len()
-    );
+    tracing::info!("Backfilled liquidity depth buckets for {backfilled} pair(s)");
 
     Ok(())
 }
@@ -100,68 +116,240 @@ fn do_vault_snapshot_backfill(storage: &mut dyn Storage) -> StdResult<()> {
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        dango_order_book::NANOS_PER_DAY,
-        grug::{MockStorage, Order},
+        super::do_bucket_size_backfill,
+        dango_order_book::{
+            ASKS, BIDS, DEPTHS, LimitOrder, PairId, Quantity, UsdPrice, UsdValue, may_invert_price,
+        },
+        dango_perps::state::{PAIR_IDS, PAIR_PARAMS},
+        dango_types::perps::PairParam,
+        grug::{Addr, Dec128_6, MockStorage, Order, StdResult, Storage, Timestamp, Uint64},
+        std::{collections::BTreeSet, str::FromStr},
     };
 
-    /// Backfill writes all 20 daily samples into `VAULT_SNAPSHOTS` at
-    /// 00:00-UTC bucket keys (matching what the cron produces), with
-    /// Apr 13/14 carrying forward Apr 12.
+    fn pid() -> PairId {
+        "perp/btcusd".parse().unwrap()
+    }
+
+    fn p(s: &str) -> UsdPrice {
+        UsdPrice::new(Dec128_6::from_str(s).unwrap())
+    }
+
+    fn usd(s: &str) -> UsdValue {
+        UsdValue::new(Dec128_6::from_str(s).unwrap())
+    }
+
+    /// Save a resting bid at `real_price` with positive size `abs_size`.
+    /// The price is inverted before insertion to match how the trade path
+    /// stores bids (`!real_price`).
+    fn save_bid(storage: &mut dyn Storage, real_price: UsdPrice, order_id: u64, abs_size: i128) {
+        let order = LimitOrder {
+            user: Addr::mock(1),
+            size: Quantity::new_int(abs_size),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(0),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        let key = (
+            pid(),
+            may_invert_price(real_price, true),
+            Uint64::new(order_id),
+        );
+        BIDS.save(storage, key, &order).unwrap();
+    }
+
+    /// Save a resting ask at `real_price` with positive size `abs_size`. The
+    /// stored size is the negation, since `LimitOrder.size` is signed.
+    fn save_ask(storage: &mut dyn Storage, real_price: UsdPrice, order_id: u64, abs_size: i128) {
+        let order = LimitOrder {
+            user: Addr::mock(1),
+            size: Quantity::new_int(-abs_size),
+            reduce_only: false,
+            reserved_margin: UsdValue::new_int(0),
+            created_at: Timestamp::from_nanos(0),
+            tp: None,
+            sl: None,
+            client_order_id: None,
+        };
+        let key = (pid(), real_price, Uint64::new(order_id));
+        ASKS.save(storage, key, &order).unwrap();
+    }
+
+    /// Migration walks the book, populates `DEPTHS` for `tick_size`,
+    /// leaves existing-bucket `DEPTHS` untouched, and adds `tick_size` to
+    /// `PairParam.bucket_sizes`.
     #[test]
-    fn vault_snapshot_backfill() {
+    fn bucket_size_backfill_populates_depths() {
         let mut storage = MockStorage::new();
+        let pair_id = pid();
 
-        do_vault_snapshot_backfill(&mut storage).unwrap();
+        // tick_size = 0.001, existing buckets = {0.01, 0.1, 1}.
+        let pair_param = PairParam {
+            tick_size: p("0.001"),
+            bucket_sizes: BTreeSet::from([p("0.01"), p("0.1"), p("1")]),
+            ..Default::default()
+        };
+        PAIR_IDS
+            .save(&mut storage, &BTreeSet::from([pair_id.clone()]))
+            .unwrap();
+        PAIR_PARAMS
+            .save(&mut storage, &pair_id, &pair_param)
+            .unwrap();
 
-        let entries: Vec<(Timestamp, VaultSnapshot)> = VAULT_SNAPSHOTS
+        // Two bids at 100.000 (will aggregate) and one at 99.999.
+        save_bid(&mut storage, p("100.000"), 1, 5);
+        save_bid(&mut storage, p("100.000"), 2, 3);
+        save_bid(&mut storage, p("99.999"), 3, 2);
+
+        // Two asks at 101.000 (will aggregate) and one at 101.001.
+        save_ask(&mut storage, p("101.000"), 4, 4);
+        save_ask(&mut storage, p("101.000"), 5, 6);
+        save_ask(&mut storage, p("101.001"), 6, 7);
+
+        // Pre-seed an existing-bucket entry (bucket_size 0.1, bid bucket
+        // 100.0) to verify the migration only touches the new bucket size.
+        let preseeded = (Quantity::new_int(999), UsdValue::new_int(99_900));
+        DEPTHS
+            .save(
+                &mut storage,
+                (&pair_id, p("0.1"), true, p("100")),
+                &preseeded,
+            )
+            .unwrap();
+
+        do_bucket_size_backfill(&mut storage).unwrap();
+
+        // Bid 100.000: aggregated size 5 + 3 = 8, notional = 8 * 100 = 800.
+        let entry = DEPTHS
+            .load(&storage, (&pair_id, p("0.001"), true, p("100")))
+            .unwrap();
+        assert_eq!(entry, (Quantity::new_int(8), usd("800")));
+
+        // Bid 99.999: size 2, notional = 2 * 99.999 = 199.998.
+        let entry = DEPTHS
+            .load(&storage, (&pair_id, p("0.001"), true, p("99.999")))
+            .unwrap();
+        assert_eq!(entry, (Quantity::new_int(2), usd("199.998")));
+
+        // Ask 101.000: aggregated size 4 + 6 = 10, notional = 10 * 101 = 1010.
+        let entry = DEPTHS
+            .load(&storage, (&pair_id, p("0.001"), false, p("101")))
+            .unwrap();
+        assert_eq!(entry, (Quantity::new_int(10), usd("1010")));
+
+        // Ask 101.001: size 7, notional = 7 * 101.001 = 707.007.
+        let entry = DEPTHS
+            .load(&storage, (&pair_id, p("0.001"), false, p("101.001")))
+            .unwrap();
+        assert_eq!(entry, (Quantity::new_int(7), usd("707.007")));
+
+        // Pre-seeded existing-bucket entry is preserved.
+        let preserved = DEPTHS
+            .load(&storage, (&pair_id, p("0.1"), true, p("100")))
+            .unwrap();
+        assert_eq!(preserved, preseeded);
+
+        // bucket_sizes now contains tick_size.
+        let updated = PAIR_PARAMS.load(&storage, &pair_id).unwrap();
+        assert_eq!(
+            updated.bucket_sizes,
+            BTreeSet::from([p("0.001"), p("0.01"), p("0.1"), p("1")])
+        );
+    }
+
+    /// If `tick_size` is already a configured bucket, the migration must
+    /// not walk the book or write to `DEPTHS`.
+    #[test]
+    fn bucket_size_backfill_skips_when_tick_already_a_bucket() {
+        let mut storage = MockStorage::new();
+        let pair_id = pid();
+
+        let pair_param = PairParam {
+            tick_size: p("0.1"),
+            bucket_sizes: BTreeSet::from([p("0.1"), p("1"), p("10")]),
+            ..Default::default()
+        };
+        PAIR_IDS
+            .save(&mut storage, &BTreeSet::from([pair_id.clone()]))
+            .unwrap();
+        PAIR_PARAMS
+            .save(&mut storage, &pair_id, &pair_param)
+            .unwrap();
+
+        // Pre-seed one DEPTHS entry to anchor the assertion.
+        let preseeded = (Quantity::new_int(123), UsdValue::new_int(456));
+        DEPTHS
+            .save(
+                &mut storage,
+                (&pair_id, p("0.1"), true, p("100")),
+                &preseeded,
+            )
+            .unwrap();
+
+        // A bid that, in production, would have populated DEPTHS for every
+        // configured bucket. Here we add it directly to BIDS without the
+        // accompanying DEPTHS write to verify the migration leaves DEPTHS
+        // alone when the pair is skipped.
+        save_bid(&mut storage, p("100"), 1, 5);
+
+        do_bucket_size_backfill(&mut storage).unwrap();
+
+        let updated = PAIR_PARAMS.load(&storage, &pair_id).unwrap();
+        assert_eq!(
+            updated.bucket_sizes,
+            BTreeSet::from([p("0.1"), p("1"), p("10")])
+        );
+
+        let preserved = DEPTHS
+            .load(&storage, (&pair_id, p("0.1"), true, p("100")))
+            .unwrap();
+        assert_eq!(preserved, preseeded);
+
+        let count = DEPTHS.range(&storage, None, None, Order::Ascending).count();
+        assert_eq!(
+            count, 1,
+            "migration should not touch DEPTHS for a skipped pair"
+        );
+    }
+
+    /// Running the migration twice yields the same `DEPTHS` as running
+    /// once: the second pass short-circuits via the `contains` check.
+    #[test]
+    fn bucket_size_backfill_idempotent() {
+        let mut storage = MockStorage::new();
+        let pair_id = pid();
+
+        let pair_param = PairParam {
+            tick_size: p("0.001"),
+            bucket_sizes: BTreeSet::from([p("0.01"), p("0.1"), p("1")]),
+            ..Default::default()
+        };
+        PAIR_IDS
+            .save(&mut storage, &BTreeSet::from([pair_id.clone()]))
+            .unwrap();
+        PAIR_PARAMS
+            .save(&mut storage, &pair_id, &pair_param)
+            .unwrap();
+
+        save_bid(&mut storage, p("100"), 1, 5);
+        save_ask(&mut storage, p("101"), 2, 4);
+
+        do_bucket_size_backfill(&mut storage).unwrap();
+
+        let after_first = DEPTHS
             .range(&storage, None, None, Order::Ascending)
-            .collect::<StdResult<_>>()
+            .collect::<StdResult<Vec<_>>>()
             .unwrap();
 
-        // 20 entries: Apr 9 through Apr 28, 2026.
-        assert_eq!(entries.len(), 20);
+        do_bucket_size_backfill(&mut storage).unwrap();
 
-        // Keys are strictly ascending and aligned to day boundaries
-        // (00:00 UTC), matching the cron writer's bucketing.
-        for win in entries.windows(2) {
-            assert!(win[0].0 < win[1].0);
-        }
-        for (key, _) in &entries {
-            let nanos = key.into_nanos();
-            assert_eq!(
-                nanos % NANOS_PER_DAY,
-                0,
-                "key {nanos} ns is not aligned to a day boundary"
-            );
-        }
-
-        // Apr 9 (first entry): noon sample 1_775_736_000_000 ms → 00:00 key
-        // 1_775_692_800_000 ms (12 h earlier).
-        assert_eq!(entries[0].0, Timestamp::from_millis(1_775_692_800_000));
-        assert_eq!(entries[0].1.equity, UsdValue::new_raw(101_470_582_290));
-        assert_eq!(entries[0].1.share_supply, Uint128::new(100_911_643_265));
-
-        // Apr 28 (last entry): noon sample 1_777_377_600_000 ms → 00:00 key
-        // 1_777_334_400_000 ms.
-        assert_eq!(entries[19].0, Timestamp::from_millis(1_777_334_400_000));
-        assert_eq!(entries[19].1.equity, UsdValue::new_raw(2_545_034_915_578));
-        assert_eq!(entries[19].1.share_supply, Uint128::new(2_182_925_867_463));
-
-        // Apr 12, 13, 14 carry the same `(equity, share_supply)`. Look up
-        // each by its 00:00-UTC bucket key.
-        let apr_12 = VAULT_SNAPSHOTS
-            .load(&storage, Timestamp::from_millis(1_775_952_000_000))
+        let after_second = DEPTHS
+            .range(&storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()
             .unwrap();
-        let apr_13 = VAULT_SNAPSHOTS
-            .load(&storage, Timestamp::from_millis(1_776_038_400_000))
-            .unwrap();
-        let apr_14 = VAULT_SNAPSHOTS
-            .load(&storage, Timestamp::from_millis(1_776_124_800_000))
-            .unwrap();
-        assert_eq!(apr_12.equity, apr_13.equity);
-        assert_eq!(apr_13.equity, apr_14.equity);
-        assert_eq!(apr_12.share_supply, apr_13.share_supply);
-        assert_eq!(apr_13.share_supply, apr_14.share_supply);
+
+        assert_eq!(after_first, after_second);
     }
 }

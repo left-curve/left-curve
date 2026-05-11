@@ -73,7 +73,7 @@ fmt:
 # Build schema
 build-graphql-schema:
   cargo run -p dango-httpd build_graphql_schema -- \
-    ./sdk/rust/src/schemas/schema.graphql
+    ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book
 book:

@@ -417,13 +417,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             className="text-right"
-            text={
-              <FormattedNumber
-                number={row.original.entryPrice}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
-            }
+            text={<FormattedNumber number={row.original.entryPrice} as="span" />}
           />
         ),
       },
@@ -435,13 +429,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             className="text-right"
-            text={
-              <FormattedNumber
-                number={row.original.currentPrice.toString()}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
-            }
+            text={<FormattedNumber number={row.original.currentPrice.toString()} as="span" />}
           />
         ),
       },
@@ -522,7 +510,7 @@ const PerpsPositionsTable: React.FC = () => {
           const tpDisplay = tp ? formatNumber(tp.triggerPrice, formatNumberOptions) : "--";
           const slDisplay = sl ? formatNumber(sl.triggerPrice, formatNumberOptions) : "--";
           return (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 justify-end">
               <Cell.Text text={`${tpDisplay}/${slDisplay}`} />
               <button
                 type="button"

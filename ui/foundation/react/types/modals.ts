@@ -40,6 +40,7 @@ export const Modals = {
   DestinationWallet: "destination-wallet",
   AdjustSlippage: "adjust-slippage",
   PnlShare: "pnl-share",
+  PointsShare: "points-share",
 };
 
 export type ModalRef = {
