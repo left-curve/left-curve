@@ -16,3 +16,10 @@ services:
       - "${HYPERLANE_METRICS_HOST_PORT}:9090"
     command: ["./relayer"]
     restart: unless-stopped
+    networks:
+      - default
+      - traefik
+
+networks:
+  traefik:
+    external: true
