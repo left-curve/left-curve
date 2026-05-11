@@ -31,6 +31,7 @@ home                        = { workspace = true }
 indexer-cache               = { workspace = true, features = ["http-request-details", "metrics", "s3", "tracing"] }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd               = { workspace = true, features = ["metrics", "tracing"] }
+indexer-metrics             = { workspace = true, features = ["tracing"] }
 indexer-sql                 = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 libc                        = { workspace = true }
 metrics                     = { workspace = true }

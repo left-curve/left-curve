@@ -3810,6 +3810,7 @@ dependencies = [
  "indexer-cache",
  "indexer-hooked",
  "indexer-httpd",
+ "indexer-metrics",
  "indexer-sql",
  "libc",
  "metrics",
@@ -4209,6 +4210,7 @@ dependencies = [
  "indexer-disk-saver",
  "indexer-hooked",
  "indexer-httpd",
+ "indexer-metrics",
  "indexer-sql",
  "indexer-testing",
  "itertools 0.14.0",
@@ -5636,7 +5638,6 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "metrics",
- "metrics-exporter-prometheus",
  "sentry-actix",
  "serde",
  "serde_json",
@@ -6682,7 +6683,6 @@ dependencies = [
  "indexer-sql",
  "itertools 0.14.0",
  "metrics",
- "metrics-exporter-prometheus",
  "num_cpus",
  "sea-orm",
  "sentry",
@@ -6697,6 +6697,17 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "indexer-metrics"
+version = "0.0.0"
+dependencies = [
+ "actix-web",
+ "actix-web-metrics",
+ "metrics-exporter-prometheus",
+ "sentry-actix",
+ "tracing",
 ]
 
 [[package]]
