@@ -772,7 +772,15 @@ type Query {
 		"""
 		Account Address
 		"""
-		addr: String
+		addr: String,
+		"""
+		Filter trades created at or before this date
+		"""
+		earlierThan: DateTime,
+		"""
+		Filter trades created at or after this date
+		"""
+		laterThan: DateTime
 	): TradeConnection!
 	"""
 	Get 24h statistics for a specific trading pair.
@@ -933,7 +941,15 @@ type Query {
 		"""
 		Filter by block height
 		"""
-		blockHeight: Int
+		blockHeight: Int,
+		"""
+		Filter events created at or before this date
+		"""
+		earlierThan: DateTime,
+		"""
+		Filter events created at or after this date
+		"""
+		laterThan: DateTime
 	): PerpsEventConnection!
 }
 
