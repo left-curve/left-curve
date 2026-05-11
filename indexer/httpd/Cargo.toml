@@ -17,7 +17,6 @@ metrics = [
   "dep:actix-web-metrics",
   "dep:futures-util",
   "dep:metrics",
-  "dep:metrics-exporter-prometheus",
   "grug-httpd/metrics",
 ]
 tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
@@ -43,7 +42,6 @@ indexer-cache               = { workspace = true }
 indexer-sql                 = { workspace = true, features = ["async-graphql"] }
 itertools                   = { workspace = true }
 metrics                     = { workspace = true, optional = true }
-metrics-exporter-prometheus = { workspace = true, optional = true }
 num_cpus                    = { workspace = true }
 sea-orm                     = { workspace = true }
 sentry                      = { workspace = true }

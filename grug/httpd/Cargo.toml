@@ -13,7 +13,6 @@ version       = { workspace = true }
 metrics = [
   "dep:actix-web-metrics",
   "dep:metrics",
-  "dep:metrics-exporter-prometheus",
 ]
 testing = ["dep:grug-testing"]
 tracing = ["dep:tracing"]
@@ -33,7 +32,6 @@ grug-app                    = { workspace = true, features = ["tracing"] }
 grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 metrics                     = { workspace = true, optional = true }
-metrics-exporter-prometheus = { workspace = true, optional = true }
 sentry-actix                = { workspace = true }
 serde                       = { workspace = true }
 serde_json                  = { workspace = true }

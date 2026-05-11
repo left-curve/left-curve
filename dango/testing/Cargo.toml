@@ -36,6 +36,7 @@ identity                 = { workspace = true }
 indexer-cache            = { workspace = true, features = ["metrics", "tracing"] }
 indexer-hooked           = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd            = { workspace = true, features = ["metrics"] }
+indexer-metrics          = { workspace = true }
 indexer-sql              = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 k256                     = { workspace = true }
 pyth-client              = { workspace = true }

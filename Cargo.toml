@@ -51,6 +51,7 @@ members = [
   "indexer/disk-saver",
   "indexer/hooked",
   "indexer/httpd",
+  "indexer/metrics",
   "indexer/sql",
   "indexer/sql-migration",
   "indexer/testing",
@@ -257,6 +258,7 @@ indexer-cache               = { path = "indexer/cache" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
+indexer-metrics             = { path = "indexer/metrics" }
 indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }

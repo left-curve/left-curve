@@ -442,7 +442,7 @@ impl StartCmd {
         cfg: &MetricsHttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
-        indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
+        indexer_metrics::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run metrics HTTP server: {err:?}");
