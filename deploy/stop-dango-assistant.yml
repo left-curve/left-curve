@@ -1,0 +1,21 @@
+---
+- hosts: dango-assistant
+  become: true
+  become_user: "{{ deploy_user }}"
+  remote_user: deploy
+  collections:
+    - community.docker
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+  tasks:
+    - name: Stop dango-assistant
+      community.docker.docker_compose_v2:
+        project_src: "{{ deploy_home }}/dango-assistant"
+        state: stopped
+        pull: never

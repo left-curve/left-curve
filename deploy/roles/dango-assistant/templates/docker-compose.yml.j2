@@ -1,0 +1,16 @@
+services:
+  dango-assistant:
+    image: {{ dango_assistant_image }}:{{ dango_assistant_tag }}
+    pull_policy: always
+    container_name: {{ dango_assistant_container_name }}
+    restart: unless-stopped
+    environment:
+      - DISCORD__TOKEN={{ dango_assistant_discord_token }}
+      - CLAUDE_CODE_OAUTH_TOKEN={{ dango_assistant_claude_oauth_token }}
+    volumes:
+      - claude-creds:/root/.claude
+      - ./config.json:/root/.assist-dango-bot/config.json
+      - ./db:/root/.assist-dango-bot/db
+
+volumes:
+  claude-creds:
