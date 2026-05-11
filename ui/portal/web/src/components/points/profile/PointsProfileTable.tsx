@@ -1,4 +1,14 @@
-import { Button, Cell, Pagination, SortHeader, Table, useApp } from "@left-curve/applets-kit";
+import {
+  Button,
+  Cell,
+  IconButton,
+  IconShare,
+  Modals,
+  Pagination,
+  SortHeader,
+  Table,
+  useApp,
+} from "@left-curve/applets-kit";
 import { formatNumber } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useEpochPoints } from "@left-curve/store";
@@ -39,7 +49,7 @@ const formatEpochDateRange = (startedAt: string, endedAt: string): string => {
 const PAGE_SIZE = 10;
 
 export const PointsProfileTable: React.FC = () => {
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
   const { userIndex } = useAccount();
   const navigate = useNavigate();
@@ -155,6 +165,32 @@ export const PointsProfileTable: React.FC = () => {
           className="text-ink-primary-900"
           text={m["points.profile.xPoints"]({ points: formatNumber(row.original.points, formatNumberOptions) })}
         />
+      ),
+    },
+    {
+      id: "share",
+      header: () => (
+        <span className="block w-full text-right">
+          {m["points.profile.columns.share"]()}
+        </span>
+      ),
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <IconButton
+            variant="link"
+            size="sm"
+            className="text-ink-secondary-blue hover:text-primitives-blue-light-600"
+            onClick={() =>
+              showModal(Modals.PointsShare, {
+                points: row.original.points,
+                weekNumber: row.original.epoch,
+              })
+            }
+          >
+            <IconShare className="w-4 h-4" />
+          </IconButton>
+        </div>
       ),
     },
   ];
