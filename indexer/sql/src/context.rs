@@ -1,7 +1,7 @@
 use {
     crate::{
         dango_migration, entity::perps_trade::PerpsTrade, event_cache::EventCacheWriter,
-        grug_migration, pubsub::PubSub, write::perps_trades::cache::PerpsTradeCache,
+        grug_migration, pubsub::PubSub, write::perps_trades::PerpsTradeCache,
     },
     sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection},
     sea_orm_migration::MigratorTrait,
