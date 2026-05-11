@@ -10,6 +10,7 @@ use {
         future::Future,
         num::NonZeroU32,
         pin::Pin,
+        sync::Arc,
         task::{Context, Poll},
     },
     tendermint::{
@@ -23,12 +24,32 @@ use {
     tower_abci::BoxError,
 };
 
-impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
+/// ABCI [`tower::Service`] adapter for [`App`]. Wraps the app in an `Arc`
+/// so each per-request future captures a cheap [`Arc::clone`] instead of
+/// cloning the `App` itself — cloning the `App` would also clone its
+/// sub-fields, including `PythHandler` (whose `Clone` intentionally
+/// produces a "dud" copy with no live streaming thread) and `HookedIndexer`
+/// (whose `Drop` runs per clone). Keeping a single live `App` behind the
+/// `Arc` preserves the `PythHandler`'s streaming thread and avoids
+/// spurious `HookedIndexer` drops during request handling.
+pub struct AbciService<DB, VM, PP, ID> {
+    inner: Arc<App<DB, VM, PP, ID>>,
+}
+
+impl<DB, VM, PP, ID> AbciService<DB, VM, PP, ID> {
+    pub fn new(app: App<DB, VM, PP, ID>) -> Self {
+        Self {
+            inner: Arc::new(app),
+        }
+    }
+}
+
+impl<DB, VM, PP, ID> Service<Request> for AbciService<DB, VM, PP, ID>
 where
-    DB: Db,
+    DB: Db + Send + Sync + 'static,
     VM: Vm + Clone + Send + Sync + 'static,
-    ID: Indexer,
-    PP: ProposalPreparer,
+    ID: Indexer + Send + Sync + 'static,
+    PP: ProposalPreparer + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = BoxError;
@@ -41,8 +62,12 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        let res = self.tower_call(req);
-        Box::pin(async move { res.map_err(|err| Box::new(err) as BoxError) })
+        let this = self.inner.clone();
+        Box::pin(async move {
+            this.tower_call(req)
+                .await
+                .map_err(|err| Box::new(err) as BoxError)
+        })
     }
 }
 
@@ -54,7 +79,7 @@ where
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
-    fn tower_call(&self, req: Request) -> AppResult<Response> {
+    async fn tower_call(&self, req: Request) -> AppResult<Response> {
         match req {
             // -------------------- block execution methods --------------------
             Request::InitChain(req) => {
@@ -83,11 +108,11 @@ where
                 Ok(Response::VerifyVoteExtension(res))
             },
             Request::FinalizeBlock(req) => {
-                let res = self.tower_finalize_block(req)?;
+                let res = self.tower_finalize_block(req).await?;
                 Ok(Response::FinalizeBlock(res))
             },
             Request::Commit => {
-                let res = self.tower_commit()?;
+                let res = self.tower_commit().await?;
                 Ok(Response::Commit(res))
             },
 
@@ -169,8 +194,8 @@ where
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument("abci::commit", skip_all))]
-    fn tower_commit(&self) -> AppResult<response::Commit> {
-        match self.do_commit() {
+    async fn tower_commit(&self) -> AppResult<response::Commit> {
+        match self.do_commit().await {
             Ok(()) => Ok(response::Commit {
                 // This field is ignored since CometBFT 0.38.
                 // TODO: Can we omit this?????
@@ -183,13 +208,13 @@ where
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument("abci::finalize_block", skip_all, fields(height = req.height.value(), hash = ?req.hash)))]
-    fn tower_finalize_block(
+    async fn tower_finalize_block(
         &self,
         req: request::FinalizeBlock,
     ) -> AppResult<response::FinalizeBlock> {
         let block = from_tm_block(req.height.value(), req.time, Some(req.hash));
 
-        match self.do_finalize_block_raw(block, &req.txs) {
+        match self.do_finalize_block_raw(block, &req.txs).await {
             Ok(outcome) => {
                 let tx_results = outcome
                     .tx_outcomes
