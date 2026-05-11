@@ -1539,7 +1539,8 @@
         "action": "Action",
         "epoch": "Epoch",
         "date": "Date",
-        "points": "Points"
+        "points": "Points",
+        "share": "Share"
       },
       "epochLabel": "Epoch {number}",
       "activities": {

@@ -423,7 +423,7 @@ const UserPosition: React.FC = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 p-4 rounded-xl bg-surface-secondary-rice shadow-account-card">
-        <p className="exposure-sm-italic text-ink-tertiary-500">
+        <p className="exposure-sm-italic text-ink-secondary-700">
           {m["vaultLiquidity.liquidity"]()}
         </p>
         <div className="flex items-center justify-between">
