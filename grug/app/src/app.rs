@@ -9,18 +9,18 @@ use {
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
         Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
         NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
-        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
-        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
-        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
-        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
-        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        TraceOption, Vm, catch_and_push_event, do_authenticate, do_configure, do_cron_execute,
+        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upgrade,
+        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
+        query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
+        query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, Buffer, CheckTxEvents,
-        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus,
-        GENESIS_SENDER, GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
+        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, GENESIS_SENDER,
+        GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
         MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, Shared,
         StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
@@ -1131,48 +1131,36 @@ where
     )
     .into_commitment_status();
 
-    let request_backrun = match events.authenticate.as_result() {
-        Err((_, err)) => {
-            drop(msg_buffer);
-            let err = err.clone();
-            return process_finalize_fee(
-                vm,
-                fee_buffer,
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                events,
-                Err(err),
-                trace_opt,
-            );
-        },
-        Ok(event) => {
-            msg_buffer.write_access().commit();
-            if let EventStatus::Ok(e) = event {
-                e.backrun
-            } else {
-                unreachable!();
-            }
-        },
-    };
+    if let Err((_, err)) = events.authenticate.as_result() {
+        drop(msg_buffer);
+        let err = err.clone();
+        return process_finalize_fee(
+            vm,
+            fee_buffer,
+            gas_tracker,
+            block,
+            tx,
+            mode,
+            events,
+            Err(err),
+            trace_opt,
+        );
+    }
+    msg_buffer.write_access().commit();
 
-    // Loop through the messages and execute one by one. Then, call the sender
-    // account's `backrun` method.
+    // Loop through the messages and execute one by one.
     //
     // If everything succeeds, commit state changes in `msg_buffer` into `fee_buffer`,
     // and record the events emitted.
     //
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
     // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
-    events.msgs_and_backrun = process_msgs_then_backrun(
+    events.msgs_and_backrun = process_msgs(
         vm.clone(),
         msg_buffer.clone(),
         gas_tracker.clone(),
         block,
         &tx,
-        mode,
-        request_backrun,
         trace_opt,
     )
     .into_commitment();
@@ -1223,14 +1211,12 @@ where
 }
 
 #[inline]
-fn process_msgs_then_backrun<S, VM>(
+fn process_msgs<S, VM>(
     vm: VM,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    mode: AuthMode,
-    request_backrun: bool,
     trace_opt: TraceOption,
 ) -> EventResult<MsgsAndBackrunEvents>
 where
@@ -1261,21 +1247,6 @@ where
             evt,
             msgs
         }
-    }
-
-    if request_backrun {
-        catch_and_update_event! {
-            do_backrun(
-                vm,
-                Box::new(buffer),
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                trace_opt,
-            ),
-            evt => backrun
-        };
     }
 
     EventResult::Ok(evt)
