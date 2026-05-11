@@ -5,7 +5,6 @@ import { getReferralLink, useAccount } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { CharacterSelector } from "../../foundation/CharacterSelector";
-import { cloneCardForExport } from "./buildExportCardHtml.js";
 import { PreviewCard } from "./PreviewCard.js";
 import type { PnlShareProps } from "./types.js";
 
@@ -23,7 +22,6 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
     try {
       await saveCardAsImage({
         source: cardRef.current,
-        prepareClone: cloneCardForExport,
         filename: `pnl-${symbol}.png`,
         width: 752,
       });
