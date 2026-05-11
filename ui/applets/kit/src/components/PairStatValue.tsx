@@ -1,4 +1,4 @@
-import { useApp, twMerge } from "@left-curve/foundation";
+import { twMerge } from "@left-curve/foundation";
 
 import { Decimal } from "@left-curve/dango/utils";
 import { FormattedNumber } from "./FormattedNumber";
