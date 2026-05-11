@@ -4,6 +4,7 @@ use {
         entities::{trade::Trade, trade_query::TradeQueryBuilder},
     },
     async_graphql::{types::connection::*, *},
+    chrono::{DateTime, Utc},
     grug::Addr,
     serde::{Deserialize, Serialize},
     std::str::FromStr,
@@ -36,6 +37,12 @@ impl TradeQuery {
         #[graphql(desc = "Cursor based pagination")] after: Option<String>,
         #[graphql(desc = "Cursor based pagination")] first: Option<i32>,
         #[graphql(desc = "Account Address")] addr: Option<String>,
+        #[graphql(desc = "Filter trades created at or before this date")] earlier_than: Option<
+            DateTime<Utc>,
+        >,
+        #[graphql(desc = "Filter trades created at or after this date")] later_than: Option<
+            DateTime<Utc>,
+        >,
     ) -> Result<Connection<OpaqueCursor<TradeCursor>, Trade, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
@@ -57,8 +64,15 @@ impl TradeQuery {
                 }
 
                 if let Some(after) = after {
-                    query_builder =
-                        query_builder.with_later_than(after.block_height, after.trade_idx);
+                    query_builder = query_builder.with_after(after.block_height, after.trade_idx);
+                }
+
+                if let Some(earlier_than) = earlier_than {
+                    query_builder = query_builder.with_earlier_than(earlier_than);
+                }
+
+                if let Some(later_than) = later_than {
+                    query_builder = query_builder.with_later_than(later_than);
                 }
 
                 let result = query_builder.fetch_all(clickhouse_client).await?;
