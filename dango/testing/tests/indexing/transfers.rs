@@ -40,7 +40,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
 
     assert_that!(blocks).has_length(1);
 
-    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+    let transfers = indexer_sql::entity::transfers::Entity::find()
         .all(&dango_context.db)
         .await?;
 
@@ -78,8 +78,8 @@ async fn index_transfer_events() -> anyhow::Result<()> {
 
     assert_that!(blocks).has_length(2);
 
-    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-        .filter(dango_indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
+    let transfers = indexer_sql::entity::transfers::Entity::find()
+        .filter(indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
         .all(&dango_context.db)
         .await?;
 

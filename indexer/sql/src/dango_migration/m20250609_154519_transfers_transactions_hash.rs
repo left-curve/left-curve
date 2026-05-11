@@ -1,4 +1,7 @@
-use {crate::idens::Transaction, sea_orm_migration::prelude::*};
+use {
+    super::idens::Transfer,
+    sea_orm_migration::{prelude::*, schema::*},
+};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -9,8 +12,8 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                    .table(Transaction::Table)
-                    .add_column(ColumnDef::new(Transaction::HttpRequestDetails).json_binary())
+                    .table(Transfer::Table)
+                    .add_column(string(Transfer::TxHash))
                     .to_owned(),
             )
             .await
@@ -20,8 +23,8 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                    .table(Transaction::Table)
-                    .drop_column(Transaction::HttpRequestDetails)
+                    .table(Transfer::Table)
+                    .drop_column(Transfer::TxHash)
                     .to_owned(),
             )
             .await

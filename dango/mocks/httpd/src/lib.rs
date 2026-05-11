@@ -101,32 +101,17 @@ where
 
     let indexer = indexer.with_sqlx_pubsub().build().await?;
 
-    let indexer_context = indexer.context.clone();
+    let sql_context = indexer.context.clone();
 
     let indexer_cache = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
 
-    // Create a separate context for dango indexer (shares DB but has independent pubsub)
-    let dango_context: dango_indexer_sql::context::Context = indexer
-        .context
-        .with_separate_pubsub()
-        .await
-        .map_err(|e| {
-            indexer_sql::error::IndexerError::from(anyhow::anyhow!(
-                "Failed to create separate context for dango indexer: {e}",
-            ))
-        })?
-        .into();
-
-    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
-
     let indexer_context_callback = indexer.context.clone();
 
     hooked_indexer.add_indexer(indexer_cache).await.unwrap();
     hooked_indexer.add_indexer(indexer).await.unwrap();
-    hooked_indexer.add_indexer(dango_indexer).await.unwrap();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::<SimpleCommitment>::new(),
@@ -154,7 +139,7 @@ where
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_cache_context,
-        indexer_context.clone(),
+        sql_context.clone(),
         Arc::new(app),
         Arc::new(mock_client),
     );
@@ -169,7 +154,7 @@ where
     let dango_httpd_context = dango_httpd::context::Context::new(
         indexer_httpd_context.clone(),
         indexer_clickhouse_context.clone(),
-        dango_context,
+        sql_context,
         None,
     );
 

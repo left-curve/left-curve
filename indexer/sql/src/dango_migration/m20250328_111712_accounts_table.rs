@@ -1,5 +1,5 @@
 use {
-    crate::idens::{Account, AccountUser, PublicKey, User},
+    super::idens::{Account, AccountUser, PublicKey, User},
     sea_orm_migration::{prelude::*, schema::*},
 };
 

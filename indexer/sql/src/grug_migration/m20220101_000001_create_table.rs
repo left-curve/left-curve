@@ -1,5 +1,5 @@
 use {
-    crate::idens::{Block, Event, Message, Transaction},
+    super::idens::{Block, Event, Message, Transaction},
     sea_orm_migration::{prelude::*, schema::*},
 };
 

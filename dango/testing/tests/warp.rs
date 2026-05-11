@@ -148,7 +148,7 @@ async fn sending_remote() {
 
     assert_that!(blocks).has_length(1);
 
-    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+    let transfers = indexer_sql::entity::transfers::Entity::find()
         .all(&context.db)
         .await
         .expect("Can't fetch transfers");

@@ -1,8 +1,8 @@
 use {
-    dango_indexer_sql::{
-        entity::perps_trade::PerpsTrade, indexer::perps_trades::cache::PerpsTradeCache,
+    indexer_sql::{
+        entity::perps_trade::PerpsTrade, pubsub::PubSub,
+        write::perps_trades::cache::PerpsTradeCache,
     },
-    indexer_sql::pubsub::PubSub,
     sea_orm::DatabaseConnection,
     std::sync::Arc,
     tokio::sync::RwLock,
@@ -23,7 +23,7 @@ impl Context {
     pub fn new(
         indexer_httpd_context: indexer_httpd::context::Context,
         indexer_clickhouse_context: dango_indexer_clickhouse::context::Context,
-        ctx: dango_indexer_sql::context::Context,
+        ctx: indexer_sql::Context,
         static_files_path: Option<String>,
     ) -> Self {
         Self {
@@ -39,7 +39,7 @@ impl Context {
 
     /// Preload the perps trade cache from existing DB data so that new
     /// GraphQL subscribers immediately receive recent trades.
-    pub async fn start_perps_trade_cache(&self) -> Result<(), dango_indexer_sql::error::Error> {
+    pub async fn start_perps_trade_cache(&self) -> Result<(), indexer_sql::error::IndexerError> {
         let mut cache = self.perps_trade_cache.write().await;
         cache.preload(&self.db).await
     }

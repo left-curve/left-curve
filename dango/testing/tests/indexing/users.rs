@@ -1,11 +1,11 @@
 use {
     assertor::*,
-    dango_indexer_sql::entity,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
         setup_test_with_indexer,
     },
     grug_app::Indexer,
+    indexer_sql::entity,
     sea_orm::EntityTrait,
 };
 
@@ -22,8 +22,8 @@ async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     let users_and_public_keys: Vec<(entity::users::Model, Vec<entity::public_keys::Model>)> =
-        dango_indexer_sql::entity::users::Entity::find()
-            .find_with_related(dango_indexer_sql::entity::public_keys::Entity)
+        indexer_sql::entity::users::Entity::find()
+            .find_with_related(indexer_sql::entity::public_keys::Entity)
             .all(&dango_context.db)
             .await?;
 

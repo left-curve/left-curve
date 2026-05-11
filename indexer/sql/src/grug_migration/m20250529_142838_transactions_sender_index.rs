@@ -1,4 +1,4 @@
-use {crate::idens::Event, sea_orm_migration::prelude::*};
+use {super::idens::Transaction, sea_orm_migration::prelude::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -8,12 +8,11 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_index(
-                Index::create()
+                sea_query::Index::create()
                     .if_not_exists()
-                    .name("events-data")
-                    .table(Event::Table)
-                    .col(Event::Data)
-                    .full_text()
+                    .name("transactions-sender")
+                    .table(Transaction::Table)
+                    .col(Transaction::Sender)
                     .to_owned(),
             )
             .await
@@ -22,9 +21,9 @@ impl MigrationTrait for Migration {
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_index(
-                Index::drop()
-                    .name("events-data")
-                    .table(Event::Table)
+                sea_query::Index::drop()
+                    .name("transactions-sender")
+                    .table(Transaction::Table)
                     .to_owned(),
             )
             .await

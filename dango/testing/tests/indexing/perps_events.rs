@@ -1,12 +1,12 @@
 use {
     assertor::*,
-    dango_indexer_sql::entity,
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},
         setup_test_with_indexer,
     },
     grug_app::Indexer,
+    indexer_sql::entity,
     sea_orm::EntityTrait,
 };
 

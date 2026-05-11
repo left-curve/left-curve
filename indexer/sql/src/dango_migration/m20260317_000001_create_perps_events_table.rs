@@ -1,5 +1,5 @@
 use {
-    crate::idens::PerpsEvent,
+    super::idens::PerpsEvent,
     sea_orm_migration::{prelude::*, schema::*},
 };
 

@@ -110,7 +110,9 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            perps_trade_pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
+            perps_trade_cache: Default::default(),
         };
 
         match self.pubsub {
@@ -141,7 +143,9 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            perps_trade_pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
+            perps_trade_cache: Default::default(),
         };
 
         match self.pubsub {
@@ -504,7 +508,7 @@ impl IndexerTrait for Indexer {
         &self,
         block_height: u64,
         _cfg: Config,
-        _app_cfg: Json,
+        app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
@@ -514,12 +518,11 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` called");
 
-        let block = ctx
-            .get::<BlockAndBlockOutcomeWithHttpDetails>()
-            .ok_or(grug_app::IndexerError::hook(
+        let block = ctx.get::<BlockAndBlockOutcomeWithHttpDetails>().ok_or(
+            grug_app::IndexerError::hook(
                 "BlockAndBlockOutcomeWithHttpDetails not found".to_string(),
-            ))?
-            .clone();
+            ),
+        )?;
 
         #[cfg(feature = "tracing")]
         let id = self.id;
@@ -531,11 +534,16 @@ impl IndexerTrait for Indexer {
             "`post_indexing` async work started"
         );
 
+        // 1. Grug-side writes (blocks, transactions, messages, events).
+        //    Preserve the existing "log and bail early on failure" behavior so a
+        //    save_block error does not propagate up and abort the rest of the
+        //    indexer pipeline. The dango-side writes below depend on the rows
+        //    save_block inserts, so we skip them if save_block failed.
         #[allow(clippy::map_identity)]
         if let Err(_err) = Self::save_block(
             self.context.db.clone(),
             self.context.event_cache.clone(),
-            block,
+            block.clone(),
         )
         .await
         {
@@ -556,6 +564,33 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "metrics")]
         metrics::counter!("indexer.blocks.processed.total").increment(1);
 
+        // 2. Dango-side writes (transfers, accounts, perps_events).
+        //    Run in parallel; each reads from the rows just committed above.
+        let (transfers_result, accounts_result, perps_result) = tokio::join!(
+            crate::write::transfers::save_transfers(&self.context, block_height),
+            crate::write::accounts::save_accounts(&self.context, block, app_cfg.clone()),
+            crate::write::perps_events::save_perps_events(&self.context, block, app_cfg),
+        );
+
+        if transfers_result.is_err() {
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.dango.hooks.transfers.errors.total").increment(1);
+        }
+        if accounts_result.is_err() {
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
+        }
+        if perps_result.is_err() {
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.dango.hooks.perps_events.errors.total").increment(1);
+        }
+
+        transfers_result.map_err(grug_app::IndexerError::from)?;
+        accounts_result.map_err(grug_app::IndexerError::from)?;
+        perps_result.map_err(grug_app::IndexerError::from)?;
+
+        // 3. Single pubsub publish, after both grug-side and dango-side writes
+        //    have committed. Subscribers see "block N fully indexed" semantics.
         if let Err(_err) = self.context.pubsub.publish(block_height).await {
             #[cfg(feature = "tracing")]
             tracing::error!(

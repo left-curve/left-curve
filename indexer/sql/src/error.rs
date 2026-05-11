@@ -47,6 +47,9 @@ pub enum IndexerError {
     #[error("hooks error: {error}")]
     Hooks { error: String },
 
+    #[error("wrong event type")]
+    WrongEventType,
+
     #[error(transparent)]
     #[backtrace(new)]
     SerdeJson(serde_json::Error),
@@ -100,6 +103,10 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::Persist(e) => parse_error!(Io, e),
             IndexerError::Persistence(e) => parse_error!(Storage, e),
             IndexerError::Hooks { error, backtrace } => parse_error!(Hook, error, backtrace),
+            IndexerError::WrongEventType(backtrace) => grug_app::IndexerError::Hook {
+                error: "wrong event type".to_string(),
+                backtrace,
+            },
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
             IndexerError::Sqlx(e) => parse_error!(Database, e),

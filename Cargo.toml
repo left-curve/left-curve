@@ -11,8 +11,6 @@ members = [
   "dango/indexer/clickhouse",
   "dango/indexer/graphql-types",
   "dango/indexer/httpd",
-  "dango/indexer/sql",
-  "dango/indexer/sql-migration",
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
@@ -53,7 +51,6 @@ members = [
   "indexer/httpd",
   "indexer/metrics",
   "indexer/sql",
-  "indexer/sql-migration",
   "indexer/testing",
   "pyth/client",
   "pyth/types",
@@ -214,8 +211,6 @@ dango-genesis               = { path = "dango/genesis" }
 dango-graphql-types         = { path = "dango/indexer/graphql-types" }
 dango-httpd                 = { path = "dango/indexer/httpd" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
-dango-indexer-sql           = { path = "dango/indexer/sql" }
-dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-order-book            = { path = "dango/order-book" }
@@ -260,7 +255,6 @@ indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
 indexer-metrics             = { path = "indexer/metrics" }
 indexer-sql                 = { path = "indexer/sql" }
-indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
 pyth-client                 = { path = "pyth/client" }
 pyth-types                  = { path = "pyth/types" }

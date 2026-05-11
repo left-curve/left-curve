@@ -27,7 +27,7 @@ pub struct Model {
     pub public_key: String,
     pub key_type: auth::KeyType,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "indexer_sql::serde_iso8601")]
+    #[serde(with = "crate::serde_iso8601")]
     pub created_at: DateTime,
     pub created_block_height: i64,
 }

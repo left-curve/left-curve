@@ -1,5 +1,5 @@
 use {
-    crate::idens::Transfer,
+    super::idens::Transfer,
     sea_orm::DatabaseBackend,
     sea_orm_migration::{prelude::*, schema::*},
 };
