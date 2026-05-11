@@ -86,8 +86,20 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   );
 };
 
+const ApyTooltipContent: React.FC = () => (
+  <div className="flex flex-col gap-2">
+    <p>{m["vaultLiquidity.apyTooltip"]()}</p>
+    <ul className="list-disc pl-5 flex flex-col gap-0.5">
+      <li>{m["vaultLiquidity.apyTooltip7D"]()}</li>
+      <li>{m["vaultLiquidity.apyTooltip14D"]()}</li>
+      <li>{m["vaultLiquidity.apyTooltip30D"]()}</li>
+      <li>{m["vaultLiquidity.apyTooltip90D"]()}</li>
+    </ul>
+  </div>
+);
+
 const VaultLiquidityHeader: React.FC = () => {
-  const { state } = useVaultLiquidity();
+  const { state, period } = useVaultLiquidity();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { isPaused, isTvlCapReached, vaultState, isLoading, vaultApy } = state;
@@ -102,27 +114,27 @@ const VaultLiquidityHeader: React.FC = () => {
           </p>
         </div>
       )}
-      <div className="flex flex-col gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
         <div className="flex gap-2 items-center">
           <img src="/images/coins/usd.svg" alt="vault" className="w-8 h-8 rounded-full" />
           <p className="text-ink-secondary-700 h4-bold">{m["vaultLiquidity.title"]()}</p>
         </div>
-        <div className="flex flex-row justify-between items-end">
-          <div className="flex flex-col gap-0.5">
-            <Tooltip title={m["vaultLiquidity.apyTooltip"]()}>
+        <div className="flex flex-row items-center gap-4">
+          <div className="flex items-center gap-1">
+            <Tooltip title={<ApyTooltipContent />}>
               <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
-                {m["vaultLiquidity.apy"]()}
+                {`APY (${period})`}
               </p>
             </Tooltip>
             {isLoading ? (
               <Skeleton className="w-12 h-5" />
             ) : (
-              <p className="text-ink-secondary-700 diatype-sm-bold min-w-[3rem]">
+              <p className="text-ink-secondary-700 diatype-sm-bold">
                 {vaultApy != null ? `${vaultApy}%` : "-"}
               </p>
             )}
           </div>
-          <div className="flex flex-col gap-0.5 items-end">
+          <div className="flex items-center gap-1">
             <Tooltip title={m["vaultLiquidity.tvlTooltip"]()}>
               <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
                 {m["vaultLiquidity.tvl"]()}
@@ -131,7 +143,7 @@ const VaultLiquidityHeader: React.FC = () => {
             {isLoading ? (
               <Skeleton className="w-16 h-5" />
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <p className="text-ink-secondary-700 diatype-sm-bold">
                   {formatNumber(equity, { ...formatNumberOptions, currency: "USD" })}
                 </p>
