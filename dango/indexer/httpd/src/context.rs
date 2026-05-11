@@ -1,7 +1,6 @@
 use {
     indexer_sql::{
-        entity::perps_trade::PerpsTrade, pubsub::PubSub,
-        write::perps_trades::PerpsTradeCache,
+        entity::perps_trade::PerpsTrade, pubsub::PubSub, write::perps_trades::PerpsTradeCache,
     },
     sea_orm::DatabaseConnection,
     std::sync::Arc,
