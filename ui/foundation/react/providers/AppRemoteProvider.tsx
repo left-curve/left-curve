@@ -35,9 +35,9 @@ const toast = {
   },
 } as ToastController;
 
-const [RemoteContextProvider, , AppRemoteContext] = createContext<AppState>();
+const [RemoteContextProvider, useRemoteApp] = createContext<AppState>();
 
-export { AppRemoteContext };
+export { useRemoteApp };
 
 export const AppRemoteProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const { subscriptions } = useConfig();
