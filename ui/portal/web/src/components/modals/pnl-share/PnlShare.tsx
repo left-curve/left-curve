@@ -25,6 +25,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
         source: cardRef.current,
         prepareClone: cloneCardForExport,
         filename: `pnl-${symbol}.png`,
+        width: 752,
       });
     } catch (err) {
       console.error("Failed to save image", err);

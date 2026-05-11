@@ -29,6 +29,7 @@ export const PointsShare = forwardRef<unknown, PointsShareProps>((props, _ref) =
         source: cardRef.current,
         prepareClone: cloneCardForExport,
         filename: `points-week-${weekNumber}.png`,
+        width: 752,
       });
     } catch (err) {
       console.error("Failed to save image", err);
