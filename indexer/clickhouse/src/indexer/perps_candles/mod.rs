@@ -1,8 +1,6 @@
 use {
     crate::{
-        context::Context,
-        entities::perps_pair_price::PerpsPairPrice,
-        error::{IndexerError, Result},
+        context::Context, entities::perps_pair_price::PerpsPairPrice, error::Result,
         indexer::Indexer,
     },
     chrono::{DateTime, Utc},
@@ -21,13 +19,9 @@ pub mod generator;
 impl Indexer {
     pub(crate) async fn store_perps_candles(
         perps_addr: &Addr,
-        ctx: &grug_app::IndexerContext,
+        block_and_block_outcome: &BlockAndBlockOutcomeWithHttpDetails,
         context: &Context,
     ) -> Result<()> {
-        let block_and_block_outcome = ctx
-            .get::<BlockAndBlockOutcomeWithHttpDetails>()
-            .ok_or(IndexerError::missing_block_or_block_outcome())?;
-
         let created_at = DateTime::<Utc>::from_naive_utc_and_offset(
             block_and_block_outcome
                 .block

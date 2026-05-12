@@ -273,8 +273,6 @@ impl StartCmd {
         app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(HookedIndexer, indexer_httpd::context::FullContext)> {
-        let mut hooked_indexer = HookedIndexer::new();
-
         let sql_indexer = indexer_sql::IndexerBuilder::default()
             .with_database_url(&cfg.indexer.database.url)
             .with_database_max_connections(cfg.indexer.database.max_connections)
@@ -293,15 +291,11 @@ impl StartCmd {
 
         let clickhouse_indexer = indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
-        // Create cache indexer (RuntimeHandler no longer needed)
         let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
-        // Pass S3 config to the cache indexer context
         indexer_cache.context.s3 = cfg.indexer.s3.clone();
         let indexer_cache_context = indexer_cache.context.clone();
 
-        hooked_indexer.add_indexer(indexer_cache).await?;
-        hooked_indexer.add_indexer(sql_indexer).await?;
-        hooked_indexer.add_indexer(clickhouse_indexer).await?;
+        let mut hooked_indexer = HookedIndexer::new(indexer_cache, sql_indexer, clickhouse_indexer);
 
         let dango_httpd_context = indexer_httpd::context::FullContext::new(
             indexer_cache_context,

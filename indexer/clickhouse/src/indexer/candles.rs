@@ -1,10 +1,5 @@
 use {
-    crate::{
-        context::Context,
-        entities::pair_price::PairPrice,
-        error::{IndexerError, Result},
-        indexer::Indexer,
-    },
+    crate::{context::Context, entities::pair_price::PairPrice, error::Result, indexer::Indexer},
     chrono::{DateTime, Utc},
     dango_types::dex::OrdersMatched,
     grug::{
@@ -20,13 +15,9 @@ pub mod generator;
 impl Indexer {
     pub(crate) async fn store_candles(
         dex_addr: &Addr,
-        ctx: &grug_app::IndexerContext,
+        block_and_block_outcome: &BlockAndBlockOutcomeWithHttpDetails,
         context: &Context,
     ) -> Result<()> {
-        let block_and_block_outcome = ctx
-            .get::<BlockAndBlockOutcomeWithHttpDetails>()
-            .ok_or(IndexerError::missing_block_or_block_outcome())?;
-
         let created_at = DateTime::<Utc>::from_naive_utc_and_offset(
             block_and_block_outcome
                 .block

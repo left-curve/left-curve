@@ -1,6 +1,5 @@
 use {
     crate::{Context, cache_file::CacheFile, error::Result, indexer_path::IndexerPath},
-    async_trait::async_trait,
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
     serde::{Deserialize, Serialize},
     std::{
@@ -44,7 +43,7 @@ const INTERVAL_BETWEEN_S3_BITMAP_STORES: u64 = 60;
 // or not, to save disk space. `app.toml` could also add a u64 field to limit the
 // number of blocks to keep, deleting the oldest ones when exceeding that number.
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Cache {
     pub context: Context,
     // This because the way indexer methods are called, we need to store the blocks
@@ -435,9 +434,11 @@ impl Cache {
     }
 }
 
-#[async_trait]
-impl grug_app::Indexer for Cache {
-    async fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
+impl Cache {
+    pub async fn start(
+        &mut self,
+        _storage: &dyn grug_types::Storage,
+    ) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "s3")]
         if self.context.s3.enabled {
             let context = self.context.clone();
@@ -502,19 +503,24 @@ impl grug_app::Indexer for Cache {
         Ok(())
     }
 
-    #[cfg(feature = "s3")]
-    async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    pub async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+        #[cfg(feature = "s3")]
         Self::store_bitmap(&self.context, self.s3_bitmap.clone())?;
 
         Ok(())
     }
 
+    /// No-op kept for symmetry with the other indexers' `wait_for_finish`.
+    pub async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+        Ok(())
+    }
+
+    /// Load a cached block from disk into the in-memory map, if a file exists
+    /// at `block_path(block_height)`. Called during the indexer pipeline's
+    /// `pre_indexing` phase, and during `reindex` to populate the in-memory
+    /// hop that `post_indexing` later drains.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn pre_indexing(
-        &self,
-        block_height: u64,
-        ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
+    pub async fn pre_indexing(&self, block_height: u64) -> grug_app::IndexerResult<()> {
         let file_path = self.context.indexer_path.block_path(block_height);
 
         // This is used when reindexing existing blocks, since `index_block` won't be called.
@@ -524,20 +530,20 @@ impl grug_app::Indexer for Cache {
             self.blocks
                 .lock()
                 .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-                .insert(block_height, cache_file.data.clone());
-
-            ctx.insert(cache_file.data);
+                .insert(block_height, cache_file.data);
         }
 
         Ok(())
     }
 
+    /// Persist a freshly minted block to disk (or reload it from disk if it
+    /// was already there), and store the payload in the in-memory map for
+    /// `post_indexing` to consume.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn index_block(
+    pub async fn index_block(
         &self,
         block: &grug_types::Block,
         block_outcome: &grug_types::BlockOutcome,
-        ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         let file_path = self.context.indexer_path.block_path(block.info.height);
 
@@ -555,9 +561,7 @@ impl grug_app::Indexer for Cache {
             self.blocks
                 .lock()
                 .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-                .insert(block.info.height, cache_file.data.clone());
-
-            ctx.insert(cache_file.data);
+                .insert(block.info.height, cache_file.data);
         } else {
             #[cfg(feature = "tracing")]
             tracing::info!(
@@ -578,22 +582,20 @@ impl grug_app::Indexer for Cache {
             self.blocks
                 .lock()
                 .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-                .insert(block.info.height, cache_file.data.clone());
-
-            ctx.insert(cache_file.data);
+                .insert(block.info.height, cache_file.data);
         }
 
         Ok(())
     }
 
+    /// Drain the in-memory map for `block_height`, finalize the on-disk file
+    /// (compress + record last-block-height), and return the payload so
+    /// downstream consumers (`SqlIndexer`, `ClickhouseIndexer`) can process it.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn post_indexing(
+    pub async fn post_indexing(
         &self,
         block_height: u64,
-        _cfg: grug_types::Config,
-        _app_cfg: grug_types::Json,
-        ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
+    ) -> grug_app::IndexerResult<BlockAndBlockOutcomeWithHttpDetails> {
         let Some(data) = self
             .blocks
             .lock()
@@ -605,14 +607,6 @@ impl grug_app::Indexer for Cache {
             )));
         };
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!(
-            block_height,
-            "Added block data to indexer context in post_indexing",
-        );
-
-        ctx.insert(data);
-
         let file_path = self.context.indexer_path.block_path(block_height);
 
         if CacheFile::exists(file_path.clone()) {
@@ -621,7 +615,7 @@ impl grug_app::Indexer for Cache {
             Self::store_last_block_height(&self.context, block_height, HIGHEST_BLOCK_FILENAME)?;
         }
 
-        Ok(())
+        Ok(data)
     }
 }
 

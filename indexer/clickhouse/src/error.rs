@@ -17,9 +17,6 @@ pub enum IndexerError {
     #[backtrace(new)]
     Clickhouse(clickhouse::error::Error),
 
-    #[error("missing block or block outcome")]
-    MissingBlockOrBlockOutcome,
-
     #[error("candle timeout")]
     CandleTimeout,
 

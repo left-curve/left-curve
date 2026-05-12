@@ -1,10 +1,5 @@
 use {
-    crate::{
-        context::Context,
-        entities::perps_fees::PerpsFees,
-        error::{IndexerError, Result},
-        indexer::Indexer,
-    },
+    crate::{context::Context, entities::perps_fees::PerpsFees, error::Result, indexer::Indexer},
     chrono::{DateTime, Utc},
     dango_order_book::{Quantity, UsdPrice, UsdValue},
     dango_types::perps::{Deleveraged, FeeDistributed, OrderFilled},
@@ -18,13 +13,9 @@ use {
 impl Indexer {
     pub(crate) async fn store_perps_fees(
         perps_addr: &Addr,
-        ctx: &grug_app::IndexerContext,
+        block_and_block_outcome: &BlockAndBlockOutcomeWithHttpDetails,
         context: &Context,
     ) -> Result<()> {
-        let block_and_block_outcome = ctx
-            .get::<BlockAndBlockOutcomeWithHttpDetails>()
-            .ok_or(IndexerError::missing_block_or_block_outcome())?;
-
         let block_height = block_and_block_outcome.block.info.height;
         let created_at = DateTime::<Utc>::from_naive_utc_and_offset(
             block_and_block_outcome

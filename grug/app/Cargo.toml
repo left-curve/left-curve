@@ -25,7 +25,6 @@ error-backtrace = { workspace = true }
 futures         = { workspace = true }
 grug-storage    = { workspace = true }
 grug-types      = { workspace = true }
-http            = { workspace = true }
 ics23           = { workspace = true, optional = true }
 metrics         = { workspace = true, optional = true }
 prost           = { workspace = true }

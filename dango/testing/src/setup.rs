@@ -186,8 +186,6 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let sql_context = indexer.context.clone();
 
-    let mut hooked_indexer = HookedIndexer::new();
-
     let indexer_cache = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
@@ -208,14 +206,9 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         clickhouse_context = clickhouse_context.with_mock();
     }
 
-    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
-    hooked_indexer.add_indexer(indexer).await.unwrap();
-
     let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
-    hooked_indexer
-        .add_indexer(clickhouse_indexer)
-        .await
-        .unwrap();
+
+    let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
 
     let db = MemDb::new();
     let vm = RustVm::new();

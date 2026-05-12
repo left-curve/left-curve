@@ -21,7 +21,7 @@ grug-types              = { workspace = true }
 grug-vm-rust            = { workspace = true }
 hyperlane-testing       = { workspace = true }
 indexer-cache           = { workspace = true }
-indexer-clickhouse      = { workspace = true, features = ["tracing"] }
+indexer-clickhouse      = { workspace = true, features = ["testing", "tracing"] }
 indexer-hooked          = { workspace = true }
 indexer-httpd           = { workspace = true, features = ["tracing"] }
 indexer-sql             = { workspace = true, features = ["tracing"] }

@@ -25,7 +25,7 @@ grug-testing          = { workspace = true }
 grug-types            = { workspace = true }
 grug-vm-rust          = { workspace = true }
 indexer-cache         = { workspace = true, features = ["http-request-details", "tracing"] }
-indexer-clickhouse    = { workspace = true }
+indexer-clickhouse    = { workspace = true, features = ["testing"] }
 indexer-graphql-types = { workspace = true }
 indexer-hooked        = { workspace = true, features = ["tracing"] }
 indexer-httpd         = { workspace = true, features = ["tracing"] }

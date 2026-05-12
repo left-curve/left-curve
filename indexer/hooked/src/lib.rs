@@ -1,6 +1,5 @@
 use {
     async_trait::async_trait,
-    futures::executor::block_on,
     grug_app::{APP_CONFIG, CONFIG, Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
     grug_types::{Config, Json},
     std::{
@@ -11,45 +10,51 @@ use {
         },
         time::Duration,
     },
-    tokio::{
-        sync::{Mutex, RwLock},
-        time::sleep,
-    },
+    tokio::{sync::Mutex, time::sleep},
 };
 
 // Re-export for convenience
 pub use grug_app::IndexerError;
 
-/// A composable indexer that can own multiple indexers and coordinate between them
+/// Composite indexer that owns the three production indexer components and
+/// orchestrates their per-block work as a single `grug_app::Indexer`.
+///
+/// The "Hooked" name is historical — earlier revisions of this crate held a
+/// dynamic `Arc<RwLock<Vec<Box<dyn Indexer>>>>` and broadcasted each trait
+/// method to its entries, plumbing data between them through an opaque
+/// `http::Extensions`-based `IndexerContext`. The current shape is three
+/// concrete fields with the data flow expressed by typed method arguments,
+/// but the crate and struct name are kept so callers, deploy scripts, and
+/// imports do not need to churn.
+///
+/// `post_indexing` is still spawned as a separate tokio task per block so
+/// SQL and Clickhouse writes do not block consensus; `wait_for_finish` drains
+/// the per-block task map before letting the binary exit.
 #[derive(Clone)]
 pub struct HookedIndexer {
-    /// List of registered indexers
-    indexers: Arc<RwLock<Vec<Box<dyn Indexer + Send + Sync>>>>,
-    /// Whether the indexer is currently running
+    pub file: indexer_cache::Cache,
+    pub sql: indexer_sql::Indexer,
+    pub clickhouse: indexer_clickhouse::Indexer,
+    /// Set to true between `start` and `shutdown`.
     is_running: Arc<AtomicBool>,
+    /// One join handle per in-flight `post_indexing` block. Inserted when the
+    /// task is spawned; removed by the task itself when it completes.
     post_indexing_tasks: Arc<Mutex<HashMap<u64, tokio::task::JoinHandle<()>>>>,
 }
 
 impl HookedIndexer {
-    pub fn new() -> Self {
+    pub fn new(
+        file: indexer_cache::Cache,
+        sql: indexer_sql::Indexer,
+        clickhouse: indexer_clickhouse::Indexer,
+    ) -> Self {
         Self {
-            indexers: Arc::new(RwLock::new(Vec::new())),
+            file,
+            sql,
+            clickhouse,
             is_running: Arc::new(AtomicBool::new(false)),
             post_indexing_tasks: Arc::new(Mutex::new(HashMap::new())),
         }
-    }
-
-    /// Add an indexer to the composition
-    pub async fn add_indexer<I>(&mut self, indexer: I) -> Result<&mut Self, grug_app::IndexerError>
-    where
-        I: Indexer + Send + Sync + 'static,
-    {
-        if self.is_running.load(Ordering::Relaxed) {
-            return Err(grug_app::IndexerError::already_running());
-        }
-
-        self.indexers.write().await.push(Box::new(indexer));
-        Ok(self)
     }
 
     /// Check if the indexer is running
@@ -57,154 +62,106 @@ impl HookedIndexer {
         self.is_running.load(Ordering::Relaxed)
     }
 
-    // Synchronous version for tests and sync contexts
-    pub fn indexer_count_sync(&self) -> usize {
-        // For sync access, use futures::executor::block_on
-        block_on(async { self.indexer_count().await })
-    }
-
-    /// Get the number of registered indexers
-    pub async fn indexer_count(&self) -> usize {
-        self.indexers.read().await.len()
-    }
-
-    /// This will reindex all indexers from their last indexed block height
+    /// Replay any blocks that the SQL or Clickhouse stores missed since their
+    /// last indexed height, up to `LAST_FINALIZED_BLOCK`. `index_block` is
+    /// intentionally skipped — the cached on-disk file is already there, so
+    /// `pre_indexing` reloads the payload and `post_indexing` flushes it to
+    /// the SQL and Clickhouse stores.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn reindex(&self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
-        match LAST_FINALIZED_BLOCK.load(storage) {
+        let block = match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
                 // This happens when the chain starts at genesis
                 #[cfg(feature = "tracing")]
                 tracing::warn!(error = %_err, "No `LAST_FINALIZED_BLOCK` found");
+                return Ok(());
             },
-            Ok(block) => {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    block_height = block.height,
-                    "Start called, found LAST_FINALIZED_BLOCK"
-                );
+            Ok(block) => block,
+        };
 
-                let mut indexers = self.indexers.write().await;
+        #[cfg(feature = "tracing")]
+        tracing::warn!(
+            block_height = block.height,
+            "Start called, found LAST_FINALIZED_BLOCK"
+        );
 
-                let cfg = CONFIG.load(storage).map_err(|e| {
-                    grug_app::IndexerError::storage(format!("Failed to load CONFIG: {e}"))
-                })?;
+        let cfg = CONFIG
+            .load(storage)
+            .map_err(|e| IndexerError::storage(format!("Failed to load CONFIG: {e}")))?;
 
-                let app_cfg = APP_CONFIG.load(storage).map_err(|e| {
-                    grug_app::IndexerError::storage(format!("Failed to load APP_CONFIG: {e}"))
-                })?;
+        let app_cfg = APP_CONFIG
+            .load(storage)
+            .map_err(|e| IndexerError::storage(format!("Failed to load APP_CONFIG: {e}")))?;
 
-                // 1. We get the lowest last indexed block height among all indexers,
-                let mut min_heights = Vec::new();
-                for indexer in indexers.iter_mut() {
-                    min_heights.push(indexer.last_indexed_block_height().await.ok().flatten());
-                }
+        // Lowest last-indexed height across components decides where we resume.
+        // Cache has no DB-backed counter; only SQL/Clickhouse contribute. (See
+        // the inherent `last_indexed_block_height` impls.)
+        let sql_last = self.sql.last_indexed_block_height().await.ok().flatten();
+        let clickhouse_last = self
+            .clickhouse
+            .last_indexed_block_height()
+            .await
+            .ok()
+            .flatten();
+        let min_height = [sql_last, clickhouse_last]
+            .into_iter()
+            .flatten()
+            .min()
+            .unwrap_or_default();
 
-                let min_height = min_heights
-                    .iter()
-                    .flatten()
-                    .min()
-                    .cloned()
-                    .unwrap_or_default();
+        if min_height >= block.height {
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = block.height,
+                "No reindexing needed, all indexers are up to date",
+            );
+            return Ok(());
+        }
 
-                if min_height >= block.height {
-                    #[cfg(feature = "tracing")]
-                    tracing::info!(
-                        block_height = block.height,
-                        "No reindexing needed, all indexers are up to date",
-                    );
-                    return Ok(());
-                }
+        for block_height in (min_height + 1)..=block.height {
+            // Cache loads the cached file into its in-memory map.
+            self.file.pre_indexing(block_height).await?;
 
-                let mut errors = Vec::new();
+            // Skip `index_block`: we don't have the live block data here and
+            // it's only used to *write* the disk cache, which already exists.
 
-                // 2. We run all indexers to reindex until the last finalized block, like it would
-                // have happened during normal operation but calling a different method.
-                for block_height in (min_height + 1)..=block.height {
-                    let mut ctx = grug_app::IndexerContext::new();
-                    for indexer in &mut indexers.iter_mut() {
-                        if let Err(err) = indexer.pre_indexing(block_height, &mut ctx).await {
-                            #[cfg(feature = "tracing")]
-                            tracing::error!("Error in start calling reindex: {:?}", err);
-                            errors.push(err.to_string());
-                        }
-                    }
-
-                    // NOTE: I skip `index_block` here because we don't have the actual block data and
-                    // it's only used to store data on disk, which we already have.
-                    // In the future this can be an issue if an indexer relies on `index_block`
-
-                    // I recreate a context like classic indexing code path
-                    let mut ctx = grug_app::IndexerContext::new();
-                    for indexer in &mut indexers.iter_mut() {
-                        if let Err(err) = indexer
-                            .post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
-                            .await
-                        {
-                            #[cfg(feature = "tracing")]
-                            tracing::error!("Error in start calling reindex: {:?}", err);
-                            errors.push(err.to_string());
-                        }
-                    }
-
-                    if !errors.is_empty() {
-                        return Err(grug_app::IndexerError::multiple(errors));
-                    }
-                }
-            },
+            // Cache drains its in-memory map for this block and hands the
+            // payload to the SQL + Clickhouse consumers.
+            let payload = self.file.post_indexing(block_height).await?;
+            self.sql
+                .post_indexing(block_height, cfg.clone(), app_cfg.clone(), &payload)
+                .await?;
+            self.clickhouse
+                .post_indexing(block_height, cfg.clone(), app_cfg.clone(), &payload)
+                .await?;
         }
 
         Ok(())
-    }
-}
-
-impl Default for HookedIndexer {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
 #[async_trait]
 impl Indexer for HookedIndexer {
-    /// Start all indexers
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     async fn start(&mut self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
         if self.is_running.load(Ordering::Relaxed) {
-            return Err(grug_app::IndexerError::already_running());
+            return Err(IndexerError::already_running());
         }
 
-        #[cfg(feature = "tracing")]
-        {
-            let count = self.indexer_count().await;
-            tracing::debug!("Starting HookedIndexer with {} indexers", count);
-        }
-
-        let mut errors = Vec::new();
-
-        // Call start on all indexers, running required migrations
-        // With tokio::sync::RwLock, we can hold the lock across await points
-        let mut guard = self.indexers.write().await;
-        for indexer in guard.iter_mut() {
-            if let Err(err) = indexer.start(storage).await {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Error in start: {:?}", err);
-                errors.push(err.to_string());
-            }
-        }
-        drop(guard);
+        self.file.start(storage).await?;
+        self.sql.start(storage).await?;
+        self.clickhouse.start(storage).await?;
 
         self.reindex(storage).await?;
 
         self.is_running.store(true, Ordering::Relaxed);
 
-        if !errors.is_empty() {
-            return Err(grug_app::IndexerError::multiple(errors));
-        }
-
         Ok(())
     }
 
-    /// Shutdown all indexers in reverse order
+    /// Shut down in reverse-construction order so any tail work (e.g.
+    /// Clickhouse candle flushes in `wait_for_finish`) drains before the
+    /// upstream stores close.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     async fn shutdown(&mut self) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
@@ -213,147 +170,131 @@ impl Indexer for HookedIndexer {
 
         self.wait_for_finish().await?;
 
-        // Call shutdown on all indexers in reverse order
         let mut errors = Vec::new();
-        let mut guard = self.indexers.write().await;
-        for indexer in guard.iter_mut().rev() {
-            if let Err(err) = indexer.shutdown().await {
-                #[cfg(feature = "tracing")]
-                tracing::error!(err = %err, indexer_name = indexer.name(), "Error in shutdown");
 
-                errors.push(err.to_string());
-            }
+        if let Err(err) = self.clickhouse.shutdown().await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %err, indexer = "clickhouse", "Error in shutdown");
+            errors.push(err.to_string());
         }
-        drop(guard);
+        if let Err(err) = self.sql.shutdown().await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %err, indexer = "sql", "Error in shutdown");
+            errors.push(err.to_string());
+        }
+        if let Err(err) = self.file.shutdown().await {
+            #[cfg(feature = "tracing")]
+            tracing::error!(err = %err, indexer = "file", "Error in shutdown");
+            errors.push(err.to_string());
+        }
 
         self.is_running.store(false, Ordering::Relaxed);
 
         if !errors.is_empty() {
-            return Err(grug_app::IndexerError::multiple(errors));
+            return Err(IndexerError::multiple(errors));
         }
 
         Ok(())
     }
 
-    /// Run pre_indexing for each block height
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn pre_indexing(
-        &self,
-        block_height: u64,
-        ctx: &mut grug_app::IndexerContext,
-    ) -> IndexerResult<()> {
+    async fn pre_indexing(&self, block_height: u64) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
-            return Err(grug_app::IndexerError::not_running());
+            return Err(IndexerError::not_running());
         }
 
-        let mut errors = Vec::new();
-
-        let guard = self.indexers.read().await;
-        for indexer in guard.iter() {
-            if let Err(err) = indexer.pre_indexing(block_height, ctx).await {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Error in pre_indexing: {:?}", err);
-
-                errors.push(err.to_string());
-            }
-        }
-        drop(guard);
-
-        if !errors.is_empty() {
-            return Err(grug_app::IndexerError::multiple(errors));
-        }
+        // Only Cache has work here: it reloads the on-disk file (if any) into
+        // its in-memory map so `post_indexing` can drain it later. SQL and
+        // Clickhouse do nothing in this phase.
+        self.file.pre_indexing(block_height).await?;
 
         Ok(())
     }
 
-    /// Index a block by calling all registered indexers
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     async fn index_block(
         &self,
         block: &grug_types::Block,
         block_outcome: &grug_types::BlockOutcome,
-        ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
-            return Err(grug_app::IndexerError::not_running());
+            return Err(IndexerError::not_running());
         }
 
-        let mut errors = Vec::new();
-        let guard = self.indexers.read().await;
-        for indexer in guard.iter() {
-            if let Err(err) = indexer.index_block(block, block_outcome, ctx).await {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Error in index_block: {:?}", err);
-                errors.push(err.to_string());
-            }
-        }
-        drop(guard);
-
-        if !errors.is_empty() {
-            return Err(grug_app::IndexerError::multiple(errors));
-        }
+        // Only Cache has work here: it writes the block to disk (or reloads
+        // it if it was already there) and stashes the payload in its
+        // in-memory map for `post_indexing`.
+        self.file.index_block(block, block_outcome).await?;
 
         Ok(())
     }
 
-    /// Run post_indexing in a separate task for each block height
+    /// Spawn one tokio task per block. The task drains Cache's in-memory map
+    /// (producing the typed payload), then hands the payload to SQL and
+    /// Clickhouse in sequence. SQL must run before Clickhouse so the single
+    /// pubsub publish at the end of `SQL.post_indexing` fires before
+    /// Clickhouse's own publish (preserves the post-phase-2 ordering).
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     async fn post_indexing(
         &self,
         block_height: u64,
         cfg: Config,
         app_cfg: Json,
-        ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
-            return Err(grug_app::IndexerError::not_running());
+            return Err(IndexerError::not_running());
         }
 
+        let file = self.file.clone();
+        let sql = self.sql.clone();
+        let clickhouse = self.clickhouse.clone();
         let post_indexing_tasks = self.post_indexing_tasks.clone();
-        let indexers = self.indexers.clone();
-
-        // Clone the `IndexerContext` to avoid borrowing issues.
-        // I do this clone because:
-        // 1. `IndexerContext` isn't used in the main task after `post_indexing` is called
-        // 2. `post_indexing` is called in a separate task
-        let mut ctx = ctx.clone();
 
         let handle = tokio::spawn(async move {
-            let mut errors = Vec::new();
-
-            let indexers_guard = indexers.read().await;
-
-            for indexer in indexers_guard.iter() {
-                if let Err(err) = indexer
-                    .post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
-                    .await
-                {
+            let payload = match file.post_indexing(block_height).await {
+                Ok(payload) => payload,
+                Err(_err) => {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
-                        indexer = indexer.name(),
-                        err = %err,
+                        err = %_err,
                         block_height,
-                        "Error post_indexing"
+                        "Cache post_indexing failed; skipping SQL + Clickhouse writes"
                     );
 
-                    errors.push(err.to_string());
-                }
-            }
+                    // Cleanup is still required so `wait_for_finish` terminates.
+                    post_indexing_tasks.lock().await.remove(&block_height);
+                    return;
+                },
+            };
 
-            drop(indexers_guard);
-
-            // Remove this task from the map when it completes
-            let mut tasks_guard = post_indexing_tasks.lock().await;
-            tasks_guard.remove(&block_height);
-            drop(tasks_guard);
-
-            if !errors.is_empty() {
+            if let Err(_err) = sql
+                .post_indexing(block_height, cfg.clone(), app_cfg.clone(), &payload)
+                .await
+            {
                 #[cfg(feature = "tracing")]
-                tracing::error!("Errors in post_indexing: {:?}", errors);
+                tracing::error!(
+                    err = %_err,
+                    block_height,
+                    "SQL post_indexing failed"
+                );
             }
+
+            if let Err(_err) = clickhouse
+                .post_indexing(block_height, cfg, app_cfg, &payload)
+                .await
+            {
+                #[cfg(feature = "tracing")]
+                tracing::error!(
+                    err = %_err,
+                    block_height,
+                    "Clickhouse post_indexing failed"
+                );
+            }
+
+            // Remove our handle so `wait_for_finish` can terminate.
+            post_indexing_tasks.lock().await.remove(&block_height);
         });
 
-        // Store the task handle with its block height
         self.post_indexing_tasks
             .lock()
             .await
@@ -362,13 +303,15 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
-    /// Wait for all indexers and post_indexing tasks to finish
+    /// Wait for in-flight `post_indexing` tasks to finish, then forward to the
+    /// three components' own `wait_for_finish` hooks. Same shape as the old
+    /// dyn-dispatch version: poll the task map every 100ms.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     async fn wait_for_finish(&self) -> IndexerResult<()> {
         #[cfg(feature = "tracing")]
         tracing::debug!("Waiting for indexer to finish");
 
-        // 1. We have our own internal tasks that are running post_indexing
+        // 1. Drain in-flight per-block `post_indexing` tasks.
         loop {
             let tasks_guard = self.post_indexing_tasks.lock().await;
 
@@ -376,7 +319,6 @@ impl Indexer for HookedIndexer {
                 break;
             }
 
-            // Collect block heights for logging
             #[cfg(feature = "tracing")]
             let block_heights: Vec<u64> = tasks_guard.keys().copied().collect();
             #[cfg(feature = "tracing")]
@@ -390,10 +332,8 @@ impl Indexer for HookedIndexer {
                 "Waiting for post_indexing tasks to finish"
             );
 
-            // Wait a bit and check which tasks have completed
             sleep(Duration::from_millis(100)).await;
 
-            // Remove completed tasks
             let mut tasks_guard = self.post_indexing_tasks.lock().await;
             tasks_guard.retain(|&block_height, handle| {
                 let finished = handle.is_finished();
@@ -402,298 +342,31 @@ impl Indexer for HookedIndexer {
                     tracing::debug!(block_height, "Post_indexing task completed");
                 }
                 #[cfg(not(feature = "tracing"))]
-                let _ = block_height; // Suppress unused variable warning when tracing is disabled
+                let _ = block_height;
                 !finished
             });
         }
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!("Waiting for indexers to finish");
-
-        // 2. We have the indexers that are potentially running their own way
-        let guard = self.indexers.read().await;
-        for indexer in guard.iter() {
-            indexer.wait_for_finish().await?;
-        }
-        drop(guard);
-
-        #[cfg(feature = "tracing")]
-        tracing::debug!("Waited for indexers to finish");
+        // 2. Drain each component's own background work.
+        self.file.wait_for_finish().await?;
+        self.sql.wait_for_finish().await?;
+        self.clickhouse.wait_for_finish().await?;
 
         Ok(())
+    }
+
+    async fn last_indexed_block_height(&self) -> IndexerResult<Option<u64>> {
+        let sql = self.sql.last_indexed_block_height().await?;
+        let clickhouse = self.clickhouse.last_indexed_block_height().await?;
+        Ok([sql, clickhouse].into_iter().flatten().min())
     }
 }
 
 impl Drop for HookedIndexer {
     fn drop(&mut self) {
-        // Since shutdown is now async, we can't call it from Drop
-        // Just mark as not running - the actual cleanup will happen when the async context completes
+        // `shutdown` is async; we can't call it from `Drop`. Flip the flag so
+        // any concurrent operations bail; the actual cleanup runs through the
+        // explicit `shutdown` call in the binary's signal handler.
         self.is_running.store(false, Ordering::Relaxed);
-    }
-}
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-    use {super::*, grug_types::MockStorage};
-
-    #[derive(Default)]
-    struct TestIndexer {
-        calls: Arc<std::sync::Mutex<Vec<String>>>,
-    }
-
-    impl TestIndexer {
-        fn record_call(&self, method: &str) {
-            self.calls.lock().unwrap().push(method.to_string());
-        }
-    }
-
-    #[async_trait]
-    impl Indexer for TestIndexer {
-        async fn start(&mut self, _storage: &dyn grug_types::Storage) -> IndexerResult<()> {
-            self.record_call("start");
-            Ok(())
-        }
-
-        async fn shutdown(&mut self) -> IndexerResult<()> {
-            self.record_call("shutdown");
-            Ok(())
-        }
-
-        async fn pre_indexing(
-            &self,
-            _block_height: u64,
-            _ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            self.record_call("pre_indexing");
-            Ok(())
-        }
-
-        async fn index_block(
-            &self,
-            _block: &grug_types::Block,
-            _block_outcome: &grug_types::BlockOutcome,
-            _ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            self.record_call("index_block");
-            Ok(())
-        }
-
-        async fn post_indexing(
-            &self,
-            _block_height: u64,
-            _cfg: Config,
-            _app_cfg: Json,
-            _ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            self.record_call("post_indexing");
-            Ok(())
-        }
-
-        async fn wait_for_finish(&self) -> IndexerResult<()> {
-            self.record_call("wait_for_finish");
-            Ok(())
-        }
-    }
-
-    #[test]
-    fn test_hooked_indexer_creation() {
-        let indexer = HookedIndexer::new();
-        assert_eq!(indexer.indexer_count_sync(), 0);
-        assert!(!indexer.is_running());
-    }
-
-    #[tokio::test]
-    async fn test_add_indexers() {
-        let mut hooked_indexer = HookedIndexer::new();
-
-        hooked_indexer
-            .add_indexer(TestIndexer::default())
-            .await
-            .unwrap()
-            .add_indexer(TestIndexer::default())
-            .await
-            .unwrap();
-
-        assert_eq!(hooked_indexer.indexer_count().await, 2);
-    }
-
-    #[tokio::test]
-    async fn test_start_and_shutdown() {
-        let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer
-            .add_indexer(TestIndexer::default())
-            .await
-            .unwrap();
-
-        let storage = MockStorage::new();
-
-        // Test start
-        assert!(!hooked_indexer.is_running());
-        hooked_indexer.start(&storage).await.unwrap();
-        assert!(hooked_indexer.is_running());
-
-        // Test shutdown
-        hooked_indexer.shutdown().await.unwrap();
-        assert!(!hooked_indexer.is_running());
-    }
-
-    #[tokio::test]
-    async fn test_double_start_fails() {
-        let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer
-            .add_indexer(TestIndexer::default())
-            .await
-            .unwrap();
-
-        let storage = MockStorage::new();
-
-        hooked_indexer.start(&storage).await.unwrap();
-
-        // Second start should fail
-        assert!(hooked_indexer.start(&storage).await.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_operations_when_not_running() {
-        let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer
-            .add_indexer(TestIndexer::default())
-            .await
-            .unwrap();
-
-        let mut ctx = grug_app::IndexerContext::new();
-
-        // Operations should fail when not running
-        assert!(hooked_indexer.pre_indexing(1, &mut ctx).await.is_err());
-
-        let block = grug_types::Block {
-            info: grug_types::BlockInfo {
-                height: 1,
-                timestamp: grug_types::Timestamp::from_seconds(1),
-                hash: [0u8; 32].into(),
-            },
-            txs: vec![],
-        };
-
-        let outcome = grug_types::BlockOutcome {
-            height: 1,
-            app_hash: grug_types::Hash256::ZERO,
-            cron_outcomes: vec![],
-            tx_outcomes: vec![],
-        };
-
-        assert!(
-            hooked_indexer
-                .index_block(&block, &outcome, &mut ctx)
-                .await
-                .is_err()
-        );
-    }
-
-    /// Example indexer that stores data in the context for later indexers to use
-    #[derive(Default)]
-    struct DataProducerIndexer {
-        id: String,
-    }
-
-    impl DataProducerIndexer {
-        fn new(id: &str) -> Self {
-            Self { id: id.to_string() }
-        }
-    }
-
-    #[async_trait]
-    impl Indexer for DataProducerIndexer {
-        async fn pre_indexing(
-            &self,
-            block_height: u64,
-            ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            // Store some data that other indexers can use
-            ctx.insert(format!("data_from_{}_at_height_{}", self.id, block_height));
-            Ok(())
-        }
-    }
-
-    /// Example indexer that consumes data from the context
-    #[derive(Default)]
-    struct DataConsumerIndexer {
-        consumed_data: Arc<std::sync::Mutex<Vec<String>>>,
-    }
-
-    impl DataConsumerIndexer {
-        fn new() -> Self {
-            Self {
-                consumed_data: Arc::new(std::sync::Mutex::new(Vec::new())),
-            }
-        }
-    }
-
-    #[async_trait]
-    impl Indexer for DataConsumerIndexer {
-        async fn index_block(
-            &self,
-            _block: &grug_types::Block,
-            _block_outcome: &grug_types::BlockOutcome,
-            ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            // Try to consume data stored by other indexers
-            if let Some(data) = ctx.get::<String>() {
-                self.consumed_data.lock().unwrap().push(data.clone());
-            }
-            Ok(())
-        }
-    }
-
-    #[tokio::test]
-    async fn test_context_data_passing() {
-        let mut hooked_indexer = HookedIndexer::new();
-
-        // Add a producer indexer that stores data
-        let producer = DataProducerIndexer::new("producer1");
-        hooked_indexer.add_indexer(producer).await.unwrap();
-
-        // Add a consumer indexer that reads data
-        let consumer = DataConsumerIndexer::new();
-        let consumer_data = consumer.consumed_data.clone();
-        hooked_indexer.add_indexer(consumer).await.unwrap();
-
-        let storage = MockStorage::new();
-        hooked_indexer.start(&storage).await.unwrap();
-
-        let block = grug_types::Block {
-            info: grug_types::BlockInfo {
-                height: 42,
-                timestamp: grug_types::Timestamp::from_seconds(123456789),
-                hash: grug_types::Hash256::ZERO,
-            },
-            txs: vec![],
-        };
-        let outcome = grug_types::BlockOutcome {
-            height: 42,
-            app_hash: grug_types::Hash256::ZERO,
-            cron_outcomes: vec![],
-            tx_outcomes: vec![],
-        };
-
-        let mut ctx = grug_app::IndexerContext::new();
-
-        // Run the indexing pipeline
-        hooked_indexer.pre_indexing(42, &mut ctx).await.unwrap();
-        hooked_indexer
-            .index_block(&block, &outcome, &mut ctx)
-            .await
-            .unwrap();
-
-        // Verify that data was passed from producer to consumer
-        {
-            let consumed_data = consumer_data.lock().unwrap();
-            assert_eq!(consumed_data.len(), 1);
-            assert_eq!(consumed_data[0], "data_from_producer1_at_height_42");
-        }
-
-        hooked_indexer.shutdown().await.unwrap();
     }
 }

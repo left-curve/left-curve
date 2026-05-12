@@ -12,8 +12,6 @@ use {
         entity, error,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    async_trait::async_trait,
-    grug_app::Indexer as IndexerTrait,
     grug_types::{
         BlockAndBlockOutcomeWithHttpDetails, Config, Defined, Json, MaybeDefined, Storage,
         Undefined,
@@ -301,6 +299,7 @@ static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
+#[derive(Clone)]
 pub struct Indexer {
     pub context: Context,
     // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
@@ -465,9 +464,8 @@ impl Indexer {
     }
 }
 
-#[async_trait]
-impl IndexerTrait for Indexer {
-    async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+impl Indexer {
+    pub async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
         let last_indexed_block_height =
             entity::blocks::Entity::find_last_block_height(&self.context.db)
                 .await
@@ -477,7 +475,7 @@ impl IndexerTrait for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
+    pub async fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
@@ -492,7 +490,7 @@ impl IndexerTrait for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    pub async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -503,13 +501,20 @@ impl IndexerTrait for Indexer {
         Ok(())
     }
 
+    /// No-op kept for symmetry with the other indexers' `wait_for_finish`.
+    /// The SQL writer commits inline at the end of `post_indexing`, so there
+    /// is no background work to drain here.
+    pub async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+        Ok(())
+    }
+
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn post_indexing(
+    pub async fn post_indexing(
         &self,
         block_height: u64,
         _cfg: Config,
         app_cfg: Json,
-        ctx: &mut grug_app::IndexerContext,
+        block: &BlockAndBlockOutcomeWithHttpDetails,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Err(grug_app::IndexerError::not_running());
@@ -517,12 +522,6 @@ impl IndexerTrait for Indexer {
 
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` called");
-
-        let block = ctx.get::<BlockAndBlockOutcomeWithHttpDetails>().ok_or(
-            grug_app::IndexerError::hook(
-                "BlockAndBlockOutcomeWithHttpDetails not found".to_string(),
-            ),
-        )?;
 
         #[cfg(feature = "tracing")]
         let id = self.id;
