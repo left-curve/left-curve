@@ -14,11 +14,10 @@ use {
         SimpleCommitment,
     },
     grug_db_disk::DiskDb,
-    grug_httpd::context::Context as HttpdContext,
     grug_types::{GIT_COMMIT, HttpdConfig},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
-    indexer_httpd::TendermintRpcClient,
+    indexer_httpd::{TendermintRpcClient, context::MinimalContext as HttpdContext},
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::{Arc, atomic::AtomicBool},
     tokio::{

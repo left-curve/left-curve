@@ -2,12 +2,11 @@ use {
     crate::setup::create_hooked_indexer,
     grug_app::{Indexer, NaiveProposalPreparer},
     grug_db_memory::MemDb,
-    grug_httpd::traits::QueryApp,
     grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
-    indexer_httpd::context::FullContext,
+    indexer_httpd::{context::FullContext, traits::QueryApp},
     std::{str::FromStr, sync::Arc},
     tokio::sync::RwLock,
 };

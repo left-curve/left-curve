@@ -3,9 +3,11 @@ use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics
 #[cfg(feature = "tracing")]
 use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
-    crate::graphql::{query::grug::GrugQuery, telemetry::SentryExtension},
+    crate::{
+        context::MinimalContext,
+        graphql::{query::grug::GrugQuery, telemetry::SentryExtension},
+    },
     async_graphql::{EmptyMutation, EmptySubscription, MergedObject, Schema},
-    grug_httpd::context::Context as MinimalContext,
 };
 
 #[derive(MergedObject, Default)]

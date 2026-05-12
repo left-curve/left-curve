@@ -7,13 +7,12 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
-    grug_httpd::{
+    grug_types::HttpdConfig,
+    indexer_httpd::{
         middlewares::shutdown::ShutdownMiddleware,
-        routes::{graphql::graphql_route, index::index},
+        routes::{self, graphql::graphql_route, index::index},
         subscription_limiter::SubscriptionLimiter,
     },
-    grug_types::HttpdConfig,
-    indexer_httpd::routes,
     sentry_actix::Sentry,
     std::sync::{Arc, atomic::AtomicBool, mpsc},
 };

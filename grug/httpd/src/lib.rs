@@ -1,9 +1,2 @@
-pub mod context;
-pub mod error;
-#[cfg(feature = "metrics")]
-pub mod metrics;
-pub mod middlewares;
-pub mod request_ip;
-pub mod routes;
-pub mod subscription_limiter;
-pub mod traits;
+// All scaffolding moved into `indexer-httpd` in phase 3 of testdata/refactor-indexer.md.
+// This crate is deleted in commit 7.

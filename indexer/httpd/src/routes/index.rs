@@ -1,14 +1,38 @@
 use {
-    crate::context::FullContext,
-    actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
+    crate::{
+        context::{FullContext, MinimalContext},
+        request_ip::RequesterIp,
+    },
+    actix_web::{
+        Error, HttpRequest, HttpResponse, Responder, error::ErrorInternalServerError, get, web,
+    },
     async_graphql::futures_util::TryFutureExt,
     chrono::{Duration, Utc},
-    grug_httpd::routes::index::UpResponse,
-    grug_types::GIT_COMMIT,
+    grug_types::{BlockInfo, GIT_COMMIT},
     indexer_sql::entity,
     sea_orm::{EntityTrait, Order, QueryOrder},
     std::env::var,
 };
+
+#[get("/")]
+pub async fn index() -> impl Responder {
+    "OK"
+}
+
+#[get("/requester-ip")]
+pub async fn requester_ip(req: HttpRequest) -> impl Responder {
+    HttpResponse::Ok().json(RequesterIp::from_request(&req))
+}
+
+#[derive(serde::Serialize)]
+pub struct UpResponse<'a> {
+    pub block: BlockInfo,
+    pub is_running: bool,
+    pub git_commit: &'a str,
+    pub indexed_block_height: Option<u64>,
+    pub chain_id: &'a str,
+    pub hostname: &'a str,
+}
 
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/up")]
@@ -36,6 +60,31 @@ pub async fn up(app_ctx: web::Data<FullContext>) -> Result<impl Responder, Error
         block,
         is_running,
         indexed_block_height,
+        git_commit: GIT_COMMIT,
+        chain_id: var("CHAIN_ID").unwrap_or_default().as_str(),
+        hostname: var("HOSTNAME").unwrap_or_default().as_str(),
+    }))
+}
+
+/// Chain-only variant of `/up`. Returns the same JSON shape as
+/// [`up`], with `indexed_block_height: None` because chain-only mode has
+/// no Postgres to query.
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
+#[get("/up")]
+pub async fn minimal_up(app_ctx: web::Data<MinimalContext>) -> Result<impl Responder, Error> {
+    let block = app_ctx
+        .grug_app
+        .last_finalized_block()
+        .map_err(ErrorInternalServerError)
+        .await?;
+
+    let is_running =
+        block.timestamp.to_naive_date_time() >= (Utc::now().naive_utc() - Duration::seconds(30));
+
+    Ok(HttpResponse::Ok().json(UpResponse {
+        block,
+        is_running,
+        indexed_block_height: None,
         git_commit: GIT_COMMIT,
         chain_id: var("CHAIN_ID").unwrap_or_default().as_str(),
         hostname: var("HOSTNAME").unwrap_or_default().as_str(),

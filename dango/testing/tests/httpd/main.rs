@@ -6,7 +6,7 @@ use {
         web,
     },
     dango_httpd::{graphql::build_schema, server::config_app},
-    grug_httpd::subscription_limiter::SubscriptionLimiter,
+    indexer_httpd::subscription_limiter::SubscriptionLimiter,
     serde::{Serialize, de::DeserializeOwned},
 };
 

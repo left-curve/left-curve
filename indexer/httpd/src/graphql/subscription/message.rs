@@ -1,10 +1,10 @@
 #[cfg(feature = "metrics")]
-use grug_httpd::metrics::GaugeGuard;
+use crate::metrics::GaugeGuard;
 use {
     super::MAX_PAST_BLOCKS,
+    crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
-    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     indexer_sql::entity::{self, blocks::latest_block_height},
     itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},

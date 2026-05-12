@@ -4,9 +4,9 @@ use {
         graphql::types::{
             query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
         },
+        request_ip::RequesterIp,
     },
     async_graphql::*,
-    grug_httpd::request_ip::RequesterIp,
     grug_types::{Binary, Inner, QueryResponse, TxOutcome},
     std::str::FromStr,
 };

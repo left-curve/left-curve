@@ -1,6 +1,7 @@
 #[cfg(feature = "metrics")]
-use grug_httpd::metrics::GaugeGuard;
+use crate::metrics::GaugeGuard;
 use {
+    crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
     dango_indexer_clickhouse::{
@@ -8,7 +9,6 @@ use {
         indexer::candles::cache,
     },
     futures_util::stream::{StreamExt, once},
-    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     std::sync::{
         Arc,
         atomic::{AtomicU64, Ordering},

@@ -1,6 +1,5 @@
 use {
-    crate::traits::ConsensusClient,
-    grug_httpd::traits::QueryApp,
+    crate::traits::{ConsensusClient, QueryApp},
     indexer_sql::{
         EventCacheReader, entity::perps_trade::PerpsTrade, pubsub::PubSub,
         write::perps_trades::PerpsTradeCache,
@@ -13,7 +12,16 @@ use {
 /// Chain-only context — what `cfg.indexer.enabled = false` mode runs against.
 /// Holds just the chain query app. `FullContext` embeds one of these as its
 /// `base` field so `GrugQuery` resolvers work in either schema.
-pub use grug_httpd::context::Context as MinimalContext;
+#[derive(Clone)]
+pub struct MinimalContext {
+    pub grug_app: Arc<dyn QueryApp + Send + Sync>,
+}
+
+impl MinimalContext {
+    pub fn new(grug_app: Arc<dyn QueryApp + Send + Sync>) -> Self {
+        Self { grug_app }
+    }
+}
 
 #[derive(Clone)]
 pub struct FullContext {

@@ -15,8 +15,10 @@ use {
     awc::BoxedSocket,
     core::str,
     futures_util::{sink::SinkExt, stream::StreamExt},
-    grug_httpd::subscription_limiter::SubscriptionLimiter,
-    indexer_httpd::{context::FullContext, graphql::build_full_schema, server::config_app},
+    indexer_httpd::{
+        context::FullContext, graphql::build_full_schema, server::config_app,
+        subscription_limiter::SubscriptionLimiter,
+    },
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,

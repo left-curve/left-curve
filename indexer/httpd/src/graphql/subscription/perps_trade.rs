@@ -1,11 +1,11 @@
+#[cfg(feature = "metrics")]
+use {crate::metrics::GaugeGuard, std::sync::Arc};
 use {
+    crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{self, StreamExt},
-    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     indexer_sql::entity::perps_trade::PerpsTrade,
 };
-#[cfg(feature = "metrics")]
-use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Default)]
 pub struct PerpsTradeSubscription;

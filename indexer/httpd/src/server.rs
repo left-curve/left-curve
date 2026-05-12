@@ -1,6 +1,11 @@
 use {
     super::error::Error,
-    crate::{context::FullContext, routes},
+    crate::{
+        context::FullContext,
+        middlewares::shutdown::ShutdownMiddleware,
+        routes::{self, graphql::graphql_route, index::index},
+        subscription_limiter::SubscriptionLimiter,
+    },
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
@@ -8,11 +13,6 @@ use {
         web::{self, ServiceConfig},
     },
     async_graphql::{EmptyMutation, EmptySubscription},
-    grug_httpd::{
-        middlewares::shutdown::ShutdownMiddleware,
-        routes::{graphql::graphql_route, index::index},
-        subscription_limiter::SubscriptionLimiter,
-    },
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
     std::sync::{Arc, atomic::AtomicBool},
@@ -111,7 +111,7 @@ where
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(index)
             .service(routes::index::up)
-            .service(grug_httpd::routes::index::requester_ip)
+            .service(crate::routes::index::requester_ip)
             .service(routes::blocks::services())
             .service(graphql_route::<
                 crate::graphql::query::IndexerQuery,
@@ -187,9 +187,9 @@ pub async fn run_minimal_server(
         let app = app.wrap(metrics.clone());
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
-            .service(grug_httpd::routes::index::index)
-            .service(grug_httpd::routes::index::up)
-            .service(grug_httpd::routes::index::requester_ip)
+            .service(crate::routes::index::index)
+            .service(crate::routes::index::up)
+            .service(crate::routes::index::requester_ip)
             .service(graphql_route::<
                 crate::graphql::minimal::MinimalQuery,
                 EmptyMutation,

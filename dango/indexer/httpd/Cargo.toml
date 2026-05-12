@@ -26,7 +26,6 @@ actix-web-metrics        = { workspace = true, optional = true }
 async-graphql            = { workspace = true }
 async-graphql-actix-web  = { workspace = true }
 dango-indexer-clickhouse = { workspace = true }
-grug-httpd               = { workspace = true }
 grug-types               = { workspace = true }
 indexer-httpd            = { workspace = true, features = ["tracing"] }
 indexer-sql              = { workspace = true }

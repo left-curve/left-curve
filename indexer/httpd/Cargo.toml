@@ -15,10 +15,9 @@ path = "src/lib.rs"
 [features]
 metrics = [
   "dep:actix-web-metrics",
-  "dep:futures-util",
   "dep:metrics",
-  "grug-httpd/metrics",
 ]
+testing = ["dep:grug-testing"]
 tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
 
 [dependencies]
@@ -39,10 +38,10 @@ dango-order-book            = { workspace = true }
 dango-types                 = { workspace = true, features = ["async-graphql"] }
 error-backtrace             = { workspace = true }
 futures                     = { workspace = true }
-futures-util                = { workspace = true, optional = true }
+futures-util                = { workspace = true }
 grug                        = { workspace = true }
-grug-app                    = { workspace = true }
-grug-httpd                  = { workspace = true }
+grug-app                    = { workspace = true, features = ["tracing"] }
+grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 indexer-cache               = { workspace = true }
 indexer-sql                 = { workspace = true, features = ["async-graphql"] }
