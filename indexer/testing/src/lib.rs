@@ -31,7 +31,7 @@ use {
 };
 
 // Re-export PageInfo and query modules for use in pagination helpers
-pub use dango_graphql_types::{
+pub use indexer_graphql_types::{
     Blocks, Events, Messages, PageInfo, Transactions, blocks as blocks_query,
     events as events_query, messages as messages_query, transactions as transactions_query,
 };
@@ -58,7 +58,7 @@ pub enum PaginationDirection {
 /// * `$fn_name` - The name of the generated function
 /// * `$context_type` - The context type (e.g., `indexer_httpd::context::FullContext`)
 /// * `$query_type` - The GraphQL query type (e.g., `Blocks`)
-/// * `$module` - The module containing the query types (e.g., `dango_graphql_types::blocks`)
+/// * `$module` - The module containing the query types (e.g., `indexer_graphql_types::blocks`)
 /// * `$field` - The response field name (e.g., `blocks`)
 /// * `$node_type` - The node type returned by the query
 /// * `$app_builder` - Expression to build the app from context

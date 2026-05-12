@@ -16,7 +16,6 @@ async-graphql            = { workspace = true }
 async-trait              = { workspace = true }
 clickhouse               = { workspace = true, features = ["test-util"] }
 dango-genesis            = { workspace = true }
-dango-indexer-clickhouse = { workspace = true, features = ["metrics", "testing", "tracing"] }
 dango-order-book         = { workspace = true }
 dango-proposal-preparer  = { workspace = true }
 dango-types              = { workspace = true, features = ["async-graphql"] }
@@ -31,6 +30,7 @@ hyperlane-testing        = { workspace = true }
 hyperlane-types          = { workspace = true }
 identity                 = { workspace = true }
 indexer-cache            = { workspace = true, features = ["metrics", "tracing"] }
+indexer-clickhouse       = { workspace = true, features = ["metrics", "testing", "tracing"] }
 indexer-hooked           = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd            = { workspace = true, features = ["metrics"] }
 indexer-metrics          = { workspace = true }
@@ -60,7 +60,6 @@ dango-dex                   = { workspace = true, features = ["library"] }
 dango-gateway               = { workspace = true, features = ["library"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
-dango-graphql-types         = { workspace = true }
 dango-perps                 = { workspace = true, features = ["library"] }
 dango-taxman                = { workspace = true, features = ["library"] }
 eth-utils                   = { workspace = true }
@@ -69,6 +68,7 @@ grug-testing                = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }
 indexer-disk-saver          = { workspace = true }
+indexer-graphql-types       = { workspace = true }
 indexer-testing             = { workspace = true }
 itertools                   = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }

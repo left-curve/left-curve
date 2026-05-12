@@ -13,7 +13,6 @@ version       = { workspace = true }
 anyhow                   = { workspace = true }
 dango-genesis            = { workspace = true }
 rand                     = { workspace = true }
-dango-indexer-clickhouse = { workspace = true, features = ["tracing"] }
 dango-proposal-preparer  = { workspace = true }
 dango-testing            = { workspace = true }
 grug-app                 = { workspace = true }
@@ -23,6 +22,7 @@ grug-types               = { workspace = true }
 grug-vm-rust             = { workspace = true }
 hyperlane-testing        = { workspace = true }
 indexer-cache            = { workspace = true }
+indexer-clickhouse       = { workspace = true, features = ["tracing"] }
 indexer-hooked           = { workspace = true }
 indexer-httpd            = { workspace = true, features = ["tracing"] }
 indexer-sql              = { workspace = true, features = ["tracing"] }

@@ -76,11 +76,11 @@ _SUB_EVENTS: Final[str] = _SUBSCRIPTIONS.joinpath("events.graphql").read_text(en
 _SUB_QUERY_APP: Final[str] = _SUBSCRIPTIONS.joinpath("queryApp.graphql").read_text(encoding="utf-8")
 
 # perpsTrades is supported by the chain — `Subscription.perpsTrades` is
-# defined in dango/indexer/graphql-types/src/schemas/schema.graphql, and
+# defined in indexer/graphql-types/src/schemas/schema.graphql, and
 # the API doc §8.2 documents the contract — but the Python SDK does not
 # yet vendor a subscription document for it. We hand-write the document
 # here so the Python SDK can ship perps trade streams. Once
-# `dango/indexer/graphql-types/src/schemas/subscriptions/perpsTrades.graphql`
+# `indexer/graphql-types/src/schemas/subscriptions/perpsTrades.graphql`
 # is also vendored as a symlink, this constant should be replaced with a
 # symlink read alongside the others above.
 _SUB_PERPS_TRADES: Final[str] = """

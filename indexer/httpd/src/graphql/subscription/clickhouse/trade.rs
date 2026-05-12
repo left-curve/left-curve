@@ -3,10 +3,10 @@ use {crate::metrics::GaugeGuard, std::sync::Arc};
 use {
     crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
-    dango_indexer_clickhouse::entities::trade::Trade,
     dango_types::dex::PairId,
     futures::stream,
     futures_util::stream::StreamExt,
+    indexer_clickhouse::entities::trade::Trade,
 };
 
 #[derive(Default)]
@@ -22,7 +22,7 @@ impl TradeSubscription {
         quote_denom: String,
     ) -> Result<impl Stream<Item = Trade> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<dango_indexer_clickhouse::context::Context>()?;
+        let app_ctx = ctx.data::<indexer_clickhouse::context::Context>()?;
         let trade_cache = app_ctx.trade_cache.clone();
 
         #[cfg(feature = "metrics")]

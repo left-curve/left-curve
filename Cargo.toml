@@ -8,8 +8,6 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
-  "dango/indexer/clickhouse",
-  "dango/indexer/graphql-types",
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
@@ -44,7 +42,9 @@ members = [
   "hyperlane/testing",
   "hyperlane/va",
   "indexer/cache",
+  "indexer/clickhouse",
   "indexer/disk-saver",
+  "indexer/graphql-types",
   "indexer/hooked",
   "indexer/httpd",
   "indexer/metrics",
@@ -205,8 +205,6 @@ dango-bank                  = { path = "dango/bank" }
 dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
-dango-graphql-types         = { path = "dango/indexer/graphql-types" }
-dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-order-book            = { path = "dango/order-book" }
@@ -245,7 +243,9 @@ hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-cache               = { path = "indexer/cache" }
+indexer-clickhouse          = { path = "indexer/clickhouse" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
+indexer-graphql-types       = { path = "indexer/graphql-types" }
 indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
 indexer-metrics             = { path = "indexer/metrics" }

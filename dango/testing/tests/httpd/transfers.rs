@@ -4,7 +4,6 @@ use {
         transfers_query,
     },
     assertor::*,
-    dango_graphql_types::{SubscribeTransfers, subscribe_transfers},
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
     },
@@ -12,6 +11,7 @@ use {
     graphql_client::GraphQLQuery,
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
+    indexer_graphql_types::{SubscribeTransfers, subscribe_transfers},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },

@@ -5,7 +5,6 @@ use {
     },
     assert_json_diff::assert_json_eq,
     assertor::*,
-    dango_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
@@ -22,6 +21,7 @@ use {
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
+    indexer_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },

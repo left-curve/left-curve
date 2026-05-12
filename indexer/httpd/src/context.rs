@@ -27,7 +27,7 @@ impl MinimalContext {
 pub struct FullContext {
     pub sql_context: indexer_sql::Context,
     pub indexer_cache_context: indexer_cache::Context,
-    pub clickhouse_context: dango_indexer_clickhouse::context::Context,
+    pub clickhouse_context: indexer_clickhouse::context::Context,
     pub base: MinimalContext,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
@@ -42,7 +42,7 @@ impl FullContext {
     pub fn new(
         indexer_cache_context: indexer_cache::Context,
         ctx: indexer_sql::Context,
-        clickhouse_context: dango_indexer_clickhouse::context::Context,
+        clickhouse_context: indexer_clickhouse::context::Context,
         grug_app: Arc<dyn QueryApp + Send + Sync>,
         consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
         static_files_path: Option<String>,

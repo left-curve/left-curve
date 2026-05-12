@@ -2,13 +2,6 @@ use {
     assertor::*,
     chrono::{DateTime, TimeDelta},
     dango_genesis::{Contracts, DexOption, GenesisOption},
-    dango_indexer_clickhouse::{
-        entities::{
-            CandleInterval, candle::Candle, candle_query::CandleQueryBuilder,
-            pair_price::PairPrice, pair_price_query::PairPriceQueryBuilder,
-        },
-        indexer::candles::cache::{CandleCache, CandleCacheKey},
-    },
     dango_testing::{
         Preset, TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
         constants::MOCK_GENESIS_TIMESTAMP, setup_test_with_indexer,
@@ -28,6 +21,13 @@ use {
         Udec128_6, Udec128_24, Uint128, btree_map, coins,
     },
     grug_app::Indexer,
+    indexer_clickhouse::{
+        entities::{
+            CandleInterval, candle::Candle, candle_query::CandleQueryBuilder,
+            pair_price::PairPrice, pair_price_query::PairPriceQueryBuilder,
+        },
+        indexer::candles::cache::{CandleCache, CandleCacheKey},
+    },
     std::{collections::BTreeSet, str::FromStr},
 };
 

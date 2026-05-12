@@ -4,11 +4,11 @@ use {
     crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
-    dango_indexer_clickhouse::{
+    futures_util::stream::{StreamExt, once},
+    indexer_clickhouse::{
         entities::{CandleInterval, candle::Candle},
         indexer::candles::cache,
     },
-    futures_util::stream::{StreamExt, once},
     std::sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -35,7 +35,7 @@ impl CandleSubscription {
         limit: Option<usize>,
     ) -> Result<impl Stream<Item = Vec<Candle>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<dango_indexer_clickhouse::context::Context>()?;
+        let app_ctx = ctx.data::<indexer_clickhouse::context::Context>()?;
         let candle_cache = app_ctx.candle_cache.clone();
         let cache_key =
             cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);

@@ -15,7 +15,6 @@ clap                        = { workspace = true, features = ["derive", "wrap_he
 colored                     = { workspace = true }
 config-parser               = { workspace = true }
 dango-genesis               = { workspace = true, features = ["metrics"] }
-dango-indexer-clickhouse    = { workspace = true, features = ["metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
 dango-upgrade               = { workspace = true }
 dialoguer                   = { workspace = true }
@@ -26,6 +25,7 @@ grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }
 home                        = { workspace = true }
 indexer-cache               = { workspace = true, features = ["http-request-details", "metrics", "s3", "tracing"] }
+indexer-clickhouse          = { workspace = true, features = ["metrics", "tracing"] }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd               = { workspace = true, features = ["metrics", "tracing"] }
 indexer-metrics             = { workspace = true, features = ["tracing"] }

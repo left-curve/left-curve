@@ -1,4 +1,4 @@
 """Vendored GraphQL subscription documents.
 
-Source: dango/indexer/graphql-types/src/schemas/subscriptions/.
+Source: indexer/graphql-types/src/schemas/subscriptions/.
 """

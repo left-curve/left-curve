@@ -34,7 +34,6 @@ async-trait                 = { workspace = true }
 bigdecimal                  = { workspace = true }
 chrono                      = { workspace = true }
 clap                        = { workspace = true }
-dango-indexer-clickhouse    = { workspace = true, features = ["async-graphql"] }
 dango-order-book            = { workspace = true }
 dango-types                 = { workspace = true, features = ["async-graphql"] }
 error-backtrace             = { workspace = true }
@@ -45,6 +44,7 @@ grug-app                    = { workspace = true, features = ["tracing"] }
 grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 indexer-cache               = { workspace = true }
+indexer-clickhouse          = { workspace = true, features = ["async-graphql"] }
 indexer-sql                 = { workspace = true, features = ["async-graphql"] }
 itertools                   = { workspace = true }
 metrics                     = { workspace = true, optional = true }

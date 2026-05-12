@@ -3,8 +3,8 @@ use crate::metrics::GaugeGuard;
 use {
     crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
-    dango_indexer_clickhouse::entities::pair_stats::PairStats,
     futures_util::stream::{StreamExt, once},
+    indexer_clickhouse::entities::pair_stats::PairStats,
     std::sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -25,7 +25,7 @@ impl PairStatsSubscription {
         ctx: &async_graphql::Context<'a>,
     ) -> Result<impl Stream<Item = Vec<PairStats>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<dango_indexer_clickhouse::context::Context>()?;
+        let app_ctx = ctx.data::<indexer_clickhouse::context::Context>()?;
         let cache = app_ctx.pair_stats_cache.clone();
 
         #[cfg(feature = "metrics")]
