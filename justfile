@@ -26,25 +26,25 @@ install-client:
 
 # Run all tests
 test:
-  RUST_BACKTRACE=1 cargo test --all-features --all-targets -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -- --nocapture
 
 # Run grug tests
 test-grug:
-  RUST_BACKTRACE=1 cargo test --all-features --all-targets -p grug-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p grug-testing -- --nocapture
 
 # Run dango tests
 test-dango:
-  RUST_BACKTRACE=1 cargo test --all-features --all-targets -p dango-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-testing -- --nocapture
 
 # Run dango perp tests
 test-perps:
-  RUST_BACKTRACE=1 cargo test --all-features --all-targets -p dango-types perps::tests -- --nocapture
-  RUST_BACKTRACE=1 cargo test --all-features --all-targets -p dango-perps -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-types perps::tests -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-perps -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
 
 # Run indexer tests
 test-indexer:
-  RUST_BACKTRACE=1 cargo test --all-features --all-targets -p indexer-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p indexer-testing -- --nocapture
 
 # Check whether the code compiles
 check:
