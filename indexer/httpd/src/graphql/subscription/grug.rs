@@ -1,13 +1,11 @@
 use {
+    crate::graphql::{
+        query::grug::GrugQuery,
+        types::{query_response::QueryResponseWithBlockHeight, status::Status, store::Store},
+    },
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
-    grug_httpd::{
-        graphql::{
-            query::grug::GrugQuery,
-            types::{query_response::QueryResponseWithBlockHeight, status::Status, store::Store},
-        },
-        subscription_limiter::{acquire_subscription, guard_subscription_stream},
-    },
+    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};

@@ -7,12 +7,15 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    async_graphql::{EmptyMutation, EmptySubscription},
     grug_httpd::{
+        middlewares::shutdown::ShutdownMiddleware,
         routes::{graphql::graphql_route, index::index},
         subscription_limiter::SubscriptionLimiter,
     },
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
+    std::sync::{Arc, atomic::AtomicBool},
 };
 #[cfg(feature = "metrics")]
 use {crate::middlewares::metrics::init_httpd_metrics, actix_web_metrics::ActixWebMetricsBuilder};
@@ -119,4 +122,99 @@ where
             .app_data(web::Data::new(app_ctx.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));
     })
+}
+
+/// Run the chain-only HTTP server (no indexer features).
+///
+/// The `shutdown_flag` is wired into `ShutdownMiddleware` so the server returns
+/// 503 for new requests once shutdown begins. Actix Web handles graceful
+/// shutdown automatically on SIGTERM/SIGINT.
+pub async fn run_minimal_server(
+    httpd_config: &HttpdConfig,
+    context: grug_httpd::context::Context,
+    shutdown_flag: Arc<AtomicBool>,
+) -> Result<(), Error> {
+    let graphql_schema = crate::graphql::minimal::build_minimal_schema(context.clone());
+
+    #[cfg(feature = "tracing")]
+    tracing::info!(
+        httpd_config.ip,
+        httpd_config.port,
+        "Starting minimal httpd server"
+    );
+
+    #[cfg(feature = "metrics")]
+    let metrics = ActixWebMetricsBuilder::new().build();
+
+    #[cfg(feature = "metrics")]
+    init_httpd_metrics();
+
+    let subscription_limiter = SubscriptionLimiter::new(
+        httpd_config.max_subscriptions_per_connection,
+        httpd_config.max_subscriptions_global,
+    );
+
+    let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
+    let shutdown_flag_clone = shutdown_flag.clone();
+    HttpServer::new(move || {
+        let mut cors = Cors::default()
+            .allowed_methods(vec!["POST", "GET", "OPTIONS"])
+            .allowed_headers(vec![
+                http::header::AUTHORIZATION,
+                http::header::ACCEPT,
+                http::header::CONTENT_TYPE,
+                http::header::HeaderName::from_static("sentry-trace"),
+                http::header::HeaderName::from_static("baggage"),
+            ])
+            .max_age(3600);
+
+        if let Some(origin) = cors_allowed_origin.as_deref() {
+            for origin in origin.split(',') {
+                cors = cors.allowed_origin(origin.trim());
+            }
+        } else {
+            cors = cors.allow_any_origin();
+        }
+
+        let app = App::new()
+            .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
+            .wrap(Sentry::new())
+            .wrap(Logger::default())
+            .wrap(Compress::default())
+            .wrap(cors);
+
+        #[cfg(feature = "metrics")]
+        let app = app.wrap(metrics.clone());
+
+        app.app_data(web::Data::new(subscription_limiter.clone()))
+            .service(grug_httpd::routes::index::index)
+            .service(grug_httpd::routes::index::up)
+            .service(grug_httpd::routes::index::requester_ip)
+            .service(graphql_route::<
+                crate::graphql::minimal::MinimalQuery,
+                EmptyMutation,
+                EmptySubscription,
+            >())
+            .default_service(web::to(HttpResponse::NotFound))
+            .app_data(web::Data::new(context.clone()))
+            .app_data(web::Data::new(graphql_schema.clone()))
+    })
+    .workers(httpd_config.workers)
+    .max_connections(httpd_config.max_connections)
+    .backlog(httpd_config.backlog)
+    .keep_alive(actix_web::http::KeepAlive::Timeout(
+        std::time::Duration::from_secs(httpd_config.keep_alive_secs),
+    ))
+    .client_request_timeout(std::time::Duration::from_secs(
+        httpd_config.client_request_timeout_secs,
+    ))
+    .client_disconnect_timeout(std::time::Duration::from_secs(
+        httpd_config.client_disconnect_timeout_secs,
+    ))
+    .worker_max_blocking_threads(httpd_config.worker_max_blocking_threads)
+    .bind((&*httpd_config.ip, httpd_config.port))?
+    .run()
+    .await?;
+
+    Ok(())
 }

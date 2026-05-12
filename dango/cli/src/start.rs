@@ -341,18 +341,12 @@ impl StartCmd {
         context: HttpdContext,
         shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
-        grug_httpd::server::run_server(
-            cfg,
-            context,
-            grug_httpd::server::config_app,
-            grug_httpd::graphql::build_schema,
-            shutdown_flag,
-        )
-        .await
-        .map_err(|err| {
-            tracing::error!("Failed to run minimal HTTP server: {err:?}");
-            anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
-        })
+        indexer_httpd::server::run_minimal_server(cfg, context, shutdown_flag)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run minimal HTTP server: {err:?}");
+                anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
+            })
     }
 
     /// Run the full-featured HTTP server (with indexer features)
