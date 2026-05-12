@@ -85,6 +85,11 @@ impl Indexer {
             return Ok(());
         }
 
+        #[cfg(feature = "testing")]
+        if self.context.is_mocked() {
+            return Ok(());
+        }
+
         let candle_generator = candles::generator::CandleGenerator::new(self.context.clone());
 
         if let Err(_err) = candle_generator.save_all_candles().await {
@@ -136,6 +141,15 @@ impl Indexer {
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Err(grug_app::IndexerError::not_running());
+        }
+
+        // Symmetric with `start` / `wait_for_finish`: a mocked Clickhouse
+        // context has no installed handlers, so any write attempt would
+        // explode. Test harnesses opt in by calling `.with_mock()` on the
+        // context; in that mode `post_indexing` is a no-op.
+        #[cfg(feature = "testing")]
+        if self.context.is_mocked() {
+            return Ok(());
         }
 
         #[cfg(feature = "tracing")]

@@ -1,6 +1,7 @@
 use {
     crate::sql::block::replier,
     assertor::*,
+    dango_types::config::AppConfig,
     grug_app::{Db, Indexer},
     grug_testing::TestBuilder,
     grug_types::{
@@ -91,6 +92,8 @@ async fn parse_previous_block_after_restart() {
     let (indexer, indexer_context, _) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
+        .set_app_config(&AppConfig::default())
+        .unwrap()
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
         .set_owner("owner")
