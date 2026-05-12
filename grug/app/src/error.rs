@@ -56,12 +56,6 @@ pub enum AppError {
     #[error("sender is not the owner! sender: {sender}, owner: {owner}")]
     NotOwner { sender: Addr, owner: Addr },
 
-    #[error("admin account is not set")]
-    AdminNotSet,
-
-    #[error("sender is not the admin! sender: {sender}, admin: {admin}")]
-    NotAdmin { sender: Addr, admin: Addr },
-
     #[error("code with hash `{code_hash}` already exists")]
     CodeExists { code_hash: Hash256 },
 
@@ -122,9 +116,6 @@ pub enum IndexerError {
 
     #[error("mutex for the indexers is poisoned")]
     MutexPoisoned,
-
-    #[error("rwlock for the indexers is poisoned")]
-    RwlockPoisoned,
 }
 
 impl From<PoisonError<MutexGuard<'_, HashMap<u64, bool>>>> for IndexerError {

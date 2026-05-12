@@ -17,9 +17,6 @@ pub enum IndexerError {
     #[backtrace(new)]
     Clickhouse(clickhouse::error::Error),
 
-    #[error("candle timeout")]
-    CandleTimeout,
-
     #[error(transparent)]
     #[backtrace(new)]
     ChronoParse(chrono::ParseError),
