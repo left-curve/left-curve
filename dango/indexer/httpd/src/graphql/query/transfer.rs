@@ -1,10 +1,8 @@
 use {
+    crate::graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     async_graphql::{types::connection::*, *},
     dango_types::account_factory::UserIndex,
-    indexer_httpd::{
-        context::Context,
-        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
-    },
+    indexer_httpd::context::Context,
     indexer_sql::entity,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, JoinType, Order, QueryFilter, QueryOrder, QuerySelect,

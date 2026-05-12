@@ -1,10 +1,13 @@
-#[cfg(feature = "tracing")]
-use async_graphql::extensions;
 #[cfg(feature = "metrics")]
-use indexer_httpd::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
+use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
+#[cfg(feature = "tracing")]
+use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
+    crate::graphql::{
+        mutation::IndexerMutation, query::Query, subscription::Subscription,
+        telemetry::SentryExtension,
+    },
     async_graphql::{Schema, dataloader::DataLoader},
-    indexer_httpd::graphql::{mutation::IndexerMutation, telemetry::SentryExtension},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
@@ -12,12 +15,14 @@ use {
         transaction_grug::FileTransactionDataLoader,
         transaction_messages::TransactionMessagesDataLoader,
     },
-    query::Query,
-    subscription::Subscription,
 };
 
+pub mod extensions;
+pub mod mutation;
 pub mod query;
 pub mod subscription;
+pub mod telemetry;
+pub mod types;
 
 pub(crate) type AppSchema = Schema<Query, IndexerMutation, Subscription>;
 
@@ -93,8 +98,8 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
     #[cfg(feature = "tracing")]
     {
         schema_builder = schema_builder
-            .extension(extensions::Tracing)
-            .extension(extensions::Logger);
+            .extension(AsyncGraphqlExtensions::Tracing)
+            .extension(AsyncGraphqlExtensions::Logger);
     }
 
     schema_builder

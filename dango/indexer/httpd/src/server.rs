@@ -51,7 +51,7 @@ where
             .service(routes::blocks::services())
             .service(graphql_route::<
                 crate::graphql::query::Query,
-                indexer_httpd::graphql::mutation::IndexerMutation,
+                crate::graphql::mutation::IndexerMutation,
                 crate::graphql::subscription::Subscription,
             >());
 

@@ -344,8 +344,8 @@ impl StartCmd {
         grug_httpd::server::run_server(
             cfg,
             context,
-            grug_httpd::server::config_app,
-            grug_httpd::graphql::build_schema,
+            dango_httpd::minimal::config_app,
+            dango_httpd::minimal::build_schema,
             shutdown_flag,
         )
         .await

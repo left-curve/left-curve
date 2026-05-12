@@ -1,5 +1,6 @@
 use {
     crate::setup::create_hooked_indexer,
+    dango_httpd::context::Context as DangoContext,
     grug_app::{Indexer, NaiveProposalPreparer},
     grug_db_memory::MemDb,
     grug_httpd::traits::QueryApp,
@@ -13,7 +14,7 @@ use {
 };
 
 pub async fn create_block() -> anyhow::Result<(
-    Context,
+    DangoContext,
     Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, HookedIndexer>>,
     TestAccounts,
 )> {
@@ -23,7 +24,7 @@ pub async fn create_block() -> anyhow::Result<(
 pub async fn create_blocks(
     count: usize,
 ) -> anyhow::Result<(
-    Context,
+    DangoContext,
     Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, HookedIndexer>>,
     TestAccounts,
 )> {
@@ -70,12 +71,27 @@ pub async fn create_blocks(
 
     let suite_guard = suite.read().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
-    let httpd_context = Context::new(
+    let indexer_httpd_context = Context::new(
         indexer_cache_context,
-        sql_indexer_context,
+        sql_indexer_context.clone(),
         Arc::new(httpd_app),
         client.clone(),
     );
 
-    Ok((httpd_context, client, accounts))
+    let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        "http://localhost:8123".to_string(),
+        "grug_test".to_string(),
+        "default".to_string(),
+        "".to_string(),
+    )
+    .with_mock();
+
+    let dango_httpd_context = DangoContext::new(
+        indexer_httpd_context,
+        clickhouse_context,
+        sql_indexer_context,
+        None,
+    );
+
+    Ok((dango_httpd_context, client, accounts))
 }

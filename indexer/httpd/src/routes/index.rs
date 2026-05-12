@@ -1,8 +1,8 @@
 use {
     crate::context::Context,
     actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
-    async_graphql::futures_util::TryFutureExt,
     chrono::{Duration, Utc},
+    futures_util::TryFutureExt,
     grug_httpd::routes::index::UpResponse,
     grug_types::GIT_COMMIT,
     indexer_sql::entity,

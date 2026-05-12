@@ -27,7 +27,7 @@ chrono                  = { workspace = true }
 futures-util            = { workspace = true }
 grug-app                = { workspace = true, features = ["tracing"] }
 grug-testing            = { workspace = true, optional = true }
-grug-types              = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
+grug-types              = { workspace = true, features = ["chrono", "tendermint"] }
 metrics                 = { workspace = true, optional = true }
 sentry-actix            = { workspace = true }
 serde                   = { workspace = true }

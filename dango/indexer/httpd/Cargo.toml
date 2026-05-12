@@ -14,6 +14,7 @@ metrics = [
   "dango-indexer-clickhouse/metrics",
   "dep:actix-web-metrics",
   "dep:metrics",
+  "grug-httpd/metrics",
   "indexer-httpd/metrics",
   "indexer-sql/metrics",
 ]
@@ -26,19 +27,26 @@ actix-web                = { workspace = true }
 actix-web-metrics        = { workspace = true, optional = true }
 async-graphql            = { workspace = true }
 async-graphql-actix-web  = { workspace = true }
+async-trait              = { workspace = true }
 chrono                   = { workspace = true }
-clap                     = { workspace = true }
 dango-indexer-clickhouse = { workspace = true, features = ["async-graphql"] }
 dango-types              = { workspace = true, features = ["async-graphql"] }
+futures                  = { workspace = true }
+futures-util             = { workspace = true }
+grug                     = { workspace = true }
+grug-app                 = { workspace = true }
 grug-httpd               = { workspace = true }
-grug-types               = { workspace = true }
+grug-types               = { workspace = true, features = ["async-graphql", "chrono"] }
+indexer-cache            = { workspace = true }
 indexer-httpd            = { workspace = true, features = ["tracing"] }
 indexer-sql              = { workspace = true, features = ["async-graphql"] }
 itertools                = { workspace = true }
 metrics                  = { workspace = true, optional = true }
 sea-orm                  = { workspace = true }
+sentry                   = { workspace = true }
 sentry-actix             = { workspace = true }
 serde                    = { workspace = true }
+serde_json               = { workspace = true }
 thiserror                = { workspace = true }
 tokio                    = { workspace = true }
 tracing                  = { workspace = true }

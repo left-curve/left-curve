@@ -14,9 +14,9 @@ use {
     anyhow::{anyhow, bail, ensure},
     awc::BoxedSocket,
     core::str,
+    dango_httpd::{context::Context, graphql::build_schema, server::config_app},
     futures_util::{sink::SinkExt, stream::StreamExt},
     grug_httpd::subscription_limiter::SubscriptionLimiter,
-    indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
@@ -138,7 +138,7 @@ macro_rules! impl_paginate {
     };
 }
 
-/// Convenience macro for indexer_httpd context pagination.
+/// Convenience macro for dango_httpd context pagination.
 ///
 /// This wraps `impl_paginate!` with the standard indexer app builder.
 #[macro_export]
@@ -146,7 +146,7 @@ macro_rules! impl_indexer_paginate {
     ($fn_name:ident, $query_type:ty, $module:ident, $field:ident, $node_type:ident) => {
         $crate::impl_paginate!(
             $fn_name,
-            indexer_httpd::context::Context,
+            dango_httpd::context::Context,
             $query_type,
             $module,
             $field,

@@ -1,9 +1,9 @@
 use {
+    crate::graphql::subscription::MAX_PAST_BLOCKS,
     async_graphql::{futures_util::stream::Stream, *},
     dango_types::account_factory::UserIndex,
     futures_util::stream::{StreamExt, once},
     grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
-    indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::{entity, entity::blocks::latest_block_height},
     itertools::Itertools,
     sea_orm::{

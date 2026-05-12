@@ -1,7 +1,6 @@
 use {
     async_graphql::Schema,
-    dango_httpd::graphql::{query::Query, subscription::Subscription},
-    indexer_httpd::graphql::mutation::IndexerMutation,
+    dango_httpd::graphql::{mutation::IndexerMutation, query::Query, subscription::Subscription},
 };
 
 fn main() {
