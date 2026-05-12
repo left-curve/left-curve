@@ -5,8 +5,9 @@ use {
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
         web,
     },
-    dango_httpd::{graphql::build_schema, server::config_app},
-    grug_httpd::subscription_limiter::SubscriptionLimiter,
+    indexer_httpd::{
+        graphql::build_full_schema, server::config_app, subscription_limiter::SubscriptionLimiter,
+    },
     serde::{Serialize, de::DeserializeOwned},
 };
 
@@ -33,7 +34,7 @@ mod transfers;
 mod users;
 
 pub fn build_actix_app(
-    dango_httpd_context: dango_httpd::context::Context,
+    dango_httpd_context: indexer_httpd::context::FullContext,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -43,14 +44,12 @@ pub fn build_actix_app(
         Error = actix_web::Error,
     >,
 > {
-    let graphql_schema = build_schema(dango_httpd_context.clone());
+    let graphql_schema = build_full_schema(dango_httpd_context.clone());
 
     App::new()
         .app_data(web::Data::new(SubscriptionLimiter::new(10, 5000)))
         .app_data(web::Data::new(dango_httpd_context.clone()))
-        .app_data(web::Data::new(
-            dango_httpd_context.indexer_httpd_context.clone(),
-        ))
+        .app_data(web::Data::new(dango_httpd_context.clone()))
         .app_data(web::Data::new(graphql_schema.clone()))
         .configure(config_app(dango_httpd_context, graphql_schema))
 }
@@ -69,7 +68,7 @@ pub fn build_actix_app(
 /// ).await?;
 /// ```
 pub async fn call_graphql_query<V, R>(
-    context: dango_httpd::context::Context,
+    context: indexer_httpd::context::FullContext,
     query_body: graphql_client::QueryBody<V>,
 ) -> anyhow::Result<graphql_client::Response<R>>
 where
@@ -83,7 +82,7 @@ where
 // Generate pagination test helpers using the shared macro from indexer_testing
 indexer_testing::impl_paginate!(
     paginate_accounts,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     Accounts,
     accounts_query,
     accounts,
@@ -92,7 +91,7 @@ indexer_testing::impl_paginate!(
 );
 indexer_testing::impl_paginate!(
     paginate_transfers,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     Transfers,
     transfers_query,
     transfers,
@@ -101,7 +100,7 @@ indexer_testing::impl_paginate!(
 );
 indexer_testing::impl_paginate!(
     paginate_transactions,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     Transactions,
     transactions_query,
     transactions,
@@ -110,7 +109,7 @@ indexer_testing::impl_paginate!(
 );
 indexer_testing::impl_paginate!(
     paginate_blocks,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     Blocks,
     blocks_query,
     blocks,
@@ -119,7 +118,7 @@ indexer_testing::impl_paginate!(
 );
 indexer_testing::impl_paginate!(
     paginate_events,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     Events,
     events_query,
     events,
@@ -128,7 +127,7 @@ indexer_testing::impl_paginate!(
 );
 indexer_testing::impl_paginate!(
     paginate_messages,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     Messages,
     messages_query,
     messages,

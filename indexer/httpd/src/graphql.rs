@@ -1,9 +1,12 @@
 #[cfg(feature = "metrics")]
-use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
+use crate::{
+    graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics},
+    metrics::init_grug_query_metrics,
+};
 #[cfg(feature = "tracing")]
 use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
-    crate::context::Context,
+    crate::context::FullContext,
     async_graphql::{Schema, dataloader::DataLoader},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
@@ -16,17 +19,22 @@ use {
 };
 
 pub mod extensions;
+pub mod minimal;
 pub mod mutation;
 pub mod query;
 pub mod subscription;
 pub mod telemetry;
+pub mod types;
 
-pub(crate) type AppSchema =
-    Schema<query::IndexerQuery, mutation::IndexerMutation, subscription::IndexerSubscription>;
+pub type FullSchema =
+    Schema<query::FullQuery, mutation::IndexerMutation, subscription::FullSubscription>;
 
-pub fn build_schema(app_ctx: Context) -> AppSchema {
+pub fn build_full_schema(app_ctx: FullContext) -> FullSchema {
     #[cfg(feature = "metrics")]
-    init_graphql_metrics();
+    {
+        init_graphql_metrics();
+        init_grug_query_metrics();
+    }
 
     let block_transactions_loader = DataLoader::new(
         BlockTransactionsDataLoader {
@@ -74,9 +82,9 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
 
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
-        query::IndexerQuery::default(),
+        query::FullQuery::default(),
         mutation::IndexerMutation::default(),
-        subscription::IndexerSubscription::default(),
+        subscription::FullSubscription::default(),
     )
     .extension(SentryExtension);
 
@@ -93,6 +101,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     }
 
     schema_builder
+        .data(app_ctx.clickhouse_context.clone())
         .data(app_ctx.db.clone())
         .data(app_ctx.base.clone())
         .data(app_ctx)

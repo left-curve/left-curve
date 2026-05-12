@@ -346,17 +346,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     // The following ensures than loading clickhouse data to a new cache result in the same
     // loaded data than our current cache
     let mut cache = CandleCache::default();
-    let pairs =
-        PairPrice::all_pairs(context.indexer_clickhouse_context.clickhouse_client()).await?;
+    let pairs = PairPrice::all_pairs(context.clickhouse_context.clickhouse_client()).await?;
 
     cache
-        .preload_pairs(
-            &pairs,
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
+        .preload_pairs(&pairs, context.clickhouse_context.clickhouse_client())
         .await?;
 
-    let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
+    let old_cache = context.clickhouse_context.candle_cache.read().await;
 
     // println!("Cache : {:#?}", old_cache.pair_prices);
     // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
@@ -503,17 +499,13 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     // The following ensures than loading clickhouse data to a new cache result in the same
     // loaded data than our current cache
     let mut cache = CandleCache::default();
-    let pairs =
-        PairPrice::all_pairs(context.indexer_clickhouse_context.clickhouse_client()).await?;
+    let pairs = PairPrice::all_pairs(context.clickhouse_context.clickhouse_client()).await?;
 
     cache
-        .preload_pairs(
-            &pairs,
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
+        .preload_pairs(&pairs, context.clickhouse_context.clickhouse_client())
         .await?;
 
-    let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
+    let old_cache = context.clickhouse_context.candle_cache.read().await;
 
     // println!("Cache : {:#?}", old_cache.pair_prices);
     // println!("Cache from clickhouse: {:#?}", cache.pair_prices);

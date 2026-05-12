@@ -137,13 +137,6 @@ where
 
     let app = suite.read().await.app.clone_without_indexer();
 
-    let indexer_httpd_context = indexer_httpd::context::Context::new(
-        indexer_cache_context,
-        sql_context.clone(),
-        Arc::new(app),
-        Arc::new(mock_client),
-    );
-
     let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         "http://localhost:8123".to_string(),
         "default".to_string(),
@@ -151,10 +144,12 @@ where
         "default".to_string(),
     );
 
-    let dango_httpd_context = dango_httpd::context::Context::new(
-        indexer_httpd_context.clone(),
-        indexer_clickhouse_context.clone(),
+    let dango_httpd_context = indexer_httpd::context::FullContext::new(
+        indexer_cache_context,
         sql_context,
+        indexer_clickhouse_context,
+        Arc::new(app),
+        Arc::new(mock_client),
         None,
     );
 
@@ -166,7 +161,7 @@ where
     };
 
     let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    dango_httpd::server::run_server(
+    indexer_httpd::server::run_server(
         &httpd_config,
         dango_httpd_context,
         shutdown_flag,

@@ -14,11 +14,10 @@ use {
         SimpleCommitment,
     },
     grug_db_disk::DiskDb,
-    grug_httpd::context::Context as HttpdContext,
     grug_types::{GIT_COMMIT, HttpdConfig},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
-    indexer_httpd::TendermintRpcClient,
+    indexer_httpd::{TendermintRpcClient, context::MinimalContext as HttpdContext},
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::{Arc, atomic::AtomicBool},
     tokio::{
@@ -99,7 +98,7 @@ impl StartCmd {
 
         let app = Arc::new(app);
 
-        let (hooked_indexer, _, dango_httpd_context) = self
+        let (hooked_indexer, dango_httpd_context) = self
             .setup_indexer_stack(app_dir, &cfg, app.clone(), &cfg.tendermint.rpc_addr)
             .await?;
 
@@ -273,11 +272,7 @@ impl StartCmd {
         cfg: &Config,
         app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
-    ) -> anyhow::Result<(
-        HookedIndexer,
-        indexer_httpd::context::Context,
-        dango_httpd::context::Context,
-    )> {
+    ) -> anyhow::Result<(HookedIndexer, indexer_httpd::context::FullContext)> {
         let mut hooked_indexer = HookedIndexer::new();
 
         let sql_indexer = indexer_sql::IndexerBuilder::default()
@@ -308,17 +303,12 @@ impl StartCmd {
         hooked_indexer.add_indexer(sql_indexer).await?;
         hooked_indexer.add_indexer(clickhouse_indexer).await?;
 
-        let indexer_httpd_context = indexer_httpd::context::Context::new(
+        let dango_httpd_context = indexer_httpd::context::FullContext::new(
             indexer_cache_context,
-            sql_context.clone(),
+            sql_context,
+            clickhouse_context,
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
-        );
-
-        let dango_httpd_context = dango_httpd::context::Context::new(
-            indexer_httpd_context.clone(),
-            clickhouse_context.clone(),
-            sql_context,
             cfg.httpd.static_files_path.clone(),
         );
 
@@ -331,7 +321,7 @@ impl StartCmd {
             .await
             .map_err(|e| anyhow!("Failed to start indexer: {e}"))?;
 
-        Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
+        Ok((hooked_indexer, dango_httpd_context))
     }
 
     /// Run the minimal HTTP server (without indexer features)
@@ -341,18 +331,12 @@ impl StartCmd {
         context: HttpdContext,
         shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
-        grug_httpd::server::run_server(
-            cfg,
-            context,
-            grug_httpd::server::config_app,
-            grug_httpd::graphql::build_schema,
-            shutdown_flag,
-        )
-        .await
-        .map_err(|err| {
-            tracing::error!("Failed to run minimal HTTP server: {err:?}");
-            anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
-        })
+        indexer_httpd::server::run_minimal_server(cfg, context, shutdown_flag)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run minimal HTTP server: {err:?}");
+                anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
+            })
     }
 
     /// Run the full-featured HTTP server (with indexer features)
@@ -367,7 +351,7 @@ impl StartCmd {
     /// during warm-up see the same state as a freshly indexed node.
     async fn run_dango_httpd_server(
         cfg: &HttpdConfig,
-        dango_httpd_context: dango_httpd::context::Context,
+        dango_httpd_context: indexer_httpd::context::FullContext,
         shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> anyhow::Result<()> {
         tracing::info!(
@@ -390,7 +374,7 @@ impl StartCmd {
             // The two preloads hit different databases (ClickHouse and
             // Postgres), so run them concurrently to halve wall-time.
             let (clickhouse_result, perps_trade_result) = tokio::join!(
-                warmup_ctx.indexer_clickhouse_context.start_cache(),
+                warmup_ctx.clickhouse_context.start_cache(),
                 warmup_ctx.start_perps_trade_cache(),
             );
 
@@ -418,7 +402,7 @@ impl StartCmd {
             );
         });
 
-        dango_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
+        indexer_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run full-featured HTTP server: {err:?}");

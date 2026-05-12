@@ -10,7 +10,6 @@ members = [
   "dango/genesis",
   "dango/indexer/clickhouse",
   "dango/indexer/graphql-types",
-  "dango/indexer/httpd",
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
@@ -27,7 +26,6 @@ members = [
   "grug/db/disk",
   "grug/db/memory",
   "grug/ffi",
-  "grug/httpd",
   "grug/jellyfish-merkle",
   "grug/macros",
   "grug/math",
@@ -208,7 +206,6 @@ dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-graphql-types         = { path = "dango/indexer/graphql-types" }
-dango-httpd                 = { path = "dango/indexer/httpd" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
@@ -229,7 +226,6 @@ grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
 grug-db-memory              = { path = "grug/db/memory" }
 grug-ffi                    = { path = "grug/ffi" }
-grug-httpd                  = { path = "grug/httpd" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
 grug-macros                 = { path = "grug/macros" }
 grug-math                   = { path = "grug/math" }

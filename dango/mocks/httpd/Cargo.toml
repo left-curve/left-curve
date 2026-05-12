@@ -13,13 +13,11 @@ version       = { workspace = true }
 anyhow                   = { workspace = true }
 dango-genesis            = { workspace = true }
 rand                     = { workspace = true }
-dango-httpd              = { workspace = true }
 dango-indexer-clickhouse = { workspace = true, features = ["tracing"] }
 dango-proposal-preparer  = { workspace = true }
 dango-testing            = { workspace = true }
 grug-app                 = { workspace = true }
 grug-db-memory           = { workspace = true }
-grug-httpd               = { workspace = true }
 grug-testing             = { workspace = true }
 grug-types               = { workspace = true }
 grug-vm-rust             = { workspace = true }

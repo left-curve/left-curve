@@ -15,15 +15,13 @@ clap                        = { workspace = true, features = ["derive", "wrap_he
 colored                     = { workspace = true }
 config-parser               = { workspace = true }
 dango-genesis               = { workspace = true, features = ["metrics"] }
-dango-httpd                 = { workspace = true, features = ["metrics", "tracing"] }
-dango-indexer-clickhouse    = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
+dango-indexer-clickhouse    = { workspace = true, features = ["metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
 dango-upgrade               = { workspace = true }
 dialoguer                   = { workspace = true }
 futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
 grug-db-disk                = { workspace = true, features = ["metrics", "tracing"] }
-grug-httpd                  = { workspace = true, features = ["metrics", "tracing"] }
 grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }
 home                        = { workspace = true }
