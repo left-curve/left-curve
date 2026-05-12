@@ -20,7 +20,6 @@ grug-app     = { workspace = true }
 grug-storage = { workspace = true }
 grug-types   = { workspace = true }
 ics23        = { workspace = true, optional = true }
-serde        = { workspace = true, features = ["derive"] }
 thiserror    = { workspace = true }
 
 [dev-dependencies]

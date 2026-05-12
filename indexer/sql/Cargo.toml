@@ -24,10 +24,8 @@ anyhow             = { workspace = true }
 async-graphql      = { workspace = true, optional = true }
 async-stream       = { workspace = true }
 async-trait        = { workspace = true }
-borsh              = { workspace = true }
 dango-types        = { workspace = true, features = ["sea-orm"] }
 error-backtrace    = { workspace = true }
-futures            = { workspace = true }
 grug               = { workspace = true }
 grug-app           = { workspace = true }
 grug-types         = { workspace = true, features = ["chrono", "sea-orm"] }
@@ -40,8 +38,6 @@ sea-orm-migration  = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
 sqlx               = { workspace = true }
-strum              = { workspace = true }
-strum_macros       = { workspace = true }
 tempfile           = { workspace = true }
 thiserror          = { workspace = true }
 tokio              = { workspace = true, features = ["sync"] }

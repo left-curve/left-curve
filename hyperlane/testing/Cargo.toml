@@ -14,6 +14,5 @@ eth-utils       = { workspace = true }
 grug            = { workspace = true }
 hex-literal     = { workspace = true }
 hyperlane-types = { workspace = true }
-identity        = { workspace = true }
 k256            = { workspace = true }
 rand            = { workspace = true }

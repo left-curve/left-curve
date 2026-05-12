@@ -25,7 +25,6 @@ indexer-clickhouse      = { workspace = true, features = ["testing", "tracing"] 
 indexer-hooked          = { workspace = true }
 indexer-httpd           = { workspace = true, features = ["tracing"] }
 indexer-sql             = { workspace = true, features = ["tracing"] }
-rand                    = { workspace = true }
 tokio                   = { workspace = true }
 tracing                 = { workspace = true }
 

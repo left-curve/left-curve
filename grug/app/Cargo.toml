@@ -22,7 +22,6 @@ borsh           = { workspace = true }
 data-encoding   = { workspace = true, optional = true }
 dyn-event       = { workspace = true }
 error-backtrace = { workspace = true }
-futures         = { workspace = true }
 grug-storage    = { workspace = true }
 grug-types      = { workspace = true }
 ics23           = { workspace = true, optional = true }

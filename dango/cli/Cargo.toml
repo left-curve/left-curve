@@ -18,7 +18,6 @@ dango-genesis               = { workspace = true, features = ["metrics"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
 dango-upgrade               = { workspace = true }
 dialoguer                   = { workspace = true }
-futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
 grug-db-disk                = { workspace = true, features = ["metrics", "tracing"] }
 grug-types                  = { workspace = true }
@@ -26,7 +25,7 @@ grug-vm-rust                = { workspace = true }
 home                        = { workspace = true }
 indexer-cache               = { workspace = true, features = ["http-request-details", "metrics", "s3", "tracing"] }
 indexer-clickhouse          = { workspace = true, features = ["metrics", "tracing"] }
-indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
+indexer-hooked              = { workspace = true, features = ["tracing"] }
 indexer-httpd               = { workspace = true, features = ["metrics", "tracing"] }
 indexer-metrics             = { workspace = true, features = ["tracing"] }
 indexer-sql                 = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
@@ -39,7 +38,6 @@ opentelemetry_sdk           = { workspace = true }
 sentry                      = { workspace = true }
 serde                       = { workspace = true }
 tokio                       = { workspace = true }
-tower                       = { workspace = true, features = ["full"] }
 tower-abci                  = { workspace = true }
 tracing                     = { workspace = true }
 tracing-opentelemetry       = { workspace = true }

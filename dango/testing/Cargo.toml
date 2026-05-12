@@ -12,7 +12,6 @@ version       = { workspace = true }
 [dependencies]
 actix-web                = { workspace = true }
 anyhow                   = { workspace = true }
-async-graphql            = { workspace = true }
 async-trait              = { workspace = true }
 clickhouse               = { workspace = true, features = ["test-util"] }
 dango-genesis            = { workspace = true }
@@ -31,7 +30,7 @@ hyperlane-types          = { workspace = true }
 identity                 = { workspace = true }
 indexer-cache            = { workspace = true, features = ["metrics", "tracing"] }
 indexer-clickhouse       = { workspace = true, features = ["metrics", "testing", "tracing"] }
-indexer-hooked           = { workspace = true, features = ["metrics", "tracing"] }
+indexer-hooked           = { workspace = true, features = ["tracing"] }
 indexer-httpd            = { workspace = true, features = ["metrics"] }
 indexer-metrics          = { workspace = true }
 indexer-sql              = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
@@ -40,13 +39,11 @@ pyth-client              = { workspace = true }
 pyth-types               = { workspace = true }
 sea-orm                  = { workspace = true }
 serde                    = { workspace = true }
-serde_json               = { workspace = true }
 sha2                     = { workspace = true }
 temp-rocksdb             = { workspace = true }
 tokio                    = { workspace = true }
 
 [dev-dependencies]
-actix-service               = { workspace = true }
 anyhow                      = { workspace = true }
 assert-json-diff            = { workspace = true }
 assertor                    = { workspace = true }
@@ -60,14 +57,10 @@ dango-dex                   = { workspace = true, features = ["library"] }
 dango-gateway               = { workspace = true, features = ["library"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
-dango-perps                 = { workspace = true, features = ["library"] }
 dango-taxman                = { workspace = true, features = ["library"] }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
-grug-testing                = { workspace = true }
 hex                         = { workspace = true }
-home                        = { workspace = true }
-indexer-disk-saver          = { workspace = true }
 indexer-graphql-types       = { workspace = true }
 indexer-testing             = { workspace = true }
 itertools                   = { workspace = true }
@@ -75,7 +68,6 @@ metrics-exporter-prometheus = { workspace = true }
 proptest                    = { workspace = true }
 rand                        = { workspace = true }
 reqwest                     = { workspace = true, features = ["json"] }
-serde_json                  = { workspace = true }
 test-case                   = { workspace = true }
 tokio                       = { workspace = true, features = ["full"] }
 tracing                     = { workspace = true }
