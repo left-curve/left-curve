@@ -447,7 +447,7 @@ jobs:
 
       - name: Build GraphQL schema
         if: env.BACKEND_CHANGED == 'true'
-        run: cargo run -p dango-httpd build_graphql_schema -- ./dango/indexer/graphql-types/src/schemas/schema.graphql
+        run: cargo run -p indexer-httpd --bin build_graphql_schema -- ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
       - name: Check if schema is up-to-date
         if: env.BACKEND_CHANGED == 'true'
