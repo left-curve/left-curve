@@ -36,14 +36,14 @@ use {
 /// | 4    | Taker sells into vault bid                      | vault goes long; margin ~$5,000                               | vault has long position          |
 /// | 5    | Oracle drops to $1,900 (breakeven)              | PnL=0; equity≈$5,000; MM≈$1,188                               | vault healthy (equity > MM)      |
 /// | 6    | LP burns ~85% of shares                         | release≈$4,250; old margin check passes; equity→≈$750         | withdraw rejected (fix)          |
-#[test]
-fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
+#[tokio::test]
+async fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
     // ---- Step 0: Setup ----
 
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
     let pair = pair_id();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $5,000 USDC and adds $5,000 as vault liquidity.
@@ -56,6 +56,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(5_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -68,6 +69,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let lp_state: perps::UserState = suite
@@ -103,13 +105,14 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
     // Step 3: Refresh vault orders. Expect bid at $1,900 (= $2,000 * 0.95).
     // -------------------------------------------------------------------------
 
-    suite.make_empty_block();
+    suite.make_empty_block().await;
     suite
         .execute(
             &mut accounts.owner,
@@ -117,6 +120,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -154,6 +158,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -172,6 +177,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify vault has a long position.
@@ -197,7 +203,7 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
     // Vault is healthy: $5,000 > $1,900.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_900);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_900).await;
 
     let vault_ext: perps::UserStateExtended = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateExtendedRequest {
@@ -250,5 +256,6 @@ fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
             &perps::ExecuteMsg::Vault(perps::VaultMsg::RemoveLiquidity { shares_to_burn }),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("insufficient vault available margin to cover withdrawal");
 }

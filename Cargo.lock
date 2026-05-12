@@ -5368,6 +5368,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "tokio",
 ]
 
 [[package]]
@@ -5678,6 +5679,7 @@ dependencies = [
  "serde",
  "test-case",
  "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]
@@ -5705,6 +5707,7 @@ dependencies = [
  "serde",
  "test-case",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
  "wasmer",
  "wasmer-middlewares",

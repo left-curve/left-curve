@@ -16,11 +16,11 @@ use {
 ///
 /// Covers the full execute-message round trip the algo-trader use case
 /// depends on.
-#[test]
-fn submit_cancel_resubmit_by_client_order_id() {
+#[tokio::test]
+async fn submit_cancel_resubmit_by_client_order_id() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
     let cid: ClientOrderId = Uint64::new(42);
@@ -33,6 +33,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Submit a resting GTC limit bid carrying `cid`. The price ($1,500) is
@@ -55,6 +56,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Sanity: exactly one resting order, carrying `cid`.
@@ -76,6 +78,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // The order is gone.
@@ -107,6 +110,7 @@ fn submit_cancel_resubmit_by_client_order_id() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -123,11 +127,11 @@ fn submit_cancel_resubmit_by_client_order_id() {
 
 /// Cancelling a `client_order_id` that the sender never used (or has
 /// already cancelled / had filled) bails with a clear error message.
-#[test]
-fn cancel_by_unknown_client_order_id_fails() {
+#[tokio::test]
+async fn cancel_by_unknown_client_order_id_fails() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -138,5 +142,6 @@ fn cancel_by_unknown_client_order_id_fails() {
             )),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("order not found");
 }

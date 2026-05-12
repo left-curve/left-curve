@@ -16,7 +16,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -61,7 +61,7 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -92,9 +92,11 @@ async fn index_single_user_multiple_single_signature_accounts() -> anyhow::Resul
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let mut test_account1 =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
-    let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+    let test_account2 =
+        add_account_with_existing_user(&mut suite, &contracts, &mut test_account1).await;
 
     suite.app.indexer.wait_for_finish().await?;
 

@@ -220,6 +220,7 @@ async fn query_pair_stats_formats_small_prices_without_scientific_notation() -> 
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Submit matching bid/ask orders at a very small price so GraphQL must
@@ -255,6 +256,7 @@ async fn query_pair_stats_formats_small_prices_without_scientific_notation() -> 
                 Coin::new(usdc::DENOM.clone(), Uint128::new(200_000))?,
             ])?,
         )
+        .await
         .should_succeed();
 
     suite.app.indexer.wait_for_finish().await?;
@@ -316,6 +318,7 @@ async fn create_pair_prices(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
@@ -367,6 +370,7 @@ async fn create_pair_prices(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()

@@ -28,6 +28,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
             50_000_000,
             NonEmpty::new_unchecked(msgs),
         )
+        .await
         .should_succeed();
 
     suite.app.indexer.wait_for_finish().await?;
@@ -66,6 +67,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
             50_000_000,
             NonEmpty::new_unchecked(vec![msg]),
         )
+        .await
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish

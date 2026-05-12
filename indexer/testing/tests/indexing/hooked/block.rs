@@ -36,6 +36,7 @@ async fn index_block() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
@@ -103,6 +104,7 @@ async fn parse_previous_block_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -161,6 +163,7 @@ async fn parse_previous_block_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
@@ -204,6 +207,7 @@ async fn no_sql_index_error_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -277,6 +281,7 @@ async fn no_sql_index_error_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
@@ -328,6 +333,7 @@ async fn index_block_events() {
             None,
             Coins::default(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -339,6 +345,7 @@ async fn index_block_events() {
 
     suite
         .execute(&mut accounts["owner"], replier_addr, &msg, Coins::default())
+        .await
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish

@@ -24,8 +24,8 @@ use {
 /// message. Sending the `RegisterUser` message without a deposit resulting in
 /// the transaction failing. This design has drawbacks; see the PR's description.
 /// Since PR #1460, this test now reflects the intended onboarding procedure.
-#[test]
-fn onboarding_without_deposit() {
+#[tokio::test]
+async fn onboarding_without_deposit() {
     let (suite, mut accounts, codes, contracts, validator_sets) =
         setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
             account: AccountOption {
@@ -43,7 +43,7 @@ fn onboarding_without_deposit() {
     // that would be block 0, in other words the genesis block. The single-signature
     // account won't claim orphaned transfers during genesis. For a realistic test,
     // we do `CheckTx` at a post-genesis block.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     let chain_id = suite.chain_id.clone();
 
@@ -76,6 +76,7 @@ fn onboarding_without_deposit() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // The account should have been created in the `Inactive` state.
@@ -108,6 +109,7 @@ fn onboarding_without_deposit() {
             &user,
             10_000_000, // Minimum deposit is 10_000_000. Need to send at this that amount.
         )
+        .await
         .should_succeed();
 
     // Account should have been activated.
@@ -128,6 +130,7 @@ fn onboarding_without_deposit() {
             &account_factory::ExecuteMsg::RegisterAccount {},
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Ensure the user now has two accounts and they are both active.
@@ -149,8 +152,8 @@ fn onboarding_without_deposit() {
 
 /// If minimum deposit is zero, then the account is automatically activated.
 /// No need to make a deposit.
-#[test]
-fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
+#[tokio::test]
+async fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     // Set up the test with minimum deposit set to zero.
     let (mut suite, mut accounts, codes, contracts, _) = setup_test_naive(Default::default());
 
@@ -185,6 +188,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Now that the user has been created, query it's index.
@@ -238,8 +242,8 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
 /// However, we keep this test for the edge case -- what if someone sends a
 /// transfer before creating the account? The user needs to be able to recover
 /// the funds.
-#[test]
-fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
+#[tokio::test]
+async fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     // Set up the test with minimum deposit set to zero.
     let (suite, mut accounts, codes, contracts, validator_sets) =
         setup_test_naive(Default::default());
@@ -263,6 +267,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
             &user,
             10_000_000,
         )
+        .await
         .should_succeed();
 
     // Sign the `RegisterUserData`.
@@ -291,6 +296,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Now that the user has been created, he can claim the orphaned transfer.
@@ -307,6 +313,7 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Make sure a single-signature account is created with the deposited balance.
@@ -315,8 +322,8 @@ fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
         .should_succeed_and_equal(Uint128::new(10_000_000));
 }
 
-#[test]
-fn update_key() {
+#[tokio::test]
+async fn update_key() {
     let (mut suite, _, codes, contracts, _) = setup_test_naive(Default::default());
 
     let chain_id = suite.chain_id.clone();
@@ -353,6 +360,7 @@ fn update_key() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Now that the user has been created, query it's index.
@@ -370,6 +378,7 @@ fn update_key() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(format!(
             "can't delete the last key associated with user index {}",
             user.user_index()
@@ -397,6 +406,7 @@ fn update_key() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Query keys should return two keys.
@@ -422,6 +432,7 @@ fn update_key() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(format!(
             "key is already associated with user index {}",
             user.user_index()
@@ -438,6 +449,7 @@ fn update_key() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Query keys should return only one key.
@@ -450,8 +462,8 @@ fn update_key() {
         .should_succeed_and_equal(btree_map! { key_hash => pk });
 }
 
-#[test]
-fn single_signature_account_count_limit() {
+#[tokio::test]
+async fn single_signature_account_count_limit() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let user_index = accounts.user1.user_index();
@@ -465,6 +477,7 @@ fn single_signature_account_count_limit() {
                 &account_factory::ExecuteMsg::RegisterAccount {},
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -482,12 +495,13 @@ fn single_signature_account_count_limit() {
             &account_factory::ExecuteMsg::RegisterAccount {},
             Coins::new(),
         )
+        .await
         .should_fail_with_error(format!("user {user_index} has reached max account count"));
 }
 
 /// New users should automatically get a `user_{index}` default username.
-#[test]
-fn new_user_gets_default_username() {
+#[tokio::test]
+async fn new_user_gets_default_username() {
     let (mut suite, _, codes, contracts, _) = setup_test_naive(Default::default());
 
     let chain_id = suite.chain_id.clone();
@@ -520,6 +534,7 @@ fn new_user_gets_default_username() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let user = user.query_user_index(suite.querier());
@@ -554,8 +569,8 @@ fn genesis_users_have_default_username() {
 }
 
 /// A user with a default username can change it to a custom one.
-#[test]
-fn update_default_username() {
+#[tokio::test]
+async fn update_default_username() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let user_index = accounts.user1.user_index();
@@ -568,6 +583,7 @@ fn update_default_username() {
             &account_factory::ExecuteMsg::UpdateUsername(custom_name.clone()),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify the username was updated.
@@ -588,8 +604,8 @@ fn update_default_username() {
 }
 
 /// A user with a custom username cannot change it again.
-#[test]
-fn cannot_change_custom_username() {
+#[tokio::test]
+async fn cannot_change_custom_username() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let user_index = accounts.user1.user_index();
@@ -603,6 +619,7 @@ fn cannot_change_custom_username() {
             &account_factory::ExecuteMsg::UpdateUsername(custom_name),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Second change: custom → another custom. Should fail.
@@ -614,14 +631,15 @@ fn cannot_change_custom_username() {
             &account_factory::ExecuteMsg::UpdateUsername(another_name),
             Coins::new(),
         )
+        .await
         .should_fail_with_error(format!(
             "a custom username is already set for user {user_index}"
         ));
 }
 
 /// Users cannot set a reserved `user_N` pattern as their custom username.
-#[test]
-fn cannot_set_reserved_username() {
+#[tokio::test]
+async fn cannot_set_reserved_username() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let reserved_name = Username::from_str("user_999").unwrap();
@@ -633,12 +651,13 @@ fn cannot_set_reserved_username() {
             &account_factory::ExecuteMsg::UpdateUsername(reserved_name),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("usernames matching 'user_N' are reserved");
 }
 
 /// Two users cannot claim the same username.
-#[test]
-fn cannot_claim_taken_username() {
+#[tokio::test]
+async fn cannot_claim_taken_username() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let name = Username::from_str("alice").unwrap();
@@ -651,6 +670,7 @@ fn cannot_claim_taken_username() {
             &account_factory::ExecuteMsg::UpdateUsername(name.clone()),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User 2 tries to claim "alice". Should fail.
@@ -661,6 +681,7 @@ fn cannot_claim_taken_username() {
             &account_factory::ExecuteMsg::UpdateUsername(name.clone()),
             Coins::new(),
         )
+        .await
         .should_fail_with_error(format!(
             "the username `{name}` is already associated with a user index"
         ));
