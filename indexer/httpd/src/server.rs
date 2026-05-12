@@ -7,6 +7,7 @@ use {
         subscription_limiter::SubscriptionLimiter,
     },
     actix_cors::Cors,
+    actix_files::Files,
     actix_web::{
         App, HttpResponse, HttpServer, http,
         middleware::{Compress, Logger},
@@ -15,23 +16,64 @@ use {
     async_graphql::{EmptyMutation, EmptySubscription},
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
-    std::sync::{Arc, atomic::AtomicBool},
+    std::sync::{Arc, atomic::AtomicBool, mpsc},
 };
 #[cfg(feature = "metrics")]
 use {crate::middlewares::metrics::init_httpd_metrics, actix_web_metrics::ActixWebMetricsBuilder};
 
-/// Run the HTTP server, includes GraphQL and REST endpoints.
-pub async fn run_server<CA, GS>(
+pub fn config_app<G>(app_ctx: FullContext, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
+where
+    G: Clone + 'static,
+{
+    Box::new(move |cfg: &mut ServiceConfig| {
+        let mut service_config = cfg
+            .service(index)
+            .service(routes::index::up)
+            .service(routes::index::sentry_raise)
+            .service(routes::blocks::services())
+            .service(graphql_route::<
+                crate::graphql::query::FullQuery,
+                crate::graphql::mutation::IndexerMutation,
+                crate::graphql::subscription::FullSubscription,
+            >());
+
+        // Add static file serving if static_files_path is configured
+        if let Some(static_path) = &app_ctx.static_files_path {
+            #[cfg(feature = "tracing")]
+            tracing::info!(static_path, "Exposing static files at /static");
+
+            service_config = service_config.service(
+                Files::new("/static", static_path)
+                    .prefer_utf8(true)
+                    .use_last_modified(true),
+            );
+        }
+
+        service_config
+            .default_service(web::to(routes::index::not_found_handler))
+            .app_data(web::Data::new(app_ctx.db.clone()))
+            .app_data(web::Data::new(app_ctx.base.clone()))
+            .app_data(web::Data::new(app_ctx.clone()))
+            .app_data(web::Data::new(graphql_schema.clone()));
+    })
+}
+
+/// Run the full-mode HTTP server (indexer features enabled).
+///
+/// The shutdown_flag should be set when signals are received to return 503 for
+/// new requests. Actix Web handles graceful shutdown automatically on
+/// SIGTERM/SIGINT.
+///
+/// If `port_sender` is provided, the actual bound port will be sent via the
+/// channel after binding. Use port 0 to let the OS allocate an available port
+/// (useful for tests).
+pub async fn run_server(
     httpd_config: &HttpdConfig,
     context: FullContext,
-    config_app: CA,
-    build_schema: fn(FullContext) -> GS,
-) -> Result<(), Error>
-where
-    CA: Fn(FullContext, GS) -> Box<dyn Fn(&mut ServiceConfig)> + Clone + Send + 'static,
-    GS: Clone + Send + 'static,
-{
-    let graphql_schema = build_schema(context.clone());
+    shutdown_flag: Arc<AtomicBool>,
+    port_sender: Option<mpsc::Sender<u16>>,
+) -> Result<(), Error> {
+    let graphql_schema = crate::graphql::build_full_schema(context.clone());
 
     #[cfg(feature = "tracing")]
     tracing::info!(
@@ -52,7 +94,8 @@ where
     );
 
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
-    HttpServer::new(move || {
+    let shutdown_flag_clone = shutdown_flag.clone();
+    let server = HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_methods(vec!["POST", "GET", "OPTIONS"])
             .allowed_headers(vec![
@@ -73,6 +116,7 @@ where
         }
 
         let app = App::new()
+            .wrap(ShutdownMiddleware::new(shutdown_flag_clone.clone()))
             .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
@@ -97,31 +141,21 @@ where
         httpd_config.client_disconnect_timeout_secs,
     ))
     .worker_max_blocking_threads(httpd_config.worker_max_blocking_threads)
-    .bind((&*httpd_config.ip, httpd_config.port))?
-    .run()
-    .await?;
+    .bind((&*httpd_config.ip, httpd_config.port))?;
+
+    // Send the actual bound port if a channel was provided
+    if let Some(sender) = port_sender
+        && let Some(addr) = server.addrs().first()
+    {
+        let actual_port = addr.port();
+        #[cfg(feature = "tracing")]
+        tracing::info!(actual_port, "Server bound to port");
+        let _ = sender.send(actual_port);
+    }
+
+    server.run().await?;
 
     Ok(())
-}
-
-pub fn config_app<G>(app_ctx: FullContext, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
-where
-    G: Clone + 'static,
-{
-    Box::new(move |cfg: &mut ServiceConfig| {
-        cfg.service(index)
-            .service(routes::index::up)
-            .service(crate::routes::index::requester_ip)
-            .service(routes::blocks::services())
-            .service(graphql_route::<
-                crate::graphql::query::IndexerQuery,
-                crate::graphql::mutation::IndexerMutation,
-                crate::graphql::subscription::IndexerSubscription,
-            >())
-            .default_service(web::to(HttpResponse::NotFound))
-            .app_data(web::Data::new(app_ctx.clone()))
-            .app_data(web::Data::new(graphql_schema.clone()));
-    })
 }
 
 /// Run the chain-only HTTP server (no indexer features).
@@ -188,7 +222,7 @@ pub async fn run_minimal_server(
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
             .service(crate::routes::index::index)
-            .service(crate::routes::index::up)
+            .service(crate::routes::index::minimal_up)
             .service(crate::routes::index::requester_ip)
             .service(graphql_route::<
                 crate::graphql::minimal::MinimalQuery,

@@ -15,7 +15,6 @@ clap                        = { workspace = true, features = ["derive", "wrap_he
 colored                     = { workspace = true }
 config-parser               = { workspace = true }
 dango-genesis               = { workspace = true, features = ["metrics"] }
-dango-httpd                 = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-clickhouse    = { workspace = true, features = ["metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
 dango-upgrade               = { workspace = true }

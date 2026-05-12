@@ -16,7 +16,6 @@ async-graphql            = { workspace = true }
 async-trait              = { workspace = true }
 clickhouse               = { workspace = true, features = ["test-util"] }
 dango-genesis            = { workspace = true }
-dango-httpd              = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-clickhouse = { workspace = true, features = ["metrics", "testing", "tracing"] }
 dango-order-book         = { workspace = true }
 dango-proposal-preparer  = { workspace = true }
@@ -59,7 +58,6 @@ dango-auth                  = { workspace = true }
 dango-bank                  = { workspace = true, features = ["library"] }
 dango-dex                   = { workspace = true, features = ["library"] }
 dango-gateway               = { workspace = true, features = ["library"] }
-dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
 dango-graphql-types         = { workspace = true }

@@ -9,27 +9,7 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[features]
-metrics = [
-  "dango-indexer-clickhouse/metrics",
-  "dep:actix-web-metrics",
-  "dep:metrics",
-  "indexer-httpd/metrics",
-]
-tracing = []
+# All content moved into `indexer-httpd` in phase 3 of
+# testdata/refactor-indexer.md. This crate is deleted in commit 7.
 
 [dependencies]
-actix-cors               = { workspace = true }
-actix-files              = { workspace = true }
-actix-web                = { workspace = true }
-actix-web-metrics        = { workspace = true, optional = true }
-async-graphql            = { workspace = true }
-async-graphql-actix-web  = { workspace = true }
-dango-indexer-clickhouse = { workspace = true }
-grug-types               = { workspace = true }
-indexer-httpd            = { workspace = true, features = ["tracing"] }
-indexer-sql              = { workspace = true }
-metrics                  = { workspace = true, optional = true }
-sentry-actix             = { workspace = true }
-tokio                    = { workspace = true }
-tracing                  = { workspace = true }

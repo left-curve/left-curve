@@ -3705,7 +3705,6 @@ dependencies = [
  "colored",
  "config-parser",
  "dango-genesis",
- "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-proposal-preparer",
  "dango-upgrade",
@@ -3799,22 +3798,6 @@ dependencies = [
 [[package]]
 name = "dango-httpd"
 version = "0.0.0"
-dependencies = [
- "actix-cors",
- "actix-files",
- "actix-web",
- "actix-web-metrics",
- "async-graphql",
- "async-graphql-actix-web",
- "dango-indexer-clickhouse",
- "grug-types",
- "indexer-httpd",
- "indexer-sql",
- "metrics",
- "sentry-actix",
- "tokio",
- "tracing",
-]
 
 [[package]]
 name = "dango-indexer-clickhouse"
@@ -3858,7 +3841,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-genesis",
- "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-proposal-preparer",
  "dango-testing",
@@ -4035,7 +4017,6 @@ dependencies = [
  "dango-gateway",
  "dango-genesis",
  "dango-graphql-types",
- "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-mock-httpd",
  "dango-oracle",
@@ -6472,6 +6453,7 @@ version = "0.0.0"
 dependencies = [
  "actix",
  "actix-cors",
+ "actix-files",
  "actix-web",
  "actix-web-metrics",
  "anyhow",

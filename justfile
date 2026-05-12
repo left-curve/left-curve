@@ -72,7 +72,7 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p dango-httpd build_graphql_schema -- \
+  cargo run -p indexer-httpd --bin build_graphql_schema -- \
     ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book

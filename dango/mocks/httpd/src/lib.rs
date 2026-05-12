@@ -161,7 +161,7 @@ where
     };
 
     let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    dango_httpd::server::run_server(
+    indexer_httpd::server::run_server(
         &httpd_config,
         dango_httpd_context,
         shutdown_flag,

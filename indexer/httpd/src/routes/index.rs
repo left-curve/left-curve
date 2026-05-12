@@ -101,3 +101,23 @@ pub async fn sentry_raise() -> Result<impl Responder, Error> {
 
     Ok(HttpResponse::Ok().body("Sending a sentry crash"))
 }
+
+/// Custom 404 handler that serves an HTML page from
+/// `{static_files_path}/404.html` when configured, falling back to a plain
+/// text response otherwise.
+pub async fn not_found_handler(app_ctx: web::Data<FullContext>) -> HttpResponse {
+    let static_files_path = app_ctx.static_files_path.as_deref();
+
+    if let Some(static_files_path) = static_files_path {
+        let file_path = format!("{static_files_path}/404.html");
+        if let Ok(html_content) = std::fs::read_to_string(&file_path) {
+            return HttpResponse::NotFound()
+                .content_type("text/html; charset=utf-8")
+                .body(html_content);
+        }
+    }
+
+    HttpResponse::NotFound()
+        .content_type("text/plain; charset=utf-8")
+        .body("404 Not Found")
+}

@@ -351,7 +351,7 @@ impl StartCmd {
     /// during warm-up see the same state as a freshly indexed node.
     async fn run_dango_httpd_server(
         cfg: &HttpdConfig,
-        dango_httpd_context: dango_httpd::context::Context,
+        dango_httpd_context: indexer_httpd::context::FullContext,
         shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> anyhow::Result<()> {
         tracing::info!(
@@ -402,7 +402,7 @@ impl StartCmd {
             );
         });
 
-        dango_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
+        indexer_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run full-featured HTTP server: {err:?}");

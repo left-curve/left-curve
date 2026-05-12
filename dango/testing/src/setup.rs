@@ -146,7 +146,7 @@ pub async fn setup_test_with_indexer(
     Contracts,
     MockValidatorSets,
     indexer_httpd::context::FullContext,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     dango_indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
@@ -168,7 +168,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     Contracts,
     MockValidatorSets,
     indexer_httpd::context::FullContext,
-    dango_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     dango_indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {

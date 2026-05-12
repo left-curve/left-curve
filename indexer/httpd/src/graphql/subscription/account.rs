@@ -46,7 +46,10 @@ impl AccountSubscription {
         query
             .all(&app_ctx.db)
             .await
-            .inspect_err(|e| tracing::error!(%e, "`get_accounts` error"))
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(%_e, "`get_accounts` error");
+            })
             .unwrap_or_default()
     }
 }

@@ -23,6 +23,7 @@ tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
 [dependencies]
 actix                       = { workspace = true }
 actix-cors                  = { workspace = true }
+actix-files                 = { workspace = true }
 actix-web                   = { workspace = true }
 actix-web-metrics           = { workspace = true, optional = true }
 anyhow                      = { workspace = true }

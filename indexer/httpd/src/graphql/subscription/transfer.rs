@@ -60,7 +60,10 @@ impl TransferSubscription {
             .order_by_asc(entity::transfers::Column::Idx)
             .all(&app_ctx.db)
             .await
-            .inspect_err(|e| tracing::error!(%e, "`get_transfers` error"))
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(%_e, "`get_transfers` error");
+            })
             .unwrap_or_default();
 
         if transfers.is_empty() {
