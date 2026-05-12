@@ -29,6 +29,7 @@ where
         let mut service_config = cfg
             .service(index)
             .service(routes::index::up)
+            .service(routes::index::requester_ip)
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
             .service(graphql_route::<
