@@ -23,7 +23,7 @@ impl BlockSubscription {
         ctx: &Context<'a>,
     ) -> Result<impl Stream<Item = entity::blocks::Model> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let last_block = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)

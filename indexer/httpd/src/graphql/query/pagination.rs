@@ -1,5 +1,5 @@
 use {
-    crate::context::Context,
+    crate::context::FullContext,
     async_graphql::{types::connection::*, *},
     sea_orm::{DatabaseTransaction, EntityTrait, QuerySelect, Select, TransactionTrait},
     serde::{Serialize, de::DeserializeOwned},
@@ -55,7 +55,7 @@ pub trait CursorOrder<S> {
 /// - `last` + `before`: Backward pagination
 /// - `sort_by`: Optional sorting configuration with reversible trait for bidirectional queries
 pub async fn paginate_models<C, E, S, F, Fut>(
-    app_ctx: &Context,
+    app_ctx: &FullContext,
     after: Option<String>,
     before: Option<String>,
     first: Option<i32>,

@@ -9,7 +9,7 @@ use {
 
 #[derive(Clone)]
 pub struct Context {
-    pub indexer_httpd_context: indexer_httpd::context::Context,
+    pub indexer_httpd_context: indexer_httpd::context::FullContext,
     pub indexer_clickhouse_context: dango_indexer_clickhouse::context::Context,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
@@ -20,7 +20,7 @@ pub struct Context {
 
 impl Context {
     pub fn new(
-        indexer_httpd_context: indexer_httpd::context::Context,
+        indexer_httpd_context: indexer_httpd::context::FullContext,
         indexer_clickhouse_context: dango_indexer_clickhouse::context::Context,
         ctx: indexer_sql::Context,
         static_files_path: Option<String>,

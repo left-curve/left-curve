@@ -275,7 +275,7 @@ impl StartCmd {
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
-        indexer_httpd::context::Context,
+        indexer_httpd::context::FullContext,
         dango_httpd::context::Context,
     )> {
         let mut hooked_indexer = HookedIndexer::new();
@@ -308,7 +308,7 @@ impl StartCmd {
         hooked_indexer.add_indexer(sql_indexer).await?;
         hooked_indexer.add_indexer(clickhouse_indexer).await?;
 
-        let indexer_httpd_context = indexer_httpd::context::Context::new(
+        let indexer_httpd_context = indexer_httpd::context::FullContext::new(
             indexer_cache_context,
             sql_context.clone(),
             app.clone(),

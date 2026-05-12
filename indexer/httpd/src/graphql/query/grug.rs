@@ -1,9 +1,12 @@
 use {
-    crate::graphql::types::{
-        query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
+    crate::{
+        context::MinimalContext,
+        graphql::types::{
+            query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
+        },
     },
     async_graphql::*,
-    grug_httpd::{context::Context, request_ip::RequesterIp},
+    grug_httpd::request_ip::RequesterIp,
     grug_types::{Binary, Inner, QueryResponse, TxOutcome},
     std::str::FromStr,
 };
@@ -15,7 +18,7 @@ pub struct GrugQuery {}
 
 impl GrugQuery {
     pub async fn _query_app(
-        app_ctx: &Context,
+        app_ctx: &MinimalContext,
         request: grug_types::Query,
         height: Option<u64>,
     ) -> Result<QueryResponseWithBlockHeight, Error> {
@@ -34,7 +37,7 @@ impl GrugQuery {
     }
 
     pub async fn _query_store(
-        app_ctx: &Context,
+        app_ctx: &MinimalContext,
         key: String,
         height: Option<u64>,
         prove: bool,
@@ -65,7 +68,7 @@ impl GrugQuery {
         })
     }
 
-    pub async fn _query_status(app_ctx: &Context) -> Result<Status, Error> {
+    pub async fn _query_status(app_ctx: &MinimalContext) -> Result<Status, Error> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
@@ -89,7 +92,7 @@ impl GrugQuery {
         #[graphql(desc = "Request as JSON")] request: grug_types::Query,
         height: Option<u64>,
     ) -> Result<QueryResponse, Error> {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<MinimalContext>()?;
 
         Self::_query_app(app_ctx, request, height)
             .await
@@ -103,13 +106,13 @@ impl GrugQuery {
         height: Option<u64>,
         #[graphql(default = false)] prove: bool,
     ) -> Result<Store, Error> {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<MinimalContext>()?;
 
         Self::_query_store(app_ctx, key, height, prove).await
     }
 
     async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<MinimalContext>()?;
 
         Self::_query_status(app_ctx).await
     }
@@ -125,7 +128,7 @@ impl GrugQuery {
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Transaction as Json")] tx: grug_types::UnsignedTx,
     ) -> Result<TxOutcome, Error> {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<MinimalContext>()?;
 
         Ok(app_ctx.grug_app.simulate(tx).await?)
     }

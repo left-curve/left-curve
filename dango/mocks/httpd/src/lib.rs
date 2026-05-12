@@ -137,7 +137,7 @@ where
 
     let app = suite.read().await.app.clone_without_indexer();
 
-    let indexer_httpd_context = indexer_httpd::context::Context::new(
+    let indexer_httpd_context = indexer_httpd::context::FullContext::new(
         indexer_cache_context,
         sql_context.clone(),
         Arc::new(app),

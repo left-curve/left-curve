@@ -2,7 +2,7 @@ use {
     async_graphql::{types::connection::*, *},
     dango_types::account_factory::UserIndex,
     indexer_httpd::{
-        context::Context,
+        context::FullContext,
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     indexer_sql::entity,
@@ -75,7 +75,7 @@ impl AccountQuery {
     ) -> Result<
         Connection<OpaqueCursor<AccountCursor>, entity::accounts::Model, EmptyFields, EmptyFields>,
     > {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         paginate_models(
             app_ctx,

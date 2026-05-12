@@ -1,6 +1,6 @@
 use {
     super::error::Error,
-    crate::{context::Context, routes},
+    crate::{context::FullContext, routes},
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
@@ -23,12 +23,12 @@ use {crate::middlewares::metrics::init_httpd_metrics, actix_web_metrics::ActixWe
 /// Run the HTTP server, includes GraphQL and REST endpoints.
 pub async fn run_server<CA, GS>(
     httpd_config: &HttpdConfig,
-    context: Context,
+    context: FullContext,
     config_app: CA,
-    build_schema: fn(Context) -> GS,
+    build_schema: fn(FullContext) -> GS,
 ) -> Result<(), Error>
 where
-    CA: Fn(Context, GS) -> Box<dyn Fn(&mut ServiceConfig)> + Clone + Send + 'static,
+    CA: Fn(FullContext, GS) -> Box<dyn Fn(&mut ServiceConfig)> + Clone + Send + 'static,
     GS: Clone + Send + 'static,
 {
     let graphql_schema = build_schema(context.clone());
@@ -104,7 +104,7 @@ where
     Ok(())
 }
 
-pub fn config_app<G>(app_ctx: Context, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
+pub fn config_app<G>(app_ctx: FullContext, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
 where
     G: Clone + 'static,
 {
@@ -131,7 +131,7 @@ where
 /// shutdown automatically on SIGTERM/SIGINT.
 pub async fn run_minimal_server(
     httpd_config: &HttpdConfig,
-    context: grug_httpd::context::Context,
+    context: crate::context::MinimalContext,
     shutdown_flag: Arc<AtomicBool>,
 ) -> Result<(), Error> {
     let graphql_schema = crate::graphql::minimal::build_minimal_schema(context.clone());

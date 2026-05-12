@@ -1,5 +1,5 @@
 use {
-    crate::context::Context,
+    crate::context::FullContext,
     actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
     async_graphql::futures_util::TryFutureExt,
     chrono::{Duration, Utc},
@@ -12,7 +12,7 @@ use {
 
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/up")]
-pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
+pub async fn up(app_ctx: web::Data<FullContext>) -> Result<impl Responder, Error> {
     // This ensures that grug is working
     let block = app_ctx
         .base

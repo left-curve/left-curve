@@ -3,7 +3,7 @@ use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics
 #[cfg(feature = "tracing")]
 use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
-    crate::context::Context,
+    crate::context::FullContext,
     async_graphql::{Schema, dataloader::DataLoader},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
@@ -23,10 +23,10 @@ pub mod subscription;
 pub mod telemetry;
 pub mod types;
 
-pub(crate) type AppSchema =
+pub type FullSchema =
     Schema<query::IndexerQuery, mutation::IndexerMutation, subscription::IndexerSubscription>;
 
-pub fn build_schema(app_ctx: Context) -> AppSchema {
+pub fn build_full_schema(app_ctx: FullContext) -> FullSchema {
     #[cfg(feature = "metrics")]
     init_graphql_metrics();
 

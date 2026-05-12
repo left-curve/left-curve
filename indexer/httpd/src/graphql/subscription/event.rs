@@ -207,7 +207,7 @@ impl EventSubscription {
         query: sea_orm::Select<entity::events::Entity>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let latest_block_height = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)
@@ -289,7 +289,7 @@ impl EventSubscription {
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let latest_block_height = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)

@@ -145,7 +145,7 @@ pub async fn setup_test_with_indexer(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     dango_httpd::context::Context,
     dango_indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
@@ -167,7 +167,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     dango_httpd::context::Context,
     dango_indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
@@ -235,7 +235,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
-    let indexer_httpd_context = indexer_httpd::context::Context::new(
+    let indexer_httpd_context = indexer_httpd::context::FullContext::new(
         indexer_cache_context,
         sql_context.clone(),
         Arc::new(suite.app.clone_without_indexer()),

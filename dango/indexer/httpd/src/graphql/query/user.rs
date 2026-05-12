@@ -4,7 +4,7 @@ use {
         *,
     },
     dango_types::account_factory::UserIndex,
-    indexer_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     indexer_sql::entity,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
@@ -41,7 +41,7 @@ impl UserQuery {
         ctx: &async_graphql::Context<'_>,
         user_index: UserIndex,
     ) -> Result<Option<entity::users::Model>> {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         Ok(entity::users::Entity::find()
             .filter(entity::users::Column::UserIndex.eq(user_index))
@@ -61,7 +61,7 @@ impl UserQuery {
         public_key: Option<String>,
         public_key_hash: Option<String>,
     ) -> Result<Connection<UserCursorType, entity::users::Model, EmptyFields, EmptyFields>> {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         query_with::<UserCursorType, _, _, _, _>(
             after,

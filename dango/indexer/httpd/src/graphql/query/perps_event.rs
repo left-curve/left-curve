@@ -2,7 +2,7 @@ use {
     async_graphql::{types::connection::*, *},
     chrono::{DateTime, Utc},
     indexer_httpd::{
-        context::Context,
+        context::FullContext,
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     indexer_sql::entity,
@@ -83,7 +83,7 @@ impl PerpsEventQuery {
             EmptyFields,
         >,
     > {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         paginate_models(
             app_ctx,

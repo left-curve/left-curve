@@ -31,7 +31,7 @@ impl GrugSubscription {
             return Err(Error::new("blockInterval must be >= 1"));
         }
 
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         #[cfg(feature = "metrics")]
         let gauge_guard = Arc::new(GaugeGuard::new(
@@ -94,7 +94,7 @@ impl GrugSubscription {
             return Err(Error::new("blockInterval must be >= 1"));
         }
 
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         #[cfg(feature = "metrics")]
         let gauge_guard = Arc::new(GaugeGuard::new(
@@ -108,34 +108,41 @@ impl GrugSubscription {
             GrugQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await?;
         let latest_block_height = initial_response.block_height;
 
-        Ok(guard_subscription_stream(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
-
-            async { Ok(initial_response) }
-        })
-        .chain(
-            stream
-                .scan(latest_block_height, move |last_processed, block_height| {
-                    let result = if block_height > *last_processed
-                        && (block_height - latest_block_height) % block_interval == 0
-                    {
-                        *last_processed = block_height;
-                        Some(Some(block_height))
-                    } else {
-                        Some(None)
-                    };
-                    futures::future::ready(result)
-                })
-                .filter_map(|opt_height| async move { opt_height })
-                .then(move |_block_height| {
+        Ok(
+            guard_subscription_stream(
+                once({
                     #[cfg(feature = "metrics")]
                     let _guard = gauge_guard.clone();
-                    let key = key.clone();
 
-                    async move { GrugQuery::_query_store(&app_ctx.base, key, None, prove).await }
-                }),
-        ), sub_guard))
+                    async { Ok(initial_response) }
+                })
+                .chain(
+                    stream
+                        .scan(latest_block_height, move |last_processed, block_height| {
+                            let result = if block_height > *last_processed
+                                && (block_height - latest_block_height) % block_interval == 0
+                            {
+                                *last_processed = block_height;
+                                Some(Some(block_height))
+                            } else {
+                                Some(None)
+                            };
+                            futures::future::ready(result)
+                        })
+                        .filter_map(|opt_height| async move { opt_height })
+                        .then(move |_block_height| {
+                            #[cfg(feature = "metrics")]
+                            let _guard = gauge_guard.clone();
+                            let key = key.clone();
+
+                            async move {
+                                GrugQuery::_query_store(&app_ctx.base, key, None, prove).await
+                            }
+                        }),
+                ),
+                sub_guard,
+            ),
+        )
     }
 
     async fn query_status<'a>(
@@ -153,7 +160,7 @@ impl GrugSubscription {
             return Err(Error::new("blockInterval must be >= 1"));
         }
 
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         #[cfg(feature = "metrics")]
         let gauge_guard = Arc::new(GaugeGuard::new(

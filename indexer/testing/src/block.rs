@@ -7,13 +7,13 @@ use {
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
-    indexer_httpd::context::Context,
+    indexer_httpd::context::FullContext,
     std::{str::FromStr, sync::Arc},
     tokio::sync::RwLock,
 };
 
 pub async fn create_block() -> anyhow::Result<(
-    Context,
+    FullContext,
     Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, HookedIndexer>>,
     TestAccounts,
 )> {
@@ -23,7 +23,7 @@ pub async fn create_block() -> anyhow::Result<(
 pub async fn create_blocks(
     count: usize,
 ) -> anyhow::Result<(
-    Context,
+    FullContext,
     Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, HookedIndexer>>,
     TestAccounts,
 )> {
@@ -70,7 +70,7 @@ pub async fn create_blocks(
 
     let suite_guard = suite.read().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
-    let httpd_context = Context::new(
+    let httpd_context = FullContext::new(
         indexer_cache_context,
         sql_indexer_context,
         Arc::new(httpd_app),

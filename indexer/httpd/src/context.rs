@@ -1,23 +1,28 @@
 use {
     crate::traits::ConsensusClient,
-    grug_httpd::{context::Context as BaseContext, traits::QueryApp},
+    grug_httpd::traits::QueryApp,
     indexer_sql::{EventCacheReader, pubsub::PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
 };
 
+/// Chain-only context — what `cfg.indexer.enabled = false` mode runs against.
+/// Holds just the chain query app. `FullContext` embeds one of these as its
+/// `chain` field so `GrugQuery` resolvers work in either schema.
+pub use grug_httpd::context::Context as MinimalContext;
+
 #[derive(Clone)]
-pub struct Context {
+pub struct FullContext {
     pub sql_context: indexer_sql::Context,
     pub indexer_cache_context: indexer_cache::Context,
-    pub base: BaseContext,
+    pub base: MinimalContext,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
     pub event_cache: EventCacheReader,
 }
 
-impl Context {
+impl FullContext {
     pub fn new(
         indexer_cache_context: indexer_cache::Context,
         ctx: indexer_sql::Context,
@@ -27,7 +32,7 @@ impl Context {
         Self {
             indexer_cache_context,
             sql_context: ctx.clone(),
-            base: BaseContext::new(grug_app),
+            base: MinimalContext::new(grug_app),
             db: ctx.db,
             pubsub: ctx.pubsub,
             consensus_client,
@@ -40,7 +45,7 @@ impl Context {
     }
 }
 
-impl Context {
+impl FullContext {
     pub async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
         let database_url = "sqlite::memory:";
 
