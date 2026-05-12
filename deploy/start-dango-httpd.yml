@@ -3,7 +3,7 @@
 # Useful for querying blocks/state from the DB when the chain can't run.
 #
 # Usage:
-#   just start-dango-httpd mainnet 100.89.7.33
+#   just start-dango-httpd mainnet 100.72.62.100
 - name: Start dango HTTP server (without CometBFT)
   hosts: full-app
   remote_user: "{{ deploy_user }}"

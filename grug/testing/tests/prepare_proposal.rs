@@ -15,8 +15,8 @@ mod mock_oracle {
     use {
         grug_storage::Map,
         grug_types::{
-            AuthCtx, AuthResponse, Empty, ImmutableCtx, Json, JsonSerExt, MutableCtx, Order,
-            QueryRequest, Response, StdResult, Tx,
+            AuthCtx, Empty, ImmutableCtx, Json, JsonSerExt, MutableCtx, Order, QueryRequest,
+            Response, StdResult, Tx,
         },
         serde::{Deserialize, Serialize},
         std::collections::BTreeMap,
@@ -51,11 +51,11 @@ mod mock_oracle {
         Ok(Response::new())
     }
 
-    pub fn authenticate(_ctx: AuthCtx, _tx: Tx) -> StdResult<AuthResponse> {
+    pub fn authenticate(_ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
         // In practice, the contract should make sure the transaction only
         // contains oracle updates.
         // In this test however, for simplicity, we skip this.
-        Ok(AuthResponse::new())
+        Ok(Response::new())
     }
 
     pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
@@ -165,8 +165,8 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
     }
 }
 
-#[test]
-fn prepare_proposal_works() {
+#[tokio::test]
+async fn prepare_proposal_works() {
     let (mut suite, mut accounts) = TestBuilder::new_with_pp(CoingeckoPriceFeeder)
         .add_account("larry", Coins::new())
         .set_owner("larry")
@@ -189,12 +189,14 @@ fn prepare_proposal_works() {
             None,
             Coins::new(),
         )
+        .await
         .should_succeed()
         .address;
 
     // Set oracle contract address as app config.
     suite
         .configure(&mut accounts["larry"], None, Some(oracle))
+        .await
         .should_succeed();
 
     // At this point, the feeder shouldn't have fed any price yet, because the
@@ -206,7 +208,7 @@ fn prepare_proposal_works() {
     // Make an "empty" block.
     // The block should contain 1 transaction, the price feed inserted by the
     // proposal preparer.
-    let outcomes = suite.make_empty_block().block_outcome.tx_outcomes;
+    let outcomes = suite.make_empty_block().await.block_outcome.tx_outcomes;
     assert_eq!(outcomes.len(), 1);
     assert!(outcomes[0].result.is_ok());
 

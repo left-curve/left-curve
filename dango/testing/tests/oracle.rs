@@ -18,8 +18,8 @@ fn setup_oracle_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr)
     (suite, accounts, contracts.oracle)
 }
 
-#[test]
-fn pyth_lazer() {
+#[tokio::test]
+async fn pyth_lazer() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
     let message = LeEcdsaMessage {
@@ -50,6 +50,7 @@ fn pyth_lazer() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // The trusted signer was set in genesis. For the purpose of this test,
@@ -64,6 +65,7 @@ fn pyth_lazer() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Try to feed price from Pyth Lazer. Should fail because the signer is not trusted.
@@ -74,6 +76,7 @@ fn pyth_lazer() {
             &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message.clone()])),
             Coins::default(),
         )
+        .await
         .should_fail_with_error("signer is not trusted");
 
     // Get current time
@@ -90,6 +93,7 @@ fn pyth_lazer() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Query the trusted signers
@@ -116,6 +120,7 @@ fn pyth_lazer() {
             &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message.clone()])),
             Coins::default(),
         )
+        .await
         .should_fail_with_error("signer is no longer trusted");
 
     // Set the signer as trusted but with a timestamp in the future.
@@ -129,6 +134,7 @@ fn pyth_lazer() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Try to feed price from Pyth Lazer. Should succeed because the signer is trusted.
@@ -139,6 +145,7 @@ fn pyth_lazer() {
             &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message])),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Query the BTC price

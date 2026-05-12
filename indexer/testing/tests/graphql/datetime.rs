@@ -1,5 +1,5 @@
 use {
-    dango_sdk::{Block, block},
+    dango_graphql_types::{Block, block},
     graphql_client::GraphQLQuery,
     indexer_testing::{block::create_block, build_app_service, call_graphql_query},
 };

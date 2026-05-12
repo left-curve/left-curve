@@ -2,10 +2,10 @@ use {
     crate::{ExternalApi, ExternalQuerier, ExternalStorage, Region},
     error_backtrace::Backtraceable,
     grug_types::{
-        AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, BorshDeExt, BorshSerExt,
-        Context, GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx,
-        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome, make_auth_ctx,
-        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
+        AuthCtx, BankMsg, BankQuery, BankQueryResponse, BorshDeExt, BorshSerExt, Context,
+        GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx, QuerierWrapper,
+        Response, SubMsgResult, SudoCtx, Tx, TxOutcome, make_auth_ctx, make_immutable_ctx,
+        make_mutable_ctx, make_sudo_ctx,
     },
     serde::de::DeserializeOwned,
 };
@@ -224,7 +224,7 @@ where
 }
 
 pub fn do_authenticate<E>(
-    authenticate_fn: &dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E>,
+    authenticate_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
     ctx_ptr: usize,
     tx_ptr: usize,
 ) -> usize
@@ -240,30 +240,6 @@ where
         let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
 
         authenticate_fn(ctx, tx).into_generic_result()
-    })();
-
-    let res_bytes = res.to_borsh_vec().unwrap();
-
-    Region::release_buffer(res_bytes) as usize
-}
-
-pub fn do_backrun<E>(
-    backrun_fn: &dyn Fn(AuthCtx, Tx) -> Result<Response, E>,
-    ctx_ptr: usize,
-    tx_ptr: usize,
-) -> usize
-where
-    E: Backtraceable,
-{
-    let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
-    let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
-
-    let res = (|| {
-        let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
-        let ctx = make_auth_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
-        let tx = unwrap_into_generic_result!(tx_bytes.deserialize_borsh());
-
-        backrun_fn(ctx, tx).into_generic_result()
     })();
 
     let res_bytes = res.to_borsh_vec().unwrap();

@@ -2,7 +2,14 @@ import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
 import { Suspense, useMemo, useRef } from "react";
 
-import { Button, Modals, lazyWithRetry, twMerge, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import {
+  Button,
+  Modals,
+  lazyWithRetry,
+  twMerge,
+  useApp,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
 import type React from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Sheet, type SheetRef } from "react-modal-sheet";
@@ -315,6 +322,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazyWithRetry(() =>
       import("./pnl-share/PnlShare").then(({ PnlShare }) => ({
         default: PnlShare,
+      })),
+    ),
+  },
+  [Modals.PointsShare]: {
+    component: lazyWithRetry(() =>
+      import("./points-share/PointsShare").then(({ PointsShare }) => ({
+        default: PointsShare,
       })),
     ),
   },

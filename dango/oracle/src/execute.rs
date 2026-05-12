@@ -10,9 +10,9 @@ use {
         perps,
     },
     grug::{
-        Addr, Api, AuthCtx, AuthMode, AuthResponse, Binary, Coins, Denom, Inner, JsonDeExt,
-        Message, MsgExecute, MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage,
-        SubMsgResult, SudoCtx, Timestamp, Tx,
+        Addr, Api, AuthCtx, AuthMode, Binary, Coins, Denom, Inner, JsonDeExt, Message, MsgExecute,
+        MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
+        Timestamp, Tx,
     },
     pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
     std::collections::BTreeMap,
@@ -41,7 +41,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 /// - The contract being executed must be the oracle itself.
 /// - the execute message must be `FeedPrices`.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     // Authenticate can only be called during finalize.
     ensure!(
         ctx.mode == AuthMode::Finalize,
@@ -65,7 +65,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         bail!("the execute message must be feed prices");
     };
 
-    Ok(AuthResponse::new().request_backrun(false))
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]

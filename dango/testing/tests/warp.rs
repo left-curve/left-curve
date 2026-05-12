@@ -24,8 +24,8 @@ use {
     sea_orm::EntityTrait,
 };
 
-#[test]
-fn receiving_remote() {
+#[tokio::test]
+async fn receiving_remote() {
     let (suite, mut accounts, _, contracts, validator_sets) = setup_test(Default::default());
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -39,6 +39,7 @@ fn receiving_remote() {
             &accounts.user1,
             Uint128::new(MOCK_RECEIVE_AMOUNT),
         )
+        .await
         .should_succeed();
 
     // The message should have been recorded as received.
@@ -87,6 +88,7 @@ async fn sending_remote() {
             },
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
+        .await
         .should_succeed();
 
     // Message should have been inserted into the Merkle tree.
@@ -148,7 +150,7 @@ async fn sending_remote() {
 
     assert_that!(blocks).has_length(1);
 
-    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+    let transfers = indexer_sql::entity::transfers::Entity::find()
         .all(&context.db)
         .await
         .expect("Can't fetch transfers");
@@ -170,8 +172,8 @@ async fn sending_remote() {
     ]);
 }
 
-#[test]
-fn sending_remote_incorrect_route() {
+#[tokio::test]
+async fn sending_remote_incorrect_route() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test(Default::default());
 
     const RECIPIENT: Addr32 =
@@ -196,6 +198,7 @@ fn sending_remote_incorrect_route() {
             },
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
+        .await
         .should_fail_with_error(StdError::data_not_found::<Addr>(
             REVERSE_ROUTES
                 .path((&usdc::DENOM, ETHEREUM_WETH_REMOTE))
@@ -203,8 +206,8 @@ fn sending_remote_incorrect_route() {
         ));
 }
 
-#[test]
-fn sending_remote_insufficient_reserve() {
+#[tokio::test]
+async fn sending_remote_insufficient_reserve() {
     let (suite, mut accounts, _, contracts, validator_sets) = setup_test(Default::default());
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -234,6 +237,7 @@ fn sending_remote_insufficient_reserve() {
             },
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
+        .await
         .should_fail_with_error(format!(
             "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
             contracts.warp, SOLANA_USDC_REMOTE, 0, SEND_AMOUNT_AFTER_FEE
@@ -248,6 +252,7 @@ fn sending_remote_insufficient_reserve() {
             &accounts.user2,
             Uint128::new(SEND_AMOUNT + 100), // A little more than sufficient amount.
         )
+        .await
         .should_succeed();
 
     // User1 tries to withdraw again. Should succeed.
@@ -261,5 +266,6 @@ fn sending_remote_insufficient_reserve() {
             },
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
+        .await
         .should_succeed();
 }

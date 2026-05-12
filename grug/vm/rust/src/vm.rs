@@ -8,7 +8,7 @@ use {
 ///
 /// This doesn't include `allocate` and `deallocate`, which are only relevant
 /// for the `WasmVm`.
-pub const KNOWN_FUNCTIONS: [&str; 13] = [
+pub const KNOWN_FUNCTIONS: [&str; 12] = [
     "instantate",
     "execute",
     "migrate",
@@ -16,7 +16,6 @@ pub const KNOWN_FUNCTIONS: [&str; 13] = [
     "reply",
     "query",
     "authenticate",
-    "backrun",
     "bank_execute",
     "bank_query",
     "withhold_fee",
@@ -151,17 +150,6 @@ impl Instance for RustInstance {
             "authenticate" => {
                 let tx = param.deserialize_borsh()?;
                 let res = contract.authenticate(
-                    ctx.clone(),
-                    &mut self.storage,
-                    &MockApi,
-                    &self.querier,
-                    tx,
-                )?;
-                res.to_borsh_vec()
-            },
-            "backrun" => {
-                let tx = param.deserialize_borsh()?;
-                let res = contract.backrun(
                     ctx.clone(),
                     &mut self.storage,
                     &MockApi,

@@ -45,6 +45,8 @@ export type OatEntry = {
   token_id: string;
   /** Seconds with nanosecond decimal precision, serialized as a string by the backend (e.g. "1743460800.000000000") */
   registered_at: string;
+  /** Seconds with nanosecond decimal precision — may be clamped to the epoch window by the backend */
+  expired_at: string;
 };
 
 export class OatRateLimitError extends Error {

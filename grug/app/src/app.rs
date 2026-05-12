@@ -7,20 +7,20 @@ use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
-        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
-        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
-        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
-        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
-        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
-        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        Indexer, IndexerContext, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE,
+        NaiveProposalPreparer, NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer,
+        QuerierProviderImpl, TraceOption, Vm, catch_and_push_event, do_authenticate, do_configure,
+        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
+        do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance, query_balances,
+        query_code, query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
+        query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, Buffer, CheckTxEvents,
-        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus,
-        GENESIS_SENDER, GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
+        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, GENESIS_SENDER,
+        GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
         MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, Shared,
         StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
@@ -353,7 +353,7 @@ where
     // 4. remove orphaned nodes
     // 5. flush (but not commit) state changes to DB
     // 5. indexer `index_block`
-    pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
+    pub async fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
         #[cfg(feature = "tracing")]
         {
             tracing::info!(
@@ -491,18 +491,15 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .pre_indexing(block.info.height, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `pre_indexing`");
-            }
-        })?;
+        self.indexer
+            .pre_indexing(block.info.height, &mut IndexerContext::new())
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `pre_indexing`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -670,18 +667,15 @@ where
             tx_outcomes,
         };
 
-        let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .index_block(&block, &block_outcome, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `index_block`");
-            }
-        })?;
+        self.indexer
+            .index_block(&block, &block_outcome, &mut IndexerContext::new())
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `index_block`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -692,7 +686,7 @@ where
         Ok(block_outcome)
     }
 
-    pub fn do_commit(&self) -> AppResult<()> {
+    pub async fn do_commit(&self) -> AppResult<()> {
         #[cfg(feature = "tracing")]
         {
             tracing::info!("Received Commit request");
@@ -712,18 +706,15 @@ where
         let cfg = CONFIG.load(&storage)?;
         let app_cfg = APP_CONFIG.load(&storage)?;
 
-        let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `post_indexing`");
-            }
-        })?;
+        self.indexer
+            .post_indexing(version, cfg, app_cfg, &mut IndexerContext::new())
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `post_indexing`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -956,7 +947,7 @@ where
         self.do_init_chain(chain_id, block, genesis_state)
     }
 
-    pub fn do_finalize_block_raw<T>(
+    pub async fn do_finalize_block_raw<T>(
         &self,
         block_info: BlockInfo,
         raw_txs: &[T],
@@ -999,7 +990,7 @@ where
             txs,
         };
 
-        self.do_finalize_block(block)
+        self.do_finalize_block(block).await
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<CheckTxOutcome> {
@@ -1131,48 +1122,36 @@ where
     )
     .into_commitment_status();
 
-    let request_backrun = match events.authenticate.as_result() {
-        Err((_, err)) => {
-            drop(msg_buffer);
-            let err = err.clone();
-            return process_finalize_fee(
-                vm,
-                fee_buffer,
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                events,
-                Err(err),
-                trace_opt,
-            );
-        },
-        Ok(event) => {
-            msg_buffer.write_access().commit();
-            if let EventStatus::Ok(e) = event {
-                e.backrun
-            } else {
-                unreachable!();
-            }
-        },
-    };
+    if let Err((_, err)) = events.authenticate.as_result() {
+        drop(msg_buffer);
+        let err = err.clone();
+        return process_finalize_fee(
+            vm,
+            fee_buffer,
+            gas_tracker,
+            block,
+            tx,
+            mode,
+            events,
+            Err(err),
+            trace_opt,
+        );
+    }
+    msg_buffer.write_access().commit();
 
-    // Loop through the messages and execute one by one. Then, call the sender
-    // account's `backrun` method.
+    // Loop through the messages and execute one by one.
     //
     // If everything succeeds, commit state changes in `msg_buffer` into `fee_buffer`,
     // and record the events emitted.
     //
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
     // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
-    events.msgs_and_backrun = process_msgs_then_backrun(
+    events.msgs_and_backrun = process_msgs(
         vm.clone(),
         msg_buffer.clone(),
         gas_tracker.clone(),
         block,
         &tx,
-        mode,
-        request_backrun,
         trace_opt,
     )
     .into_commitment();
@@ -1223,14 +1202,12 @@ where
 }
 
 #[inline]
-fn process_msgs_then_backrun<S, VM>(
+fn process_msgs<S, VM>(
     vm: VM,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    mode: AuthMode,
-    request_backrun: bool,
     trace_opt: TraceOption,
 ) -> EventResult<MsgsAndBackrunEvents>
 where
@@ -1261,21 +1238,6 @@ where
             evt,
             msgs
         }
-    }
-
-    if request_backrun {
-        catch_and_update_event! {
-            do_backrun(
-                vm,
-                Box::new(buffer),
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                trace_opt,
-            ),
-            evt => backrun
-        };
     }
 
     EventResult::Ok(evt)

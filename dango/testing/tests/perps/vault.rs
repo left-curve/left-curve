@@ -35,12 +35,12 @@ use {
 /// | 9    | LP removes remaining shares                      | unlock reflects realized PnL                    |
 /// | 10   | Advance time past cooldown                       | unlocks credited to LP margin                   |
 /// | 11   | Verify total withdrawn ≈ $5k + vault profit      | —                                               |
-#[test]
-fn vault_lp_lifecycle() {
+#[tokio::test]
+async fn vault_lp_lifecycle() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -55,6 +55,7 @@ fn vault_lp_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -67,6 +68,7 @@ fn vault_lp_lifecycle() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let lp_state = suite
@@ -123,13 +125,14 @@ fn vault_lp_lifecycle() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
     // Step 3: Call OnOracleUpdate so the vault places bid+ask.
     // -------------------------------------------------------------------------
 
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite
         .execute(
@@ -138,6 +141,7 @@ fn vault_lp_lifecycle() {
             &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Vault should have orders on the book.
@@ -181,6 +185,7 @@ fn vault_lp_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -199,6 +204,7 @@ fn vault_lp_lifecycle() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Vault should now have a long position.
@@ -222,13 +228,13 @@ fn vault_lp_lifecycle() {
     // Step 5: Oracle → $2,200. Vault's long has unrealized profit.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_200);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_200).await;
 
     // -------------------------------------------------------------------------
     // Step 6: OnOracleUpdate at $2,200 → vault refreshes orders.
     // -------------------------------------------------------------------------
 
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite
         .execute(
@@ -237,6 +243,7 @@ fn vault_lp_lifecycle() {
             &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -260,6 +267,7 @@ fn vault_lp_lifecycle() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Vault should have realized PnL → margin increased above pre-trade level.
@@ -290,6 +298,7 @@ fn vault_lp_lifecycle() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let lp_state = suite
@@ -322,6 +331,7 @@ fn vault_lp_lifecycle() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let lp_state = suite
@@ -343,7 +353,7 @@ fn vault_lp_lifecycle() {
     // Step 10: Advance time past cooldown (1 day) so cron processes unlocks.
     // -------------------------------------------------------------------------
 
-    suite.increase_time(Duration::from_days(2));
+    suite.increase_time(Duration::from_days(2)).await;
 
     // -------------------------------------------------------------------------
     // Step 11: Verify total withdrawn reflects original $5k + vault profits.
@@ -383,8 +393,8 @@ fn vault_lp_lifecycle() {
 /// orders), and that when `OnOracleUpdate` fails the oracle price update is
 /// **not** reverted while the perps state changes from the failed call are
 /// rolled back.
-#[test]
-fn oracle_triggers_on_oracle_update() {
+#[tokio::test]
+async fn oracle_triggers_on_oracle_update() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     let pair = pair_id();
@@ -413,6 +423,7 @@ fn oracle_triggers_on_oracle_update() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -426,6 +437,7 @@ fn oracle_triggers_on_oracle_update() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -438,6 +450,7 @@ fn oracle_triggers_on_oracle_update() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -464,6 +477,7 @@ fn oracle_triggers_on_oracle_update() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Vault should have no orders before any price is fed.
@@ -502,6 +516,7 @@ fn oracle_triggers_on_oracle_update() {
             &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message1])),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Oracle price should be set for the perps pair.
@@ -602,6 +617,7 @@ fn oracle_triggers_on_oracle_update() {
             &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message2])),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Oracle price should have been updated (new timestamp or value).
@@ -667,14 +683,14 @@ fn oracle_triggers_on_oracle_update() {
 ///
 /// This test asserts the vault is healthy at step 6 and is expected to FAIL
 /// under the current code. Once the bug is fixed, this test should pass.
-#[test]
-fn vault_overcommits_margin_after_position_and_price_drop() {
+#[tokio::test]
+async fn vault_overcommits_margin_after_position_and_price_drop() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     let pair = pair_id();
 
     // Register oracle: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $5,000 USDC and adds all of it as vault
@@ -688,6 +704,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(5_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -700,6 +717,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let vault_state = suite
@@ -738,6 +756,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -754,6 +773,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -783,6 +803,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -801,6 +822,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify vault has a long position.
@@ -827,7 +849,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
     //   Vault is STILL HEALTHY ($1,500 >= $1,062.50) but has $0 available.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_700);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_700).await;
 
     // Sanity check: vault should be healthy at this point.
     let vault_ext: perps::UserStateExtended = suite
@@ -879,6 +901,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // With the fix, available margin is $0, so the vault places NO orders.
@@ -927,6 +950,7 @@ fn vault_overcommits_margin_after_position_and_price_drop() {
             })),
             Coins::new(),
         )
+        .await
         // OLD (incorrect) behavior: the vault had a bid, so this would succeed.
         // .should_succeed();
         .should_fail_with_error("no liquidity");

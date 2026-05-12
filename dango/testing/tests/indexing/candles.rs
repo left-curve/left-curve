@@ -56,6 +56,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
@@ -107,6 +108,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -408,15 +410,16 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Make an empty block at timestamps 41.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     // This function makes a block containing a single limit buy order and a
     // limit sell order of the same price and size. This produces a clearing
     // price that is to be indexed.
-    let mut make_block_with_price = |suite: &mut TestSuite<_, _, _, _>, price, amount| {
+    let mut make_block_with_price = async |suite: &mut TestSuite<_, _, _, _>, price, amount| {
         suite
             .execute(
                 &mut accounts.user1,
@@ -445,6 +448,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                     usdc::DENOM.clone() => amount.checked_mul_dec_ceil(price).unwrap(),
                 },
             )
+            .await
             .should_succeed();
     };
 
@@ -472,7 +476,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Price: 100_000
     // Volume in DANGO: 1
     // Volume in USDC: 1 * 100_000 = 100_000
-    make_block_with_price(&mut suite, Udec128_24::new(100_000), Uint128::new(1));
+    make_block_with_price(&mut suite, Udec128_24::new(100_000), Uint128::new(1)).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -499,7 +503,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Price: 99_999
     // Volume in DANGO: 1 + 1 (from previous block) = 2
     // Volume in USDC: 99_999 + 100_000 (from previous block) = 199_999
-    make_block_with_price(&mut suite, Udec128_24::new(99_999), Uint128::new(1));
+    make_block_with_price(&mut suite, Udec128_24::new(99_999), Uint128::new(1)).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -526,7 +530,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Price: 100_001
     // Volume in DANGO: 1 + 2 (from previous blocks) = 3
     // Volume in USDC: 100_001 + 199_999 (from previous blocks) = 300_000
-    make_block_with_price(&mut suite, Udec128_24::new(100_001), Uint128::new(1));
+    make_block_with_price(&mut suite, Udec128_24::new(100_001), Uint128::new(1)).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -551,7 +555,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Block 4
     // Block time: 121 seconds
     // Do nothing.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -620,10 +624,11 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Make an empty block at timestamps 41.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     // -------------------------------- block 1 --------------------------------
 
@@ -665,6 +670,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
                 usdc::DENOM.clone() => Uint128::new(200_000),
             },
         )
+        .await
         .should_succeed();
 
     suite.app.indexer.wait_for_finish().await?;
@@ -749,6 +755,7 @@ async fn create_pair_prices(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()

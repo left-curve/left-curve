@@ -148,7 +148,7 @@ impl IndexerCmd {
                 );
 
                 // Run the metrics HTTP server
-                indexer_httpd::server::run_metrics_server(
+                indexer_metrics::run_metrics_server(
                     &cfg.metrics_httpd.ip,
                     cfg.metrics_httpd.port,
                     metrics_handler,

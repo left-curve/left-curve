@@ -5,8 +5,8 @@ use {
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        Addr, AuthResponse, BlockInfo, BorshDeExt, BorshSerExt, CheckedContractEvent, Context,
-        EvtGuest, GenericResult, Hash256, Response, Storage,
+        Addr, BlockInfo, BorshDeExt, BorshSerExt, CheckedContractEvent, Context, EvtGuest,
+        GenericResult, Hash256, Response, Storage,
     },
 };
 
@@ -239,64 +239,6 @@ where
         msg_depth,
         ctx,
         response,
-        evt,
-        trace_opt,
-    )
-}
-
-pub fn call_in_1_out_1_handle_auth_response<VM, P>(
-    vm: VM,
-    storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
-    msg_depth: usize,
-    query_depth: usize,
-    state_mutable: bool,
-    name: &'static str,
-    code_hash: Hash256,
-    ctx: &Context,
-    param: &P,
-    backrun: &mut bool,
-    trace_opt: TraceOption,
-) -> EventResult<EvtGuest>
-where
-    P: BorshSerialize,
-    VM: Vm + Clone + Send + Sync + 'static,
-    AppError: From<VM::Error>,
-{
-    let evt = EvtGuest::base(ctx.contract, name);
-
-    let auth_response = catch_event! {
-        {
-            call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
-                vm.clone(),
-                storage.clone(),
-                gas_tracker.clone(),
-                query_depth,
-                state_mutable,
-                name,
-                code_hash,
-                ctx,
-                param,
-            )?
-            .map_err(|msg| AppError::Guest {
-                address: ctx.contract,
-                name,
-                msg: msg.error,
-                backtrace: msg.backtrace.capture_if_empty()
-            })
-        },
-        evt
-    };
-
-    *backrun = auth_response.request_backrun;
-
-    handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        msg_depth,
-        ctx,
-        auth_response.response,
         evt,
         trace_opt,
     )

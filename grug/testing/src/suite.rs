@@ -219,32 +219,32 @@ where
     }
 
     /// Increase the chain's time by the given duration.
-    pub fn increase_time(&mut self, duration: Duration) {
+    pub async fn increase_time(&mut self, duration: Duration) {
         let old_block_time = self.block_time;
         self.block_time = duration;
-        self.make_empty_block();
+        self.make_empty_block().await;
         self.block_time = old_block_time;
     }
 
     /// Make a new block without any transaction. Panic if any error happens.
-    pub fn make_empty_block(&mut self) -> MakeBlockOutcome {
-        self.make_block(vec![])
+    pub async fn make_empty_block(&mut self) -> MakeBlockOutcome {
+        self.make_block(vec![]).await
     }
 
     /// Make a new block without any transaction.
-    pub fn try_make_empty_block(&mut self) -> AppResult<MakeBlockOutcome> {
-        self.try_make_block(vec![])
+    pub async fn try_make_empty_block(&mut self) -> AppResult<MakeBlockOutcome> {
+        self.try_make_block(vec![]).await
     }
 
     /// Make a new block with the given transactions. Panic if any error happens.
-    pub fn make_block(&mut self, txs: Vec<Tx>) -> MakeBlockOutcome {
-        self.try_make_block(txs).unwrap_or_else(|err| {
+    pub async fn make_block(&mut self, txs: Vec<Tx>) -> MakeBlockOutcome {
+        self.try_make_block(txs).await.unwrap_or_else(|err| {
             panic!("fatal error while making block: {err}");
         })
     }
 
     /// Make a new block with the given transactions.
-    pub fn try_make_block(&mut self, txs: Vec<Tx>) -> AppResult<MakeBlockOutcome> {
+    pub async fn try_make_block(&mut self, txs: Vec<Tx>) -> AppResult<MakeBlockOutcome> {
         // Advance block height and time
         let mut new_block = self.block;
         new_block.height += 1;
@@ -267,11 +267,10 @@ where
             txs: txs.clone(),
         };
 
-        // Call ABCI `FinalizeBlock` method
-        let block_outcome = self.app.do_finalize_block(block)?; // TODO: drop uncommitted changes if errors
-
-        // Call ABCI `Commit` method
-        self.app.do_commit()?;
+        // Call ABCI `FinalizeBlock` then `Commit`. The `App` methods are async
+        // so they can `.await` the indexer trait directly.
+        let block_outcome = self.app.do_finalize_block(block).await?; // TODO: drop uncommitted changes if errors
+        self.app.do_commit().await?;
 
         self.block = new_block;
 
@@ -279,21 +278,25 @@ where
     }
 
     /// Execute a single transaction.
-    pub fn send_transaction(&mut self, tx: Tx) -> TxOutcome {
-        let mut block_outcome = self.make_block(vec![tx]);
+    pub async fn send_transaction(&mut self, tx: Tx) -> TxOutcome {
+        let mut block_outcome = self.make_block(vec![tx]).await;
 
         block_outcome.block_outcome.tx_outcomes.pop().unwrap()
     }
 
     /// Sign a transaction with the default gas limit.
-    pub fn sign_transaction(&self, signer: &mut dyn Signer, msgs: NonEmpty<Vec<Message>>) -> Tx {
+    pub fn sign_transaction(
+        &self,
+        signer: &mut (dyn Signer + Send + Sync),
+        msgs: NonEmpty<Vec<Message>>,
+    ) -> Tx {
         self.sign_transaction_with_gas(signer, self.default_gas_limit, msgs)
     }
 
     /// Sign a transaction with the given gas limit.
     pub fn sign_transaction_with_gas(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         msgs: NonEmpty<Vec<Message>>,
     ) -> Tx {
@@ -305,43 +308,51 @@ where
     }
 
     /// Execute a single message.
-    pub fn send_message(&mut self, signer: &mut dyn Signer, msg: Message) -> TxOutcome {
+    pub async fn send_message(
+        &mut self,
+        signer: &mut (dyn Signer + Send + Sync),
+        msg: Message,
+    ) -> TxOutcome {
         self.send_message_with_gas(signer, self.default_gas_limit, msg)
+            .await
     }
 
     /// Execute a single message under the given gas limit.
-    pub fn send_message_with_gas(
+    pub async fn send_message_with_gas(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         msg: Message,
     ) -> TxOutcome {
         self.send_messages_with_gas(signer, gas_limit, NonEmpty::new_unchecked(vec![msg]))
+            .await
     }
 
     /// Execute one or more messages.
-    pub fn send_messages(
+    pub async fn send_messages(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         msgs: NonEmpty<Vec<Message>>,
     ) -> TxOutcome {
         self.send_messages_with_gas(signer, self.default_gas_limit, msgs)
+            .await
     }
 
     /// Execute one or more messages under the given gas limit.
-    pub fn send_messages_with_gas(
+    pub async fn send_messages_with_gas(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         msgs: NonEmpty<Vec<Message>>,
     ) -> TxOutcome {
         self.send_transaction(self.sign_transaction_with_gas(signer, gas_limit, msgs))
+            .await
     }
 
     /// Update the chain's config.
-    pub fn configure<T>(
+    pub async fn configure<T>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         new_cfg: Option<Config>,
         new_app_cfg: Option<T>,
     ) -> TxOutcome
@@ -349,12 +360,13 @@ where
         T: Serialize,
     {
         self.configure_with_gas(signer, self.default_gas_limit, new_cfg, new_app_cfg)
+            .await
     }
 
     /// Update the chain's config under the given gas limit.
-    pub fn configure_with_gas<T>(
+    pub async fn configure_with_gas<T>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         new_cfg: Option<Config>,
         new_app_cfg: Option<T>,
@@ -367,12 +379,13 @@ where
             gas_limit,
             Message::configure(new_cfg, new_app_cfg).unwrap(),
         )
+        .await
     }
 
     /// Schedule a chain upgrade.
-    pub fn upgrade<T, U, V>(
+    pub async fn upgrade<T, U, V>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         height: u64,
         cargo_version: T,
         git_tag: Option<U>,
@@ -391,12 +404,13 @@ where
             git_tag,
             url,
         )
+        .await
     }
 
     /// Schedule a chain upgrade under the given gas limit.
-    pub fn upgrade_with_gas<T, U, V>(
+    pub async fn upgrade_with_gas<T, U, V>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         height: u64,
         cargo_version: T,
@@ -413,21 +427,28 @@ where
             gas_limit,
             Message::upgrade(height, cargo_version, git_tag, url),
         )
+        .await
     }
 
     /// Make a transfer of tokens.
-    pub fn transfer<C>(&mut self, signer: &mut dyn Signer, to: Addr, coins: C) -> TxOutcome
+    pub async fn transfer<C>(
+        &mut self,
+        signer: &mut (dyn Signer + Send + Sync),
+        to: Addr,
+        coins: C,
+    ) -> TxOutcome
     where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
         self.transfer_with_gas(signer, self.default_gas_limit, to, coins)
+            .await
     }
 
     /// Make a transfer of tokens under the given gas limit.
-    pub fn transfer_with_gas<C>(
+    pub async fn transfer_with_gas<C>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         to: Addr,
         coins: C,
@@ -437,22 +458,24 @@ where
         StdError: From<C::Error>,
     {
         self.send_message_with_gas(signer, gas_limit, Message::transfer(to, coins).unwrap())
+            .await
     }
 
     /// Make a batched transfer of tokens to multiple recipients.
-    pub fn batch_transfer(
+    pub async fn batch_transfer(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         transfers: BTreeMap<Addr, Coins>,
     ) -> TxOutcome {
         self.batch_transfer_with_gas(signer, self.default_gas_limit, transfers)
+            .await
     }
 
     /// Make a batched transfer of tokens to multiple recipients, under the
     /// given gas limit.
-    pub fn batch_transfer_with_gas(
+    pub async fn batch_transfer_with_gas(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         transfers: BTreeMap<Addr, Coins>,
     ) -> TxOutcome {
@@ -461,20 +484,26 @@ where
             gas_limit,
             Message::batch_transfer(transfers).unwrap(),
         )
+        .await
     }
 
     /// Upload a code. Return the code's hash.
-    pub fn upload<B>(&mut self, signer: &mut dyn Signer, code: B) -> UploadOutcome
+    pub async fn upload<B>(
+        &mut self,
+        signer: &mut (dyn Signer + Send + Sync),
+        code: B,
+    ) -> UploadOutcome
     where
         B: Into<Binary>,
     {
         self.upload_with_gas(signer, self.default_gas_limit, code)
+            .await
     }
 
     /// Upload a code under the given gas limit. Return the code's hash.
-    pub fn upload_with_gas<B>(
+    pub async fn upload_with_gas<B>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         code: B,
     ) -> UploadOutcome
@@ -484,15 +513,17 @@ where
         let code = code.into();
         let code_hash = code.hash256();
 
-        let outcome = self.send_message_with_gas(signer, gas_limit, Message::upload(code));
+        let outcome = self
+            .send_message_with_gas(signer, gas_limit, Message::upload(code))
+            .await;
 
         UploadOutcome { code_hash, outcome }
     }
 
     /// Instantiate a contract. Return the contract's address.
-    pub fn instantiate<M, S, C>(
+    pub async fn instantiate<M, S, C>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         code_hash: Hash256,
         msg: &M,
         salt: S,
@@ -516,13 +547,14 @@ where
             admin,
             funds,
         )
+        .await
     }
 
     /// Instantiate a contract under the given gas limit. Return the contract's
     /// address.
-    pub fn instantiate_with_gas<M, S, C>(
+    pub async fn instantiate_with_gas<M, S, C>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         code_hash: Hash256,
         msg: &M,
@@ -540,20 +572,22 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_message_with_gas(
-            signer,
-            gas_limit,
-            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-        );
+        let outcome = self
+            .send_message_with_gas(
+                signer,
+                gas_limit,
+                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+            )
+            .await;
 
         InstantiateOutcome { address, outcome }
     }
 
     /// Upload a code and instantiate a contract with it in one go. Return the
     /// code hash as well as the contract's address.
-    pub fn upload_and_instantiate<M, B, S, L, C>(
+    pub async fn upload_and_instantiate<M, B, S, L, C>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         code: B,
         msg: &M,
         salt: S,
@@ -579,13 +613,14 @@ where
             admin,
             funds,
         )
+        .await
     }
 
     /// Upload a code and instantiate a contract with it in one go under the
     /// given gas limit. Return the code hash as well as the contract's address.
-    pub fn upload_and_instantiate_with_gas<M, B, S, L, C>(
+    pub async fn upload_and_instantiate_with_gas<M, B, S, L, C>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         code: B,
         msg: &M,
@@ -607,14 +642,16 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(
-            signer,
-            gas_limit,
-            NonEmpty::new_unchecked(vec![
-                Message::upload(code),
-                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-            ]),
-        );
+        let outcome = self
+            .send_messages_with_gas(
+                signer,
+                gas_limit,
+                NonEmpty::new_unchecked(vec![
+                    Message::upload(code),
+                    Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+                ]),
+            )
+            .await;
 
         UploadAndInstantiateOutcome {
             address,
@@ -624,9 +661,9 @@ where
     }
 
     /// Execute a contrat.
-    pub fn execute<M, C>(
+    pub async fn execute<M, C>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         contract: Addr,
         msg: &M,
         funds: C,
@@ -637,12 +674,13 @@ where
         StdError: From<C::Error>,
     {
         self.execute_with_gas(signer, self.default_gas_limit, contract, msg, funds)
+            .await
     }
 
     /// Execute a contrat under the given gas limit.
-    pub fn execute_with_gas<M, C>(
+    pub async fn execute_with_gas<M, C>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         contract: Addr,
         msg: &M,
@@ -658,12 +696,13 @@ where
             gas_limit,
             Message::execute(contract, msg, funds).unwrap(),
         )
+        .await
     }
 
     /// Migrate a contract to a new code hash.
-    pub fn migrate<M>(
+    pub async fn migrate<M>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         contract: Addr,
         new_code_hash: Hash256,
         msg: &M,
@@ -672,12 +711,13 @@ where
         M: Serialize,
     {
         self.migrate_with_gas(signer, self.default_gas_limit, contract, new_code_hash, msg)
+            .await
     }
 
     /// Migrate a contract to a new code hash, under the given gas limit.
-    pub fn migrate_with_gas<M>(
+    pub async fn migrate_with_gas<M>(
         &mut self,
-        signer: &mut dyn Signer,
+        signer: &mut (dyn Signer + Send + Sync),
         gas_limit: u64,
         contract: Addr,
         new_code_hash: Hash256,
@@ -691,6 +731,7 @@ where
             gas_limit,
             Message::migrate(contract, new_code_hash, msg).unwrap(),
         )
+        .await
     }
 
     /// Return a `QuerierWrapper` object.

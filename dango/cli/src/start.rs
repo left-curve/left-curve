@@ -10,7 +10,8 @@ use {
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{
-        App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment,
+        AbciService, App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer,
+        SimpleCommitment,
     },
     grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
@@ -286,17 +287,7 @@ impl StartCmd {
             .build()
             .await
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
-        let indexer_context = sql_indexer.context.clone();
-
-        // Create a separate context for dango indexer (shares DB but has independent pubsub)
-        let dango_context: dango_indexer_sql::context::Context = sql_indexer
-            .context
-            .with_separate_pubsub()
-            .await
-            .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
-            .into();
-
-        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
+        let sql_context = sql_indexer.context.clone();
 
         let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
             cfg.indexer.clickhouse.url.clone(),
@@ -315,12 +306,11 @@ impl StartCmd {
 
         hooked_indexer.add_indexer(indexer_cache).await?;
         hooked_indexer.add_indexer(sql_indexer).await?;
-        hooked_indexer.add_indexer(dango_indexer).await?;
         hooked_indexer.add_indexer(clickhouse_indexer).await?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
             indexer_cache_context,
-            indexer_context,
+            sql_context.clone(),
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
         );
@@ -328,7 +318,7 @@ impl StartCmd {
         let dango_httpd_context = dango_httpd::context::Context::new(
             indexer_httpd_context.clone(),
             clickhouse_context.clone(),
-            dango_context,
+            sql_context,
             cfg.httpd.static_files_path.clone(),
         );
 
@@ -441,7 +431,7 @@ impl StartCmd {
         cfg: &MetricsHttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
-        indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
+        indexer_metrics::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run metrics HTTP server: {err:?}");
@@ -466,7 +456,7 @@ impl StartCmd {
         httpd_shutdown_flags: Vec<Arc<AtomicBool>>,
     ) -> anyhow::Result<()>
     where
-        ID: Indexer + Send + 'static,
+        ID: Indexer + Send + Sync + 'static,
     {
         // Channel used by the app to request a graceful shutdown from inside
         // `finalize_block` (see `grug_app::HaltReason`). Initial value is
@@ -474,18 +464,24 @@ impl StartCmd {
         let (halt_tx, mut halt_rx) = watch::channel::<Option<HaltReason>>(None);
         let halt_tx = Arc::new(halt_tx);
 
-        let app = App::new(
-            db,
-            vm,
-            ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
-            indexer,
-            grug_cfg.query_gas_limit,
-            Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
-            env!("CARGO_PKG_VERSION"),
-        )
-        .with_shutdown_trigger(halt_tx);
+        // `AbciService` wraps the `App` in an `Arc` internally so each
+        // per-request future captures a cheap `Arc::clone` instead of
+        // cloning the `App` (which would clone `PythHandler` to a "dud"
+        // copy and trigger `HookedIndexer::Drop` on every request).
+        let service = AbciService::new(
+            App::new(
+                db,
+                vm,
+                ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
+                indexer,
+                grug_cfg.query_gas_limit,
+                Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
+                env!("CARGO_PKG_VERSION"),
+            )
+            .with_shutdown_trigger(halt_tx),
+        );
 
-        let (consensus, mempool, snapshot, info) = split::service(app, 1);
+        let (consensus, mempool, snapshot, info) = split::service(service, 1);
 
         let abci_server = Server::builder()
             .consensus(consensus)

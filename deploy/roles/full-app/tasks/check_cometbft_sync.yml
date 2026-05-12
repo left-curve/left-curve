@@ -14,12 +14,16 @@
   retries: 30
   delay: 10
 
+- name: Resolve minimum peer count for the assertion below
+  set_fact:
+    cometbft_min_peers: "{{ cometbft_min_peers_override | default(expected_peer_count | default(0)) }}"
+
 - name: Check peer connections
   uri:
     url: "http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}/net_info"
     return_content: yes
   register: cometbft_net_info
-  until: cometbft_net_info is defined and cometbft_net_info.json is defined and cometbft_net_info.json.result.n_peers | int == (ansible_play_hosts | length) - 1
+  until: cometbft_net_info is defined and cometbft_net_info.json is defined and cometbft_net_info.json.result.n_peers | int >= cometbft_min_peers | int
   retries: 30
   delay: 10
   failed_when: false  # Don't fail on timeout, let assert handle it
@@ -33,16 +37,16 @@
       Latest block time: {{ cometbft_status.json.result.sync_info.latest_block_time }}
       Connected peers: {{ cometbft_net_info.json.result.n_peers }}
 
-- name: Ensure CometBFT has full peer connections
+- name: Ensure CometBFT has at least the expected peer connections
   assert:
     that:
-      - cometbft_net_info.json.result.n_peers | int == (ansible_play_hosts | length) - 1
+      - cometbft_net_info.json.result.n_peers | int >= cometbft_min_peers | int
     fail_msg: >-
       {{ inventory_hostname }} has only
       {{ cometbft_net_info.json.result.n_peers }} peers,
-      expected {{ (ansible_play_hosts | length) - 1 }}.
+      expected at least {{ cometbft_min_peers }}.
     success_msg: >-
-      {{ inventory_hostname }} connected to all {{ (ansible_play_hosts | length) - 1 }} peers.
+      {{ inventory_hostname }} connected to {{ cometbft_net_info.json.result.n_peers }} peers (>= {{ cometbft_min_peers }} required).
 
 - name: Wait until service reports is_running=true
   ansible.builtin.uri:

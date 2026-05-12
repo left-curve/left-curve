@@ -52,7 +52,7 @@ pub fn default_pair_param() -> PairParam {
 }
 
 /// Register fixed oracle prices for the perps pair and settlement currency.
-pub fn register_oracle_prices(
+pub async fn register_oracle_prices(
     suite: &mut dango_testing::TestSuite<grug_app::NaiveProposalPreparer>,
     accounts: &mut dango_testing::TestAccounts,
     contracts: &Contracts,
@@ -76,5 +76,6 @@ pub fn register_oracle_prices(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }

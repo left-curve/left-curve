@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use actix_web_metrics::ActixWebMetricsBuilder;
 use {
     super::error::Error,
     crate::{
@@ -13,12 +15,6 @@ use {
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
     std::sync::{Arc, atomic::AtomicBool},
-};
-#[cfg(feature = "metrics")]
-use {
-    actix_web_metrics::ActixWebMetricsBuilder,
-    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-    std::fmt::Display,
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
@@ -97,66 +93,6 @@ where
     ))
     .worker_max_blocking_threads(httpd_config.worker_max_blocking_threads)
     .bind((&*httpd_config.ip, httpd_config.port))?
-    .run()
-    .await?;
-
-    Ok(())
-}
-
-#[cfg(feature = "metrics")]
-/// Run the metrics HTTP server
-pub async fn run_metrics_server<I>(
-    ip: I,
-    port: u16,
-    metrics_handler: PrometheusHandle,
-) -> Result<(), Error>
-where
-    I: ToString + Display,
-{
-    #[cfg(feature = "tracing")]
-    tracing::info!(%ip, port, "Starting metrics httpd server");
-
-    let metrics = ActixWebMetricsBuilder::new().build();
-
-    let recorder = PrometheusBuilder::new().build_recorder();
-    let metrics_handler2 = recorder.handle();
-
-    HttpServer::new(move || {
-        let metrics_handler = metrics_handler.clone();
-        let metrics_handler2 = metrics_handler2.clone();
-        App::new()
-            .wrap(metrics.clone())
-            .wrap(Sentry::new())
-            .wrap(Logger::default())
-            .wrap(Compress::default())
-            .route(
-                "/health",
-                web::get().to(|| async { HttpResponse::Ok().body("Metrics server is healthy") }),
-            )
-            .route(
-                "/",
-                web::get().to(|| async { HttpResponse::Ok().body("Metrics server is running") }),
-            )
-            .route(
-                "/metrics",
-                web::get().to(move || {
-                    let metrics_handler = metrics_handler.clone();
-                    let metrics_handler2 = metrics_handler2.clone();
-                    metrics_handler2.run_upkeep();
-
-                    async move {
-                        let metrics2 = metrics_handler2.render();
-                        let metrics = metrics_handler.render();
-                        let combined = format!("{metrics}\n{metrics2}");
-
-                        HttpResponse::Ok()
-                            .content_type("text/plain; version=0.0.4")
-                            .body(combined)
-                    }
-                }),
-            )
-    })
-    .bind((ip.to_string(), port))?
     .run()
     .await?;
 

@@ -132,7 +132,7 @@ export function useActivities() {
       0,
     );
 
-    const sinceBlockHeight = lastKnownBlockHeight + 1;
+    const _sinceBlockHeight = lastKnownBlockHeight + 1;
 
     const unsubscribeAccount = subscriptions.subscribe("account", {
       params: { userIndex: account.owner },

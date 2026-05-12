@@ -25,12 +25,12 @@ use {
 /// | 3    | Trader market buys 10 ETH           | fee = 10 × $2,000 × 0.1% = $20                                | position: 10 ETH long @ $2,000; margin = $9,980; ask removed |
 /// | 4    | Trader withdraws $7,000             | equity=$9,980, used_IM=10×$2,000×10%=$2,000, available=$7,980 | succeeds; margin = $2,980                                    |
 /// | 5    | Trader withdraws $2,000             | available = $2,980 - $2,000 = $980                            | fails: "exceeds available margin"                            |
-#[test]
-fn trading_lifecycle() {
+#[tokio::test]
+async fn trading_lifecycle() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -46,6 +46,7 @@ fn trading_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Verify trader's margin = $10,000.
@@ -69,6 +70,7 @@ fn trading_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -89,6 +91,7 @@ fn trading_lifecycle() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify ask exists on the book.
@@ -121,6 +124,7 @@ fn trading_lifecycle() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify position and margin.
@@ -169,6 +173,7 @@ fn trading_lifecycle() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify margin = $9,980 - $7,000 = $2,980.
@@ -195,6 +200,7 @@ fn trading_lifecycle() {
             }),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("exceeds available margin");
 }
 
@@ -206,12 +212,12 @@ fn trading_lifecycle() {
 /// | 2    | Maker A places ask: 5 ETH @ $2,000  | —                                  | —                                                                                                                                                      |
 /// | 3    | Trader limit buys 10 ETH @ $2,000   | 5 filled vs maker, 5 rests as bid  | position: 5 ETH long @ $2,000; fee = $10; margin = $9,990; reserved_margin = 5x$2,000x10% = $1,000 (for resting 5); open_order_count = 1; bid on book  |
 /// | 4    | Trader cancels the resting order    | —                                  | reserved_margin = $0; open_order_count = 0; bid removed from book; position unchanged (still 5 ETH)                                                    |
-#[test]
-fn limit_order_partial_fill_and_cancel() {
+#[tokio::test]
+async fn limit_order_partial_fill_and_cancel() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -226,6 +232,7 @@ fn limit_order_partial_fill_and_cancel() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -239,6 +246,7 @@ fn limit_order_partial_fill_and_cancel() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -259,6 +267,7 @@ fn limit_order_partial_fill_and_cancel() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -285,6 +294,7 @@ fn limit_order_partial_fill_and_cancel() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify position: 5 ETH long @ $2,000, margin = $9,990.
@@ -341,6 +351,7 @@ fn limit_order_partial_fill_and_cancel() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify reserved_margin = $0 and open_order_count = 0.
@@ -380,11 +391,11 @@ fn limit_order_partial_fill_and_cancel() {
 /// Verify that liquidity depth bookkeeping tracks resting orders correctly
 /// across four code paths: order placement, self-trade prevention (EXPIRE_MAKER),
 /// fill, and cancel-all.
-#[test]
-fn liquidity_depth_tracking() {
+#[tokio::test]
+async fn liquidity_depth_tracking() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -404,6 +415,7 @@ fn liquidity_depth_tracking() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Deposit margin for both users.
@@ -414,6 +426,7 @@ fn liquidity_depth_tracking() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -423,6 +436,7 @@ fn liquidity_depth_tracking() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     let query_depth = |suite: &dango_testing::TestSuite<_>| -> LiquidityDepthResponse {
@@ -466,6 +480,7 @@ fn liquidity_depth_tracking() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let depth = query_depth(&suite);
@@ -505,6 +520,7 @@ fn liquidity_depth_tracking() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let depth = query_depth(&suite);
@@ -548,6 +564,7 @@ fn liquidity_depth_tracking() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let depth = query_depth(&suite);
@@ -580,6 +597,7 @@ fn liquidity_depth_tracking() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let depth = query_depth(&suite);
@@ -610,11 +628,11 @@ fn liquidity_depth_tracking() {
 /// | 3    | Taker market buys 10 ETH               | fee=$20, protocol=$4 → State.treasury == $4             |
 /// | 4    | Maker places another ask 10 ETH @ $2k  | —                                                       |
 /// | 5    | Taker market buys 10 ETH               | another $4 → State.treasury == $8 (accumulated!)        |
-#[test]
-fn protocol_fee_accumulates_across_fills() {
+#[tokio::test]
+async fn protocol_fee_accumulates_across_fills() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -634,6 +652,7 @@ fn protocol_fee_accumulates_across_fills() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Deposit for maker (user2) and taker (user1).
@@ -644,6 +663,7 @@ fn protocol_fee_accumulates_across_fills() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -653,6 +673,7 @@ fn protocol_fee_accumulates_across_fills() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // --- Fill 1: Maker places ask 10 ETH @ $2,000, taker market buys ---
@@ -675,6 +696,7 @@ fn protocol_fee_accumulates_across_fills() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -693,6 +715,7 @@ fn protocol_fee_accumulates_across_fills() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // fee = 10 * $2,000 * 0.1% = $20
@@ -727,6 +750,7 @@ fn protocol_fee_accumulates_across_fills() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -745,6 +769,7 @@ fn protocol_fee_accumulates_across_fills() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // another $4 → total should be $8 (accumulated, not overwritten!)
@@ -768,11 +793,11 @@ fn protocol_fee_accumulates_across_fills() {
 /// | 3    | Maker places post_only ask: 50 ETH @ $2,000    | resting on book                                                    | ask exists                               |
 /// | 4    | Taker market buys 50 ETH                        | notional=$100k, taker fee=$30, maker fee=-$10                      | taker margin=$99,970; maker margin=$100,010 |
 /// | 5    | Check treasury                                  | proto: taker $6 + maker -$2 = $4                                   | treasury=$4                              |
-#[test]
-fn negative_maker_fee_rebate_lifecycle() {
+#[tokio::test]
+async fn negative_maker_fee_rebate_lifecycle() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -803,6 +828,7 @@ fn negative_maker_fee_rebate_lifecycle() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -816,6 +842,7 @@ fn negative_maker_fee_rebate_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -825,6 +852,7 @@ fn negative_maker_fee_rebate_lifecycle() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -849,6 +877,7 @@ fn negative_maker_fee_rebate_lifecycle() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -875,6 +904,7 @@ fn negative_maker_fee_rebate_lifecycle() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -936,11 +966,11 @@ fn negative_maker_fee_rebate_lifecycle() {
 /// | 2    | Maker (user2) places post-only ask: 5 ETH     | ask on book                                     |
 /// | 3    | Taker (user1) IOC limit buy 10 ETH @ $2,000   | 5 fill, 5 cancelled                             |
 /// | 4    | Verify taker state                            | position=5, open_order_count=0, reserved=$0     |
-#[test]
-fn ioc_limit_order_partial_fill() {
+#[tokio::test]
+async fn ioc_limit_order_partial_fill() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -955,6 +985,7 @@ fn ioc_limit_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -964,6 +995,7 @@ fn ioc_limit_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -988,6 +1020,7 @@ fn ioc_limit_order_partial_fill() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1014,6 +1047,7 @@ fn ioc_limit_order_partial_fill() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1064,11 +1098,11 @@ fn ioc_limit_order_partial_fill() {
 /// |------|-------------------------------------------------|--------------------------------|
 /// | 1    | Taker deposits $10,000 USDC                     | margin established             |
 /// | 2    | Taker IOC limit buy 10 ETH @ $1,900 (empty book)| error: no liquidity            |
-#[test]
-fn ioc_limit_order_no_fill_rejected() {
+#[tokio::test]
+async fn ioc_limit_order_no_fill_rejected() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1080,6 +1114,7 @@ fn ioc_limit_order_no_fill_rejected() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Step 2: IOC limit buy against empty book → should fail.
@@ -1101,6 +1136,7 @@ fn ioc_limit_order_no_fill_rejected() {
             })),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("no liquidity at acceptable price");
 }
 
@@ -1116,7 +1152,7 @@ macro_rules! setup_slippage_cap_suite {
     () => {{
         let (mut suite, mut accounts, _, contracts, _) =
             setup_test_naive(TestOption::default());
-        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
         let pair = pair_id();
 
         suite
@@ -1134,6 +1170,7 @@ macro_rules! setup_slippage_cap_suite {
                 }),
                 Coins::new(),
             )
+            .await
             .should_succeed();
 
         suite
@@ -1143,6 +1180,7 @@ macro_rules! setup_slippage_cap_suite {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
 
         (suite, accounts, contracts, pair)
@@ -1152,8 +1190,8 @@ macro_rules! setup_slippage_cap_suite {
 /// Market order with slippage exactly at the pair cap is accepted at
 /// submission. (It fails later for lack of liquidity — that's fine; the
 /// point of the test is the submission-time check.)
-#[test]
-fn slippage_cap_market_at_cap_accepted_at_submission() {
+#[tokio::test]
+async fn slippage_cap_market_at_cap_accepted_at_submission() {
     let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
 
     // max_slippage = 5% (exactly the cap). The order passes the cap
@@ -1174,14 +1212,15 @@ fn slippage_cap_market_at_cap_accepted_at_submission() {
             })),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("no liquidity at acceptable price");
 }
 
 /// Market order with slippage just above the pair cap is rejected at
 /// submission with the cap error (not "no liquidity"). This proves the
 /// cap check runs before matching.
-#[test]
-fn slippage_cap_market_above_cap_rejected() {
+#[tokio::test]
+async fn slippage_cap_market_above_cap_rejected() {
     let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
 
     // max_slippage = 6% against 5% cap.
@@ -1201,13 +1240,14 @@ fn slippage_cap_market_above_cap_rejected() {
             })),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("exceeds the pair cap");
 }
 
 /// TP/SL child order slippage is capped by the same per-pair parameter
 /// as the top-level market order.
-#[test]
-fn slippage_cap_tpsl_child_order_above_cap_rejected() {
+#[tokio::test]
+async fn slippage_cap_tpsl_child_order_above_cap_rejected() {
     let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
 
     // Parent market order with slippage within cap, but the TP child
@@ -1232,14 +1272,15 @@ fn slippage_cap_tpsl_child_order_above_cap_rejected() {
             })),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("exceeds the pair cap");
 }
 
 /// Limit orders do not carry `max_slippage` and are unaffected by the
 /// market-order slippage cap. Their `limit_price` is bounded instead by
 /// `max_limit_price_deviation` (PR1 banding).
-#[test]
-fn slippage_cap_does_not_affect_limit_orders() {
+#[tokio::test]
+async fn slippage_cap_does_not_affect_limit_orders() {
     let (mut suite, mut accounts, contracts, pair) = setup_slippage_cap_suite!();
 
     // Limit buy at oracle = $2,000. Always within the 10% band of
@@ -1263,6 +1304,7 @@ fn slippage_cap_does_not_affect_limit_orders() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }
 
@@ -1270,11 +1312,11 @@ fn slippage_cap_does_not_affect_limit_orders() {
 /// events — two per match — and the two events of a given match share a
 /// `fill_id`. Successive matches use consecutive fill ids, and
 /// `NEXT_FILL_ID` in storage advances by one per match.
-#[test]
-fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
+#[tokio::test]
+async fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1287,6 +1329,7 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
     suite
@@ -1296,6 +1339,7 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Two resting asks at different prices. The taker's market buy will
@@ -1322,6 +1366,7 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
                 )),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1342,6 +1387,7 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed()
         .events;
 
@@ -1412,11 +1458,11 @@ fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
 /// This test places a maker bid for 5 ETH, then submits a market sell for 10.
 /// The 5 available should fill and the remaining 5 should be discarded.
 /// With the bug, the entire order is rejected.
-#[test]
-fn sell_side_market_order_partial_fill() {
+#[tokio::test]
+async fn sell_side_market_order_partial_fill() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1431,6 +1477,7 @@ fn sell_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1440,6 +1487,7 @@ fn sell_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1464,6 +1512,7 @@ fn sell_side_market_order_partial_fill() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1491,6 +1540,7 @@ fn sell_side_market_order_partial_fill() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify taker has a 10 ETH short position from the 5 that filled.
@@ -1531,11 +1581,11 @@ fn sell_side_market_order_partial_fill() {
 ///
 ///   Buy 10: fillable_size = 10, after 5 filled unfilled = 5.
 ///   5 < 10 → true → passes.
-#[test]
-fn buy_side_market_order_partial_fill() {
+#[tokio::test]
+async fn buy_side_market_order_partial_fill() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1550,6 +1600,7 @@ fn buy_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1559,6 +1610,7 @@ fn buy_side_market_order_partial_fill() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1583,6 +1635,7 @@ fn buy_side_market_order_partial_fill() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1607,6 +1660,7 @@ fn buy_side_market_order_partial_fill() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify taker has a 5 ETH long position from the partial fill.

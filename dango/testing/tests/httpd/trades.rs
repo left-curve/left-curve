@@ -2,7 +2,7 @@ use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
-    dango_sdk::{SubscribeTrades, Trades, subscribe_trades, trades},
+    dango_graphql_types::{SubscribeTrades, Trades, subscribe_trades, trades},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -408,6 +408,7 @@ async fn create_pair_prices(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
@@ -459,6 +460,7 @@ async fn create_pair_prices(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -487,6 +489,7 @@ async fn create_pair_prices_with_tiny_price(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let tiny_price =
@@ -532,6 +535,7 @@ async fn create_pair_prices_with_tiny_price(
 
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()

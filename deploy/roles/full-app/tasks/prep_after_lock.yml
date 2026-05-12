@@ -36,27 +36,80 @@
   run_once: true
   delegate_to: localhost
 
+# Resolve the set of peers each host in the play should list in `persistent_peers`.
+# Default (no `cometbft_peers`): use `ansible_play_hosts` — i.e. peer with whoever
+# is being deployed right now. This matches existing behavior for full-fleet
+# `just deploy-*` invocations.
+# Override (`-e cometbft_peers=ip1,ip2,...`): peer with the explicit list. Useful
+# during migrations when one host's deploy needs to point at a fleet that's not
+# currently in `--limit`. Peers in the override that aren't in `ansible_play_hosts`
+# need their `cometbft_node_id` fetched on-the-fly via `delegate_to` below.
+- name: Resolve peer host list and identify external peers
+  set_fact:
+    cometbft_peer_hosts: >-
+      {{ (cometbft_peers is defined)
+         | ternary(cometbft_peers | default('') | split(',') | map('trim')
+                     | reject('equalto', '') | list,
+                   ansible_play_hosts) }}
+    cometbft_external_peers: >-
+      {{ (cometbft_peers | default('') | split(',') | map('trim')
+            | reject('equalto', '') | list)
+         | difference(ansible_play_hosts) }}
+
+- name: Fetch cometbft_node_id from peers outside the play (when cometbft_peers is supplied)
+  shell: |
+    set -e
+    cd ~/deployments
+    DEPLOY=$(jq -r .current_deployment {{ dango_network }}.json)
+    docker compose -p "$DEPLOY" exec -T cometbft cometbft show-node-id
+  register: cometbft_external_peer_results
+  delegate_to: "{{ peer_ip }}"
+  loop: "{{ cometbft_external_peers }}"
+  loop_control:
+    loop_var: peer_ip
+  when:
+    - cometbft_peers is defined
+    - cometbft_external_peers | length > 0
+  changed_when: false
+  failed_when: false
+  run_once: true
+
+- name: Set cometbft_node_id facts on reachable external peers
+  set_fact:
+    cometbft_node_id: "{{ item.stdout | trim }}"
+  delegate_to: "{{ item.peer_ip }}"
+  delegate_facts: true
+  loop: "{{ cometbft_external_peer_results.results | default([]) | selectattr('rc', 'defined') | selectattr('rc', 'equalto', 0) | list }}"
+  loop_control:
+    label: "{{ item.peer_ip }}"
+  when:
+    - cometbft_peers is defined
+    - cometbft_external_peer_results is defined
+  run_once: true
+
 - name: Build persistent_peers list
   set_fact:
     persistent_peers: "{{ peer_list }}"
     unconditional_peer_ids: "{{ id_list }}"
+    expected_peer_count: "{{ (peer_list | length > 0) | ternary(peer_list.split(',') | length, 0) }}"
   vars:
+    peer_ips: >-
+      {{ cometbft_peer_hosts | reject('equalto', inventory_hostname) | list }}
     peer_list: |-
       {%- set peers = [] -%}
-      {%- for host in ansible_play_hosts -%}
-        {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+      {%- for host in peer_ips -%}
+        {%- if hostvars[host].cometbft_node_id is defined -%}
           {%- set port = (traefik_enabled | default(false))
                         | ternary(traefik[dango_network].ports.cometbft_p2p_port,
                                   hostvars[host].cometbft_p2p_port) -%}
-          {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port -%}
-          {{- peers.append(peer) or '' -}}
+          {{- peers.append(hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port) or '' -}}
         {%- endif -%}
       {%- endfor -%}
       {{- peers | join(',') -}}
     id_list: |-
       {%- set ids = [] -%}
-      {%- for host in ansible_play_hosts -%}
-        {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+      {%- for host in peer_ips -%}
+        {%- if hostvars[host].cometbft_node_id is defined -%}
           {{- ids.append(hostvars[host].cometbft_node_id) or '' -}}
         {%- endif -%}
       {%- endfor -%}
@@ -65,6 +118,7 @@
 
 - name: Debug peer configuration
   debug:
-    msg: "Persistent peers for {{ inventory_hostname }}: {{ persistent_peers }}"
+    msg: |
+      Persistent peers for {{ inventory_hostname }}: {{ persistent_peers | default('(none)') }}
+      Expected peer count: {{ expected_peer_count | default(0) }}
   when: persistent_peers is defined
-

@@ -1,4 +1,9 @@
-use {crate::entities::trade::Trade, dango_types::dex::PairId, grug::Addr};
+use {
+    crate::entities::trade::Trade,
+    chrono::{DateTime, Utc},
+    dango_types::dex::PairId,
+    grug::Addr,
+};
 
 const MAX_ITEMS: usize = 100;
 
@@ -12,7 +17,9 @@ pub struct TradeResult {
 pub struct TradeQueryBuilder {
     pair: Option<PairId>,
     limit: usize,
-    later_than: Option<(u64, u32)>,
+    after_cursor: Option<(u64, u32)>,
+    earlier_than: Option<DateTime<Utc>>,
+    later_than: Option<DateTime<Utc>>,
     addr: Option<Addr>,
 }
 
@@ -21,6 +28,8 @@ impl Default for TradeQueryBuilder {
         Self {
             limit: MAX_ITEMS,
             pair: Default::default(),
+            after_cursor: Default::default(),
+            earlier_than: Default::default(),
             later_than: Default::default(),
             addr: Default::default(),
         }
@@ -43,8 +52,18 @@ impl TradeQueryBuilder {
         self
     }
 
-    pub fn with_later_than(mut self, block_height: u64, trade_idx: u32) -> Self {
-        self.later_than = Some((block_height, trade_idx));
+    pub fn with_after(mut self, block_height: u64, trade_idx: u32) -> Self {
+        self.after_cursor = Some((block_height, trade_idx));
+        self
+    }
+
+    pub fn with_earlier_than(mut self, earlier_than: DateTime<Utc>) -> Self {
+        self.earlier_than = Some(earlier_than);
+        self
+    }
+
+    pub fn with_later_than(mut self, later_than: DateTime<Utc>) -> Self {
+        self.later_than = Some(later_than);
         self
     }
 
@@ -120,10 +139,20 @@ impl TradeQueryBuilder {
             params.push(pair.quote_denom.to_string());
         }
 
-        if let Some(later_than) = self.later_than {
+        if let Some(after_cursor) = self.after_cursor {
             query.push_str(" AND (block_height, trade_idx) < (?, ?) ");
-            params.push(later_than.0.to_string());
-            params.push(later_than.1.to_string());
+            params.push(after_cursor.0.to_string());
+            params.push(after_cursor.1.to_string());
+        }
+
+        if let Some(earlier_than) = self.earlier_than {
+            query.push_str(" AND created_at <= toDateTime64(?, 6)");
+            params.push(earlier_than.timestamp_micros().to_string());
+        }
+
+        if let Some(later_than) = self.later_than {
+            query.push_str(" AND created_at >= toDateTime64(?, 6)");
+            params.push(later_than.timestamp_micros().to_string());
         }
 
         if let Some(addr) = &self.addr {

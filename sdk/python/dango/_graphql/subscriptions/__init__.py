@@ -1,1 +1,4 @@
-"""Vendored GraphQL subscription documents from sdk/rust/src/schemas/subscriptions/."""
+"""Vendored GraphQL subscription documents.
+
+Source: dango/indexer/graphql-types/src/schemas/subscriptions/.
+"""

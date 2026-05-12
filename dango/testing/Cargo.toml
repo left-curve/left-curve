@@ -18,7 +18,6 @@ clickhouse               = { workspace = true, features = ["test-util"] }
 dango-genesis            = { workspace = true }
 dango-httpd              = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-clickhouse = { workspace = true, features = ["async-graphql", "metrics", "testing", "tracing"] }
-dango-indexer-sql        = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 dango-order-book         = { workspace = true }
 dango-proposal-preparer  = { workspace = true }
 dango-types              = { workspace = true, features = ["async-graphql"] }
@@ -36,6 +35,7 @@ identity                 = { workspace = true }
 indexer-cache            = { workspace = true, features = ["metrics", "tracing"] }
 indexer-hooked           = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd            = { workspace = true, features = ["metrics"] }
+indexer-metrics          = { workspace = true }
 indexer-sql              = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 k256                     = { workspace = true }
 pyth-client              = { workspace = true }
@@ -63,8 +63,8 @@ dango-gateway               = { workspace = true, features = ["library"] }
 dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
+dango-graphql-types         = { workspace = true }
 dango-perps                 = { workspace = true, features = ["library"] }
-dango-sdk                   = { workspace = true, features = ["tracing"] }
 dango-taxman                = { workspace = true, features = ["library"] }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }

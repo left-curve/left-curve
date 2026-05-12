@@ -8,11 +8,9 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
-  "dango/hyperlane-deployment",
   "dango/indexer/clickhouse",
+  "dango/indexer/graphql-types",
   "dango/indexer/httpd",
-  "dango/indexer/sql",
-  "dango/indexer/sql-migration",
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
@@ -51,8 +49,8 @@ members = [
   "indexer/disk-saver",
   "indexer/hooked",
   "indexer/httpd",
+  "indexer/metrics",
   "indexer/sql",
-  "indexer/sql-migration",
   "indexer/testing",
   "pyth/client",
   "pyth/types",
@@ -97,7 +95,6 @@ assert-json-diff            = "2"
 assertor                    = "0.0.4"
 async-graphql               = { version = "7.0", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] }
 async-graphql-actix-web     = "7.0"
-async-std                   = { version = "1", features = ["attributes", "tokio1"] }
 async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
@@ -210,11 +207,9 @@ dango-bank                  = { path = "dango/bank" }
 dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
+dango-graphql-types         = { path = "dango/indexer/graphql-types" }
 dango-httpd                 = { path = "dango/indexer/httpd" }
-dango-hyperlane-deployment  = { path = "dango/hyperlane-deployment" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
-dango-indexer-sql           = { path = "dango/indexer/sql" }
-dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-order-book            = { path = "dango/order-book" }
@@ -257,8 +252,8 @@ indexer-cache               = { path = "indexer/cache" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
+indexer-metrics             = { path = "indexer/metrics" }
 indexer-sql                 = { path = "indexer/sql" }
-indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
 pyth-client                 = { path = "pyth/client" }
 pyth-types                  = { path = "pyth/types" }

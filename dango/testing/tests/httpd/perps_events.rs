@@ -1,7 +1,7 @@
 use {
     crate::call_graphql_query,
     assertor::*,
-    dango_sdk::{PerpsEvents, perps_events},
+    dango_graphql_types::{PerpsEvents, perps_events},
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},
@@ -20,12 +20,12 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
 
     let pair = pair_id();
-    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
     // user2 places a limit ask → user1 fills it via market buy.
     //   user2 sees: order_filled
     //   user1 sees: order_filled
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 3);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 3).await;
 
     suite.app.indexer.wait_for_finish().await?;
 

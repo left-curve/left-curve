@@ -12,7 +12,7 @@ use {
     std::ops::DerefMut,
 };
 
-pub fn add_user_public_key(
+pub async fn add_user_public_key(
     suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
@@ -29,12 +29,13 @@ pub fn add_user_public_key(
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     (pk, key_hash)
 }
 
-pub fn add_account_with_existing_user(
+pub async fn add_account_with_existing_user(
     suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
@@ -45,10 +46,11 @@ pub fn add_account_with_existing_user(
             contracts.account_factory,
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(), // Make sure this is bigger than the minimum deposit.
         )
+        .await
         .unwrap()
 }
 
-pub fn create_user_and_account(
+pub async fn create_user_and_account(
     suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
@@ -62,7 +64,8 @@ pub fn create_user_and_account(
     );
 
     // Create the user and its first single-signature account.
-    user.register_user(suite.deref_mut(), contracts.account_factory, Coins::new());
+    user.register_user(suite.deref_mut(), contracts.account_factory, Coins::new())
+        .await;
 
     // Make the initial deposit.
     suite
@@ -73,6 +76,7 @@ pub fn create_user_and_account(
             &user,
             150_000_000, // Make sure this is bigger than the minimum deposit.
         )
+        .await
         .should_succeed();
 
     user.query_user_index(suite.querier())

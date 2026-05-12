@@ -4,7 +4,7 @@ use {
         transfers_query,
     },
     assertor::*,
-    dango_sdk::{SubscribeTransfers, subscribe_transfers},
+    dango_graphql_types::{SubscribeTransfers, subscribe_transfers},
     dango_testing::{
         HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
     },
@@ -37,6 +37,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
             50_000_000,
             NonEmpty::new_unchecked(msgs),
         )
+        .await
         .should_succeed();
 
     suite.app.indexer.wait_for_finish().await?;
@@ -110,8 +111,8 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
-    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite
         .transfer(
@@ -119,6 +120,7 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
             user2.address(),
             Coins::one(usdc::DENOM.clone(), 100).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite.app.indexer.wait_for_finish().await?;
@@ -217,8 +219,8 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
-    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite
         .transfer(
@@ -226,6 +228,7 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
             user2.address(),
             Coins::one(usdc::DENOM.clone(), 100).unwrap(),
         )
+        .await
         .should_succeed();
 
     let local_set = tokio::task::LocalSet::new();
@@ -280,6 +283,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
                 recipient,
                 Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -389,6 +393,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
             50_000_000,
             NonEmpty::new_unchecked(msgs),
         )
+        .await
         .should_succeed();
 
     suite.app.indexer.wait_for_finish().await?;
@@ -416,6 +421,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                     50_000_000,
                     NonEmpty::new_unchecked(msgs),
                 )
+                .await
                 .should_succeed();
         }
         Ok::<(), anyhow::Error>(())
@@ -503,6 +509,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             50_000_000,
             NonEmpty::new_unchecked(msgs),
         )
+        .await
         .should_succeed();
 
     // Use typed subscription from dango-sdk
@@ -533,6 +540,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                     50_000_000,
                     NonEmpty::new_unchecked(msgs),
                 )
+                .await
                 .should_succeed();
         }
         Ok::<(), anyhow::Error>(())

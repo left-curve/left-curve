@@ -60,13 +60,13 @@ fs.copySync(
 
 const hyperlaneConfig = async () => {
   const mainFiles = {
-    config: "../../../dango/hyperlane-deployment/config.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments.json",
+    config: "./config/hyperlane/config.json",
+    deployment: "./config/hyperlane/deployments.json",
   };
 
   const testFiles = {
-    config: "../../../dango/hyperlane-deployment/config.testnet.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments-testnet.json",
+    config: "./config/hyperlane/config.testnet.json",
+    deployment: "./config/hyperlane/deployments-testnet.json",
   };
 
   const files = environment === "prod" ? mainFiles : testFiles;
@@ -305,17 +305,8 @@ export default defineConfig({
             clientsClaim: true,
             skipWaiting: true,
             cleanupOutdatedCaches: true,
-            navigationPreload: true,
-            runtimeCaching: [
-              {
-                urlPattern: ({ request }) => request.mode === "navigate",
-                handler: "NetworkFirst",
-                options: {
-                  cacheName: "html-cache",
-                  networkTimeoutSeconds: 3,
-                },
-              },
-            ],
+            navigationPreload: false,
+            importScripts: ["/sw-disable-nav-preload.js"],
           }),
         );
       }

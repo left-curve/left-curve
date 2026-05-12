@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePublicClient } from "./usePublicClient.js";
 import { useQuery } from "@tanstack/react-query";
 
@@ -10,10 +10,13 @@ type UseServiceStatusParameters = {
   upUrl?: string;
 };
 
+const PAUSE_THRESHOLD = 3;
+
 export function useServiceStatus(parameters?: UseServiceStatusParameters) {
   const { upUrl } = parameters ?? {};
   const [enableWsCheck, setEnableWsCheck] = useState(false);
   const publicClient = usePublicClient();
+  const failureCount = useRef(0);
 
   useEffect(() => {
     const t = setTimeout(() => setEnableWsCheck(true), 1_000);
@@ -35,12 +38,18 @@ export function useServiceStatus(parameters?: UseServiceStatusParameters) {
         const response = await fetch(upUrl!);
         if (!response.ok) throw new Error("request failed");
         const { is_running } = await response.json();
-        return !is_running;
+        if (is_running) {
+          failureCount.current = 0;
+          return false;
+        }
+        failureCount.current += 1;
+        return failureCount.current >= PAUSE_THRESHOLD;
       } catch (_) {
-        return true;
+        failureCount.current += 1;
+        return failureCount.current >= PAUSE_THRESHOLD;
       }
     },
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   });
 
   const { data: isDexPaused, isFetched: isDexChecked } = useQuery({

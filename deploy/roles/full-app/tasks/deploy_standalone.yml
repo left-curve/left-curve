@@ -48,6 +48,7 @@
   delay: 10
   until: pull_result.rc == 0
   changed_when: true
+  when: pull_images | default(true) | bool
 
 - name: Deploy with new image tag
   community.docker.docker_compose_v2:
