@@ -1,7 +1,10 @@
 use {
-    account::AccountSubscription, async_graphql::MergedSubscription,
-    dango_indexer_clickhouse::httpd::graphql::subscription::ClickhouseSubscription,
-    indexer_httpd::graphql::subscription::IndexerSubscription, perps_trade::PerpsTradeSubscription,
+    account::AccountSubscription,
+    async_graphql::MergedSubscription,
+    indexer_httpd::graphql::subscription::{
+        IndexerSubscription, clickhouse::ClickhouseSubscription,
+    },
+    perps_trade::PerpsTradeSubscription,
     transfer::TransferSubscription,
 };
 

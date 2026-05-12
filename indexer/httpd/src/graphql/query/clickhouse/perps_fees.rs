@@ -1,7 +1,7 @@
 use {
-    crate::{context::Context, entities::perps_fees::PerpsFeesAndRevenue},
     async_graphql::*,
     chrono::{DateTime, Utc},
+    dango_indexer_clickhouse::{context::Context, entities::perps_fees::PerpsFeesAndRevenue},
 };
 
 #[derive(Default, Debug)]

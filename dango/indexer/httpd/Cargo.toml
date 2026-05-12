@@ -28,7 +28,7 @@ async-graphql            = { workspace = true }
 async-graphql-actix-web  = { workspace = true }
 chrono                   = { workspace = true }
 clap                     = { workspace = true }
-dango-indexer-clickhouse = { workspace = true, features = ["async-graphql"] }
+dango-indexer-clickhouse = { workspace = true }
 dango-types              = { workspace = true, features = ["async-graphql"] }
 grug-httpd               = { workspace = true }
 grug-types               = { workspace = true }

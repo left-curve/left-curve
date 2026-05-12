@@ -1,6 +1,6 @@
 use {
-    crate::{context::Context, entities::perps_pair_stats::PerpsPairStats},
     async_graphql::*,
+    dango_indexer_clickhouse::{context::Context, entities::perps_pair_stats::PerpsPairStats},
 };
 
 #[derive(Default, Debug)]

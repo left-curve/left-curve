@@ -1,8 +1,10 @@
 use {
-    account::AccountQuery, async_graphql::MergedObject,
-    dango_indexer_clickhouse::httpd::graphql::query::ClickhouseQuery,
-    indexer_httpd::graphql::query::IndexerQuery, perps_event::PerpsEventQuery,
-    transfer::TransferQuery, user::UserQuery,
+    account::AccountQuery,
+    async_graphql::MergedObject,
+    indexer_httpd::graphql::query::{IndexerQuery, clickhouse::ClickhouseQuery},
+    perps_event::PerpsEventQuery,
+    transfer::TransferQuery,
+    user::UserQuery,
 };
 
 pub mod account;

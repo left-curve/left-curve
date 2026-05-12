@@ -1,8 +1,8 @@
 #[cfg(feature = "metrics")]
 use grug_httpd::metrics::GaugeGuard;
 use {
-    crate::entities::perps_pair_stats::PerpsPairStats,
     async_graphql::{futures_util::stream::Stream, *},
+    dango_indexer_clickhouse::entities::perps_pair_stats::PerpsPairStats,
     futures_util::stream::{StreamExt, once},
     grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     std::sync::{
@@ -25,7 +25,7 @@ impl PerpsPairStatsSubscription {
         ctx: &async_graphql::Context<'a>,
     ) -> Result<impl Stream<Item = Vec<PerpsPairStats>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<dango_indexer_clickhouse::context::Context>()?;
         let cache = app_ctx.perps_pair_stats_cache.clone();
 
         #[cfg(feature = "metrics")]

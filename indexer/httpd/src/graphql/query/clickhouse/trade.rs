@@ -1,10 +1,10 @@
 use {
-    crate::{
+    async_graphql::{types::connection::*, *},
+    chrono::{DateTime, Utc},
+    dango_indexer_clickhouse::{
         context::Context,
         entities::{trade::Trade, trade_query::TradeQueryBuilder},
     },
-    async_graphql::{types::connection::*, *},
-    chrono::{DateTime, Utc},
     grug::Addr,
     serde::{Deserialize, Serialize},
     std::str::FromStr,

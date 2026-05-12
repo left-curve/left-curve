@@ -129,7 +129,6 @@ impl Context {
         Ok(())
     }
 
-    #[cfg(feature = "async-graphql")]
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn start_cache(&self) -> crate::error::Result<()> {
         self.preload_cache().await

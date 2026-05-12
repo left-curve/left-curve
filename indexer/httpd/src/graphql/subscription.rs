@@ -4,6 +4,7 @@ use {
 };
 
 pub mod block;
+pub mod clickhouse;
 pub mod event;
 pub mod grug;
 pub mod message;

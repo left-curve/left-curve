@@ -1,12 +1,12 @@
 #[cfg(feature = "metrics")]
 use grug_httpd::metrics::GaugeGuard;
 use {
-    crate::{
+    async_graphql::{futures_util::stream::Stream, *},
+    chrono::{DateTime, Utc},
+    dango_indexer_clickhouse::{
         entities::{CandleInterval, candle::Candle},
         indexer::candles::cache,
     },
-    async_graphql::{futures_util::stream::Stream, *},
-    chrono::{DateTime, Utc},
     futures_util::stream::{StreamExt, once},
     grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     std::sync::{
@@ -35,7 +35,7 @@ impl CandleSubscription {
         limit: Option<usize>,
     ) -> Result<impl Stream<Item = Vec<Candle>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<dango_indexer_clickhouse::context::Context>()?;
         let candle_cache = app_ctx.candle_cache.clone();
         let cache_key =
             cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
