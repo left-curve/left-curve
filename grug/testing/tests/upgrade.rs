@@ -10,8 +10,8 @@ use {
     std::{str::FromStr, sync::Arc},
 };
 
-#[test]
-fn error_cases() {
+#[tokio::test]
+async fn error_cases() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("owner", Coins::new())
         .add_account("jake", Coins::new())
@@ -27,6 +27,7 @@ fn error_cases() {
             Some("v0.1.0"),
             Some("https://github.com"),
         )
+        .await
         .should_fail_with_error(AppError::not_owner(
             accounts["jake"].address,
             accounts["owner"].address,
@@ -41,14 +42,15 @@ fn error_cases() {
             Some("v0.1.0"),
             Some("https://github.com"),
         )
+        .await
         .should_fail_with_error(AppError::upgrade_height_not_in_future(2, 2));
 }
 
 /// In this test, we attempt to change the chain ID through a chain upgrade.
 /// This is otherwise not possible through normal transactions.
 /// This upgrade doesn't involve any contract calls.
-#[test]
-fn upgrading_without_calling_contract() {
+#[tokio::test]
+async fn upgrading_without_calling_contract() {
     const OLD_CHAIN_ID: &str = "oonga";
     const NEW_CHAIN_ID: &str = "boonga";
 
@@ -72,6 +74,7 @@ fn upgrading_without_calling_contract() {
             Some("v0.1.0"),
             Some("https://github.com"),
         )
+        .await
         .should_succeed();
 
     suite.query_status().should_succeed_and(|status| {
@@ -90,7 +93,7 @@ fn upgrading_without_calling_contract() {
     // -------------------------------- Block 2 --------------------------------
 
     // Upgrade doesn't happen yet.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite.query_status().should_succeed_and(|status| {
         status.chain_id == OLD_CHAIN_ID && status.last_finalized_block.height == 2
@@ -101,6 +104,7 @@ fn upgrading_without_calling_contract() {
     // Block 3. The chain halts as planned.
     suite
         .try_make_empty_block()
+        .await
         .should_fail_with_error(AppError::upgrade_incorrect_version(
             "0.0.0".to_string(),
             "0.1.0".to_string(),
@@ -116,7 +120,7 @@ fn upgrading_without_calling_contract() {
     );
 
     // Make block 3 again with the new app. Upgrade happens.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite.query_status().should_succeed_and(|status| {
         status.chain_id == NEW_CHAIN_ID && status.last_finalized_block.height == 3
@@ -145,8 +149,8 @@ fn upgrading_without_calling_contract() {
 ///
 /// In practice, this can be easily done with a simple contract migration, but
 /// here for testing purpose, we go with a full chain upgrade.
-#[test]
-fn upgrading_with_calling_contract() {
+#[tokio::test]
+async fn upgrading_with_calling_contract() {
     mod new_mock_bank {
         use {
             grug_math::{NextNumber, Uint256},
@@ -199,12 +203,13 @@ fn upgrading_with_calling_contract() {
             None::<String>,
             None::<String>,
         )
+        .await
         .should_succeed();
 
     // -------------------------------- Block 2 --------------------------------
 
     // Upgrade doesn't happen yet. The balance should be 128-bit.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite
         .query_wasm_raw(
@@ -222,6 +227,7 @@ fn upgrading_with_calling_contract() {
     // The chain halts as planned.
     suite
         .try_make_empty_block()
+        .await
         .should_fail_with_error(AppError::upgrade_incorrect_version(
             "0.0.0".into(),
             "0.1.0".into(),
@@ -269,7 +275,7 @@ fn upgrading_with_calling_contract() {
 
     // Make block 3 again with the new app. Upgrade happens.
     // The balance should be 256-bit now.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite
         .query_wasm_raw(
@@ -293,8 +299,8 @@ fn upgrading_with_calling_contract() {
 /// This test exercises (2): we attach a `watch` channel, drive the chain
 /// through the halt block, and assert the trigger fired with the expected
 /// halt reason.
-#[test]
-fn upgrade_incorrect_version_fires_shutdown_trigger() {
+#[tokio::test]
+async fn upgrade_incorrect_version_fires_shutdown_trigger() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
@@ -314,11 +320,12 @@ fn upgrade_incorrect_version_fires_shutdown_trigger() {
             None::<String>,
             None::<String>,
         )
+        .await
         .should_succeed();
 
     // -------------------------------- Block 2 --------------------------------
     // Upgrade height not yet reached: trigger must stay silent.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
     assert!(
         halt_rx.borrow().is_none(),
         "shutdown trigger fired before upgrade height",
@@ -329,6 +336,7 @@ fn upgrade_incorrect_version_fires_shutdown_trigger() {
     // trigger fires with the mismatched versions.
     suite
         .try_make_empty_block()
+        .await
         .should_fail_with_error(AppError::upgrade_incorrect_version(
             "0.0.0".to_string(),
             "0.1.0".to_string(),

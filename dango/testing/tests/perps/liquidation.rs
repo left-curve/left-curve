@@ -56,12 +56,12 @@ fn default_param_no_liq_fee() -> Param {
 /// | 4    | Oracle drops to $1,450                          | PnL = 5x($1,450-$2,000) = -$2,750; equity = $240; MM = 5x$1,450x5% = $362.50                                       | equity < MM -> liquidatable                                                            |
 /// | 5    | Bidder places bid: 5 ETH @ $1,450               | —                                                                                                                  | —                                                                                      |
 /// | 6    | Liquidate trader                                | deficit = $122.50; close ~1.689655 ETH via book; liq_fee ~$24.50; margin after ~$2,036.19; ~3.31 ETH position stays | trader position reduced; trader margin ~$2,036; vault margin += ~$24.50; bidder filled |
-#[test]
-fn liquidation_on_order_book() {
+#[tokio::test]
+async fn liquidation_on_order_book() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -78,6 +78,7 @@ fn liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -90,6 +91,7 @@ fn liquidation_on_order_book() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -99,6 +101,7 @@ fn liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -112,6 +115,7 @@ fn liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -132,6 +136,7 @@ fn liquidation_on_order_book() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -155,6 +160,7 @@ fn liquidation_on_order_book() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify position: 5 ETH long @ $2,000, margin = $2,990.
@@ -182,7 +188,7 @@ fn liquidation_on_order_book() {
     // MM = 5 * $1,450 * 5% = $362.50; equity < MM -> liquidatable.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
 
     // -------------------------------------------------------------------------
     // Step 5: Bidder (user3) deposits $10,000 USDC and places bid: 5 ETH @ $1,450.
@@ -195,6 +201,7 @@ fn liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -215,6 +222,7 @@ fn liquidation_on_order_book() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -250,6 +258,7 @@ fn liquidation_on_order_book() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trader position should be reduced from 5 to ~3.310345 ETH (partial close).
@@ -342,12 +351,12 @@ fn liquidation_on_order_book() {
 /// | 8    | Oracle → $1,450                           | Trader A: PnL=-$2,750, equity=-$1,660               |
 /// | 9    | Liquidate Trader A                        | No bids → ADL against Trader B at bankruptcy price  |
 /// | 10   | Verify results                            | Trader B position reduced; insurance fund updated   |
-#[test]
-fn liquidation_with_adl() {
+#[tokio::test]
+async fn liquidation_with_adl() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -362,6 +371,7 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -374,6 +384,7 @@ fn liquidation_with_adl() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -387,6 +398,7 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_100_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -400,6 +412,7 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -420,6 +433,7 @@ fn liquidation_with_adl() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -443,6 +457,7 @@ fn liquidation_with_adl() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let state: Option<UserState> = suite
@@ -463,6 +478,7 @@ fn liquidation_with_adl() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -486,6 +502,7 @@ fn liquidation_with_adl() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -508,6 +525,7 @@ fn liquidation_with_adl() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let state = suite
@@ -525,7 +543,7 @@ fn liquidation_with_adl() {
     // PnL = 5 * ($1,450 - $2,000) = -$2,750; equity = $1,090 - $2,750 = -$1,660.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
 
     // -------------------------------------------------------------------------
     // Step 9: Liquidate Trader A.
@@ -556,6 +574,7 @@ fn liquidation_with_adl() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed()
         .events;
 
@@ -674,11 +693,11 @@ fn liquidation_with_adl() {
 
 /// Liquidation cancels conditional orders alongside regular orders.
 /// Follows the pattern from `liquidation_on_order_book`.
-#[test]
-fn liquidation_cancels_conditional_orders() {
+#[tokio::test]
+async fn liquidation_cancels_conditional_orders() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -690,6 +709,7 @@ fn liquidation_cancels_conditional_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -702,6 +722,7 @@ fn liquidation_cancels_conditional_orders() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -711,6 +732,7 @@ fn liquidation_cancels_conditional_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Step 2: Maker (user2) deposits and places ask: 5 ETH @ $2,000.
@@ -721,6 +743,7 @@ fn liquidation_cancels_conditional_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -741,6 +764,7 @@ fn liquidation_cancels_conditional_orders() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trader buys 5 ETH.
@@ -760,6 +784,7 @@ fn liquidation_cancels_conditional_orders() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 3: Trader submits TP and SL conditional orders.
@@ -776,6 +801,7 @@ fn liquidation_cancels_conditional_orders() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -791,6 +817,7 @@ fn liquidation_cancels_conditional_orders() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify both conditional orders were placed.
@@ -811,7 +838,7 @@ fn liquidation_cancels_conditional_orders() {
     );
 
     // Step 4: Oracle drops to $1,450.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
 
     // Step 5: Bidder (user3) deposits and places bid: 5 ETH @ $1,450.
     suite
@@ -821,6 +848,7 @@ fn liquidation_cancels_conditional_orders() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -841,6 +869,7 @@ fn liquidation_cancels_conditional_orders() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 6: Liquidate trader.
@@ -853,6 +882,7 @@ fn liquidation_cancels_conditional_orders() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 7: Verify state after liquidation.
@@ -910,13 +940,13 @@ fn liquidation_cancels_conditional_orders() {
 ///   6. Liquidation closes vault's long against the bid
 ///   7. Assert: vault positions cleared, insurance fund received fee,
 ///      vault margin adjusted by PnL
-#[test]
-fn vault_liquidation_on_order_book() {
+#[tokio::test]
+async fn vault_liquidation_on_order_book() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     let pair = pair_id();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $5,000 USDC and adds all as vault liquidity.
@@ -929,6 +959,7 @@ fn vault_liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(5_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -941,6 +972,7 @@ fn vault_liquidation_on_order_book() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -967,6 +999,7 @@ fn vault_liquidation_on_order_book() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -980,6 +1013,7 @@ fn vault_liquidation_on_order_book() {
             &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -1007,6 +1041,7 @@ fn vault_liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1025,6 +1060,7 @@ fn vault_liquidation_on_order_book() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify vault is long.
@@ -1050,7 +1086,7 @@ fn vault_liquidation_on_order_book() {
     //   $250 < $1,000 → liquidatable
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_600);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_600).await;
 
     // Sanity: verify vault is liquidatable (equity < MM).
     let vault_ext: perps::UserStateExtended = suite
@@ -1101,6 +1137,7 @@ fn vault_liquidation_on_order_book() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1121,6 +1158,7 @@ fn vault_liquidation_on_order_book() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1136,6 +1174,7 @@ fn vault_liquidation_on_order_book() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -1245,11 +1284,11 @@ fn vault_liquidation_on_order_book() {
 ///
 /// This pins the BitMEX-style separation: order-book matches get a
 /// `fill_id`, position transfers at the bankruptcy price do not.
-#[test]
-fn liquidation_book_fills_have_fill_id_adl_does_not() {
+#[tokio::test]
+async fn liquidation_book_fills_have_fill_id_adl_does_not() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1261,6 +1300,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_100_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Maker (user2) deposits enough to seed the book with plenty of asks,
@@ -1272,6 +1312,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(20_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Maker places ask: 5 ETH @ $2,000. Trader A fills it, ending long 5 ETH.
@@ -1293,6 +1334,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1311,6 +1353,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trader B (user3) will be the ADL counter-party: short 5 ETH @ $2,000.
@@ -1322,6 +1365,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Maker places a bid so Trader B can short into it.
@@ -1343,6 +1387,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1361,12 +1406,13 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Oracle drops to $1,450. Trader A is deeply underwater and forced
     // to close the full position; equity is negative so target_price for
     // book matching is the oracle ($1,450).
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
 
     // Partial book liquidity for the liquidation: Maker places a bid for
     // 2 ETH @ $1,450. Trader A's liquidation will fill this, then ADL
@@ -1389,6 +1435,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Liquidate Trader A. Expect book fills + ADL remainder.
@@ -1401,6 +1448,7 @@ fn liquidation_book_fills_have_fill_id_adl_does_not() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed()
         .events;
 

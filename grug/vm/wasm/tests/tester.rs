@@ -32,7 +32,7 @@ fn read_wasm_file(filename: &str) -> Binary {
     fs::read(path).unwrap().into()
 }
 
-fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
+async fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(DENOM.clone(), 32_100_000).unwrap())
@@ -51,15 +51,16 @@ fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
             None,
             Coins::new(),
         )
+        .await
         .should_succeed()
         .address;
 
     (suite, accounts, tester)
 }
 
-#[test]
-fn infinite_loop() {
-    let (mut suite, mut accounts, tester) = setup_test();
+#[tokio::test]
+async fn infinite_loop() {
+    let (mut suite, mut accounts, tester) = setup_test().await;
 
     suite
         .send_message_with_gas(
@@ -72,12 +73,13 @@ fn infinite_loop() {
             )
             .unwrap(),
         )
+        .await
         .should_fail_with_error("out of gas");
 }
 
-#[test]
-fn immutable_state() {
-    let (mut suite, mut accounts, tester) = setup_test();
+#[tokio::test]
+async fn immutable_state() {
+    let (mut suite, mut accounts, tester) = setup_test().await;
 
     // Query the tester contract.
     //
@@ -114,12 +116,13 @@ fn immutable_state() {
             )
             .unwrap(),
         )
+        .await
         .should_fail_with_error(VmError::immutable_state());
 }
 
-#[test]
-fn query_stack_overflow() {
-    let (suite, _, tester) = setup_test();
+#[tokio::test]
+async fn query_stack_overflow() {
+    let (suite, _, tester) = setup_test().await;
 
     // The contract attempts to call with `QueryMsg::StackOverflow` to itself in
     // a loop. Should raise the "exceeded max query depth" error.
@@ -128,9 +131,9 @@ fn query_stack_overflow() {
         .should_fail_with_error(VmError::exceed_max_query_depth());
 }
 
-#[test]
-fn message_stack_overflow() {
-    let (mut suite, mut accounts, tester) = setup_test();
+#[tokio::test]
+async fn message_stack_overflow() {
+    let (mut suite, mut accounts, tester) = setup_test().await;
 
     // The contract attempts to return a Response with `Execute::StackOverflow`
     // to itself in a loop. Should raise the "exceeded max message depth" error.
@@ -145,6 +148,7 @@ fn message_stack_overflow() {
             )
             .unwrap(),
         )
+        .await
         .should_fail_with_error(AppError::exceed_max_message_depth());
 }
 
@@ -360,7 +364,8 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
     GenericResult::Err(VerificationError::unauthentic().into_generic_backtraced_error());
     "invalid ed25519: different msg"
 )]
-fn verifying_signature<G, M, R>(
+#[tokio::test]
+async fn verifying_signature<G, M, R>(
     generate_request: G,
     malleate: M,
     expect: GenericResult<R::Response>,
@@ -371,7 +376,7 @@ fn verifying_signature<G, M, R>(
     R::Message: Serialize,
     R::Response: DeserializeOwned + Debug + PartialEq,
 {
-    let (suite, _, tester) = setup_test();
+    let (suite, _, tester) = setup_test().await;
 
     // Generate and malleate query request
     let req = generate_request();
@@ -380,9 +385,9 @@ fn verifying_signature<G, M, R>(
     suite.query_wasm_smart(tester, req).should_match(expect);
 }
 
-#[test]
-fn recovering_secp256k1_pubkey() {
-    let (suite, _, tester) = setup_test();
+#[tokio::test]
+async fn recovering_secp256k1_pubkey() {
+    let (suite, _, tester) = setup_test().await;
 
     // Generate a valid signature
     let (vk, req) = {
@@ -443,9 +448,9 @@ fn ed25519_sign(msg: &str) -> (Binary, Binary, Binary) {
     )
 }
 
-#[test]
-fn wasm_ed25519_batch_verify() {
-    let (suite, _, tester) = setup_test();
+#[tokio::test]
+async fn wasm_ed25519_batch_verify() {
+    let (suite, _, tester) = setup_test().await;
 
     let mut req = {
         let (prehash_msg1, sig1, vk1) = ed25519_sign("Jake");
