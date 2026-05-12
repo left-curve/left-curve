@@ -14,32 +14,32 @@ version       = { workspace = true }
 tracing = ["dep:tracing"]
 
 [dependencies]
-aes-gcm           = { workspace = true, features = ["std"] }
-alloy             = { workspace = true }
-anyhow            = { workspace = true }
-async-trait       = { workspace = true }
-bip32             = { workspace = true }
-dango-auth        = { workspace = true }
-dango-types       = { workspace = true }
-error-backtrace   = { workspace = true }
-eth-utils         = { workspace = true }
-futures           = { workspace = true }
-graphql_client    = { workspace = true }
-grug              = { workspace = true }
-identity          = { workspace = true }
+aes-gcm               = { workspace = true, features = ["std"] }
+alloy                 = { workspace = true }
+anyhow                = { workspace = true }
+async-trait           = { workspace = true }
+bip32                 = { workspace = true }
+dango-auth            = { workspace = true }
+dango-types           = { workspace = true }
+error-backtrace       = { workspace = true }
+eth-utils             = { workspace = true }
+futures               = { workspace = true }
+graphql_client        = { workspace = true }
+grug                  = { workspace = true }
+identity              = { workspace = true }
 indexer-graphql-types = { workspace = true }
-k256              = { workspace = true }
-pbkdf2            = { workspace = true }
-rand              = { workspace = true }
-reqwest           = { workspace = true, features = ["json"] }
-serde             = { workspace = true }
-serde_json        = { workspace = true }
-sha2              = { workspace = true }
-thiserror         = { workspace = true }
-tokio             = { workspace = true }
-tokio-tungstenite = { workspace = true }
-tracing           = { workspace = true, optional = true }
-url               = { workspace = true }
+k256                  = { workspace = true }
+pbkdf2                = { workspace = true }
+rand                  = { workspace = true }
+reqwest               = { workspace = true, features = ["json"] }
+serde                 = { workspace = true }
+serde_json            = { workspace = true }
+sha2                  = { workspace = true }
+thiserror             = { workspace = true }
+tokio                 = { workspace = true }
+tokio-tungstenite     = { workspace = true }
+tracing               = { workspace = true, optional = true }
+url                   = { workspace = true }
 
 [dev-dependencies]
 assert-json-diff      = { workspace = true }
