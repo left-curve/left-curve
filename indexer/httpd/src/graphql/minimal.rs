@@ -11,6 +11,7 @@ use {
 };
 
 #[derive(MergedObject, Default)]
+#[graphql(name = "Query")] // renamed for backward compatibility
 pub struct MinimalQuery(pub GrugQuery);
 
 pub type MinimalSchema = Schema<MinimalQuery, EmptyMutation, EmptySubscription>;
