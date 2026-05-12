@@ -69,7 +69,7 @@ pub async fn create_blocks(
 
     let suite_guard = suite.read().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
-    let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+    let clickhouse_context = indexer_clickhouse::context::Context::new(
         "http://localhost:8123".to_string(),
         "default".to_string(),
         "default".to_string(),

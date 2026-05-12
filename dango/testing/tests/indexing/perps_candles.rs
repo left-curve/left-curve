@@ -1,15 +1,6 @@
 use {
     assertor::*,
     dango_genesis::Contracts,
-    dango_indexer_clickhouse::{
-        entities::{
-            CandleInterval,
-            perps_candle::PerpsCandle,
-            perps_candle_query::{PerpsCandleQueryBuilder, PerpsCandleResult},
-            perps_pair_price::PerpsPairPrice,
-        },
-        indexer::perps_candles::cache::{PerpsCandleCache, PerpsCandleCacheKey},
-    },
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_testing::{
         Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
@@ -26,6 +17,15 @@ use {
         Udec128_6, btree_map,
     },
     grug_app::Indexer,
+    indexer_clickhouse::{
+        entities::{
+            CandleInterval,
+            perps_candle::PerpsCandle,
+            perps_candle_query::{PerpsCandleQueryBuilder, PerpsCandleResult},
+            perps_pair_price::PerpsPairPrice,
+        },
+        indexer::perps_candles::cache::{PerpsCandleCache, PerpsCandleCacheKey},
+    },
     std::collections::HashMap,
 };
 

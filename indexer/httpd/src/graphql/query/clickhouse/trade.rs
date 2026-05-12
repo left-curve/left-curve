@@ -1,11 +1,11 @@
 use {
     async_graphql::{types::connection::*, *},
     chrono::{DateTime, Utc},
-    dango_indexer_clickhouse::{
+    grug::Addr,
+    indexer_clickhouse::{
         context::Context,
         entities::{trade::Trade, trade_query::TradeQueryBuilder},
     },
-    grug::Addr,
     serde::{Deserialize, Serialize},
     std::str::FromStr,
 };

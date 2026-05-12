@@ -1,9 +1,5 @@
 use {
     crate::call_graphql_query,
-    dango_graphql_types::{
-        AllPerpsPairStats, PerpsPairStats, PerpsPairStatsPartial, all_perps_pair_stats,
-        perps_pair_stats, perps_pair_stats_partial,
-    },
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},
@@ -11,6 +7,10 @@ use {
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
+    indexer_graphql_types::{
+        AllPerpsPairStats, PerpsPairStats, PerpsPairStatsPartial, all_perps_pair_stats,
+        perps_pair_stats, perps_pair_stats_partial,
+    },
 };
 
 #[tokio::test(flavor = "multi_thread")]

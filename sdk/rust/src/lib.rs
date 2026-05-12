@@ -4,4 +4,4 @@ mod secret;
 mod signer;
 mod subscription;
 
-pub use {client::*, dango_graphql_types::*, keystore::*, secret::*, signer::*, subscription::*};
+pub use {client::*, indexer_graphql_types::*, keystore::*, secret::*, signer::*, subscription::*};

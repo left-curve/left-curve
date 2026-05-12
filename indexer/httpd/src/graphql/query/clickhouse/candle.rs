@@ -1,7 +1,7 @@
 use {
     async_graphql::{types::connection::*, *},
     chrono::{DateTime, Utc},
-    dango_indexer_clickhouse::{
+    indexer_clickhouse::{
         context::Context,
         entities::{CandleInterval, candle::Candle, candle_query::CandleQueryBuilder},
         indexer::candles::cache,

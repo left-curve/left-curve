@@ -147,7 +147,7 @@ pub async fn setup_test_with_indexer(
     MockValidatorSets,
     indexer_httpd::context::FullContext,
     indexer_httpd::context::FullContext,
-    dango_indexer_clickhouse::context::Context,
+    indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
     setup_test_with_indexer_and_custom_genesis(test_opt, GenesisOption::preset_test()).await
@@ -169,7 +169,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     MockValidatorSets,
     indexer_httpd::context::FullContext,
     indexer_httpd::context::FullContext,
-    dango_indexer_clickhouse::context::Context,
+    indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
     let database_url = std::env::var("DATABASE_URL")
@@ -191,7 +191,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     let indexer_cache = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
-    let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+    let mut clickhouse_context = indexer_clickhouse::context::Context::new(
         format!(
             "http://{}:{}",
             std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
@@ -211,8 +211,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     hooked_indexer.add_indexer(indexer_cache).await.unwrap();
     hooked_indexer.add_indexer(indexer).await.unwrap();
 
-    let clickhouse_indexer =
-        dango_indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
+    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
     hooked_indexer
         .add_indexer(clickhouse_indexer)
         .await

@@ -1,10 +1,6 @@
 use {
     anyhow::{anyhow, bail, ensure},
     async_trait::async_trait,
-    dango_graphql_types::{
-        PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
-        query_store, search_tx, simulate, transactions, transfers,
-    },
     error_backtrace::BacktracedError,
     graphql_client::{GraphQLQuery, Response},
     grug::{
@@ -12,6 +8,10 @@ use {
         BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
         UnsignedTx,
+    },
+    indexer_graphql_types::{
+        PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
+        query_store, search_tx, simulate, transactions, transfers,
     },
     reqwest::IntoUrl,
     serde::Serialize,
@@ -46,7 +46,7 @@ impl HttpClient {
     ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
     where
         V: Variables + Serialize + std::fmt::Debug,
-        <<V as dango_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
+        <<V as indexer_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
             std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);

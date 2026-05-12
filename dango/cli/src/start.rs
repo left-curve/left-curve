@@ -284,14 +284,14 @@ impl StartCmd {
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
         let sql_context = sql_indexer.context.clone();
 
-        let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        let clickhouse_context = indexer_clickhouse::context::Context::new(
             cfg.indexer.clickhouse.url.clone(),
             cfg.indexer.clickhouse.database.clone(),
             cfg.indexer.clickhouse.user.clone(),
             cfg.indexer.clickhouse.password.clone(),
         );
 
-        let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(clickhouse_context.clone());
+        let clickhouse_indexer = indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
         // Create cache indexer (RuntimeHandler no longer needed)
         let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());

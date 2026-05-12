@@ -8,8 +8,6 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
-  "dango/indexer/clickhouse",
-  "dango/indexer/graphql-types",
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
@@ -44,7 +42,9 @@ members = [
   "hyperlane/testing",
   "hyperlane/va",
   "indexer/cache",
+  "indexer/clickhouse",
   "indexer/disk-saver",
+  "indexer/graphql-types",
   "indexer/hooked",
   "indexer/httpd",
   "indexer/metrics",
@@ -197,62 +197,62 @@ wasmer                      = "7"
 wasmer-middlewares          = "7"
 
 # Left curve packages
-dango-account               = { path = "dango/account" }
-dango-account-factory       = { path = "dango/account-factory" }
-dango-amm                   = { path = "dango/amm" }
-dango-auth                  = { path = "dango/auth" }
-dango-bank                  = { path = "dango/bank" }
-dango-dex                   = { path = "dango/dex" }
-dango-gateway               = { path = "dango/gateway" }
-dango-genesis               = { path = "dango/genesis" }
-dango-graphql-types         = { path = "dango/indexer/graphql-types" }
-dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
-dango-mock-httpd            = { path = "dango/mocks/httpd" }
-dango-oracle                = { path = "dango/oracle" }
-dango-order-book            = { path = "dango/order-book" }
-dango-perps                 = { path = "dango/perps" }
-dango-proposal-preparer     = { path = "dango/proposal-preparer" }
-dango-sdk                   = { path = "sdk/rust" }
-dango-taxman                = { path = "dango/taxman" }
-dango-testing               = { path = "dango/testing" }
-dango-types                 = { path = "dango/types" }
-dango-upgrade               = { path = "dango/upgrade" }
-dango-vesting               = { path = "dango/vesting" }
-dango-warp                  = { path = "dango/warp" }
-grug                        = { path = "grug/std" }
-grug-app                    = { path = "grug/app" }
-grug-auth                   = { path = "grug/auth" }
-grug-crypto                 = { path = "grug/crypto" }
-grug-db-disk                = { path = "grug/db/disk" }
-grug-db-memory              = { path = "grug/db/memory" }
-grug-ffi                    = { path = "grug/ffi" }
-grug-jmt                    = { path = "grug/jellyfish-merkle" }
-grug-macros                 = { path = "grug/macros" }
-grug-math                   = { path = "grug/math" }
-grug-mock-account           = { path = "grug/mocks/account" }
-grug-mock-bank              = { path = "grug/mocks/bank" }
-grug-mock-taxman            = { path = "grug/mocks/taxman" }
-grug-storage                = { path = "grug/storage" }
-grug-tester                 = { path = "grug/tester" }
-grug-testing                = { path = "grug/testing" }
-grug-types                  = { path = "grug/types" }
-grug-vm-hybrid              = { path = "grug/vm/hybrid" }
-grug-vm-rust                = { path = "grug/vm/rust" }
-grug-vm-wasm                = { path = "grug/vm/wasm" }
-hyperlane-ism               = { path = "hyperlane/isms/multisig" }
-hyperlane-mailbox           = { path = "hyperlane/mailbox" }
-hyperlane-testing           = { path = "hyperlane/testing" }
-hyperlane-types             = { path = "hyperlane/types" }
-hyperlane-va                = { path = "hyperlane/va" }
-indexer-cache               = { path = "indexer/cache" }
-indexer-disk-saver          = { path = "indexer/disk-saver" }
-indexer-hooked              = { path = "indexer/hooked" }
-indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
-indexer-metrics             = { path = "indexer/metrics" }
-indexer-sql                 = { path = "indexer/sql" }
-indexer-testing             = { path = "indexer/testing" }
-pyth-client                 = { path = "pyth/client" }
-pyth-types                  = { path = "pyth/types" }
+dango-account           = { path = "dango/account" }
+dango-account-factory   = { path = "dango/account-factory" }
+dango-amm               = { path = "dango/amm" }
+dango-auth              = { path = "dango/auth" }
+dango-bank              = { path = "dango/bank" }
+dango-dex               = { path = "dango/dex" }
+dango-gateway           = { path = "dango/gateway" }
+dango-genesis           = { path = "dango/genesis" }
+dango-mock-httpd        = { path = "dango/mocks/httpd" }
+dango-oracle            = { path = "dango/oracle" }
+dango-order-book        = { path = "dango/order-book" }
+dango-perps             = { path = "dango/perps" }
+dango-proposal-preparer = { path = "dango/proposal-preparer" }
+dango-sdk               = { path = "sdk/rust" }
+dango-taxman            = { path = "dango/taxman" }
+dango-testing           = { path = "dango/testing" }
+dango-types             = { path = "dango/types" }
+dango-upgrade           = { path = "dango/upgrade" }
+dango-vesting           = { path = "dango/vesting" }
+dango-warp              = { path = "dango/warp" }
+grug                    = { path = "grug/std" }
+grug-app                = { path = "grug/app" }
+grug-auth               = { path = "grug/auth" }
+grug-crypto             = { path = "grug/crypto" }
+grug-db-disk            = { path = "grug/db/disk" }
+grug-db-memory          = { path = "grug/db/memory" }
+grug-ffi                = { path = "grug/ffi" }
+grug-jmt                = { path = "grug/jellyfish-merkle" }
+grug-macros             = { path = "grug/macros" }
+grug-math               = { path = "grug/math" }
+grug-mock-account       = { path = "grug/mocks/account" }
+grug-mock-bank          = { path = "grug/mocks/bank" }
+grug-mock-taxman        = { path = "grug/mocks/taxman" }
+grug-storage            = { path = "grug/storage" }
+grug-tester             = { path = "grug/tester" }
+grug-testing            = { path = "grug/testing" }
+grug-types              = { path = "grug/types" }
+grug-vm-hybrid          = { path = "grug/vm/hybrid" }
+grug-vm-rust            = { path = "grug/vm/rust" }
+grug-vm-wasm            = { path = "grug/vm/wasm" }
+hyperlane-ism           = { path = "hyperlane/isms/multisig" }
+hyperlane-mailbox       = { path = "hyperlane/mailbox" }
+hyperlane-testing       = { path = "hyperlane/testing" }
+hyperlane-types         = { path = "hyperlane/types" }
+hyperlane-va            = { path = "hyperlane/va" }
+indexer-cache           = { path = "indexer/cache" }
+indexer-clickhouse      = { path = "indexer/clickhouse" }
+indexer-disk-saver      = { path = "indexer/disk-saver" }
+indexer-graphql-types   = { path = "indexer/graphql-types" }
+indexer-hooked          = { path = "indexer/hooked" }
+indexer-httpd           = { path = "indexer/httpd", features = ["tracing"] }
+indexer-metrics         = { path = "indexer/metrics" }
+indexer-sql             = { path = "indexer/sql" }
+indexer-testing         = { path = "indexer/testing" }
+pyth-client             = { path = "pyth/client" }
+pyth-types              = { path = "pyth/types" }
 
 # Utilities
 config-parser   = { path = "utils/config-parser" }

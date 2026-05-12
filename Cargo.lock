@@ -3705,7 +3705,6 @@ dependencies = [
  "colored",
  "config-parser",
  "dango-genesis",
- "dango-indexer-clickhouse",
  "dango-proposal-preparer",
  "dango-upgrade",
  "dialoguer",
@@ -3716,6 +3715,7 @@ dependencies = [
  "grug-vm-rust",
  "home",
  "indexer-cache",
+ "indexer-clickhouse",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-metrics",
@@ -3786,58 +3786,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-graphql-types"
-version = "0.0.0"
-dependencies = [
- "graphql_client",
- "paste",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "dango-indexer-clickhouse"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assertor",
- "async-graphql",
- "async-stream",
- "async-trait",
- "bigdecimal",
- "bnum 0.14.2",
- "borsh",
- "chrono",
- "clickhouse",
- "dango-order-book",
- "dango-types",
- "error-backtrace",
- "futures",
- "grug",
- "grug-app",
- "grug-types",
- "indexer-sql",
- "itertools 0.14.0",
- "metrics",
- "serde",
- "serde_json",
- "strum 0.28.0",
- "strum_macros 0.28.0",
- "tempfile",
- "test-case",
- "thiserror 2.0.18",
- "tokio",
- "tokio-stream",
- "tracing",
-]
-
-[[package]]
 name = "dango-mock-httpd"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-genesis",
- "dango-indexer-clickhouse",
  "dango-proposal-preparer",
  "dango-testing",
  "grug-app",
@@ -3847,6 +3800,7 @@ dependencies = [
  "grug-vm-rust",
  "hyperlane-testing",
  "indexer-cache",
+ "indexer-clickhouse",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -3933,7 +3887,6 @@ dependencies = [
  "dango-account-factory",
  "dango-auth",
  "dango-genesis",
- "dango-graphql-types",
  "dango-mock-httpd",
  "dango-testing",
  "dango-types",
@@ -3944,6 +3897,7 @@ dependencies = [
  "grug",
  "grug-testing",
  "identity",
+ "indexer-graphql-types",
  "indexer-testing",
  "k256",
  "pbkdf2",
@@ -4012,8 +3966,6 @@ dependencies = [
  "dango-dex",
  "dango-gateway",
  "dango-genesis",
- "dango-graphql-types",
- "dango-indexer-clickhouse",
  "dango-mock-httpd",
  "dango-oracle",
  "dango-order-book",
@@ -4037,7 +3989,9 @@ dependencies = [
  "hyperlane-types",
  "identity",
  "indexer-cache",
+ "indexer-clickhouse",
  "indexer-disk-saver",
+ "indexer-graphql-types",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-metrics",
@@ -6388,6 +6342,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexer-clickhouse"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "async-graphql",
+ "async-stream",
+ "async-trait",
+ "bigdecimal",
+ "bnum 0.14.2",
+ "borsh",
+ "chrono",
+ "clickhouse",
+ "dango-order-book",
+ "dango-types",
+ "error-backtrace",
+ "futures",
+ "grug",
+ "grug-app",
+ "grug-types",
+ "indexer-sql",
+ "itertools 0.14.0",
+ "metrics",
+ "serde",
+ "serde_json",
+ "strum 0.28.0",
+ "strum_macros 0.28.0",
+ "tempfile",
+ "test-case",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "indexer-disk-saver"
 version = "0.0.0"
 dependencies = [
@@ -6408,6 +6398,16 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "indexer-graphql-types"
+version = "0.0.0"
+dependencies = [
+ "graphql_client",
+ "paste",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -6456,7 +6456,6 @@ dependencies = [
  "bigdecimal",
  "chrono",
  "clap",
- "dango-indexer-clickhouse",
  "dango-order-book",
  "dango-types",
  "error-backtrace",
@@ -6467,6 +6466,7 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "indexer-cache",
+ "indexer-clickhouse",
  "indexer-sql",
  "itertools 0.14.0",
  "metrics",
@@ -6549,8 +6549,6 @@ dependencies = [
  "awc",
  "chrono",
  "dango-genesis",
- "dango-graphql-types",
- "dango-indexer-clickhouse",
  "dango-mock-httpd",
  "dango-testing",
  "dango-types",
@@ -6564,6 +6562,8 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "indexer-cache",
+ "indexer-clickhouse",
+ "indexer-graphql-types",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",

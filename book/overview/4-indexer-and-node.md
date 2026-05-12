@@ -107,7 +107,7 @@ Persists complete block + outcome data to disk for recovery:
 
 Optional S3 sync with bitmap tracking of uploaded blocks.
 
-## 4. Dango-Specific Indexer (`dango/indexer/`)
+## 4. Dango-Specific Indexer (`indexer/sql/`)
 
 Extends the base SQL indexer with domain-specific data extraction:
 

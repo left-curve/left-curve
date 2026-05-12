@@ -1,1 +1,1 @@
-"""Vendored GraphQL documents from dango/indexer/graphql-types/src/schemas/."""
+"""Vendored GraphQL documents from indexer/graphql-types/src/schemas/."""
