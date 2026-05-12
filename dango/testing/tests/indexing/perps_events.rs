@@ -15,9 +15,9 @@ async fn index_perps_events() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 

@@ -101,6 +101,7 @@ async fn create_pair_prices(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()

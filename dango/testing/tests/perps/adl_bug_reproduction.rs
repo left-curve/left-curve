@@ -67,12 +67,12 @@ use {
 /// | 4    | Oracle → $2,300                               | user1 equity=-$460, MM=$575 → liquidatable     |
 /// | 5    | Liquidate user1                               | 1 ETH fills at $100k, 4 ETH ADL'd at ~-$22,240 |
 /// | 6    | Verify                                        | user3 margin deeply negative (bug)             |
-#[test]
-fn adl_bug_absurd_book_price() {
+#[tokio::test]
+async fn adl_bug_absurd_book_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Oracle = $2,000.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -98,6 +98,7 @@ fn adl_bug_absurd_book_price() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -111,6 +112,7 @@ fn adl_bug_absurd_book_price() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -131,6 +133,7 @@ fn adl_bug_absurd_book_price() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -148,6 +151,7 @@ fn adl_bug_absurd_book_price() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(1_050_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -166,6 +170,7 @@ fn adl_bug_absurd_book_price() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify positions.
@@ -204,6 +209,7 @@ fn adl_bug_absurd_book_price() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -224,6 +230,7 @@ fn adl_bug_absurd_book_price() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -240,7 +247,7 @@ fn adl_bug_absurd_book_price() {
     //   → close entire SHORT position
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_300);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_300).await;
 
     // -------------------------------------------------------------------------
     // Step 5: Liquidate user1.
@@ -287,6 +294,7 @@ fn adl_bug_absurd_book_price() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------

@@ -22,3 +22,4 @@ thiserror       = { workspace = true }
 grug-math    = { workspace = true }
 grug-testing = { workspace = true }
 test-case    = { workspace = true }
+tokio        = { workspace = true }

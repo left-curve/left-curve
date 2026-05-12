@@ -15,8 +15,8 @@ use {
     std::collections::BTreeSet,
 };
 
-#[test]
-fn batch_transfer() {
+#[tokio::test]
+async fn batch_transfer() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Create two non-existent recipient addresses.
@@ -49,6 +49,7 @@ fn batch_transfer() {
                 usdc::DENOM.clone() => 500,
             },
         })
+        .await
         .should_succeed()
         .events;
 
@@ -282,8 +283,8 @@ where
     b.is_empty()
 }
 
-#[test]
-fn set_namespace_owner_can_only_be_called_by_owner() {
+#[tokio::test]
+async fn set_namespace_owner_can_only_be_called_by_owner() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Attempt to set namespace owner as non-owner. Should fail.
@@ -297,6 +298,7 @@ fn set_namespace_owner_can_only_be_called_by_owner() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("you don't have the right, O you don't have the right");
 
     // Attempt to set namespace owner as owner. Should succeed.
@@ -310,11 +312,12 @@ fn set_namespace_owner_can_only_be_called_by_owner() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 }
 
-#[test]
-fn set_metadata_can_only_be_called_by_non_namespace_owner() {
+#[tokio::test]
+async fn set_metadata_can_only_be_called_by_non_namespace_owner() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Attempt to set metadata as non-namespace owner. Should fail.
@@ -333,6 +336,7 @@ fn set_metadata_can_only_be_called_by_non_namespace_owner() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("sender does not own the namespace `testing`");
 
     // Set user1 as namespace owner of testing
@@ -346,6 +350,7 @@ fn set_metadata_can_only_be_called_by_non_namespace_owner() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Attempt to set metadata as user1. Should succeed.
@@ -365,6 +370,7 @@ fn set_metadata_can_only_be_called_by_non_namespace_owner() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Assert metadata is set correctly
@@ -380,8 +386,8 @@ fn set_metadata_can_only_be_called_by_non_namespace_owner() {
         });
 }
 
-#[test]
-fn set_namespace_owner_works() {
+#[tokio::test]
+async fn set_namespace_owner_works() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Query namespace owner of testing. Should fail because it's not set.
@@ -404,6 +410,7 @@ fn set_namespace_owner_works() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Query namespace owner of testing. Should succeed.
@@ -414,8 +421,8 @@ fn set_namespace_owner_works() {
         .should_succeed_and_equal(accounts.user1.address());
 }
 
-#[test]
-fn query_namespace_owners_works() {
+#[tokio::test]
+async fn query_namespace_owners_works() {
     let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
 
     // Query namespace owners. Should succeed.
@@ -451,8 +458,8 @@ fn query_namespace_owners_works() {
         });
 }
 
-#[test]
-fn query_metadatas_works() {
+#[tokio::test]
+async fn query_metadatas_works() {
     let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
 
     suite
@@ -512,8 +519,8 @@ fn query_metadatas_works() {
         });
 }
 
-#[test]
-fn force_transfer_can_only_be_called_by_taxman() {
+#[tokio::test]
+async fn force_transfer_can_only_be_called_by_taxman() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Attempt to force transfer as non-taxman. Should fail.
@@ -528,11 +535,12 @@ fn force_transfer_can_only_be_called_by_taxman() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("you don't have the right, O you don't have the right");
 }
 
-#[test]
-fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
+#[tokio::test]
+async fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Attempt to mint as non-owner. Should fail.
@@ -546,6 +554,7 @@ fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(
             "only chain owner can mint, burn, or set metadata of top-level denoms",
         );
@@ -561,13 +570,14 @@ fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(
             "only chain owner can mint, burn, or set metadata of top-level denoms",
         );
 }
 
-#[test]
-fn query_supplies_works() {
+#[tokio::test]
+async fn query_supplies_works() {
     let (suite, ..) = setup_test_naive(Default::default());
 
     suite

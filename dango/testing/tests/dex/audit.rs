@@ -39,8 +39,8 @@ use {
 /// Prior to the fix, liquidity depth from orders placed by the passive pool wasn't
 /// decreased if the order is filled. Only liquidity from user orders were properly
 /// decreased.
-#[test]
-fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
+#[tokio::test]
+async fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Supply oracle prices. DANGO = $200, USDC = $1.
@@ -62,6 +62,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Configure DANGO-USD pool type to geometric with spacing 1. It's easier to
@@ -91,6 +92,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             }])),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Add liquidity to the DANGO-USDC pool: 10 dango, 2,000 USDC (2_000_000_000 uusdc)
@@ -108,6 +110,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                 usdc::DENOM.clone() => 2_000_000_000,
             },
         )
+        .await
         .should_succeed();
 
     // Query the liquidity depth before placing any order. There should be an
@@ -184,7 +187,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                 cancels: None,
             },
             coins! { usdc::DENOM.clone() => 200_600_000 * 3 },
-        )
+        ).await
         .should_succeed();
 
     // The ask side liquidity should be reduced from 10 base to 10 - 3 = 7.
@@ -234,8 +237,8 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
         });
 }
 
-#[test]
-fn issue_6_cannot_mint_zero_lp_tokens() {
+#[tokio::test]
+async fn issue_6_cannot_mint_zero_lp_tokens() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Provide liquidity with zero amount of one side
@@ -252,11 +255,12 @@ fn issue_6_cannot_mint_zero_lp_tokens() {
                 dango::DENOM.clone() => 100_000,
             },
         )
+        .await
         .should_fail_with_error("LP token mint amount is less than `MINIMUM_LIQUIDITY`");
 }
 
-#[test]
-fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
+#[tokio::test]
+async fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Provide liquidity with owner account
@@ -274,6 +278,7 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
                 usdc::DENOM.clone() => 100_000,
             },
         )
+        .await
         .should_succeed();
 
     // Record user balance
@@ -298,6 +303,7 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
                 eth::DENOM.clone() => 103,
             },
         )
+        .await
         .should_succeed();
 
     // Assert that the user's balance has changed correctly
@@ -307,8 +313,8 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
     });
 }
 
-#[test]
-fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
+#[tokio::test]
+async fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     suite
@@ -318,6 +324,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &dex::ExecuteMsg::Owner(dex::OwnerMsg::SetPaused(true)),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -331,6 +338,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("can't provide liquidity when trading is paused");
 
     suite
@@ -344,6 +352,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("can't withdraw liquidity when trading is paused");
 
     suite
@@ -362,6 +371,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("can't swap when trading is paused");
 
     suite
@@ -380,6 +390,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("can't swap when trading is paused");
 
     suite
@@ -392,13 +403,14 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error("can't update orders when trading is paused");
 }
 
 /// Prior to the fix, the depth quote amount was subject to rounding errors when
 /// a limit order was partially filled and the error kept increasing over time.
-#[test]
-fn issue_156_depth_quote_rounding_error() {
+#[tokio::test]
+async fn issue_156_depth_quote_rounding_error() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
         bridge_ops: |accounts| {
             vec![
@@ -472,6 +484,7 @@ fn issue_156_depth_quote_rounding_error() {
                 quote_denom.clone() => Uint128::new(1_000_000),
             ),
         )
+        .await
         .should_succeed();
 
     // Create some matching orders:
@@ -536,6 +549,7 @@ fn issue_156_depth_quote_rounding_error() {
                     quote_denom.clone() => buy_amount * Uint128::new(2),
                 ),
             )
+            .await
             .should_succeed();
 
         // Check the liquidity depth.
@@ -626,8 +640,8 @@ fn issue_156_depth_quote_rounding_error() {
 /// In `cancel_all_orders`, we refund all orders. However, actually, passive
 /// orders don't need to be refunded. Refunding it leads to error because the
 /// DEX contract doesn't implement the `receive` entry point.
-#[test]
-fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
+#[tokio::test]
+async fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
     // ------------------------------- 1. Setup --------------------------------
 
     // Set up DANGO-USDC pair with geometric pool and oracle feed.
@@ -684,6 +698,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                 usdc::DENOM.clone() => 1000,
             },
         )
+        .await
         .should_succeed();
 
     // For realism, also create some user orders.
@@ -715,6 +730,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                 usdc::DENOM.clone() => 195,
             },
         )
+        .await
         .should_succeed();
 
     // Pause trading. We want to ensure that forced order cancelations works
@@ -727,6 +743,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             &dex::ExecuteMsg::Owner(dex::OwnerMsg::SetPaused(true)),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------- 2. Ensure contract state before cancelation --------------
@@ -811,6 +828,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             &dex::ExecuteMsg::Owner(dex::OwnerMsg::Reset {}),
             Coins::new(),
         )
+        .await
         .should_succeed(); // Prior to the fix, this errors.
 
     // --------------- 4. Check contract state after cancelation ---------------
@@ -853,8 +871,8 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
         .should_succeed_and(|orders| orders.is_empty());
 }
 
-#[test]
-fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
+#[tokio::test]
+async fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Create an ask order of one base unit with a price equal to the minimum order size.
@@ -874,11 +892,12 @@ fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
             },
             coins! { dango::DENOM.clone() => 1 },
         )
+        .await
         .should_fail();
 }
 
-#[test]
-fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
+#[tokio::test]
+async fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Provide some liquidity with owner account
@@ -896,6 +915,7 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
                 usdc::DENOM.clone() => 5,
             },
         )
+        .await
         .should_succeed();
 
     // Feed oracle prices. Use 0 as Timestamp to ensure that the order price is stale.
@@ -917,6 +937,7 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Query simulate provide liquidity with stale oracle price
@@ -953,8 +974,8 @@ fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
 
 /// Prior to the fix, a zero length swap route was allowed, which resulted in charging a fee
 /// despite not having any swaps performed.
-#[test]
-fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
+#[tokio::test]
+async fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Provide liquidity to the pool.
@@ -972,6 +993,7 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
                 usdc::DENOM.clone() => 100_000,
             },
         )
+        .await
         .should_succeed();
 
     // Attempt to swap with a zero length route.
@@ -985,6 +1007,7 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(StdError::length_out_of_range::<UniqueVec<PairId>>(
             0, "<", 1,
         ));
@@ -1013,6 +1036,7 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(StdError::length_out_of_range::<UniqueVec<PairId>>(
             3, ">", 2,
         ));

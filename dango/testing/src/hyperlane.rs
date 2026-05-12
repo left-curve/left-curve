@@ -74,9 +74,9 @@ where
         }
     }
 
-    pub fn receive_warp_transfer<R, A>(
+    pub async fn receive_warp_transfer<R, A>(
         &mut self,
-        relayer: &mut dyn Signer,
+        relayer: &mut (dyn Signer + Send + Sync),
         origin_domain: Domain,
         origin_warp: Addr32,
         recipient: &R,
@@ -118,6 +118,7 @@ where
                 },
                 Coins::new(),
             )
+            .await
             .result
             .map_err(|err| anyhow!(err))?;
 

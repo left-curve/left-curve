@@ -5,8 +5,8 @@ use {
     grug_types::{Coins, Duration, JsonDeExt, Message, NonEmpty, ResultExt, Timestamp, Tx},
 };
 
-#[test]
-fn check_tx_and_finalize() {
+#[tokio::test]
+async fn check_tx_and_finalize() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("rhaki", Coins::one("uatom", 100).unwrap())
         .add_account("larry", Coins::new())
@@ -22,6 +22,7 @@ fn check_tx_and_finalize() {
     // Create a tx to set sequence to 1.
     suite
         .send_message(&mut accounts["rhaki"], transfer_msg.clone())
+        .await
         .should_succeed();
 
     // Create a tx with sequence 0, 1, 2, 4.
@@ -85,7 +86,7 @@ fn check_tx_and_finalize() {
     // The tx with sequence 1 should succeed.
     // The tx with sequence 2 should succeed.
     // The tx with sequence 4 should fail.
-    let result = suite.make_block(txs).block_outcome;
+    let result = suite.make_block(txs).await.block_outcome;
 
     result.tx_outcomes[0].clone().should_succeed();
     result.tx_outcomes[1].clone().should_succeed();
@@ -108,7 +109,7 @@ fn check_tx_and_finalize() {
         )
         .unwrap();
 
-    suite.make_block(vec![tx]).block_outcome.tx_outcomes[0]
+    suite.make_block(vec![tx]).await.block_outcome.tx_outcomes[0]
         .clone()
         .should_succeed();
 

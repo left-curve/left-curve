@@ -250,7 +250,8 @@ use {
     };
     "example 5"
 )]
-fn dex_works(
+#[tokio::test]
+async fn dex_works(
     // A list of orders to submit: direction, price, amount.
     orders_to_submit: Vec<(Direction, u128, u128)>,
     // Orders that should remain not fully filled: order_id => remaining amount.
@@ -274,6 +275,7 @@ fn dex_works(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
     suite
         .execute(
@@ -288,6 +290,7 @@ fn dex_works(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Find which accounts will submit the orders, so we can track their balances.
@@ -351,6 +354,7 @@ fn dex_works(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -379,7 +383,7 @@ fn dex_works(
 }
 
 /// Submit a standard limit order. Used for volume tracking tests.
-fn submit_standard_order(
+async fn submit_standard_order(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     user: &mut TestAccount,
     contracts: &Contracts,
@@ -406,11 +410,12 @@ fn submit_standard_order(
             },
             funds,
         )
+        .await
         .should_succeed();
 }
 
-#[test]
-fn volume_tracking_works() {
+#[tokio::test]
+async fn volume_tracking_works() {
     let (mut suite, accounts, _, contracts, _) = setup_test_naive(TestOption {
         // Taxman now tracks volumes with the granularity of 1 day. This test
         // was written before this change was introduced. To make this test work
@@ -427,6 +432,7 @@ fn volume_tracking_works() {
             contracts.account_factory,
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
+        .await
         .unwrap();
 
     let mut user2_addr_1 = accounts.user2;
@@ -436,6 +442,7 @@ fn volume_tracking_works() {
             contracts.account_factory,
             Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
         )
+        .await
         .unwrap();
 
     // Query volumes before, should be 0
@@ -454,19 +461,19 @@ fn volume_tracking_works() {
         .should_succeed_and_equal(Udec128::ZERO);
 
     // Submit a new order with user1 address 1
-    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid);
+    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid).await;
 
     // User2 submit an opposite matching order with address 1
-    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask);
+    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask).await;
 
     // Get timestamp after trade
     let timestamp_after_first_trade = suite.block.timestamp;
 
     // Submit a new order with user1 address 1
-    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid);
+    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid).await;
 
     // User2 submit an opposite matching order with address 1
-    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask);
+    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask).await;
 
     // Get timestamp after trade
     let timestamp_after_second_trade = suite.block.timestamp;
@@ -488,10 +495,10 @@ fn volume_tracking_works() {
         .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Submit a new order with user1 address 2
-    submit_standard_order(&mut suite, &mut user1_addr_2, &contracts, Direction::Bid);
+    submit_standard_order(&mut suite, &mut user1_addr_2, &contracts, Direction::Bid).await;
 
     // Submit a new opposite matching order with user2 address 2
-    submit_standard_order(&mut suite, &mut user2_addr_2, &contracts, Direction::Ask);
+    submit_standard_order(&mut suite, &mut user2_addr_2, &contracts, Direction::Ask).await;
 
     let timestamp_after_third_trade = suite.block.timestamp;
 
@@ -557,8 +564,8 @@ fn volume_tracking_works() {
     });
 }
 
-#[test]
-fn volume_tracking_works_with_multiple_orders_from_same_user() {
+#[tokio::test]
+async fn volume_tracking_works_with_multiple_orders_from_same_user() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
         // See comment in `volume_tracking_works` for the rationale of this.
         block_time: Duration::from_days(1),
@@ -597,7 +604,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 cancels: None,
             },
             coins! { usdc::DENOM.clone() => 301_000_000 },
-        )
+        ).await
         .should_succeed();
 
     // Submit matching orders with user2
@@ -629,6 +636,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 eth::DENOM.clone() => 117304,
             },
         )
+        .await
         .should_succeed();
 
     // Get timestamp after trade
@@ -708,7 +716,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             coins! {
                 usdc::DENOM.clone() => 411_000_000,
             },
-        )
+        ).await
         .should_succeed();
 
     // Submit matching orders with user2
@@ -742,6 +750,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 eth::DENOM.clone() => 117304 * 2,
             },
         )
+        .await
         .should_succeed();
 
     // Get timestamp after second trade
@@ -2332,7 +2341,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     BTreeMap::new();
     "One limit ask price 1.0, one market bid matched two market bids from other address one partially matched one unmatched are refunded correctly, limit order same size, 1% maker fee, 5% taker fee, no slippage"
 )]
-fn market_order_clearing(
+#[tokio::test]
+async fn market_order_clearing(
     limit_orders_and_funds: Vec<(Vec<CreateOrderRequest>, Coins)>,
     market_orders_and_funds: Vec<(Vec<CreateOrderRequest>, Coins)>,
     limits_and_markets_in_same_block: bool,
@@ -2355,6 +2365,7 @@ fn market_order_clearing(
             None,                // No chain config update
             Some(app_config),    // App config update
         )
+        .await
         .should_succeed();
 
     // Register oracle price source for USDC and DANGO. Needed for volume tracking in cron_execute
@@ -2376,6 +2387,7 @@ fn market_order_clearing(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Record balances for users
@@ -2434,6 +2446,7 @@ fn market_order_clearing(
                     .chain(create_market_order_txs)
                     .collect(),
             )
+            .await
             .block_outcome
             .tx_outcomes
             .into_iter()
@@ -2443,6 +2456,7 @@ fn market_order_clearing(
     } else {
         suite
             .make_block(submit_limit_order_txs)
+            .await
             .block_outcome
             .tx_outcomes
             .into_iter()
@@ -2451,6 +2465,7 @@ fn market_order_clearing(
             });
         suite
             .make_block(create_market_order_txs)
+            .await
             .block_outcome
             .tx_outcomes
             .into_iter()
@@ -2552,7 +2567,8 @@ fn market_order_clearing(
     }
     ; "limit bid matched with market ask limit size too small market order is consumed with zero output"
 )]
-fn market_order_matched_results_in_zero_output(
+#[tokio::test]
+async fn market_order_matched_results_in_zero_output(
     limit_order: CreateOrderRequest,
     limit_funds: Coins,
     market_order: CreateOrderRequest,
@@ -2581,6 +2597,7 @@ fn market_order_matched_results_in_zero_output(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite.balances().record_many(accounts.users());
@@ -2596,6 +2613,7 @@ fn market_order_matched_results_in_zero_output(
             },
             limit_funds,
         )
+        .await
         .should_succeed();
 
     // Create a market order with a small amount and price,
@@ -2609,6 +2627,7 @@ fn market_order_matched_results_in_zero_output(
             },
             market_funds,
         )
+        .await
         .should_succeed();
 
     // No matching could take place so both users should have unchanged balances
@@ -2621,8 +2640,8 @@ fn market_order_matched_results_in_zero_output(
         .should_change(&accounts.user2, expected_balance_changes_market_order_user);
 }
 
-#[test]
-fn cron_execute_gracefully_handles_oracle_price_failure() {
+#[tokio::test]
+async fn cron_execute_gracefully_handles_oracle_price_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     suite.balances().record_many(accounts.users());
@@ -2646,6 +2665,7 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
                 dango::DENOM.clone() => 1000000,
             },
         )
+        .await
         .should_succeed();
 
     // Submit another limit from user2
@@ -2667,6 +2687,7 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
                 usdc::DENOM.clone() => 1000000,
             },
         )
+        .await
         .should_succeed();
 
     // ------ Assert that the orders were matched and filled correctly ------
@@ -2692,8 +2713,8 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
     });
 }
 
-#[test]
-fn market_orders_are_sorted_by_price_ascending() {
+#[tokio::test]
+async fn market_orders_are_sorted_by_price_ascending() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Set maker and taker fee rates to 0 for simplicity
@@ -2707,6 +2728,7 @@ fn market_orders_are_sorted_by_price_ascending() {
             None,                // No chain config update
             Some(app_config),    // App config update
         )
+        .await
         .should_succeed();
 
     // Register oracle price source for USDC and DANGO. Needed for volume tracking in cron_execute
@@ -2723,6 +2745,7 @@ fn market_orders_are_sorted_by_price_ascending() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
     suite
         .execute(
@@ -2737,6 +2760,7 @@ fn market_orders_are_sorted_by_price_ascending() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // No matter which user places the orders they outcome should be the same.
@@ -2772,6 +2796,7 @@ fn market_orders_are_sorted_by_price_ascending() {
                     dango::DENOM.clone() => 1000000,
                 },
             )
+            .await
             .should_succeed();
 
         // Submit two market orders from different users in the same block. First user
@@ -2834,6 +2859,7 @@ fn market_orders_are_sorted_by_price_ascending() {
         // successful.
         suite
             .make_block(txs)
+            .await
             .block_outcome
             .tx_outcomes
             .into_iter()
@@ -2868,8 +2894,8 @@ fn market_orders_are_sorted_by_price_ascending() {
 /// Since order 2 has the better price, it will be matched against 1.
 /// Market order 3 will be popped out of the iterator, but not finding a match.
 /// In this case, we need to handle the cancelation and refund of this order.
-#[test]
-fn refund_left_over_market_bid() {
+#[tokio::test]
+async fn refund_left_over_market_bid() {
     let (mut suite, mut accounts, _, contracts, _) =
         setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
             dex: DexOption {
@@ -2904,6 +2930,7 @@ fn refund_left_over_market_bid() {
             None,                // No chain config update
             Some(app_config),    // App config update
         )
+        .await
         .should_succeed();
 
     // Block 1: we make it such that a mid price of 100 is recorded.
@@ -2935,6 +2962,7 @@ fn refund_left_over_market_bid() {
                 usdc::DENOM.clone() => 100,
             },
         )
+        .await
         .should_succeed();
 
     // Query the mid price to make sure it's accurate.
@@ -3016,6 +3044,7 @@ fn refund_left_over_market_bid() {
                 )
                 .unwrap(),
         ])
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -3051,8 +3080,8 @@ fn refund_left_over_market_bid() {
 /// - resting order book: limit bid, price 100, amount 1
 /// - limit ask, price 99, amount 1
 /// - market ask, price 100, amount 1
-#[test]
-fn refund_left_over_market_ask() {
+#[tokio::test]
+async fn refund_left_over_market_ask() {
     let (mut suite, mut accounts, _, contracts, _) =
         setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
             dex: DexOption {
@@ -3087,6 +3116,7 @@ fn refund_left_over_market_ask() {
             None,                // No chain config update
             Some(app_config),    // App config update
         )
+        .await
         .should_succeed();
 
     // Block 1: we make it such that a mid price of 100 is recorded.
@@ -3118,6 +3148,7 @@ fn refund_left_over_market_ask() {
                 usdc::DENOM.clone() => 200,
             },
         )
+        .await
         .should_succeed();
 
     // Query the mid price to make sure it's accurate.
@@ -3196,6 +3227,7 @@ fn refund_left_over_market_ask() {
                 )
                 .unwrap(),
         ])
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -3223,8 +3255,8 @@ fn refund_left_over_market_ask() {
     });
 }
 
-#[test]
-fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
+#[tokio::test]
+async fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let txs = vec![
@@ -3284,6 +3316,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
 
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()

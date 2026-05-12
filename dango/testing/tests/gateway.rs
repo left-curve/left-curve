@@ -16,8 +16,8 @@ use {
     hyperlane_types::{Addr32, isms},
 };
 
-#[test]
-fn rate_limit() {
+#[tokio::test]
+async fn rate_limit() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -47,6 +47,7 @@ fn rate_limit() {
         ] {
             suite
                 .receive_warp_transfer(relayer, domain, origin_warp, receiver, amount)
+                .await
                 .should_succeed();
         }
 
@@ -72,10 +73,11 @@ fn rate_limit() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Make 1 day pass letting the cron job to reset the rate limits.
-    advance_to_next_day(&mut suite);
+    advance_to_next_day(&mut suite).await;
 
     // Try send back exact tokens to don't trigger rate limit.
     // Current limit = 10% of 300 = 30
@@ -95,6 +97,7 @@ fn rate_limit() {
             },
             Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Trigger the rate limit sending 1 more token.
@@ -110,7 +113,7 @@ fn rate_limit() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Inflows must no longer replenish the outbound quota. Receive 100M more
@@ -123,6 +126,7 @@ fn rate_limit() {
             receiver,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     // Supply is now 300M + 100M = 400M minus the 30M already sent back to
@@ -151,11 +155,11 @@ fn rate_limit() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Advance one day so the cron seeds a fresh quota of 10% × 370M = 37M.
-    advance_to_next_day(&mut suite);
+    advance_to_next_day(&mut suite).await;
 
     // Reserves: ethereum received 100M twice (no outflow) → 200M.
     //           solana received 200M, sent 30M back → 170M.
@@ -197,6 +201,7 @@ fn rate_limit() {
             },
             Coin::new(usdc::DENOM.clone(), 37_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // One more token fails — quota is depleted and inflow can't refill it.
@@ -212,7 +217,7 @@ fn rate_limit() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Raise the rate limit to 99%. In phase 1 this still only takes effect
@@ -226,10 +231,11 @@ fn rate_limit() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Another day. Supply is 370M - 37M = 333M; quota is 333M × 99%.
-    advance_to_next_day(&mut suite);
+    advance_to_next_day(&mut suite).await;
 
     // Solana reserve after the previous 37M withdraw is 170M - 37M = 133M.
     // Drain it completely in a single transfer (well under the new quota).
@@ -246,6 +252,7 @@ fn rate_limit() {
             },
             Coin::new(usdc::DENOM.clone(), 133_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Solana reserve is now empty; the next transfer fails on reserve, not
@@ -263,11 +270,12 @@ fn rate_limit() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_fail_with_error("insufficient reserve!");
 }
 
-#[test]
-fn native_denom() {
+#[tokio::test]
+async fn native_denom() {
     let (mut suite, mut accounts, _, contracts, mut valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -292,6 +300,7 @@ fn native_denom() {
                 ))),
                 Coins::default(),
             )
+            .await
             .should_succeed();
     }
 
@@ -310,6 +319,7 @@ fn native_denom() {
                 },
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         valset.insert(remote_domain, validator_set);
@@ -328,6 +338,7 @@ fn native_denom() {
                 &accounts.user2,
                 100,
             )
+            .await
             .should_fail_with_error(MathError::overflow_sub(0_u128, 100_u128));
     }
 
@@ -350,6 +361,7 @@ fn native_denom() {
                 },
                 coins! { dango::DENOM.clone() => 100 },
             )
+            .await
             .should_succeed();
     }
 
@@ -363,6 +375,7 @@ fn native_denom() {
                 &accounts.user2,
                 100,
             )
+            .await
             .should_succeed();
     }
 
@@ -376,8 +389,8 @@ fn native_denom() {
     });
 }
 
-#[test]
-fn set_rate_limits_resets_quota() {
+#[tokio::test]
+async fn set_rate_limits_resets_quota() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -403,6 +416,7 @@ fn set_rate_limits_resets_quota() {
             receiver,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     // Set a 10% rate limit. Supply is 100M, so the quota should be seeded to
@@ -416,6 +430,7 @@ fn set_rate_limits_resets_quota() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Drain the full 10M quota.
@@ -432,6 +447,7 @@ fn set_rate_limits_resets_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Next token fails — the quota is now exhausted.
@@ -447,7 +463,7 @@ fn set_rate_limits_resets_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Owner raises the rate limit to 50% without advancing time. Raising
@@ -463,6 +479,7 @@ fn set_rate_limits_resets_quota() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Quota is still 0 (raise is deferred to next cron). 1 more token fails.
@@ -478,12 +495,12 @@ fn set_rate_limits_resets_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Advance one day so the cron fires and reseeds. Supply is 90M (after
     // the 10M drain), so the new quota is 45M.
-    advance_to_next_day(&mut suite);
+    advance_to_next_day(&mut suite).await;
 
     // The call that failed above now succeeds — quota has 45M headroom.
     suite
@@ -499,6 +516,7 @@ fn set_rate_limits_resets_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Removing USDC from the rate limits map should drop its entry in
@@ -511,6 +529,7 @@ fn set_rate_limits_resets_quota() {
             &gateway::ExecuteMsg::SetRateLimits(btree_map! {}),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -526,13 +545,14 @@ fn set_rate_limits_resets_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Advance a day so the cron fires. The cron iterates RATE_LIMITS, which
     // no longer contains USDC, so no OUTBOUND_QUOTAS entry should be
     // resurrected for it. A subsequent large transfer must still succeed —
     // reserves remain the only constraint.
-    advance_to_next_day(&mut suite);
+    advance_to_next_day(&mut suite).await;
 
     suite
         .execute(
@@ -547,6 +567,7 @@ fn set_rate_limits_resets_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 }
 
@@ -555,8 +576,8 @@ fn set_rate_limits_resets_quota() {
 /// cron tick lets the same user drain `supply × limit` twice in a row.
 /// Covers the four cases the tighten helper has to get right: no-op,
 /// lower, raise, and cron reseed.
-#[test]
-fn set_rate_limits_only_tightens_existing_quotas() {
+#[tokio::test]
+async fn set_rate_limits_only_tightens_existing_quotas() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -582,6 +603,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             receiver,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     // Seed a 50% rate limit. Quota = 50M.
@@ -594,6 +616,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Drain 30M → quota 20M, supply 70M.
@@ -610,6 +633,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             },
             Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Case 1: same limit re-set. min(20M, 70M × 50% = 35M) = 20M. No change
@@ -623,6 +647,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Transfer 20M + 1 must still fail. If the same-limit call had reset the
@@ -640,6 +665,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             },
             Coin::new(usdc::DENOM.clone(), 20_000_001 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_fail_with_error("insufficient outbound quota!");
 
     // Case 2: lower the limit to 10%. Tightens to min(20M, 70M × 10% = 7M)
@@ -653,6 +679,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // 7M + 1 fails, 7M succeeds.
@@ -669,6 +696,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             },
             Coin::new(usdc::DENOM.clone(), 7_000_001 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_fail_with_error("insufficient outbound quota!");
 
     suite
@@ -684,6 +712,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             },
             Coin::new(usdc::DENOM.clone(), 7_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Quota is now 0. Supply 63M.
@@ -699,6 +728,7 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Even 1 more token fails — no quota has been freed by the raise.
@@ -715,10 +745,11 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_fail_with_error("insufficient outbound quota!");
 
     // Case 4: cron tick reseeds to the raised level. 63M × 80% = 50.4M.
-    advance_to_next_day(&mut suite);
+    advance_to_next_day(&mut suite).await;
 
     suite
         .execute(
@@ -733,11 +764,12 @@ fn set_rate_limits_only_tightens_existing_quotas() {
             },
             Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 }
 
-#[test]
-fn personal_quota() {
+#[tokio::test]
+async fn personal_quota() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -766,6 +798,7 @@ fn personal_quota() {
             receiver,
             200_000_000,
         )
+        .await
         .should_succeed();
 
     // Tight 1% rate limit. Supply is 200M → global quota = 2M.
@@ -778,6 +811,7 @@ fn personal_quota() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // ---- Auth ----
@@ -795,6 +829,7 @@ fn personal_quota() {
             },
             Coins::default(),
         )
+        .await
         .should_fail_with_error("only the owner can set personal quotas");
 
     // ---- Overwrite + query ----
@@ -813,6 +848,7 @@ fn personal_quota() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Overwrite with a smaller, permanent allowance.
@@ -830,6 +866,7 @@ fn personal_quota() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     let pq = suite
@@ -861,6 +898,7 @@ fn personal_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 40_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     let pq = suite
@@ -892,6 +930,7 @@ fn personal_quota() {
             },
             Coin::new(usdc::DENOM.clone(), 12_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Fully consumed personal quotas are removed from storage.
@@ -916,7 +955,7 @@ fn personal_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // ---- Expired personal quota is ignored ----
@@ -935,10 +974,11 @@ fn personal_quota() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // 2h later — under the 24h cron interval, so the global quota stays at 0.
-    advance_by(&mut suite, Duration::from_hours(2));
+    advance_by(&mut suite, Duration::from_hours(2)).await;
 
     // The personal quota is now expired and must be skipped. Withdrawing 1
     // token falls through to the global quota (still 0) and fails.
@@ -954,7 +994,7 @@ fn personal_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // The expired entry is left in storage; the handler doesn't scrub it. The
@@ -988,8 +1028,8 @@ fn personal_quota() {
 /// `Op::Delete` must remove the personal quota entry outright — not just
 /// flip its amount to zero — so subsequent withdrawals see no personal
 /// allowance at all and fall straight to the global quota.
-#[test]
-fn personal_quota_revoke_via_op_delete() {
+#[tokio::test]
+async fn personal_quota_revoke_via_op_delete() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -1017,6 +1057,7 @@ fn personal_quota_revoke_via_op_delete() {
             receiver,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     suite
@@ -1028,6 +1069,7 @@ fn personal_quota_revoke_via_op_delete() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Grant a 50M personal allowance.
@@ -1045,6 +1087,7 @@ fn personal_quota_revoke_via_op_delete() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     let pq = suite
@@ -1070,6 +1113,7 @@ fn personal_quota_revoke_via_op_delete() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Entry is gone — not just zeroed.
@@ -1097,7 +1141,7 @@ fn personal_quota_revoke_via_op_delete() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
-        )
+        ).await
         .should_fail_with_error(
             "insufficient outbound quota! denom: bridge/usdc, requested: 20000000, remaining after personal quota: 20000000",
         );
@@ -1116,6 +1160,7 @@ fn personal_quota_revoke_via_op_delete() {
             },
             Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 }
 
@@ -1123,8 +1168,8 @@ fn personal_quota_revoke_via_op_delete() {
 /// must still behave correctly: the personal allowance is consumed first,
 /// and any overflow falls through to an absent global entry (which means
 /// unrestricted, not "blocked").
-#[test]
-fn personal_quota_on_un_rate_limited_denom() {
+#[tokio::test]
+async fn personal_quota_on_un_rate_limited_denom() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -1153,6 +1198,7 @@ fn personal_quota_on_un_rate_limited_denom() {
             receiver,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     // Grant a 50M personal allowance.
@@ -1170,6 +1216,7 @@ fn personal_quota_on_un_rate_limited_denom() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Consume 30M — fully from the personal quota.
@@ -1186,6 +1233,7 @@ fn personal_quota_on_un_rate_limited_denom() {
             },
             Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     let pq = suite
@@ -1215,6 +1263,7 @@ fn personal_quota_on_un_rate_limited_denom() {
             },
             Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Personal quota is now fully consumed and removed from storage.
@@ -1240,6 +1289,7 @@ fn personal_quota_on_un_rate_limited_denom() {
             },
             Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 }
 
@@ -1247,8 +1297,8 @@ fn personal_quota_on_un_rate_limited_denom() {
 /// record wholesale — no carry-over of the leftover balance, no
 /// preservation of the old expiry. The stored amount and expiry reflect
 /// the admin's most recent decision.
-#[test]
-fn personal_quota_mid_consumption_overwrite() {
+#[tokio::test]
+async fn personal_quota_mid_consumption_overwrite() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -1276,6 +1326,7 @@ fn personal_quota_mid_consumption_overwrite() {
             receiver,
             200_000_000,
         )
+        .await
         .should_succeed();
 
     // Tight global rate limit (1%) so the test leans on the personal quota.
@@ -1288,6 +1339,7 @@ fn personal_quota_mid_consumption_overwrite() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Grant 100M with no expiry.
@@ -1305,6 +1357,7 @@ fn personal_quota_mid_consumption_overwrite() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Consume 40M — fully within personal. 60M remains.
@@ -1321,6 +1374,7 @@ fn personal_quota_mid_consumption_overwrite() {
             },
             Coin::new(usdc::DENOM.clone(), 40_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     let pq = suite
@@ -1351,6 +1405,7 @@ fn personal_quota_mid_consumption_overwrite() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     let stored = suite
@@ -1374,8 +1429,8 @@ fn personal_quota_mid_consumption_overwrite() {
 /// Paginated queries must return entries in ascending `(Addr, Denom)`
 /// order and the `start_after` bound must correctly skip past the end of
 /// the previous page.
-#[test]
-fn personal_quotas_pagination() {
+#[tokio::test]
+async fn personal_quotas_pagination() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -1410,6 +1465,7 @@ fn personal_quotas_pagination() {
                 },
                 Coins::default(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1482,8 +1538,8 @@ fn personal_quotas_pagination() {
 /// The `is_none_or(|t| block.timestamp < t)` predicate is strict. Cover
 /// both sides of the boundary: at exactly `block.timestamp == expire_at`
 /// the quota is already expired; 1ns before that it is still active.
-#[test]
-fn personal_quota_expire_at_boundary() {
+#[tokio::test]
+async fn personal_quota_expire_at_boundary() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -1511,6 +1567,7 @@ fn personal_quota_expire_at_boundary() {
             receiver,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     // ---- Active: 1ns before expiry ----
@@ -1528,6 +1585,7 @@ fn personal_quota_expire_at_boundary() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Advance to 1ns before the expiry. The predicate `now < expire_at` is
@@ -1535,7 +1593,8 @@ fn personal_quota_expire_at_boundary() {
     advance_by(
         &mut suite,
         Duration::from_hours(1) - Duration::from_nanos(1),
-    );
+    )
+    .await;
 
     suite
         .execute(
@@ -1550,6 +1609,7 @@ fn personal_quota_expire_at_boundary() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     // The active path consumed 1 token from the personal quota.
@@ -1580,9 +1640,10 @@ fn personal_quota_expire_at_boundary() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
-    advance_by(&mut suite, Duration::from_hours(1));
+    advance_by(&mut suite, Duration::from_hours(1)).await;
 
     // The transfer should succeed (the denom is un-rate-limited), but the
     // personal quota must NOT be consumed — the predicate treats
@@ -1600,6 +1661,7 @@ fn personal_quota_expire_at_boundary() {
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     let pq = suite
@@ -1616,8 +1678,8 @@ fn personal_quota_expire_at_boundary() {
 /// scrubbed it), re-granting must replace the stale entry cleanly —
 /// fresh amount, fresh expire_at, fresh granted_at. No carry-over of the
 /// old expired record.
-#[test]
-fn personal_quota_regrant_after_expiry() {
+#[tokio::test]
+async fn personal_quota_regrant_after_expiry() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -1645,6 +1707,7 @@ fn personal_quota_regrant_after_expiry() {
             receiver,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     // Grant 10M with a 1h lifetime.
@@ -1662,6 +1725,7 @@ fn personal_quota_regrant_after_expiry() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     let pq_before = suite
@@ -1675,7 +1739,7 @@ fn personal_quota_regrant_after_expiry() {
 
     // Advance 2h so the entry is expired but has not been scrubbed by any
     // transfer attempt.
-    advance_by(&mut suite, Duration::from_hours(2));
+    advance_by(&mut suite, Duration::from_hours(2)).await;
 
     // Re-grant a fresh 20M with a new 1h lifetime. Under no carry-over, the
     // old expired record is replaced wholesale.
@@ -1693,6 +1757,7 @@ fn personal_quota_regrant_after_expiry() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     let pq_after = suite
@@ -1729,6 +1794,7 @@ fn personal_quota_regrant_after_expiry() {
             },
             Coin::new(usdc::DENOM.clone(), 1_000_000 + usdc_sol_fee).unwrap(),
         )
+        .await
         .should_succeed();
 
     let pq_consumed = suite
@@ -1745,8 +1811,8 @@ fn personal_quota_regrant_after_expiry() {
 /// PERSONAL_QUOTAS, even if the entry is already expired. The expired
 /// record should survive unchanged until the admin explicitly overwrites
 /// or deletes it, or the user triggers consumption.
-#[test]
-fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
+#[tokio::test]
+async fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
         bridge_ops: |_| vec![],
         ..TestOption::default()
@@ -1770,6 +1836,7 @@ fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
             &accounts.user2,
             100_000_000,
         )
+        .await
         .should_succeed();
 
     // Global rate limit so cron_execute has something to reseed. This
@@ -1784,6 +1851,7 @@ fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
             }),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Grant a 1h personal allowance.
@@ -1801,6 +1869,7 @@ fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     let pq_before_cron = suite
@@ -1813,7 +1882,7 @@ fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
 
     // Advance a full day. The personal quota expired 23h ago at this point.
     // The cron has fired at least once during this advance (24h tick).
-    advance_to_next_day(&mut suite);
+    advance_to_next_day(&mut suite).await;
 
     let pq_after_cron = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
@@ -1830,14 +1899,14 @@ fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
     assert_eq!(pq_after_cron.granted_at, pq_before_cron.granted_at);
 }
 
-fn advance_to_next_day(suite: &mut TestSuite) {
+async fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
-    suite.make_empty_block();
+    suite.make_empty_block().await;
     suite.block_time = Duration::ZERO;
 }
 
-fn advance_by(suite: &mut TestSuite, d: Duration) {
+async fn advance_by(suite: &mut TestSuite, d: Duration) {
     suite.block_time = d;
-    suite.make_empty_block();
+    suite.make_empty_block().await;
     suite.block_time = Duration::ZERO;
 }
