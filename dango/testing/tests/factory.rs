@@ -552,8 +552,8 @@ async fn new_user_gets_default_username() {
 }
 
 /// Genesis users should also have a default `user_{index}` username.
-#[tokio::test]
-async fn genesis_users_have_default_username() {
+#[test]
+fn genesis_users_have_default_username() {
     let (suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let user_index = accounts.user1.user_index();
@@ -688,8 +688,8 @@ async fn cannot_claim_taken_username() {
 }
 
 /// `Username::is_default` correctly identifies system-generated usernames.
-#[tokio::test]
-async fn username_is_default_detection() {
+#[test]
+fn username_is_default_detection() {
     assert!(Username::default_for_index(0).is_default());
     assert!(Username::default_for_index(42).is_default());
     assert!(Username::default_for_index(u32::MAX).is_default());
@@ -701,8 +701,8 @@ async fn username_is_default_detection() {
 }
 
 /// `ForgotUsername` query returns `User` structs with populated `index`.
-#[tokio::test]
-async fn forgot_username_returns_users_with_index() {
+#[test]
+fn forgot_username_returns_users_with_index() {
     let (suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let user_index = accounts.user1.user_index();

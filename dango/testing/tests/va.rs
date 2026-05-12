@@ -378,8 +378,8 @@ async fn test_announce() {
     }
 }
 
-#[tokio::test]
-async fn test_query() {
+#[test]
+fn test_query() {
     let (suite, _, _, contracts, _) = setup_test(Default::default());
 
     // Assert mailbox is correct.

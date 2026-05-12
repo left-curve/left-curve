@@ -13,8 +13,8 @@ const TEST: IndexedMap<(u8, u64), (i8, i64), TestIndexes> = IndexedMap::new("tes
     bar: UniqueIndex::new(|_k, v| v.1, "test", "test__bar"),
 });
 
-#[tokio::test]
-async fn index_list_macro_works() {
+#[test]
+fn index_list_macro_works() {
     let mut storage = MockStorage::new();
 
     TEST.save(&mut storage, (1, 2), &(3, 4)).unwrap();

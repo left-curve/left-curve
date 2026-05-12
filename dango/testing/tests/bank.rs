@@ -421,8 +421,8 @@ async fn set_namespace_owner_works() {
         .should_succeed_and_equal(accounts.user1.address());
 }
 
-#[tokio::test]
-async fn query_namespace_owners_works() {
+#[test]
+fn query_namespace_owners_works() {
     let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
 
     // Query namespace owners. Should succeed.
@@ -458,8 +458,8 @@ async fn query_namespace_owners_works() {
         });
 }
 
-#[tokio::test]
-async fn query_metadatas_works() {
+#[test]
+fn query_metadatas_works() {
     let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
 
     suite
@@ -576,8 +576,8 @@ async fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
         );
 }
 
-#[tokio::test]
-async fn query_supplies_works() {
+#[test]
+fn query_supplies_works() {
     let (suite, ..) = setup_test_naive(Default::default());
 
     suite
