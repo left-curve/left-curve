@@ -1169,7 +1169,8 @@ macro_rules! setup_slippage_cap_suite {
                     },
                 }),
                 Coins::new(),
-            ).await
+            )
+            .await
             .should_succeed();
 
         suite
@@ -1178,7 +1179,8 @@ macro_rules! setup_slippage_cap_suite {
                 contracts.perps,
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
-            ).await
+            )
+            .await
             .should_succeed();
 
         (suite, accounts, contracts, pair)

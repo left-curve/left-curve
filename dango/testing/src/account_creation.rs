@@ -45,7 +45,8 @@ pub async fn add_account_with_existing_user(
             suite.deref_mut(),
             contracts.account_factory,
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(), // Make sure this is bigger than the minimum deposit.
-        ).await
+        )
+        .await
         .unwrap()
 }
 

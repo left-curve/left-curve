@@ -949,7 +949,8 @@ async fn vault_overcommits_margin_after_position_and_price_drop() {
                 sl: None,
             })),
             Coins::new(),
-        ).await
+        )
+        .await
         // OLD (incorrect) behavior: the vault had a bid, so this would succeed.
         // .should_succeed();
         .should_fail_with_error("no liquidity");

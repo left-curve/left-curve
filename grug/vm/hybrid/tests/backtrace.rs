@@ -54,7 +54,8 @@ pub async fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Ad
             Some("tester"),
             None,
             Coins::new(),
-        ).await
+        )
+        .await
         .should_succeed()
         .address;
 
@@ -68,7 +69,8 @@ pub async fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Ad
             Some("tester"),
             None,
             Coins::new(),
-        ).await
+        )
+        .await
         .should_succeed()
         .address;
 

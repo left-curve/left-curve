@@ -604,7 +604,8 @@ async fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 cancels: None,
             },
             coins! { usdc::DENOM.clone() => 301_000_000 },
-        ).await
+        )
+        .await
         .should_succeed();
 
     // Submit matching orders with user2
@@ -716,7 +717,8 @@ async fn volume_tracking_works_with_multiple_orders_from_same_user() {
             coins! {
                 usdc::DENOM.clone() => 411_000_000,
             },
-        ).await
+        )
+        .await
         .should_succeed();
 
     // Submit matching orders with user2

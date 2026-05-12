@@ -1986,7 +1986,8 @@ async fn decrease_liquidity_depths_minimal_failing_test() {
             coins! {
                 usdc::DENOM.clone() => 411_000_000,
             },
-        ).await
+        )
+        .await
         .should_succeed();
 
     // Submit matching orders with user2

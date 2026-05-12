@@ -22,8 +22,7 @@ use {
 /// with $10,000 margin.
 macro_rules! setup_band_suite {
     () => {{
-        let (mut suite, mut accounts, _, contracts, _) =
-            setup_test_naive(TestOption::default());
+        let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
         register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
         let pair = pair_id();
 
@@ -41,7 +40,8 @@ macro_rules! setup_band_suite {
                     },
                 }),
                 Coins::new(),
-            ).await
+            )
+            .await
             .should_succeed();
 
         suite
@@ -50,7 +50,8 @@ macro_rules! setup_band_suite {
                 contracts.perps,
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
-            ).await
+            )
+            .await
             .should_succeed();
 
         (suite, accounts, contracts, pair)
@@ -60,23 +61,25 @@ macro_rules! setup_band_suite {
 /// Send a limit order from user1 at the given price and time-in-force.
 macro_rules! submit_limit {
     ($suite:expr, $accounts:expr, $contracts:expr, $pair:expr, $size:expr, $price:expr, $tif:expr) => {
-        $suite.execute(
-            &mut $accounts.user1,
-            $contracts.perps,
-            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: $pair.clone(),
-                size: Quantity::new_int($size),
-                kind: OrderKind::Limit {
-                    limit_price: UsdPrice::new_int($price),
-                    time_in_force: $tif,
-                    client_order_id: None,
-                },
-                reduce_only: false,
-                tp: None,
-                sl: None,
-            })),
-            Coins::new(),
-        ).await
+        $suite
+            .execute(
+                &mut $accounts.user1,
+                $contracts.perps,
+                &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                    pair_id: $pair.clone(),
+                    size: Quantity::new_int($size),
+                    kind: OrderKind::Limit {
+                        limit_price: UsdPrice::new_int($price),
+                        time_in_force: $tif,
+                        client_order_id: None,
+                    },
+                    reduce_only: false,
+                    tp: None,
+                    sl: None,
+                })),
+                Coins::new(),
+            )
+            .await
     };
 }
 

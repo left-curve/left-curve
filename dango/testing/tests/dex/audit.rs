@@ -187,7 +187,8 @@ async fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled(
                 cancels: None,
             },
             coins! { usdc::DENOM.clone() => 200_600_000 * 3 },
-        ).await
+        )
+        .await
         .should_succeed();
 
     // The ask side liquidity should be reduced from 10 base to 10 - 3 = 7.

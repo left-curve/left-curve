@@ -49,7 +49,8 @@ async fn pyth_lazer() {
                 eth::DENOM.clone() => PriceSource::Pyth { id: 2, precision: 18 , channel:Channel::RealTime },
             }),
             Coins::default(),
-        ).await
+        )
+        .await
         .should_succeed();
 
     // The trusted signer was set in genesis. For the purpose of this test,

@@ -113,7 +113,8 @@ async fn rate_limit() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Inflows must no longer replenish the outbound quota. Receive 100M more
@@ -155,7 +156,8 @@ async fn rate_limit() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Advance one day so the cron seeds a fresh quota of 10% × 370M = 37M.
@@ -217,7 +219,8 @@ async fn rate_limit() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Raise the rate limit to 99%. In phase 1 this still only takes effect
@@ -290,14 +293,16 @@ async fn native_denom() {
             .execute(
                 &mut accounts.owner,
                 contracts.gateway,
-                &gateway::ExecuteMsg::SetRoutes(btree_set!((
-                    Origin::Local(dango::DENOM.clone(),),
-                    contracts.warp,
-                    Remote::Warp {
-                        domain: remote_domain,
-                        contract: remote_warp.into(),
-                    }
-                ))),
+                &gateway::ExecuteMsg::SetRoutes(btree_set! {
+                    (
+                        Origin::Local(dango::DENOM.clone()),
+                        contracts.warp,
+                        Remote::Warp {
+                            domain: remote_domain,
+                            contract: remote_warp.into(),
+                        },
+                    ),
+                }),
                 Coins::default(),
             )
             .await
@@ -463,7 +468,8 @@ async fn set_rate_limits_resets_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Owner raises the rate limit to 50% without advancing time. Raising
@@ -495,7 +501,8 @@ async fn set_rate_limits_resets_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // Advance one day so the cron fires and reseeds. Supply is 90M (after
@@ -955,7 +962,8 @@ async fn personal_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // ---- Expired personal quota is ignored ----
@@ -994,7 +1002,8 @@ async fn personal_quota() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, remaining after personal quota: 1");
 
     // The expired entry is left in storage; the handler doesn't scrub it. The
@@ -1141,7 +1150,8 @@ async fn personal_quota_revoke_via_op_delete() {
                 recipient: mock_solana_recipient,
             },
             Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
-        ).await
+        )
+        .await
         .should_fail_with_error(
             "insufficient outbound quota! denom: bridge/usdc, requested: 20000000, remaining after personal quota: 20000000",
         );
