@@ -1,7 +1,7 @@
 use {
     crate::{
         entity::{perps_events, perps_trade::PerpsTrade},
-        error::Error,
+        error::IndexerError,
     },
     dango_types::perps::OrderFilled,
     grug::{EventName, Timestamp},
@@ -37,7 +37,7 @@ impl PerpsTradeCache {
     }
 
     /// Preload recent `OrderFilled` events from the `perps_events` table.
-    pub async fn preload(&mut self, db: &DatabaseConnection) -> Result<(), Error> {
+    pub async fn preload(&mut self, db: &DatabaseConnection) -> Result<(), IndexerError> {
         let rows = perps_events::Entity::find()
             .filter(perps_events::Column::EventType.eq(OrderFilled::EVENT_NAME))
             .order_by(perps_events::Column::BlockHeight, Order::Desc)

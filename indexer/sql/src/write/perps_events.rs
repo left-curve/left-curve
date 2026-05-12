@@ -1,5 +1,7 @@
 use {
-    crate::{entity, entity::perps_trade::PerpsTrade, error::Error},
+    crate::{
+        entity, entity::perps_trade::PerpsTrade, error::IndexerError, indexer::MAX_ROWS_INSERT,
+    },
     dango_types::{
         config::AppConfig,
         perps::{Deleveraged, Liquidated, OrderFilled},
@@ -9,7 +11,6 @@ use {
         FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, Inner, Json, JsonDeExt,
         NaiveFlatten, SearchEvent, Timestamp,
     },
-    indexer_sql::indexer::MAX_ROWS_INSERT,
     itertools::Itertools,
     sea_orm::{EntityTrait, Set, TransactionTrait},
     uuid::Uuid,
@@ -30,7 +31,7 @@ pub(crate) async fn save_perps_events(
     context: &crate::context::Context,
     block: &BlockAndBlockOutcomeWithHttpDetails,
     app_cfg: Json,
-) -> Result<(), Error> {
+) -> Result<(), IndexerError> {
     #[cfg(feature = "metrics")]
     let start = Instant::now();
 
@@ -247,7 +248,7 @@ fn try_build_perps_trade(
 /// so we partially deserialize to extract them.
 fn extract_user_and_pair(
     event: &grug_types::CheckedContractEvent,
-) -> Result<(String, String), Error> {
+) -> Result<(String, String), IndexerError> {
     #[derive(serde::Deserialize)]
     struct UserAndPair {
         user: grug::Addr,

@@ -1,5 +1,5 @@
 use {
-    crate::idens::Block,
+    super::idens::Block,
     sea_orm_migration::{prelude::*, sea_orm::query::*},
 };
 

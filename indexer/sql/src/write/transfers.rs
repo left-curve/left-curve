@@ -1,7 +1,6 @@
 use {
-    crate::{entity, error::Error},
+    crate::{entity, error::IndexerError, indexer::MAX_ROWS_INSERT},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
-    indexer_sql::{entity as main_entity, indexer::MAX_ROWS_INSERT},
     itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
     std::collections::HashMap,
@@ -16,7 +15,7 @@ use {
 pub(crate) async fn save_transfers(
     context: &crate::context::Context,
     block_height: u64,
-) -> Result<(), Error> {
+) -> Result<(), IndexerError> {
     #[cfg(feature = "tracing")]
     tracing::debug!("About to look at transfer events");
 
@@ -26,15 +25,15 @@ pub(crate) async fn save_transfers(
     let txn = context.db.begin().await?;
 
     // 1. get all successful transfers events from the database for this block
-    let transfer_events: Vec<(FlatEvtTransfer, main_entity::events::Model)> =
-        main_entity::events::Entity::find()
-            .filter(main_entity::events::Column::Type.eq("transfer"))
-            .filter(main_entity::events::Column::EventStatus.eq(FlatEventStatus::Ok.as_i16()))
+    let transfer_events: Vec<(FlatEvtTransfer, entity::events::Model)> =
+        entity::events::Entity::find()
+            .filter(entity::events::Column::Type.eq("transfer"))
+            .filter(entity::events::Column::EventStatus.eq(FlatEventStatus::Ok.as_i16()))
             .filter(
-                main_entity::events::Column::CommitmentStatus
+                entity::events::Column::CommitmentStatus
                     .eq(FlatCommitmentStatus::Committed.as_i16()),
             )
-            .filter(main_entity::events::Column::BlockHeight.eq(block_height))
+            .filter(entity::events::Column::BlockHeight.eq(block_height))
             .all(&txn)
             .await?
             .into_iter()
@@ -42,14 +41,14 @@ pub(crate) async fn save_transfers(
                 let flat_transfer_event: FlatEvent = serde_json::from_value(te.data.clone())?;
 
                 if let FlatEvent::Transfer(flat_transfer_event) = flat_transfer_event {
-                    Ok::<_, Error>((flat_transfer_event, te))
+                    Ok::<_, IndexerError>((flat_transfer_event, te))
                 } else {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
                         "Wrong event type looking at transfers: {flat_transfer_event:?}"
                     );
 
-                    Err(Error::wrong_event_type())
+                    Err(IndexerError::wrong_event_type())
                 }
             })
             .collect::<Vec<_>>();
@@ -57,8 +56,8 @@ pub(crate) async fn save_transfers(
     #[cfg(feature = "metrics")]
     counter!("indexer.dango.hooks.transfer_events.total").increment(transfer_events.len() as u64);
 
-    let transactions_by_id = main_entity::transactions::Entity::find()
-        .filter(main_entity::transactions::Column::BlockHeight.eq(block_height as i64))
+    let transactions_by_id = entity::transactions::Entity::find()
+        .filter(entity::transactions::Column::BlockHeight.eq(block_height as i64))
         .all(&txn)
         .await?
         .into_iter()

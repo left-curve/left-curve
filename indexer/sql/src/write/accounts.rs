@@ -1,12 +1,11 @@
 use {
-    crate::{entity, error::Error},
+    crate::{entity, error::IndexerError, indexer::MAX_ROWS_INSERT},
     dango_types::{
         account_factory::{AccountRegistered, KeyDisowned, KeyOwned, UserRegistered},
         config::AppConfig,
     },
     grug::{BlockAndBlockOutcomeWithHttpDetails, EventName, Json, JsonDeExt},
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
-    indexer_sql::indexer::MAX_ROWS_INSERT,
     itertools::Itertools,
     sea_orm::{
         ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
@@ -25,7 +24,7 @@ pub(crate) async fn save_accounts(
     context: &crate::context::Context,
     block: &BlockAndBlockOutcomeWithHttpDetails,
     app_cfg: Json,
-) -> Result<(), Error> {
+) -> Result<(), IndexerError> {
     #[cfg(feature = "metrics")]
     let start = Instant::now();
 

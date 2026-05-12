@@ -15,7 +15,6 @@ dango-genesis            = { workspace = true }
 rand                     = { workspace = true }
 dango-httpd              = { workspace = true }
 dango-indexer-clickhouse = { workspace = true, features = ["tracing"] }
-dango-indexer-sql        = { workspace = true }
 dango-proposal-preparer  = { workspace = true }
 dango-testing            = { workspace = true }
 grug-app                 = { workspace = true }

@@ -287,17 +287,7 @@ impl StartCmd {
             .build()
             .await
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
-        let indexer_context = sql_indexer.context.clone();
-
-        // Create a separate context for dango indexer (shares DB but has independent pubsub)
-        let dango_context: dango_indexer_sql::context::Context = sql_indexer
-            .context
-            .with_separate_pubsub()
-            .await
-            .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
-            .into();
-
-        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
+        let sql_context = sql_indexer.context.clone();
 
         let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
             cfg.indexer.clickhouse.url.clone(),
@@ -316,12 +306,11 @@ impl StartCmd {
 
         hooked_indexer.add_indexer(indexer_cache).await?;
         hooked_indexer.add_indexer(sql_indexer).await?;
-        hooked_indexer.add_indexer(dango_indexer).await?;
         hooked_indexer.add_indexer(clickhouse_indexer).await?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
             indexer_cache_context,
-            indexer_context,
+            sql_context.clone(),
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
         );
@@ -329,7 +318,7 @@ impl StartCmd {
         let dango_httpd_context = dango_httpd::context::Context::new(
             indexer_httpd_context.clone(),
             clickhouse_context.clone(),
-            dango_context,
+            sql_context,
             cfg.httpd.static_files_path.clone(),
         );
 

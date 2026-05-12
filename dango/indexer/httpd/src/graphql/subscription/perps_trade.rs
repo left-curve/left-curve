@@ -1,8 +1,8 @@
 use {
     async_graphql::{futures_util::stream::Stream, *},
-    dango_indexer_sql::entity::perps_trade::PerpsTrade,
     futures_util::stream::{self, StreamExt},
     grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
+    indexer_sql::entity::perps_trade::PerpsTrade,
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};

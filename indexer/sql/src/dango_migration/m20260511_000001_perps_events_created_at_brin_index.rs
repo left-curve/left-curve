@@ -1,4 +1,4 @@
-use {crate::idens::PerpsEvent, sea_orm::DatabaseBackend, sea_orm_migration::prelude::*};
+use {super::idens::PerpsEvent, sea_orm::DatabaseBackend, sea_orm_migration::prelude::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

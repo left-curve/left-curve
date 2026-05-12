@@ -24,7 +24,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub user_index: i32,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "indexer_sql::serde_iso8601")]
+    #[serde(with = "crate::serde_iso8601")]
     pub created_at: DateTime,
     pub created_block_height: i64,
 }

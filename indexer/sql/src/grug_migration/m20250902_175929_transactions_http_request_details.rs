@@ -1,4 +1,4 @@
-use {crate::idens::Transaction, sea_orm_migration::prelude::*};
+use {super::idens::Transaction, sea_orm_migration::prelude::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -7,12 +7,10 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .create_index(
-                sea_query::Index::create()
-                    .if_not_exists()
-                    .name("transactions-sender")
+            .alter_table(
+                Table::alter()
                     .table(Transaction::Table)
-                    .col(Transaction::Sender)
+                    .add_column(ColumnDef::new(Transaction::HttpRequestDetails).json_binary())
                     .to_owned(),
             )
             .await
@@ -20,10 +18,10 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_index(
-                sea_query::Index::drop()
-                    .name("transactions-sender")
+            .alter_table(
+                Table::alter()
                     .table(Transaction::Table)
+                    .drop_column(Transaction::HttpRequestDetails)
                     .to_owned(),
             )
             .await
