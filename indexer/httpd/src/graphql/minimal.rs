@@ -1,5 +1,8 @@
 #[cfg(feature = "metrics")]
-use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
+use crate::{
+    graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics},
+    metrics::init_grug_query_metrics,
+};
 #[cfg(feature = "tracing")]
 use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
@@ -18,7 +21,10 @@ pub type MinimalSchema = Schema<MinimalQuery, EmptyMutation, EmptySubscription>;
 
 pub fn build_minimal_schema(app_ctx: MinimalContext) -> MinimalSchema {
     #[cfg(feature = "metrics")]
-    init_graphql_metrics();
+    {
+        init_graphql_metrics();
+        init_grug_query_metrics();
+    }
 
     #[allow(unused_mut)]
     let mut schema_builder =
