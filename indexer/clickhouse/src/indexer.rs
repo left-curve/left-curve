@@ -1,9 +1,8 @@
 use {
     crate::context::Context,
-    async_trait::async_trait,
     dango_types::config::AppConfig,
     futures::try_join,
-    grug::{Config, Json, JsonDeExt},
+    grug::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, JsonDeExt},
 };
 #[cfg(feature = "metrics")]
 use {
@@ -18,6 +17,7 @@ pub mod perps_fees;
 pub mod perps_pair_stats;
 pub mod trades;
 
+#[derive(Clone)]
 pub struct Indexer {
     pub context: Context,
     indexing: bool,
@@ -30,17 +30,17 @@ impl Indexer {
             indexing: false,
         }
     }
-}
 
-#[async_trait]
-impl grug_app::Indexer for Indexer {
-    async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+    pub async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
         // TODO: Implement last_indexed_block_height using `pair_prices` table.
         Ok(None)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
+    pub async fn start(
+        &mut self,
+        _storage: &dyn grug_types::Storage,
+    ) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
             #[cfg(feature = "tracing")]
@@ -80,8 +80,13 @@ impl grug_app::Indexer for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+    pub async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
         if !self.indexing {
+            return Ok(());
+        }
+
+        #[cfg(feature = "testing")]
+        if self.context.is_mocked() {
             return Ok(());
         }
 
@@ -104,7 +109,7 @@ impl grug_app::Indexer for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    pub async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -127,21 +132,29 @@ impl grug_app::Indexer for Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn post_indexing(
+    pub async fn post_indexing(
         &self,
         #[allow(unused_variables)] block_height: u64,
         _cfg: Config,
         app_cfg: Json,
-        ctx: &mut grug_app::IndexerContext,
+        block: &BlockAndBlockOutcomeWithHttpDetails,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Err(grug_app::IndexerError::not_running());
         }
 
+        // Symmetric with `start` / `wait_for_finish`: a mocked Clickhouse
+        // context has no installed handlers, so any write attempt would
+        // explode. Test harnesses opt in by calling `.with_mock()` on the
+        // context; in that mode `post_indexing` is a no-op.
+        #[cfg(feature = "testing")]
+        if self.context.is_mocked() {
+            return Ok(());
+        }
+
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` work started");
 
-        let ctx = ctx.clone();
         let context = self.context.clone();
 
         #[cfg(feature = "metrics")]
@@ -152,10 +165,10 @@ impl grug_app::Indexer for Indexer {
             .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
         try_join!(
-            Self::store_candles(&app_cfg.addresses.dex, &ctx, &context),
-            Self::store_trades(&app_cfg.addresses.dex, &ctx, &context),
-            Self::store_perps_candles(&app_cfg.addresses.perps, &ctx, &context),
-            Self::store_perps_fees(&app_cfg.addresses.perps, &ctx, &context)
+            Self::store_candles(&app_cfg.addresses.dex, block, &context),
+            Self::store_trades(&app_cfg.addresses.dex, block, &context),
+            Self::store_perps_candles(&app_cfg.addresses.perps, block, &context),
+            Self::store_perps_fees(&app_cfg.addresses.perps, block, &context)
         )
         .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 

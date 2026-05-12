@@ -2,7 +2,7 @@ use {
     crate::{
         context::Context,
         entities::{candle_query::MAX_ITEMS, trade::Trade},
-        error::{IndexerError, Result},
+        error::Result,
         indexer::Indexer,
     },
     chrono::{DateTime, Utc},
@@ -19,14 +19,10 @@ pub mod cache;
 impl Indexer {
     pub(crate) async fn store_trades(
         dex_addr: &Addr,
-        ctx: &grug_app::IndexerContext,
+        block_and_block_outcome: &BlockAndBlockOutcomeWithHttpDetails,
         context: &Context,
     ) -> Result<()> {
         let clickhouse_client = context.clickhouse_client().clone();
-
-        let block_and_block_outcome = ctx
-            .get::<BlockAndBlockOutcomeWithHttpDetails>()
-            .ok_or(IndexerError::missing_block_or_block_outcome())?;
 
         // Clearing price is denominated as the units of quote asset per 1 unit
         // of the base asset.
