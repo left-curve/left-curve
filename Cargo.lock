@@ -3796,10 +3796,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-httpd"
-version = "0.0.0"
-
-[[package]]
 name = "dango-indexer-clickhouse"
 version = "0.0.0"
 dependencies = [
@@ -5432,10 +5428,6 @@ dependencies = [
  "grug-types",
  "serde",
 ]
-
-[[package]]
-name = "grug-httpd"
-version = "0.0.0"
 
 [[package]]
 name = "grug-jmt"
