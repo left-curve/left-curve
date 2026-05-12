@@ -178,22 +178,15 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
     let mut fresh_cache = PerpsCandleCache::default();
     let pair_ids =
         dango_indexer_clickhouse::entities::perps_pair_price::PerpsPairPrice::all_pair_ids(
-            context.indexer_clickhouse_context.clickhouse_client(),
+            context.clickhouse_context.clickhouse_client(),
         )
         .await?;
 
     fresh_cache
-        .preload_pairs(
-            &pair_ids,
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
+        .preload_pairs(&pair_ids, context.clickhouse_context.clickhouse_client())
         .await?;
 
-    let old_cache = context
-        .indexer_clickhouse_context
-        .perps_candle_cache
-        .read()
-        .await;
+    let old_cache = context.clickhouse_context.perps_candle_cache.read().await;
 
     assert_eq!(
         fresh_cache.pair_prices,

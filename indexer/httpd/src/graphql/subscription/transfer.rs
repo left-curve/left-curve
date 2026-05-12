@@ -1,9 +1,9 @@
 use {
+    crate::graphql::subscription::MAX_PAST_BLOCKS,
     async_graphql::{futures_util::stream::Stream, *},
     dango_types::account_factory::UserIndex,
     futures_util::stream::{StreamExt, once},
     grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
-    indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::{entity, entity::blocks::latest_block_height},
     itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
@@ -18,7 +18,7 @@ pub struct TransferSubscription;
 impl TransferSubscription {
     /// Get all transfers for the given `block_heights` range.
     async fn get_transfers(
-        app_ctx: &crate::context::Context,
+        app_ctx: &crate::context::FullContext,
         block_heights: RangeInclusive<i64>,
         address: Option<String>,
         user_index: Option<UserIndex>,
@@ -84,7 +84,7 @@ impl TransferSubscription {
         Self: Sync,
     {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
 

@@ -70,11 +70,19 @@ pub async fn create_blocks(
 
     let suite_guard = suite.read().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
+    let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        "http://localhost:8123".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    );
     let httpd_context = FullContext::new(
         indexer_cache_context,
         sql_indexer_context,
+        clickhouse_context,
         Arc::new(httpd_app),
         client.clone(),
+        None,
     );
 
     Ok((httpd_context, client, accounts))

@@ -48,9 +48,7 @@ pub fn build_actix_app(
     App::new()
         .app_data(web::Data::new(SubscriptionLimiter::new(10, 5000)))
         .app_data(web::Data::new(dango_httpd_context.clone()))
-        .app_data(web::Data::new(
-            dango_httpd_context.indexer_httpd_context.clone(),
-        ))
+        .app_data(web::Data::new(dango_httpd_context.clone()))
         .app_data(web::Data::new(graphql_schema.clone()))
         .configure(config_app(dango_httpd_context, graphql_schema))
 }

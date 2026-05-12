@@ -70,13 +70,8 @@ where
         service_config
             .default_service(web::to(not_found_handler))
             .app_data(web::Data::new(dango_httpd_context.db.clone()))
+            .app_data(web::Data::new(dango_httpd_context.base.clone()))
             .app_data(web::Data::new(dango_httpd_context.clone()))
-            .app_data(web::Data::new(
-                dango_httpd_context.indexer_httpd_context.clone(),
-            ))
-            .app_data(web::Data::new(
-                dango_httpd_context.indexer_httpd_context.base.clone(),
-            ))
             .app_data(web::Data::new(graphql_schema.clone()));
     })
 }

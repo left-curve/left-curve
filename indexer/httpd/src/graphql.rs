@@ -24,7 +24,7 @@ pub mod telemetry;
 pub mod types;
 
 pub type FullSchema =
-    Schema<query::IndexerQuery, mutation::IndexerMutation, subscription::IndexerSubscription>;
+    Schema<query::FullQuery, mutation::IndexerMutation, subscription::FullSubscription>;
 
 pub fn build_full_schema(app_ctx: FullContext) -> FullSchema {
     #[cfg(feature = "metrics")]
@@ -76,9 +76,9 @@ pub fn build_full_schema(app_ctx: FullContext) -> FullSchema {
 
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
-        query::IndexerQuery::default(),
+        query::FullQuery::default(),
         mutation::IndexerMutation::default(),
-        subscription::IndexerSubscription::default(),
+        subscription::FullSubscription::default(),
     )
     .extension(SentryExtension);
 
@@ -95,6 +95,7 @@ pub fn build_full_schema(app_ctx: FullContext) -> FullSchema {
     }
 
     schema_builder
+        .data(app_ctx.clickhouse_context.clone())
         .data(app_ctx.db.clone())
         .data(app_ctx.base.clone())
         .data(app_ctx)

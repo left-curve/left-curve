@@ -15,7 +15,6 @@ metrics = [
   "dep:actix-web-metrics",
   "dep:metrics",
   "indexer-httpd/metrics",
-  "indexer-sql/metrics",
 ]
 tracing = []
 
@@ -26,20 +25,12 @@ actix-web                = { workspace = true }
 actix-web-metrics        = { workspace = true, optional = true }
 async-graphql            = { workspace = true }
 async-graphql-actix-web  = { workspace = true }
-chrono                   = { workspace = true }
-clap                     = { workspace = true }
 dango-indexer-clickhouse = { workspace = true }
-dango-types              = { workspace = true, features = ["async-graphql"] }
 grug-httpd               = { workspace = true }
 grug-types               = { workspace = true }
 indexer-httpd            = { workspace = true, features = ["tracing"] }
-indexer-sql              = { workspace = true, features = ["async-graphql"] }
-itertools                = { workspace = true }
+indexer-sql              = { workspace = true }
 metrics                  = { workspace = true, optional = true }
-sea-orm                  = { workspace = true }
 sentry-actix             = { workspace = true }
-serde                    = { workspace = true }
-thiserror                = { workspace = true }
 tokio                    = { workspace = true }
 tracing                  = { workspace = true }
-tracing-subscriber       = { workspace = true }

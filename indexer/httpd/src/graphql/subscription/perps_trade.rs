@@ -20,7 +20,7 @@ impl PerpsTradeSubscription {
         #[graphql(name = "pairId")] pair_id: String,
     ) -> Result<impl Stream<Item = PerpsTrade> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
         let trade_cache = app_ctx.perps_trade_cache.clone();
 
         #[cfg(feature = "metrics")]

@@ -235,17 +235,12 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
-    let indexer_httpd_context = indexer_httpd::context::FullContext::new(
+    let dango_httpd_context = indexer_httpd::context::FullContext::new(
         indexer_cache_context,
-        sql_context.clone(),
+        sql_context,
+        clickhouse_context.clone(),
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
-    );
-
-    let dango_httpd_context = dango_httpd::context::Context::new(
-        indexer_httpd_context.clone(),
-        clickhouse_context.clone(),
-        sql_context,
         None,
     );
 
@@ -255,7 +250,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         codes,
         contracts,
         validator_sets,
-        indexer_httpd_context,
+        dango_httpd_context.clone(),
         dango_httpd_context,
         clickhouse_context,
         db_guard,
