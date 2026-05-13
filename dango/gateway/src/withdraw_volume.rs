@@ -6,8 +6,6 @@ use {
     },
 };
 
-const NANOS_PER_HOUR: u128 = 60 * 60 * 1_000_000_000;
-
 /// Trailing window over which outbound withdraws accumulate against the cap.
 pub const ROLLING_WINDOW: Duration = Duration::from_hours(24);
 
@@ -15,12 +13,6 @@ pub const ROLLING_WINDOW: Duration = Duration::from_hours(24);
 /// Set to twice the rolling window so that, between cron ticks, baseline
 /// lookups at `now − 24h` always have data to read.
 pub const PRUNE_HORIZON: Duration = Duration::from_hours(48);
-
-/// Round a timestamp down to the start of its hour bucket.
-pub fn round_to_hour(ts: Timestamp) -> Timestamp {
-    let nanos = ts.into_nanos();
-    Timestamp::from_nanos(nanos - (nanos % NANOS_PER_HOUR))
-}
 
 /// Sum of withdraws in the trailing 24h, computed as
 /// `latest_cumulative − cumulative_at_or_before(now − 24h)`.
@@ -54,7 +46,7 @@ pub fn rolling_window_sum(
     Ok(latest.checked_sub(baseline)?)
 }
 
-/// Add `amount` to the cumulative for the bucket at `round_to_hour(now)`.
+/// Add `amount` to the cumulative for the bucket at `now.truncate_to_hour()`.
 /// Stored as `latest_cumulative + amount`, mirroring the perps volume pattern.
 pub fn record_withdraw(
     storage: &mut dyn Storage,
@@ -76,7 +68,7 @@ pub fn record_withdraw(
 
     WITHDRAW_VOLUMES.save(
         storage,
-        (denom, round_to_hour(now)),
+        (denom, now.truncate_to_hour()),
         &latest.checked_add(amount)?,
     )
 }

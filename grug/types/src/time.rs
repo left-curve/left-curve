@@ -1,7 +1,7 @@
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use {
-    crate::Inner,
+    crate::{Inner, NonZero},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Dec, Int, IsZero, MathResult, Number, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
@@ -126,6 +126,26 @@ impl Duration {
     /// range. This event will happen at 2554-07-21 23:34:33.709551615 UTC.
     pub fn into_std(self) -> std::time::Duration {
         std::time::Duration::from_nanos(self.into_nanos() as u64)
+    }
+
+    /// Truncate down to the nearest multiple of `term`. For a [`Timestamp`]
+    /// (UNIX-epoch aligned), this snaps to the start of the bucket of width
+    /// `term`. `term` is enforced non-zero by the [`NonZero`] wrapper, so
+    /// this method cannot divide by zero.
+    pub fn truncate(self, term: NonZero<Duration>) -> Self {
+        let nanos = self.into_nanos();
+        let term_nanos = term.into_inner().into_nanos();
+        Self::from_nanos(nanos - (nanos % term_nanos))
+    }
+
+    /// Truncate down to the start of the hour.
+    pub fn truncate_to_hour(self) -> Self {
+        self.truncate(NonZero::new_unchecked(Self::from_hours(1)))
+    }
+
+    /// Truncate down to the start of the day.
+    pub fn truncate_to_day(self) -> Self {
+        self.truncate(NonZero::new_unchecked(Self::from_days(1)))
     }
 }
 
@@ -295,7 +315,9 @@ impl Number for Duration {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BorshDeExt, BorshSerExt, JsonDeExt, JsonSerExt, ResultExt, Timestamp};
+    use crate::{
+        BorshDeExt, BorshSerExt, Duration, JsonDeExt, JsonSerExt, NonZero, ResultExt, Timestamp,
+    };
 
     #[test]
     fn serialization_works() {
@@ -315,5 +337,55 @@ mod tests {
             .should_succeed()
             .deserialize_borsh::<Timestamp>()
             .should_succeed_and_equal(TIMESTAMP);
+    }
+
+    #[test]
+    fn truncate_works() {
+        let one_hour = NonZero::new(Duration::from_hours(1)).unwrap();
+        let ninety_min = Duration::from_minutes(90);
+
+        // 1h30m truncated by 1h is 1h.
+        assert_eq!(ninety_min.truncate(one_hour), Duration::from_hours(1));
+
+        // 1h30m truncated by 30min is 1h30m.
+        assert_eq!(
+            ninety_min.truncate(NonZero::new(Duration::from_minutes(30)).unwrap()),
+            ninety_min,
+        );
+
+        // Zero truncates to zero.
+        assert_eq!(Duration::ZERO.truncate(one_hour), Duration::ZERO);
+
+        // `NonZero::new` rejects a zero term at construction time, so
+        // `truncate` itself can never divide by zero.
+        assert!(NonZero::new(Duration::ZERO).is_err());
+    }
+
+    #[test]
+    fn truncate_to_hour_works() {
+        // 3 days, 7 hours, 42 minutes, 17 seconds since the epoch.
+        let ts = Duration::from_days(3)
+            + Duration::from_hours(7)
+            + Duration::from_minutes(42)
+            + Duration::from_seconds(17);
+
+        // Truncating to the hour drops the 42m 17s remainder, leaving exactly
+        // 3 days + 7 hours.
+        assert_eq!(
+            ts.truncate_to_hour(),
+            Duration::from_days(3) + Duration::from_hours(7),
+        );
+    }
+
+    #[test]
+    fn truncate_to_day_works() {
+        // 5 days, 13 hours, 28 minutes, 9 seconds since the epoch.
+        let ts = Duration::from_days(5)
+            + Duration::from_hours(13)
+            + Duration::from_minutes(28)
+            + Duration::from_seconds(9);
+
+        // Truncating to the day drops the 13h 28m 09s remainder.
+        assert_eq!(ts.truncate_to_day(), Duration::from_days(5));
     }
 }
