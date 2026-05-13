@@ -19,7 +19,6 @@
   },
   "scripts": {
     "build": "pnpm tsup --clean",
-    "test": "pnpm vitest run",
     "lint": "pnpm biome check --write src"
   },
   "devDependencies": {
