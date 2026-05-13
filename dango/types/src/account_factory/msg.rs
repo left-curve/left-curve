@@ -103,6 +103,11 @@ pub enum ExecuteMsg {
     /// For now, we only support setting the username once when it's unset.
     /// We don't support changing the username when it's already set.
     UpdateUsername(Username),
+    /// Reset a user's username back to the default `user_{index}` value.
+    ///
+    /// Only callable by the chain owner. After reset, the user can call
+    /// `UpdateUsername` again to set a new custom username.
+    ResetUsername { user_index: UserIndex },
 }
 
 #[grug::derive(Serde, QueryRequest)]
