@@ -1298,6 +1298,116 @@ async fn personal_quota_revoke_via_op_delete() {
         .should_succeed();
 }
 
+/// A 0% rate limit is a hard freeze: the cap goes to zero AND every
+/// outstanding personal quota for that denom is revoked, so a granted user
+/// can't keep withdrawing through their per-account allowance.
+#[tokio::test]
+async fn zero_rate_limit_revokes_personal_quotas() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
+
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let usdc_sol_fee = 10_000;
+
+    // 100M supply, 10% rate limit → cap 10M.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_solana::DOMAIN,
+            mock_solana::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Grant the receiver a 5M personal quota for USDC.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetPersonalQuota {
+                user: receiver.address(),
+                denom: usdc::DENOM.clone(),
+                quota: Op::Insert(SetPersonalQuotaRequest {
+                    amount: Uint128::new(5_000_000),
+                    available_for: None,
+                }),
+            },
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Confirm the quota is in place.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver.address(),
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|q| q.is_some());
+
+    // Owner sets the USDC rate limit to 0 — a hard freeze.
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::ZERO),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // The personal quota must have been wiped by the freeze.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryPersonalQuotaRequest {
+            user: receiver.address(),
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(None);
+
+    // A 1-unit withdraw fails — no personal quota left and the global cap is 0.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: Remote::Warp {
+                    domain: mock_solana::DOMAIN,
+                    contract: mock_solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+        )
+        .await
+        .should_fail_with_error("insufficient outbound quota!");
+}
+
 /// Granting a personal quota for a denom that is NOT rate-limited globally
 /// must still behave correctly: the personal allowance is consumed first,
 /// and any overflow falls through to an absent global entry (which means

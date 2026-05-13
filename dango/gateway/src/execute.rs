@@ -15,7 +15,7 @@ use {
     },
     grug::{
         Addr, Coins, Denom, Inner, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        NumberConst, Op, QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage,
+        NumberConst, Op, Order, QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage,
         SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
@@ -115,6 +115,27 @@ fn set_rate_limits(
         if !SUPPLY_SNAPSHOTS.has(ctx.storage, denom) {
             let supply = ctx.querier.query_supply(denom.clone())?;
             SUPPLY_SNAPSHOTS.save(ctx.storage, denom, &supply)?;
+        }
+    }
+
+    // A 0% rate limit is a hard freeze: the global cap is zero, so it must
+    // also revoke any personal quota that would otherwise let a user bypass
+    // the freeze through their per-account allowance.
+    let frozen_denoms: BTreeSet<&Denom> = rate_limits
+        .iter()
+        .filter(|(_, limit)| limit.into_inner().is_zero())
+        .map(|(denom, _)| denom)
+        .collect();
+
+    if !frozen_denoms.is_empty() {
+        let personal_quotas = PERSONAL_QUOTAS
+            .range(ctx.storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        for ((user, denom), _) in personal_quotas {
+            if frozen_denoms.contains(&denom) {
+                PERSONAL_QUOTAS.remove(ctx.storage, (user, &denom));
+            }
         }
     }
 

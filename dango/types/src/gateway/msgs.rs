@@ -71,7 +71,9 @@ pub enum ExecuteMsg {
     ///   window history for a dropped denom are cleared in the same block.
     /// - A denom mapped to `0` is fully locked — the cap is set to zero,
     ///   so no outbound transfer passes until the admin raises the limit
-    ///   or removes the denom.
+    ///   or removes the denom. Setting `0` also revokes every outstanding
+    ///   personal quota for that denom, so a granted user cannot bypass
+    ///   the freeze via their per-account allowance.
     /// - A denom mapped to a positive fraction less than `1` is enforced
     ///   as a trailing-24h cap: a withdraw is rejected when the sum of
     ///   withdraws over the trailing 24 hours plus the new request would
