@@ -1,2 +1,7 @@
+# Cross-compile to ARM64 Linux deploy targets from non-aarch64 hosts
+# (developer macOS, x86_64 CI runners). The host's default `cc` can't
+# emit ARM64 Linux ELF binaries; this toolchain ships as
+# `gcc-aarch64-linux-gnu` on Debian/Ubuntu, or via the
+# messense/macos-cross-toolchains Homebrew tap on macOS.
 [target.aarch64-unknown-linux-gnu]
 linker = "aarch64-linux-gnu-gcc"

@@ -5,7 +5,7 @@
 use {
     crate::VmResult,
     grug_types::{
-        Api, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult,
+        Api, AuthCtx, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult,
         ImmutableCtx, Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
         TxOutcome,
     },
@@ -67,15 +67,6 @@ pub trait Contract {
     ) -> VmResult<GenericResult<Json>>;
 
     fn authenticate(
-        &self,
-        ctx: Context,
-        storage: &mut dyn Storage,
-        api: &dyn Api,
-        querier: &dyn Querier,
-        tx: Tx,
-    ) -> VmResult<GenericResult<AuthResponse>>;
-
-    fn backrun(
         &self,
         ctx: Context,
         storage: &mut dyn Storage,
@@ -146,9 +137,7 @@ pub type ReplyFn<M, E> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response
 
 pub type QueryFn<M, E> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send + Sync>;
 
-pub type AuthenticateFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E> + Send + Sync>;
-
-pub type BackrunFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
+pub type AuthenticateFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
 pub type BankExecuteFn<E> = Box<dyn Fn(SudoCtx, BankMsg) -> Result<Response, E> + Send + Sync>;
 

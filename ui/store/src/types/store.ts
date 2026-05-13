@@ -1,26 +1,20 @@
 import type {
-  Address,
-  AppConfig,
   Chain,
   ChainId,
   Client,
   Denom,
-  Flatten,
-  Hex,
-  PairUpdate,
-  Prettify,
-  Require,
   Transport,
   UID,
-  UserIndexAndName,
+  Username,
   UserStatus,
 } from "@left-curve/dango/types";
 
-import type { AnyCoin } from "./coin.js";
+import type { NativeCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
 import type { SubscriptionStore } from "./subscriptions.js";
+import type { CoinStore } from "../stores/coinStore.js";
 
 export const ConnectionStatus = {
   Connected: "connected",
@@ -31,22 +25,24 @@ export const ConnectionStatus = {
 
 export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof ConnectionStatus];
 
+export type StoreUser = {
+  index: number;
+  username: Username;
+  status: UserStatus | undefined;
+};
+
 export type State = {
   chainId: ChainId;
   isMipdLoaded: boolean;
   current: UID | null;
-  userIndexAndName: Prettify<Require<UserIndexAndName, "name">> | undefined;
-  userStatus: UserStatus | undefined;
+  user: StoreUser | undefined;
   connectors: Map<UID, Connection>;
   status: ConnectionStatusType;
 };
 
-export type Config<transport extends Transport = Transport, coin extends AnyCoin = AnyCoin> = {
+export type Config<transport extends Transport = Transport> = {
   readonly chain: Chain;
-  readonly coins: {
-    byDenom: Record<Denom, coin>;
-    bySymbol: Record<string, coin>;
-  };
+  readonly coins: CoinStore;
   readonly connectors: readonly Connector[];
   readonly storage: Storage;
   readonly state: State;
@@ -60,25 +56,14 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
       equalityFn?: (a: state, b: state) => boolean;
     },
   ): () => void;
-  getCoinInfo(denom: Denom): AnyCoin;
-  getAppConfig(): Promise<
-    {
-      addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
-      accountFactory: { codeHash: Hex };
-      pairs: Record<Denom, PairUpdate>;
-    } & Omit<AppConfig, "addresses">
-  >;
   getClient(): Client<transport>;
   captureError(error: unknown): void;
   _internal: Internal<transport>;
 };
-export type CreateConfigParameters<
-  transport extends Transport = Transport,
-  coin extends AnyCoin = AnyCoin,
-> = {
+export type CreateConfigParameters<transport extends Transport = Transport> = {
   version?: number;
   chain: Chain;
-  coins?: Record<Denom, coin>;
+  coins: Record<Denom, NativeCoin>;
   transport: transport;
   ssr?: boolean;
   batch?: boolean;

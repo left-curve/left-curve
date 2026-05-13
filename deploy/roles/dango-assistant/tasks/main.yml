@@ -1,0 +1,40 @@
+---
+- name: Create dango-assistant directories
+  file:
+    path: "{{ dango_assistant_dir }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - ""
+    - "db"
+
+- name: Copy config.json
+  copy:
+    src: config.json
+    dest: "{{ dango_assistant_dir }}/config.json"
+    mode: "0644"
+
+- name: Template docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ dango_assistant_dir }}/docker-compose.yml"
+    mode: "0644"
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ dango_assistant_ghcr_user }}"
+    password: "{{ dango_assistant_ghcr_token }}"
+  no_log: true
+
+- name: Launch stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ dango_assistant_dir }}"
+    pull: always
+    state: present
+    recreate: always
+
+- name: Logout from GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    state: absent

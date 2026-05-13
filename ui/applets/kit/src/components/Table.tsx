@@ -45,6 +45,7 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   initialColumnVisibility?: Record<string, boolean>;
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
+  onRowPointerDown?: (row: Row<T>) => void;
   classNames?: TableClassNames;
   isLoading?: boolean;
   skeletonType?: "row" | "cell";
@@ -61,6 +62,7 @@ export const Table = <T,>({
   columnFilters,
   onColumnFiltersChange,
   onRowClick,
+  onRowPointerDown,
   isLoading = false,
   emptyComponent,
   initialSortState = { fixed: [], variable: [] },
@@ -175,9 +177,17 @@ export const Table = <T,>({
                 <tr
                   key={`td-${row.id}`}
                   className={twMerge(styles.row(), classNames?.row, {
-                    "cursor-pointer": onRowClick,
+                    "cursor-pointer": onRowClick || onRowPointerDown,
                   })}
-                  onClick={() => onRowClick?.(row)}
+                  onClick={onRowPointerDown ? undefined : () => onRowClick?.(row)}
+                  onPointerDown={
+                    onRowPointerDown
+                      ? (e) => {
+                          if (e.button !== 0) return;
+                          onRowPointerDown(row);
+                        }
+                      : undefined
+                  }
                 >
                   {cells.map((cell) => {
                     return (
@@ -199,7 +209,7 @@ export const Table = <T,>({
 
 const tabsVariants = tv({
   slots: {
-    base: "grid rounded-xl w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
+    base: "grid rounded-xl w-full md:max-w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
     header: "whitespace-nowrap",
     cell: "",
     row: "",
@@ -215,7 +225,8 @@ const tabsVariants = tv({
       },
       simple: {
         base: "text-ink-tertiary-500 border-separate gap-2",
-        header: "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start",
+        header:
+          "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start bg-surface-primary-rice",
         cell: "px-2 py-1 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-surface-tertiary-rice",
         row: "rounded-xl group",
       },

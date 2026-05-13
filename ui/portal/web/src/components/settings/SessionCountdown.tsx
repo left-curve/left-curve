@@ -15,12 +15,12 @@ export const SessionCountdown: React.FC = () => {
   const { session } = useSessionKey();
 
   const { hours, minutes, seconds } = useCountdown({
-    date: Number(session?.sessionInfo.expireAt || 0),
+    date: Number(session?.sessionInfo.expireAt || 0) * 1000,
     showLeadingZeros: true,
   });
 
   return (
-    <div className="flex gap-1 text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md min-w-[9rem] h-[46px] items-center justify-end md:justify-center">
+    <div className="flex gap-1 text-ink-secondary-700 px-4 py-3 md:shadow-account-card rounded-md md:min-w-[12.375rem] h-[46px] items-center justify-end md:justify-start">
       {[
         { value: hours, label: hoursLabel },
         { value: minutes, label: minutesLabel },

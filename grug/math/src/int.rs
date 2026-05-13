@@ -1,7 +1,7 @@
 use {
     crate::{
         Integer, MathError, MathResult, NextNumber, Number, NumberConst,
-        utils::{bytes_to_digits, grow_le_int, grow_le_uint},
+        utils::{grow_le_int, grow_le_uint},
     },
     bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -368,32 +368,28 @@ impl From<i128> for Int128 {
 impl Uint256 {
     pub const fn new_from_u128(value: u128) -> Self {
         let grown_bytes = grow_le_uint::<16, 32>(value.to_le_bytes());
-        let digits = bytes_to_digits(grown_bytes);
-        Self(U256::from_digits(digits))
+        Self(U256::from_le_bytes(grown_bytes))
     }
 }
 
 impl Uint512 {
     pub const fn new_from_u128(value: u128) -> Self {
         let grown_bytes = grow_le_uint::<16, 64>(value.to_le_bytes());
-        let digits = bytes_to_digits(grown_bytes);
-        Self(U512::from_digits(digits))
+        Self(U512::from_le_bytes(grown_bytes))
     }
 }
 
 impl Int256 {
     pub const fn new_from_i128(value: i128) -> Self {
         let grown_bytes = grow_le_int::<16, 32>(value.to_le_bytes());
-        let digits = bytes_to_digits(grown_bytes);
-        Self(I256::from_bits(U256::from_digits(digits)))
+        Self(U256::from_le_bytes(grown_bytes).cast_signed())
     }
 }
 
 impl Int512 {
     pub const fn new_from_i128(value: i128) -> Self {
         let grown_bytes = grow_le_int::<16, 64>(value.to_le_bytes());
-        let digits = bytes_to_digits(grown_bytes);
-        Self(I512::from_bits(U512::from_digits(digits)))
+        Self(U512::from_le_bytes(grown_bytes).cast_signed())
     }
 }
 
@@ -407,7 +403,7 @@ pub mod tests {
             NumberConst, dts, int_test,
             test_utils::{bt, dt},
         },
-        bnum::cast::As,
+        bnum::cast::{As, CastFrom},
     };
 
     int_test!( size_of
@@ -431,7 +427,7 @@ pub mod tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(256_u128), "256"),
+                    (U256::cast_from(256_u128), "256"),
                 ]
             }
             i128 = {
@@ -441,7 +437,7 @@ pub mod tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(256_i128), "256"), (I256::from(-256_i128), "-256"),
+                    (I256::cast_from(256_i128), "256"), (I256::cast_from(-256_i128), "-256"),
                 ]
             }
         }
@@ -469,7 +465,7 @@ pub mod tests {
             }
             u256 = {
                 passing: [
-                    (Uint256::new(U256::from(256_u128)), "256"),
+                    (Uint256::new(U256::cast_from(256_u128)), "256"),
                 ]
             }
             i128 = {
@@ -570,7 +566,7 @@ pub mod tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10_u128), U256::from(200_u128)),
+                    (U256::cast_from(10_u128), U256::cast_from(200_u128)),
                 ]
             }
             i128 = {
@@ -582,9 +578,9 @@ pub mod tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(10), I256::from(200_i128)),
-                    (I256::from(-10), I256::from(200)),
-                    (I256::from(-200), I256::from(-10)),
+                    (I256::cast_from(10_i128), I256::cast_from(200_i128)),
+                    (I256::cast_from(-10_i128), I256::cast_from(200_i128)),
+                    (I256::cast_from(-200_i128), I256::cast_from(-10_i128)),
                 ]
             }
         }
@@ -617,14 +613,14 @@ pub mod tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(1_u128), U256::from(1_u128)),
-                    (U256::from(42_u128), U256::from(42_u128)),
-                    (U256::from(u128::MAX), U256::from(u128::MAX)),
-                    (U256::from(0_u128), U256::from(0_u128)),
+                    (U256::cast_from(1_u128), U256::cast_from(1_u128)),
+                    (U256::cast_from(42_u128), U256::cast_from(42_u128)),
+                    (U256::cast_from(u128::MAX), U256::cast_from(u128::MAX)),
+                    (U256::cast_from(0_u128), U256::cast_from(0_u128)),
                 ],
                 failing: [
-                    (U256::from(42_u128), U256::from(24_u128)),
-                    (U256::from(24_u128), U256::from(42_u128)),
+                    (U256::cast_from(42_u128), U256::cast_from(24_u128)),
+                    (U256::cast_from(24_u128), U256::cast_from(42_u128)),
                 ]
             }
             i128 = {
@@ -645,17 +641,17 @@ pub mod tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(1_i128), I256::from(1_i128)),
-                    (I256::from(42_i128), I256::from(42_i128)),
-                    (I256::from(i128::MAX), I256::from(i128::MAX)),
-                    (I256::from(0_i128), I256::from(0_i128)),
-                    (I256::from(-42_i128), I256::from(-42_i128))
+                    (I256::cast_from(1_i128), I256::cast_from(1_i128)),
+                    (I256::cast_from(42_i128), I256::cast_from(42_i128)),
+                    (I256::cast_from(i128::MAX), I256::cast_from(i128::MAX)),
+                    (I256::cast_from(0_i128), I256::cast_from(0_i128)),
+                    (I256::cast_from(-42_i128), I256::cast_from(-42_i128))
                 ]
                 failing: [
-                    (I256::from(42_i128), I256::from(24_i128)),
-                    (I256::from(24_i128), I256::from(42_i128)),
-                    (I256::from(-42_i128), I256::from(24_i128)),
-                    (I256::from(42_i128), I256::from(-24_i128)),
+                    (I256::cast_from(42_i128), I256::cast_from(24_i128)),
+                    (I256::cast_from(24_i128), I256::cast_from(42_i128)),
+                    (I256::cast_from(-42_i128), I256::cast_from(24_i128)),
+                    (I256::cast_from(42_i128), I256::cast_from(-24_i128)),
                     (I256::MIN, -I256::MAX),
                 ]
             }
@@ -688,11 +684,11 @@ pub mod tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(0_i128), I256::from(0_i128)),
-                    (I256::from(42_i128), I256::from(-42_i128)),
-                    (I256::from(-42_i128), I256::from(42_i128)),
-                    (I256::MAX, I256::MIN + I256::from(1)),
-                    (I256::MIN + I256::from(1), I256::MAX),
+                    (I256::cast_from(0_i128), I256::cast_from(0_i128)),
+                    (I256::cast_from(42_i128), I256::cast_from(-42_i128)),
+                    (I256::cast_from(-42_i128), I256::cast_from(42_i128)),
+                    (I256::MAX, I256::MIN + I256::ONE),
+                    (I256::MIN + I256::ONE, I256::MAX),
                 ]
             }
         }
@@ -709,32 +705,32 @@ pub mod tests {
         inputs = {
             u128 = {
                 passing: [
-                    (u128::MAX, 2_u128, Uint256::new(U256::from(u128::MAX) * U256::from(2_u128))),
-                    (u128::TEN, 10_u128, Uint256::new(U256::from(100_u128))),
+                    (u128::MAX, 2_u128, Uint256::new(U256::cast_from(u128::MAX) * U256::cast_from(2_u128))),
+                    (u128::TEN, 10_u128, Uint256::new(U256::cast_from(100_u128))),
                 ]
             }
             u256 = {
                 passing: [
-                    (U256::MAX, U256::from(2_u128), Uint512::new((U256::MAX).as_::<U512>() * U512::from(2_u128))),
-                    (U256::TEN, U256::from(10_u128), Uint512::new(U512::from(100_u128))),
+                    (U256::MAX, U256::cast_from(2_u128), Uint512::new((U256::MAX).as_::<U512>() * U512::cast_from(2_u128))),
+                    (U256::TEN, U256::cast_from(10_u128), Uint512::new(U512::cast_from(100_u128))),
                 ]
             }
             i128 = {
                 passing: [
-                    (i128::MAX, 2_i128, Int256::new(I256::from(i128::MAX) * I256::from(2))),
-                    (i128::TEN, 10_i128, Int256::new(I256::from(100))),
-                    (i128::MIN, 10_i128, Int256::new(I256::from(i128::MIN) * I256::from(10))),
-                    (i128::MIN, -10_i128, Int256::new(I256::from(i128::MIN) * I256::from(-10))),
-                    (i128::MAX, -10_i128, Int256::new(I256::from(i128::MAX) * I256::from(-10))),
+                    (i128::MAX, 2_i128, Int256::new(I256::cast_from(i128::MAX) * I256::cast_from(2_i128))),
+                    (i128::TEN, 10_i128, Int256::new(I256::cast_from(100_i128))),
+                    (i128::MIN, 10_i128, Int256::new(I256::cast_from(i128::MIN) * I256::cast_from(10_i128))),
+                    (i128::MIN, -10_i128, Int256::new(I256::cast_from(i128::MIN) * I256::cast_from(-10_i128))),
+                    (i128::MAX, -10_i128, Int256::new(I256::cast_from(i128::MAX) * I256::cast_from(-10_i128))),
                 ]
             }
             i256 = {
                 passing: [
-                    (I256::MAX, I256::from(2_i128), Int512::new((I256::MAX).as_::<I512>() * I512::from(2))),
-                    (I256::TEN, I256::from(10_i128), Int512::new(I512::from(100))),
-                    (I256::MIN, I256::from(10_i128), Int512::new((I256::MIN).as_::<I512>() * I512::from(10))),
-                    (I256::MIN, I256::from(-10_i128), Int512::new((I256::MIN).as_::<I512>() * I512::from(-10))),
-                    (I256::MAX, I256::from(-10_i128), Int512::new((I256::MAX).as_::<I512>() * I512::from(-10))),
+                    (I256::MAX, I256::cast_from(2_i128), Int512::new((I256::MAX).as_::<I512>() * I512::cast_from(2_i128))),
+                    (I256::TEN, I256::cast_from(10_i128), Int512::new(I512::cast_from(100_i128))),
+                    (I256::MIN, I256::cast_from(10_i128), Int512::new((I256::MIN).as_::<I512>() * I512::cast_from(10_i128))),
+                    (I256::MIN, I256::cast_from(-10_i128), Int512::new((I256::MIN).as_::<I512>() * I512::cast_from(-10_i128))),
+                    (I256::MAX, I256::cast_from(-10_i128), Int512::new((I256::MAX).as_::<I512>() * I512::cast_from(-10_i128))),
                 ]
             }
         }

@@ -29,16 +29,16 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
 };
 
 export const QuestBanner: React.FC = () => {
-  const { account, isConnected } = useAccount();
+  const { username, isConnected } = useAccount();
   const { isQuestBannerVisible, setQuestBannerVisibility, settings } = useApp();
   const { formatNumberOptions } = settings;
   const { isLg } = useMediaQuery();
 
   const { data: quests, isLoading } = useQuery({
-    queryKey: ["quests", account?.username],
+    queryKey: ["quests", username],
     enabled: isConnected && isQuestBannerVisible,
     queryFn: () =>
-      fetch(`${window.dango.urls.questUrl}/${account?.username}`).then((res) => res.json()),
+      fetch(`${window.dango.urls.questUrl}/${username}`).then((res) => res.json()),
   });
 
   if (location.pathname === "/" && !isLg) return null;

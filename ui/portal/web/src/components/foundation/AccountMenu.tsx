@@ -1,7 +1,13 @@
 import {
   useAccount,
+  useActivities,
   useBalances,
   useOrdersByUser,
+  usePerpsUserState,
+  perpsUserStateStore,
+  usePerpsUserStateExtended,
+  perpsUserStateExtendedStore,
+  usePerpsVaultUserShares,
   usePrices,
   useSessionKey,
 } from "@left-curve/store";
@@ -17,6 +23,7 @@ import {
   Button,
   IconAddCross,
   IconLeft,
+  Tab,
   Tabs,
   IconSwitch,
   twMerge,
@@ -35,6 +42,7 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
+import { CountBadge } from "./CountBadge";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
 import { Activities } from "../activities/Activities";
 
@@ -42,7 +50,7 @@ import { Direction } from "@left-curve/dango/types";
 
 import type React from "react";
 import type { Coins } from "@left-curve/dango/types";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 const [AccountMenuProvider, useAccountMenu] = createContext<{
   balances: Coins;
@@ -54,6 +62,10 @@ const Container: React.FC = () => {
   const { isLg } = useMediaQuery();
   const { account } = useAccount();
   const { calculateBalance } = usePrices();
+  usePerpsUserState();
+  usePerpsUserStateExtended();
+  const perpsEquity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
+  const { userSharesValue } = usePerpsVaultUserShares();
 
   const { formatNumberOptions } = settings;
 
@@ -65,24 +77,16 @@ const Container: React.FC = () => {
     if (!orders.length) return balances;
     return orders.reduce(
       (acc, order) => {
-        const { baseDenom, quoteDenom, amount, direction, remaining } = order;
+        const { baseDenom, quoteDenom, price, direction, remaining } = order;
         if (direction === Direction.Buy) {
-          const quoteAmount = remaining;
+          // remaining is in base units; convert to quote units using the order's price
+          const quoteAmount = Decimal(remaining).mul(price).toFixed();
           acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
             .plus(quoteAmount)
             .toFixed();
-          const restAmount = Decimal(amount).minus(remaining).toFixed();
-          acc[baseDenom] = Decimal(acc[baseDenom] || "0")
-            .minus(restAmount)
-            .toFixed();
         } else {
-          const baseAmount = remaining;
           acc[baseDenom] = Decimal(acc[baseDenom] || "0")
-            .plus(baseAmount)
-            .toFixed();
-          const restAmount = Decimal(amount).minus(remaining).toFixed();
-          acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
-            .minus(restAmount)
+            .plus(remaining)
             .toFixed();
         }
         return acc;
@@ -91,17 +95,17 @@ const Container: React.FC = () => {
     );
   }, [balances, orders]);
 
-  const totalBalance = useMemo(
-    () =>
-      calculateBalance(allBalances, {
-        format: true,
-        formatOptions: {
-          ...formatNumberOptions,
-          currency: "USD",
-        },
-      }),
-    [allBalances],
-  );
+  const totalBalance = useMemo(() => {
+    const spotValue = calculateBalance(allBalances, { format: false });
+    const totalValue = Decimal(spotValue)
+      .plus(perpsEquity || "0")
+      .plus(userSharesValue || "0")
+      .toNumber();
+    return formatNumber(totalValue, {
+      ...formatNumberOptions,
+      currency: "USD",
+    });
+  }, [allBalances, perpsEquity, userSharesValue]);
 
   return (
     <AccountMenuProvider value={{ balances: allBalances, totalBalance }}>
@@ -128,7 +132,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   if (!account) return null;
 
   return (
-    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4 flex-1 h-full">
+    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4 flex-1 h-full min-h-0">
       <div className="flex flex-col w-full items-center gap-5">
         {backAllowed ? (
           <div className="w-full flex gap-2">
@@ -159,7 +163,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
 
       <AnimatePresence mode="wait">
         <motion.div
-          className="h-full w-full"
+          className="h-full w-full min-h-0"
           key={isAccountSelectorActive ? "selector" : "assets"}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -247,9 +251,14 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { deleteSessionKey } = useSessionKey();
   const { isMd } = useMediaQuery();
   const [activeTab, setActiveTab] = useState("wallet");
+  const { unseenCount, markAllSeen } = useActivities();
+
+  useEffect(() => {
+    if (activeTab === "activities") markAllSeen();
+  }, [activeTab, markAllSeen]);
 
   return (
-    <div className="flex flex-col w-full gap-6 items-center h-full">
+    <div className="flex flex-col w-full gap-6 items-center h-full min-h-0">
       <div className="md:self-end flex gap-2 items-center justify-center w-full px-4">
         <Button
           fullWidth
@@ -282,29 +291,61 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           color="line-red"
           layoutId="tabs-assets-account"
           selectedTab={activeTab}
-          keys={["wallet", "activities"]}
           fullWidth
           onTabChange={setActiveTab}
-        />
+        >
+          <Tab title="wallet">{m["accountMenu.wallet"]()}</Tab>
+          <Tab title="activities">
+            <span className="flex items-center gap-1">
+              {m["activities.title"]()}
+              <CountBadge count={unseenCount} />
+            </span>
+          </Tab>
+        </Tabs>
       </div>
       <motion.div
         key={activeTab}
-        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full"
+        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full min-h-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
       >
-        {activeTab === "wallet" ? <WalletTab /> : null}
+        {activeTab === "wallet" && (
+          <>
+            <div className="px-4 pb-4 w-full">
+              <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                onClick={() => [
+                  navigate({ to: "/transfer", search: { action: "spot-perp" } }),
+                  setSidebarVisibility(false),
+                ]}
+              >
+                {m["accountMenu.spotPerp"]()}
+              </Button>
+            </div>
+            <WalletTab />
+          </>
+        )}
         {activeTab === "activities" ? <ActivityTab /> : null}
       </motion.div>
     </div>
   );
 };
 
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+  <div className="flex items-center justify-center px-4 w-full">
+    <p className="flex-1 exposure-m-italic text-ink-primary-900">{title}</p>
+  </div>
+);
+
 export const WalletTab: React.FC = () => {
   const context = useAccountMenu();
   const balances = Object.entries(context.balances);
   const { calculateBalance } = usePrices();
+  const perpsState = perpsUserStateStore((s) => s.userState);
+  const { userVaultShares, userSharesValue } = usePerpsVaultUserShares();
 
   const sortedBalances = useMemo(() => {
     return balances.sort(([denomA, amountA], [denomB, amountB]) => {
@@ -316,14 +357,27 @@ export const WalletTab: React.FC = () => {
   }, [balances, calculateBalance]);
 
   return (
-    <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none">
-      {sortedBalances.length > 0 ? (
-        sortedBalances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
-      ) : (
-        <div className="px-4">
-          <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />
-        </div>
-      )}
+    <div className="flex flex-col w-full items-center">
+      <div className="flex flex-col w-full">
+        <SectionHeader title={m["accountMenu.perpAccount"]()} />
+        <AssetCard.Perp amount={perpsState?.margin ?? "0"} />
+        <AssetCard.Vault shares={userVaultShares} usdValue={userSharesValue} />
+      </div>
+      <div className="w-full px-4 py-1">
+        <div className="w-full h-px bg-outline-secondary-gray" />
+      </div>
+      <div className="flex flex-col w-full pt-4">
+        <SectionHeader title={m["accountMenu.spotAccount"]()} />
+        {sortedBalances.length > 0 ? (
+          sortedBalances.map(([denom, amount]) => (
+            <AssetCard key={denom} coin={{ denom, amount }} />
+          ))
+        ) : (
+          <div className="px-4">
+            <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,9 +1,10 @@
 import { useAccount, usePrices } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { numberMask, useApp } from "@left-curve/foundation";
+import { formatUnits } from "@left-curve/dango/utils";
+import { numberMask } from "@left-curve/foundation";
 
+import { FormattedNumber } from "./FormattedNumber";
 import { Input } from "./Input";
 import { PairAssetSelector } from "./PairAssetSelector";
 import { RangeWithButtons } from "./RangeWithButtons";
@@ -35,14 +36,12 @@ type AssetInputWithRangeProps = {
     isDisabled?: boolean;
   }) => React.ReactNode;
   bottomComponent?: React.ReactNode;
+  hidePrice?: boolean;
 };
 
 export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) => {
   const { isConnected } = useAccount();
   const { getPrice } = usePrices();
-
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
 
   const {
     name,
@@ -61,6 +60,7 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
     triggerSimulation,
     renderSelector,
     extendValidation,
+    hidePrice,
   } = props;
 
   const { register, setValue } = controllers;
@@ -134,19 +134,22 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
           <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
             <div className="flex items-center gap-2">
               <p>
-                {formatNumber(balance, formatNumberOptions)} {asset.symbol}
+                <FormattedNumber number={balance} as="span" /> {asset.symbol}
               </p>
             </div>
-            <div>
-              {isLoading ? (
-                <Skeleton className="w-14 h-4" />
-              ) : (
-                getPrice(value, asset.denom, {
-                  format: true,
-                  formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
-                })
-              )}
-            </div>
+            {!hidePrice && (
+              <div>
+                {isLoading ? (
+                  <Skeleton className="w-14 h-4" />
+                ) : (
+                  <FormattedNumber
+                    number={getPrice(value, asset.denom)}
+                    formatOptions={{ currency: "USD" }}
+                    as="span"
+                  />
+                )}
+              </div>
+            )}
           </div>
           {showRange && (
             <RangeWithButtons

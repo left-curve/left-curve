@@ -26,7 +26,7 @@ type CardFC = ForwardRefExoticComponent<
   PropsWithoutRef<{ activity: ActivityRecord<keyof Activities> }> & RefAttributes<ActivityRef>
 >;
 
-const activities: Record<keyof Activities, LazyExoticComponent<CardFC>> = {
+const activities: Partial<Record<keyof Activities, LazyExoticComponent<CardFC>>> = {
   transfer: lazy(() => Promise.resolve({ default: ActivityTransfer as CardFC })),
   account: lazy(() => Promise.resolve({ default: ActivityNewAccount as CardFC })),
   orderCreated: lazy(() => Promise.resolve({ default: ActivityOrderCreated as CardFC })),
@@ -50,6 +50,8 @@ export const Activity: React.FC<ActivityProps> = ({ activity }) => {
   const { id, createdAt, type } = activity;
 
   const ActivityCard = activities[type as keyof typeof activities];
+
+  if (!ActivityCard) return null;
 
   const handlePress = useCallback((e: GestureResponderEvent) => {
     activityRef.current?.onPress?.(e);

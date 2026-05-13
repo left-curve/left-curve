@@ -1,6 +1,7 @@
 use crate::{
-    AsVariant, BlockOutcome, CommitmentStatus, EventFilter, EventId, FlatCategory, FlatEvent,
-    FlatEventInfo, FlattenStatus, TxEvents, flatten_commitment_status, flatten_tx_events,
+    AsVariant, BlockOutcome, CommitmentStatus, CronOutcome, EventFilter, EventId, FlatCategory,
+    FlatEvent, FlatEventInfo, FlattenStatus, TxEvents, flatten_commitment_status,
+    flatten_tx_events,
 };
 
 pub trait SearchEvent: Sized {
@@ -32,11 +33,25 @@ where
 
 impl SearchEvent for BlockOutcome {
     fn flat(self) -> Vec<FlatEventInfo> {
-        self.tx_outcomes
-            .into_iter()
-            .fold(vec![], |mut acc, tx_outcome| {
-                acc.extend(tx_outcome.events.flat());
-                acc
-            })
+        let mut flat_events = vec![];
+
+        for tx_outcome in self.tx_outcomes {
+            flat_events.extend(tx_outcome.events.flat());
+        }
+
+        for cron_outcome in self.cron_outcomes {
+            flat_events.extend(cron_outcome.flat());
+        }
+
+        flat_events
+    }
+}
+
+impl SearchEvent for CronOutcome {
+    fn flat(self) -> Vec<FlatEventInfo> {
+        flatten_commitment_status(
+            &mut EventId::new(0, FlatCategory::Cron, 0, 0),
+            self.cron_event,
+        )
     }
 }

@@ -36,7 +36,6 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   selectedTab,
   defaultKey,
   fullWidth,
-  layoutId,
   color,
   classNames,
   isDisabled,
@@ -146,7 +145,8 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 const tabsVariants = tv({
   slots: {
     base: "flex text-base relative items-center w-fit p-1 rounded-md exposure-sm-italic",
-    button: "relative capitalize transition-all flex items-center justify-center py-2 px-4 z-10",
+    button:
+      "relative capitalize transition-all flex items-center justify-center py-2 px-4 z-10 expose-sm-italic",
     "animated-element": "z-0",
   },
   variants: {
@@ -174,7 +174,7 @@ const tabsVariants = tv({
       "line-red": {
         base: "p-0",
         button: "border-b-[1px] border-outline-secondary-gray pt-0",
-        "animated-element": "h-[2px] top-auto bottom-[-1px] bg-primitives-red-light-400",
+        "animated-element": "h-[2px] top-auto bottom-0 bg-primitives-red-light-400",
       },
     },
     fullWidth: {
@@ -205,11 +205,13 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
     isActive,
     fullWidth,
   });
-  return <p className={twMerge(styles)}>{children ? children : title}</p>;
+  return (
+    <span className={twMerge(styles, "exposure-sm-italic")}>{children ? children : title}</span>
+  );
 };
 
 const tabVariants = tv({
-  base: "transition-all relative z-10 whitespace-nowrap outline-none",
+  base: "transition-all relative z-10 whitespace-nowrap outline-none exposure-sm-italic",
   variants: {
     color: {
       green: "",

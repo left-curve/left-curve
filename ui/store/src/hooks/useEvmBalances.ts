@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { ERC20_ABI } from "@left-curve/dango/hyperlane";
+import { ERC20_ABI, INFURA_URLS } from "@left-curve/dango/hyperlane";
 
 import type { Chain } from "viem";
 import type { Address } from "@left-curve/dango/types";
@@ -23,7 +23,9 @@ export function useEvmBalances(parameters: UseEvmBalancesParameters) {
 
       const evmClient = createPublicClient({
         chain: chain as Chain,
-        transport: http(undefined, { batch: true }),
+        transport: http(INFURA_URLS[chain.id], {
+          batch: true,
+        }),
       });
 
       const nativeBalance = await evmClient.getBalance({ address });

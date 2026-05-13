@@ -35,9 +35,33 @@ macro_rules! impl_next {
 
 impl_next! {
     Uint64  => Uint128,
-    Uint128 => Uint256,
     Int64   => Int128,
-    Int128  => Int256,
+}
+
+// Uint128 → Uint256 and Int128 → Int256 use `from_be_bytes_growing` because
+// bnum 0.14 removed the infallible `From<u128>` / `From<i128>` impls.
+macro_rules! impl_next_growing {
+    ($this:ty => $next_inner:ty => $next:ty) => {
+        impl NextNumber for $this {
+            type Next = $next;
+
+            fn into_next(self) -> Self::Next {
+                <$next>::new(<$next_inner>::from_be_bytes_growing(
+                    self.0.to_be_bytes(),
+                ))
+            }
+        }
+    };
+    ($($this:ty => $next_inner:ty => $next:ty),+ $(,)?) => {
+        $(
+            impl_next_growing!($this => $next_inner => $next);
+        )+
+    };
+}
+
+impl_next_growing! {
+    Uint128 => bnum::types::U256 => Uint256,
+    Int128  => bnum::types::I256 => Int256,
 }
 
 // ----------------------------------- bnum ------------------------------------
@@ -85,7 +109,7 @@ mod int_tests {
     use {
         crate::{Int, NextNumber, int_test, test_utils::bt},
         bnum::{
-            cast::As,
+            cast::{As, CastFrom},
             types::{I256, I512, U256, U512},
         },
     };
@@ -94,7 +118,7 @@ mod int_tests {
         inputs = {
             u128 = {
                 passing: [
-                    (u128::MAX, U256::from(u128::MAX))
+                    (u128::MAX, U256::cast_from(u128::MAX))
                 ]
             }
             u256 = {
@@ -104,8 +128,8 @@ mod int_tests {
             }
             i128 = {
                 passing: [
-                    (i128::MAX, I256::from(i128::MAX)),
-                    (i128::MIN, I256::from(i128::MIN))
+                    (i128::MAX, I256::cast_from(i128::MAX)),
+                    (i128::MIN, I256::cast_from(i128::MIN))
                 ]
             }
             i256 = {

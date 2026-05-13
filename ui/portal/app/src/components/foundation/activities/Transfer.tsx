@@ -25,7 +25,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
   ({ activity, className }, ref) => {
     const { settings } = useApp();
     const router = useRouter();
-    const { getCoinInfo } = useConfig();
+    const config = useConfig();
 
     const { coins, type, fromAddress, toAddress } = activity.data;
     const { formatNumberOptions } = settings;
@@ -65,7 +65,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
 
           <View className="flex flex-col items-start">
             {Object.entries(coins).map(([denom, amount]) => {
-              const coin = getCoinInfo(denom);
+              const coin = config.coins.getCoinInfo(denom);
               const formatted = formatNumber(
                 formatUnits(amount, coin.decimals),
                 formatNumberOptions,

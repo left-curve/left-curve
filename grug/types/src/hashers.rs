@@ -1,8 +1,7 @@
 use {
     crate::{Hash160, Hash256},
-    digest::Digest,
     ripemd::Ripemd160,
-    sha2::Sha256,
+    sha2::{Digest, Sha256},
     sha3::Keccak256,
 };
 

@@ -1,5 +1,5 @@
 use {
-    grug_types::HexBinary,
+    grug_types::{HexBinary, HttpdConfig},
     serde::{Deserialize, Serialize},
 };
 
@@ -8,7 +8,7 @@ pub struct Config {
     pub grug: GrugConfig,
     pub indexer: IndexerConfig,
     pub httpd: HttpdConfig,
-    pub metrics_httpd: HttpdConfig,
+    pub metrics_httpd: MetricsHttpdConfig,
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
@@ -86,27 +86,6 @@ impl Default for IndexerDatabaseConfig {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct HttpdConfig {
-    pub enabled: bool,
-    pub ip: String,
-    pub port: u16,
-    pub cors_allowed_origin: Option<String>,
-    pub static_files_path: Option<String>,
-}
-
-impl Default for HttpdConfig {
-    fn default() -> Self {
-        HttpdConfig {
-            enabled: false,
-            ip: "127.0.0.1".to_string(),
-            port: 0,
-            cors_allowed_origin: None,
-            static_files_path: None,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct TendermintConfig {
     pub rpc_addr: String,
     pub abci_addr: String,
@@ -140,6 +119,23 @@ impl Default for TransactionsConfig {
 pub struct PythLazerConfig {
     pub endpoints: Vec<String>,
     pub access_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricsHttpdConfig {
+    pub enabled: bool,
+    pub ip: String,
+    pub port: u16,
+}
+
+impl Default for MetricsHttpdConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ip: "127.0.0.1".to_string(),
+            port: 9191,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Default)]

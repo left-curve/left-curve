@@ -63,6 +63,7 @@
   loop: "{{ monitor_defs | map(attribute='name') | unique | list }}"
   loop_control:
     loop_var: service
+  when: service not in (lb_exclude[dango_network] | default([]))
 
 # Refresh pools to capture any newly-created IDs
 - name: Refresh pools after creation
@@ -120,6 +121,7 @@
   loop: "{{ services | product(nets) | list }}"
   loop_control:
     loop_var: svcnet
+  when: svcnet.0 not in (lb_exclude[svcnet.1] | default([]))
 
 - name: Create LBs for services and networks
   vars:
@@ -129,3 +131,4 @@
   loop: "{{ services | product(nets) | list }}"
   loop_control:
     loop_var: svcnet
+  when: svcnet.0 not in (lb_exclude[svcnet.1] | default([]))

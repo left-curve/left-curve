@@ -39,26 +39,23 @@ const toastStore = create<ToastStore>((set, get) => ({
 }));
 
 export const toast = {
-  getState() {
-    return toastStore.getState();
-  },
   info(message: ToastMessage, options?: ToastOptions) {
-    return this.getState().add("info", message, options);
+    return toastStore.getState().add("info", message, options);
   },
   error(message: ToastMessage, options?: ToastOptions) {
-    return this.getState().add("error", message, options);
+    return toastStore.getState().add("error", message, options);
   },
   success(message: ToastMessage, options?: ToastOptions) {
-    return this.getState().add("success", message, options);
+    return toastStore.getState().add("success", message, options);
   },
   warning(message: ToastMessage, options?: ToastOptions) {
-    return this.getState().add("warning", message, options);
+    return toastStore.getState().add("warning", message, options);
   },
   neutral(message: ToastMessage, options?: ToastOptions) {
-    return this.getState().add("neutral", message, options);
+    return toastStore.getState().add("neutral", message, options);
   },
   dismiss(id: string) {
-    this.getState().remove(id);
+    toastStore.getState().remove(id);
   },
 };
 

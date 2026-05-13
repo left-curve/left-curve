@@ -52,8 +52,11 @@ export const DangoRemoteProvider: React.FC<React.PropsWithChildren> = (parameter
         chainId: chain.id,
         isMipdLoaded: true,
         current: connector.uid,
-        userIndexAndName: { name: connection.account.username, index: connection.account.index },
-        userStatus: "active" as const,
+        user: {
+          index: connection.account.owner,
+          username: `User #${connection.account.owner}`,
+          status: "active" as const,
+        },
         connectors: new Map([[connector.uid, { ...connection, connector }]]),
         status: ConnectionStatus.Connected,
       }
@@ -61,8 +64,7 @@ export const DangoRemoteProvider: React.FC<React.PropsWithChildren> = (parameter
         chainId: chain.id,
         isMipdLoaded: true,
         current: null,
-        userIndexAndName: undefined,
-        userStatus: undefined,
+        user: undefined,
         connectors: new Map(),
         status: ConnectionStatus.Disconnected,
       };

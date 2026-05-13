@@ -12,6 +12,7 @@ type ExpandOptionsProps = {
   showOptionText: string;
   className?: string;
   showLine?: boolean;
+  defaultOpen?: boolean;
 };
 
 export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
@@ -19,8 +20,9 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
   showOptionText,
   className,
   showLine = false,
+  defaultOpen = false,
 }) => {
-  const [isOptionExpanded, setOptionExpanded] = useState(false);
+  const [isOptionExpanded, setOptionExpanded] = useState(defaultOpen);
 
   const options = Children.toArray(children) as React.ReactElement[];
 

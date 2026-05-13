@@ -61,6 +61,7 @@
         <database>system</database>
         <table>query_log</table>
         <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
     </query_log>
 
     <!-- Metric log settings -->
@@ -69,6 +70,7 @@
         <table>metric_log</table>
         <flush_interval_milliseconds>7500</flush_interval_milliseconds>
         <collect_interval_milliseconds>1000</collect_interval_milliseconds>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
     </metric_log>
 
     <!-- Part log settings -->
@@ -76,6 +78,7 @@
         <database>system</database>
         <table>part_log</table>
         <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
     </part_log>
 
     <!-- Format schemas -->

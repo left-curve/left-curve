@@ -6,3 +6,4 @@ reboot_time: "15:00"
 dango_networks:
   - testnet
 cloudflare_lb_enabled: true
+faucet_bot_enabled: true

@@ -1,5 +1,4 @@
 use {
-    digest::{consts::U32, generic_array::GenericArray},
     grug::ByteArray,
     identity::Identity256,
     k256::{
@@ -22,8 +21,8 @@ pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
 }
 
 /// Note: This function expects the _hashed_ sign data.
-pub fn create_signature(sk: &SigningKey, sign_data: GenericArray<u8, U32>) -> ByteArray<64> {
-    let sign_data = Identity256::from_inner(sign_data);
+pub fn create_signature(sk: &SigningKey, sign_data: [u8; 32]) -> ByteArray<64> {
+    let sign_data = Identity256::from(sign_data);
     let signature: Signature = sk.sign_digest(sign_data);
 
     ByteArray::from_inner(signature.to_bytes().into())

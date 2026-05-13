@@ -1,5 +1,6 @@
 import { twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useAccount } from "@left-curve/store";
 import type React from "react";
 import { useUserPoints, type UserLeague } from "../useUserPoints";
 
@@ -115,14 +116,15 @@ type LigueLevelsProps = {
 };
 
 export const LigueLevels: React.FC<LigueLevelsProps> = ({ currentLevel }) => {
+  const { isConnected } = useAccount();
   const { league } = useUserPoints();
   const level = currentLevel ?? league;
-  const currentLevelIndex = LIGUE_LEVELS.findIndex((l) => l.key === level);
+  const currentLevelIndex = isConnected ? LIGUE_LEVELS.findIndex((l) => l.key === level) : -1;
 
   return (
     <div className="w-full min-h-[18rem] lg:min-h-[28rem] bg-surface-primary-rice rounded-b-xl p-4 lg:p-8 flex flex-col">
       <div className="flex flex-col mb-4 lg:mb-6">
-        <h2 className="display-heading-4xs lg:display-heading-xl text-primitives-warning-300">
+        <h2 className="display-heading-4xs lg:display-heading-xl text-utility-warning-600">
           {m["points.leagues.title"]()}
         </h2>
         <p>{m["points.leagues.subtitle"]()}</p>

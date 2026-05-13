@@ -120,7 +120,7 @@ mod int_tests {
                     (U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES), Udec256::raw(Uint256::new(U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) * U256::TEN.pow(Udec128::DECIMAL_PLACES)))),
                 ],
                 failing: [
-                    U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) + 1,
+                    U256::MAX / U256::TEN.pow(Udec128::DECIMAL_PLACES) + U256::ONE,
                 ]
             }
             i128 = {
@@ -173,7 +173,10 @@ mod dec_tests {
             Udec128, Udec256, Uint128, dec_test,
             test_utils::{bt, dec, dt},
         },
-        bnum::types::{I256, U256},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
         std::str::FromStr,
         test_case::test_case,
     };
@@ -196,7 +199,7 @@ mod dec_tests {
                     (Udec256::MIN, U256::ZERO),
                     (Udec256::new_percent(101), U256::ONE),
                     (Udec256::new_percent(199), U256::ONE),
-                    (Udec256::new(2), U256::from(2_u128)),
+                    (Udec256::new(2), U256::cast_from(2_u128)),
                     (Udec256::MAX, U256::MAX / Udec256::PRECISION.0),
                 ]
             }
@@ -219,10 +222,10 @@ mod dec_tests {
                     (Dec256::MIN, I256::MIN / Dec256::PRECISION.0),
                     (Dec256::new_percent(101), I256::ONE),
                     (Dec256::new_percent(199), I256::ONE),
-                    (Dec256::new(2), I256::from(2)),
+                    (Dec256::new(2), I256::cast_from(2_i128)),
                     (Dec256::new_percent(-101), -I256::ONE),
                     (Dec256::new_percent(-199), -I256::ONE),
-                    (Dec256::new(-2), I256::from(-2)),
+                    (Dec256::new(-2), I256::cast_from(-2_i128)),
                     (Dec256::MAX, I256::MAX / Dec256::PRECISION.0),
                 ]
             }

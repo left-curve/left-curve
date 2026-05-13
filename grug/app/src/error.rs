@@ -56,12 +56,6 @@ pub enum AppError {
     #[error("sender is not the owner! sender: {sender}, owner: {owner}")]
     NotOwner { sender: Addr, owner: Addr },
 
-    #[error("admin account is not set")]
-    AdminNotSet,
-
-    #[error("sender is not the admin! sender: {sender}, admin: {admin}")]
-    NotAdmin { sender: Addr, admin: Addr },
-
     #[error("code with hash `{code_hash}` already exists")]
     CodeExists { code_hash: Hash256 },
 
@@ -70,6 +64,20 @@ pub enum AppError {
 
     #[error("max message depth exceeded")]
     ExceedMaxMessageDepth,
+}
+
+impl AppError {
+    /// Whether this error represents a *planned* chain halt — i.e. a condition
+    /// the node operator is expected to resolve by intervening (e.g. deploying
+    /// the correct binary for a scheduled upgrade), rather than an
+    /// implementation bug.
+    ///
+    /// The ABCI layer uses this to decide whether to `panic!` (bug, force a
+    /// crash so it is visible) or return the error normally so the host binary
+    /// can shut down gracefully.
+    pub fn is_planned_halt(&self) -> bool {
+        matches!(self, AppError::UpgradeIncorrectVersion { .. })
+    }
 }
 
 /// Dedicated error type for indexer operations
@@ -108,9 +116,6 @@ pub enum IndexerError {
 
     #[error("mutex for the indexers is poisoned")]
     MutexPoisoned,
-
-    #[error("rwlock for the indexers is poisoned")]
-    RwlockPoisoned,
 }
 
 impl From<PoisonError<MutexGuard<'_, HashMap<u64, bool>>>> for IndexerError {

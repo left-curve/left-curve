@@ -1,10 +1,8 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES},
     anyhow::{anyhow, ensure},
-    dango_types::{
-        UsdPrice,
-        oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
-    },
+    dango_order_book::UsdPrice,
+    dango_types::oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
     grug::{
         Addr, Cache, Dec128_6, Denom, Inner, QuerierWrapper, StdResult, Storage, StorageQuerier,
         Timestamp, Unsigned,

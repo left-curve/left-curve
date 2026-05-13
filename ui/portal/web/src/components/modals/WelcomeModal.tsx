@@ -79,7 +79,7 @@ export const WelcomeModal: React.FC = () => {
               hiccups. Don't hesitate to send us feedback on{" "}
               <Button
                 as="a"
-                href="https://discord.gg/4uB9UDzYhz"
+                href="https://discord.gg/BWJtyySxBM"
                 target="_blank"
                 rel="noreferrer"
                 variant="link"

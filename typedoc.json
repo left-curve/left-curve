@@ -1,14 +1,14 @@
 {
   "name": "Left Curve Software Stack",
-  "entryPoints": ["./sdk/grug", "./sdk/dango", "./sdk/types", "./sdk/utils"],
+  "entryPoints": ["./sdk/typescript/grug", "./sdk/typescript/dango", "./sdk/typescript/types", "./sdk/typescript/utils"],
   "navigationLinks": {
     "Home": "https://grug.build",
-    "GitHub": "https://github.com/left-curve/left-curve/tree/main/sdk"
+    "GitHub": "https://github.com/left-curve/left-curve/tree/main/sdk/typescript"
   },
   "entryPointStrategy": "packages",
   "includeVersion": true,
   "githubPages": true,
-  "readme": "./sdk/README.md",
+  "readme": "./sdk/typescript/README.md",
   "darkHighlightTheme": "dark-plus",
-  "out": "./sdk/docs"
+  "out": "./sdk/typescript/docs"
 }

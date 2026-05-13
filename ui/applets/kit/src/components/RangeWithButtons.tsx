@@ -1,7 +1,8 @@
-import { Range } from "./Range";
+import { Range, type RangeProps } from "./Range";
 import { Button } from "./Button";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { twMerge } from "tailwind-merge";
 
 import type React from "react";
 
@@ -10,13 +11,15 @@ type RangeWithButtonsProps = {
   balance: string;
   setValue: (value: string) => void;
   setActiveInput: () => void;
+  className?: string;
+  classNames?: RangeProps["classNames"];
 };
 
 export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) => {
-  const { amount, balance, setValue, setActiveInput } = parameters;
+  const { amount, balance, setValue, setActiveInput, className, classNames } = parameters;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={twMerge("flex flex-col gap-4", className)}>
       <Range
         minValue={0}
         maxValue={Number(balance)}
@@ -25,7 +28,10 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
           setActiveInput();
           setValue(String(value));
         }}
-        classNames={{ inputWrapper: "px-0" }}
+        classNames={{
+          ...classNames,
+          inputWrapper: twMerge("px-0", classNames?.inputWrapper),
+        }}
         showPercentage
       />
       <div className="w-full flex gap-4 justify-end">

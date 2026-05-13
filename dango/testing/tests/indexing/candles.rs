@@ -2,10 +2,6 @@ use {
     assertor::*,
     chrono::{DateTime, TimeDelta},
     dango_genesis::{Contracts, DexOption, GenesisOption},
-    dango_indexer_clickhouse::entities::{
-        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
-        pair_price_query::PairPriceQueryBuilder,
-    },
     dango_testing::{
         Preset, TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
         constants::MOCK_GENESIS_TIMESTAMP, setup_test_with_indexer,
@@ -25,6 +21,13 @@ use {
         Udec128_6, Udec128_24, Uint128, btree_map, coins,
     },
     grug_app::Indexer,
+    indexer_clickhouse::{
+        entities::{
+            CandleInterval, candle::Candle, candle_query::CandleQueryBuilder,
+            pair_price::PairPrice, pair_price_query::PairPriceQueryBuilder,
+        },
+        indexer::candles::cache::{CandleCache, CandleCacheKey},
+    },
     std::{collections::BTreeSet, str::FromStr},
 };
 
@@ -53,6 +56,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
@@ -104,6 +108,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -405,15 +410,16 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Make an empty block at timestamps 41.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     // This function makes a block containing a single limit buy order and a
     // limit sell order of the same price and size. This produces a clearing
     // price that is to be indexed.
-    let mut make_block_with_price = |suite: &mut TestSuite<_, _, _, _>, price, amount| {
+    let mut make_block_with_price = async |suite: &mut TestSuite<_, _, _, _>, price, amount| {
         suite
             .execute(
                 &mut accounts.user1,
@@ -442,6 +448,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                     usdc::DENOM.clone() => amount.checked_mul_dec_ceil(price).unwrap(),
                 },
             )
+            .await
             .should_succeed();
     };
 
@@ -469,7 +476,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Price: 100_000
     // Volume in DANGO: 1
     // Volume in USDC: 1 * 100_000 = 100_000
-    make_block_with_price(&mut suite, Udec128_24::new(100_000), Uint128::new(1));
+    make_block_with_price(&mut suite, Udec128_24::new(100_000), Uint128::new(1)).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -496,7 +503,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Price: 99_999
     // Volume in DANGO: 1 + 1 (from previous block) = 2
     // Volume in USDC: 99_999 + 100_000 (from previous block) = 199_999
-    make_block_with_price(&mut suite, Udec128_24::new(99_999), Uint128::new(1));
+    make_block_with_price(&mut suite, Udec128_24::new(99_999), Uint128::new(1)).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -523,7 +530,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Price: 100_001
     // Volume in DANGO: 1 + 2 (from previous blocks) = 3
     // Volume in USDC: 100_001 + 199_999 (from previous blocks) = 300_000
-    make_block_with_price(&mut suite, Udec128_24::new(100_001), Uint128::new(1));
+    make_block_with_price(&mut suite, Udec128_24::new(100_001), Uint128::new(1)).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -548,7 +555,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     // Block 4
     // Block time: 121 seconds
     // Do nothing.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -617,10 +624,11 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Make an empty block at timestamps 41.
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     // -------------------------------- block 1 --------------------------------
 
@@ -662,6 +670,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
                 usdc::DENOM.clone() => Uint128::new(200_000),
             },
         )
+        .await
         .should_succeed();
 
     suite.app.indexer.wait_for_finish().await?;
@@ -746,12 +755,93 @@ async fn create_pair_prices(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
         .for_each(|outcome| {
             outcome.should_succeed();
         });
+
+    Ok(())
+}
+
+/// Regression test: `CandleCache::preload_pairs` must rebuild the
+/// in-progress candle from `pair_prices` in ClickHouse end-to-end.
+/// A prior bug in `PairPrice::since` bound `timestamp_micros()` into
+/// `toDateTime64(?, 6)`; ClickHouse treats integer inputs to
+/// `toDateTime64` as seconds regardless of scale, so the bind saturated
+/// to the DateTime64 max (year 2299) and the predicate silently matched
+/// nothing — the rebuild ran on an empty prices vec (`replayed=0`) and
+/// the in-progress candle was lost on every restart.
+///
+/// Uses a recent genesis timestamp so block `created_at` values fall
+/// inside the current `earliest_current_bucket_start` window; with the
+/// 1971-based default (`MOCK_GENESIS_TIMESTAMP`) the per-interval
+/// `created_at >= start` filter in `rebuild_in_progress_from_prices`
+/// drops every row even when `since` is fixed, masking the regression.
+#[tokio::test(flavor = "multi_thread")]
+async fn index_candles_preload_rebuilds_current_bucket_from_clickhouse() -> anyhow::Result<()> {
+    let genesis_secs = chrono::Utc::now().timestamp() as u128 - 3_600;
+
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
+        setup_test_with_indexer_and_custom_genesis(
+            TestOption {
+                genesis_block: BlockInfo {
+                    height: 0,
+                    timestamp: Timestamp::from_seconds(genesis_secs),
+                    hash: Hash256::ZERO,
+                },
+                ..Default::default()
+            },
+            GenesisOption::preset_test(),
+        )
+        .await;
+
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+    suite.app.indexer.wait_for_finish().await?;
+
+    let ch = clickhouse_context.clickhouse_client();
+    let pairs = PairPrice::all_pairs(ch).await?;
+    assert_that!(pairs.is_empty()).is_false();
+
+    // Exactly the path `Context::preload_cache` takes at node startup.
+    let mut fresh_cache = CandleCache::default();
+    fresh_cache.preload_pairs(&pairs, ch).await?;
+
+    // With the broken `since` binding every interval's in-progress
+    // candle was missing after rebuild. Assert every active pair has
+    // produced 1h / 4h / 1d candles whose volume survived the replay.
+    for pair in &pairs {
+        for interval in [
+            CandleInterval::OneHour,
+            CandleInterval::FourHours,
+            CandleInterval::OneDay,
+        ] {
+            let key = CandleCacheKey::new(
+                pair.base_denom.to_string(),
+                pair.quote_denom.to_string(),
+                interval,
+            );
+            let candle = fresh_cache
+                .get_last_candle(&key)
+                .cloned()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "preload_pairs produced no {interval} candle for {}/{}",
+                        pair.base_denom, pair.quote_denom
+                    )
+                });
+
+            assert!(
+                candle.volume_base > Udec128_6::ZERO,
+                "{}/{} {interval} rebuilt with zero volume_base — the \
+                 `since` query did not return the day's rows",
+                pair.base_denom,
+                pair.quote_denom,
+            );
+        }
+    }
 
     Ok(())
 }

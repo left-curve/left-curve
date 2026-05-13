@@ -79,8 +79,11 @@ where
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{Int, Int128, Int256, MathError, Unsigned, int_test, test_utils::bt},
-        bnum::{cast::As, types::U256},
+        crate::{Int, Int128, Int256, MathError, NumberConst, Unsigned, int_test, test_utils::bt},
+        bnum::{
+            cast::{As, CastFrom},
+            types::U256,
+        },
     };
 
     int_test!( unsigned_to_signed
@@ -96,11 +99,11 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(10u128), Int256::new_from_i128(10)),
-                    (U256::MAX / 2, Int256::new((U256::MAX / 2).as_())),
+                    (U256::cast_from(10u128), Int256::new_from_i128(10)),
+                    (U256::MAX / U256::cast_from(2u32), Int256::new((U256::MAX / U256::cast_from(2u32)).as_())),
                 ],
                 failing: [
-                    U256::MAX / 2 + 1,
+                    U256::MAX / U256::cast_from(2u32) + U256::ONE,
                 ]
             }
         }
@@ -126,7 +129,10 @@ mod dec_tests {
             Unsigned, dec_test,
             test_utils::{dec, dt},
         },
-        bnum::{cast::As, types::U256},
+        bnum::{
+            cast::{As, CastFrom},
+            types::U256,
+        },
     };
 
     dec_test!( unsigned_to_signed
@@ -143,7 +149,7 @@ mod dec_tests {
             udec256 = {
                 passing: [
                     (Dec::TEN, Dec256::TEN),
-                    (Udec256::MAX / dec("2"), Dec256::raw(Int256::new((U256::MAX / 2).as_()))),
+                    (Udec256::MAX / dec("2"), Dec256::raw(Int256::new((U256::MAX / U256::cast_from(2u32)).as_()))),
                 ],
                 failing: [
                     Dec::MAX / dec("2") + Dec::TICK,

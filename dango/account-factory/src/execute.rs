@@ -3,16 +3,18 @@ use {
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
     dango_types::{
-        account,
+        DangoQuerier, account,
         account_factory::{
             AccountOwned, AccountRegistered, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
-            NewUserSalt, RegisterUserData, Salt, User, UserRegistered, Username,
+            NewUserSalt, RegisterUserData, Salt, User, UserIndex, UserRegistered, Username,
+            UsernameUpdated,
         },
         auth::{Key, Signature},
+        perps,
     },
     grug::{
-        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Response, StdResult, Storage, Tx, btree_map,
+        Addr, AuthCtx, AuthMode, Coins, Hash256, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
+        Op, Response, StdResult, Storage, Tx, btree_map,
     },
 };
 
@@ -56,7 +58,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 // exactly one message, to execute the factory itself with `Execute::RegisterUser`.
 // This transaction does not need to include any metadata or credential.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let mut msgs = tx.msgs.iter();
 
     let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
@@ -102,9 +104,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         None
     };
 
-    Ok(AuthResponse::new()
-        .may_add_message(maybe_msg)
-        .request_backrun(false))
+    Ok(Response::new().may_add_message(maybe_msg))
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -115,7 +115,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
             seed,
             signature,
-        } => register_user(ctx, key, key_hash, seed, signature),
+            referrer,
+        } => register_user(ctx, key, key_hash, seed, signature, referrer),
         ExecuteMsg::RegisterAccount {} => register_account(ctx),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
@@ -128,22 +129,45 @@ fn register_user(
     key_hash: Hash256,
     seed: u32,
     signature: Signature,
+    referrer: Option<UserIndex>,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
+    // All registration parameters are bound in the signed data to prevent
+    // front-running attacks.
     verify_signature(
         ctx.api,
         key,
         signature,
         VerifyData::Onboard(RegisterUserData {
             chain_id: ctx.chain_id,
+            key,
+            key_hash,
+            seed,
+            referrer,
         }),
     )?;
 
     let (msg, user_registered, account_registered) =
         onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed, ctx.funds)?;
 
+    // If a referrer is provided, send a message to the perps contract to
+    // register the referral relationship.
+    let maybe_referral_msg = if let Some(referrer) = referrer {
+        Some(Message::execute(
+            ctx.querier.query_perps()?,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer,
+                referee: user_registered.user_index,
+            }),
+            Coins::default(),
+        )?)
+    } else {
+        None
+    };
+
     Ok(Response::new()
         .add_message(msg)
+        .may_add_message(maybe_referral_msg)
         .add_event(user_registered)?
         .add_event(account_registered)?)
 }
@@ -182,7 +206,8 @@ fn onboard_new_user(
     let address = Addr::derive(factory, code_hash, &salt.to_bytes());
 
     let user = User {
-        name: None,
+        index: user_index,
+        name: Username::default_for_index(user_index),
         accounts: btree_map! { account_index => address },
         keys: btree_map! { key_hash => key },
     };
@@ -325,8 +350,13 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
     let (user_index, mut user) = USERS.idx.by_account.load(ctx.storage, ctx.sender)?;
 
     ensure!(
-        user.name.is_none(),
-        "a username is already associated with user index {user_index}",
+        user.name.is_default(),
+        "a custom username is already set for user {user_index}",
+    );
+
+    ensure!(
+        !username.is_default(),
+        "usernames matching 'user_N' are reserved",
     );
 
     ensure!(
@@ -338,9 +368,12 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
         "the username `{username}` is already associated with a user index"
     );
 
-    user.name = Some(username.clone());
+    user.name = username.clone();
 
     USERS.save(ctx.storage, user_index, &user)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(UsernameUpdated {
+        user_index,
+        username,
+    })?)
 }

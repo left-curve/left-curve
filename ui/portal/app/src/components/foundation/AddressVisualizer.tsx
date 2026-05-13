@@ -1,4 +1,3 @@
-import { useStorage } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curve/store";
 
@@ -37,6 +36,7 @@ const DANGO_CONTRACT_NAMES: Record<AllLeafKeys<AppConfig["addresses"]>, string> 
   taxman: "Taxman",
   va: "VA",
   warp: "Warp",
+  perps: "Perps",
 };
 
 export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
@@ -48,15 +48,8 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 }) => {
   const { data: config } = useAppConfig();
   const { chain } = useConfig();
-  const { accounts } = useAccount();
+  const { accounts, username: currentUsername } = useAccount();
   const client = usePublicClient();
-
-  const [addresses, setAddresses] = useStorage<
-    Record<string, { contract?: AddressInfo; account?: AddressInfo }>
-  >("app.known_addresses", {
-    initialValue: {},
-    sync: true,
-  });
 
   const blockExplorer = chain.blockExplorer;
   const isClickable = !!onClick;
@@ -64,57 +57,49 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   const { data } = useQuery({
     queryKey: ["address_visualizer", config, address],
     queryFn: async () => {
-      if (addresses[address]) return addresses[address];
-
       const contractKey = (config?.addresses as any)?.[address] as
         | AllLeafKeys<AppConfig["addresses"]>
         | undefined;
 
       if (contractKey) {
-        const info = {
+        return {
           contract: {
             name: DANGO_CONTRACT_NAMES[contractKey],
             type: "dango",
           } as AddressInfo,
         };
-        setAddresses((prev) => ({ ...prev, [address]: info }));
-        return info;
       }
 
       const userAccount = accounts?.find((a) => a.address === address);
       if (userAccount) {
-        const info = {
+        return {
           account: {
-            name: `${userAccount.username} #${userAccount.index}`,
+            name: currentUsername
+              ? `${currentUsername} #${userAccount.index}`
+              : `Account #${userAccount.index}`,
             type: "own",
           } as AddressInfo,
         };
-        setAddresses((prev) => ({ ...prev, [address]: info }));
-        return info;
       }
 
       const acc = await client.getAccountInfo({ address });
       if (acc) {
-        const info = {
+        return {
           account: {
             name: `${acc.username} #${acc.index}`,
             type: "other",
           } as AddressInfo,
         };
-        setAddresses((prev) => ({ ...prev, [address]: info }));
-        return info;
       }
 
       const contract = await client.getContractInfo({ address });
       if (contract?.label) {
-        const info = {
+        return {
           contract: {
             name: contract.label,
             type: "other",
           } as AddressInfo,
         };
-        setAddresses((prev) => ({ ...prev, [address]: info }));
-        return info;
       }
 
       return {};

@@ -1,6 +1,6 @@
 use {
     graphql_client::GraphQLQuery,
-    indexer_client::{Block, block},
+    indexer_graphql_types::{Block, block},
     indexer_testing::{block::create_block, build_app_service, call_graphql_query},
 };
 

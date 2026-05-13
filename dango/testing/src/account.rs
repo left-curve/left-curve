@@ -9,7 +9,6 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
     },
-    digest::{consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
@@ -240,16 +239,13 @@ where
         StdError: From<D::Error>,
     {
         let bytes = data.to_sign_data()?;
-        let standard_credential = self.create_standard_credential(bytes);
+        let standard_credential = self.create_standard_credential(bytes.into());
 
         Ok(standard_credential.signature)
     }
 
     /// Note: This function expects the _hashed_ sign data.
-    pub fn create_standard_credential(
-        &self,
-        sign_data: GenericArray<u8, U32>,
-    ) -> StandardCredential {
+    pub fn create_standard_credential(&self, sign_data: [u8; 32]) -> StandardCredential {
         let sk = &self.keys.get(&self.sign_with).unwrap().0;
         let signature = create_signature(sk, sign_data);
 
@@ -296,7 +292,7 @@ where
         };
 
         let sign_data = sign_doc.to_sign_data()?;
-        let standard_credential = self.create_standard_credential(sign_data);
+        let standard_credential = self.create_standard_credential(sign_data.into());
 
         Ok((data, Credential::Standard(standard_credential)))
     }
@@ -307,7 +303,7 @@ where
     A: MaybeDefined<Addr>,
 {
     /// Register the user
-    pub fn register_user<PP, DB, VM, ID>(
+    pub async fn register_user<PP, DB, VM, ID>(
         &self,
         test_suite: &mut TestSuite<PP, DB, VM, ID>,
         factory: Addr,
@@ -329,10 +325,20 @@ where
                     seed: 0,
                     key: self.first_key(),
                     key_hash: self.first_key_hash(),
-                    signature: self.sign_arbitrary(RegisterUserData { chain_id }).unwrap(),
+                    signature: self
+                        .sign_arbitrary(RegisterUserData {
+                            chain_id,
+                            key: self.first_key(),
+                            key_hash: self.first_key_hash(),
+                            seed: 0,
+                            referrer: None,
+                        })
+                        .unwrap(),
+                    referrer: None,
                 },
                 funds,
             )
+            .await
             .should_succeed();
     }
 }
@@ -340,11 +346,11 @@ where
 impl<A> TestAccount<Defined<UserIndex>, A>
 where
     A: MaybeDefined<Addr>,
-    Self: Signer,
+    Self: Signer + Send + Sync,
 {
     /// Register a new account with the user index and key of this account and returns a new
     /// `TestAccount` with the new account's address.
-    pub fn register_new_account<PP, DB, VM, ID>(
+    pub async fn register_new_account<PP, DB, VM, ID>(
         &mut self,
         test_suite: &mut TestSuite<PP, DB, VM, ID>,
         factory: Addr,
@@ -376,6 +382,7 @@ where
                 &account_factory::ExecuteMsg::RegisterAccount {},
                 funds,
             )
+            .await
             .should_succeed();
 
         Ok(TestAccount {

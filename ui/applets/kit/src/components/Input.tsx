@@ -50,6 +50,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       hideErrorMessage,
       onFocus,
       onBlur,
+      readOnly,
       ...props
     },
     ref,
@@ -60,6 +61,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       fullWidth,
       isDisabled,
       isInvalid,
+      isReadOnly: readOnly,
     });
 
     return (
@@ -82,12 +84,16 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         >
           <div className={inputParent({ className: classNames?.inputParent })}>
             {startContent ? startContent : null}
-            <div className="relative flex-1 flex items-center">
+            <div className="relative flex-1 min-w-0 flex items-center">
               {!props.value && !isLoading && placeholder ? (
                 <div
-                  className={twMerge("w-full absolute z-0 text-ink-tertiary-500 text-left ", {
-                    "text-right": startText === "right",
-                  })}
+                  className={twMerge(
+                    "w-full absolute z-0 text-ink-tertiary-500 text-left",
+                    classNames?.input,
+                    {
+                      "text-right": startText === "right",
+                    },
+                  )}
                 >
                   {placeholder}
                 </div>
@@ -98,14 +104,15 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 <input
                   type={type}
                   onFocus={(e) => {
-                    setIsFocus(true);
+                    if (!readOnly) setIsFocus(true);
                     onFocus?.(e);
                   }}
                   onBlur={(e) => {
-                    setIsFocus(false);
+                    if (!readOnly) setIsFocus(false);
                     onBlur?.(e);
                   }}
                   disabled={isDisabled}
+                  readOnly={readOnly}
                   className={input({ startText, className: classNames?.input })}
                   ref={ref}
                   name={name}
@@ -173,6 +180,12 @@ const inputVariants = tv(
           inputWrapper:
             "pointer-events-none bg-surface-disabled-gray placeholder:text-fg-disabled text-fg-disabled active:border-transparent",
           label: "pointer-events-none",
+        },
+      },
+      isReadOnly: {
+        true: {
+          inputWrapper: "hover:bg-surface-secondary-rice active:border-transparent cursor-default",
+          input: "cursor-default",
         },
       },
       isInvalid: {

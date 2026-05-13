@@ -1,0 +1,72 @@
+[project]
+description     = "Python SDK for the Dango perpetual futures exchange"
+name            = "dango"
+readme          = "README.md"
+requires-python = ">=3.14"
+version         = "0.0.0"
+
+dependencies = ["eth-account>=0.10", "requests>=2.31", "websocket-client>=1.5"]
+
+[build-system]
+build-backend = "hatchling.build"
+requires      = ["hatchling"]
+
+[tool.hatch.build.targets.wheel]
+include  = ["dango/_graphql/**/*.graphql"]
+packages = ["dango"]
+
+# In `sdk/python/dango/_graphql/`, the .graphql files are symlinks pointing
+# back to `indexer/graphql-types/src/schemas/` (single source of truth).
+# Hatch's wheel build follows symlinks and embeds real content, but the sdist
+# tarball preserves them as broken cross-tree symlinks. Exclude the symlinks
+# from sdist and force-include the real files from the schema crate instead.
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "dango/_graphql/mutations/*.graphql",
+  "dango/_graphql/queries/*.graphql",
+  "dango/_graphql/subscriptions/*.graphql",
+]
+
+[tool.hatch.build.targets.sdist.force-include]
+"../../indexer/graphql-types/src/schemas/mutations/broadcastTxSync.graphql"  = "dango/_graphql/mutations/broadcastTxSync.graphql"
+"../../indexer/graphql-types/src/schemas/queries/allPerpsPairStats.graphql"  = "dango/_graphql/queries/allPerpsPairStats.graphql"
+"../../indexer/graphql-types/src/schemas/queries/perpsCandles.graphql"       = "dango/_graphql/queries/perpsCandles.graphql"
+"../../indexer/graphql-types/src/schemas/queries/perpsEvents.graphql"        = "dango/_graphql/queries/perpsEvents.graphql"
+"../../indexer/graphql-types/src/schemas/queries/perpsPairStats.graphql"     = "dango/_graphql/queries/perpsPairStats.graphql"
+"../../indexer/graphql-types/src/schemas/queries/queryApp.graphql"           = "dango/_graphql/queries/queryApp.graphql"
+"../../indexer/graphql-types/src/schemas/queries/queryStatus.graphql"        = "dango/_graphql/queries/queryStatus.graphql"
+"../../indexer/graphql-types/src/schemas/queries/simulate.graphql"           = "dango/_graphql/queries/simulate.graphql"
+"../../indexer/graphql-types/src/schemas/subscriptions/block.graphql"        = "dango/_graphql/subscriptions/block.graphql"
+"../../indexer/graphql-types/src/schemas/subscriptions/events.graphql"       = "dango/_graphql/subscriptions/events.graphql"
+"../../indexer/graphql-types/src/schemas/subscriptions/perpsCandles.graphql" = "dango/_graphql/subscriptions/perpsCandles.graphql"
+"../../indexer/graphql-types/src/schemas/subscriptions/queryApp.graphql"     = "dango/_graphql/subscriptions/queryApp.graphql"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.10",
+  "pytest-httpserver>=1.1",
+  "pytest-recording>=0.13",
+  "pytest>=8",
+  "ruff>=0.6",
+  "types-requests>=2.31",
+]
+
+# `examples` is opt-in (`uv sync --group examples`). Production users
+# inject env vars from their orchestrator and don't need python-dotenv;
+# only the runnable example scripts in `examples/` use it.
+examples = ["python-dotenv>=1.0"]
+
+[tool.ruff]
+line-length    = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP", "W"]
+
+[tool.mypy]
+exclude        = ["build/"]
+python_version = "3.14"
+strict         = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,1319 @@
+type Account {
+	accountIndex: Int!
+	address: String!
+	createdBlockHeight: Int!
+	createdTxHash: String!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	users: [User!]!
+}
+
+type AccountConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [AccountEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Account!]!
+}
+
+"""
+An edge in a connection.
+"""
+type AccountEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Account!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum AccountSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+scalar BigDecimal
+
+type Block {
+	blockHeight: Int!
+	hash: String!
+	appHash: String!
+	"""
+	Returns the block timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	"""
+	Transactions order isn't guaranteed, check `transactionIdx`
+	"""
+	transactions: [Transaction!]!
+	cronsOutcomes: [String!]!
+	flattenEvents: [Event!]!
+}
+
+type BlockConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [BlockEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Block!]!
+}
+
+"""
+An edge in a connection.
+"""
+type BlockEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Block!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+type BlockInfo {
+	blockHeight: Int!
+	timestamp: NaiveDateTime!
+	hash: String!
+}
+
+enum BlockSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+type Candle {
+	quoteDenom: String!
+	baseDenom: String!
+	interval: CandleInterval!
+	minBlockHeight: Int!
+	maxBlockHeight: Int!
+	blockHeight: Int! @deprecated(reason: "Use `maxBlockHeight` instead")
+	open: BigDecimal!
+	high: BigDecimal!
+	low: BigDecimal!
+	close: BigDecimal!
+	volumeBase: BigDecimal!
+	volumeQuote: BigDecimal!
+	"""
+	Return time_start in ISO 8601 format with time zone.
+	"""
+	timeStart: String!
+	"""
+	Return time_start as a unix timestamp
+	"""
+	timeStartUnix: Int!
+	"""
+	Return time_end in ISO 8601 format with time zone.
+	"""
+	timeEnd: String!
+	"""
+	Return time_end as a unix timestamp
+	"""
+	timeEndUnix: Int!
+}
+
+type CandleConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [CandleEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Candle!]!
+}
+
+"""
+An edge in a connection.
+"""
+type CandleEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Candle!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum CandleInterval {
+	ONE_SECOND
+	ONE_MINUTE
+	FIVE_MINUTES
+	FIFTEEN_MINUTES
+	ONE_HOUR
+	FOUR_HOURS
+	ONE_DAY
+	ONE_WEEK
+}
+
+enum CheckValue {
+	EQUAL
+	CONTAINS
+}
+
+"""
+Implement the DateTime<Utc> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
+
+"""
+The direction of a trade: buy or sell.
+"""
+enum Direction {
+	"""
+	Give away the quote asset, get the base asset; a.k.a. a BUY order.
+	"""
+	bid
+	"""
+	Give away the base asset, get the quote asset; a.k.a. a SELL order.
+	"""
+	ask
+}
+
+type Event {
+	type: String!
+	method: String
+	eventStatus: EventStatus!
+	commitmentStatus: FlatCommitmentStatus!
+	transactionType: Int!
+	transactionIdx: Int!
+	messageIdx: Int
+	eventIdx: Int!
+	data: JSON!
+	blockHeight: Int!
+	"""
+	Returns the event timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	transaction: Transaction
+}
+
+type EventConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [EventEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Event!]!
+}
+
+"""
+An edge in a connection.
+"""
+type EventEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Event!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum EventSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+enum EventStatus {
+	ok
+	failed
+	nested_failed
+	handled
+}
+
+input Filter {
+	type: String
+	data: [FilterData!]
+}
+
+input FilterData {
+	path: [String!]!
+	checkMode: CheckValue!
+	value: [JSON!]!
+}
+
+enum FlatCategory {
+	cron
+	tx
+}
+
+enum FlatCommitmentStatus {
+	committed
+	failed
+	reverted
+}
+
+scalar GrugQueryInput
+
+type IndexerMutation {
+	broadcastTxSync(
+		"""
+		Transaction as JSON
+		"""
+		tx: Tx!
+	): JSON!
+}
+
+"""
+A scalar that can represent any JSON value.
+"""
+scalar JSON
+
+enum KeyType {
+	SECP256R1
+	SECP256K1
+	ETHEREUM
+}
+
+type Message {
+	orderIdx: Int!
+	data: JSON!
+	methodName: String!
+	blockHeight: Int!
+	contractAddr: String
+	senderAddr: String!
+	"""
+	Returns the message timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+}
+
+type MessageConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [MessageEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Message!]!
+}
+
+"""
+An edge in a connection.
+"""
+type MessageEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Message!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum MessageSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+"""
+ISO 8601 combined date and time without timezone.
+
+# Examples
+
+* `2015-07-01T08:59:60.123`,
+"""
+scalar NaiveDateTime
+
+"""
+Information about pagination in a connection
+"""
+type PageInfo {
+	"""
+	When paginating backwards, are there more items?
+	"""
+	hasPreviousPage: Boolean!
+	"""
+	When paginating forwards, are there more items?
+	"""
+	hasNextPage: Boolean!
+	"""
+	When paginating backwards, the cursor to continue.
+	"""
+	startCursor: String
+	"""
+	When paginating forwards, the cursor to continue.
+	"""
+	endCursor: String
+}
+
+"""
+Represents 24h statistics for a trading pair.
+
+Fields are fetched lazily when requested via GraphQL **unless** the struct
+was created with [`PairStats::resolved`], in which case the pre-computed
+values are returned directly (used by the subscription cache).
+"""
+type PairStats {
+	quoteDenom: String!
+	baseDenom: String!
+	"""
+	Current price as a BigDecimal with 24 decimal places.
+	"""
+	currentPrice: BigDecimal
+	"""
+	Price from 24 hours ago as a BigDecimal with 24 decimal places.
+	"""
+	price24HAgo: BigDecimal
+	"""
+	24h volume in quote asset as a BigDecimal with 6 decimal places.
+	"""
+	volume24H: BigDecimal!
+	"""
+	24h price change as a percentage (e.g., 5.25 means +5.25%).
+	Calculated as: (current_price - price_24h_ago) / price_24h_ago * 100
+	"""
+	priceChange24H: BigDecimal
+}
+
+type PerpsCandle {
+	pairId: String!
+	minBlockHeight: Int!
+	maxBlockHeight: Int!
+	interval: CandleInterval!
+	blockHeight: Int! @deprecated(reason: "Use `maxBlockHeight` instead")
+	open: BigDecimal!
+	high: BigDecimal!
+	low: BigDecimal!
+	close: BigDecimal!
+	volume: BigDecimal!
+	volumeUsd: BigDecimal!
+	"""
+	Return time_start in ISO 8601 format with time zone.
+	"""
+	timeStart: String!
+	"""
+	Return time_start as a unix timestamp
+	"""
+	timeStartUnix: Int!
+	"""
+	Return time_end in ISO 8601 format with time zone.
+	"""
+	timeEnd: String!
+	"""
+	Return time_end as a unix timestamp
+	"""
+	timeEndUnix: Int!
+}
+
+type PerpsCandleConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [PerpsCandleEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [PerpsCandle!]!
+}
+
+"""
+An edge in a connection.
+"""
+type PerpsCandleEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: PerpsCandle!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+type PerpsEvent {
+	idx: Int!
+	blockHeight: Int!
+	txHash: String!
+	eventType: String!
+	userAddr: String!
+	pairId: String!
+	data: JSON!
+	"""
+	Returns the event timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+}
+
+type PerpsEventConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [PerpsEventEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [PerpsEvent!]!
+}
+
+"""
+An edge in a connection.
+"""
+type PerpsEventEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: PerpsEvent!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum PerpsEventSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+"""
+Aggregated fee/revenue totals over a `[from, to]` window.
+"""
+type PerpsFeesAndRevenue {
+	feeEventsCount: Int!
+	"""
+	ISO 8601 timestamp of the lower bound (inclusive).
+	"""
+	from: String!
+	"""
+	ISO 8601 timestamp of the upper bound (inclusive).
+	"""
+	to: String!
+	protocolFee: BigDecimal!
+	vaultFee: BigDecimal!
+	refereeRebate: BigDecimal!
+	referrerPayout: BigDecimal!
+	volumeUsd: BigDecimal!
+}
+
+"""
+Represents 24h statistics for a perps trading pair.
+
+Fields are fetched lazily when requested via GraphQL **unless** the struct
+was created with [`PerpsPairStats::resolved`], in which case the
+pre-computed values are returned directly (used by the subscription cache).
+"""
+type PerpsPairStats {
+	pairId: String!
+	"""
+	Current close price as a BigDecimal with 6 decimal places.
+	"""
+	currentPrice: BigDecimal
+	"""
+	Close price from 24 hours ago as a BigDecimal with 6 decimal places.
+	"""
+	price24HAgo: BigDecimal
+	"""
+	24h volume in USD as a BigDecimal with 6 decimal places.
+	"""
+	volume24H: BigDecimal!
+	"""
+	24h price change as a percentage (e.g., 5.25 means +5.25%).
+	Calculated as: (current_price - price_24h_ago) / price_24h_ago * 100
+	"""
+	priceChange24H: BigDecimal
+}
+
+"""
+In-memory representation of a perps `OrderFilled` event for real-time
+streaming via GraphQL subscriptions. Not persisted to a dedicated table —
+the raw event data already lives in `perps_events`.
+"""
+type PerpsTrade {
+	orderId: String!
+	pairId: String!
+	user: String!
+	fillPrice: String!
+	fillSize: String!
+	closingSize: String!
+	openingSize: String!
+	"""
+	Closing PnL on the fill (price movement on the closed portion).
+	Prior to v0.17.0 (exclusive) this also included funding settled
+	on the user's pre-existing position; from v0.17.0 (inclusive)
+	onward, that funding component is reported separately as
+	`realized_funding`.
+	"""
+	realizedPnl: String!
+	"""
+	Funding settled on the user's pre-existing position immediately
+	before this fill. `None` for trades executed before v0.17.0 —
+	funding was reported as part of `realized_pnl` prior to that
+	release.
+	"""
+	realizedFunding: String
+	fee: String!
+	createdAt: String!
+	blockHeight: Int!
+	tradeIdx: Int!
+	"""
+	Identifier shared between the two `OrderFilled` events of a single
+	order-book match. `None` for trades executed before v0.15.0 — fill
+	IDs were not assigned prior to that release.
+	"""
+	fillId: String
+	"""
+	`Some(true)` for the maker side of a match, `Some(false)` for the
+	taker side. `None` for trades executed before v0.16.0 — the
+	maker/taker flag was not recorded prior to that release.
+	"""
+	isMaker: Boolean
+}
+
+type PublicKey {
+	userIndex: Int!
+	keyHash: String!
+	publicKey: String!
+	keyType: KeyType!
+	createdBlockHeight: Int!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	users: [User!]!
+}
+
+type Query {
+	"""
+	Get a block.
+	"""
+	block(height: Int): Block
+	"""
+	Get paginated blocks.
+	"""
+	blocks(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: BlockSortBy
+	): BlockConnection!
+	"""
+	Get paginated transactions.
+	"""
+	transactions(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: TransactionSortBy,		hash: String,		blockHeight: Int,		senderAddress: String
+	): TransactionConnection!
+	"""
+	Get paginated messages.
+	"""
+	messages(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: MessageSortBy,		blockHeight: Int,		methodName: String,		contractAddr: String,		senderAddr: String
+	): MessageConnection!
+	"""
+	Get paginated events.
+	"""
+	events(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: EventSortBy
+	): EventConnection!
+	queryApp(
+		"""
+		Request as JSON
+		"""
+		request: GrugQueryInput!,		height: Int
+	): JSON!
+	queryStore(
+		"""
+		Key as B64 string
+		"""
+		key: String!,		height: Int,		prove: Boolean! = false
+	): Store!
+	queryStatus: Status!
+	requesterIp: RequesterIp!
+	simulate(
+		"""
+		Transaction as Json
+		"""
+		tx: UnsignedTx!
+	): JSON!
+	"""
+	Get paginated candles
+	"""
+	candles(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Base denom
+		"""
+		baseDenom: String!,
+		"""
+		Quote denom
+		"""
+		quoteDenom: String!,
+		"""
+		Interval
+		"""
+		interval: CandleInterval!,		earlierThan: DateTime,		laterThan: DateTime
+	): CandleConnection!
+	"""
+	Get paginated trades
+	"""
+	trades(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Account Address
+		"""
+		addr: String,
+		"""
+		Filter trades created at or before this date
+		"""
+		earlierThan: DateTime,
+		"""
+		Filter trades created at or after this date
+		"""
+		laterThan: DateTime
+	): TradeConnection!
+	"""
+	Get 24h statistics for a specific trading pair.
+	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume.
+	"""
+	pairStats(
+		"""
+		Base denom (e.g., 'BTC')
+		"""
+		baseDenom: String!,
+		"""
+		Quote denom (e.g., 'USDC')
+		"""
+		quoteDenom: String!
+	): PairStats
+	"""
+	Get 24h statistics for all trading pairs.
+	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume for each pair.
+	"""
+	allPairStats: [PairStats!]!
+	"""
+	Get paginated perps candles
+	"""
+	perpsCandles(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Pair ID (e.g. perp/btcusd)
+		"""
+		pairId: String!,
+		"""
+		Interval
+		"""
+		interval: CandleInterval!,		earlierThan: DateTime,		laterThan: DateTime
+	): PerpsCandleConnection!
+	"""
+	Get 24h statistics for a specific perps trading pair.
+	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume.
+	"""
+	perpsPairStats(
+		"""
+		Pair ID (e.g., 'perp/btcusd')
+		"""
+		pairId: String!
+	): PerpsPairStats
+	"""
+	Get 24h statistics for all perps trading pairs.
+	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume for each pair.
+	"""
+	allPerpsPairStats: [PerpsPairStats!]!
+	"""
+	Sum of fees and revenue generated by the perps contract within the
+	inclusive `[from, to]` time window.
+	
+	Resolution is adaptive: ranges shorter than 3 days are served from
+	per-block rows with microsecond-precise bounds. Ranges of 3 days or
+	more are served from the `perps_fees_hourly` materialized view —
+	bounds are snapped to the enclosing hours, so a request that
+	overlaps partial hours at either end includes those hours' full
+	aggregates.
+	
+	Total protocol revenue over the window is `protocolFee + vaultFee`.
+	`refereeRebate` and `referrerPayout` are informational totals of
+	referral commissions distributed.
+	"""
+	perpsFeesAndRevenue(
+		"""
+		Window lower bound (inclusive)
+		"""
+		from: DateTime!,
+		"""
+		Window upper bound (inclusive)
+		"""
+		to: DateTime!
+	): PerpsFeesAndRevenue!
+	"""
+	Get paginated transfers
+	"""
+	transfers(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: TransferSortBy,		blockHeight: Int,		fromAddress: String,		toAddress: String,		userIndex: Int
+	): TransferConnection!
+	"""
+	Get paginated accounts.
+	"""
+	accounts(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: AccountSortBy,		blockHeight: Int,		userIndex: Int,		address: String
+	): AccountConnection!
+	user(userIndex: Int!): User
+	users(after: String, before: String, first: Int, last: Int, blockHeight: Int, publicKey: String, publicKeyHash: String): UserConnection!
+	"""
+	Get paginated perps events
+	"""
+	perpsEvents(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: PerpsEventSortBy,
+		"""
+		Filter by user address
+		"""
+		userAddr: String,
+		"""
+		Filter by event type
+		"""
+		eventType: String,
+		"""
+		Filter by trading pair ID
+		"""
+		pairId: String,
+		"""
+		Filter by block height
+		"""
+		blockHeight: Int,
+		"""
+		Filter events created at or before this date
+		"""
+		earlierThan: DateTime,
+		"""
+		Filter events created at or after this date
+		"""
+		laterThan: DateTime
+	): PerpsEventConnection!
+}
+
+type QueryResponseWithBlockHeight {
+	response: JSON!
+	blockHeight: Int!
+}
+
+type RequesterIp {
+	remoteIp: String
+	peerIp: String
+	xForwardedFor: String
+	forwarded: String
+	cfConnectingIp: String
+	trueClientIp: String
+	xRealIp: String
+}
+
+type Status {
+	block: BlockInfo!
+	chainId: String!
+}
+
+type Store {
+	"""
+	The base64 encoded value
+	"""
+	value: String!
+	"""
+	The base64 encoded proof
+	"""
+	proof: String
+	"""
+	The block height at which this query was performed at
+	"""
+	blockHeight: Int!
+}
+
+type Subscription {
+	block: Block!
+	transactions(sinceBlockHeight: Int): [Transaction!]!
+	messages(sinceBlockHeight: Int): [Message!]!
+	events(sinceBlockHeight: Int, filter: [Filter!]): [Event!]!
+	eventByAddresses(addresses: [String!]!, sinceBlockHeight: Int): [Event!]!
+	queryApp(
+		"""
+		Request as JSON
+		"""
+		request: GrugQueryInput!,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): QueryResponseWithBlockHeight!
+	queryStore(
+		"""
+		Key as B64 string
+		"""
+		key: String!,		prove: Boolean! = false,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Store!
+	queryStatus(
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Status!
+	"""
+	Get candles for a given base and quote denom, interval
+	"""
+	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [Candle!]!
+	"""
+	Get all trades, this will not include past trades but only new ones since you subscribed.
+	"""
+	trades(baseDenom: String!, quoteDenom: String!): Trade!
+	"""
+	Get perps candles for a given pair_id and interval
+	"""
+	perpsCandles(pairId: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [PerpsCandle!]!
+	"""
+	Stream real-time 24h statistics for all trading pairs.
+	
+	Returns the current cached snapshot immediately, then emits an updated
+	snapshot each time a new block is indexed.
+	"""
+	allPairStats: [PairStats!]!
+	"""
+	Stream real-time 24h statistics for all perps trading pairs.
+	
+	Returns the current cached snapshot immediately, then emits an updated
+	snapshot each time a new block is indexed.
+	"""
+	allPerpsPairStats: [PerpsPairStats!]!
+	accounts(userIndex: Int, sinceBlockHeight: Int): [Account!]!
+	transfers(address: String, userIndex: Int, sinceBlockHeight: Int): [Transfer!]!
+	"""
+	Stream real-time perps trades for a given pair.
+	Returns cached recent trades first, then streams new trades as they occur.
+	"""
+	perpsTrades(pairId: String!): PerpsTrade!
+}
+
+enum TimeInForce {
+	"""
+	Good-Til-Canceled (GTC): indicates that if the order is not fully filled
+	in the first auction, its remaining portion is to be persisted in the
+	order book, and made available for future auctions, where it becomes a
+	maker order (an order is a taker in its first auction).
+	"""
+	GTC
+	"""
+	Immediate-Or-Cancel (IOC): indicates that if the order is not fully
+	filled in the first auction, it is to be canceled, and the remaining
+	portion refunded to the user.
+	"""
+	IOC
+}
+
+type Trade {
+	addr: String!
+	quoteDenom: String!
+	baseDenom: String!
+	direction: Direction!
+	timeInForce: TimeInForce!
+	blockHeight: Int!
+	"""
+	Returns the block timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	filledBase: BigDecimal!
+	filledQuote: BigDecimal!
+	refundBase: BigDecimal!
+	refundQuote: BigDecimal!
+	feeBase: BigDecimal!
+	feeQuote: BigDecimal!
+	clearingPrice: BigDecimal!
+}
+
+type TradeConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [TradeEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Trade!]!
+}
+
+"""
+An edge in a connection.
+"""
+type TradeEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Trade!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+type Transaction {
+	blockHeight: Int!
+	transactionType: FlatCategory!
+	transactionIdx: Int!
+	sender: String!
+	data: JSON!
+	credential: JSON!
+	hash: String!
+	hasSucceeded: Boolean!
+	errorMessage: String
+	gasWanted: Int!
+	gasUsed: Int!
+	"""
+	Returns the transaction timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	"""
+	Nested Events from this transaction, from block on-disk caching
+	"""
+	nestedEvents: String
+	"""
+	Flatten events from the indexer
+	"""
+	flattenEvents: [Event!]!
+	messages: [Message!]!
+}
+
+type TransactionConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [TransactionEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Transaction!]!
+}
+
+"""
+An edge in a connection.
+"""
+type TransactionEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Transaction!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum TransactionSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+type Transfer {
+	idx: Int!
+	blockHeight: Int!
+	txHash: String!
+	fromAddress: String!
+	toAddress: String!
+	amount: String!
+	denom: String!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	accounts: [Account!]!
+	fromAccount: Account
+	toAccount: Account
+}
+
+type TransferConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [TransferEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Transfer!]!
+}
+
+"""
+An edge in a connection.
+"""
+type TransferEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Transfer!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum TransferSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+"""
+A transaction that can be sent to the chain.
+
+Contains:
+- Sender address
+- List of messages to execute
+- Gas limit
+- Cryptographic signature
+
+See [Tx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+"""
+scalar Tx
+
+"""
+A transaction to simulate.
+
+Contains:
+- Sender address
+- List of messages to execute
+
+See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+"""
+scalar UnsignedTx
+
+type User {
+	userIndex: Int!
+	createdBlockHeight: Int!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	publicKeys: [PublicKey!]!
+	accounts: [Account!]!
+}
+
+type UserConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [UserEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [User!]!
+}
+
+"""
+An edge in a connection.
+"""
+type UserEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: User!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+"""
+Marks an element of a GraphQL schema as no longer supported.
+"""
+directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | ENUM_VALUE
+"""
+Directs the executor to include this field or fragment only when the `if` argument is true.
+"""
+directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Directs the executor to skip this field or fragment when the `if` argument is true.
+"""
+directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Provides a scalar specification URL for specifying the behavior of custom scalar types.
+"""
+directive @specifiedBy(url: String!) on SCALAR
+schema {
+	query: Query
+	mutation: IndexerMutation
+	subscription: Subscription
+}

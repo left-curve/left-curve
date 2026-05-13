@@ -27,6 +27,20 @@ export const Modals = {
   BridgeDeposit: "bridge-deposit",
   AddressWarning: "address-warning",
   EditCommissionRate: "edit-commission-rate",
+  PerpsCloseOrder: "perps-close-order",
+  PerpsCloseAll: "perps-close-all",
+  PerpsClosePosition: "perps-close-position",
+  ActivateAccount: "activate-account",
+  VaultAddLiquidity: "vault-add-liquidity",
+  VaultWithdrawLiquidity: "vault-withdraw-liquidity",
+  VaultWithdrawLiquidityWithPenalty: "vault-withdraw-liquidity-with-penalty",
+  PerpsMarginMode: "perps-margin-mode",
+  PerpsAdjustLeverage: "perps-adjust-leverage",
+  FeeTiers: "fee-tiers",
+  DestinationWallet: "destination-wallet",
+  AdjustSlippage: "adjust-slippage",
+  PnlShare: "pnl-share",
+  PointsShare: "points-share",
 };
 
 export type ModalRef = {

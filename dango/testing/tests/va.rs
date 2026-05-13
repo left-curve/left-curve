@@ -58,8 +58,8 @@ impl MockAnnouncement {
     }
 }
 
-#[test]
-fn test_announce() {
+#[tokio::test]
+async fn test_announce() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test(Default::default());
 
     let mut validators_expected = BTreeSet::new();
@@ -86,6 +86,7 @@ fn test_announce() {
                 },
                 Coins::new(),
             )
+            .await
             .should_fail_with_error("invalid payment");
     }
 
@@ -102,6 +103,7 @@ fn test_announce() {
                 },
                 coins! { dango::DENOM.clone() => announce_fee },
             )
+            .await
             .should_fail_with_error("invalid payment");
     }
 
@@ -121,6 +123,7 @@ fn test_announce() {
                     usdc::DENOM.clone()  => announce_fee,
                 },
             )
+            .await
             .should_fail_with_error("invalid payment");
     }
 
@@ -137,6 +140,7 @@ fn test_announce() {
                 },
                 coins! { usdc::DENOM.clone() => announce_fee - 1 },
             )
+            .await
             .should_fail_with_error("insufficient validator announce fee");
     }
 
@@ -153,6 +157,7 @@ fn test_announce() {
                 },
                 coins! { usdc::DENOM.clone() => announce_fee },
             )
+            .await
             .should_succeed()
             .events
             .search_event::<CheckedContractEvent>()
@@ -210,6 +215,7 @@ fn test_announce() {
                 },
                 coins! { usdc::DENOM.clone() => announce_fee },
             )
+            .await
             .should_fail_with_error("duplicate data found!");
     }
 
@@ -235,6 +241,7 @@ fn test_announce() {
                 },
                 coins! { usdc::DENOM.clone() => announce_fee2 },
             )
+            .await
             .should_succeed()
             .events
             .search_event::<CheckedContractEvent>()
@@ -299,6 +306,7 @@ fn test_announce() {
                 },
                 coins! { usdc::DENOM.clone() => announce_fee3 },
             )
+            .await
             .should_succeed()
             .events
             .search_event::<CheckedContractEvent>()
@@ -365,6 +373,7 @@ fn test_announce() {
                 },
                 coins! { usdc::DENOM.clone() => announce_fee },
             )
+            .await
             .should_fail_with_error("pubkey mismatch");
     }
 }

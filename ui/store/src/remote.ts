@@ -4,14 +4,14 @@ import { uid } from "@left-curve/dango/utils";
 import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
 
 import type { Chain } from "@left-curve/dango/types";
-import type { AnyCoin } from "./types/coin.js";
+import type { NativeCoin } from "./types/coin.js";
 import type { RemoteResponse } from "./types/remote.js";
 import type { Connection } from "./types/connector.js";
 
 export interface WindowDangoStore extends Window {
   dango: {
     chain: Chain;
-    coins: Record<string, AnyCoin>;
+    coins: Record<string, NativeCoin>;
     connection?: Omit<Connection, "connector">;
   };
   ReactNativeWebView: {

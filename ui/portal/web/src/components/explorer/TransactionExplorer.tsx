@@ -95,14 +95,17 @@ const Details: React.FC = () => {
           <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
-          <button
-            type="button"
+          <a
+            href={`/block/${blockHeight}`}
             className="flex gap-1 items-center"
-            onClick={() => navigate({ to: `/block/${blockHeight}` })}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate({ to: `/block/${blockHeight}` });
+            }}
           >
             <span>{blockHeight}</span>
             <IconLink className="w-4 h-4" />
-          </button>
+          </a>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">

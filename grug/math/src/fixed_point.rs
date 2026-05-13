@@ -47,7 +47,10 @@ impl<const S: u32> FixedPoint<I256> for Dec<I256, S> {
 mod tests {
     use {
         crate::{FixedPoint, Int, dec_test},
-        bnum::types::{I256, U256},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
         std::fmt::Debug,
     };
 
@@ -60,7 +63,7 @@ mod tests {
             }
             udec256 = {
                 passing: [
-                     U256::from(1_000_000_000_000_000_000_u128)
+                     U256::cast_from(1_000_000_000_000_000_000_u128)
                 ]
             }
             dec128 = {
@@ -70,7 +73,7 @@ mod tests {
             }
             dec256 = {
                 passing: [
-                    I256::from(1_000_000_000_000_000_000_i128)
+                    I256::cast_from(1_000_000_000_000_000_000_i128)
                 ]
             }
         }

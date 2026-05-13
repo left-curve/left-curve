@@ -1,0 +1,69 @@
+---
+- hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars_files:
+    - roles/full-app/vars/main.yml
+    - roles/full-app/defaults/main.yml
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+  tasks:
+    - name: Set perp-liquidator instance index
+      set_fact:
+        perp_liquidator_instance_index: >-
+          {{ (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))).index(inventory_hostname) }}
+      when: inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([])))
+
+    - name: Skip hosts without a liquidator instance
+      meta: end_host
+      when: perp_liquidator_instance_index is not defined
+
+    - name: Read current deploy
+      include_role:
+        name: full-app
+        tasks_from: read_current_deploy.yml
+
+    - name: Set deployment facts
+      set_fact:
+        deployment_name: "{{ current_deployment }}"
+
+    - name: Create perp-liquidator config directory
+      file:
+        path: "{{ deployment_dir }}/perp-liquidator"
+        state: directory
+        mode: '0755'
+
+    - name: Template perp-liquidator .env
+      template:
+        src: roles/full-app/templates/perp-liquidator.env.j2
+        dest: "{{ deployment_dir }}/perp-liquidator/.env"
+        mode: '0600'
+
+    - name: Update PERP_LIQUIDATOR_TAG in main .env
+      lineinfile:
+        path: "{{ deployment_dir }}/.env"
+        regexp: '^PERP_LIQUIDATOR_TAG='
+        line: "PERP_LIQUIDATOR_TAG={{ perp_liquidator_tag }}"
+
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry: ghcr.io
+        username: "{{ ghcr_user }}"
+        password: "{{ ghcr_token }}"
+
+    - name: Redeploy perp-liquidator service
+      community.docker.docker_compose_v2:
+        project_name: "{{ current_deployment }}"
+        project_src: "{{ deployment_dir }}"
+        services:
+          - perp-liquidator
+        pull: always
+        state: present
+        recreate: always
+        dependencies: false

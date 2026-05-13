@@ -85,7 +85,7 @@ export const BridgeWithdraw = forwardRef((props: BridgeWithdrawProps, _ref) => {
             {m["bridge.withdraw.estArrival"]()}
           </p>
           <p className="diatype-sm-medium text-ink-secondary-700">
-            {m["bridge.timeArrival"]({ network: config.chain.id })}
+            {m["bridge.withdrawTimeArrival"]({ network: config.chain.id })}
           </p>
         </div>
       </div>

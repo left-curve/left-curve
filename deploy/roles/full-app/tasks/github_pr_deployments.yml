@@ -21,6 +21,7 @@
     - "cometbft-p2p"
     - "cometbft-rpc"
     - "cometbft-metrics"
+  when: item != 'faucet-bot' or (faucet_bot_enabled | default(false))
 
 - name: Create GitHub deployments
   uri:
@@ -48,6 +49,7 @@
     - { name: "cometbft-p2p", description: "CometBFT P2P", url: "http://{{ wireguard_ip }}:{{ cometbft_p2p_port }}" }
     - { name: "cometbft-rpc", description: "CometBFT RPC", url: "http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}" }
     - { name: "cometbft-metrics", description: "CometBFT metrics", url: "http://{{ wireguard_ip }}:{{ cometbft_metrics_port }}" }
+  when: item.name != 'faucet-bot' or (faucet_bot_enabled | default(false))
 
 - name: Set deployment statuses
   uri:
@@ -86,9 +88,11 @@
     | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
     | **Dango GraphiQL** | [https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Dango metrics** | [http://{{ wireguard_ip }}:{{ dango_metrics_port }}/metrics](http://{{ wireguard_ip }}:{{ dango_metrics_port }}/metrics) |
-    | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](http://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
     | **CometBFT P2P** | [http://{{ wireguard_ip }}:{{ cometbft_p2p_port }}](http://{{ wireguard_ip }}:{{ cometbft_p2p_port }}) |
     | **CometBFT RPC** | [http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}](http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}) |
     | **CometBFT Metrics** | [http://{{ wireguard_ip }}:{{ cometbft_metrics_port }}/metrics](http://{{ wireguard_ip }}:{{ cometbft_metrics_port }}/metrics) |
     | **Deployment name** | `{{ deployment_name }}` |
+    {% if faucet_bot_enabled | default(false) %}
+    | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
+    {% endif %}
     EOF

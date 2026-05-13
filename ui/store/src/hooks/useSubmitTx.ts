@@ -21,9 +21,7 @@ export type UseSubmitTxParameters<
     error?: (error: TError) => void;
   };
   submission?: {
-    success?: string | ((error: TData) => string);
-    error?: string | ((data: TError) => string);
-    abort?: string;
+    success?: string | ((data: TData) => string);
   };
   mutation: Omit<UseMutationOptions<TData, TError, TVariables, TContext>, "mutationFn"> & {
     invalidateKeys?: unknown[][];
@@ -40,6 +38,38 @@ export type UseSubmitTxReturnType<
   TVariables = void,
   TContext = unknown,
 > = UseMutationResult<TData, TError, TVariables, TContext>;
+
+function extractErrorMessage(err: unknown): string | undefined {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object" && "message" in err && typeof err.message === "string") {
+    return err.message;
+  }
+}
+
+function parseContractError(raw: string): string | null {
+  const logMatch = raw.match(/log:\s*(.+)$/);
+  const payload = logMatch?.[1] ?? raw;
+
+  try {
+    const parsed = JSON.parse(payload) as { error?: string; backtrace?: string };
+    if (typeof parsed.error === "string") {
+      const match = parsed.error.match(/msg:\s*(.*?)$/);
+      return match?.[1]?.trim() || parsed.error;
+    }
+  } catch {
+    // Not JSON — try regex directly on the raw string
+    const match = raw.match(/msg:\s*(.*?)(?:,\s*"backtrace":|$)/);
+    if (match?.[1]?.trim()) return match[1].trim();
+  }
+  return null;
+}
+
+function parseTxError(err: unknown): { title: string; description: string } {
+  const raw = extractErrorMessage(err);
+  const description = (raw && parseContractError(raw)) ?? raw ?? "An unexpected error occurred.";
+  return { title: "Error", description };
+}
 
 export function useSubmitTx<
   TData = unknown,
@@ -75,7 +105,7 @@ export function useSubmitTx<
       },
       mutationFn: async (variables: TVariables) => {
         const controller = new AbortController();
-        subscriptions.emit({ key: "submitTx" }, { isSubmitting: true });
+        subscriptions.emit({ key: "submitTx" }, { status: "pending" });
 
         try {
           const data = await mutationFn(variables, {
@@ -87,40 +117,37 @@ export function useSubmitTx<
 
           const message = (() => {
             if (typeof submission.success === "function") return submission.success(data);
-            return submission.success || "Transaction submitted successfully.";
+            return submission.success;
           })();
 
-          subscriptions.emit(
-            { key: "submitTx" },
-            { isSubmitting: false, isSuccess: true, data, message },
-          );
+          subscriptions.emit({ key: "submitTx" }, { status: "success", data, message });
           toast.success?.(data);
 
           return data;
         } catch (error) {
           if (error) {
             console.log(error);
-            toast.error?.(error as TError);
+
+            if (toast.error) {
+              toast.error(error as TError);
+            }
+
+            const parsed = parseTxError(error);
+            subscriptions.emit({ key: "submitTx" }, { status: "error", ...parsed });
+          } else {
+            subscriptions.emit(
+              {
+                key: "submitTx",
+              },
+              {
+                status: "error",
+                title: "Error",
+                description: "Transaction submission aborted.",
+              },
+            );
           }
 
-          const abortError = new Error(submission?.abort || "Transaction submission aborted.");
-
-          const message = (() => {
-            if (!error) return abortError.message;
-            if (typeof submission.error === "function") return submission.error(error as TError);
-            return submission.error || "An error occurred while submitting the transaction.";
-          })();
-
-          subscriptions.emit(
-            { key: "submitTx" },
-            {
-              isSubmitting: false,
-              isSuccess: false,
-              message,
-            },
-          );
-
-          throw error || abortError;
+          throw error || new Error("Transaction submission aborted.");
         }
       },
     },

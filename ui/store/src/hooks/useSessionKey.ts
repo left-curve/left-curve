@@ -45,7 +45,10 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     initialValue: parameters.session,
     storage: createStorage({ storage: window?.sessionStorage }),
-    version: 1.1,
+    version: 1.2,
+    migrations: {
+      "*": () => null,
+    },
   });
 
   const { data: client } = useQuery({
@@ -96,8 +99,9 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     const publicKey = keyPair.getPublicKey();
 
     const sessionInfo: SigningSessionInfo = {
+      chainId: config.chain.id,
       sessionKey: encodeBase64(publicKey),
-      expireAt: expireAt.toString(),
+      expireAt: Math.floor(expireAt / 1000).toString(),
     };
 
     const { credential } = await c.signArbitrary({
@@ -105,8 +109,9 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
       message: sessionInfo,
       types: {
         Message: [
-          { name: "session_key", type: "string" },
+          { name: "chain_id", type: "string" },
           { name: "expire_at", type: "string" },
+          { name: "session_key", type: "string" },
         ],
       },
     });

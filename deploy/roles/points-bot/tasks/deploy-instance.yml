@@ -8,9 +8,9 @@
     - ""
     - "db"
 
-- name: "{{ network }} - Copy config.json"
-  copy:
-    src: "{{ network }}/config.json"
+- name: "{{ network }} - Template config.json"
+  template:
+    src: "{{ network }}/config.json.j2"
     dest: "{{ points_bot_dir }}/{{ network }}/config.json"
     mode: "0644"
 
@@ -25,6 +25,7 @@
     registry: ghcr.io
     username: "{{ points_bot_ghcr_user }}"
     password: "{{ points_bot_ghcr_token }}"
+  no_log: true
 
 - name: "{{ network }} - Launch stack"
   community.docker.docker_compose_v2:

@@ -14,7 +14,7 @@ use {
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_client::{SubscribeTrades, Trades, subscribe_trades, trades},
+    indexer_graphql_types::{SubscribeTrades, Trades, subscribe_trades, trades},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -260,7 +260,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeTrades::build_query(subscribe_trades::Variables {
             base_denom: "dango".to_string(),
@@ -408,6 +408,7 @@ async fn create_pair_prices(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
@@ -459,6 +460,7 @@ async fn create_pair_prices(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -487,6 +489,7 @@ async fn create_pair_prices_with_tiny_price(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let tiny_price =
@@ -532,6 +535,7 @@ async fn create_pair_prices_with_tiny_price(
 
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()

@@ -1,6 +1,7 @@
 import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
 
-import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { capitalize, formatUnits } from "@left-curve/dango/utils";
+import { FormattedNumber } from "./FormattedNumber";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { twMerge } from "@left-curve/foundation";
 
@@ -21,12 +22,17 @@ import { format } from "date-fns";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
+import { memo } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
 import { PairAssets } from "./PairAssets";
 import { IconStar } from "./icons/IconStar";
 import { IconEmptyStar } from "./icons/IconEmptyStar";
+
+const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
+  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+));
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -40,9 +46,9 @@ type CellAssetProps = Prettify<
 >;
 
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
-  const { getCoinInfo } = useConfig();
+  const { coins } = useConfig();
 
-  const coin = asset || getCoinInfo(denom as string);
+  const coin = asset || coins.getCoinInfo(denom as string);
 
   if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
 
@@ -106,7 +112,7 @@ const Amount: React.FC<CellAmountProps> = ({ amount, price, decimals, className 
 
 type CellTextProps = {
   className?: string;
-  text: string | number;
+  text: React.ReactNode;
 };
 
 const Text: React.FC<CellTextProps> = ({ text, className }) => {
@@ -119,14 +125,14 @@ const Text: React.FC<CellTextProps> = ({ text, className }) => {
 
 type CellNumberProps = {
   className?: string;
-  formatOptions: FormatNumberOptions;
+  formatOptions?: Partial<FormatNumberOptions>;
   value: number | string;
 };
 
 const CellNumber: React.FC<CellNumberProps> = ({ value, formatOptions, className }) => {
   return (
     <div className={twMerge("flex flex-col gap-1 text-ink-tertiary-500", className)}>
-      <p>{formatNumber(value, formatOptions)}</p>
+      <FormattedNumber number={value} formatOptions={formatOptions} />
     </div>
   );
 };
@@ -153,7 +159,7 @@ const OrderDirection: React.FC<CellOrderDirectionProps> = ({ text, direction, cl
 
 type CellMarketPriceProps = {
   className?: string;
-  formatOptions: FormatNumberOptions;
+  formatOptions?: Partial<FormatNumberOptions>;
   denom: string;
 };
 
@@ -168,22 +174,33 @@ const MarketPrice: React.FC<CellMarketPriceProps> = ({ denom, className, formatO
         className,
       )}
     >
-      <p>{formatNumber(price.humanizedPrice || 0, { ...formatOptions, currency: "usd" })}</p>
+      <FormattedNumber
+        number={price.humanizedPrice || 0}
+        formatOptions={{ ...formatOptions, currency: "usd" }}
+      />
     </div>
   );
 };
 
 type CellBlockHeightProps = {
   blockHeight: number;
+  href?: string;
   navigate: () => void;
 };
 
-const BlockHeight: React.FC<CellBlockHeightProps> = ({ blockHeight, navigate }) => {
+const BlockHeight: React.FC<CellBlockHeightProps> = ({ blockHeight, href, navigate }) => {
   return (
     <div className="flex h-full items-center">
-      <p className="diatype-mono-sm-medium cursor-pointer" onClick={navigate}>
+      <a
+        href={href}
+        className="diatype-mono-sm-medium cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate();
+        }}
+      >
         {blockHeight}
-      </p>
+      </a>
     </div>
   );
 };
@@ -232,19 +249,24 @@ const TxResult: React.FC<CellTxResultProps> = ({ className, isSuccess, text, tot
 
 type CellTxHashProps = {
   hash: string;
+  href?: string;
   navigate?: () => void;
 };
 
-const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
+const TxHash: React.FC<CellTxHashProps> = ({ hash, href, navigate }) => {
   return (
-    <div
-      className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-ink-secondary-700"
-      onClick={navigate}
-    >
-      <div className="flex items-center hover:text-ink-primary-900">
+    <div className="flex items-center h-full gap-1 diatype-mono-sm-medium text-ink-secondary-700">
+      <a
+        href={href}
+        className="flex items-center cursor-pointer hover:text-ink-primary-900"
+        onClick={(e) => {
+          e.preventDefault();
+          navigate?.();
+        }}
+      >
         <p className="truncate max-w-36">{hash}</p>
         <IconLink className="h-4 w-4" />
-      </div>
+      </a>
       <TextCopy
         copyText={hash}
         className="h-4 w-4 text-ink-secondary-700 hover:text-ink-primary-900"
@@ -327,11 +349,11 @@ const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   return (
     <div
       className={twMerge(
-        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2",
         className,
       )}
     >
-      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
@@ -343,7 +365,7 @@ type CellPairNameWithFavProps = {
   className?: string;
 };
 
-const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, className }) => {
+const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type, className }) => {
   const { coins } = useConfig();
   const { baseDenom, quoteDenom } = pairId;
   const baseCoin = coins.byDenom[baseDenom];
@@ -357,7 +379,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
   return (
     <div
       className={twMerge(
-        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2",
         className,
       )}
     >
@@ -367,7 +389,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
           e.stopPropagation();
           toggleFavPair(pairSymbols);
         }}
-        className="focus:outline-none"
+        className="focus:outline-none flex-shrink-0"
       >
         {isFav ? (
           <IconStar className="w-4 h-4 text-fg-primary-700" />
@@ -375,12 +397,12 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
           <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
         )}
       </button>
-      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
-      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
+      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
-};
+});
 
 export const Cell = Object.assign(Container, {
   Age,

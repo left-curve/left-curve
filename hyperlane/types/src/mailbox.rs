@@ -106,6 +106,15 @@ pub enum QueryMsg {
 pub struct Dispatch(pub Message);
 
 #[grug::derive(Serde)]
+#[grug::event("mailbox_dispatch_v2")]
+pub struct DispatchV2 {
+    pub message: Message,
+    pub message_id: Hash256,
+    pub root: Hash256,
+    pub index: u128,
+}
+
+#[grug::derive(Serde)]
 #[grug::event("mailbox_dispatch_id")]
 pub struct DispatchId {
     pub message_id: Hash256,

@@ -12,8 +12,8 @@ use {
     pyth_lazer_protocol::{
         PriceFeedId, PriceFeedProperty,
         api::{
-            Channel, DeliveryFormat, Format, JsonBinaryEncoding, MarketSession, SubscribeRequest,
-            SubscriptionId, SubscriptionParams, SubscriptionParamsRepr, WsResponse,
+            Channel, DeliveryFormat, Format, JsonBinaryEncoding, SubscribeRequest, SubscriptionId,
+            SubscriptionParams, SubscriptionParamsRepr, WsResponse,
         },
         message::Message,
     },
@@ -85,7 +85,6 @@ impl PythClient {
             parsed: false,
             channel,
             ignore_invalid_feeds: true,
-            market_sessions: vec![MarketSession::Regular],
         })
         .map_err(|e| anyhow::anyhow!(e))
     }

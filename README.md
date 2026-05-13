@@ -13,7 +13,7 @@ This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) containing a number
 | [grug](./grug/)           | Rust       | an execution environment for blockchains                                                         |
 | [hyperlane](./hyperlane/) | Rust       | implementation of the [Hyperlane](https://hyperlane.xyz/) cross-chain messaging protocol in Grug |
 | [indexer](./indexer/)     | Rust       | indexer and server infrastructure                                                                |
-| [sdk](./sdk/)             | TypeScript | an SDK for interacting with Grug chains                                                          |
+| [sdk](./sdk/typescript/)  | TypeScript | an SDK for interacting with Grug chains                                                          |
 | [ui](./ui/)               | TypeScript | a web interface for accessing Dango                                                              |
 
 ## How to use
@@ -134,15 +134,15 @@ pnpm storybook
 ## Agent Guide
 
 - Contributor handoff: see `AGENTS.md` for a generic, evergreen guide.
-- Telemetry playbook (OTLP + Sentry): see `docs/telemetry.md`.
+- Telemetry playbook (OTLP + Sentry): see `telemetry.md`.
 
 ## Book
 
 Install dependencies:
 
 ```shell
-cargo install mdbook
-cargo install mdbook-katex
+cargo install mdbook@0.5.2
+cargo install mdbook-katex@0.10.0-alpha
 ```
 
 Generate book:

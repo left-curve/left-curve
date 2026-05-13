@@ -153,7 +153,7 @@ mod replier {
     }
 }
 
-fn setup() -> (TestSuite, TestAccounts, Addr) {
+async fn setup() -> (TestSuite, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("owner", Coin::new("usdc", 100_000).unwrap())
         .add_account("sender", Coins::new())
@@ -176,6 +176,7 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
             None,
             Coins::default(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -430,10 +431,13 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
     false;
     "reply_error_1pe_2ok_reply_1.1fail"
 )]
-fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_fail: bool) {
-    let (mut suite, mut accounts, replier_addr) = setup();
+#[tokio::test]
+async fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_fail: bool) {
+    let (mut suite, mut accounts, replier_addr) = setup().await;
 
-    let result = suite.execute(&mut accounts["owner"], replier_addr, &msg, Coins::default());
+    let result = suite
+        .execute(&mut accounts["owner"], replier_addr, &msg, Coins::default())
+        .await;
 
     if should_tx_fail {
         result.should_fail();

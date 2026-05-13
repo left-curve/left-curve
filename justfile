@@ -17,29 +17,34 @@ git-clear-branches:
 # ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Dango node software
-install:
+install-node:
   cargo install --path dango/cli --locked
+
+# Compile and install the Dango client CLI
+install-client:
+  cargo install --path sdk/rust/cli --locked
 
 # Run all tests
 test:
-  RUST_BACKTRACE=1 cargo test --all-features -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -- --nocapture
 
 # Run grug tests
 test-grug:
-  RUST_BACKTRACE=1 cargo test --all-features -p grug-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p grug-testing -- --nocapture
 
 # Run dango tests
 test-dango:
-  RUST_BACKTRACE=1 cargo test --all-features -p dango-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-testing -- --nocapture
 
 # Run dango perp tests
 test-perps:
-  RUST_BACKTRACE=1 cargo test --all-features -p dango-perps -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-types perps::tests -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-perps -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
 
 # Run indexer tests
 test-indexer:
-  RUST_BACKTRACE=1 cargo test --all-features -p indexer-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p indexer-testing -- --nocapture
 
 # Check whether the code compiles
 check:
@@ -53,8 +58,11 @@ lint:
 lint-without-features:
   #!/usr/bin/env bash
   set -euo pipefail
-  for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
-    echo "Checking $crate..."
+  crates=($(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'))
+  total=${#crates[@]}
+  for i in "${!crates[@]}"; do
+    crate="${crates[$i]}"
+    echo "[$((i+1))/$total] Checking $crate..."
     cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
   done
 
@@ -64,18 +72,12 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p dango-httpd build_graphql_schema -- \
-    ./indexer/client/src/schemas/schema.graphql
+  cargo run -p indexer-httpd --bin build_graphql_schema -- \
+    ./indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book
 book:
   mdbook build --open
-
-# Update CometBFT genesis files
-update-genesis:
-  cargo run -p dango-scripts --example build_genesis -- \
-    localdango/configs/cometbft/config/genesis.json \
-    deploy/roles/full-app/templates/config/cometbft/genesis.json
 
 # Update wasm artifacts used in tests
 update-testdata:

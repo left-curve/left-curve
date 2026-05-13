@@ -5,7 +5,7 @@ import { useConnectors } from "./useConnectors.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useChainId } from "./useChainId.js";
 
-import type { SigningSession, UserIndexAndName } from "@left-curve/dango/types";
+import type { SigningSession, User } from "@left-curve/dango/types";
 
 type ScreenState = "options" | "usernames" | "email" | "wallets";
 export type UseSigninStateParameters = {
@@ -32,11 +32,11 @@ export function useSigninState(parameters: UseSigninStateParameters) {
   const [email, setEmail] = useState<string>("");
   const [screen, setScreen] = useState<ScreenState>("options");
   const [authData, setAuthData] = useState<{
-    usersIndexAndName: UserIndexAndName[];
+    users: User[];
     keyHash?: string;
     signingSession?: SigningSession;
     connectorId?: string;
-  }>({ usersIndexAndName: [] });
+  }>({ users: [] });
 
   const connect = useMutation({
     onError: parameters.connect?.error,
@@ -50,15 +50,15 @@ export function useSigninState(parameters: UseSigninStateParameters) {
           { connector, expireAt: Date.now() + expiration },
           { setSession: false },
         );
-        const usersIndexAndName = await publicClient.forgotUsername({
+        const users = await publicClient.forgotUsername({
           keyHash: signingSession.keyHash,
         });
 
-        setAuthData({ usersIndexAndName, connectorId, signingSession });
+        setAuthData({ users, connectorId, signingSession });
       } else {
         const keyHash = await connector.getKeyHash();
-        const usersIndexAndName = await publicClient.forgotUsername({ keyHash });
-        setAuthData({ usersIndexAndName, connectorId, keyHash });
+        const users = await publicClient.forgotUsername({ keyHash });
+        setAuthData({ users, connectorId, keyHash });
       }
       setScreen("usernames");
     },
@@ -67,31 +67,29 @@ export function useSigninState(parameters: UseSigninStateParameters) {
   const login = useMutation({
     onError: parameters.login?.error,
     onSuccess: parameters.login?.success,
-    mutationFn: async (userIndexAndName: UserIndexAndName) => {
+    mutationFn: async (userIndex: number) => {
       const { connectorId, keyHash, signingSession } = authData;
       const connector = connectors.find((connector) => connector.id === connectorId);
       if (!connector) throw new Error("error: missing connector");
 
       if (!signingSession) {
         await connector.connect({
-          userIndexAndName,
+          userIndex,
           chainId,
           ...(keyHash
             ? { keyHash }
             : { challenge: "Please sign this message to confirm your identity." }),
         });
-        return userIndexAndName;
+        return;
       }
 
       setSession(signingSession);
 
       await connector.connect({
-        userIndexAndName,
+        userIndex,
         chainId,
         keyHash: signingSession.keyHash,
       });
-
-      return userIndexAndName;
     },
   });
 
@@ -100,7 +98,7 @@ export function useSigninState(parameters: UseSigninStateParameters) {
     setScreen,
     email,
     setEmail,
-    usersIndexAndName: authData.usersIndexAndName,
+    users: authData.users,
     connect,
     login,
   };

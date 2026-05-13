@@ -1,16 +1,21 @@
 use {
     crate::{
-        ASKS, BIDS, LAST_VAULT_ORDERS_UPDATE, NEXT_ORDER_ID, PAIR_IDS, PAIR_PARAMS, PARAM,
-        USER_STATES, core::compute_vault_quotes, liquidity_depth::increase_liquidity_depths,
-        oracle, price::may_invert_price, trade::_cancel_all_orders,
+        MAX_ORACLE_STALENESS,
+        core::{compute_available_margin, compute_vault_quotes},
+        oracle,
+        querier::NoCachePerpQuerier,
+        state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PARAM, USER_STATES},
+        trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        UsdValue,
-        perps::{Order, ReasonForOrderRemoval},
+    dango_order_book::{
+        ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
+        increase_liquidity_depths, may_invert_price,
     },
-    grug::{MutableCtx, Number as _, NumberConst, Order as IterationOrder, Response, Uint64},
+    grug::{
+        MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64,
+    },
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
@@ -25,6 +30,20 @@ use {
 ///
 /// Returns: empty `Response` (no token transfers).
 pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
+    let oracle_addr = oracle(ctx.querier);
+
+    // Only the oracle contract (after feeding fresh prices) or the chain owner
+    // may trigger a vault refresh. Without this check any account could consume
+    // the once-per-block refresh token on stale prices, causing the oracle's
+    // legitimate refresh submessage to be rejected.
+    ensure!(
+        ctx.sender == oracle_addr || ctx.sender == ctx.querier.query_owner()?,
+        "only the oracle contract or the chain owner may refresh vault orders"
+    );
+
     let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
 
     ensure!(
@@ -39,23 +58,32 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
-    _cancel_all_orders(
+    let CancelAllOrdersOutcome {
+        user_state: updated_vault_state,
+    } = compute_cancel_all_orders_outcome(
         ctx.storage,
         ctx.contract,
-        &mut vault_state,
+        &vault_state,
         None, // Vault order churn is not user-facing — no events emitted.
         ReasonForOrderRemoval::Canceled,
     )?;
 
+    vault_state = updated_vault_state;
+
     // ------------- Step 2: Compute the vault's available margin --------------
 
-    // After cancellation, reserved_margin is zero and all vault capital is in
-    // the vault's UserState margin.
-    let vault_margin_value = vault_state.margin;
+    // Compute available margin: equity minus margin consumed by existing
+    // positions. After cancellation reserved_margin is zero, so the formula
+    // simplifies to: max(0, equity - used_margin).
+    let vault_margin_value = {
+        let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
+        compute_available_margin(&mut oracle_querier, &perp_querier, &vault_state)?
+    };
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
     if param.vault_total_weight.is_zero() || !vault_margin_value.is_positive() {
@@ -105,18 +133,35 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             .transpose()?
             .map(|((stored_price, _), _)| stored_price);
 
-        // Compute vault quotes.
-        let (bid, ask) =
-            compute_vault_quotes(oracle_price, &pair_param, best_bid, best_ask, pair_margin)?;
+        // Vault's current position for this pair (zero if none).
+        let position_size = vault_state
+            .positions
+            .get(pair_id)
+            .map(|p| p.size)
+            .unwrap_or(Quantity::ZERO);
+
+        // Compute vault quotes with inventory skew.
+        let (bid, ask) = compute_vault_quotes(
+            oracle_price,
+            &pair_param,
+            best_bid,
+            best_ask,
+            pair_margin,
+            position_size,
+        )?;
 
         // Place bid order.
         if let Some(bid_quote) = bid {
             let stored_price = may_invert_price(bid_quote.price, true);
-            let order = Order {
+            let order = LimitOrder {
                 user: ctx.contract,
                 size: bid_quote.size,
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
+                created_at: ctx.block.timestamp,
+                tp: None,
+                sl: None,
+                client_order_id: None,
             };
 
             BIDS.save(
@@ -140,11 +185,15 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         // Place ask order.
         if let Some(ask_quote) = ask {
-            let order = Order {
+            let order = LimitOrder {
                 user: ctx.contract,
                 size: ask_quote.size,
                 reduce_only: false,
                 reserved_margin: UsdValue::ZERO,
+                created_at: ctx.block.timestamp,
+                tp: None,
+                sl: None,
+                client_order_id: None,
             };
 
             ASKS.save(
@@ -179,6 +228,21 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         USER_STATES.save(ctx.storage, ctx.contract, &vault_state)?;
     }
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            num_pairs = pair_ids.len(),
+            open_orders = vault_state.open_order_count,
+            "Vault orders refreshed"
+        );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_VAULT_REFRESH)
+            .record(start.elapsed().as_secs_f64());
+    }
+
     Ok(Response::new())
 }
 
@@ -188,16 +252,85 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 mod tests {
     use {
         super::*,
-        grug::{Addr, Coins, MockContext},
+        dango_types::config::AppConfig,
+        grug::{
+            Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
+            ResultExt,
+        },
+        std::collections::BTreeMap,
     };
 
     const CONTRACT: Addr = Addr::mock(0);
+    const ORACLE: Addr = Addr::mock(1);
+    const OWNER: Addr = Addr::mock(2);
+
+    fn mock_config() -> Config {
+        Config {
+            owner: OWNER,
+            bank: Addr::mock(3),
+            taxman: Addr::mock(4),
+            cronjobs: BTreeMap::new(),
+            permissions: Permissions {
+                upload: Permission::Nobody,
+                instantiate: Permission::Nobody,
+            },
+            max_orphan_age: Duration::from_seconds(0),
+        }
+    }
+
+    /// Build a mock querier whose `AppConfig` returns `ORACLE` as the oracle
+    /// address and whose `Config` returns `OWNER` as the chain owner.
+    fn mock_querier() -> MockQuerier {
+        MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: dango_types::config::AppAddresses {
+                    oracle: ORACLE,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap()
+            .with_config(mock_config())
+    }
+
+    #[test]
+    fn refresh_orders_rejects_unauthorized_sender() {
+        let mut ctx = MockContext::new()
+            .with_querier(mock_querier())
+            .with_contract(CONTRACT)
+            .with_sender(Addr::mock(99))
+            .with_funds(Coins::default())
+            .with_block_height(10);
+
+        refresh_orders(ctx.as_mutable()).should_fail_with_error(
+            "only the oracle contract or the chain owner may refresh vault orders",
+        );
+    }
+
+    #[test]
+    fn refresh_orders_owner_can_trigger() {
+        let mut ctx = MockContext::new()
+            .with_querier(mock_querier())
+            .with_contract(CONTRACT)
+            .with_sender(OWNER)
+            .with_funds(Coins::default())
+            .with_block_height(10);
+
+        PARAM.save(&mut ctx.storage, &Default::default()).unwrap();
+        PAIR_IDS
+            .save(&mut ctx.storage, &Default::default())
+            .unwrap();
+
+        refresh_orders(ctx.as_mutable()).should_succeed();
+    }
 
     #[test]
     fn refresh_orders_once_per_block() {
+        // Use the contract itself as sender (self-call path).
         let mut ctx = MockContext::new()
+            .with_querier(mock_querier())
             .with_contract(CONTRACT)
-            .with_sender(Addr::mock(99))
+            .with_sender(ORACLE) // note: refreshing order is permissioned to only the oracle contract.
             .with_funds(Coins::default())
             .with_block_height(10);
 

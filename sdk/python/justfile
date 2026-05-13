@@ -1,0 +1,11 @@
+test:
+  uv run pytest
+
+lint:
+  uv run ruff check dango tests
+
+fmt:
+  uv run ruff format dango tests
+
+typecheck:
+  uv run mypy dango tests

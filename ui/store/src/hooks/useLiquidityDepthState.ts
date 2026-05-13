@@ -108,11 +108,12 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
   const quoteCoin = coins.byDenom[pairId.quoteDenom];
 
   useEffect(() => {
-    if (!appConfig || !subscribe) return;
+    if (!subscribe) return;
     const { addresses } = appConfig;
     const unsubscribe = subscriptions.subscribe("queryApp", {
       params: {
         interval: 1,
+        httpInterval: 2_000,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: addresses.dex,
@@ -157,7 +158,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
       },
     });
     return unsubscribe;
-  }, [appConfig, bucketRecords, bucketSize, baseCoin, quoteCoin, subscribe]);
+  }, [appConfig.addresses, bucketRecords, bucketSize, baseCoin, quoteCoin, subscribe]);
 
   return { liquidityDepthStore };
 }

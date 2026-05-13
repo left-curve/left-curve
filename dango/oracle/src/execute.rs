@@ -3,13 +3,16 @@ use {
     anyhow::{bail, ensure},
     dango_types::{
         DangoQuerier,
-        oracle::{ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource, ReplyMsg},
+        oracle::{
+            ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource, ReplyMsg,
+            VaultRefreshFailed,
+        },
         perps,
     },
     grug::{
-        Api, AuthCtx, AuthMode, AuthResponse, Binary, Coins, Denom, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage, SubMsgResult,
-        SudoCtx, Timestamp, Tx,
+        Addr, Api, AuthCtx, AuthMode, Binary, Coins, Denom, Inner, JsonDeExt, Message, MsgExecute,
+        MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
+        Timestamp, Tx,
     },
     pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
     std::collections::BTreeMap,
@@ -38,7 +41,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 /// - The contract being executed must be the oracle itself.
 /// - the execute message must be `FeedPrices`.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     // Authenticate can only be called during finalize.
     ensure!(
         ctx.mode == AuthMode::Finalize,
@@ -62,7 +65,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         bail!("the execute message must be feed prices");
     };
 
-    Ok(AuthResponse::new().request_backrun(false))
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -81,18 +84,17 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, _res: SubMsgResult) -> StdResult<Response> {
+pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
     match msg {
         ReplyMsg::AfterOnOracleUpdate {} => {
+            let error = res.unwrap_err();
+
             #[cfg(feature = "tracing")]
             {
-                tracing::error!(
-                    error = _res.unwrap_err(),
-                    "!!! PERPS ON_ORACLE_UPDATE FAILED !!!"
-                );
+                tracing::error!(error, "!!! PERPS VAULT REFRESH FAILED !!!");
             }
 
-            Ok(Response::new())
+            Response::new().add_event(VaultRefreshFailed { error })
         },
     }
 }
@@ -175,21 +177,25 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
         }
     }
 
-    Ok(Response::new().add_submessage({
-        // Call the perps contract's `on_oracle_update` function.
-        // The perps market making vault refreshes its quotes based on the latest
-        // oracle prices.
-        // Use `reply_on_error` to ensure that even if the perps contract errors,
-        // the oracle update itself isn't reverted.
-        let perps = ctx.querier.query_perps()?;
-        SubMessage::reply_on_error(
+    // Call the perps contract's `on_oracle_update` function.
+    // The perps market making vault refreshes its quotes based on the latest
+    // oracle prices.
+    // Use `reply_on_error` to ensure that even if the perps contract errors,
+    // the oracle update itself isn't reverted.
+    // Skip if perps address is zero (not yet instantiated).
+    let perps = ctx.querier.query_perps()?;
+
+    Ok(Response::new().may_add_submessage(if perps != Addr::ZERO {
+        Some(SubMessage::reply_on_error(
             Message::execute(
                 perps,
                 &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
                 Coins::new(),
             )?,
             &ReplyMsg::AfterOnOracleUpdate {},
-        )?
+        )?)
+    } else {
+        None
     }))
 }
 

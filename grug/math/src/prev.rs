@@ -1,12 +1,6 @@
-use {
-    crate::{
-        Dec, Int, Int64, Int128, Int256, Int512, MathError, MathResult, Uint64, Uint128, Uint256,
-        Uint512,
-    },
-    bnum::{
-        BTryFrom,
-        types::{I512, U512},
-    },
+use crate::{
+    Dec, Int, Int64, Int128, Int256, Int512, MathError, MathResult, Uint64, Uint128, Uint256,
+    Uint512,
 };
 
 /// Describes a number type can be cast into another type of a smaller word size.
@@ -51,27 +45,27 @@ impl_prev! {
 // ----------------------------------- bnum ------------------------------------
 
 macro_rules! impl_prev_bnum {
-    ($this:ty => $this_inner:ty => $prev:ty) => {
+    ($this:ty => $prev_inner:ty => $prev:ty) => {
         impl PrevNumber for $this {
             type Prev = $prev;
 
             fn checked_into_prev(self) -> MathResult<Self::Prev> {
-                BTryFrom::<$this_inner>::try_from(self.0)
+                <$prev_inner>::try_from(&self.0)
                     .map(<$prev>::new)
                     .map_err(|_| MathError::overflow_conversion::<_, Uint256>(self))
             }
         }
     };
-    ($($this:ty => $this_inner:ty => $prev:ty),+ $(,)?) => {
+    ($($this:ty => $prev_inner:ty => $prev:ty),+ $(,)?) => {
         $(
-            impl_prev_bnum!($this => $this_inner => $prev);
+            impl_prev_bnum!($this => $prev_inner => $prev);
         )+
     };
 }
 
 impl_prev_bnum! {
-    Uint512 => U512 => Uint256,
-    Int512  => I512 => Int256,
+    Uint512 => bnum::types::U256 => Uint256,
+    Int512  => bnum::types::I256 => Int256,
 }
 
 // ----------------------------------- dec -------------------------------------
@@ -92,8 +86,11 @@ where
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{Int, MathError, PrevNumber, int_test, test_utils::bt},
-        bnum::types::{I256, U256},
+        crate::{Int, MathError, NumberConst, PrevNumber, int_test, test_utils::bt},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
     };
 
     int_test!( prev
@@ -108,10 +105,10 @@ mod int_tests {
             }
             u256 = {
                 passing: [
-                    (U256::from(u128::MAX), u128::MAX),
+                    (U256::cast_from(u128::MAX), u128::MAX),
                 ],
                 failing: [
-                    U256::from(u128::MAX) + U256::ONE,
+                    U256::cast_from(u128::MAX) + U256::ONE,
                 ]
             }
             i128 = {
@@ -126,12 +123,12 @@ mod int_tests {
             }
             i256 = {
                 passing: [
-                    (I256::from(i128::MAX), i128::MAX),
-                    (I256::from(i128::MIN), i128::MIN),
+                    (I256::cast_from(i128::MAX), i128::MAX),
+                    (I256::cast_from(i128::MIN), i128::MIN),
                 ],
                 failing: [
-                    I256::from(i128::MAX) + I256::ONE,
-                    I256::from(i128::MIN) - I256::ONE,
+                    I256::cast_from(i128::MAX) + I256::ONE,
+                    I256::cast_from(i128::MIN) - I256::ONE,
                 ]
             }
         }
@@ -152,28 +149,31 @@ mod int_tests {
 #[cfg(test)]
 mod dec_tests {
     use {
-        crate::{Dec, Int, MathError, PrevNumber, dec_test, test_utils::bt},
-        bnum::types::{I256, U256},
+        crate::{Dec, Int, MathError, NumberConst, PrevNumber, dec_test, test_utils::bt},
+        bnum::{
+            cast::CastFrom,
+            types::{I256, U256},
+        },
     };
 
     dec_test!( prev
         inputs = {
             udec256 = {
                 passing: [
-                    (U256::from(u128::MAX), u128::MAX),
+                    (U256::cast_from(u128::MAX), u128::MAX),
                 ],
                 failing: [
-                    U256::from(u128::MAX) + U256::ONE,
+                    U256::cast_from(u128::MAX) + U256::ONE,
                 ]
             }
             dec256 = {
                 passing: [
-                    (I256::from(i128::MAX), i128::MAX),
-                    (I256::from(i128::MIN), i128::MIN),
+                    (I256::cast_from(i128::MAX), i128::MAX),
+                    (I256::cast_from(i128::MIN), i128::MIN),
                 ],
                 failing: [
-                    I256::from(i128::MAX) + I256::ONE,
-                    I256::from(i128::MIN) - I256::ONE,
+                    I256::cast_from(i128::MAX) + I256::ONE,
+                    I256::cast_from(i128::MIN) - I256::ONE,
                 ]
             }
         }

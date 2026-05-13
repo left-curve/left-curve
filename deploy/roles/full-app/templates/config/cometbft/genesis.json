@@ -31,7 +31,9 @@
       "owner": "0xc4a8f7bbadd1457092a8cd182480230c0a848331",
       "permissions": {
         "instantiate": {
-          "somebodies": ["0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"]
+          "somebodies": [
+            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
+          ]
         },
         "upload": "nobody"
       },
@@ -40,17 +42,12 @@
     "msgs": [
       {
         "upload": {
-          "code": "AAAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
-          "code": "AQAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
           "code": "AgAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "AAAAAAAAAAA="
         }
       },
       {
@@ -367,7 +364,12 @@
               {
                 "base_denom": "bridge/sol",
                 "params": {
-                  "bucket_sizes": ["0.00001", "0.0001", "0.001", "0.01"],
+                  "bucket_sizes": [
+                    "0.00001",
+                    "0.0001",
+                    "0.001",
+                    "0.01"
+                  ],
                   "lp_denom": "dex/pool/sol/usdc",
                   "min_order_size_base": "0",
                   "min_order_size_quote": "0",
@@ -844,6 +846,20 @@
                   "id": 14,
                   "precision": 6
                 }
+              },
+              "perp/btcusd": {
+                "pyth": {
+                  "channel": "real_time",
+                  "id": 1,
+                  "precision": 8
+                }
+              },
+              "perp/ethusd": {
+                "pyth": {
+                  "channel": "real_time",
+                  "id": 2,
+                  "precision": 18
+                }
               }
             },
             "trusted_signers": {
@@ -861,32 +877,78 @@
           "label": "dango/perps",
           "msg": {
             "pair_params": {
+              "perp/btcusd": {
+                "bucket_sizes": [
+                  "1",
+                  "10",
+                  "100"
+                ],
+                "funding_rate_multiplier": "1",
+                "impact_size": "50000",
+                "initial_margin_ratio": "0.05",
+                "maintenance_margin_ratio": "0.025",
+                "max_abs_funding_rate": "0.01667",
+                "max_abs_oi": "500",
+                "max_limit_price_deviation": "0.05",
+                "max_market_slippage": "0.05",
+                "min_order_size": "50",
+                "tick_size": "1",
+                "vault_half_spread": "0.0005",
+                "vault_liquidity_weight": "4",
+                "vault_max_quote_size": "200",
+                "vault_max_skew_size": "0",
+                "vault_size_skew_factor": "0",
+                "vault_spread_skew_factor": "0"
+              },
               "perp/ethusd": {
-                "bucket_sizes": ["1", "10", "100"],
+                "bucket_sizes": [
+                  "1",
+                  "10",
+                  "100"
+                ],
+                "funding_rate_multiplier": "1",
                 "impact_size": "10000",
                 "initial_margin_ratio": "0.1",
                 "maintenance_margin_ratio": "0.05",
                 "max_abs_funding_rate": "0",
                 "max_abs_oi": "1000000",
+                "max_limit_price_deviation": "0.05",
+                "max_market_slippage": "0.05",
                 "min_order_size": "0",
                 "tick_size": "1",
-                "vault_half_spread": "0",
-                "vault_liquidity_weight": "0",
-                "vault_max_quote_size": "0"
+                "vault_half_spread": "0.0006",
+                "vault_liquidity_weight": "3",
+                "vault_max_quote_size": "2000",
+                "vault_max_skew_size": "0",
+                "vault_size_skew_factor": "0",
+                "vault_spread_skew_factor": "0"
               }
             },
             "param": {
-              "base_maker_fee_rate": "0",
-              "base_taker_fee_rate": "0.001",
               "funding_period": "3600",
+              "liquidation_buffer_ratio": "0.05",
               "liquidation_fee_rate": "0.01",
+              "maker_fee_rates": {
+                "base": "0",
+                "tiers": {}
+              },
+              "max_action_batch_size": 5,
               "max_open_orders": 100,
               "max_unlocks": 10,
+              "min_referrer_volume": "0",
               "protocol_fee_rate": "0",
-              "tiered_maker_fee_rate": {},
-              "tiered_taker_fee_rate": {},
+              "referral_active": true,
+              "referrer_commission_rates": {
+                "base": "0",
+                "tiers": {}
+              },
+              "taker_fee_rates": {
+                "base": "0.001",
+                "tiers": {}
+              },
               "vault_cooldown_period": "86400",
-              "vault_total_weight": "0"
+              "vault_deposit_cap": null,
+              "vault_total_weight": "7"
             }
           },
           "salt": "ZGFuZ28vcGVycHM="

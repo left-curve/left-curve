@@ -14,18 +14,14 @@ pub enum UserIndexOrName {
     Name(Username),
 }
 
-#[grug::derive(Serde)]
-pub struct UserIndexAndName {
-    pub index: UserIndex,
-    /// `None` if the user hasn't chosen a username yet.
-    pub name: Option<Username>,
-}
-
 /// Information about a user. Used in query response.
 #[grug::derive(Serde, Borsh)]
 pub struct User {
-    /// The user's username, if he has chosen one.
-    pub name: Option<Username>,
+    /// The user's numerical index.
+    pub index: UserIndex,
+
+    /// The user's username.
+    pub name: Username,
 
     /// Accounts associated with this user, keyed by account index.
     /// A BTreeMap preserves creation-time ordering via key sort.
@@ -49,11 +45,18 @@ impl User {
     }
 }
 
-/// Data the user must sign when onboarding. Currently, this consists of only
-/// the chain ID.
+/// Data the user must sign when onboarding.
+///
+/// All fields from the `RegisterUser` message are included to prevent
+/// front-running attacks where an attacker could swap unsigned parameters
+/// (key, seed, referrer) while reusing the victim's signature.
 #[grug::derive(Serde)]
 pub struct RegisterUserData {
     pub chain_id: String,
+    pub key: Key,
+    pub key_hash: Hash256,
+    pub seed: u32,
+    pub referrer: Option<UserIndex>,
 }
 
 impl SignData for RegisterUserData {
@@ -87,6 +90,9 @@ pub enum ExecuteMsg {
         seed: u32,
         /// A signature over the `RegisterUserData`.
         signature: Signature,
+        /// Optional referrer user index. If provided, a referral relationship
+        /// will be registered in the perps contract.
+        referrer: Option<UserIndex>,
     },
     /// Register a new account for an existing user.
     RegisterAccount {},
@@ -130,7 +136,7 @@ pub enum QueryMsg {
     },
     /// Query users associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
-    #[returns(Vec<UserIndexAndName>)]
+    #[returns(Vec<User>)]
     ForgotUsername {
         key_hash: Hash256,
         start_after: Option<UserIndex>,

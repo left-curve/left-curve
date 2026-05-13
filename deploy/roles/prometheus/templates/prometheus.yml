@@ -35,7 +35,7 @@ scrape_configs:
       - targets: ['hetzner2:8888']
       - targets: ['hetzner3:8888']
       - targets: ['hetzner4:8888']
-      - targets: ['inter1:8888']
+      - targets: ['hetzner5:8888']
       - targets: ['inter2:8888']
 
   - job_name: 'alertmanager'
@@ -60,13 +60,52 @@ scrape_configs:
         - 'hetzner2:9100'
         - 'hetzner3:9100'
         - 'hetzner4:9100'
-        - 'inter1:9100'
+        - 'hetzner5:9100'
         - 'inter2:9100'
     relabel_configs:
     - source_labels: [__address__]
       regex: 'node-exporter:9100'
       target_label: instance
       replacement: 'ovh3:9100'
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+        - 'ovh1:9101'
+        - 'ovh2:9101'
+        - 'cadvisor:8080' # self (ovh3)
+        - 'ovh4:9101'
+        - 'ovh5:9101'
+        - 'ovh6:9101'
+        - 'ovh7:9101'
+        - 'hetzner1:9101'
+        - 'hetzner2:9101'
+        - 'hetzner3:9101'
+        - 'hetzner4:9101'
+        - 'hetzner5:9101'
+        - 'inter2:9101'
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: 'cadvisor:8080'
+      target_label: instance
+      replacement: 'ovh3:9101'
+    metric_relabel_configs:
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*devnet.*'
+      target_label: network
+      replacement: 'devnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*testnet.*'
+      target_label: network
+      replacement: 'testnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '.*mainnet.*'
+      target_label: network
+      replacement: 'mainnet'
+    - source_labels: [container_label_com_docker_compose_project]
+      regex: '(pr-.*)'
+      target_label: network
+      replacement: '$1'
 
   - job_name: 'tempo'
     static_configs:
@@ -90,7 +129,7 @@ scrape_configs:
       - targets: ['hetzner2:9080']
       - targets: ['hetzner3:9080']
       - targets: ['hetzner4:9080']
-      - targets: ['inter1:9080']
+      - targets: ['hetzner5:9080']
       - targets: ['inter2:9080']
     relabel_configs:
     - source_labels: [__address__]
@@ -117,7 +156,7 @@ scrape_configs:
 
   - job_name: 'hyperlane-validator'
     static_configs:
-      - targets: ['inter1:9500']
+      - targets: ['hetzner5:9500']
         labels:
           service: 'hyperlane'
           role: 'validator'
@@ -165,6 +204,10 @@ scrape_configs:
           network: 'testnet'
           dango_network: 'testnet'
           validator_index: '2'
+
+  - job_name: 'preview-perp-liquidator'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-perp-liquidator.yml']
 
   - job_name: 'preview-clickhouse'
     file_sd_configs:
@@ -220,7 +263,7 @@ scrape_configs:
           environment: 'production'
           network: 'system'
           dango_network: 'system'
-      - targets: ['inter1:9126']
+      - targets: ['hetzner5:9126']
         labels:
           service: 'clickhouse'
           environment: 'production'
@@ -271,7 +314,7 @@ scrape_configs:
           environment: 'production'
           network: 'system'
           dango_network: 'system'
-      - targets: ['inter1:9187']
+      - targets: ['hetzner5:9187']
         labels:
           service: 'postgres'
           environment: 'production'
@@ -298,7 +341,7 @@ scrape_configs:
           environment: 'production'
           network: 'mainnet'
           dango_network: 'mainnet'
-      - targets: ['inter1:8033']
+      - targets: ['hetzner5:8033']
         labels:
           service: 'dango'
           environment: 'production'
@@ -347,7 +390,7 @@ scrape_configs:
           environment: 'production'
           network: 'mainnet'
           dango_network: 'mainnet'
-      - targets: ['inter1:46660']
+      - targets: ['hetzner5:46660']
         labels:
           environment: 'production'
           network: 'mainnet'
@@ -377,3 +420,45 @@ scrape_configs:
           environment: 'production'
           network: 'testnet'
           dango_network: 'testnet'
+
+  - job_name: 'perp-liquidator'
+    static_configs:
+      - targets: ['ovh1:9310']
+        labels:
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['hetzner2:9310']
+        labels:
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['hetzner5:9310']
+        labels:
+          service: 'perp-liquidator'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'
+
+  - job_name: 'points-bot'
+    static_configs:
+      - targets: ['ovh2:9300']
+        labels:
+          service: 'points-bot'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['hetzner2:9301']
+        labels:
+          service: 'points-bot'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['hetzner1:9302']
+        labels:
+          service: 'points-bot'
+          environment: 'production'
+          network: 'mainnet'
+          dango_network: 'mainnet'

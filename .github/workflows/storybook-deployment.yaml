@@ -9,7 +9,7 @@ on:
       - "main"
     paths:
       - "ui/**"
-      - "sdk/**"
+      - "sdk/typescript/**"
 
 jobs:
   deploy:

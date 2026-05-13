@@ -7,7 +7,7 @@ use {
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
-    indexer_client::{User, Users, user, users},
+    indexer_graphql_types::{User, Users, user, users},
 };
 
 #[tokio::test(flavor = "multi_thread")]
@@ -25,7 +25,7 @@ async fn query_user() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -75,9 +75,10 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let mut test_account =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
-    let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account);
+    let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -137,7 +138,7 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -166,6 +167,47 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
                 assert_that!(user_data.public_keys).is_not_empty();
                 assert_that!(user_data.public_keys[0].public_key.as_str())
                     .is_equal_to(test_account.first_key().to_string().as_str());
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn query_users_rejects_conflicting_pagination_args() -> anyhow::Result<()> {
+    let (
+        _suite,
+        _accounts,
+        _codes,
+        _contracts,
+        _validator_sets,
+        _,
+        dango_httpd_context,
+        _,
+        _db_guard,
+    ) = setup_test_with_indexer(TestOption::default()).await;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let response = call_graphql_query::<_, users::ResponseData>(
+                    dango_httpd_context,
+                    Users::build_query(users::Variables {
+                        first: Some(1),
+                        last: Some(1),
+                        ..Default::default()
+                    }),
+                )
+                .await?;
+
+                let errors = response.errors.unwrap_or_default();
+                assert_that!(errors).is_not_empty();
+                assert_that!(errors[0].message.as_str())
+                    .contains("unexpected combination of pagination parameters");
 
                 Ok::<(), anyhow::Error>(())
             })

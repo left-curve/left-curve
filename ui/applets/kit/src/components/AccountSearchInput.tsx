@@ -39,11 +39,13 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
       queryFn: async ({ signal }) => {
         await wait(300);
         if (signal.aborted) return [];
-        const { accounts } = await client.getUser({ username: inputValue });
+        const { accounts } = await client.getUser({
+          userIndexOrName: { name: inputValue },
+        });
 
-        const options = Object.entries(accounts).map(([address, account]) => ({
-          address,
-          accountName: `Account #${account.index}`,
+        const options = Object.entries(accounts).map(([accountIndex, address]) => ({
+          address: address as string,
+          accountName: `Account #${accountIndex}`,
         }));
 
         if (!options) return [];

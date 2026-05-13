@@ -1,0 +1,86 @@
+---
+# Delete excluded LBs and pools before tunnel CNAMEs are created.
+# Runs once across all networks so the old LB no longer owns the hostname.
+
+- name: Ensure Cloudflare zone id (cleanup)
+  run_once: true
+  become: false
+  delegate_to: localhost
+  when: cloudflare_zone_id is not defined
+  block:
+    - name: Lookup Cloudflare zone by name
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones?name={{ dango_domain }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+      register: zone_info
+
+    - name: Set Cloudflare zone id
+      set_fact:
+        cloudflare_zone_id: "{{ zone_info.json.result[0].id }}"
+
+- name: Get all load balancers (cleanup)
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_load_balancers
+
+- name: Get all pools (cleanup)
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_pools
+
+- name: Delete excluded LBs
+  vars:
+    excl_lb_name: "{{ item.1 }}-{{ item.0.key }}.{{ dango_domain }}"
+    excl_lb_id: >-
+      {{ (cf_load_balancers.json.result
+          | selectattr('name', 'equalto', excl_lb_name)
+          | map(attribute='id')
+          | list | first) | default('') }}
+  uri:
+    url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers/{{ excl_lb_id }}"
+    method: DELETE
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+    status_code: [200, 404]
+  loop: "{{ lb_exclude | dict2items | subelements('value') | list }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item.1 }}-{{ item.0.key }}"
+  when: excl_lb_id | length > 0
+  run_once: true
+  become: false
+  delegate_to: localhost
+
+- name: Delete excluded pools
+  vars:
+    excl_pool_name: "pool-{{ item.1 }}-{{ item.0.key }}"
+    excl_pool_id: >-
+      {{ (cf_pools.json.result
+          | selectattr('name', 'equalto', excl_pool_name)
+          | map(attribute='id')
+          | list | first) | default('') }}
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools/{{ excl_pool_id }}"
+    method: DELETE
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+    status_code: [200, 404]
+  loop: "{{ lb_exclude | dict2items | subelements('value') | list }}"
+  loop_control:
+    loop_var: item
+    label: "pool-{{ item.1 }}-{{ item.0.key }}"
+  when: excl_pool_id | length > 0
+  run_once: true
+  become: false
+  delegate_to: localhost

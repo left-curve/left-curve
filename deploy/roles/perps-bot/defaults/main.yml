@@ -1,0 +1,4 @@
+---
+perps_bot_dir: "{{ deploy_home }}/perps-bot"
+perps_bot_image: "ghcr.io/left-curve/bots/perps"
+perps_bot_tag: "latest"

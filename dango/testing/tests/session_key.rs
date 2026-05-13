@@ -80,15 +80,17 @@ mod session_account {
         // Sign the `SessionInfo` with the username key.
         pub fn sign_session_key(
             self,
+            chain_id: &str,
             expire_at: Timestamp,
         ) -> anyhow::Result<SessionAccount<Defined<SessionInfoBuffer>>> {
             let session_info = SessionInfo {
+                chain_id: chain_id.to_string(),
                 session_key: self.session_pk,
                 expire_at,
             };
 
             let sign_data = session_info.to_sign_data()?;
-            let credential = self.account.create_standard_credential(sign_data);
+            let credential = self.account.create_standard_credential(sign_data.into());
 
             let session_buffer = SessionInfoBuffer {
                 session_info,
@@ -153,7 +155,7 @@ mod session_account {
                 data: data.clone(),
             };
 
-            let sign_data = sign_doc.to_sign_data()?;
+            let sign_data = sign_doc.to_sign_data()?.into();
             let session_signature = create_signature(&self.session_sk, sign_data);
 
             let standard_credential = StandardCredential {
@@ -180,14 +182,17 @@ mod session_account {
     }
 }
 
-#[test]
-fn session_key() {
+#[tokio::test]
+async fn session_key() {
     let (mut suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     suite.block_time = Duration::from_seconds(10);
 
     let mut owner = SessionAccount::new(accounts.owner)
-        .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+        .sign_session_key(
+            &suite.chain_id,
+            suite.block.timestamp + Duration::from_seconds(100),
+        )
         .unwrap();
 
     // Ok transfer
@@ -198,6 +203,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -210,6 +216,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_fail_with_error("session expired at Duration(Dec(Int(31536100000000000))");
         owner.nonce -= 1;
 
@@ -219,7 +226,10 @@ fn session_key() {
     // Sign the session key again refreshing the timestamp
     {
         owner = owner
-            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+            .sign_session_key(
+                &suite.chain_id,
+                suite.block.timestamp + Duration::from_seconds(100),
+            )
             .unwrap();
 
         suite
@@ -228,6 +238,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -238,11 +249,15 @@ fn session_key() {
     {
         let owner2 = owner
             .register_new_account(&mut suite, contracts.account_factory, Coins::default())
+            .await
             .unwrap();
 
         // Refresh the session key signature
         owner = owner
-            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+            .sign_session_key(
+                &suite.chain_id,
+                suite.block.timestamp + Duration::from_seconds(100),
+            )
             .unwrap();
 
         // Create a SessionAccount from the new account
@@ -256,6 +271,7 @@ fn session_key() {
                 owner2.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
 
         // The new account should be able to send coins to the relayer
@@ -265,6 +281,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -273,7 +290,10 @@ fn session_key() {
         owner = owner
             .refresh_session_key()
             .unwrap()
-            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
+            .sign_session_key(
+                &suite.chain_id,
+                suite.block.timestamp + Duration::from_seconds(100),
+            )
             .unwrap();
 
         // Send some coins to the relayer
@@ -283,6 +303,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 }

@@ -10,9 +10,10 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
-grug   = { workspace = true }
-sha3   = { workspace = true }
+anyhow      = { workspace = true }
+grug        = { workspace = true }
+hex-literal = { workspace = true }
+sha3        = { workspace = true }
 
 [dev-dependencies]
 hex        = { workspace = true }

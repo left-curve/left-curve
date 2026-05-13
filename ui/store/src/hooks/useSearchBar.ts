@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useReducer, useState } from "react";
-import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAppConfig } from "./useAppConfig.js";
 
@@ -10,11 +9,12 @@ import fuzzysort from "fuzzysort";
 
 import type { AppletMetadata } from "../types/applets.js";
 import type {
-  Account,
+  AccountDetails,
   Address,
   ContractInfo,
   IndexedBlock,
   IndexedTransaction,
+  User,
 } from "@left-curve/dango/types";
 
 export type UseSearchBarParameters = {
@@ -28,7 +28,8 @@ export type SearchBarResult = {
   txs: IndexedTransaction[];
   applets: AppletMetadata[];
   contracts: (ContractInfo & { address: Address })[];
-  account?: Account;
+  account?: AccountDetails;
+  user?: User;
 };
 
 export function useSearchBar(parameters: UseSearchBarParameters) {
@@ -38,7 +39,6 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
   const [searchText, setSearchText] = useState("");
 
   const allContracts = useMemo(() => {
-    if (!appConfig) return [];
     return Object.entries(appConfig.addresses)
       .filter(([key]) => !key.startsWith("0x"))
       .map(([key, value]) => ({ label: key, address: value })) as (ContractInfo & {
@@ -53,6 +53,7 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
       applets: Object.values(applets.filter((applet) => favApplets.includes(applet.id))),
       contracts: allContracts,
       account: undefined,
+      user: undefined,
     }),
     [applets, favApplets, allContracts],
   );
@@ -62,7 +63,6 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
     noResult,
   );
 
-  const { getAppConfig } = useConfig();
   const queryClient = useQueryClient();
   const client = usePublicClient();
 
@@ -99,7 +99,7 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
       if (signal.aborted) return;
 
       const promises: Promise<unknown>[] = [];
-      const { accountFactory } = await getAppConfig();
+      const { accountFactory } = appConfig;
 
       if (isValidAddress(searchText)) {
         // search for contract
@@ -138,9 +138,18 @@ export function useSearchBar(parameters: UseSearchBarParameters) {
           })(),
         );
       } else {
-        // search for username
-        promises.push((async () => {})());
-        // search for tokens
+        promises.push(
+          (async () => {
+            try {
+              const user = await client.getUser({ userIndexOrName: { name: searchText } });
+              if (user) {
+                setSearchResult({ user });
+              }
+            } catch {
+              setSearchResult({ user: undefined });
+            }
+          })(),
+        );
       }
 
       return await Promise.allSettled(promises);

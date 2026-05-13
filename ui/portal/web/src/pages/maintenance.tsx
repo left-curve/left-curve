@@ -1,45 +1,54 @@
-import { twMerge, useTheme } from "@left-curve/applets-kit";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+
+import { Spinner } from "@left-curve/applets-kit";
+import { Maintenance } from "~/components/foundation/Maintenance";
 
 export const Route = createFileRoute("/maintenance")({
   component: MaintenanceApplet,
 });
 
-import { m } from "@left-curve/foundation/paraglide/messages.js";
+const RECOVERY_THRESHOLD = 3;
 
 function MaintenanceApplet() {
-  const { theme } = useTheme();
-  return (
-    <div className="w-full flex flex-1 justify-center items-center p-4 flex-col gap-6 text-center pb-[76px] min-h-svh text-ink-primary-900">
-      <img
-        src={`/images/union${theme === "dark" ? "-dark" : ""}.png`}
-        alt="bg-image"
-        className={twMerge(
-          "drag-none select-none h-[15vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0",
-        )}
-      />
-      <div className="fixed p-4 top-0 left-0 w-full">
-        <div className="max-w-[76rem] mx-auto flex items-center justify-center w-full">
-          <img
-            src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
-            alt="Dango"
-            className="max-w-[12rem] lg:max-w-[18rem] select-none"
-          />
-        </div>
+  const navigate = useNavigate();
+  const successCount = useRef(0);
+
+  const { data: isChainRunning, isFetched } = useQuery({
+    queryKey: ["maintenance_chain_status"],
+    queryFn: async () => {
+      try {
+        const response = await fetch(window.dango.urls.upUrl);
+        if (!response.ok) throw new Error("request failed");
+        const { is_running } = await response.json();
+        if (!is_running) {
+          successCount.current = 0;
+          return false;
+        }
+        successCount.current += 1;
+        return successCount.current >= RECOVERY_THRESHOLD;
+      } catch {
+        successCount.current = 0;
+        return false;
+      }
+    },
+    refetchInterval: 10_000,
+  });
+
+  useEffect(() => {
+    if (isChainRunning && window.location.pathname === "/maintenance") {
+      navigate({ to: "/" });
+    }
+  }, [isChainRunning]);
+
+  if (!isFetched) {
+    return (
+      <div className="flex-1 w-full flex justify-center items-center h-screen">
+        <Spinner size="lg" color="pink" />
       </div>
-      <img
-        src="/images/characters/grugo.svg"
-        alt="Maintenance"
-        className="w-full max-w-[14.75rem] md:max-w-[22.5rem] opacity-80"
-      />
-      <div className="flex flex-col gap-2 items-center justify-center">
-        <h1 className="text-center font-exposure text-[30px] md:text-[60px] font-extrabold text-ink-secondary-700 italic">
-          {m["maintenance.title"]()}
-        </h1>
-        <p className="text-ink-tertiary-500 diatype-m-regular max-w-xl">
-          {m["maintenance.description"]()}
-        </p>
-      </div>
-    </div>
-  );
+    );
+  }
+
+  return <Maintenance />;
 }

@@ -9,6 +9,11 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+# `strum` looks unused, but the `strum_macros::EnumDiscriminants` derive in
+# `src/events/flat.rs` expands to references to the `strum` crate.
+[package.metadata.cargo-machete]
+ignored = ["strum"]
+
 [features]
 # Derive async-graphql traits for certain types.
 async-graphql = ["dep:async-graphql"]
@@ -28,11 +33,9 @@ metrics = ["dep:metrics"]
 
 [dependencies]
 async-graphql   = { workspace = true, optional = true }
-bnum            = { workspace = true, features = ["borsh"] }
 borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono          = { workspace = true, optional = true }
 data-encoding   = { workspace = true }
-digest          = { workspace = true }
 dyn-clone       = { workspace = true }
 error-backtrace = { workspace = true }
 grug-math       = { workspace = true }

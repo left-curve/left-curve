@@ -34,7 +34,13 @@ export function useStorage<T>(
   }, []);
 
   const { storage: defaultStorage } = useConfig();
-  const [channel] = useState(new BroadcastChannel(`dango.storage.${key}`));
+  const [channel] = useState(() => {
+    try {
+      return new BroadcastChannel(`dango.storage.${key}`);
+    } catch {
+      return null;
+    }
+  });
 
   const {
     enabled = true,
@@ -103,13 +109,13 @@ export function useStorage<T>(
   const setValue = useCallback(
     (valOrFunc: T | ((t: T) => void)) => {
       const newState = _setValue(valOrFunc);
-      if (sync) channel.postMessage(newState);
+      if (sync) channel?.postMessage(newState);
     },
     [storage, channel],
   );
 
   useEffect(() => {
-    if (!sync) return;
+    if (!sync || !channel) return;
     function updateStorage(event: MessageEvent) {
       _setValue(() => event.data);
     }

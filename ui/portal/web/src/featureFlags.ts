@@ -1,4 +1,4 @@
-const FEATURE_IDS = ["points"] as const;
+const FEATURE_IDS = [] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
 

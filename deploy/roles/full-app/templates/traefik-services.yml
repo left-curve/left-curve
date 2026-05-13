@@ -86,7 +86,7 @@ http:
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-backend:
-      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-{{ dango_network }}.{{ dango_domain }}`){% if internal_api_enabled | default(false) %} || Host(`api-{{ dango_network }}-internal-{{ hostname }}.{{ dango_domain }}`){% endif %}"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
@@ -94,7 +94,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-backend-ssl:
-      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`) || Host(`api-{{ dango_network }}.{{ dango_domain }}`){% if internal_api_enabled | default(false) %} || Host(`api-{{ dango_network }}-internal-{{ hostname }}.{{ dango_domain }}`){% endif %}"
       entryPoints:
         - "websecure"
       tls: {}

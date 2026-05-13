@@ -1,7 +1,8 @@
 #[cfg(feature = "metrics")]
-use grug_httpd::metrics::GaugeGuard;
+use crate::metrics::GaugeGuard;
 use {
     super::MAX_PAST_BLOCKS,
+    crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity::{self, blocks::latest_block_height},
@@ -21,7 +22,7 @@ pub struct TransactionSubscription;
 
 impl TransactionSubscription {
     async fn get_transactions(
-        app_ctx: &crate::context::Context,
+        app_ctx: &crate::context::FullContext,
         block_heights: RangeInclusive<i64>,
     ) -> Vec<entity::transactions::Model> {
         entity::transactions::Entity::find()
@@ -46,7 +47,8 @@ impl TransactionSubscription {
         // This is used to get the older transactions in case of disconnection
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::transactions::Model>> + 'a> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let sub_guard = acquire_subscription(ctx)?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
 
@@ -70,42 +72,45 @@ impl TransactionSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
 
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+        Ok(guard_subscription_stream(
+            once({
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            async move { Self::get_transactions(app_ctx, block_range).await }
-        })
-        .chain(stream.then(move |block_height| {
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+                async move { Self::get_transactions(app_ctx, block_range).await }
+            })
+            .chain(stream.then(move |block_height| {
+                #[cfg(feature = "metrics")]
+                let _guard = gauge_guard.clone();
 
-            let received_height = received_block_height.clone();
+                let received_height = received_block_height.clone();
 
-            async move {
-                let current_received = received_height.load(Ordering::Acquire);
+                async move {
+                    let current_received = received_height.load(Ordering::Acquire);
 
-                if block_height < current_received {
-                    return vec![];
+                    if block_height < current_received {
+                        return vec![];
+                    }
+
+                    let transactions = Self::get_transactions(
+                        app_ctx,
+                        (current_received + 1) as i64..=block_height as i64,
+                    )
+                    .await;
+
+                    received_height.store(block_height, Ordering::Release);
+
+                    transactions
                 }
-
-                let transactions = Self::get_transactions(
-                    app_ctx,
-                    (current_received + 1) as i64..=block_height as i64,
-                )
-                .await;
-
-                received_height.store(block_height, Ordering::Release);
-
-                transactions
-            }
-        }))
-        .filter_map(|transactions| async move {
-            if transactions.is_empty() {
-                None
-            } else {
-                Some(transactions)
-            }
-        }))
+            }))
+            .filter_map(|transactions| async move {
+                if transactions.is_empty() {
+                    None
+                } else {
+                    Some(transactions)
+                }
+            }),
+            sub_guard,
+        ))
     }
 }

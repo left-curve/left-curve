@@ -26,6 +26,9 @@
 # Always resolve digests to fill in any images not verified by cosign
 # This ensures all images are pinned to immutable digests
 - import_tasks: resolve_digests.yml
+- import_tasks: perps_bot.yml
+  when: perps_bot_enabled
+- import_tasks: perp_liquidator.yml
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
 - import_tasks: update_traefik.yml
@@ -47,6 +50,7 @@
 - import_tasks: summary.yml
   when: expose_ports
 - import_tasks: check_cometbft_sync.yml
+  when: not (skip_cometbft_sync | default(false) | bool)
 - import_tasks: dex_bot.yml
   when: dex_bot_enabled
 - import_tasks: check_container_healthy.yml

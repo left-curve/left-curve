@@ -1,9 +1,7 @@
 use {
     anyhow::ensure,
-    dango_types::{
-        Quantity,
-        perps::{PairParam, PairState},
-    },
+    dango_order_book::Quantity,
+    dango_types::perps::{PairParam, PairState},
 };
 
 /// Check that the opening portion of an order does not violate the max OI

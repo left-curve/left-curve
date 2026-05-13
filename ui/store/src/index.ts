@@ -1,5 +1,13 @@
 export { createConfig } from "./createConfig.js";
 export { createEventBus } from "./createEventBus.js";
+export { createBlockStore, type BlockGuardedState } from "./hooks/createBlockStore.js";
+export { TradePairStore, type TradePairState } from "./stores/tradePairStore.js";
+export { tradeInfoStore, type TradeInfoState } from "./stores/tradeInfoStore.js";
+export {
+  perpsTradeSettingsStore,
+  type PerpsTradeSettingsState,
+  type MarginMode,
+} from "./stores/perpsTradeSettingsStore.js";
 
 export { WebCryptoECDH } from "./ecdh.js";
 
@@ -127,9 +135,21 @@ export {
 } from "./hooks/useQueryWithPagination.js";
 export { useExplorerTransaction } from "./hooks/explorer/useExplorerTransaction.js";
 export { useExplorerBlock, type ExplorerBlockState } from "./hooks/explorer/useExplorerBlock.js";
-export { useExplorerAccount, type ExplorerAccount } from "./hooks/explorer/useExplorerAccount.js";
-export { useExplorerContract, type ExplorerContract } from "./hooks/explorer/useExplorerContract.js";
+export {
+  useExplorerAccount,
+  type ExplorerAccount,
+} from "./hooks/explorer/useExplorerAccount.js";
+export {
+  useExplorerContract,
+  type ExplorerContract,
+} from "./hooks/explorer/useExplorerContract.js";
 export { useExplorerTransactionsBySender } from "./hooks/explorer/useExplorerTransactionsBySender.js";
+export {
+  useExplorerUser,
+  type AccountWithDetails,
+  type ExplorerUserData,
+} from "./hooks/explorer/useExplorerUser.js";
+export { useExplorerUserTransactions } from "./hooks/explorer/useExplorerUserTransactions.js";
 export {
   parseExplorerErrorMessage,
   type ParsedExplorerError,
@@ -146,10 +166,12 @@ export {
   useConvertState,
 } from "./hooks/useConvertState.js";
 
-export {
-  type UseProTradeStateParameters,
-  useProTradeState,
-} from "./hooks/useProTradeState.js";
+export { useTradeCoins } from "./hooks/useTradeCoins.js";
+export { useCurrentPrice } from "./hooks/useCurrentPrice.js";
+export { useSpotSubmission } from "./hooks/useSpotSubmission.js";
+export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
+export { useSpotMaxSize } from "./hooks/useSpotMaxSize.js";
+export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
 
 export {
   type UsePoolLiquidityStateParameters,
@@ -157,12 +179,35 @@ export {
 } from "./hooks/usePoolLiquidityState.js";
 
 export {
+  type UseVaultLiquidityStateParameters,
+  useVaultLiquidityState,
+} from "./hooks/useVaultLiquidityState.js";
+
+export { usePerpsVaultUserShares } from "./hooks/usePerpsVaultUserShares.js";
+
+export {
+  type VaultPerformancePoint,
+  type VaultPerformancePeriod,
+  useVaultSnapshots,
+} from "./hooks/useVaultSnapshots.js";
+
+export {
   type UsePairStatsParameters,
   type UseAllPairStatsParameters,
   type NormalizedPairStats,
   usePairStats,
   useAllPairStats,
+  allPairStatsStore,
 } from "./hooks/usePairStats.js";
+
+export {
+  type UsePerpsPairStatsParameters,
+  type UseAllPerpsPairStatsParameters,
+  type NormalizedPerpsPairStats,
+  usePerpsPairStats,
+  useAllPerpsPairStats,
+  allPerpsPairStatsStore,
+} from "./hooks/usePerpsPairStats.js";
 
 export {
   type UseBridgeStateParameters,
@@ -178,6 +223,12 @@ export {
   type UseSigninStateParameters,
   useSigninState,
 } from "./hooks/useSigninState.js";
+
+export {
+  type UseAuthStateParameters,
+  type AuthScreen,
+  useAuthState,
+} from "./hooks/useAuthState.js";
 
 export {
   useSearchBar,
@@ -210,12 +261,162 @@ export { useFavApplets } from "./hooks/useFavApplets.js";
 export { useFavPairs } from "./hooks/useFavPairs.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
+export { useServiceStatus } from "./hooks/useServiceStatus.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
 
+export {
+  usePerpsUserState,
+  perpsUserStateStore,
+  perpsMarginAsset,
+} from "./hooks/usePerpsUserState.js";
+export {
+  usePerpsUserStateExtended,
+  perpsUserStateExtendedStore,
+} from "./hooks/usePerpsUserStateExtended.js";
+export { computeLiquidationPrice } from "./hooks/computeLiquidationPrice.js";
 export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
 export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
-export { useLiveTradesState, liveTradesStore } from "./hooks/useLiveTradesState.js";
+export { useLiveSpotTradesState, liveSpotTradesStore } from "./hooks/useLiveSpotTradesState.js";
+export { useLivePerpsTradesState, livePerpsTradesStore } from "./hooks/useLivePerpsTradesState.js";
+export {
+  usePerpsLiquidityDepth,
+  perpsLiquidityDepthStore,
+} from "./hooks/usePerpsLiquidityDepth.js";
+export { usePerpsOrdersByUser, perpsOrdersByUserStore } from "./hooks/usePerpsOrdersByUser.js";
+export { usePerpsPairState, perpsPairStateStore } from "./hooks/usePerpsPairState.js";
+export { usePerpsState, perpsStateStore } from "./hooks/usePerpsState.js";
+export { useOraclePrices, oraclePricesStore } from "./hooks/useOraclePrices.js";
+export {
+  type UsePerpsPairParamParameters,
+  usePerpsPairParam,
+} from "./hooks/usePerpsPairParam.js";
+export {
+  type UsePerpsParamParameters,
+  usePerpsParam,
+} from "./hooks/usePerpsParam.js";
+
+export {
+  type UseFeeRateOverrideParameters,
+  useFeeRateOverride,
+} from "./hooks/useFeeRateOverride.js";
+
+export {
+  type UsePointsParameters,
+  usePoints,
+} from "./hooks/usePoints.js";
+
+export type { AttackCompensation } from "./hooks/pointsApi.js";
+
+export {
+  type UseLeaderboardParameters,
+  type LeaderboardSort,
+  type LeaderboardTimeframe,
+  type LeaderboardEntryWithRank,
+  useLeaderboard,
+} from "./hooks/useLeaderboard.js";
+
+export {
+  type UseEpochPointsParameters,
+  useEpochPoints,
+} from "./hooks/useEpochPoints.js";
+
+export {
+  type UseCurrentEpochParameters,
+  useCurrentEpoch,
+} from "./hooks/useCurrentEpoch.js";
+
+export {
+  type UsePredictPointsParameters,
+  usePredictPoints,
+} from "./hooks/usePredictPoints.js";
+
+export {
+  type UseBoxesParameters,
+  type NFTItem,
+  useBoxes,
+} from "./hooks/useBoxes.js";
+
+export {
+  type UseOatsParameters,
+  type OATStatus,
+  useOats,
+} from "./hooks/useOats.js";
+
+export {
+  type UseRegisterOatParameters,
+  useRegisterOat,
+  OatRateLimitError,
+  NoOatsFoundError,
+} from "./hooks/useRegisterOat.js";
+
+export {
+  type Points,
+  type UserStats,
+  type UserPoints,
+  type LeaderboardEntry,
+  type BoxesResponse,
+  type BoxCount,
+  type OatEntry,
+  type EpochInfo,
+  type EpochInfoNotStarted,
+  type EpochInfoActive,
+  fetchUserStats,
+  fetchEpochPoints,
+  fetchLeaderboard,
+  fetchTotalUsersWithPoints,
+  fetchUserBoxes,
+  openBoxes,
+  fetchUserOats,
+  fetchCampaigns,
+  registerOat,
+  checkOat,
+  fetchCurrentEpoch,
+} from "./hooks/pointsApi.js";
+
+export {
+  type UseReferrerParameters,
+  type UseVolumeParameters,
+  type UseReferralDataParameters,
+  type UseRefereeStatsParameters,
+  type UseReferralSettingsParameters,
+  type UseReferralParamsParameters,
+  type UseSetReferralParameters,
+  type UseSetFeeShareRatioParameters,
+  type UseCommissionRateOverrideParameters,
+  useReferrer,
+  useVolume,
+  useReferralData,
+  useRefereeStats,
+  useReferralSettings,
+  useReferralParams,
+  useSetReferral,
+  useSetFeeShareRatio,
+  useCommissionRateOverride,
+  getReferralCode,
+  getReferralLink,
+} from "./hooks/useReferral.js";
+
+export type {
+  UserReferralData,
+  RefereeStats,
+  RefereeStatsWithUser,
+  ReferrerSettings,
+  ReferralParams,
+  RateSchedule,
+  ReferrerStatsOrderBy,
+  ReferrerStatsOrderIndex,
+} from "./types/referral.js";
+
+export {
+  queryReferrer,
+  queryVolume,
+  queryReferralData,
+  queryRefereeStats,
+  queryReferralSettings,
+  queryReferralParams,
+  queryCommissionRateOverride,
+} from "./hooks/referralApi.js";
 
 export { rehydrate } from "./rehydrate.js";
 
@@ -321,6 +522,16 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export { withPagination } from "./handlers/pagination.js";
+
+export {
+  type GetAppConfigData,
+  type GetAppConfigQueryFnData,
+  type GetAppConfigQueryKey,
+  type GetAppConfigOptions,
+  type GetAppConfigErrorType,
+  getAppConfigQueryOptions,
+  getAppConfigQueryKey,
+} from "./handlers/getAppConfig.js";
 
 export {
   type ConnectData,

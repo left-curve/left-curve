@@ -9,7 +9,7 @@ concurrency:
 on:
   workflow_dispatch:
     inputs:
-      faucet_version:
+      faucet_bot_tag:
         required: true
         description: "Define faucet version for deployment"
         default: "latest"
@@ -76,8 +76,8 @@ jobs:
       - name: Run Ansible playbook
         env:
           INPUT_ENVIRONMENT: ${{ github.event.inputs.environment }}
-          INPUT_FAUCET_VERSION: ${{ github.event.inputs.faucet_version }}
+          INPUT_FAUCET_BOT_TAG: ${{ github.event.inputs.faucet_bot_tag }}
           SERVER_IP: ${{ env.SERVER_IP }}
         run: |
           cd deploy
-          ansible-playbook bots.yml --limit "$SERVER_IP" -e '{"dango_networks":["'"$INPUT_ENVIRONMENT"'"]}' -e faucet_version="$INPUT_FAUCET_VERSION"
+          ansible-playbook bots.yml --limit "$SERVER_IP" -e '{"dango_networks":["'"$INPUT_ENVIRONMENT"'"]}' -e faucet_bot_tag="$INPUT_FAUCET_BOT_TAG"

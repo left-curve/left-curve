@@ -1,4 +1,5 @@
 import { createContext } from "@left-curve/applets-kit";
+import { type AttackCompensation, useAccount, usePoints } from "@left-curve/store";
 import type React from "react";
 import { type PropsWithChildren, useMemo } from "react";
 
@@ -18,16 +19,6 @@ type LeagueConfig = {
   maxPercentile: number;
 };
 
-/**
- * User leagues based on percentile of points holders:
- * - Wood: bottom 30%
- * - Iron: next 25% (30-55%)
- * - Gold: next 18% (55-73%)
- * - Platinum: next 12% (73-85%)
- * - Diamond: next 8% (85-93%)
- * - Master: next 5% (93-98%)
- * - Grandmaster: top 2% (98-100%)
- */
 const LEAGUE_CONFIG: LeagueConfig[] = [
   { key: "wood", label: "Wood", minPercentile: 0, maxPercentile: 30 },
   { key: "iron", label: "Iron", minPercentile: 30, maxPercentile: 55 },
@@ -61,6 +52,7 @@ const getNextLeague = (currentLeague: UserLeague): LeagueConfig | null => {
 type UserPointsData = {
   points: number;
   volume: number;
+  pnl: number;
   rank: number;
   percentile: number;
   league: UserLeague;
@@ -69,6 +61,7 @@ type UserPointsData = {
   tradingPoints: number;
   lpPoints: number;
   referralPoints: number;
+  compensation: AttackCompensation | undefined;
 };
 
 type UserPointsContextValue = UserPointsData & {
@@ -80,24 +73,24 @@ const [UserPointsContextProvider, useUserPointsContext] = createContext<UserPoin
   name: "UserPointsContext",
 });
 
-type UserPointsProviderProps = PropsWithChildren<{
-  initialData?: Partial<UserPointsData>;
-}>;
+export const UserPointsProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  const { userIndex } = useAccount();
+  const pointsUrl = window.dango.urls.pointsUrl;
 
-export const UserPointsProvider: React.FC<UserPointsProviderProps> = ({
-  children,
-  initialData,
-}) => {
+  const {
+    points,
+    lpPoints,
+    tradingPoints,
+    referralPoints,
+    volume,
+    pnl,
+    rank,
+    percentile,
+    compensation,
+    isLoading,
+  } = usePoints({ pointsUrl, userIndex });
+
   const value = useMemo(() => {
-    // Mock data - will be replaced with actual API data
-    const points = initialData?.points ?? 16300;
-    const volume = initialData?.volume ?? 75000;
-    const rank = initialData?.rank ?? 11200;
-    const percentile = initialData?.percentile ?? 94; // Mock: user is in Master league
-    const tradingPoints = initialData?.tradingPoints ?? 3000;
-    const lpPoints = initialData?.lpPoints ?? 12000;
-    const referralPoints = initialData?.referralPoints ?? 8500;
-
     const leagueConfig = getLeagueFromPercentile(percentile);
     const league = leagueConfig.key;
     const nextLeague = getNextLeague(league);
@@ -105,6 +98,7 @@ export const UserPointsProvider: React.FC<UserPointsProviderProps> = ({
     return {
       points,
       volume,
+      pnl,
       rank,
       percentile,
       league,
@@ -113,10 +107,11 @@ export const UserPointsProvider: React.FC<UserPointsProviderProps> = ({
       tradingPoints,
       lpPoints,
       referralPoints,
-      isLoading: false,
+      compensation,
+      isLoading,
       leagueList: LEAGUE_CONFIG,
     };
-  }, [initialData]);
+  }, [points, lpPoints, tradingPoints, referralPoints, volume, pnl, rank, percentile, compensation, isLoading]);
 
   return <UserPointsContextProvider value={value}>{children}</UserPointsContextProvider>;
 };

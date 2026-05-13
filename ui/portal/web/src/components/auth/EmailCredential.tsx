@@ -95,11 +95,10 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({
 type StepInputOptProps = {
   email: string;
   onSuccess: () => Promise<void>;
-  disableSignup?: boolean;
   goBack: () => void;
 };
 
-const StepInputOtp: React.FC<StepInputOptProps> = ({ email, disableSignup, goBack, onSuccess }) => {
+const StepInputOtp: React.FC<StepInputOptProps> = ({ email, goBack, onSuccess }) => {
   const connectors = useConnectors();
   const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
   const { register, setError, inputs } = useInputs();
@@ -123,7 +122,7 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({ email, disableSignup, goBac
         await connector.privy.auth.email.loginWithCode(
           email,
           otpValue,
-          disableSignup ? "no-signup" : "login-or-sign-up",
+          "login-or-sign-up",
           {
             embedded: {
               ethereum: {

@@ -1,3 +1,4 @@
 ---
 node_exporter_dir: "{{ deploy_home }}/node-exporter"
 node_exporter_port: 9100
+cadvisor_port: 9101

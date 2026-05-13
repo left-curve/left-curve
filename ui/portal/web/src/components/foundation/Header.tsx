@@ -1,22 +1,24 @@
-import { useAccount } from "@left-curve/store";
+import { useAccount, useConfig } from "@left-curve/store";
 import { useRouterState } from "@tanstack/react-router";
 import {
   IconGift,
   IconWalletWithCross,
   Modals,
   useApp,
+  useCountdown,
   useMediaQuery,
+  Tooltip,
 } from "@left-curve/applets-kit";
 
 import { Button, IconButton, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TestnetBanner } from "./TestnetBanner";
-import { isFeatureEnabled } from "~/featureFlags";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -24,14 +26,49 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected, isUserActive } = useAccount();
+  const { chain } = useConfig();
 
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
   const { isLg } = useMediaQuery();
 
-  const isProSwap = location.pathname.includes("trade");
-  const isPointsEnabled = isFeatureEnabled("points");
+  const isMainnet = !["Devnet", "Testnet"].includes(chain.name);
 
+  // TODO: Re-enable once the points service is ready.
+  // const pointsUrl = window.dango.urls.pointsUrl;
+  // const { isStarted, startsAt } = useCurrentEpoch({ pointsUrl, enabled: isMainnet });
+
+  // Fixed countdown target: 2026-04-15 12:00:00 UTC
+  const startDate = new Date("2026-04-15T12:00:00Z");
+  const isStarted = new Date() >= startDate;
+
+  const countdown = useCountdown({ date: startDate ?? undefined });
+
+  const campaignStartLabel = useMemo(() => {
+    if (!startDate) return null;
+    const dateLabel = startDate.toLocaleDateString(undefined, {
+      month: "long",
+      day: "numeric",
+    });
+
+    const days = Number(countdown.days);
+    const hours = Number(countdown.hours);
+    const minutes = Number(countdown.minutes);
+    const seconds = Number(countdown.seconds);
+
+    let remaining: string | null = null;
+    if (Number.isFinite(days + hours + minutes + seconds)) {
+      if (days > 0) remaining = `${days}d ${hours}h ${minutes}m`;
+      else if (hours > 0) remaining = `${hours}h ${minutes}m ${seconds}s`;
+      else if (minutes > 0) remaining = `${minutes}m ${seconds}s`;
+      else if (seconds > 0) remaining = `${seconds}s`;
+    }
+
+    return remaining ? `${dateLabel} · ${remaining}` : dateLabel;
+  }, [startDate, countdown]);
+
+  const isCampaignLocked = isMainnet && !isStarted;
+  const isProSwap = location.pathname.includes("trade");
   const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
 
   return (
@@ -48,11 +85,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       {isLg ? <TestnetBanner /> : null}
 
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
-        <Link to="/" className="w-fit">
+        <Link to="/" className="w-fit drag-none">
           <img
             src="/dango-logo.svg"
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card select-none bg-surface-secondary-rice"
+            className="h-11 order-1 cursor-pointer drag-none hidden lg:flex rounded-full shadow-account-card select-none bg-surface-secondary-rice"
           />
         </Link>
         <div
@@ -72,7 +109,25 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
           {!isSearchBarVisible ? (
             <div className="flex gap-2 lg:hidden">
-              {isPointsEnabled ? (
+              {isCampaignLocked ? (
+                <Tooltip
+                  content={
+                    campaignStartLabel
+                      ? m["points.campaignStartsOn"]({ date: campaignStartLabel })
+                      : m["points.campaign"]()
+                  }
+                  placement="top"
+                >
+                  <IconButton
+                    size="lg"
+                    type="button"
+                    className="rounded-lg shadow-account-card"
+                    isDisabled
+                  >
+                    <IconGift />
+                  </IconButton>
+                </Tooltip>
+              ) : (
                 <IconButton
                   as={Link}
                   to="/points"
@@ -82,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
                 >
                   <IconGift />
                 </IconButton>
-              ) : null}
+              )}
               <IconButton
                 onClick={() =>
                   isConnected ? setSidebarVisibility(true) : showModal(Modals.Authenticate)
@@ -98,11 +153,24 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           ) : null}
         </div>
         <div className="hidden lg:flex gap-4 items-center justify-end order-2 lg:order-3">
-          {isPointsEnabled ? (
+          {isCampaignLocked ? (
+            <Tooltip
+              content={
+                campaignStartLabel
+                  ? m["points.campaignStartsOn"]({ date: campaignStartLabel })
+                  : m["points.campaign"]()
+              }
+              placement="bottom"
+            >
+              <Button size="lg" className="rounded-lg" isDisabled>
+                {m["points.campaign"]()}
+              </Button>
+            </Tooltip>
+          ) : (
             <Button as={Link} to="/points" size="lg" className="rounded-lg">
               {m["points.campaign"]()}
             </Button>
-          ) : null}
+          )}
           <Button
             dng-connect-button="true"
             variant="utility"

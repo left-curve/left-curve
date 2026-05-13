@@ -100,6 +100,7 @@ services:
       - "${DEPLOYMENT_DIR}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
       - "${DEPLOYMENT_DIR}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
       - "${DEPLOYMENT_DIR}/clickhouse/data:/var/lib/clickhouse"
+      - "${DEPLOYMENT_DIR}/clickhouse/logs:/var/log/clickhouse-server"
       - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh:ro"
     networks:
       - default
@@ -182,6 +183,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+      # `run_dango_httpd_server` in dango/cli/src/start.rs serially preloads
+      # the ClickHouse candle/trade/pair-stats caches before binding :8080,
+      # which on testnet (months of accumulated data) takes well over the
+      # 30s default grace window. Give it room until the cache warm-up is
+      # moved off the HTTP-bind critical path.
+      start_period: 180s
 
   dango-frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
@@ -208,6 +215,7 @@ services:
       FAUCET_URL: ${FAUCET_URL}
       UP_URL: ${UP_URL}
       QUEST_URL: ${QUEST_URL}
+      POINTS_URL: ${POINTS_URL}
       BANNER: ${FRONTEND_BANNER}
       FRONTEND_ENABLED_FEATURES: ${FRONTEND_ENABLED_FEATURES}
       CHAIN_ID: ${CHAIN_ID}
@@ -221,7 +229,7 @@ services:
 
 {% if faucet_bot_enabled %}
   faucet-bot:
-    image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    image: ghcr.io/left-curve/bots/faucet:${FAUCET_BOT_TAG:-latest}
     restart: unless-stopped
     ulimits:
       nofile:
@@ -285,6 +293,51 @@ services:
       timeout: 5s
       retries: 3
       # start_period: 10s
+{% endif %}
+
+{% if perps_bot_enabled and inventory_hostname == perps_bot_host %}
+  perps-bot:
+    image: ghcr.io/left-curve/bots/perps:${PERPS_BOT_TAG:-latest}
+    labels:
+      <<: *common-labels
+      service_name: "perps_bot"
+    depends_on:
+      dango:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./perps-bot/config.json:/root/.dango-perps/config.json
+{% endif %}
+
+{% set liq_hosts = groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([])) %}
+{% if inventory_hostname in liq_hosts %}
+  perp-liquidator:
+    image: ghcr.io/left-curve/bots/perps-liquidator:${PERP_LIQUIDATOR_TAG:-latest}
+    labels:
+      <<: *common-labels
+      service_name: "perp_liquidator"
+    depends_on:
+      dango:
+        condition: service_healthy
+    restart: always
+    env_file:
+      - ./perp-liquidator/.env
+    ports:
+{% if expose_ports %}
+      - "${WIREGUARD_IP}:0:9310"
+      - "${TAILSCALE_IP}:0:9310"
+{% else %}
+      - "${WIREGUARD_IP}:{{ perp_liquidator_http_port }}:9310"
+      - "${TAILSCALE_IP}:{{ perp_liquidator_http_port }}:9310"
+{% endif %}
+    networks:
+      - default
+      - traefik
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9310/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 {% endif %}
 
   cometbft:

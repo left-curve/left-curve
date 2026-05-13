@@ -10,9 +10,6 @@ pub enum IndexerError {
     #[error("mutex is poisoned: {error}")]
     MutexPoisoned { error: String },
 
-    #[error("runtime error: {error}")]
-    Runtime { error: String },
-
     #[error(transparent)]
     #[backtrace(new)]
     StripPrefixError(std::path::StripPrefixError),
@@ -41,9 +38,6 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Persistence(indexer_disk_saver::error::Error),
-
-    #[error("hooks error: {error}")]
-    Hooks { error: String },
 
     #[error(transparent)]
     #[backtrace(new)]
@@ -88,7 +82,6 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::MutexPoisoned { error, backtrace } => {
                 parse_error!(Generic, error, backtrace)
             },
-            IndexerError::Runtime { error, backtrace } => parse_error!(Generic, error, backtrace),
             IndexerError::ByteStream { error, backtrace } => {
                 parse_error!(Generic, error, backtrace)
             },
@@ -104,7 +97,6 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::Io(e) => parse_error!(Io, e),
             IndexerError::Persist(e) => parse_error!(Io, e),
             IndexerError::Persistence(e) => parse_error!(Storage, e),
-            IndexerError::Hooks { error, backtrace } => parse_error!(Hook, error, backtrace),
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
             IndexerError::S3 { error, backtrace } => parse_error!(Generic, error, backtrace),

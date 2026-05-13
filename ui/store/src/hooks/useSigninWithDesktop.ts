@@ -7,12 +7,7 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { Secp256k1 } from "@left-curve/dango/crypto";
 import { MessageExchanger } from "../messageExchanger.js";
 
-import type {
-  NestedOmit,
-  Result,
-  SessionResponse,
-  UserIndexAndName,
-} from "@left-curve/dango/types";
+import type { NestedOmit, Result, SessionResponse } from "@left-curve/dango/types";
 import type { UseConnectorsReturnType } from "./useConnectors.js";
 import type { UseSubmitTxParameters, UseSubmitTxReturnType } from "./useSubmitTx.js";
 
@@ -48,7 +43,7 @@ export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters)
         const publicKey = keyPair.getPublicKey();
 
         const { error, data } = await messageExchanger.sendMessage<
-          Result<SessionResponse & { userIndexAndName: UserIndexAndName }>
+          Result<SessionResponse & { userIndex: number }>
         >({
           type: "create-session",
           message: {
@@ -59,10 +54,10 @@ export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters)
 
         if (error) throw error;
 
-        const { authorization, keyHash, sessionInfo, userIndexAndName } = data;
+        const { authorization, keyHash, sessionInfo, userIndex } = data;
 
         await connector.connect({
-          userIndexAndName,
+          userIndex,
           chainId,
           challenge: encodeBase64(
             encodeUtf8(

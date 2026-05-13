@@ -9,25 +9,46 @@ use {
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
         Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
         NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
-        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
-        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
-        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
-        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
-        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        TraceOption, Vm, catch_and_push_event, do_authenticate, do_configure, do_cron_execute,
+        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upgrade,
+        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
+        query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
+        query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, Buffer, CheckTxEvents,
-        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus,
-        GENESIS_SENDER, GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
+        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, GENESIS_SENDER,
+        GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
         MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, Shared,
         StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
+    std::sync::Arc,
+    tokio::sync::watch,
 };
 
 pub type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>;
+
+/// Reason why the app requested a graceful halt of the process.
+///
+/// Sent over a `watch` channel so the binary's main loop can stop the ABCI
+/// server, flush the indexer, and exit cleanly with code `0` — in contrast
+/// with `panic!`, which leaves async background work unfinished.
+#[derive(Clone, Debug)]
+pub enum HaltReason {
+    /// The chain reached a scheduled upgrade height but the running binary's
+    /// cargo version does not match the one declared in the upgrade plan.
+    /// The operator must deploy the correct binary before the chain resumes.
+    UpgradeIncorrectVersion { current: String, expected: String },
+}
+
+/// Handle used by [`App`] to request a graceful shutdown of the host process.
+///
+/// Cloneable so the `App` (which is itself `Clone`) can carry it across the
+/// `split::service` fan-out; all clones drive the same underlying channel.
+pub type ShutdownTrigger = Arc<watch::Sender<Option<HaltReason>>>;
 
 /// The ABCI application.
 ///
@@ -56,6 +77,13 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     upgrade_handler: Option<UpgradeHandler<VM>>,
     /// Current cargo version of the app. Used in chain upgrades.
     cargo_version: String,
+    /// If set, the app can request a graceful shutdown of the host process
+    /// by sending a [`HaltReason`] through this channel (e.g. when
+    /// `finalize_block` hits an upgrade height with the wrong binary).
+    ///
+    /// `None` in tests and in the read-only `App` instance used by the HTTP
+    /// server, which never finalize blocks and therefore never halt.
+    shutdown_trigger: Option<ShutdownTrigger>,
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
@@ -84,7 +112,19 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             query_gas_limit,
             upgrade_handler,
             cargo_version: cargo_version.into(),
+            shutdown_trigger: None,
         }
+    }
+
+    /// Attach a shutdown trigger so the app can request a graceful halt of
+    /// the host process (see [`HaltReason`]).
+    ///
+    /// Intended to be called by the binary's `start` command right after
+    /// `App::new`; tests and the HTTP-only `App` instance leave this unset.
+    #[must_use]
+    pub fn with_shutdown_trigger(mut self, trigger: ShutdownTrigger) -> Self {
+        self.shutdown_trigger = Some(trigger);
+        self
     }
 }
 
@@ -99,6 +139,10 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
     {
         self.cargo_version = cargo_version.into();
         self.upgrade_handler = upgrade_handler;
+    }
+
+    pub fn set_shutdown_trigger(&mut self, trigger: ShutdownTrigger) {
+        self.shutdown_trigger = Some(trigger);
     }
 }
 
@@ -117,6 +161,7 @@ where
             query_gas_limit: self.query_gas_limit,
             upgrade_handler: self.upgrade_handler,
             cargo_version: self.cargo_version.clone(),
+            shutdown_trigger: self.shutdown_trigger.clone(),
         }
     }
 }
@@ -308,7 +353,7 @@ where
     // 4. remove orphaned nodes
     // 5. flush (but not commit) state changes to DB
     // 5. indexer `index_block`
-    pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
+    pub async fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
         #[cfg(feature = "tracing")]
         {
             tracing::info!(
@@ -369,6 +414,19 @@ where
                         upgrade_version = upgrade.cargo_version,
                         "!!! PRE-PLANNED CHAIN HALT !!!"
                     );
+                }
+
+                // Signal the host binary to shut down gracefully (flush the
+                // indexer, close HTTP servers, flush telemetry) instead of
+                // leaving the main loop to `panic!` in the ABCI layer.
+                // Safe to ignore the send result: if there are no receivers,
+                // we are running in a test or in an embedded context that
+                // does not own the process lifecycle.
+                if let Some(trigger) = &self.shutdown_trigger {
+                    let _ = trigger.send(Some(HaltReason::UpgradeIncorrectVersion {
+                        current: self.cargo_version.clone(),
+                        expected: upgrade.cargo_version.clone(),
+                    }));
                 }
 
                 return Err(AppError::upgrade_incorrect_version(
@@ -433,18 +491,15 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .pre_indexing(block.info.height, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `pre_indexing`");
-            }
-        })?;
+        self.indexer
+            .pre_indexing(block.info.height)
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `pre_indexing`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -612,18 +667,15 @@ where
             tx_outcomes,
         };
 
-        let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .index_block(&block, &block_outcome, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `index_block`");
-            }
-        })?;
+        self.indexer
+            .index_block(&block, &block_outcome)
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `index_block`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -634,7 +686,7 @@ where
         Ok(block_outcome)
     }
 
-    pub fn do_commit(&self) -> AppResult<()> {
+    pub async fn do_commit(&self) -> AppResult<()> {
         #[cfg(feature = "tracing")]
         {
             tracing::info!("Received Commit request");
@@ -654,18 +706,15 @@ where
         let cfg = CONFIG.load(&storage)?;
         let app_cfg = APP_CONFIG.load(&storage)?;
 
-        let mut indexer_ctx = crate::IndexerContext::new();
-        futures::executor::block_on(async {
-            self.indexer
-                .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
-                .await
-        })
-        .inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(err = %_err, "Error in `post_indexing`");
-            }
-        })?;
+        self.indexer
+            .post_indexing(version, cfg, app_cfg)
+            .await
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `post_indexing`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -898,7 +947,7 @@ where
         self.do_init_chain(chain_id, block, genesis_state)
     }
 
-    pub fn do_finalize_block_raw<T>(
+    pub async fn do_finalize_block_raw<T>(
         &self,
         block_info: BlockInfo,
         raw_txs: &[T],
@@ -941,7 +990,7 @@ where
             txs,
         };
 
-        self.do_finalize_block(block)
+        self.do_finalize_block(block).await
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<CheckTxOutcome> {
@@ -1073,48 +1122,36 @@ where
     )
     .into_commitment_status();
 
-    let request_backrun = match events.authenticate.as_result() {
-        Err((_, err)) => {
-            drop(msg_buffer);
-            let err = err.clone();
-            return process_finalize_fee(
-                vm,
-                fee_buffer,
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                events,
-                Err(err),
-                trace_opt,
-            );
-        },
-        Ok(event) => {
-            msg_buffer.write_access().commit();
-            if let EventStatus::Ok(e) = event {
-                e.backrun
-            } else {
-                unreachable!();
-            }
-        },
-    };
+    if let Err((_, err)) = events.authenticate.as_result() {
+        drop(msg_buffer);
+        let err = err.clone();
+        return process_finalize_fee(
+            vm,
+            fee_buffer,
+            gas_tracker,
+            block,
+            tx,
+            mode,
+            events,
+            Err(err),
+            trace_opt,
+        );
+    }
+    msg_buffer.write_access().commit();
 
-    // Loop through the messages and execute one by one. Then, call the sender
-    // account's `backrun` method.
+    // Loop through the messages and execute one by one.
     //
     // If everything succeeds, commit state changes in `msg_buffer` into `fee_buffer`,
     // and record the events emitted.
     //
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
     // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
-    events.msgs_and_backrun = process_msgs_then_backrun(
+    events.msgs_and_backrun = process_msgs(
         vm.clone(),
         msg_buffer.clone(),
         gas_tracker.clone(),
         block,
         &tx,
-        mode,
-        request_backrun,
         trace_opt,
     )
     .into_commitment();
@@ -1165,14 +1202,12 @@ where
 }
 
 #[inline]
-fn process_msgs_then_backrun<S, VM>(
+fn process_msgs<S, VM>(
     vm: VM,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
-    mode: AuthMode,
-    request_backrun: bool,
     trace_opt: TraceOption,
 ) -> EventResult<MsgsAndBackrunEvents>
 where
@@ -1203,21 +1238,6 @@ where
             evt,
             msgs
         }
-    }
-
-    if request_backrun {
-        catch_and_update_event! {
-            do_backrun(
-                vm,
-                Box::new(buffer),
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                trace_opt,
-            ),
-            evt => backrun
-        };
     }
 
     EventResult::Ok(evt)

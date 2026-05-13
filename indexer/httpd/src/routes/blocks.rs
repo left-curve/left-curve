@@ -1,5 +1,5 @@
 use {
-    crate::context::Context,
+    crate::context::FullContext,
     actix_web::{Error, HttpResponse, Scope, error::ErrorInternalServerError, get, web},
     indexer_cache::cache_file::CacheFile,
     std::path::PathBuf,
@@ -15,7 +15,7 @@ pub fn services() -> Scope {
 
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/info")]
-pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
+pub async fn latest_block_info(app_ctx: web::Data<FullContext>) -> Result<HttpResponse, Error> {
     let block_height = app_ctx
         .grug_app()
         .last_finalized_block()
@@ -30,12 +30,12 @@ pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpRespon
 #[get("/info/{block_height}")]
 pub async fn block_info_by_height(
     path: web::Path<u64>,
-    app_ctx: web::Data<Context>,
+    app_ctx: web::Data<FullContext>,
 ) -> Result<HttpResponse, Error> {
     _block_by_height(path.into_inner(), &app_ctx)
 }
 
-fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
+fn _block_by_height(block_height: u64, app_ctx: &FullContext) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx
         .indexer_cache_context
         .indexer_path
@@ -54,7 +54,7 @@ fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse
 
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/result")]
-pub async fn block_result(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
+pub async fn block_result(app_ctx: web::Data<FullContext>) -> Result<HttpResponse, Error> {
     let block_height = app_ctx
         .grug_app()
         .last_finalized_block()
@@ -69,12 +69,15 @@ pub async fn block_result(app_ctx: web::Data<Context>) -> Result<HttpResponse, E
 #[get("/result/{block_height}")]
 pub async fn block_result_by_height(
     path: web::Path<u64>,
-    app_ctx: web::Data<Context>,
+    app_ctx: web::Data<FullContext>,
 ) -> Result<HttpResponse, Error> {
     _block_results_by_height(path.into_inner(), &app_ctx)
 }
 
-fn _block_results_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
+fn _block_results_by_height(
+    block_height: u64,
+    app_ctx: &FullContext,
+) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx
         .indexer_cache_context
         .indexer_path

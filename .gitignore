@@ -4,7 +4,9 @@
 # Editors
 .idea/
 .vscode/
-.claude/
+.claude/*
+!.claude/rules/
+.superset/
 
 # macOS
 **/.DS_Store
@@ -23,31 +25,24 @@ artifacts/
 target/
 
 # Python
-**/.ipynb_checkpoints/
+**/__pycache__/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
 **/.venv/
-
-# LaTeX
-**/*.aux
-**/*.bbl
-**/*.bcf
-**/*.blg
-**/*.log
-**/*.out
-**/*.pdf
-**/*.run.xml
-**/*.synctex.gz
+**/dist/
+**/*.egg-info/
 
 # Node.js
 **/node_modules
 **/tsconfig.tsbuildinfo
 **/build
 !ui/portal/app/.eas/build/
-!ui/portal/web/**/*.pdf
 ui/portal/web/public/images
 **/.turbo
 
 # SDK
-sdk/docs
+sdk/typescript/docs
 
 # UI
 **/.next
@@ -70,13 +65,8 @@ ui/portal/app/android
 **/cargo-flamegraph.trace
 **/flamegraph*.svg
 **/testdata/
-dango/scripts/examples/blocks*
-dango/scripts/examples/data*
-dango/scripts/examples/*.borsh
-dango/scripts/examples/*.json
-dango/scripts/examples/*.tar
-dango/scripts/examples/*.tar.gz
 !pyth/client/testdata/
+.playwright-mcp
 
 # LocalDango
 localdango/**/configs/cometbft/config/addrbook.json
@@ -86,11 +76,20 @@ localdango/**/data
 localdango/**/indexer
 localdango/**/logs
 
+# Ansible deploy logs (captured by `just deploy-*`, `just restart-*`, etc.)
+deploy/logs/
+
+# Downloaded database archives (captured by `just download-db-*`)
+deploy/downloaded-db/
+
 # GraphiQL
 docker/graphiql/dist
 
 # Hyperlane
 **/*_hyperlane_db
+
+# Chain health compensation output
+compensation_output/
 
 # Ansible
 .ansible

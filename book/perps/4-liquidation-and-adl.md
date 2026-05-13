@@ -36,7 +36,10 @@ When an account is liquidatable, the system computes the **minimum set of positi
 
 3. Walk the sorted list and close just enough to cover the deficit:
 
-   - $\mathtt{deficit} = \mathtt{MM} − \mathtt{equity}$
+   - $\mathtt{deficit} = \mathtt{MM} − \mathtt{equity} \;/\; (1 + b)$
+
+     where $b$ is the global `liquidation_buffer_ratio` (default 0). When $b > 0$, positions are closed slightly beyond the maintenance boundary so the user's post-liquidation equity exceeds their remaining MM by a factor of $(1 + b)$, preventing repeated small liquidations from minor adverse price movements.
+
    - For each position:
      - If $\mathtt{deficit} \le 0$: stop
      - $\mathtt{closeSize} = \min \left( \left\lceil \frac{\mathtt{deficit}}{\mathtt{oraclePrice} \times \mathtt{mmr}} \right\rceil,\; |\mathtt{size}| \right)$
@@ -73,6 +76,8 @@ $$
 Since equity is typically negative for liquidatable users, the bankruptcy price is worse than the oracle price — the counter-party receives a favourable fill. The counter-party's resting limit orders are not affected by ADL; only their position is force-reduced.
 
 Liquidation fills (both order-book and ADL) carry **zero trading fees** for both taker and maker.
+
+Order-book fills during liquidation emit `order_filled` events with a `fill_id` just like regular matches (see the [events reference](8-api.md#9-events-reference)); ADL fills do _not_ — they use the separate `deleveraged` and `liquidated` events, which carry no `fill_id`, because ADL is a position transfer at the bankruptcy price rather than an order-book match.
 
 ## 4. Liquidation fee
 
@@ -126,7 +131,7 @@ The insurance fund is a separate pool from the vault that absorbs bad debt and i
 
 **Negative balance:** The insurance fund may go negative when accumulated bad debt exceeds accumulated fees. This is the simplest approach — no special trigger or intervention is needed. Future liquidation fees will naturally replenish the fund.
 
-The vault's margin is never touched for bad debt or liquidation fees. This isolates liquidity providers from liquidation losses.
+Other users' bad debt and liquidation fees never touch the vault's margin — this isolates liquidity providers from external liquidation losses. However, the vault itself is subject to liquidation like any other account. If the vault's equity falls below its maintenance margin, its positions are closed following the same procedure described above. The vault's own liquidation fee goes to the insurance fund, and any bad debt is absorbed by it.
 
 ## Examples
 

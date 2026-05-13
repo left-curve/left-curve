@@ -1,5 +1,62 @@
 ---
 dex_bot_host: "{{ ansible_play_hosts_all | first }}"
+perps_bot_host: "{{ ansible_play_hosts_all | first }}"
+
+# Per-network non-secret configuration for perp-liquidator.
+# Each network has a shared base config and a list of instances.
+# Per-instance fields: name, liquidation_delay_blocks.
+perp_liquidator_config:
+  devnet:
+    http_url: "http://dango:8080"
+    liquidation_cooldown: 20
+    event_driven: "true"
+    query_timeout: 1
+    query_timeout_heavy: 5
+    http_port: 9310
+    notification_timeout: 3
+    frontend_url: "https://dev.dango.exchange"
+    instances:
+      - name: "devnet-1"
+        liquidation_delay_blocks: 0
+      - name: "devnet-2"
+        liquidation_delay_blocks: 5
+  testnet:
+    http_url: "http://dango:8080"
+    liquidation_cooldown: 20
+    event_driven: "true"
+    query_timeout: 1
+    query_timeout_heavy: 5
+    http_port: 9310
+    notification_timeout: 3
+    frontend_url: "https://test.dango.exchange"
+    reinit_interval_blocks: 7200
+    instances:
+      - name: "testnet-1"
+        liquidation_delay_blocks: 0
+      - name: "testnet-2"
+        liquidation_delay_blocks: 5
+  mainnet:
+    http_url: "http://dango:8080"
+    liquidation_cooldown: 5
+    event_driven: "true"
+    query_timeout: 1
+    query_timeout_heavy: 5
+    http_port: 9310
+    notification_timeout: 3
+    frontend_url: "https://dango.exchange"
+    reinit_interval_blocks: 3600
+    block_fetch_alert_threshold: 20
+    instances:
+      - name: "mainnet-1"
+        liquidation_delay_blocks: 0
+      - name: "mainnet-2"
+        liquidation_delay_blocks: 2
+      - name: "mainnet-3"
+        liquidation_delay_blocks: 5
+      - name: "mainnet-4"
+        liquidation_delay_blocks: 10
+
+perp_liquidator_http_port: 9310
 postgres_host: "postgres"
 postgres_external_host: "127.0.0.1"
 postgres_port: 5432
@@ -15,3 +72,4 @@ verify_signatures: true
 verify_backend_signature: true
 verify_frontend_signature: true
 deploy_lock_threshold_seconds: 600
+faucet_bot_enabled: false

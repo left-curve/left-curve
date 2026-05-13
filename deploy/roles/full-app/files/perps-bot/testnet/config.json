@@ -1,0 +1,16 @@
+{
+  "http_url": "http://dango:8080",
+  "app_settings": {
+    "sleep": "3s",
+    "max_slippage": 0.01,
+    "margin_usage": 0.005,
+    "liquidity_sleep": "5s",
+    "mint": null,
+    "vault": {
+      "amount": 5000
+    }
+  },
+  "private_key": {
+    "secp256k1": "d193e9418090017bad195a6eae1156becd8c810fa52719df36a05fcbb5e7c971"
+  }
+}

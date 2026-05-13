@@ -5,7 +5,10 @@ frontend_image_tag: "{{ github_sha }}"
 # Image digests for immutable pinning (provided by CI, empty means resolve at deploy time)
 dango_image_digest: ""
 frontend_image_digest: ""
+faucet_bot_tag: "latest"
 dex_bot_tag: "latest"
+perps_bot_tag: "latest"
+perp_liquidator_tag: "latest"
 cometbft_node_key: ""
 cometbft_validator_address: ""
 cometbft_validator_public_key: ""
@@ -21,7 +24,7 @@ dango_network: "devnet"
 traefik_enabled: false
 expose_ports: false
 dex_bot_enabled: false
-faucet_bot_enabled: false
+perps_bot_enabled: false
 github_deployments_enabled: false
 deploy_includes_postgres: true
 delete_postgres_database_at_merge: false

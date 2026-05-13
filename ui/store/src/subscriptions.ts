@@ -8,7 +8,12 @@ import type {
   SubscriptionKey,
 } from "./types/subscriptions.js";
 
-export function subscriptionsStore(client: PublicClient, onError?: (error: unknown) => void) {
+export type SubscriptionsStoreOptions = {
+  onError?: (error: unknown) => void;
+};
+
+export function subscriptionsStore(client: PublicClient, options?: SubscriptionsStoreOptions) {
+  const { onError } = options ?? {};
   const activeExecutors: Map<string, () => void> = new Map();
   const listeners = new Map<string, Set<(...args: any[]) => void>>();
 
@@ -88,6 +93,22 @@ const blockSubscriptionExecutor: SubscriptionExecutor<"block"> = ({
   return unsubscribe;
 };
 
+const eventsSubscriptionExecutor: SubscriptionExecutor<"events"> = ({
+  client,
+  params,
+  getListeners,
+  onError,
+}) => {
+  return client.eventsSubscription({
+    ...params,
+    next: ({ events }) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(events));
+    },
+    error: onError,
+  });
+};
+
 const eventsByAddressesSubscriptionExecutor: SubscriptionExecutor<"eventsByAddresses"> = ({
   client,
   params,
@@ -154,6 +175,22 @@ const candlesSubscriptionExecutor: SubscriptionExecutor<"candles"> = ({
   });
 };
 
+const perpsCandlesSubscriptionExecutor: SubscriptionExecutor<"perpsCandles"> = ({
+  client,
+  params,
+  getListeners,
+  onError,
+}) => {
+  return client.perpsCandlesSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
 const tradesSubscriptionExecutor: SubscriptionExecutor<"trades"> = ({
   client,
   params,
@@ -161,6 +198,22 @@ const tradesSubscriptionExecutor: SubscriptionExecutor<"trades"> = ({
   onError,
 }) => {
   return client.tradesSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
+const perpsTradesSubscriptionExecutor: SubscriptionExecutor<"perpsTrades"> = ({
+  client,
+  params,
+  getListeners,
+  onError,
+}) => {
+  return client.perpsTradesSubscription({
     ...params,
     next: (event) => {
       const currentListeners = getListeners();
@@ -191,13 +244,48 @@ const queryAppSubscriptionExecutor: SubscriptionExecutor<"queryApp"> = ({
   });
 };
 
+const allPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPairStats"> = ({
+  client,
+  getListeners,
+  onError,
+}) => {
+  return client.allPairStatsSubscription({
+    httpInterval: 5_000,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
+const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairStats"> = ({
+  client,
+  getListeners,
+  onError,
+}) => {
+  return client.allPerpsPairStatsSubscription({
+    httpInterval: 5_000,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+    error: onError,
+  });
+};
+
 const SubscriptionExecutors = {
   account: accountSubscriptionExecutor,
   block: blockSubscriptionExecutor,
   candles: candlesSubscriptionExecutor,
+  events: eventsSubscriptionExecutor,
   eventsByAddresses: eventsByAddressesSubscriptionExecutor,
+  perpsCandles: perpsCandlesSubscriptionExecutor,
+  perpsTrades: perpsTradesSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
   trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
   queryApp: queryAppSubscriptionExecutor,
+  allPairStats: allPairStatsSubscriptionExecutor,
+  allPerpsPairStats: allPerpsPairStatsSubscriptionExecutor,
 };

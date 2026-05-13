@@ -6,7 +6,9 @@ import { Spinner, useTheme, type UseThemeReturnType } from "@left-curve/applets-
 
 import { routeTree } from "./app.pages";
 import { ErrorPage } from "./components/foundation/ErrorPage";
+import { queryClient } from "./queryClient";
 
+import type { QueryClient } from "@tanstack/react-query";
 import type {
   UseAccountReturnType,
   UseConfigReturnType,
@@ -38,6 +40,7 @@ export interface RouterContext {
   account: UseAccountReturnType;
   config: UseConfigReturnType;
   theme: UseThemeReturnType;
+  queryClient: QueryClient;
 }
 
 export const AppRouter: React.FC = () => {
@@ -46,5 +49,5 @@ export const AppRouter: React.FC = () => {
   const client = usePublicClient();
   const theme = useTheme();
 
-  return <RouterProvider router={router} context={{ account, config, client, theme }} />;
+  return <RouterProvider router={router} context={{ account, config, client, theme, queryClient }} />;
 };

@@ -6,7 +6,7 @@ use {
         Addr32, IncrementalMerkleTree,
         isms::{IsmQuery, QueryIsmRequest},
         mailbox::{
-            Dispatch, DispatchId, Domain, ExecuteMsg, InsertedIntoTree, InstantiateMsg,
+            Dispatch, DispatchId, DispatchV2, Domain, ExecuteMsg, InsertedIntoTree, InstantiateMsg,
             MAILBOX_VERSION, Message, PostDispatch, Process, ProcessId,
         },
         recipients::{self, QueryRecipientRequest, RecipientMsg, RecipientQuery},
@@ -72,8 +72,16 @@ fn dispatch(
         Ok(tree)
     })?;
 
+    let root = tree.root();
+
     Ok(Response::new()
-        .add_event(Dispatch(message))?
+        .add_event(Dispatch(message.clone()))?
+        .add_event(DispatchV2 {
+            message,
+            message_id,
+            root,
+            index: tree.count - 1,
+        })?
         .add_event(DispatchId { message_id })?
         .add_event(PostDispatch {
             message_id,

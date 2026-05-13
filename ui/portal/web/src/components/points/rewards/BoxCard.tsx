@@ -7,81 +7,84 @@ import {
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
+import { useChestOpening } from "./useChestOpening";
 
 export type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
+
+const VariantLabels: Record<BoxVariant, () => string> = {
+  bronze: () => m["points.rewards.boxes.tiers.bronze"](),
+  silver: () => m["points.rewards.boxes.tiers.silver"](),
+  gold: () => m["points.rewards.boxes.tiers.gold"](),
+  crystal: () => m["points.rewards.boxes.tiers.crystal"](),
+};
+
+const VariantTooltips: Record<BoxVariant, () => string> = {
+  bronze: () => m["points.rewards.boxes.tooltips.bronze"](),
+  silver: () => m["points.rewards.boxes.tooltips.silver"](),
+  gold: () => m["points.rewards.boxes.tooltips.gold"](),
+  crystal: () => m["points.rewards.boxes.tooltips.crystal"](),
+};
 
 const VariantConfig: Record<
   BoxVariant,
   {
-    label: string;
     badgeColor: "red" | "green" | "rice" | "blue";
-    tooltip: string;
     imageShadow: string;
-    threshold: number;
   }
 > = {
   bronze: {
-    label: "Bronze",
     badgeColor: "red",
-    tooltip: "Receive a Bronze chest for every $25k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#C96A1D66)_drop-shadow(0px_1px_24px_#FFA72C4D)]",
-    threshold: 25_000,
   },
   silver: {
-    label: "Silver",
     badgeColor: "green",
-    tooltip: "Receive a Silver chest for every $100k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#80850680)_drop-shadow(0px_1px_24px_#B8BE0833)]",
-    threshold: 100_000,
   },
   gold: {
-    label: "Gold",
     badgeColor: "rice",
-    tooltip: "Receive a Gold chest for every $250k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#E3BD6666)_drop-shadow(0px_1px_24px_#DCA54333)]",
-    threshold: 250_000,
   },
   crystal: {
-    label: "Crystal",
     badgeColor: "blue",
-    tooltip: "Receive a Crystal chest for every $500k volume.",
     imageShadow:
       "[filter:drop-shadow(0px_4px_100px_#BCB8EB80)_drop-shadow(0px_1px_24px_#FFFFFF4D)]",
-    threshold: 500_000,
   },
 };
 
 type BoxCardProps = {
   variant: BoxVariant;
-  volume: number;
+  quantity: number;
   className?: string;
-  onClick?: () => void;
+  isUserLocked?: boolean;
 };
 
 export const BoxCard: React.FC<BoxCardProps> = ({
   className,
-  onClick,
-  volume,
+  quantity,
   variant,
+  isUserLocked = false,
 }) => {
   const { isLg } = useMediaQuery();
-  const { badgeColor, imageShadow, label, threshold } = VariantConfig[variant];
+  const { openChest, openAllChests } = useChestOpening();
+  const { badgeColor, imageShadow } = VariantConfig[variant];
+  const label = VariantLabels[variant]();
+  const tooltip = VariantTooltips[variant]();
 
-  const quantity = Math.max(Math.floor(volume / threshold), 0);
-  const isLocked = quantity < 1;
+  const isLocked = isUserLocked || quantity < 1;
 
   const handleClick = () => {
     if (isLocked) return;
-    onClick?.();
-    if (!onClick) {
-      // Temporary action until a real handler is provided.
-      // eslint-disable-next-line no-console
-      console.log(`BoxCard clicked: ${variant}`);
-    }
+    openChest(variant);
+  };
+
+  const handleOpenAllClick = () => {
+    if (isLocked) return;
+    openAllChests(variant);
   };
 
   return (
@@ -93,11 +96,7 @@ export const BoxCard: React.FC<BoxCardProps> = ({
           text={
             <div className="flex pl-1 items-center gap-1">
               {label}
-              <Tooltip
-                className="max-w-[21rem]"
-                content={VariantConfig[variant].tooltip}
-                placement="top"
-              >
+              <Tooltip className="max-w-[21rem]" content={tooltip} placement="top">
                 <IconInfo className="inline-block w-4 h-4" />
               </Tooltip>
             </div>
@@ -110,7 +109,7 @@ export const BoxCard: React.FC<BoxCardProps> = ({
             alt={`${label} chest`}
             className={twMerge(
               "w-full h-full object-contain select-none drag-none absolute inset-0 -top-4 lg:-top-6",
-              imageShadow,
+              isLocked ? "opacity-50" : imageShadow,
             )}
           />
         </div>
@@ -124,15 +123,26 @@ export const BoxCard: React.FC<BoxCardProps> = ({
           </p>
         )}
       </div>
-      <Button
-        size={isLg ? "md" : "sm"}
-        className="px-8 lg:px-10"
-        variant="primary"
-        isDisabled={isLocked}
-        onClick={handleClick}
-      >
-        Open
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button
+          size={isLg ? "md" : "sm"}
+          className="px-8 lg:px-10"
+          variant="primary"
+          isDisabled={isLocked}
+          onClick={handleClick}
+        >
+          {m["points.rewards.boxes.open"]()}
+        </Button>
+        <Button
+          size={isLg ? "md" : "sm"}
+          className="px-6 lg:px-8"
+          variant="tertiary"
+          isDisabled={isLocked || quantity <= 1}
+          onClick={handleOpenAllClick}
+        >
+          {m["points.rewards.boxes.openAll"]()}
+        </Button>
+      </div>
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { useControlledState } from "@left-curve/foundation";
 import { GlobalText } from "./GlobalText";
 
 type ReactChildren = React.PropsWithChildren<{}>["children"];
+type TabElement = React.ReactElement<TabProps>;
 
 export interface TabsProps extends VariantProps<typeof tabsVariants> {
   onTabChange?: (tab: string) => void;
@@ -41,7 +42,7 @@ export const Tabs: React.FC<React.PropsWithChildren<TabsProps>> = ({
     if (tabs.length > 0) {
       return typeof tabs[0] === "string"
         ? (tabs[0] as string)
-        : (tabs[0] as React.ReactElement).props.title;
+        : (tabs[0] as TabElement).props.title;
     }
     return "";
   });
@@ -93,7 +94,7 @@ export const Tabs: React.FC<React.PropsWithChildren<TabsProps>> = ({
 
       {tabs.map((e) => {
         const isKey = typeof e === "string";
-        const elemKey = isKey ? (e as string) : (e as React.ReactElement).props.title;
+        const elemKey = isKey ? (e as string) : (e as TabElement).props.title;
         const isActive = elemKey === activeTab;
 
         return (
@@ -114,7 +115,7 @@ export const Tabs: React.FC<React.PropsWithChildren<TabsProps>> = ({
                 fullWidth={fullWidth}
               />
             ) : (
-              cloneElement(e as React.ReactElement, { isActive, color })
+              cloneElement(e as TabElement, { isActive, color })
             )}
           </Pressable>
         );
@@ -181,7 +182,7 @@ export const Tab: React.FC<React.PropsWithChildren<TabProps>> = ({
 };
 
 const tabVariants = tv({
-  base: "transition-all relative z-10 whitespace-nowrap outline-none capitalize py-2 exposure-sm-italic",
+  base: "transition-all relative z-10 whitespace-nowrap outline-none capitalize py-2 diatype-m-medium",
   variants: {
     color: { green: "", red: "", "light-green": "", "line-red": "" },
     fullWidth: { true: "flex-1 w-full text-center", false: "" },

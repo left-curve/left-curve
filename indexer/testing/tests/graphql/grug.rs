@@ -6,15 +6,27 @@ use {
         BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt, Message, Query,
         QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
     },
-    indexer_client::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
+    indexer_graphql_types::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
     indexer_testing::{
         GraphQLCustomRequest, block::create_block, build_app_service, call_graphql_query,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        call_graphql_with_headers, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     serde_json::json,
     std::str::FromStr,
     tokio::sync::mpsc,
 };
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RequesterIpGraphqlResponse {
+    remote_ip: Option<String>,
+    peer_ip: Option<String>,
+    x_forwarded_for: Option<String>,
+    forwarded: Option<String>,
+    cf_connecting_ip: Option<String>,
+    true_client_ip: Option<String>,
+    x_real_ip: Option<String>,
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_query_app() -> anyhow::Result<()> {
@@ -58,7 +70,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from indexer-graphql-types
     let body_request = Query::Balance(QueryBalanceRequest {
         address: accounts["owner"].address,
         denom: Denom::from_str("ugrug")?,
@@ -143,6 +155,89 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                     response.data.response,
                     json!({"balance": {"amount": "4000", "denom": "ugrug"}})
                 );
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_returns_requester_ip() -> anyhow::Result<()> {
+    let (httpd_context, _client, ..) = create_block().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let response = call_graphql_with_headers::<RequesterIpGraphqlResponse, _, _, _>(
+                    app,
+                    GraphQLCustomRequest {
+                        name: "requesterIp",
+                        query: "query RequesterIp { requesterIp { remoteIp peerIp xForwardedFor forwarded cfConnectingIp trueClientIp xRealIp } }",
+                        variables: Default::default(),
+                    },
+                    &[("X-Forwarded-For", "198.51.100.10, 127.0.0.1")],
+                )
+                .await?;
+
+                assert_that!(response.data.remote_ip)
+                    .is_equal_to(Some("198.51.100.10".to_string()));
+                assert_that!(response.data.x_forwarded_for)
+                    .is_equal_to(Some("198.51.100.10, 127.0.0.1".to_string()));
+                assert_that!(response.data.peer_ip).is_some();
+                assert_that!(response.data.forwarded).is_none();
+                assert_that!(response.data.cf_connecting_ip).is_none();
+                assert_that!(response.data.true_client_ip).is_none();
+                assert_that!(response.data.x_real_ip).is_none();
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn graphql_prefers_cf_connecting_ip_when_forwarded_headers_are_proxy_hops()
+-> anyhow::Result<()> {
+    let (httpd_context, _client, ..) = create_block().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+                let response = call_graphql_with_headers::<RequesterIpGraphqlResponse, _, _, _>(
+                    app,
+                    GraphQLCustomRequest {
+                        name: "requesterIp",
+                        query: "query RequesterIp { requesterIp { remoteIp peerIp xForwardedFor forwarded cfConnectingIp trueClientIp xRealIp } }",
+                        variables: Default::default(),
+                    },
+                    &[
+                        ("X-Forwarded-For", "172.23.0.2"),
+                        ("X-Real-Ip", "172.23.0.2"),
+                        ("CF-Connecting-IP", "2001:db8::1234"),
+                    ],
+                )
+                .await?;
+
+                assert_that!(response.data.remote_ip)
+                    .is_equal_to(Some("2001:db8::1234".to_string()));
+                assert_that!(response.data.peer_ip).is_some();
+                assert_that!(response.data.x_forwarded_for)
+                    .is_equal_to(Some("172.23.0.2".to_string()));
+                assert_that!(response.data.forwarded).is_none();
+                assert_that!(response.data.cf_connecting_ip)
+                    .is_equal_to(Some("2001:db8::1234".to_string()));
+                assert_that!(response.data.true_client_ip).is_none();
+                assert_that!(response.data.x_real_ip)
+                    .is_equal_to(Some("172.23.0.2".to_string()));
 
                 Ok::<(), anyhow::Error>(())
             })

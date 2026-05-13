@@ -2,7 +2,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/dango";
-import { plainObject, uid } from "@left-curve/dango/utils";
+import { uid } from "@left-curve/dango/utils";
 
 import { eip6963 } from "./connectors/eip6963.js";
 import { type EventData, createEmitter } from "./createEmitter.js";
@@ -10,30 +10,17 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type {
-  Address,
-  AppConfig,
-  Client,
-  Denom,
-  Flatten,
-  Hex,
-  PairUpdate,
-  PublicClient,
-  Transport,
-} from "@left-curve/dango/types";
-
-import { invertObject } from "@left-curve/dango/utils";
+import type { Client, PublicClient, Transport } from "@left-curve/dango/types";
 
 import { subscriptionsStore } from "./subscriptions.js";
-import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
 import type { Config, CreateConfigParameters, State, StoreApi } from "./types/store.js";
+import { CoinStore } from "./stores/coinStore.js";
 
-export function createConfig<
-  transport extends Transport = Transport,
-  coin extends AnyCoin = AnyCoin,
->(parameters: CreateConfigParameters<transport, coin>): Config<transport, coin> {
+export function createConfig<transport extends Transport = Transport>(
+  parameters: CreateConfigParameters<transport>,
+): Config<transport> {
   const {
     multiInjectedProviderDiscovery = true,
     version = 0,
@@ -53,13 +40,8 @@ export function createConfig<
   const mipd =
     typeof window !== "undefined" && multiInjectedProviderDiscovery ? createMipdStore() : undefined;
 
-  const coins = createStore(() => ({
-    byDenom: rest.coins || {},
-    bySymbol: Object.values(rest.coins || {}).reduce((acc, coin) => {
-      acc[coin.symbol] = coin;
-      return acc;
-    }, Object.create({})),
-  }));
+  const coinsStore = CoinStore.getState();
+  coinsStore.setCoins(rest.coins);
 
   const connectors = createStore(() => {
     const collection = [];
@@ -79,22 +61,8 @@ export function createConfig<
     return collection;
   });
 
-  async function getUserIndexAndName(): Promise<{ index: number; name: string } | undefined> {
-    const { userIndexAndName } = store.getState();
-    if (!userIndexAndName) return undefined;
-    const client = getClient() as PublicClient;
-    const username = await client.getUsernameByIndex({ index: userIndexAndName.index });
-
-    const response = {
-      index: userIndexAndName.index,
-      name: username ?? `User #${userIndexAndName.index}`,
-    };
-
-    if (response.name !== userIndexAndName.name) {
-      store.setState((x) => ({ ...x, userIndexAndName: response }));
-    }
-
-    return response;
+  function getUserIndex(): number | undefined {
+    return store.getState().user?.index;
   }
 
   function setup(connectorFn: CreateConnectorFn): Connector {
@@ -106,7 +74,7 @@ export function createConfig<
         chain: rest.chain,
         transport: rest.transport,
         storage,
-        getUserIndexAndName,
+        getUserIndex,
       }),
       emitter,
       uid: emitter.uid,
@@ -135,40 +103,6 @@ export function createConfig<
     return client;
   }
 
-  let _appConfig:
-    | ({
-        addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
-        accountFactory: { codeHash: Hex };
-        pairs: Record<Denom, PairUpdate>;
-      } & Omit<AppConfig, "addresses">)
-    | undefined;
-
-  async function getAppConfig() {
-    if (_appConfig) return _appConfig;
-    const client = getClient() as PublicClient;
-    const [appConfig, codeHash, pairs] = await Promise.all([
-      client.getAppConfig(),
-      client.getCodeHash(),
-      client.getPairs(),
-    ]);
-
-    const addresses = plainObject(appConfig.addresses) as Flatten<AppConfig["addresses"]>;
-
-    _appConfig = {
-      ...appConfig,
-      addresses: {
-        ...addresses,
-        ...invertObject(addresses),
-      },
-      accountFactory: { codeHash },
-      pairs: pairs.reduce((acc, pair) => {
-        acc[pair.baseDenom] = pair;
-        return acc;
-      }, Object.create({})),
-    };
-    return _appConfig;
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   // Create store
   //////////////////////////////////////////////////////////////////////////////
@@ -179,8 +113,7 @@ export function createConfig<
       chainId: rest.chain.id,
       connectors: new Map(),
       current: null,
-      userIndexAndName: undefined,
-      userStatus: undefined,
+      user: undefined,
       status: ConnectionStatus.Disconnected,
     };
   }
@@ -191,25 +124,37 @@ export function createConfig<
         version,
         storage,
         migrate(state, savedVersion) {
-          const persistedState = state as State;
-          if (version === savedVersion) return persistedState;
+          if (version === savedVersion) return state as State;
 
+          const persisted = state as Record<string, unknown>;
           const initialState = getInitialState();
-          return { ...initialState };
+
+          // v1 → v2: migrate { userIndex, userStatus } to { user: { index } }
+          if (savedVersion === 1 && persisted) {
+            const userIndex = persisted.userIndex as number | undefined;
+            return {
+              ...initialState,
+              current: (persisted.current as State["current"]) ?? null,
+              connectors: (persisted.connectors as State["connectors"]) ?? new Map(),
+              user: userIndex !== undefined ? { index: userIndex } : undefined,
+            } as State;
+          }
+
+          return initialState;
         },
         partialize(state) {
-          const { chainId, connectors, status, current, userIndexAndName, userStatus } = state;
+          const { chainId, connectors, status, current, user } = state;
           return {
             chainId,
             status,
             current,
-            userStatus,
-            userIndexAndName,
+            user: user ? { index: user.index } : undefined,
             connectors: new Map(
               Array.from(connectors.entries()).map(([key, connection]) => {
                 const { id, name, type, uid } = connection.connector;
                 const connector = { id, name, type, uid };
-                return [key, { ...connection, connector }];
+                const { accounts: _, ...rest } = connection;
+                return [key, { ...rest, connector }];
               }),
             ),
           };
@@ -252,13 +197,18 @@ export function createConfig<
         newConnectors.push(connector);
       }
 
-      if (storage && !store.persist.hasHydrated()) return;
+      // The `connectors` vanilla store is not persisted, so its update does
+      // not need to wait for hydration. Always apply it — dropping MIPD
+      // connectors on the floor during the hydration window used to cause
+      // silent wallet-login failures on first page load.
       connectors.setState((x) => [...x, ...newConnectors], true);
-      store.setState((x) => ({ ...x, isMipdLoaded: true }));
+      if (!storage || store.persist.hasHydrated()) {
+        store.setState((x) => ({ ...x, isMipdLoaded: true }));
+      }
     });
   }
 
-  const sbStore = subscriptionsStore(getClient() as PublicClient, onError);
+  const sbStore = subscriptionsStore(getClient() as PublicClient, { onError });
 
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
@@ -272,6 +222,11 @@ export function createConfig<
 
       return {
         ...x,
+        user: {
+          index: data.userIndex,
+          username: data.username,
+          status: data.userStatus,
+        },
         connectors: new Map(x.connectors).set(uid, {
           keyHash: data.keyHash,
           accounts: data.accounts ?? connection.accounts,
@@ -283,39 +238,44 @@ export function createConfig<
     });
   }
   function connect(data: EventData<ConnectorEventMap, "connect">) {
-    store.setState((x) => {
-      const connector = connectors.getState().find((x) => x.uid === data.uid);
-      if (!connector) return x;
+    const connector = connectors.getState().find((c) => c.uid === data.uid);
+    if (!connector) {
+      // A `connect` event fired for a connector that isn't in the list.
+      // This used to silently swallow the event — surface it loudly instead
+      // so any remaining race or lifecycle bug shows up in telemetry.
+      const error = new Error(`connect event received for unknown connector uid: ${data.uid}`);
+      if (onError) onError(error);
+      else console.error(error);
+      return;
+    }
 
-      if (connector.emitter.listenerCount("connect")) {
-        connector.emitter.off("connect", change);
-      }
+    // Wire ongoing change/disconnect listeners outside the setState reducer so
+    // the reducer stays pure. Listeners are idempotent via listenerCount check.
+    if (!connector.emitter.listenerCount("change")) {
+      connector.emitter.on("change", change);
+    }
+    if (!connector.emitter.listenerCount("disconnect")) {
+      connector.emitter.on("disconnect", disconnect);
+    }
 
-      if (!connector.emitter.listenerCount("change")) {
-        connector.emitter.on("change", change);
-      }
-      if (!connector.emitter.listenerCount("disconnect")) {
-        connector.emitter.on("disconnect", disconnect);
-      }
-
-      const { index, name } = data.userIndexAndName;
-
-      return {
-        ...x,
-        current: data.uid,
-        userStatus: data.userStatus,
-        userIndexAndName: { index, name: name ?? `User #${index}` },
-        connectors: new Map(x.connectors).set(data.uid, {
-          keyHash: data.keyHash,
-          account: data.accounts[0],
-          accounts: data.accounts,
-          chainId: data.chainId,
-          connector: connector,
-        }),
+    store.setState((x) => ({
+      ...x,
+      current: data.uid,
+      user: {
+        index: data.userIndex,
+        username: data.username,
+        status: data.userStatus,
+      },
+      connectors: new Map(x.connectors).set(data.uid, {
+        keyHash: data.keyHash,
+        account: data.accounts[0],
+        accounts: data.accounts,
         chainId: data.chainId,
-        status: ConnectionStatus.Connected,
-      };
-    });
+        connector,
+      }),
+      chainId: data.chainId,
+      status: ConnectionStatus.Connected,
+    }));
   }
   function disconnect(data: EventData<ConnectorEventMap, "disconnect">) {
     store.setState((x) => {
@@ -328,9 +288,8 @@ export function createConfig<
         if (connector.emitter.listenerCount("disconnect")) {
           connection.connector.emitter.off("disconnect", disconnect);
         }
-        if (!connector.emitter.listenerCount("connect")) {
-          connection.connector.emitter.on("connect", connect);
-        }
+        // The `connect` listener is attached once in setup() and never
+        // removed, so there's no need to re-attach it here.
       }
 
       x.connectors.delete(data.uid);
@@ -342,10 +301,9 @@ export function createConfig<
       if (x.connectors.size === 0) {
         return {
           ...x,
-          username: undefined,
           connectors: new Map(),
           current: null,
-          userStatus: undefined,
+          user: undefined,
           status: ConnectionStatus.Disconnected,
         };
       }
@@ -357,39 +315,9 @@ export function createConfig<
     });
   }
 
-  function getCoinInfo(denom: Denom): AnyCoin {
-    const allCoins = coins.getState()!;
-    const coin = allCoins.byDenom[denom];
-    if (coin) return coin;
-    if (!coin && !denom.includes("dex")) {
-      return {
-        type: "native",
-        symbol: denom.toUpperCase(),
-        name: denom,
-        denom,
-        decimals: 0,
-      };
-    }
-    const [_, __, baseDenom, quoteDenom] = denom.split("/");
-    const coinsArray = Object.values(allCoins.byDenom);
-    const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
-    const quoteCoin = coinsArray.find((x) => x.denom.includes(quoteDenom))!;
-
-    return {
-      type: "lp",
-      symbol: `${baseCoin.symbol}-${quoteCoin.symbol} LP`,
-      name: `${baseCoin.symbol}-${quoteCoin.symbol} Liquidity Shares`,
-      denom,
-      decimals: 0,
-      base: baseCoin,
-      quote: quoteCoin,
-    };
-  }
-
   return {
     get coins() {
-      const state = coins.getState() ?? { byDenom: {}, bySymbol: {} };
-      return state;
+      return CoinStore.getState();
     },
     get subscriptions() {
       return sbStore;
@@ -401,8 +329,6 @@ export function createConfig<
       return connectors.getState();
     },
     storage,
-    getCoinInfo,
-    getAppConfig,
     getClient,
     captureError(error: unknown) {
       if (onError) onError(error);

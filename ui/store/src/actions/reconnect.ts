@@ -1,5 +1,8 @@
-import { getAccountStatus, getUsernameByIndex } from "@left-curve/dango/actions";
-import { type Config, ConnectionStatus } from "../types/store.js";
+import { toAccount } from "@left-curve/dango";
+import { getAccountStatus, getUser } from "@left-curve/dango/actions";
+
+import type { Address } from "@left-curve/dango/types";
+import { type Config, ConnectionStatus, type StoreUser } from "../types/store.js";
 
 export type ReconnectReturnType = void;
 
@@ -22,11 +25,22 @@ export async function reconnect<config extends Config>(
 
   let current = config.state.current;
 
+  const userIndex = config.state.user?.index;
+
+  const user = userIndex
+    ? await getUser(client, { userIndexOrName: { index: userIndex } }).catch(() => undefined)
+    : undefined;
+
+  const accounts = user
+    ? Object.entries(user.accounts).map(([accountIndex, address]) =>
+        toAccount({ user, accountIndex: Number(accountIndex), address: address as Address }),
+      )
+    : undefined;
+
   const connectors = new Map();
-  for (const {
+  for await (const {
     chainId,
     connector: _connector_,
-    accounts,
     account,
     keyHash,
   } of config.state.connectors.values()) {
@@ -38,12 +52,15 @@ export async function reconnect<config extends Config>(
     if (!isAuthorized) continue;
 
     try {
-      connector.emitter.off("connect", config._internal.events.connect);
+      // The `connect` listener is attached once in setup() and is intentionally
+      // never stripped — removing it during reconnect used to cause future
+      // login attempts to silently drop the `connect` event.
       connector.emitter.on("change", config._internal.events.change);
       connector.emitter.on("disconnect", config._internal.events.disconnect);
+
       connectors.set(connector.uid, {
         keyHash,
-        account,
+        account: accounts?.find((a) => a.address === account.address) || accounts?.[0],
         chainId,
         accounts,
         connector,
@@ -51,27 +68,24 @@ export async function reconnect<config extends Config>(
     } catch (_) {}
   }
 
-  const userIndexAndName = await (async () => {
-    if (!config.state.userIndexAndName) return;
-    const { index } = config.state.userIndexAndName;
-    const name = await getUsernameByIndex(client, { index });
-    return { index, name: name || `User #${index}` };
-  })();
+  const userStatus = accounts
+    ? await getAccountStatus(client, { address: accounts[0].address }).catch(() => undefined)
+    : undefined;
 
-  const userStatus = await (async () => {
-    if (!config.state.userStatus || !config.state.current) return;
-    const address = config.state.connectors.get(config.state.current)?.account?.address;
-    if (!address) return;
-    const status = await getAccountStatus(client, { address }).catch(() => undefined);
-    return status;
-  })();
+  const userState: StoreUser | undefined =
+    userIndex !== undefined
+      ? {
+          index: userIndex,
+          username: user?.name ?? `User #${userIndex}`,
+          status: userStatus,
+        }
+      : undefined;
 
   config.setState((x) => ({
     ...x,
     connectors,
     current,
-    userIndexAndName,
-    userStatus,
+    user: userState,
     status: connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
   }));
 

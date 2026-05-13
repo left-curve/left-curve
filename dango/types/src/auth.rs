@@ -45,8 +45,10 @@ pub type Nonce = u32;
 )]
 pub enum KeyType {
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "SECP256R1"))]
     Secp256r1,
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "SECP256K1"))]
     Secp256k1,
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 2))]
     Ethereum,
@@ -131,6 +133,8 @@ pub struct SessionCredential {
 
 #[grug::derive(Serde)]
 pub struct SessionInfo {
+    /// Chain ID this session is authorized for, preventing cross-chain replay.
+    pub chain_id: String,
     /// Public key of the session key.
     pub session_key: ByteArray<33>,
     /// Expiry time of the session key.

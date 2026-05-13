@@ -188,4 +188,8 @@ pub fn init_graphql_metrics() {
         "graphql.subscriptions.active",
         "Number of active GraphQL subscriptions"
     );
+    describe_gauge!(
+        "graphql.websocket.connections.active",
+        "Number of active GraphQL websocket connections"
+    );
 }

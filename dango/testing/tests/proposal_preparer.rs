@@ -26,8 +26,8 @@ const NOT_USED_ID_LAZER: PythLazerSubscriptionDetails = PythLazerSubscriptionDet
     channel: Channel::FixedRate(FixedRate::RATE_200_MS),
 };
 
-#[test]
-fn proposal_pyth() {
+#[tokio::test]
+async fn proposal_pyth() {
     // Ensure there are all cache file for the PythIds in oracle and also for
     // the NOT_USED_ID and retrieve them if not presents. This is needed since
     // the PythPPHandler create a thread to get the data from Pyth and if the
@@ -43,8 +43,8 @@ fn proposal_pyth() {
                 limit: None,
             })
             .should_succeed()
-            .into_iter()
-            .filter_map(|(_, price_source)| match price_source {
+            .into_values()
+            .filter_map(|price_source| match price_source {
                 PriceSource::Pyth { id, channel, .. } => {
                     Some(PythLazerSubscriptionDetails { id, channel })
                 },
@@ -83,6 +83,7 @@ fn proposal_pyth() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -92,11 +93,12 @@ fn proposal_pyth() {
             &ExecuteMsg::RegisterPriceSources(price_source),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Assert the price of btc exists.
     sleep(Duration::from_secs(2));
-    assert_price_exists(&mut suite, contracts.oracle, btc::DENOM.clone());
+    assert_price_exists(&mut suite, contracts.oracle, btc::DENOM.clone()).await;
 
     // Retrieve the prices and sequences.
     let prices1 = suite
@@ -108,7 +110,7 @@ fn proposal_pyth() {
     // Await some time and assert that the timestamps are updated.
     sleep(Duration::from_secs(1));
 
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     let prices2 = suite
         .query_wasm_smart(oracle, QueryPriceRequest {
@@ -161,16 +163,20 @@ fn proposal_pyth() {
 
         suite
             .execute(&mut accounts.owner, contracts.oracle, &msg, Coins::new())
+            .await
             .should_succeed();
 
         // Verify that the price exists.
         sleep(Duration::from_secs(1));
-        assert_price_exists(&mut suite, oracle, test_denom);
+        assert_price_exists(&mut suite, oracle, test_denom).await;
     }
 }
 
-fn assert_price_exists<P>(suite: &mut TestSuite<ProposalPreparer<P>>, oracle: Addr, denom: Denom)
-where
+async fn assert_price_exists<P>(
+    suite: &mut TestSuite<ProposalPreparer<P>>,
+    oracle: Addr,
+    denom: Denom,
+) where
     P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: std::fmt::Debug,
 {
@@ -180,7 +186,7 @@ where
     for _ in 0..10 {
         thread::sleep(Duration::from_millis(200));
 
-        let txs = suite.make_empty_block().block_outcome.tx_outcomes;
+        let txs = suite.make_empty_block().await.block_outcome.tx_outcomes;
 
         // Ensure all tx passed.
         for tx in txs {

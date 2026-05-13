@@ -52,4 +52,12 @@ export const coins = {
     decimals: 9,
     coingeckoId: "solana",
   },
+  "bridge/hype": {
+    type: "native",
+    name: "Hype",
+    logoURI: "/images/coins/hype.svg",
+    symbol: "HYPE",
+    denom: "bridge/hype",
+    decimals: 18,
+  },
 } as const;

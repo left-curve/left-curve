@@ -3,6 +3,11 @@ edge-ip-version: auto
 ha-connections: 12
 transport-loglevel: warn
 
+originRequest:
+  connectTimeout: 2s
+  keepAliveTimeout: 5s
+  keepAliveConnections: 16
+
 ingress:
 {% for dango_network in dango_networks %}
   - hostname: api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}

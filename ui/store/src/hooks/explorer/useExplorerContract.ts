@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useConfig } from "../useConfig.js";
+import { useAppConfig } from "../useAppConfig.js";
 import { usePublicClient } from "../usePublicClient.js";
 
 import type { Address, Coins, ContractInfo } from "@left-curve/dango/types";
@@ -8,13 +8,12 @@ export type ExplorerContract = (ContractInfo & { address: Address; balances: Coi
 
 export function useExplorerContract(address: Address) {
   const client = usePublicClient();
-  const { getAppConfig } = useConfig();
+  const { data: appConfig } = useAppConfig();
 
   return useQuery<ExplorerContract>({
     queryKey: ["contract_explorer", address],
     queryFn: async () => {
-      const [appConfig, contractInfo, balances] = await Promise.all([
-        getAppConfig(),
+      const [contractInfo, balances] = await Promise.all([
         client.getContractInfo({ address }),
         client.getBalances({ address }),
       ]);

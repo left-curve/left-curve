@@ -1,28 +1,18 @@
-import { forwardRef, useState } from "react";
-import { Signup } from "../auth/Signup";
-import { Signin } from "../auth/Signin";
+import { forwardRef } from "react";
+import { AuthFlow } from "../auth/AuthFlow";
 
 import { IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
-const views = {
-  signin: Signin,
-  signup: Signup,
-};
-
 type AuthenticateProps = {
-  action?: "signin" | "signup";
+  referrer?: number;
 };
 
-export const Authenticate = forwardRef<unknown, AuthenticateProps>(({ action = "signin" }, _) => {
+export const Authenticate = forwardRef<unknown, AuthenticateProps>(({ referrer }, _) => {
   const { hideModal } = useApp();
-  const [view, setView] = useState(action);
-
-  const AuthView = views[view as keyof typeof views];
 
   return (
     <div className="flex flex-col justify-start items-center bg-surface-primary-rice text-ink-primary-900 md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative px-6 py-8 md:py-6 gap-5 md:w-[30rem] md:h-fit">
-      <p className="text-ink-primary-900 diatype-lg-medium w-full text-center" />
-      <AuthView goTo={(view) => setView(view)} onFinish={hideModal} />
+      <AuthFlow onFinish={hideModal} referrer={referrer} />
       <IconButton
         className="hidden md:block absolute right-4 top-4"
         variant="link"

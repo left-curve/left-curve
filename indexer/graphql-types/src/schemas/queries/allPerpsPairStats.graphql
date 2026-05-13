@@ -1,0 +1,9 @@
+query AllPerpsPairStats {
+  allPerpsPairStats {
+    pairId
+    currentPrice
+    price24HAgo
+    volume24H
+    priceChange24H
+  }
+}

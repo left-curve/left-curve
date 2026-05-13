@@ -1,18 +1,17 @@
 use {
     crate::{
-        NoCachePerpQuerier,
         core::{compute_maintenance_margin, compute_user_equity},
+        querier::NoCachePerpQuerier,
     },
     dango_oracle::OracleQuerier,
-    dango_types::{
-        Quantity, UsdPrice, UsdValue,
-        perps::{PairId, PairParam, UserState},
-    },
+    dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
+    dango_types::perps::{PairParam, UserState},
     grug::MathResult,
     std::collections::BTreeMap,
 };
 
 /// Returns true if the user is eligible for liquidation.
+/// Also returns equity and maintenance margin for error logging purpose.
 ///
 /// A user is liquidatable when their equity (collateral + unrealized PnL
 /// - accrued funding) falls below their total maintenance margin.
@@ -22,15 +21,11 @@ pub fn is_liquidatable(
     oracle_querier: &mut OracleQuerier,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<bool> {
-    if user_state.positions.is_empty() {
-        return Ok(false);
-    }
-
+) -> anyhow::Result<(bool, UsdValue, UsdValue)> {
     let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
     let maintenance_margin = compute_maintenance_margin(oracle_querier, perp_querier, user_state)?;
 
-    Ok(equity < maintenance_margin)
+    Ok((equity < maintenance_margin, equity, maintenance_margin))
 }
 
 /// A policy for selecting which position(s) to close during liquidation.
@@ -65,7 +60,7 @@ pub fn compute_close_schedule(
     }
 
     // Sort by MM contribution descending.
-    mm_entries.sort_by(|a, b| b.0.cmp(&a.0));
+    mm_entries.sort_by_key(|(a, _)| std::cmp::Reverse(*a));
 
     // Build the close schedule.
     let mut schedule = Vec::new();
@@ -81,9 +76,14 @@ pub fn compute_close_schedule(
         let abs_size = position.size.checked_abs()?;
 
         // close_amount = min(ceil(deficit / (P × mmr)), |size|)
+        //
+        // Ceiling rounding is load-bearing: with floor division, a sub-ULP
+        // deficit collapses `close_amount` to zero, leaves the schedule
+        // empty, and causes `liquidate` to silently exit with no events.
+        // Ceil guarantees at least 1 ULP of progress whenever `deficit > 0`.
         let close_amount = {
-            let denom = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
-            deficit.checked_div(denom)?.min(abs_size)
+            let denominator = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
+            deficit.checked_div_ceil(denominator)?.min(abs_size)
         };
 
         // close_size = -sign(size) × close_amount (opposite direction to close)
@@ -112,6 +112,37 @@ pub fn compute_close_schedule(
     Ok(schedule)
 }
 
+/// Compute the user's equity from in-memory state and accumulated PnL/fees.
+///
+/// This is the "raw" equity computation used during liquidation, where oracle
+/// prices are already resolved and funding has been settled into `user_pnl`.
+///
+/// ```plain
+/// equity = margin + user_pnl - user_fees + Σ(size × (oracle - entry))
+/// ```
+pub fn compute_user_equity_with_pnl(
+    user_state: &UserState,
+    oracle_prices: &BTreeMap<PairId, UsdPrice>,
+    user_pnl: UsdValue,
+    user_fees: UsdValue,
+) -> MathResult<UsdValue> {
+    let mut equity = user_state
+        .margin
+        .checked_add(user_pnl)?
+        .checked_sub(user_fees)?;
+
+    for (pid, pos) in &user_state.positions {
+        let oracle_price = oracle_prices[pid];
+        let unrealized = pos
+            .size
+            .checked_mul(oracle_price.checked_sub(pos.entry_price)?)?;
+
+        equity.checked_add_assign(unrealized)?;
+    }
+
+    Ok(equity)
+}
+
 /// Compute the bankruptcy price for a position being closed during liquidation.
 ///
 /// This is the fill price at which the user's total equity would be exactly
@@ -127,20 +158,7 @@ pub fn compute_bankruptcy_price(
     user_pnl: UsdValue,
     user_fees: UsdValue,
 ) -> MathResult<UsdPrice> {
-    // Compute current equity including accumulated PnL/fees from prior fills.
-    let mut equity = user_state
-        .margin
-        .checked_add(user_pnl)?
-        .checked_sub(user_fees)?;
-
-    for (pid, pos) in &user_state.positions {
-        let oracle_price = oracle_prices[pid];
-        let unrealized = pos
-            .size
-            .checked_mul(oracle_price.checked_sub(pos.entry_price)?)?;
-
-        equity.checked_add_assign(unrealized)?;
-    }
+    let equity = compute_user_equity_with_pnl(user_state, oracle_prices, user_pnl, user_fees)?;
 
     let position = &user_state.positions[pair_id];
     let oracle_price = oracle_prices[pair_id];
@@ -159,8 +177,8 @@ pub fn compute_bankruptcy_price(
 mod tests {
     use {
         super::*,
+        dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
-            Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue,
             constants::eth,
             oracle::PrecisionedPrice,
             perps::{PairParam, PairState, Position},
@@ -202,7 +220,11 @@ mod tests {
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
-        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // collateral=10000, ETH long 10 @ entry=2000, oracle=2500, mmr=5%
@@ -218,6 +240,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -244,7 +268,11 @@ mod tests {
             ),
         });
 
-        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // equity exactly equals maintenance margin → not liquidatable (strict <)
@@ -260,6 +288,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -286,7 +316,11 @@ mod tests {
             ),
         });
 
-        assert!(!is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // collateral=100, ETH long 10 @ entry=2000, oracle=1500, mmr=5%
@@ -302,6 +336,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::new_int(0),
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -328,7 +364,11 @@ mod tests {
             ),
         });
 
-        assert!(is_liquidatable(&mut oracle_querier, &perp_querier, &user_state).unwrap());
+        assert!(
+            is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // Funding can push a user into liquidation territory.
@@ -352,6 +392,8 @@ mod tests {
                         size: Quantity::new_int(10),
                         entry_price: UsdPrice::new_int(2000),
                         entry_funding_per_unit: FundingPerUnit::new_int(0),
+                        conditional_order_above: None,
+                        conditional_order_below: None,
                     },
                 },
                 ..Default::default()
@@ -382,11 +424,19 @@ mod tests {
 
         // Case 1: healthy despite funding
         let (us, pq, mut oq) = make_fixtures(10_000);
-        assert!(!is_liquidatable(&mut oq, &pq, &us).unwrap());
+        assert!(
+            !is_liquidatable(&mut oq, &pq, &us)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
 
         // Case 2: funding pushes equity below maintenance margin
         let (us, pq, mut oq) = make_fixtures(900);
-        assert!(is_liquidatable(&mut oq, &pq, &us).unwrap());
+        assert!(
+            is_liquidatable(&mut oq, &pq, &us)
+                .map(|(is, ..)| is)
+                .unwrap()
+        );
     }
 
     // -------------------- `compute_close_schedule` tests ---------------------
@@ -404,6 +454,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -440,11 +492,15 @@ mod tests {
                     size: Quantity::new_int(1),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
                 pair_eth() => Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(3_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -489,6 +545,8 @@ mod tests {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 },
             },
             ..Default::default()
@@ -511,6 +569,57 @@ mod tests {
         assert_eq!(schedule[0].1, Quantity::new_int(-2));
     }
 
+    /// Regression for the silent-exit `liquidate` bug observed on mainnet.
+    ///
+    /// When the deficit is smaller than one ULP of the denominator
+    /// `oracle_price × mmr`, floor division of `deficit / denominator` used
+    /// to collapse `close_amount` to zero, leaving `compute_close_schedule`
+    /// to return an empty `Vec`. Combined with a liquidatable user that has
+    /// no resting orders or conditionals, the outer `liquidate` handler
+    /// would then write unchanged state and return `Ok` with an empty
+    /// `EventBuilder` — a successful tx that emitted no events.
+    ///
+    /// `compute_close_schedule` now uses ceiling division (matching the doc
+    /// comment), which guarantees at least one ULP of close size whenever the
+    /// user is liquidatable.
+    ///
+    /// Setup: long 1 BTC, oracle $60k, mmr 5% → denominator = $3,000.
+    /// Deficit = $0.001 (raw 1_000 in `Dec128_6`'s 6-decimal representation).
+    ///
+    /// - `floor(deficit / denominator) = floor(1_000 × 10⁶ / 3_000_000_000) = floor(1/3) = 0` (old, buggy)
+    /// - `ceil (deficit / denominator) = ceil (1/3) = 1` raw ULP of `Quantity` (new)
+    #[test]
+    fn sub_ulp_deficit_produces_one_ulp_close() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(1),
+                    entry_price: UsdPrice::new_int(50_000),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! { pair_btc() => btc_pair_param() };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(60_000) };
+
+        // $0.001 — one milli-dollar, well below `denominator × 1 ULP = $0.003`.
+        let deficit = UsdValue::new_raw(1_000);
+
+        let schedule =
+            compute_close_schedule(&user_state, &pair_params, &oracle_prices, deficit).unwrap();
+
+        // With ceil division, the schedule contains exactly one entry of the
+        // smallest representable close size (1 raw ULP = 0.000001 Quantity),
+        // in the opposite direction of the long position.
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_raw(-1));
+    }
+
     // ==================== `compute_bankruptcy_price` tests ====================
 
     #[test]
@@ -524,6 +633,8 @@ mod tests {
                 size: Quantity::new_int(1),
                 entry_price: UsdPrice::new_int(50_000),
                 entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
             })]),
             ..Default::default()
         };
@@ -554,6 +665,8 @@ mod tests {
                 size: Quantity::new_int(-1),
                 entry_price: UsdPrice::new_int(50_000),
                 entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
             })]),
             ..Default::default()
         };
@@ -588,11 +701,15 @@ mod tests {
                     size: Quantity::new_int(1),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 }),
                 (pair_eth(), Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(3_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
                 }),
             ]),
             ..Default::default()

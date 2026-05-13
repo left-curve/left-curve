@@ -7,40 +7,6 @@ test.describe("Landing Page - Not Authenticated", () => {
     await waitForStorageHydration(page);
   });
 
-  test.describe("Section Navigation", () => {
-    test("landing page renders with Learn More button", async ({ page }) => {
-      await expect(page.locator("text=Learn More")).toBeVisible();
-    });
-
-    test("can scroll through landing sections", async ({ page }) => {
-      // Landing uses fullpage.js sections
-      // First section: header with search
-      await expect(page.locator('[data-testid="landing-header"]').or(page.locator("header"))).toBeVisible();
-
-      // Scroll indicator should be visible
-      const scrollIndicator = page.getByText("Scroll to continue");
-      if (await scrollIndicator.isVisible()) {
-        await expect(scrollIndicator).toBeVisible();
-      }
-    });
-
-    test("community section shows social links", async ({ page }) => {
-      // Navigate to community section (last section)
-      // Use keyboard or scroll to navigate
-      await page.keyboard.press("End");
-      await page.waitForTimeout(500);
-
-      // Check for social links - they may be in footer
-      const twitterLink = page.locator('a[href*="twitter.com"], a[href*="x.com"]');
-      const discordLink = page.locator('a[href*="discord"]');
-
-      // At least one social link should exist
-      const socialLinksExist =
-        (await twitterLink.count()) > 0 || (await discordLink.count()) > 0;
-      expect(socialLinksExist).toBeTruthy();
-    });
-  });
-
   test.describe("Search Bar Functionality", () => {
     test("clicking search bar expands container", async ({ page }) => {
       // Try keyboard shortcut first as it's more reliable
@@ -94,20 +60,6 @@ test.describe("Landing Page - Not Authenticated", () => {
   });
 
   test.describe("Favorites Management", () => {
-    test("default favorites are displayed in applets section", async ({ page }) => {
-      // Default favorites: trade, convert, bridge, transfer, create-account, settings
-      const appletsSection = page.locator('[class*="grid"]').filter({
-        has: page.locator('a[href*="/convert"], a[href*="/trade"], a[href*="/bridge"]'),
-      });
-
-      // Should have applet links
-      const appletLinks = page.locator(
-        'a[href="/convert"], a[href="/trade"], a[href="/bridge"], a[href="/transfer"]',
-      );
-      const linkCount = await appletLinks.count();
-      expect(linkCount).toBeGreaterThanOrEqual(1);
-    });
-
     test("clicking star icon toggles favorite status", async ({ page }) => {
       // Open search menu using keyboard shortcut
       await page.keyboard.press("k");

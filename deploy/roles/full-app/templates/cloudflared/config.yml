@@ -3,6 +3,11 @@ edge-ip-version: auto
 ha-connections: 12
 transport-loglevel: warn
 
+originRequest:
+  connectTimeout: 2s
+  keepAliveTimeout: 5s
+  keepAliveConnections: 16
+
 ingress:
   - hostname: api-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
     service: http://dango:8080
@@ -12,4 +17,8 @@ ingress:
     service: http://faucet-bot:8082
   - hostname: graphiql-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
     service: http://graphiql:80
+{% if inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))) %}
+  - hostname: liquidator-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://perp-liquidator:9310
+{% endif %}
   - service: http_status:404

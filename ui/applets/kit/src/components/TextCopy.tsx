@@ -11,8 +11,9 @@ export const TextCopy: React.FC<
   return (
     <button
       type="button"
-      onClick={(e) => {
+      onPointerUp={(e) => {
         e.stopPropagation();
+        e.preventDefault();
         if (copyText) navigator.clipboard.writeText(copyText);
         setCopyIcon(<IconCopyCheck {...props} />);
         setTimeout(() => setCopyIcon(<IconCopyNoCheck {...props} />), 1000);

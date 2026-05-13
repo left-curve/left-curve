@@ -12,7 +12,9 @@ const clampValueToStep = (value: number, min: number, max: number, step: number)
   let steppedValue = Math.round(valueRelativeToMin / step) * step + min;
   const precision = step.toString().split(".")[1]?.length || 0;
   steppedValue = Number.parseFloat(steppedValue.toFixed(precision));
-  return Math.max(min, Math.min(max, steppedValue));
+  const clamped = Math.max(min, Math.min(max, steppedValue));
+  if (max - clamped < step && value > clamped) return max;
+  return clamped;
 };
 
 const formatInputValue = (num: number, precision: number): string => {
@@ -52,6 +54,7 @@ export type RangeProps = {
     base?: string;
     input?: string;
     inputWrapper?: string;
+    track?: string;
   };
   withInput?: boolean;
   inputEndContent?: ReactNode;
@@ -228,6 +231,7 @@ export const Range: React.FC<RangeProps> = ({
             className={twMerge(
               "relative h-1 rounded-full",
               isDisabled ? "bg-surface-disabled-gray" : "bg-outline-secondary-gray cursor-pointer",
+              classNames?.track,
             )}
             onMouseDown={handleSliderMouseDown}
             onTouchStart={handleSliderMouseDown}

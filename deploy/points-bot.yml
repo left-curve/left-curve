@@ -2,7 +2,7 @@
 - hosts: points-bot
   become: true
   become_user: "{{ deploy_user }}"
-  remote_user: debian
+  remote_user: deploy
   collections:
     - community.docker
   pre_tasks:

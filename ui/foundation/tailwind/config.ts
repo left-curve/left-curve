@@ -473,6 +473,8 @@ export const tailwindConfig: Partial<Config> = {
         pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         levitate: "levitate 2s ease-in-out infinite",
         flash: "flash 1s ease-in-out infinite",
+        "flash-bid": "flash-bid 400ms ease-out forwards",
+        "flash-ask": "flash-ask 400ms ease-out forwards",
       },
       keyframes: {
         "spinner-spin": {
@@ -500,6 +502,14 @@ export const tailwindConfig: Partial<Config> = {
           "0%, 100%": { opacity: "0" },
           "50%": { opacity: "1" },
         },
+        "flash-bid": {
+          "0%": { backgroundColor: "rgba(37, 177, 42, 0.15)" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        "flash-ask": {
+          "0%": { backgroundColor: "rgba(237, 69, 97, 0.15)" },
+          "100%": { backgroundColor: "transparent" },
+        },
         levitate: {
           "0%": {
             opacity: "1",
@@ -520,7 +530,7 @@ export const tailwindConfig: Partial<Config> = {
   plugins: [
     require("tailwindcss-animate"),
     tailwindScrollbar({ nocompatible: true }),
-    plugin(({ addUtilities, addComponents, theme }) => {
+    plugin(({ addUtilities, theme }) => {
       addUtilities({
         /* diatype */
         ".display-2xl": {

@@ -1,7 +1,31 @@
-import { Cell, Pagination, Select, Tab, Table, Tabs, twMerge } from "@left-curve/applets-kit";
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
+import {
+  Cell,
+  Pagination,
+  Select,
+  Skeleton,
+  Tab,
+  Table,
+  Tabs,
+  twMerge,
+  useApp,
+} from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
+import { formatNumber } from "@left-curve/dango/utils";
+import { formatDate } from "@left-curve/foundation";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import {
+  useAccount,
+  useRefereeStats,
+  useReferralData,
+  usePublicClient,
+  useAppConfig,
+  queryReferralData,
+} from "@left-curve/store";
+import { useQueries } from "@tanstack/react-query";
+import type { RefereeStatsWithUser } from "@left-curve/store";
 import type React from "react";
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useMemo, useState } from "react";
 import type { ReferralMode } from "./ReferralStats";
 
 type ChartMetric = "commission" | "volume";
@@ -32,91 +56,190 @@ type RebateRow = {
   date: string;
 };
 
-const mockCommissionData: CommissionRow[] = [
-  { myCommission: "$75.42", referralVolume: "$20.16", activeUsers: "3", date: "2024-05-03" },
-  { myCommission: "$65.00", referralVolume: "$80.58", activeUsers: "3", date: "2024-05-03" },
-  { myCommission: "$60.00", referralVolume: "$65.07", activeUsers: "0", date: "2024-05-03" },
-  { myCommission: "$0.15", referralVolume: "$1.14", activeUsers: "0", date: "2024-05-05" },
-  { myCommission: "$0.75", referralVolume: "$0.34", activeUsers: "2", date: "2024-05-06" },
-  { myCommission: "$0.18", referralVolume: "$0.34", activeUsers: "0", date: "2024-05-06" },
-  { myCommission: "$0.19", referralVolume: "$0", activeUsers: "0", date: "2024-05-07" },
-  { myCommission: "$9.63", referralVolume: "$0", activeUsers: "0", date: "2024-05-08" },
-  { myCommission: "$50.00", referralVolume: "$65.00", activeUsers: "1", date: "2024-05-09" },
-  { myCommission: "$60.17", referralVolume: "$73.46", activeUsers: "0", date: "2024-05-10" },
-];
 
-const mockRefereeData: RefereeRow[] = [
-  { userName: "Bearier", totalVolume: "$3,445.76", totalCommission: "$85.00", date: "2024-05-03" },
-  { userName: "Lincoln", totalVolume: "$1,676.00", totalCommission: "$0.00", date: "2024-05-03" },
-  { userName: "Jaxon", totalVolume: "$2,345.00", totalCommission: "$1.00", date: "2024-05-03" },
-  { userName: "Quillan", totalVolume: "$423.00", totalCommission: "$0.00", date: "2024-05-03" },
-  { userName: "Zainab", totalVolume: "$187.00", totalCommission: "$0.00", date: "2024-05-04" },
-  { userName: "Tamsin", totalVolume: "$3,876.00", totalCommission: "$4.00", date: "2024-05-04" },
-  { userName: "Persephone", totalVolume: "$0.00", totalCommission: "$4.00", date: "2024-05-05" },
-  { userName: "Vesper", totalVolume: "$125.00", totalCommission: "$3.00", date: "2024-05-06" },
-  { userName: "Remi", totalVolume: "$90.00", totalCommission: "$0.00", date: "2024-05-06" },
-  { userName: "Thalassa", totalVolume: "$1,071", totalCommission: "$0.00", date: "2024-05-07" },
-];
 
-const mockRebateData: RebateRow[] = [
-  { rebates: "$20.10", tradingVolume: "$75.40", date: "2024-05-01" },
-  { rebates: "$0.00", tradingVolume: "$80.00", date: "2024-02-01" },
-  { rebates: "$42.27", tradingVolume: "$50.00", date: "2024-02-07" },
-  { rebates: "$0.70", tradingVolume: "$75.56", date: "2024-06-09" },
-  { rebates: "$0.10", tradingVolume: "$0.34", date: "2024-04-03" },
-  { rebates: "$0.76", tradingVolume: "$91.01", date: "2024-01-03" },
-  { rebates: "$0.19", tradingVolume: "$0", date: "2024-06-02" },
-  { rebates: "$9.63", tradingVolume: "$75.96", date: "2024-08-07" },
-  { rebates: "$50.00", tradingVolume: "$64.00", date: "2024-07-08" },
-  { rebates: "$73.45", tradingVolume: "...", date: "2024-01-01" },
-];
+const ROWS_PER_PAGE = 10;
+const SECONDS_PER_DAY = 86_400;
+
+function dayBoundary(baseTs: number, daysAgo: number): number {
+  const ts = baseTs - daysAgo * SECONDS_PER_DAY;
+  return ts - (ts % SECONDS_PER_DAY);
+}
+
+function diffReferralData(
+  wider: {
+    commissionEarnedFromReferees?: string;
+    refereesVolume?: string;
+    cumulativeDailyActiveReferees?: number;
+  },
+  narrower: {
+    commissionEarnedFromReferees?: string;
+    refereesVolume?: string;
+    cumulativeDailyActiveReferees?: number;
+  },
+) {
+  return {
+    commission:
+      Number(wider.commissionEarnedFromReferees ?? "0") -
+      Number(narrower.commissionEarnedFromReferees ?? "0"),
+    volume: Number(wider.refereesVolume ?? "0") - Number(narrower.refereesVolume ?? "0"),
+    activeUsers: (wider.cumulativeDailyActiveReferees ?? 0) - (narrower.cumulativeDailyActiveReferees ?? 0),
+  };
+}
+
+const NotConnectedMessage: React.FC = () => (
+  <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
+    <p className="text-ink-tertiary-500 diatype-m-medium">
+      {m["referral.commission.logInToView"]()}
+    </p>
+  </div>
+);
 
 const CommissionTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
+  const { userIndex, isConnected } = useAccount();
+  const client = usePublicClient();
+  const { data: appConfig } = useAppConfig();
+
+  const nowTs = useMemo(() => Math.floor(Date.now() / 1000), []);
+
+  const totalDays = 30;
+  const totalPages = Math.ceil(totalDays / ROWS_PER_PAGE);
+
+  const offset = (currentPage - 1) * ROWS_PER_PAGE;
+  const rowsOnPage = Math.min(ROWS_PER_PAGE, totalDays - offset);
+
+  const boundaries = useMemo(() => {
+    const b: number[] = [];
+    for (let i = rowsOnPage; i >= 0; i--) {
+      b.push(dayBoundary(nowTs, offset + i));
+    }
+    return b;
+  }, [nowTs, offset, rowsOnPage]);
+
+  const queries = useQueries({
+    queries: boundaries.map((since) => ({
+      queryKey: ["referralData", userIndex, since],
+      queryFn: () => queryReferralData(client!, appConfig.addresses.perps, userIndex!, since),
+      enabled: !!client && !!userIndex,
+    })),
+  });
+
+  const isLoading = queries.some((q) => q.isLoading);
+
+  const commissionData = useMemo<CommissionRow[]>(() => {
+    if (queries.some((q) => !q.data)) return [];
+
+    const rows: CommissionRow[] = [];
+
+    for (let i = 0; i < rowsOnPage; i++) {
+      const wider = queries[i].data!;
+      const narrower = queries[i + 1].data!;
+      const delta = diffReferralData(wider, narrower);
+
+      const dayTs = boundaries[i + 1];
+      const dateStr = formatDate(new Date(dayTs * 1000), settings.dateFormat);
+
+      rows.push({
+        myCommission: formatUSD(delta.commission),
+        referralVolume: formatUSD(delta.volume),
+        activeUsers: String(delta.activeUsers),
+        date: dateStr,
+      });
+    }
+
+    return rows.reverse();
+  }, [queries, boundaries, rowsOnPage]);
+
   const columns: TableColumn<CommissionRow> = [
     {
-      header: "My Commission",
+      header: m["referral.commission.columns.myCommission"](),
       cell: ({ row }) => <Cell.Text text={row.original.myCommission} />,
     },
     {
-      header: "Referral Volume",
+      header: m["referral.commission.columns.referralVolume"](),
       cell: ({ row }) => <Cell.Text text={row.original.referralVolume} />,
     },
     {
-      header: "Active Users",
+      header: m["referral.commission.columns.activeUsers"](),
       cell: ({ row }) => <Cell.Text text={row.original.activeUsers} />,
     },
     {
-      header: "Date",
+      header: m["referral.commission.columns.date"](),
       cell: ({ row }) => <Cell.Text text={row.original.date} />,
     },
   ];
 
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4 bg-surface-primary-gray">
+        <div className="space-y-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={`commission-skeleton-${i}`} className="w-full h-12" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Table
-      data={mockCommissionData}
+      data={commissionData}
       columns={columns}
       classNames={{ base: "shadow-none bg-surface-primary-gray" }}
       bottomContent={
-        <div className="p-4">
-          <Pagination totalPages={10} currentPage={currentPage} onPageChange={setCurrentPage} />
-        </div>
+        totalPages > 1 ? (
+          <div className="p-4">
+            <Pagination
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        ) : undefined
       }
     />
   );
 };
 
 const MyRefereesTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
+  const { userIndex, isConnected } = useAccount();
+
+  const { referees, isLoading } = useRefereeStats({
+    referrerIndex: userIndex,
+  });
+
+  const refereeData = useMemo<RefereeRow[]>(() => {
+    return referees.map((referee: RefereeStatsWithUser) => ({
+      userName: `#${referee.userIndex}`,
+      totalVolume: formatUSD(referee.volume),
+      totalCommission: formatUSD(referee.commissionEarned),
+      date: formatDate(new Date(referee.registeredAt * 1000), settings.dateFormat),
+    }));
+  }, [referees]);
+
   const columns: TableColumn<RefereeRow> = [
     {
-      header: "User Name",
+      header: m["referral.commission.columns.userName"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.userName} />
       ),
     },
     {
-      header: "Total Volume",
+      header: m["referral.commission.columns.totalVolume"](),
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900 diatype-m-medium"
@@ -125,7 +248,7 @@ const MyRefereesTable: React.FC = () => {
       ),
     },
     {
-      header: "Total Commission",
+      header: m["referral.commission.columns.totalCommission"](),
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900 diatype-m-medium"
@@ -134,38 +257,94 @@ const MyRefereesTable: React.FC = () => {
       ),
     },
     {
-      header: "Date Only",
+      header: m["referral.commission.columns.dateJoined"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.date} />
       ),
     },
   ];
 
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4 bg-surface-primary-gray">
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="w-full h-12" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (refereeData.length === 0) {
+    return (
+      <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
+        <p className="text-ink-tertiary-500 diatype-m-medium">
+          {m["referral.commission.noReferees"]()}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <Table
-      data={mockRefereeData}
+      data={refereeData}
       columns={columns}
       classNames={{ base: "shadow-none bg-surface-primary-gray" }}
       bottomContent={
-        <div className="p-4">
-          <Pagination totalPages={10} currentPage={currentPage} onPageChange={setCurrentPage} />
-        </div>
+        refereeData.length > 10 ? (
+          <div className="p-4">
+            <Pagination
+              totalPages={Math.ceil(refereeData.length / 10)}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        ) : undefined
       }
     />
   );
 };
 
 const RebateTable: React.FC = () => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const formatUSD = (value: number | string) =>
+    formatNumber(value, { ...formatNumberOptions, currency: "USD" });
   const [currentPage, setCurrentPage] = useState(1);
+  const { userIndex, isConnected } = useAccount();
+
+  const { referralData, isLoading } = useReferralData({ userIndex });
+
+  const rebateData = useMemo<RebateRow[]>(() => {
+    const volume = Number(referralData?.volume ?? "0");
+    const rebates = referralData?.commissionSharedByReferrer ?? "0";
+
+    if (volume > 0 || Number(rebates) > 0) {
+      return [
+        {
+          rebates: formatUSD(rebates),
+          tradingVolume: formatUSD(volume),
+          date: formatDate(new Date(), settings.dateFormat),
+        },
+      ];
+    }
+    return [];
+  }, [referralData]);
+
   const columns: TableColumn<RebateRow> = [
     {
-      header: "Rebates ▼",
+      header: m["referral.rebate.columns.rebates"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.rebates} />
       ),
     },
     {
-      header: "Trading Volume ▼",
+      header: m["referral.rebate.columns.tradingVolume"](),
       cell: ({ row }) => (
         <Cell.Text
           className="text-ink-primary-900 diatype-m-medium"
@@ -174,22 +353,54 @@ const RebateTable: React.FC = () => {
       ),
     },
     {
-      header: "Date ▼",
+      header: m["referral.rebate.columns.date"](),
       cell: ({ row }) => (
         <Cell.Text className="text-ink-primary-900 diatype-m-medium" text={row.original.date} />
       ),
     },
   ];
 
+  if (!isConnected) {
+    return <NotConnectedMessage />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4 bg-surface-primary-gray">
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="w-full h-12" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (rebateData.length === 0) {
+    return (
+      <div className="p-8 bg-surface-primary-gray flex items-center justify-center">
+        <p className="text-ink-tertiary-500 diatype-m-medium">
+          {m["referral.commission.noRebates"]()}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <Table
-      data={mockRebateData}
+      data={rebateData}
       columns={columns}
       classNames={{ base: "shadow-none bg-surface-primary-gray" }}
       bottomContent={
-        <div className="p-4">
-          <Pagination totalPages={10} currentPage={currentPage} onPageChange={setCurrentPage} />
-        </div>
+        rebateData.length > 10 ? (
+          <div className="p-4">
+            <Pagination
+              totalPages={Math.ceil(rebateData.length / 10)}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        ) : undefined
       }
     />
   );
@@ -197,7 +408,9 @@ const RebateTable: React.FC = () => {
 
 const ChartLoading: React.FC = () => (
   <div className="p-4 lg:p-6 bg-surface-primary-gray h-[300px] flex items-center justify-center">
-    <p className="text-ink-tertiary-500 diatype-m-medium">Loading chart...</p>
+    <p className="text-ink-tertiary-500 diatype-m-medium">
+      {m["referral.commission.loadingChart"]()}
+    </p>
   </div>
 );
 
@@ -206,10 +419,13 @@ type MyCommissionProps = {
 };
 
 export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
+  const { isConnected } = useAccount();
   const [affiliateTab, setAffiliateTab] = useState<CommissionTab>("my-commission");
   const [traderTab, setTraderTab] = useState<RebateTab>("my-rebates");
   const [chartMetric, setChartMetric] = useState<ChartMetric>("commission");
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7D");
+
+  if (!isConnected) return;
 
   const isAffiliate = mode === "affiliate";
   const showStatisticsSelects =
@@ -229,9 +445,9 @@ export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
             selectedTab={affiliateTab}
             onTabChange={(value) => setAffiliateTab(value as CommissionTab)}
           >
-            <Tab title="my-commission">My Commission</Tab>
-            <Tab title="my-referees">My Referees</Tab>
-            <Tab title="statistics">Statistics</Tab>
+            <Tab title="my-commission">{m["referral.commission.myCommission"]()}</Tab>
+            <Tab title="my-referees">{m["referral.commission.myReferees"]()}</Tab>
+            <Tab title="statistics">{m["referral.commission.statistics"]()}</Tab>
           </Tabs>
         ) : (
           <Tabs
@@ -239,8 +455,8 @@ export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
             selectedTab={traderTab}
             onTabChange={(value) => setTraderTab(value as RebateTab)}
           >
-            <Tab title="my-rebates">My Rebates</Tab>
-            <Tab title="statistics">Statistics</Tab>
+            <Tab title="my-rebates">{m["referral.rebate.myRebates"]()}</Tab>
+            <Tab title="statistics">{m["referral.rebate.statistics"]()}</Tab>
           </Tabs>
         )}
         {showStatisticsSelects && (
@@ -250,17 +466,17 @@ export const MyCommission: React.FC<MyCommissionProps> = ({ mode }) => {
               onChange={(value) => setChartMetric(value as ChartMetric)}
               classNames={{ trigger: "max-h-[38px]" }}
             >
-              <Select.Item value="commission">Commission</Select.Item>
-              <Select.Item value="volume">Volume</Select.Item>
+              <Select.Item value="commission">{m["referral.metric.commission"]()}</Select.Item>
+              <Select.Item value="volume">{m["referral.metric.volume"]()}</Select.Item>
             </Select>
             <Select
               value={chartPeriod}
               onChange={(value) => setChartPeriod(value as ChartPeriod)}
               classNames={{ trigger: "max-h-[38px]" }}
             >
-              <Select.Item value="7D">Period: 7D</Select.Item>
-              <Select.Item value="30D">Period: 30D</Select.Item>
-              <Select.Item value="90D">Period: 90D</Select.Item>
+              <Select.Item value="7D">{m["referral.period.sevenDays"]()}</Select.Item>
+              <Select.Item value="30D">{m["referral.period.thirtyDays"]()}</Select.Item>
+              <Select.Item value="90D">{m["referral.period.ninetyDays"]()}</Select.Item>
             </Select>
           </div>
         )}

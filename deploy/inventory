@@ -18,7 +18,7 @@ deploy_user="deploy"
 100.75.192.25  # ovh5
 100.64.79.112  # ovh6
 100.112.48.112 # ovh7
-100.89.7.33    # inter1
+100.72.62.100  # hetzner5
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
@@ -28,7 +28,7 @@ deploy_user="deploy"
 [clickhouse]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
-100.89.7.33    # inter1
+100.72.62.100  # hetzner5
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
@@ -39,7 +39,7 @@ deploy_user="deploy"
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.122.37.57  # ovh3
-100.89.7.33    # inter1
+100.72.62.100  # hetzner5
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
@@ -53,18 +53,18 @@ deploy_user="deploy"
 [full-app]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
-100.89.7.33    # inter1
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
 100.109.200.70 # hetzner4
+100.72.62.100  # hetzner5
 
 [traefik]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.122.37.57  # ovh3
-100.89.7.33    # inter1
+100.72.62.100  # hetzner5
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
@@ -86,7 +86,7 @@ deploy_user="deploy"
 [cloudflared]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
-100.89.7.33    # inter1
+100.72.62.100  # hetzner5
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
@@ -96,11 +96,47 @@ deploy_user="deploy"
 [vaultwarden]
 100.122.37.57  # ovh3
 
-[points-bot]
+[points-bot-devnet]
 100.107.248.71 # ovh2
 
+[points-bot-testnet]
+100.90.163.19  # hetzner2
+
+[points-bot-mainnet]
+100.126.8.2    # hetzner1
+
+[points-bot:children]
+points-bot-devnet
+points-bot-testnet
+points-bot-mainnet
+
+[perps-bot]
+100.126.8.2    # hetzner1
+
+[dango-assistant]
+100.96.253.40  # ovh1
+
+[perp-liquidator-devnet]
+100.96.253.40  # ovh1
+100.107.248.71 # ovh2
+
+[perp-liquidator-testnet]
+100.90.163.19  # hetzner2
+100.109.200.70 # hetzner4
+
+[perp-liquidator-mainnet]
+100.72.62.100  # hetzner5
+100.66.234.16  # inter2
+100.126.8.2    # hetzner1
+100.76.197.30  # hetzner3
+
+[perp-liquidator:children]
+perp-liquidator-devnet
+perp-liquidator-testnet
+perp-liquidator-mainnet
+
 [hyperlane]
-100.89.7.33    # inter1
+100.72.62.100  # hetzner5
 100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2

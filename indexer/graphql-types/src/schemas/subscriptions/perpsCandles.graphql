@@ -1,0 +1,18 @@
+subscription SubscribePerpsCandles($pairId: String!, $interval: CandleInterval!, $laterThan: DateTime) {
+  perpsCandles(pairId: $pairId, interval: $interval, laterThan: $laterThan) {
+    pairId
+    interval
+    minBlockHeight
+    maxBlockHeight
+    open
+    high
+    low
+    close
+    volume
+    volumeUsd
+    timeStart
+    timeStartUnix
+    timeEnd
+    timeEndUnix
+  }
+}

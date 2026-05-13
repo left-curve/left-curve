@@ -40,7 +40,7 @@ export const CoinSelector: React.FC<CoinSelectorProps> = ({
         listboxWrapper: `top-12 ${classNames?.listboxWrapper}`,
         listbox: `${classNames?.listbox}`,
         value: `${classNames?.value}`,
-        trigger: `${variant === "plain" ? `min-w-10 p-3 bg-transparent shadow-none justify-start ${classNames?.trigger}` : `${classNames?.trigger}`}`,
+        trigger: `${variant === "plain" ? `w-auto min-w-10 md:min-w-10 p-3 bg-transparent shadow-none justify-start ${classNames?.trigger}` : `${classNames?.trigger}`}`,
         icon: `${classNames?.selectorIcon}`,
       }}
       {...props}

@@ -1,30 +1,31 @@
-mod core;
-mod cron;
-mod liquidity_depth;
-mod maintain;
-mod position_index;
-mod price;
-mod querier;
-mod query;
-mod state;
-mod trade;
-mod vault;
-mod volume;
-
-pub(crate) use {querier::*, state::*, volume::*};
+pub mod core;
+pub mod cron;
+pub mod maintain;
+#[cfg(feature = "metrics")]
+pub mod metrics;
+pub mod position_index;
+pub mod querier;
+pub mod query;
+pub mod referral;
+pub mod state;
+pub mod trade;
+pub mod vault;
 
 use {
+    crate::state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+    anyhow::ensure,
     dango_oracle::OracleQuerier,
+    dango_order_book::{FillId, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, UsdValue},
     dango_types::{
-        DangoQuerier, UsdValue,
+        DangoQuerier,
         perps::{
-            CancelOrderRequest, ExecuteMsg, InstantiateMsg, MaintainerMsg, OrderId, QueryMsg,
-            State, TraderMsg, VaultMsg,
+            CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
+            MaintainerMsg, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg, VaultMsg,
         },
     },
     grug::{
-        Addr, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst, Response,
-        SudoCtx, Uint128,
+        Addr, Duration, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst,
+        Response, SudoCtx, Uint128,
     },
 };
 
@@ -39,7 +40,10 @@ const VIRTUAL_SHARES: Uint128 = Uint128::new(1_000_000);
 const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 
 /// Lookback window for volume-tiered fee rate resolution.
-const VOLUME_LOOKBACK: grug::Duration = grug::Duration::from_days(14);
+const VOLUME_LOOKBACK: Duration = Duration::from_days(14);
+
+/// Reject oracle prices for being too old if older than this threshold.
+const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 
 /// Returns the oracle contract address.
 ///
@@ -60,6 +64,20 @@ fn oracle(querier: impl DangoQuerier) -> Addr {
     }
 }
 
+#[inline]
+fn account_factory(querier: impl DangoQuerier) -> Addr {
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = querier;
+        grug::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        querier.query_account_factory().unwrap()
+    }
+}
+
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     STATE.save(ctx.storage, &State {
@@ -68,45 +86,129 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     })?;
 
     NEXT_ORDER_ID.save(ctx.storage, &OrderId::ONE)?;
+    NEXT_FILL_ID.save(ctx.storage, &FillId::ONE)?;
 
     maintain::configure(ctx, msg.param, msg.pair_params)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let start = std::time::Instant::now();
+
     let mut events = EventBuilder::new();
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    cron::process_funding(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
+    cron::process_funding(
+        ctx.storage,
+        ctx.block.timestamp,
+        ctx.contract,
+        &mut oracle_querier,
+    )?;
+
+    cron::process_conditional_orders(
+        ctx.storage,
+        ctx.querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        &mut oracle_querier,
+        &mut events,
+    )?;
+
+    // Take the vault snapshot last, so equity reflects the end-of-block state
+    // — including funding application and any conditional-order fills that
+    // settled this block. Mirrors what the metrics path captures below.
+    cron::take_vault_snapshot(
+        ctx.storage,
+        ctx.block.timestamp,
+        ctx.contract,
+        &mut oracle_querier,
+    )?;
+
+    #[cfg(feature = "metrics")]
+    {
+        cron::emit_cron_metrics(ctx.storage, ctx.contract, &mut oracle_querier, start)?;
+    }
 
     Ok(Response::new().add_events(events)?)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    // Only `Deposit` and `Donate` methods accept attached funds (settlement currency).
+    // Every other endpoint must be called without funds — tokens sent here would
+    // otherwise be silently absorbed by the contract, lost to the sender.
+    match msg {
+        ExecuteMsg::Trade(TraderMsg::Deposit { .. })
+        | ExecuteMsg::Maintain(MaintainerMsg::Donate {}) => {},
+        _ => {
+            ensure!(
+                ctx.funds.is_empty(),
+                "unexpected funds sent to non-deposit endpoint: {}",
+                ctx.funds
+            );
+        },
+    }
+
     match msg {
         ExecuteMsg::Maintain(msg) => match msg {
             MaintainerMsg::Configure { param, pair_params } => {
                 maintain::configure(ctx, param, pair_params)
             },
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
+            MaintainerMsg::Donate {} => maintain::donate(ctx),
+            MaintainerMsg::SetFeeRateOverride {
+                user,
+                maker_taker_fee_rates,
+            } => maintain::set_fee_rate_override(ctx, user, maker_taker_fee_rates),
         },
         ExecuteMsg::Trade(msg) => match msg {
-            TraderMsg::Deposit {} => trade::deposit(ctx),
+            TraderMsg::Deposit { to } => trade::deposit(ctx, to),
             TraderMsg::Withdraw { amount } => trade::withdraw(ctx, amount),
-            TraderMsg::SubmitOrder {
+            TraderMsg::SubmitOrder(SubmitOrderRequest {
                 pair_id,
                 size,
                 kind,
                 reduce_only,
-            } => trade::submit_order(ctx, pair_id, size, kind, reduce_only),
+                tp,
+                sl,
+            }) => trade::submit_order(ctx, pair_id, size, kind, reduce_only, tp, sl),
             TraderMsg::CancelOrder(CancelOrderRequest::One(order_id)) => {
                 trade::cancel_one_order(ctx, order_id)
             },
+            TraderMsg::CancelOrder(CancelOrderRequest::OneByClientOrderId(cid)) => {
+                trade::cancel_one_order_by_client_order_id(ctx, cid)
+            },
             TraderMsg::CancelOrder(CancelOrderRequest::All) => trade::cancel_all_orders(ctx),
+            TraderMsg::BatchUpdateOrders(reqs) => trade::batch_update_orders(ctx, reqs),
+            TraderMsg::SubmitConditionalOrder {
+                pair_id,
+                size,
+                trigger_price,
+                trigger_direction,
+                max_slippage,
+            } => trade::submit_conditional_order(
+                ctx,
+                pair_id,
+                size,
+                trigger_price,
+                trigger_direction,
+                max_slippage,
+            ),
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::One {
+                pair_id,
+                trigger_direction,
+            }) => trade::cancel_one_conditional_order(ctx, pair_id, trigger_direction),
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::AllForPair {
+                pair_id,
+            }) => trade::cancel_conditional_orders_for_pair(ctx, pair_id),
+            TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::All) => {
+                trade::cancel_all_conditional_orders(ctx)
+            },
         },
         ExecuteMsg::Vault(msg) => match msg {
             VaultMsg::AddLiquidity {
@@ -118,39 +220,178 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             },
             VaultMsg::Refresh {} => vault::refresh_orders(ctx),
         },
+        ExecuteMsg::Referral(msg) => match msg {
+            ReferralMsg::SetReferral { referrer, referee } => {
+                referral::set_referral(ctx, referrer, referee)
+            },
+            ReferralMsg::SetFeeShareRatio { share_ratio } => {
+                referral::set_fee_share_ratio(ctx, share_ratio)
+            },
+            ReferralMsg::SetCommissionRateOverride {
+                user,
+                commission_rate,
+            } => referral::set_commission_rate_override(ctx, user, commission_rate),
+            ReferralMsg::ForceSetFeeShareRatio { user, share_ratio } => {
+                referral::force_set_fee_share_ratio(ctx, user, share_ratio)
+            },
+        },
     }
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
-        QueryMsg::Param {} => PARAM.load(ctx.storage)?.to_json_value(),
+        QueryMsg::Param {} => {
+            let res = PARAM.load(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::PairParam { pair_id } => {
-            PAIR_PARAMS.may_load(ctx.storage, &pair_id)?.to_json_value()
+            let res = PAIR_PARAMS.may_load(ctx.storage, &pair_id)?;
+            res.to_json_value()
         },
         QueryMsg::PairParams { start_after, limit } => {
-            query::query_pair_params(ctx, start_after, limit)?.to_json_value()
+            let res = query::query_pair_params(ctx, start_after, limit)?;
+            res.to_json_value()
         },
-        QueryMsg::State {} => STATE.load(ctx.storage)?.to_json_value(),
+        QueryMsg::State {} => {
+            let res = STATE.load(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::PairState { pair_id } => {
-            PAIR_STATES.may_load(ctx.storage, &pair_id)?.to_json_value()
+            let res = PAIR_STATES.may_load(ctx.storage, &pair_id)?;
+            res.to_json_value()
         },
         QueryMsg::PairStates { start_after, limit } => {
-            query::query_pair_states(ctx, start_after, limit)?.to_json_value()
+            let res = query::query_pair_states(ctx, start_after, limit)?;
+            res.to_json_value()
         },
-        QueryMsg::UserState { user } => USER_STATES.may_load(ctx.storage, user)?.to_json_value(),
+        QueryMsg::UserState { user } => {
+            let res = USER_STATES.may_load(ctx.storage, user)?;
+            res.to_json_value()
+        },
         QueryMsg::UserStates { start_after, limit } => {
-            query::query_user_states(ctx, start_after, limit)?.to_json_value()
+            let res = query::query_user_states(ctx, start_after, limit)?;
+            res.to_json_value()
         },
-        QueryMsg::Order { order_id } => query::query_order(ctx, order_id)?.to_json_value(),
-        QueryMsg::OrdersByUser { user } => query::query_orders_by_user(ctx, user)?.to_json_value(),
+        QueryMsg::UserStateExtended {
+            user,
+            include_equity,
+            include_available_margin,
+            include_maintenance_margin,
+            include_unrealized_pnl,
+            include_unrealized_funding,
+            include_liquidation_price,
+            include_all,
+        } => {
+            let res = query::query_user_state_extended(
+                ctx.storage,
+                ctx.querier,
+                ctx.block.timestamp,
+                user,
+                include_equity,
+                include_available_margin,
+                include_maintenance_margin,
+                include_unrealized_pnl,
+                include_unrealized_funding,
+                include_liquidation_price,
+                include_all,
+            )?;
+            res.to_json_value()
+        },
+        QueryMsg::UserStatesExtended {
+            start_after,
+            limit,
+            include_equity,
+            include_available_margin,
+            include_maintenance_margin,
+            include_unrealized_pnl,
+            include_unrealized_funding,
+            include_liquidation_price,
+            include_all,
+        } => {
+            let res = query::query_user_states_extended(
+                ctx.storage,
+                ctx.querier,
+                ctx.block.timestamp,
+                start_after,
+                limit,
+                include_equity,
+                include_available_margin,
+                include_maintenance_margin,
+                include_unrealized_pnl,
+                include_unrealized_funding,
+                include_liquidation_price,
+                include_all,
+            )?;
+            res.to_json_value()
+        },
+        QueryMsg::Order { order_id } => {
+            let res = query::query_order(ctx, order_id)?;
+            res.to_json_value()
+        },
+        QueryMsg::OrdersByUser { user } => {
+            let res = query::query_orders_by_user(ctx, user)?;
+            res.to_json_value()
+        },
         QueryMsg::LiquidityDepth {
             pair_id,
             bucket_size,
             limit,
-        } => query::query_liquidity_depth(ctx, pair_id, bucket_size, limit)?.to_json_value(),
+        } => {
+            let res = query::query_liquidity_depth(ctx, pair_id, bucket_size, limit)?;
+            res.to_json_value()
+        },
         QueryMsg::Volume { user, since } => {
-            query::query_volume(ctx.storage, user, since)?.to_json_value()
+            let res = query::query_volume(ctx.storage, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VolumeByUser { user, since } => {
+            let res = query::query_volume_by_user(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VaultSnapshots { min, max } => {
+            let res = query::query_vault_snapshots(ctx.storage, min, max)?;
+            res.to_json_value()
+        },
+        QueryMsg::Referrer { referee } => {
+            let res = query::query_referrer(ctx.storage, referee)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralData { user, since } => {
+            let res = query::query_referral_data(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralDataEntries {
+            user,
+            start_after,
+            limit,
+        } => {
+            let res = query::query_referral_data_entries(ctx, user, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferrerToRefereeStats { referrer, order_by } => {
+            let res = query::query_referrer_to_referee_stats(ctx, referrer, order_by)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReferralSettings { user } => {
+            let res = query::query_referral_settings(ctx, user)?;
+            res.to_json_value()
+        },
+        QueryMsg::CommissionRateOverride { user } => {
+            let res = query::query_commission_rate_override(ctx.storage, user)?;
+            res.to_json_value()
+        },
+        QueryMsg::CommissionRateOverrides { start_after, limit } => {
+            let res = query::query_commission_rate_overrides(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::FeeRateOverride { user } => {
+            let res = FEE_RATE_OVERRIDES.may_load(ctx.storage, user)?;
+            res.to_json_value()
+        },
+        QueryMsg::FeeRateOverrides { start_after, limit } => {
+            let res = query::query_fee_rate_overrides(ctx, start_after, limit)?;
+            res.to_json_value()
         },
     }
     .map_err(Into::into)

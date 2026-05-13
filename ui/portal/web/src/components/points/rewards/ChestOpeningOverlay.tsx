@@ -1,18 +1,28 @@
 import { Button } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type NFTItem, NFTCarousel } from "./NFTCarousel";
+import { LootSummary } from "./LootSummary";
 import { NFTResult } from "./NFTResult";
+import type { LootCount } from "./useChestOpening";
 
 type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
 type ChestOpeningOverlayProps = {
   variant: BoxVariant;
+  loot: string | null;
   onClose: () => void;
   currentFrame: number;
   animationFrames: string[] | null;
   onAnimationComplete: () => void;
+  onSpin?: () => void;
+  isOpenAllMode?: boolean;
+  isBulkMode?: boolean;
+  currentBoxIndex?: number;
+  totalBoxesToOpen?: number;
+  onNext?: () => void;
+  lootCounts?: LootCount;
 };
 
 const CHEST_ASSETS: Record<BoxVariant, string> = {
@@ -25,42 +35,97 @@ const CHEST_ASSETS: Record<BoxVariant, string> = {
 const FLASH_IMAGE = "/images/points/flash.png";
 const FLASH_IMAGE2 = "/images/points/flash2.png";
 
-const MOCK_NFTS: NFTItem[] = [
-  { id: "common", rarity: "common", label: "Common", imageSrc: "/images/points/nft/common.png" },
+const ALL_NFTS: NFTItem[] = [
+  {
+    id: "common",
+    rarity: "common",
+    label: "Common",
+    frameSrc: "/images/points/nft/frame-common.png",
+  },
   {
     id: "uncommon",
     rarity: "uncommon",
     label: "Uncommon",
-    imageSrc: "/images/points/nft/uncommon.png",
+    frameSrc: "/images/points/nft/frame-uncommon.png",
   },
-  { id: "epic", rarity: "epic", label: "Epic", imageSrc: "/images/points/nft/epic.png" },
-  { id: "golden", rarity: "golden", label: "Golden", imageSrc: "/images/points/nft/mythic.png" },
+  {
+    id: "rare",
+    rarity: "rare",
+    label: "Rare",
+    frameSrc: "/images/points/nft/frame-rare.png",
+  },
+  {
+    id: "epic",
+    rarity: "epic",
+    label: "Epic",
+    frameSrc: "/images/points/nft/frame-epic.png",
+  },
   {
     id: "legendary",
     rarity: "legendary",
     label: "Legendary",
-    imageSrc: "/images/points/nft/legendary.png",
+    frameSrc: "/images/points/nft/frame-legendary.png",
   },
-  { id: "rare", rarity: "rare", label: "Rare", imageSrc: "/images/points/nft/rare.png" },
+  {
+    id: "mythic",
+    rarity: "mythic",
+    label: "Mythic",
+    frameSrc: "/images/points/nft/frame-mythic.png",
+  },
 ];
 
-type Phase = "chest" | "carousel" | "spinning" | "result";
+type Phase = "chest" | "carousel" | "spinning" | "result" | "bulk-result";
+
+const SOUND_CHEST = "/sounds/sound_1_chest.mp3";
+const SOUND_SPIN = "/sounds/sound_2_spin.mp3";
+const SOUND_NFT_WIN = "/sounds/sound_3_nft_win.mp3";
+
+const playSound = (src: string) => {
+  const audio = new Audio(src);
+  audio.volume = 0.5;
+  audio.play().catch(() => {});
+};
 
 export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   variant,
+  loot,
   onClose,
   currentFrame,
   animationFrames,
   onAnimationComplete,
+  onSpin,
+  isOpenAllMode = false,
+  isBulkMode = false,
+  currentBoxIndex = 0,
+  totalBoxesToOpen = 1,
+  onNext,
+  lootCounts,
 }) => {
   const [phase, setPhase] = useState<Phase>("chest");
   const [isShaking, setIsShaking] = useState(false);
   const [winningNFT, setWinningNFT] = useState<NFTItem | null>(null);
 
+  useEffect(() => {
+    playSound(SOUND_CHEST);
+  }, []);
+
   const chestImage = CHEST_ASSETS[variant];
   const hasAnimation = animationFrames !== null;
   const totalFrames = animationFrames?.length ?? 1;
   const animationProgress = hasAnimation ? currentFrame / totalFrames : 0;
+
+  const targetNFT = useMemo(() => {
+    if (!loot) return ALL_NFTS[0];
+    const lootKey = loot.toLowerCase();
+    return ALL_NFTS.find((nft) => nft.rarity === lootKey) ?? ALL_NFTS[0];
+  }, [loot]);
+
+  // Update winningNFT when moving to next box in Open All mode (stay in result phase)
+  useEffect(() => {
+    if (isOpenAllMode && phase === "result" && currentBoxIndex > 0) {
+      setWinningNFT(targetNFT);
+    }
+  }, [currentBoxIndex, isOpenAllMode, phase, targetNFT]);
 
   useEffect(() => {
     if (phase === "chest" && hasAnimation && animationFrames) {
@@ -83,14 +148,16 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
   }, [phase, hasAnimation]);
 
   const handleSpin = useCallback(() => {
-    const randomIndex = Math.floor(Math.random() * MOCK_NFTS.length);
-    setWinningNFT(MOCK_NFTS[randomIndex]);
+    playSound(SOUND_SPIN);
+    onSpin?.();
+    setWinningNFT(targetNFT);
     setPhase("spinning");
-  }, []);
+  }, [targetNFT, onSpin]);
 
   const handleSpinComplete = useCallback(() => {
-    setPhase("result");
-  }, []);
+    playSound(SOUND_NFT_WIN);
+    setPhase(isBulkMode ? "bulk-result" : "result");
+  }, [isBulkMode]);
 
   return (
     <motion.div
@@ -182,7 +249,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
             </motion.p>
 
             <NFTCarousel
-              nfts={MOCK_NFTS}
+              nfts={ALL_NFTS}
               isSpinning={phase === "spinning"}
               targetNFT={winningNFT}
               onSpinComplete={handleSpinComplete}
@@ -271,8 +338,56 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <NFTResult nft={winningNFT} onContinue={onClose} />
+            <NFTResult
+              nft={winningNFT}
+              onContinue={onClose}
+              isOpenAllMode={isOpenAllMode}
+              currentBoxIndex={currentBoxIndex}
+              totalBoxesToOpen={totalBoxesToOpen}
+              onNext={onNext}
+            />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === "bulk-result" && lootCounts && (
+          <>
+            <motion.div
+              key="bulk-flash"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <motion.div
+                className="absolute w-[200vmax] h-[200vmax] pointer-events-none"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 0.4, opacity: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                <motion.img
+                  src={FLASH_IMAGE2}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 40, ease: "linear", repeat: Number.POSITIVE_INFINITY }}
+                />
+              </motion.div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_20%,transparent_50%,#1a1714_90%)]" />
+            </motion.div>
+            <motion.div
+              key="bulk-result-modal"
+              className="relative z-30"
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <LootSummary lootCounts={lootCounts} onClose={onClose} />
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.div>

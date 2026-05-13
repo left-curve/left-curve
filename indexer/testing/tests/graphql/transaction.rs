@@ -7,10 +7,9 @@ use {
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
     grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
-    grug_types::{BroadcastClient, BroadcastClientExt, Denom, GasOption},
-    indexer_client::{
-        Block, HttpClient, SubscribeTransactions, Transactions, block, subscribe_transactions,
-        transactions,
+    grug_types::{BroadcastClientExt, Denom, GasOption, Inner, JsonSerExt},
+    indexer_graphql_types::{
+        Block, SubscribeTransactions, Transactions, block, subscribe_transactions, transactions,
     },
     indexer_sql::entity,
     indexer_testing::{
@@ -163,7 +162,7 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from indexer-graphql-types
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeTransactions::build_query(subscribe_transactions::Variables::default()),
         "transactions",
@@ -273,8 +272,6 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
 
     let mut accounts = rx.await?;
     let indexer_context = rx2.await?;
-    let client = HttpClient::new(format!("http://localhost:{port}"))?;
-
     wait_for_server_ready(port).await?;
 
     let tx = accounts.user1.sign_transaction(
@@ -286,7 +283,20 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
         1000000,
     )?;
 
-    client.broadcast_tx(tx).await?;
+    let response = reqwest::Client::new()
+        .post(format!("http://localhost:{port}/graphql"))
+        .header("X-Forwarded-For", "198.51.100.10, 127.0.0.1")
+        .json(&json!({
+            "query": "mutation BroadcastTxSync($tx: Tx!) { broadcastTxSync(tx: $tx) }",
+            "variables": {
+                "tx": tx.to_json_value()?.into_inner(),
+            }
+        }))
+        .send()
+        .await
+        .map_err(|error| anyhow::anyhow!("failed to submit GraphQL tx: {error}"))?;
+
+    assert_that!(response.status().is_success()).is_true();
 
     // Transaction indexer is fully async and there is no way to know when it's finished
     for _ in 1..=30 {
@@ -316,7 +326,7 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
         actual: http_request_details,
         expected: json!({
         "peer_ip": "127.0.0.1",
-        "remote_ip": "127.0.0.1"
+        "remote_ip": "198.51.100.10"
     }));
 
     Ok(())

@@ -21,7 +21,7 @@ use {
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
-    indexer_client::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
+    indexer_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -44,8 +44,8 @@ async fn query_accounts() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
-    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -91,7 +91,7 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -143,7 +143,7 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -193,8 +193,10 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
 
     // Create two accounts under the same user. The two `TestAccount`'s should
     // have the same user index.
-    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
-    let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+    let mut test_account1 =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
+    let test_account2 =
+        add_account_with_existing_user(&mut suite, &contracts, &mut test_account1).await;
     assert_eq!(test_account1.user_index(), test_account2.user_index());
 
     suite.app.indexer.wait_for_finish().await?;
@@ -281,7 +283,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
     // Create 10 accounts to paginate through
     for _ in 0..10 {
-        let _user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+        let _user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
     }
 
     suite.app.indexer.wait_for_finish().await?;
@@ -393,11 +395,12 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let _test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let _test_account =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeAccounts::build_query(subscribe_accounts::Variables::default()),
         "accounts",
@@ -410,7 +413,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
             let _test_account =
-                create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+                create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -477,12 +480,13 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let mut test_account1 =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
     let user_index = test_account1.user_index() as i64;
 
     suite.app.indexer.wait_for_finish().await?;
 
-    // Use typed subscription from indexer-client
+    // Use typed subscription from dango-sdk
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribeAccounts::build_query(subscribe_accounts::Variables {
             user_index: Some(user_index),
@@ -499,11 +503,11 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
         while let Some(_idx) = rx.recv().await {
             // Create a new account with a new user index, to see if the subscription filters it out
             let _test_account =
-                create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+                create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
             // Create a new account with the original user
             let _test_account2 =
-                add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+                add_account_with_existing_user(&mut suite, &contracts, &mut test_account1).await;
 
             suite.app.indexer.wait_for_finish().await?;
         }
@@ -559,6 +563,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
                 accounts.user1.address(),
                 Coins::one(dango::DENOM.clone(), 123).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -619,6 +624,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
                 accounts.user1.address(),
                 Coins::one(dango::DENOM.clone(), 123).unwrap(),
             )
+            .await
             .should_succeed();
     }
 

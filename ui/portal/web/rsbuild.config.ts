@@ -1,3 +1,5 @@
+import { execSync } from "node:child_process";
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "fs-extra";
@@ -31,6 +33,17 @@ const enabledFeatures = process.env.ENABLED_FEATURES
   ? process.env.ENABLED_FEATURES.split(",").map((f) => f.trim())
   : [];
 
+const gitCommit = (() => {
+  if (process.env.GIT_COMMIT) return process.env.GIT_COMMIT;
+  try {
+    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "unknown";
+  }
+})();
+
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
 const tradingViewPath = path.resolve(
@@ -47,13 +60,13 @@ fs.copySync(
 
 const hyperlaneConfig = async () => {
   const mainFiles = {
-    config: "../../../dango/hyperlane-deployment/config.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments.json",
+    config: "./config/hyperlane/config.json",
+    deployment: "./config/hyperlane/deployments.json",
   };
 
   const testFiles = {
-    config: "../../../dango/hyperlane-deployment/config.testnet.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments-testnet.json",
+    config: "./config/hyperlane/config.testnet.json",
+    deployment: "./config/hyperlane/deployments-testnet.json",
   };
 
   const files = environment === "prod" ? mainFiles : testFiles;
@@ -85,21 +98,25 @@ const urls = {
     faucetUrl: "http://localhost:8082/mint",
     questUrl: "http://localhost:8081/check_username",
     upUrl: "http://localhost:8080/up",
+    pointsUrl: "http://localhost:8083/points-api",
   },
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
     questUrl: "https://quest-bot-devnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
+    pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
-    faucetUrl: "https://faucet-testnet-ovh2.dango.zone/mint",
+    faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
+    pointsUrl: "https://points-testnet.dango.zone",
   },
   prod: {
     faucetUrl: "/faucet",
     questUrl: "/quest",
     upUrl: `${chain.urls.indexer}/up`,
+    pointsUrl: "https://points-mainnet.dango.zone",
   },
 }[environment]!;
 
@@ -121,6 +138,7 @@ const envConfig = `window.dango = ${JSON.stringify(
           faucetUrl: `http://localhost:${PORT}/faucet`,
           questUrl: `http://localhost:${PORT}/quest`,
           upUrl: `http://localhost:${PORT}/up`,
+          pointsUrl: `http://localhost:${PORT}/points-api`,
         }
       : urls,
     banner,
@@ -129,6 +147,8 @@ const envConfig = `window.dango = ${JSON.stringify(
   null,
   2,
 )};`;
+
+const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
 
 const copyPattern = [];
 
@@ -160,6 +180,7 @@ export default defineConfig({
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
       "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
+      "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "process.env": {},
       "import.meta.env": {},
     },
@@ -188,21 +209,32 @@ export default defineConfig({
         changeOrigin: true,
         pathRewrite: { "^/up": "" },
       },
+      "/points-api": {
+        target: urls.pointsUrl,
+        changeOrigin: true,
+        pathRewrite: { "^/points-api": "" },
+      },
     },
   },
   html: {
     template: "public/index.html",
     title: "",
-    tags:
-      environment === "test" || environment === "dev"
+    tags: [
+      { tag: "script", attrs: { src: `/static/js/config.js?v=${configHash}` }, append: false },
+      ...(environment === "test" || environment === "dev"
         ? [
-            { tag: "script", attrs: { src: "https://cdn.jsdelivr.net/npm/eruda" } },
             {
               tag: "script",
-              children: "if (window.innerWidth <= 1024) { eruda.init(); }",
+              children: `if (new URLSearchParams(window.location.search).has("debug")) {
+                            var s = document.createElement("script");
+                            s.src = "https://cdn.jsdelivr.net/npm/eruda";
+                            s.onload = function () { eruda.init(); };
+                            document.head.appendChild(s);
+                  }`,
             },
           ]
-        : [],
+        : []),
+    ],
   },
   performance: {
     prefetch: {
@@ -273,15 +305,8 @@ export default defineConfig({
             clientsClaim: true,
             skipWaiting: true,
             cleanupOutdatedCaches: true,
-            runtimeCaching: [
-              {
-                urlPattern: ({ request }) => request.mode === "navigate",
-                handler: "NetworkFirst",
-                options: {
-                  cacheName: "html-cache",
-                },
-              },
-            ],
+            navigationPreload: false,
+            importScripts: ["/sw-disable-nav-preload.js"],
           }),
         );
       }

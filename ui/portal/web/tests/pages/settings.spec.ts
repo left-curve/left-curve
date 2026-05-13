@@ -227,15 +227,16 @@ test.describe("Settings Page", () => {
       }
     });
 
-    test("username section shows User #number format", async () => {
+    test("username section shows default username format", async () => {
       await sharedPage.goto("/settings");
       await waitForStorageHydration(sharedPage);
 
       const usernameLabel = sharedPage.getByText("Username", { exact: true });
       await expect(usernameLabel).toBeVisible();
 
-      const userNumber = sharedPage.getByText(/User #\d+/);
-      await expect(userNumber.first()).toBeVisible();
+      // Default username format: user_N (e.g. user_0, user_24)
+      const userNumber = sharedPage.getByText(/user_\d+/);
+      await expect(userNumber.first()).toBeVisible({ timeout: 10_000 });
     });
 
     test("username edit icon is visible for default username", async () => {
@@ -243,7 +244,7 @@ test.describe("Settings Page", () => {
       await waitForStorageHydration(sharedPage);
 
       const usernameSection = sharedPage.locator("div").filter({
-        has: sharedPage.getByText(/User #\d+/),
+        has: sharedPage.getByText(/user_\d+/),
       });
 
       if ((await usernameSection.count()) > 0) {
@@ -259,8 +260,8 @@ test.describe("Settings Page", () => {
       await sharedPage.goto("/settings");
       await waitForStorageHydration(sharedPage);
 
-      const userNumber = sharedPage.getByText(/User #\d+/).first();
-      await expect(userNumber).toBeVisible();
+      const userNumber = sharedPage.getByText(/user_\d+/).first();
+      await expect(userNumber).toBeVisible({ timeout: 10_000 });
 
       await userNumber.click();
       await sharedPage.waitForTimeout(500);

@@ -4,7 +4,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Cell, CursorPagination, Table } from "@left-curve/applets-kit";
 
-import type { TableColumn } from "@left-curve/applets-kit";
+import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { IndexedTransaction } from "@left-curve/dango/types";
 
 type TransactionsTableProps = {
@@ -16,11 +16,13 @@ type TransactionsTableProps = {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
   };
+  classNames?: TableClassNames;
 };
 
 export const TransactionsTable: React.FC<TransactionsTableProps> = ({
   transactions,
   pagination,
+  classNames,
 }) => {
   const navigate = useNavigate();
 
@@ -30,6 +32,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
       cell: ({ row }) => (
         <Cell.TxHash
           hash={row.original.hash}
+          href={`/tx/${row.original.hash}`}
           navigate={() => navigate({ to: `/tx/${row.original.hash}` })}
         />
       ),
@@ -39,6 +42,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
       cell: ({ row }) => (
         <Cell.BlockHeight
           blockHeight={row.original.blockHeight}
+          href={`/block/${row.original.blockHeight}`}
           navigate={() => navigate({ to: `/block/${row.original.blockHeight}` })}
         />
       ),
@@ -80,6 +84,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
     <Table
       data={transactions}
       columns={columns}
+      classNames={classNames}
       bottomContent={
         pagination ? (
           <CursorPagination

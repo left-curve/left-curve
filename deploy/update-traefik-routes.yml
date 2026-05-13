@@ -1,0 +1,29 @@
+---
+- name: Update Traefik dynamic routing config
+  hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  gather_facts: true
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+
+    - name: Read current deployment tracking file
+      slurp:
+        src: "{{ deploy_home }}/deployments/{{ dango_network }}.json"
+      register: deployment_tracking
+
+    - name: Set deployment_name from tracking file
+      set_fact:
+        deployment_name: "{{ (deployment_tracking.content | b64decode | from_json).current_deployment }}"
+
+  tasks:
+    - name: Update Traefik dynamic config
+      template:
+        src: roles/full-app/templates/traefik-services.yml
+        dest: "{{ traefik_dir }}/config/{{ dango_network }}.yml"

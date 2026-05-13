@@ -71,7 +71,10 @@
         project_name: "{{ deployment_name }}"
         project_src: "{{ deployment_dir }}"
         service: dango
-        command: bash -lc "dango query balances {{ item }}"
+        command: >-
+          bash -lc 'curl -sS -X POST http://localhost:8080/graphql
+          -H "Content-Type: application/json"
+          -d "{\"query\":\"query QueryApp(\$request: GrugQueryInput!) { queryApp(request: \$request) }\",\"variables\":{\"request\":{\"balances\":{\"address\":\"{{ item }}\",\"start_after\":null,\"limit\":null}}}}"'
         tty: yes
       loop: [ "{{ dango.dex_bot.address }}", "{{ dango.dex_bot.dex_address }}" ]
       register: balances_raw
@@ -83,7 +86,7 @@
       vars:
         report: |-
           {%- for r in balances_raw.results -%}
-          {%- set data = (r.stdout | from_json).balances -%}
+          {%- set data = (r.stdout | from_json).data.queryApp.balances -%}
           Address: {{ r.item }}
           -------------------------------
           {%- for k, v in data.items() if (v|int) > 0 -%}

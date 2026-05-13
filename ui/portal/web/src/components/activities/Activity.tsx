@@ -58,6 +58,27 @@ const activities: Record<
       }>,
     })),
   ),
+  perpOrderFilled: lazy(() =>
+    import("./PerpOrderFilled").then(({ ActivityPerpOrderFilled }) => ({
+      default: ActivityPerpOrderFilled as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
+    })),
+  ),
+  perpLiquidated: lazy(() =>
+    import("./PerpLiquidated").then(({ ActivityPerpLiquidated }) => ({
+      default: ActivityPerpLiquidated as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
+    })),
+  ),
+  perpDeleveraged: lazy(() =>
+    import("./PerpDeleveraged").then(({ ActivityPerpDeleveraged }) => ({
+      default: ActivityPerpDeleveraged as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
+    })),
+  ),
 };
 
 export type ActivityProps = {

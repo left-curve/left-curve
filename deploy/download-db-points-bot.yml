@@ -1,0 +1,187 @@
+---
+# download-db-points-bot.yml — Download Points Bot RocksDB database to local
+#
+# Stops the points-bot container for a consistent RocksDB snapshot, archives the
+# db directory on the server, restarts the container immediately, then downloads
+# the archive locally. This minimises downtime: the bot is only stopped during
+# the tar.
+#
+# Usage:
+#   just download-db-points-bot testnet
+#
+#   # Direct with custom options:
+#   ansible-playbook download-db-points-bot.yml \
+#     -e network=testnet \
+#     -e target_host=100.90.163.19
+#
+# Variables:
+#   network       (required): devnet | testnet | mainnet
+#   target_host   (optional): skip prompt and use this host IP directly
+#   local_dest    (optional): local dir (default: ./downloaded-db/points-bot/<network>/<hostname>)
+#   stop_before   (optional): stop container for consistent snapshot (default: true)
+#   restart_after (optional): restart after archive (default: true)
+
+# ── Play 1: select target host ────────────────────────────────────────────────
+- name: Select target host
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Build host list for network
+      set_fact:
+        _network_hosts: "{{ groups['points-bot-' ~ network] }}"
+      when: target_host is not defined
+
+    - name: Select host
+      pause:
+        prompt: >-
+          {%- set ns = namespace(menu='') -%}
+          {%- for host in _network_hosts -%}
+            {%- set ns.menu = ns.menu ~ '\n  ' ~ loop.index ~ ') ' ~ hostvars[host]['hostname'] ~ ' (' ~ host ~ ')' -%}
+          {%- endfor -%}
+          Available hosts for {{ network }}:{{ ns.menu }}
+
+          Enter host number [1-{{ _network_hosts | length }}]
+      register: _host_choice
+      when: target_host is not defined and (_network_hosts | length) > 1
+
+    - name: Set target from selection
+      set_fact:
+        _target_host: "{{ _network_hosts[_host_choice.user_input | int - 1] }}"
+      when: target_host is not defined and (_network_hosts | length) > 1
+
+    - name: Set target from single host
+      set_fact:
+        _target_host: "{{ _network_hosts[0] }}"
+      when: target_host is not defined and (_network_hosts | length) == 1
+
+    - name: Set target from extra var
+      set_fact:
+        _target_host: "{{ target_host }}"
+      when: target_host is defined
+
+    - name: Confirm selection
+      debug:
+        msg: "Selected: {{ hostvars[_target_host]['hostname'] }} ({{ _target_host }})"
+
+# ── Play 2: archive and download ──────────────────────────────────────────────
+- name: Download Points Bot RocksDB DB from remote
+  hosts: "{{ hostvars['localhost']['_target_host'] }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  remote_user: deploy
+  gather_facts: true
+  collections:
+    - community.docker
+  vars:
+    stop_before: true
+    restart_after: true
+    points_bot_dir: "{{ deploy_home }}/points-bot"
+  pre_tasks:
+    - name: Get deploy user info
+      getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+    - name: Set deploy_home fact
+      set_fact:
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+  tasks:
+    - name: Generate unique archive suffix
+      set_fact:
+        _archive_ts: "{{ lookup('pipe', 'date -u +%Y%m%d%H%M%S') }}"
+
+    - name: Resolve local destination
+      set_fact:
+        _local_dest: "{{ local_dest | default(playbook_dir ~ '/downloaded-db/points-bot/' ~ network ~ '/' ~ hostname) }}"
+
+    - name: Verify db directory exists
+      stat:
+        path: "{{ points_bot_dir }}/{{ network }}/db"
+      register: _db_stat
+
+    - name: Abort if db directory missing
+      fail:
+        msg: "Points bot DB not found at {{ points_bot_dir }}/{{ network }}/db"
+      when: not _db_stat.stat.exists
+
+    - name: Get db directory size
+      command: du -sh {{ points_bot_dir }}/{{ network }}/db
+      register: _db_size
+
+    - name: Show download plan
+      pause:
+        seconds: 1
+        prompt: |-
+          Download plan:
+            Network:       {{ network }}
+            Host:          {{ hostname }} ({{ inventory_hostname }})
+            DB path:       {{ points_bot_dir }}/{{ network }}/db ({{ _db_size.stdout.split('\t')[0] }})
+            Local dest:    {{ _local_dest }}
+            Stop before:   {{ stop_before }}
+            Restart after: {{ restart_after }}
+
+    # Phase 1: stop, archive, restart (minimise downtime)
+    - block:
+        - name: Stop points-bot container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ network }}"
+            services: ["points"]
+            state: stopped
+            pull: never
+          when: stop_before | bool
+
+        - name: Archive db directory
+          command: >-
+            tar czf {{ deploy_home }}/points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz
+            -C {{ points_bot_dir }}/{{ network }} db
+
+        - name: Get archive size
+          command: du -sh {{ deploy_home }}/points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz
+          register: _archive_size
+
+      always:
+        - name: Restart points-bot container
+          community.docker.docker_compose_v2:
+            project_src: "{{ points_bot_dir }}/{{ network }}"
+            services: ["points"]
+            state: present
+            recreate: always
+            pull: never
+            wait: false
+          when: stop_before | bool and restart_after | bool
+
+    # Phase 2: download archive locally (container is already back up)
+    - name: Downloading archive
+      pause:
+        seconds: 1
+        prompt: |-
+          Downloading archive:
+            - points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz ({{ _archive_size.stdout.split('\t')[0] }})
+
+    - name: Ensure local directory exists
+      file:
+        path: "{{ _local_dest }}"
+        state: directory
+      delegate_to: localhost
+      become: false
+
+    - name: Fetch archive
+      fetch:
+        src: "{{ deploy_home }}/points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz"
+        dest: "{{ _local_dest }}/points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz"
+        flat: true
+
+    - name: Clean up remote archive
+      file:
+        path: "{{ deploy_home }}/points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz"
+        state: absent
+      ignore_errors: true
+
+    - name: Download complete
+      pause:
+        seconds: 1
+        prompt: |-
+          Download complete:
+            {{ _local_dest }}/points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz
+
+          Extract: tar xzf {{ _local_dest }}/points-bot-db-{{ network }}-{{ _archive_ts }}.tar.gz

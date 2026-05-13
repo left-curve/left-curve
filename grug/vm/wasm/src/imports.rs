@@ -123,9 +123,9 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
 
     // Make sure the storage isn't set to be read only.
     //
-    // This is the case for the `query`, `bank_query`, and `ibc_client_query`
-    // calls. During these calls, the contract isn't allowed to call the imports
-    // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
+    // This is the case for the `query` and `bank_query` calls. During these
+    // calls, the contract isn't allowed to call the imports that mutate the
+    // state, namely: `db_write`, `db_remove`, and `db_remove_range`.
     if !env.state_mutable {
         return Err(VmError::immutable_state());
     }

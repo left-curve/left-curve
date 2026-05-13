@@ -3,13 +3,19 @@ import type {
   Candle,
   CandleIntervals,
   Denom,
+  EventFilter,
   IndexedAccountEvent,
   IndexedBlock,
   IndexedEvent,
   IndexedTransferEvent,
+  PairStats,
+  PerpsCandle,
+  PerpsPairStats,
+  PerpsTrade,
   PublicClient,
   QueryRequest,
   QueryResponse,
+  SubscriptionEvent as DangoSubscriptionEvent,
   Trade,
   Username,
 } from "@left-curve/dango/types";
@@ -31,6 +37,11 @@ export type SubscriptionSchema = [
     listener: (event: { accounts: IndexedAccountEvent[] }) => void;
   },
   {
+    key: "events";
+    params: { sinceBlockHeight?: number; filter?: EventFilter[] };
+    listener: (events: DangoSubscriptionEvent[]) => void;
+  },
+  {
     key: "eventsByAddresses";
     params: { addresses: Address[]; sinceBlockHeight?: number };
     listener: (events: IndexedEvent[]) => void;
@@ -47,6 +58,14 @@ export type SubscriptionSchema = [
     listener: (event: { candles: Candle[] }) => void;
   },
   {
+    key: "perpsCandles";
+    params: {
+      pairId: string;
+      interval: CandleIntervals;
+    };
+    listener: (event: { perpsCandles: PerpsCandle[] }) => void;
+  },
+  {
     key: "trades";
     params: {
       baseDenom: Denom;
@@ -55,22 +74,40 @@ export type SubscriptionSchema = [
     listener: (event: { trades: Trade }) => void;
   },
   {
+    key: "perpsTrades";
+    params: {
+      pairId: string;
+    };
+    listener: (event: { perpsTrades: PerpsTrade }) => void;
+  },
+  {
     key: "submitTx";
     params?: undefined;
-    listener: <T>(event: {
-      isSubmitting: boolean;
-      isSuccess?: boolean;
-      message?: string;
-      data?: T;
-    }) => void;
+    listener: <T>(
+      event:
+        | { status: "pending" }
+        | { status: "success"; data: T; message?: string }
+        | { status: "error"; title: string; description: string },
+    ) => void;
   },
   {
     key: "queryApp";
     params: {
       request: QueryRequest;
       interval?: number;
+      httpInterval?: number;
     };
     listener: (event: { response: QueryResponse; blockHeight: number }) => void;
+  },
+  {
+    key: "allPairStats";
+    params?: undefined;
+    listener: (event: { allPairStats: PairStats[] }) => void;
+  },
+  {
+    key: "allPerpsPairStats";
+    params?: undefined;
+    listener: (event: { allPerpsPairStats: PerpsPairStats[] }) => void;
   },
 ];
 

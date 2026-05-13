@@ -1,18 +1,19 @@
 use {
-    crate::{NoCachePerpQuerier, USER_STATES, core::compute_available_margin, oracle},
+    crate::{
+        MAX_ORACLE_STALENESS, core::compute_available_margin, oracle, querier::NoCachePerpQuerier,
+        state::USER_STATES,
+    },
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    dango_types::{
-        UsdValue,
-        perps::{Withdrew, settlement_currency},
-    },
+    dango_order_book::UsdValue,
+    dango_types::perps::{SETTLEMENT_CURRENCY_PRICE, Withdrew, settlement_currency},
     grug::{IsZero, Message, MutableCtx, Response, coins},
 };
 
 /// Withdraw margin from the trader's margin account.
 /// The requested USD amount is validated against the user's available margin,
-/// deducted from `user_state.margin`, converted to settlement currency at the
-/// current oracle price (floor-rounded), and transferred to the user.
+/// deducted from `user_state.margin`, converted to settlement currency at a
+/// fixed 1:1 rate (floor-rounded), and transferred to the user.
 ///
 /// Mutates: `USER_STATES` (margin decreased, possibly removed if empty).
 ///
@@ -26,7 +27,9 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
     // ---------------------- 1. Compute available margin ----------------------
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
+
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
@@ -42,11 +45,10 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
     // ----------------------- 2. Compute refund amount ------------------------
 
     // Convert USD to settlement currency base units (floor-rounded).
-    let settlement_currency_price =
-        oracle_querier.query_price_for_perps(&settlement_currency::DENOM)?;
-
+    // Use a fixed 1:1 rate to guarantee solvency — total USDC held always
+    // equals total USD margin across all accounts.
     let refund = amount
-        .checked_div(settlement_currency_price)?
+        .checked_div(SETTLEMENT_CURRENCY_PRICE)?
         .into_base_floor(settlement_currency::DECIMAL)?;
 
     ensure!(
@@ -62,6 +64,20 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
         USER_STATES.remove(ctx.storage, ctx.sender)?;
     } else {
         USER_STATES.save(ctx.storage, ctx.sender, &user_state)?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            user = %ctx.sender,
+            %amount,
+            "Margin withdrawn"
+        );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_WITHDRAWAL_AMOUNT).record(amount.to_f64());
     }
 
     Ok(Response::new()

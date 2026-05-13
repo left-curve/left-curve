@@ -51,7 +51,7 @@ export function useConvertState(parameters: UseConvertStateParameters) {
   const { inputs, setValue } = controllers;
   const { from, to } = parameters.pair;
   const { coins } = useConfig();
-  const { account } = useAccount();
+  const { account, username } = useAccount();
   const client = usePublicClient();
   const { data: config } = useAppConfig();
   const { data: signingClient } = useSigningClient();
@@ -66,7 +66,7 @@ export function useConvertState(parameters: UseConvertStateParameters) {
     [from, to],
   );
 
-  const pair = config?.pairs[pairId.base.denom];
+  const pair = config.pairs[pairId.base.denom];
 
   const changePair = (symbol: string) => {
     const newPair = isReverse ? { from: symbol, to } : { from, to: symbol };
@@ -172,7 +172,7 @@ export function useConvertState(parameters: UseConvertStateParameters) {
 
   const submission = useSubmitTx({
     mutation: {
-      invalidateKeys: [["quests", account?.username]],
+      invalidateKeys: [["quests", username]],
       mutationFn: async (_, { abort }) => {
         if (!signingClient) throw new Error("error: no signing client");
         if (!pair) throw new Error("error: no pair");

@@ -4,7 +4,7 @@ use {
         cast::CastFrom,
         types::{I256, I512, U256, U512},
     },
-    grug_math::{Bytable, Dec, Int},
+    grug_math::{Dec, Int},
     grug_types::{
         Binary, Checker, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner, Part,
         Predicate, StdError, StdResult, nested_namespaces_with_key,
@@ -719,7 +719,7 @@ where
 mod tests {
     use {
         crate::{PrimaryKey, Set},
-        bnum::types::I256,
+        bnum::{cast::CastFrom, types::I256},
         grug_math::{
             Bytable, Dec128, Dec256, Int64, Int128, Int256, NumberConst, Udec128, Udec256, Uint64,
             Uint128, Uint256, Uint512,
@@ -948,12 +948,12 @@ mod tests {
     )]
     #[test_case(
         Dec256::from_str("-10.5").unwrap(),
-        &I256::from(-(105_i128 * 10_i128.pow(17))).joined_key();
+        &I256::cast_from(-(105_i128 * 10_i128.pow(17))).joined_key();
         "dec128_neg_10_5"
     )]
     #[test_case(
         Dec256::from_str("20.75").unwrap(),
-        &I256::from(2075_i128 * 10_i128.pow(16)).joined_key();
+        &I256::cast_from(2075_i128 * 10_i128.pow(16)).joined_key();
         "dec128_20_75"
     )]
     fn key<T>(compare: T, bytes: &[u8])

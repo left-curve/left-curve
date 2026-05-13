@@ -1,0 +1,6 @@
+query PerpsPairStatsPartial($pair_id: String!) {
+  perpsPairStats(pairId: $pair_id) {
+    pairId
+    currentPrice
+  }
+}
