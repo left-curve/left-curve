@@ -16,7 +16,7 @@ const waitForImages = (root: HTMLElement) => {
 
 type SaveCardAsImageOptions = {
   source: HTMLElement;
-  prepareClone: (clone: HTMLElement) => void;
+  prepareClone?: (clone: HTMLElement) => void;
   filename: string;
   width?: number;
 };
@@ -28,7 +28,8 @@ export async function saveCardAsImage({
   width = 500,
 }: SaveCardAsImageOptions): Promise<void> {
   const clone = source.cloneNode(true) as HTMLElement;
-  prepareClone(clone);
+  clone.dataset.export = "true";
+  prepareClone?.(clone);
   clone.style.width = `${width}px`;
 
   const container = document.createElement("div");

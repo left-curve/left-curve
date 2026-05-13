@@ -148,7 +148,7 @@ impl IndexerCmd {
                 );
 
                 // Run the metrics HTTP server
-                indexer_httpd::server::run_metrics_server(
+                indexer_metrics::run_metrics_server(
                     &cfg.metrics_httpd.ip,
                     cfg.metrics_httpd.port,
                     metrics_handler,
@@ -158,14 +158,14 @@ impl IndexerCmd {
             SubCmd::CheckCandles => {
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
-                let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+                let clickhouse_context = indexer_clickhouse::context::Context::new(
                     cfg.indexer.clickhouse.url,
                     cfg.indexer.clickhouse.database,
                     cfg.indexer.clickhouse.user,
                     cfg.indexer.clickhouse.password,
                 );
 
-                let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(clickhouse_context);
+                let clickhouse_indexer = indexer_clickhouse::Indexer::new(clickhouse_context);
 
                 clickhouse_indexer.check_all().await?;
             },

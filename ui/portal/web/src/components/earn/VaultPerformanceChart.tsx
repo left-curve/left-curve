@@ -96,7 +96,7 @@ export function VaultPerformanceChart({ period, onPeriodChange }: VaultPerforman
 
   return (
     <div className="flex flex-col gap-3 p-4 rounded-xl bg-surface-secondary-rice shadow-account-card">
-      <p className="exposure-sm-italic text-ink-tertiary-500">
+      <p className="exposure-sm-italic text-ink-secondary-700">
         {m["vaultLiquidity.performance"]()}
       </p>
 

@@ -1,5 +1,12 @@
+pub mod accounts;
+pub mod accounts_users;
 pub mod blocks;
 pub mod events;
 pub mod messages;
+pub mod perps_events;
+pub mod perps_trade;
 pub mod prelude;
+pub mod public_keys;
 pub mod transactions;
+pub mod transfers;
+pub mod users;

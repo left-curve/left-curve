@@ -7,12 +7,12 @@ use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, IndexerContext, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE,
-        NaiveProposalPreparer, NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer,
-        QuerierProviderImpl, TraceOption, Vm, catch_and_push_event, do_authenticate, do_configure,
-        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
-        do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance, query_balances,
-        query_code, query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
+        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
+        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
+        TraceOption, Vm, catch_and_push_event, do_authenticate, do_configure, do_cron_execute,
+        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upgrade,
+        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
+        query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
         query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
         query_wasm_scan, query_wasm_smart,
     },
@@ -492,7 +492,7 @@ where
         let mut tx_outcomes = vec![];
 
         self.indexer
-            .pre_indexing(block.info.height, &mut IndexerContext::new())
+            .pre_indexing(block.info.height)
             .await
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
@@ -668,7 +668,7 @@ where
         };
 
         self.indexer
-            .index_block(&block, &block_outcome, &mut IndexerContext::new())
+            .index_block(&block, &block_outcome)
             .await
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
@@ -707,7 +707,7 @@ where
         let app_cfg = APP_CONFIG.load(&storage)?;
 
         self.indexer
-            .post_indexing(version, cfg, app_cfg, &mut IndexerContext::new())
+            .post_indexing(version, cfg, app_cfg)
             .await
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]

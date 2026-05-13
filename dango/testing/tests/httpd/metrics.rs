@@ -1,7 +1,7 @@
 use {
     assertor::*,
     dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
-    indexer_httpd::server::run_metrics_server,
+    indexer_metrics::run_metrics_server,
     metrics_exporter_prometheus::PrometheusBuilder,
     std::thread,
 };

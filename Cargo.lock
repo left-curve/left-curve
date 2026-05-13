@@ -1501,27 +1501,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-attributes"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3203e79f4dd9bdda415ed03cf14dae5a2bf775c683a00f94e9cd1faf0f596e5"
-dependencies = [
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "async-channel"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81953c529336010edd6d8e358f886d9581267795c61b19475b71314bffa46d35"
-dependencies = [
- "concurrent-queue",
- "event-listener 2.5.3",
- "futures-core",
-]
-
-[[package]]
 name = "async-channel"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1542,36 +1521,6 @@ dependencies = [
  "compression-codecs",
  "compression-core",
  "pin-project-lite",
- "tokio",
-]
-
-[[package]]
-name = "async-executor"
-version = "1.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c96bf972d85afc50bf5ab8fe2d54d1586b4e0b46c97c50a0c9e71e2f7bcd812a"
-dependencies = [
- "async-task",
- "concurrent-queue",
- "fastrand",
- "futures-lite",
- "pin-project-lite",
- "slab",
-]
-
-[[package]]
-name = "async-global-executor"
-version = "2.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05b1b633a2115cd122d73b955eadd9916c18c8f510ec9cd1686404c60ad1c29c"
-dependencies = [
- "async-channel 2.5.0",
- "async-executor",
- "async-io",
- "async-lock",
- "blocking",
- "futures-lite",
- "once_cell",
  "tokio",
 ]
 
@@ -1631,7 +1580,7 @@ dependencies = [
  "actix-http",
  "actix-web",
  "actix-web-actors",
- "async-channel 2.5.0",
+ "async-channel",
  "async-graphql",
  "asynk-strim",
  "futures-channel",
@@ -1697,44 +1646,6 @@ dependencies = [
  "rustix 1.1.4",
  "slab",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "async-lock"
-version = "3.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290f7f2596bd5b78a9fec8088ccd89180d7f9f55b94b0576823bbbdc72ee8311"
-dependencies = [
- "event-listener 5.4.1",
- "event-listener-strategy",
- "pin-project-lite",
-]
-
-[[package]]
-name = "async-std"
-version = "1.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c8e079a4ab67ae52b7403632e4618815d6db36d2a010cfe41b02c1b1578f93b"
-dependencies = [
- "async-attributes",
- "async-channel 1.9.0",
- "async-global-executor",
- "async-io",
- "async-lock",
- "crossbeam-utils",
- "futures-channel",
- "futures-core",
- "futures-io",
- "futures-lite",
- "gloo-timers",
- "kv-log-macro",
- "log",
- "memchr",
- "once_cell",
- "pin-project-lite",
- "pin-utils",
- "slab",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -2656,7 +2567,7 @@ version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e83f8d02be6967315521be875afa792a316e28d57b5a2d401897e2a7921b7f21"
 dependencies = [
- "async-channel 2.5.0",
+ "async-channel",
  "async-task",
  "futures-io",
  "futures-lite",
@@ -3771,7 +3682,6 @@ dependencies = [
  "k256",
  "p256 0.13.2",
  "rand 0.8.5",
- "serde",
  "serde_json",
  "sha2 0.10.9",
 ]
@@ -3794,22 +3704,19 @@ dependencies = [
  "colored",
  "config-parser",
  "dango-genesis",
- "dango-httpd",
- "dango-indexer-clickhouse",
- "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-upgrade",
  "dialoguer",
- "futures",
  "grug-app",
  "grug-db-disk",
- "grug-httpd",
  "grug-types",
  "grug-vm-rust",
  "home",
  "indexer-cache",
+ "indexer-clickhouse",
  "indexer-hooked",
  "indexer-httpd",
+ "indexer-metrics",
  "indexer-sql",
  "libc",
  "metrics",
@@ -3820,7 +3727,6 @@ dependencies = [
  "sentry",
  "serde",
  "tokio",
- "tower",
  "tower-abci",
  "tracing",
  "tracing-opentelemetry",
@@ -3872,126 +3778,7 @@ dependencies = [
  "hyperlane-mailbox",
  "hyperlane-types",
  "hyperlane-va",
- "pyth-types",
  "serde",
-]
-
-[[package]]
-name = "dango-graphql-types"
-version = "0.0.0"
-dependencies = [
- "graphql_client",
- "paste",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "dango-httpd"
-version = "0.0.0"
-dependencies = [
- "actix-cors",
- "actix-files",
- "actix-web",
- "actix-web-metrics",
- "async-graphql",
- "async-graphql-actix-web",
- "chrono",
- "clap",
- "dango-indexer-clickhouse",
- "dango-indexer-sql",
- "dango-types",
- "grug-httpd",
- "grug-types",
- "indexer-httpd",
- "indexer-sql",
- "itertools 0.14.0",
- "metrics",
- "sea-orm",
- "sentry-actix",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "dango-indexer-clickhouse"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assertor",
- "async-graphql",
- "async-stream",
- "async-trait",
- "bigdecimal",
- "bnum 0.14.2",
- "borsh",
- "chrono",
- "clickhouse",
- "dango-order-book",
- "dango-types",
- "error-backtrace",
- "futures",
- "grug",
- "grug-app",
- "grug-httpd",
- "grug-types",
- "indexer-httpd",
- "indexer-sql",
- "itertools 0.14.0",
- "metrics",
- "serde",
- "serde_json",
- "strum 0.28.0",
- "strum_macros 0.28.0",
- "tempfile",
- "test-case",
- "thiserror 2.0.18",
- "tokio",
- "tokio-stream",
- "tracing",
-]
-
-[[package]]
-name = "dango-indexer-sql"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assertor",
- "async-graphql",
- "async-trait",
- "borsh",
- "dango-indexer-sql-migration",
- "dango-types",
- "error-backtrace",
- "grug",
- "grug-app",
- "grug-math",
- "grug-types",
- "indexer-disk-saver",
- "indexer-sql",
- "itertools 0.14.0",
- "metrics",
- "sea-orm",
- "serde",
- "serde_json",
- "strum 0.28.0",
- "strum_macros 0.28.0",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "dango-indexer-sql-migration"
-version = "0.0.0"
-dependencies = [
- "async-std",
- "sea-orm-migration",
 ]
 
 [[package]]
@@ -4000,23 +3787,19 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-genesis",
- "dango-httpd",
- "dango-indexer-clickhouse",
- "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-testing",
  "grug-app",
  "grug-db-memory",
- "grug-httpd",
  "grug-testing",
  "grug-types",
  "grug-vm-rust",
  "hyperlane-testing",
  "indexer-cache",
+ "indexer-clickhouse",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
- "rand 0.8.5",
  "tokio",
  "tracing",
 ]
@@ -4068,7 +3851,6 @@ dependencies = [
 name = "dango-proposal-preparer"
 version = "0.0.0"
 dependencies = [
- "anyhow",
  "dango-order-book",
  "dango-types",
  "grug",
@@ -4091,7 +3873,6 @@ dependencies = [
  "aes-gcm",
  "alloy",
  "anyhow",
- "assert-json-diff",
  "assertor",
  "async-trait",
  "bip32",
@@ -4099,7 +3880,6 @@ dependencies = [
  "dango-account-factory",
  "dango-auth",
  "dango-genesis",
- "dango-graphql-types",
  "dango-mock-httpd",
  "dango-testing",
  "dango-types",
@@ -4108,9 +3888,8 @@ dependencies = [
  "futures",
  "graphql_client",
  "grug",
- "grug-testing",
  "identity",
- "indexer-testing",
+ "indexer-graphql-types",
  "k256",
  "pbkdf2",
  "rand 0.8.5",
@@ -4161,12 +3940,10 @@ dependencies = [
 name = "dango-testing"
 version = "0.0.0"
 dependencies = [
- "actix-service",
  "actix-web",
  "anyhow",
  "assert-json-diff",
  "assertor",
- "async-graphql",
  "async-trait",
  "bip32",
  "chrono",
@@ -4178,14 +3955,9 @@ dependencies = [
  "dango-dex",
  "dango-gateway",
  "dango-genesis",
- "dango-graphql-types",
- "dango-httpd",
- "dango-indexer-clickhouse",
- "dango-indexer-sql",
  "dango-mock-httpd",
  "dango-oracle",
  "dango-order-book",
- "dango-perps",
  "dango-proposal-preparer",
  "dango-taxman",
  "dango-types",
@@ -4195,20 +3967,19 @@ dependencies = [
  "grug-app",
  "grug-db-disk",
  "grug-db-memory",
- "grug-httpd",
- "grug-testing",
  "grug-types",
  "grug-vm-rust",
  "hex",
  "hex-literal",
- "home",
  "hyperlane-testing",
  "hyperlane-types",
  "identity",
  "indexer-cache",
- "indexer-disk-saver",
+ "indexer-clickhouse",
+ "indexer-graphql-types",
  "indexer-hooked",
  "indexer-httpd",
+ "indexer-metrics",
  "indexer-sql",
  "indexer-testing",
  "itertools 0.14.0",
@@ -4221,7 +3992,6 @@ dependencies = [
  "reqwest 0.13.2",
  "sea-orm",
  "serde",
- "serde_json",
  "sha2 0.10.9",
  "temp-rocksdb",
  "test-case",
@@ -4237,16 +4007,13 @@ dependencies = [
  "async-graphql",
  "async-trait",
  "bnum 0.14.2",
- "borsh",
  "dango-order-book",
  "grug",
  "hyperlane-types",
- "paste",
  "pyth-types",
  "sea-orm",
  "serde",
  "sha2 0.10.9",
- "test-case",
 ]
 
 [[package]]
@@ -4589,6 +4356,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "disk-saver"
+version = "0.0.0"
+dependencies = [
+ "assertor",
+ "borsh",
+ "error-backtrace",
+ "lzma-rs",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "dispatch2"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4924,7 +4704,6 @@ dependencies = [
 name = "error-backtrace-derive"
 version = "0.0.0"
 dependencies = [
- "proc-macro2",
  "quote",
  "syn 2.0.117",
 ]
@@ -4951,12 +4730,6 @@ dependencies = [
 
 [[package]]
 name = "event-listener"
-version = "2.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
-
-[[package]]
-name = "event-listener"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13b66accf52311f30a0db42147dadea9850cb48cd070028831ae5f5d4b856ab"
@@ -4972,7 +4745,7 @@ version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
- "event-listener 5.4.1",
+ "event-listener",
  "pin-project-lite",
 ]
 
@@ -5255,10 +5028,7 @@ version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f78e10609fe0e0b3f4157ffab1876319b5b0db102a2c60dc4626306dc46b44ad"
 dependencies = [
- "fastrand",
  "futures-core",
- "futures-io",
- "parking",
  "pin-project-lite",
 ]
 
@@ -5415,18 +5185,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
-name = "gloo-timers"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbb143cf96099802033e0d4f4963b19fd2e0b728bcf076cd9cf7f6634f092994"
-dependencies = [
- "futures-channel",
- "futures-core",
- "js-sys",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "graphql-introspection-query"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5510,16 +5268,13 @@ dependencies = [
 name = "grug"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "grug-ffi",
  "grug-macros",
  "grug-math",
  "grug-storage",
  "grug-testing",
  "grug-types",
- "serde",
- "serde_json",
- "serde_with",
+ "tokio",
 ]
 
 [[package]]
@@ -5531,10 +5286,8 @@ dependencies = [
  "data-encoding",
  "dyn-event",
  "error-backtrace",
- "futures",
  "grug-storage",
  "grug-types",
- "http 1.4.0",
  "ics23",
  "metrics",
  "prost 0.14.3",
@@ -5611,43 +5364,9 @@ dependencies = [
 name = "grug-ffi"
 version = "0.0.0"
 dependencies = [
- "borsh",
  "error-backtrace",
  "grug-types",
  "serde",
-]
-
-[[package]]
-name = "grug-httpd"
-version = "0.0.0"
-dependencies = [
- "actix",
- "actix-cors",
- "actix-web",
- "actix-web-metrics",
- "anyhow",
- "async-graphql",
- "async-graphql-actix-web",
- "async-trait",
- "chrono",
- "clap",
- "futures-util",
- "grug-app",
- "grug-testing",
- "grug-types",
- "metrics",
- "metrics-exporter-prometheus",
- "sentry-actix",
- "serde",
- "serde_json",
- "tempfile",
- "tendermint",
- "tendermint-rpc",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -5661,7 +5380,6 @@ dependencies = [
  "hex-literal",
  "ics23",
  "proptest",
- "serde",
  "test-case",
  "thiserror 2.0.18",
 ]
@@ -5670,7 +5388,6 @@ dependencies = [
 name = "grug-macros"
 version = "0.0.0"
 dependencies = [
- "proc-macro2",
  "quote",
  "syn 2.0.117",
 ]
@@ -5774,7 +5491,6 @@ dependencies = [
  "rand 0.8.5",
  "reqwest 0.13.2",
  "serde",
- "serde_json",
  "test-case",
  "thiserror 2.0.18",
  "tokio",
@@ -5788,7 +5504,6 @@ version = "0.0.0"
 dependencies = [
  "async-graphql",
  "async-trait",
- "bnum 0.14.2",
  "borsh",
  "chrono",
  "data-encoding",
@@ -5818,19 +5533,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-vm-hybrid"
+version = "0.0.0"
+dependencies = [
+ "error-backtrace",
+ "grug-app",
+ "grug-db-memory",
+ "grug-math",
+ "grug-tester",
+ "grug-testing",
+ "grug-types",
+ "grug-vm-hybrid",
+ "grug-vm-rust",
+ "grug-vm-wasm",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
  "elsa",
  "error-backtrace",
  "grug-app",
- "grug-crypto",
  "grug-math",
  "grug-testing",
  "grug-types",
  "serde",
  "test-case",
  "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]
@@ -5858,6 +5592,7 @@ dependencies = [
  "serde",
  "test-case",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
  "wasmer",
  "wasmer-middlewares",
@@ -5974,16 +5709,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7382cf6263419f2d8df38c55d7da83da5c18aef87fc7a7fc1fb1e344edfe14c1"
 dependencies = [
  "hashbrown 0.15.5",
-]
-
-[[package]]
-name = "hdrhistogram"
-version = "7.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "765c9198f173dd59ce26ff9f95ef0aafd0a0fe01fb9d72841bc5066a4c06511d"
-dependencies = [
- "byteorder",
- "num-traits",
 ]
 
 [[package]]
@@ -6352,7 +6077,6 @@ dependencies = [
  "grug",
  "hex-literal",
  "hyperlane-types",
- "identity",
  "k256",
  "rand 0.8.5",
 ]
@@ -6581,89 +6305,83 @@ name = "indexer-cache"
 version = "0.0.0"
 dependencies = [
  "assertor",
- "async-stream",
- "async-trait",
  "aws-config",
  "aws-credential-types",
  "aws-sdk-s3",
  "borsh",
+ "disk-saver",
  "error-backtrace",
- "futures",
  "grug-app",
  "grug-types",
- "indexer-disk-saver",
  "metrics",
  "roaring",
  "serde",
  "serde_json",
- "strum 0.28.0",
- "strum_macros 0.28.0",
  "tempfile",
- "test-case",
  "thiserror 2.0.18",
  "tokio",
- "tokio-stream",
  "tracing",
 ]
 
 [[package]]
-name = "indexer-disk-saver"
+name = "indexer-clickhouse"
 version = "0.0.0"
 dependencies = [
- "anyhow",
  "assertor",
- "borsh",
+ "async-graphql",
+ "bigdecimal",
+ "bnum 0.14.2",
+ "chrono",
+ "clickhouse",
+ "dango-order-book",
+ "dango-types",
  "error-backtrace",
+ "futures",
  "grug",
- "grug-math",
+ "grug-app",
  "grug-types",
- "lzma-rs",
- "sea-orm",
+ "indexer-sql",
+ "itertools 0.14.0",
+ "metrics",
  "serde",
  "serde_json",
- "tempfile",
+ "strum 0.28.0",
+ "strum_macros 0.28.0",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
- "tracing-subscriber",
- "uuid",
+]
+
+[[package]]
+name = "indexer-graphql-types"
+version = "0.0.0"
+dependencies = [
+ "graphql_client",
+ "paste",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "indexer-hooked"
 version = "0.0.0"
 dependencies = [
- "anyhow",
- "async-graphql",
- "async-stream",
  "async-trait",
- "borsh",
- "futures",
  "grug-app",
  "grug-types",
- "http 1.4.0",
- "metrics",
- "sea-orm",
- "serde",
- "serde_json",
- "sqlx",
- "strum 0.28.0",
- "strum_macros 0.28.0",
- "tempfile",
- "test-case",
- "thiserror 2.0.18",
+ "indexer-cache",
+ "indexer-clickhouse",
+ "indexer-sql",
  "tokio",
- "tokio-stream",
  "tracing",
- "uuid",
 ]
 
 [[package]]
 name = "indexer-httpd"
 version = "0.0.0"
 dependencies = [
- "actix",
  "actix-cors",
+ "actix-files",
  "actix-web",
  "actix-web-metrics",
  "anyhow",
@@ -6671,32 +6389,41 @@ dependencies = [
  "async-graphql-actix-web",
  "async-trait",
  "chrono",
- "clap",
+ "dango-types",
  "error-backtrace",
  "futures",
  "futures-util",
+ "grug",
  "grug-app",
- "grug-httpd",
+ "grug-testing",
  "grug-types",
  "indexer-cache",
+ "indexer-clickhouse",
  "indexer-sql",
  "itertools 0.14.0",
  "metrics",
- "metrics-exporter-prometheus",
  "num_cpus",
  "sea-orm",
  "sentry",
  "sentry-actix",
  "serde",
  "serde_json",
- "tempfile",
  "tendermint",
  "tendermint-rpc",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
- "tracing-subscriber",
- "uuid",
+]
+
+[[package]]
+name = "indexer-metrics"
+version = "0.0.0"
+dependencies = [
+ "actix-web",
+ "actix-web-metrics",
+ "metrics-exporter-prometheus",
+ "sentry-actix",
+ "tracing",
 ]
 
 [[package]]
@@ -6708,22 +6435,20 @@ dependencies = [
  "async-graphql",
  "async-stream",
  "async-trait",
- "borsh",
+ "dango-types",
+ "disk-saver",
  "error-backtrace",
- "futures",
+ "grug",
  "grug-app",
  "grug-types",
  "indexer-cache",
- "indexer-disk-saver",
- "indexer-sql-migration",
  "itertools 0.14.0",
  "metrics",
  "sea-orm",
+ "sea-orm-migration",
  "serde",
  "serde_json",
  "sqlx",
- "strum 0.28.0",
- "strum_macros 0.28.0",
  "tempfile",
  "test-case",
  "thiserror 2.0.18",
@@ -6731,15 +6456,6 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "uuid",
-]
-
-[[package]]
-name = "indexer-sql-migration"
-version = "0.0.0"
-dependencies = [
- "async-std",
- "sea-orm-migration",
- "tokio",
 ]
 
 [[package]]
@@ -6757,7 +6473,6 @@ dependencies = [
  "awc",
  "chrono",
  "dango-genesis",
- "dango-graphql-types",
  "dango-mock-httpd",
  "dango-testing",
  "dango-types",
@@ -6766,12 +6481,13 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-db-memory",
- "grug-httpd",
  "grug-storage",
  "grug-testing",
  "grug-types",
  "grug-vm-rust",
  "indexer-cache",
+ "indexer-clickhouse",
+ "indexer-graphql-types",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -7013,15 +6729,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kv-log-macro"
-version = "1.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0de8b303297635ad57c9f5059fd9cee7a47f8e8daa09df0fcd07dd39fb22977f"
-dependencies = [
- "log",
-]
-
-[[package]]
 name = "language-tags"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7192,9 +6899,6 @@ name = "log"
 version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
-dependencies = [
- "value-bag",
-]
 
 [[package]]
 name = "lru"
@@ -8836,9 +8540,9 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
+ "disk-saver",
  "dotenvy",
  "grug",
- "indexer-disk-saver",
  "metrics",
  "pyth-lazer-client",
  "pyth-lazer-protocol",
@@ -8849,7 +8553,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
- "tracing-subscriber",
  "url",
 ]
 
@@ -10819,7 +10522,7 @@ dependencies = [
  "crc",
  "crossbeam-queue",
  "either",
- "event-listener 5.4.1",
+ "event-listener",
  "futures-core",
  "futures-intrusive",
  "futures-io",
@@ -11795,7 +11498,6 @@ checksum = "ebe5ef63511595f1344e2d5cfa636d973292adc0eec1f0ad45fae9f0851ab1d4"
 dependencies = [
  "futures-core",
  "futures-util",
- "hdrhistogram",
  "indexmap 2.13.0",
  "pin-project-lite",
  "slab",
@@ -12270,12 +11972,6 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
-
-[[package]]
-name = "value-bag"
-version = "1.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ba6f5989077681266825251a52748b8c1d8a4ad098cc37e440103d0ea717fc0"
 
 [[package]]
 name = "vcpkg"

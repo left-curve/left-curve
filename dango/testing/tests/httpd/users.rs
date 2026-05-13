@@ -1,13 +1,13 @@
 use {
     super::call_graphql_query,
     assertor::*,
-    dango_graphql_types::{User, Users, user, users},
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
         setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
+    indexer_graphql_types::{User, Users, user, users},
 };
 
 #[tokio::test(flavor = "multi_thread")]
@@ -25,7 +25,7 @@ async fn query_user() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -75,9 +75,10 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let mut test_account =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
-    let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account);
+    let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -137,7 +138,7 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
     ) = setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 

@@ -182,8 +182,8 @@ mod session_account {
     }
 }
 
-#[test]
-fn session_key() {
+#[tokio::test]
+async fn session_key() {
     let (mut suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     suite.block_time = Duration::from_seconds(10);
@@ -203,6 +203,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -215,6 +216,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_fail_with_error("session expired at Duration(Dec(Int(31536100000000000))");
         owner.nonce -= 1;
 
@@ -236,6 +238,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -246,6 +249,7 @@ fn session_key() {
     {
         let owner2 = owner
             .register_new_account(&mut suite, contracts.account_factory, Coins::default())
+            .await
             .unwrap();
 
         // Refresh the session key signature
@@ -267,6 +271,7 @@ fn session_key() {
                 owner2.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
 
         // The new account should be able to send coins to the relayer
@@ -276,6 +281,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -297,6 +303,7 @@ fn session_key() {
                 accounts.user1.address(),
                 Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
+            .await
             .should_succeed();
     }
 }

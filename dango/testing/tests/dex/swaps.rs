@@ -271,7 +271,8 @@ fn balance_changes_from_coins(
     };
     "1:1 pool 0.01% swap fee one step route input 100% of pool liquidity"
 )]
-fn swap_exact_amount_in(
+#[tokio::test]
+async fn swap_exact_amount_in(
     pool_reserves: BTreeMap<(Denom, Denom), Coins>,
     route: Vec<PairId>,
     swap_funds: Coins,
@@ -284,36 +285,32 @@ fn swap_exact_amount_in(
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
-        suite
+        let pair_params = suite
             .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
                 base_denom: base_denom.clone(),
                 quote_denom: quote_denom.clone(),
             })
-            .should_succeed_and(|pair_params: &PairParams| {
-                // Update pair params
-                suite
-                    .execute(
-                        &mut accounts.owner,
-                        contracts.dex,
-                        &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![
-                            PairUpdate {
-                                base_denom: base_denom.clone(),
-                                quote_denom: quote_denom.clone(),
-                                params: PairParams {
-                                    lp_denom: pair_params.lp_denom.clone(),
-                                    bucket_sizes: BTreeSet::new(),
-                                    swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                                    pool_type: pair_params.pool_type.clone(),
-                                    min_order_size_quote: Uint128::ZERO,
-                                    min_order_size_base: Uint128::ZERO,
-                                },
-                            },
-                        ])),
-                        Coins::new(),
-                    )
-                    .should_succeed();
-                true
-            });
+            .should_succeed();
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.dex,
+                &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    params: PairParams {
+                        lp_denom: pair_params.lp_denom.clone(),
+                        bucket_sizes: BTreeSet::new(),
+                        swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                        pool_type: pair_params.pool_type.clone(),
+                        min_order_size_quote: Uint128::ZERO,
+                        min_order_size_base: Uint128::ZERO,
+                    },
+                }])),
+                Coins::new(),
+            )
+            .await
+            .should_succeed();
     }
 
     // Provide liquidity with owner account
@@ -329,6 +326,7 @@ fn swap_exact_amount_in(
                 },
                 reserve.clone(),
             )
+            .await
             .should_succeed();
     }
 
@@ -348,6 +346,7 @@ fn swap_exact_amount_in(
             },
             swap_funds.clone(),
         )
+        .await
         .should_succeed();
 
     // Assert that the user's balances have changed as expected.
@@ -627,7 +626,8 @@ fn swap_exact_amount_in(
     };
     "1:1 pool 0.01% swap fee one step route output 49.995% of pool liquidity"
 )]
-fn swap_exact_amount_out(
+#[tokio::test]
+async fn swap_exact_amount_out(
     pool_reserves: BTreeMap<(Denom, Denom), Coins>,
     route: Vec<PairId>,
     exact_out: Coin,
@@ -662,6 +662,7 @@ fn swap_exact_amount_out(
                     }])),
                     Coins::new(),
                 )
+                .await
                 .should_succeed();
         }
     }
@@ -679,6 +680,7 @@ fn swap_exact_amount_out(
                 },
                 reserve.clone(),
             )
+            .await
             .should_succeed();
     }
 
@@ -698,6 +700,7 @@ fn swap_exact_amount_out(
             },
             swap_funds.clone(),
         )
+        .await
         .should_succeed();
 
     // Assert that the user's balances have changed as expected.
@@ -739,8 +742,8 @@ fn swap_exact_amount_out(
     }
 }
 
-#[test]
-fn geometric_pool_swaps_fail_without_oracle_price() {
+#[tokio::test]
+async fn geometric_pool_swaps_fail_without_oracle_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Provide liquidity to pair before changing the pool type since XYK does not require an oracle price
@@ -758,41 +761,40 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 usdc::DENOM.clone() => 1000000,
             },
         )
+        .await
         .should_succeed();
 
     // Update pair params to change pool type to geometric
-    suite
+    let pair_params = suite
         .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
-            // Update pair params
-            suite
-                .execute(
-                    &mut accounts.owner,
-                    contracts.dex,
-                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        params: PairParams {
-                            lp_denom: pair_params.lp_denom.clone(),
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: PassiveLiquidity::Geometric(Geometric {
-                                spacing: Udec128::ONE,
-                                ratio: Bounded::new_unchecked(Udec128::ONE),
-                                limit: 10,
-                            }),
-                            min_order_size_quote: Uint128::ZERO,
-                            min_order_size_base: Uint128::ZERO,
-                        },
-                    }])),
-                    Coins::new(),
-                )
-                .should_succeed();
-            true
-        });
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    lp_denom: pair_params.lp_denom.clone(),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: pair_params.swap_fee_rate,
+                    pool_type: PassiveLiquidity::Geometric(Geometric {
+                        spacing: Udec128::ONE,
+                        ratio: Bounded::new_unchecked(Udec128::ONE),
+                        limit: 10,
+                    }),
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                },
+            }])),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
 
     // Ensure swap exact amount in fails
     suite
@@ -810,6 +812,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 dango::DENOM.clone() => 1000000,
             },
         )
+        .await
         .should_fail_with_error(StdError::data_not_found::<PriceSource>(
             PRICE_SOURCES.path(&dango::DENOM).storage_key(),
         ));
@@ -830,6 +833,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 usdc::DENOM.clone() => 1000000,
             },
         )
+        .await
         .should_fail_with_error(StdError::data_not_found::<PriceSource>(
             PRICE_SOURCES.path(&dango::DENOM).storage_key(),
         ));

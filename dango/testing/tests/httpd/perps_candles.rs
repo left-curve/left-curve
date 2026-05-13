@@ -1,10 +1,6 @@
 use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
-    dango_graphql_types::{
-        PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles,
-    },
-    dango_indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},
@@ -12,6 +8,10 @@ use {
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
+    indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
+    indexer_graphql_types::{
+        PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles,
+    },
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -28,9 +28,9 @@ async fn query_perps_candles() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -77,10 +77,10 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5);
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -108,7 +108,8 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
                 &pair_id(),
                 2_000,
                 1,
-            );
+            )
+            .await;
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -175,24 +176,16 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
 
     // Verify cache consistency after subscription
     let mut fresh_cache = PerpsCandleCache::default();
-    let pair_ids =
-        dango_indexer_clickhouse::entities::perps_pair_price::PerpsPairPrice::all_pair_ids(
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
-        .await?;
+    let pair_ids = indexer_clickhouse::entities::perps_pair_price::PerpsPairPrice::all_pair_ids(
+        context.clickhouse_context.clickhouse_client(),
+    )
+    .await?;
 
     fresh_cache
-        .preload_pairs(
-            &pair_ids,
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
+        .preload_pairs(&pair_ids, context.clickhouse_context.clickhouse_client())
         .await?;
 
-    let old_cache = context
-        .indexer_clickhouse_context
-        .perps_candle_cache
-        .read()
-        .await;
+    let old_cache = context.clickhouse_context.perps_candle_cache.read().await;
 
     assert_eq!(
         fresh_cache.pair_prices,

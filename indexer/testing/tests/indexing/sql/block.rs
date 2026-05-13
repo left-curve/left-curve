@@ -1,5 +1,6 @@
 use {
     assertor::*,
+    dango_types::config::AppConfig,
     grug_app::{Db, Indexer},
     grug_testing::TestBuilder,
     grug_types::{
@@ -35,6 +36,7 @@ async fn index_block() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
@@ -89,6 +91,8 @@ async fn parse_previous_block_after_restart() {
     let (indexer, sql_indexer_context, ..) = create_hooked_indexer().await;
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
+        .set_app_config(&AppConfig::default())
+        .unwrap()
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
         .set_owner("owner")
@@ -102,6 +106,7 @@ async fn parse_previous_block_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Force the runtime to shutdown or when reusing this `start` would fail
@@ -149,6 +154,7 @@ async fn parse_previous_block_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
@@ -192,6 +198,7 @@ async fn no_sql_index_error_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Force the runtime to shutdown or when reusing this `start` would fail
@@ -256,6 +263,7 @@ async fn no_sql_index_error_after_restart() {
             2000,
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
+        .await
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
@@ -444,6 +452,7 @@ async fn index_block_events() {
             None,
             Coins::default(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -455,6 +464,7 @@ async fn index_block_events() {
 
     suite
         .execute(&mut accounts["owner"], replier_addr, &msg, Coins::default())
+        .await
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
@@ -535,6 +545,7 @@ async fn blocks_on_disk_compressed() {
             None,
             Coins::default(),
         )
+        .await
         .should_succeed()
         .address;
 

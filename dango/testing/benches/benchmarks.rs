@@ -25,7 +25,7 @@ fn random_string(len: usize) -> String {
         .collect()
 }
 
-fn do_send<T, PP, DB, VM>(
+async fn do_send<T, PP, DB, VM>(
     suite: &mut TestSuite<PP, DB, VM>,
     mut accounts: TestAccounts,
     codes: Codes<T>,
@@ -63,6 +63,7 @@ where
             50_000_000,
             NonEmpty::new_unchecked(msgs),
         )
+        .await
         .should_succeed();
 
     // Make a block that contains 100 transactions.
@@ -116,6 +117,13 @@ where
 /// We do this by making a single block that contains 100 transactions, each tx
 /// containing one `Message::Transfer`.
 fn sends(c: &mut Criterion) {
+    // Criterion's `bench_function` takes a sync closure, but the TestSuite API
+    // is async. Build a runtime once and `block_on` per iteration.
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
     let mut group = c.benchmark_group("sends");
     group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
     group.measurement_time(MEASUREMENT_TIME);
@@ -127,15 +135,14 @@ fn sends(c: &mut Criterion) {
                 let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
                 let (mut suite, accounts, codes, contracts, _) = setup_benchmark_rust(&dir);
 
-                let txs = do_send(&mut suite, accounts, codes, contracts);
+                let txs = rt.block_on(do_send(&mut suite, accounts, codes, contracts));
 
                 // Note: `dir` must be passed to the routine, so that it's alive
                 // until the end of this iteration.
                 (dir, suite, txs)
             },
             |(_dir, mut suite, txs)| {
-                suite
-                    .make_block(txs)
+                rt.block_on(suite.make_block(txs))
                     .block_outcome
                     .tx_outcomes
                     .into_iter()

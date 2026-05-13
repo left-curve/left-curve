@@ -303,7 +303,7 @@ where
     A: MaybeDefined<Addr>,
 {
     /// Register the user
-    pub fn register_user<PP, DB, VM, ID>(
+    pub async fn register_user<PP, DB, VM, ID>(
         &self,
         test_suite: &mut TestSuite<PP, DB, VM, ID>,
         factory: Addr,
@@ -338,6 +338,7 @@ where
                 },
                 funds,
             )
+            .await
             .should_succeed();
     }
 }
@@ -345,11 +346,11 @@ where
 impl<A> TestAccount<Defined<UserIndex>, A>
 where
     A: MaybeDefined<Addr>,
-    Self: Signer,
+    Self: Signer + Send + Sync,
 {
     /// Register a new account with the user index and key of this account and returns a new
     /// `TestAccount` with the new account's address.
-    pub fn register_new_account<PP, DB, VM, ID>(
+    pub async fn register_new_account<PP, DB, VM, ID>(
         &mut self,
         test_suite: &mut TestSuite<PP, DB, VM, ID>,
         factory: Addr,
@@ -381,6 +382,7 @@ where
                 &account_factory::ExecuteMsg::RegisterAccount {},
                 funds,
             )
+            .await
             .should_succeed();
 
         Ok(TestAccount {

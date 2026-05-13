@@ -1,6 +1,6 @@
 use {
     crate::{
-        context::Context,
+        context::FullContext,
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{types::connection::*, *},
@@ -67,7 +67,7 @@ impl EventQuery {
     ) -> Result<
         Connection<OpaqueCursor<EventCursor>, entity::events::Model, EmptyFields, EmptyFields>,
     > {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         paginate_models(
             app_ctx,

@@ -295,7 +295,7 @@ pub enum DexAction {
 }
 
 impl DexAction {
-    fn execute(
+    async fn execute(
         &self,
         suite: &mut TestSuite<NaiveProposalPreparer>,
         accounts: &mut TestAccounts,
@@ -343,7 +343,7 @@ impl DexAction {
                     .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
                     .unwrap();
 
-                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+                let block_outcome = suite.make_block(vec![tx]).await.block_outcome;
 
                 if let Err(_err) = &block_outcome.tx_outcomes.first().unwrap().result {
                     // println!("CreateLimitOrder error: {_err}");
@@ -427,7 +427,7 @@ impl DexAction {
                     .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
                     .unwrap();
 
-                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+                let block_outcome = suite.make_block(vec![tx]).await.block_outcome;
 
                 assert!(
                     block_outcome
@@ -459,7 +459,7 @@ impl DexAction {
                     .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
                     .unwrap();
 
-                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+                let block_outcome = suite.make_block(vec![tx]).await.block_outcome;
 
                 if let Err(_err) = &block_outcome.tx_outcomes.first().unwrap().result {
                     // println!("ProvideLiquidity error: {_err}");
@@ -511,7 +511,7 @@ impl DexAction {
                     .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
                     .unwrap();
 
-                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+                let block_outcome = suite.make_block(vec![tx]).await.block_outcome;
 
                 assert!(
                     block_outcome
@@ -538,7 +538,7 @@ impl DexAction {
                     .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
                     .unwrap();
 
-                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+                let block_outcome = suite.make_block(vec![tx]).await.block_outcome;
 
                 block_outcome
                     .tx_outcomes
@@ -593,7 +593,7 @@ impl DexAction {
                     .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
                     .unwrap();
 
-                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+                let block_outcome = suite.make_block(vec![tx]).await.block_outcome;
 
                 block_outcome
                     .tx_outcomes
@@ -991,7 +991,7 @@ fn limit_orders(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<D
 }
 
 /// Feed fixed oracle prices for all denoms.
-fn feed_prices(
+async fn feed_prices(
     timestamp: Timestamp,
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
@@ -1011,6 +1011,7 @@ fn feed_prices(
                 }),
                 Coins::default(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1018,7 +1019,7 @@ fn feed_prices(
 }
 
 /// Test a list of DexActions. Execute the actions and check balances after each action.
-fn test_dex_actions(
+async fn test_dex_actions(
     dex_actions: Vec<DexAction>,
     pool_types: Vec<PassiveLiquidity>,
 ) -> Result<(TestSuite<NaiveProposalPreparer>, TestAccounts, Contracts), TestCaseError> {
@@ -1066,7 +1067,7 @@ fn test_dex_actions(
 
     // Register fixed prices for all denoms.
     let timestamp = Timestamp::from_nanos(u128::MAX); // Maximum time in the future to prevent oracle price from being outdated.
-    feed_prices(timestamp, &mut suite, &mut accounts, &contracts)?;
+    feed_prices(timestamp, &mut suite, &mut accounts, &contracts).await?;
 
     let bucket_sizes = bucket_sizes();
 
@@ -1099,6 +1100,7 @@ fn test_dex_actions(
             )),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     // Check dex contract's balances. Should be empty.
@@ -1108,7 +1110,9 @@ fn test_dex_actions(
     // Execute the actions and check balances after each action.
     for action in dex_actions {
         // Execute the action.
-        let block_outcome = action.execute(&mut suite, &mut accounts, &contracts)?;
+        let block_outcome = action
+            .execute(&mut suite, &mut accounts, &contracts)
+            .await?;
 
         // Query dex paused status.
         let is_paused = suite
@@ -1161,12 +1165,23 @@ proptest! {
 
     #[test]
     fn dex_contract_balances_equals_open_orders_plus_passive_liquidity(dex_actions in dex_actions(5, 10), pool_types in pool_types(3)) {
-        test_dex_actions(dex_actions, pool_types)?;
+        // proptest doesn't support `async fn` test bodies, so build a runtime
+        // and `block_on` the async helper. Safe here because there's no
+        // outer tokio runtime to deadlock against.
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(test_dex_actions(dex_actions, pool_types))?;
     }
 
     #[test]
     fn provide_liq_and_market_order(dex_actions in provide_liquidity_and_market_order(), pool_types in pool_types(3)) {
-        test_dex_actions(dex_actions, pool_types)?;
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(test_dex_actions(dex_actions, pool_types))?;
     }
 }
 
@@ -1180,8 +1195,8 @@ proptest! {
 /// hold and use to place order. E.g. if reserve ratio is 5%, then the pool will
 /// only use 95% of its funds to place order, thus its liquidity never reduces
 /// to zero.
-#[test]
-fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
+#[tokio::test]
+async fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
     let (suite, _, contracts) = test_dex_actions(
         vec![
             DexAction::ProvideLiquidity {
@@ -1205,6 +1220,7 @@ fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
             limit: 30,
         })],
     )
+    .await
     .unwrap();
 
     // Query the reserve of ETH-USDC pool. Neither tokens should be zero.
