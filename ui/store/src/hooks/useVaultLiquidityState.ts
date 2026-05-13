@@ -8,7 +8,7 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { perpsUserStateStore } from "./usePerpsUserState.js";
 import { perpsUserStateExtendedStore } from "./usePerpsUserStateExtended.js";
 
-import { Decimal, computeVaultApy, sharesToUsd, usdToShares } from "@left-curve/dango/utils";
+import { Decimal, computeVaultApy, sharesToUsd, usdToShares } from "@left-curve/utils";
 
 export type UseVaultLiquidityStateParameters = {
   action: "deposit" | "withdraw";

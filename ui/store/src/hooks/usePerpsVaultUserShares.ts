@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { sharesToUsd } from "@left-curve/dango/utils";
+import { sharesToUsd } from "@left-curve/utils";
 
 import { usePublicClient } from "./usePublicClient.js";
 import { perpsUserStateStore } from "./usePerpsUserState.js";

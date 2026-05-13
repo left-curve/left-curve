@@ -46,6 +46,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 config.resolver.unstable_enablePackageExports = true;
+config.resolver.unstable_conditionNames = ["source", "import", "require"];
 
 config.resolver.assetExts = config.resolver.assetExts.filter(
   (ext) => ext !== "svg",

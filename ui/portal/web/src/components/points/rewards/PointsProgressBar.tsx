@@ -1,4 +1,4 @@
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatNumber } from "@left-curve/utils";
 import { twMerge, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount } from "@left-curve/store";

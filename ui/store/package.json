@@ -1,6 +1,7 @@
 {
   "name": "@left-curve/store",
   "version": "0.1.1",
+  "private": true,
   "type": "module",
   "scripts": {
     "bump": "npm version --no-git-tag-version",
@@ -9,8 +10,6 @@
     "clean:build": "rm -rf ./build",
     "lint": "pnpm biome check --write src",
     "lint:fix": "pnpm biome ci ./src",
-    "pre-dev": "tsc",
-    "dev": "tsc -w",
     "build": "pnpm tsup --clean"
   },
   "main": "./build/index.cjs",
@@ -22,11 +21,13 @@
   ],
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
     },
     "./types": {
+      "source": "./src/types/index.ts",
       "types": "./build/types/index.d.ts",
       "import": "./build/types/index.js",
       "default": "./build/types/index.cjs"
@@ -40,13 +41,17 @@
     }
   },
   "dependencies": {
-    "@left-curve/dango": "workspace:^",
     "@privy-io/js-sdk-core": "^0.56.3",
     "eventemitter3": "catalog:",
     "fuzzysort": "^3.1.0",
     "use-sync-external-store": "^1.2.2",
     "viem": "^2.39.0",
-    "zustand": "catalog:"
+    "zustand": "catalog:",
+    "@left-curve/sdk": "workspace:^",
+    "@left-curve/types": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/utils": "workspace:^",
+    "@left-curve/crypto": "workspace:^"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",

@@ -1,16 +1,8 @@
-import { getAppConfig } from "@left-curve/sdk";
-import type { Address, Hex, Transport } from "@left-curve/sdk/types";
-import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import type { Address, Hex } from "@left-curve/types";
+import { type ExecuteReturnType, execute } from "#actions/app/mutations/execute.js";
 
-import { getAction } from "@left-curve/sdk/actions";
-import type {
-  AppConfig,
-  DangoClient,
-  Key,
-  KeyHash,
-  Signer,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { Client, Key, KeyHash, Signer, TypedDataParameter } from "@left-curve/types";
 
 export type UpdateKeyParameters = {
   sender: Address;
@@ -27,15 +19,13 @@ export type MsgUpdateKey = {
   };
 };
 
-export async function updateKey<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function updateKey(
+  client: Client<Signer>,
   parameters: UpdateKeyParameters,
 ): UpdateKeyReturnType {
   const { keyHash, action, sender } = parameters;
 
-  const getter = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getter<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const UpdateKeyMsg = {
     updateKey: {

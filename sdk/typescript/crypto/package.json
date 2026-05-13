@@ -1,0 +1,42 @@
+{
+  "name": "@left-curve/crypto",
+  "version": "0.1.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "files": [
+    "build"
+  ],
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "pnpm tsup --clean",
+    "test": "pnpm vitest run",
+    "lint": "pnpm biome check --write src"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@left-curve/types": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "cbor-x": "^1.6.0",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.4.0",
+    "@scure/bip32": "^1.4.0",
+    "@scure/bip39": "^1.3.0"
+  },
+  "license": "TBD",
+  "homepage": "https://dango.exchange",
+  "repository": "left-curve/left-curve",
+  "keywords": ["grug", "dango", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
+}

@@ -6,19 +6,14 @@ import { type AppMutationActions, appMutationActions } from "./app/appActions.js
 import { type DexMutationActions, dexMutationActions } from "./dex/dexActions.js";
 import { type PerpsMutationActions, perpsMutationActions } from "./perps/perpsActions.js";
 
-import type { Transport } from "@left-curve/sdk/types";
-
-import type { DangoClient } from "../types/clients.js";
-import type { Signer } from "../types/signer.js";
+import type { Client, Signer } from "@left-curve/types";
 
 export type SignerActions = AppMutationActions &
   AccountFactoryMutationActions &
   DexMutationActions &
   PerpsMutationActions;
 
-export function signerActions<transport extends Transport = Transport>(
-  client: DangoClient<transport, Signer>,
-): SignerActions {
+export function signerActions(client: Client<Signer>): SignerActions {
   return {
     ...appMutationActions(client),
     ...accountFactoryMutationActions(client),

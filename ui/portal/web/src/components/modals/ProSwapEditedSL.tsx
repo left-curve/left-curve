@@ -14,7 +14,7 @@ import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useMemo, useState } from "react";
 
-import type { ConditionalOrder, TriggerDirection } from "@left-curve/dango/types";
+import type { ConditionalOrder, TriggerDirection } from "@left-curve/types";
 
 type ProSwapEditedSLProps = {
   pairId: string;

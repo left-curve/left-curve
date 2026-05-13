@@ -3,8 +3,8 @@ import { useConfig } from "@left-curve/store";
 import { forwardRef, useImperativeHandle } from "react";
 
 import { twMerge, useApp } from "@left-curve/foundation";
-import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
-import { calculatePrice } from "@left-curve/dango/utils";
+import { Direction, OrderType, TimeInForceOption } from "@left-curve/types";
+import { calculatePrice } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { ActivityRef } from "./Activity";

@@ -4,7 +4,7 @@ import { watchPublicClient } from "../actions/watchPublicClient.js";
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector.js";
 import { useConfig } from "./useConfig.js";
 
-import type { Prettify } from "@left-curve/dango/types";
+import type { Prettify } from "@left-curve/types";
 import type { Config, ConfigParameter } from "../types/store.js";
 
 export type UsePublicClientParameters<config extends Config = Config> = Prettify<

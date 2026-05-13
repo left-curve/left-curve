@@ -2,7 +2,7 @@ import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-c
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
-import { Direction, type PairId } from "@left-curve/dango/types";
+import { Direction, type PairId } from "@left-curve/types";
 import {
   liquidityDepthStore,
   useLiquidityDepthState,
@@ -23,7 +23,7 @@ import {
   Decimal,
   formatNumber,
   parseUnits,
-} from "@left-curve/dango/utils";
+} from "@left-curve/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";

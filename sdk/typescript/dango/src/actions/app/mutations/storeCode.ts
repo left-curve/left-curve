@@ -1,12 +1,12 @@
-import type { Address, Base64, Transport } from "@left-curve/sdk/types";
-import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
 import type {
-  DangoClient,
+  Address,
+  Base64,
+  Client,
   Signer,
   TxMessageType,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type StoreCodeParameters = {
   sender: Address;
@@ -15,8 +15,8 @@ export type StoreCodeParameters = {
 
 export type StoreCodeReturnType = Promise<SignAndBroadcastTxReturnType>;
 
-export async function storeCode<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function storeCode(
+  client: Client<Signer>,
   parameters: StoreCodeParameters,
 ): StoreCodeReturnType {
   const { sender, code } = parameters;

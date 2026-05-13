@@ -11,7 +11,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import type React from "react";
-import type { Account } from "@left-curve/dango/types";
+import type { Account } from "@left-curve/types";
 import type { PropsWithChildren } from "react";
 import { TextCopy } from "../foundation/TextCopy";
 

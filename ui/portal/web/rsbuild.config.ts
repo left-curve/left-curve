@@ -9,14 +9,16 @@ import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
+import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { GenerateSW } from "workbox-webpack-plugin";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
+import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
-import { devnet, local, testnet, mainnet } from "@left-curve/dango";
+import { devnet, local, testnet, mainnet } from "@left-curve/sdk";
 
-import type { Chain } from "@left-curve/dango/types";
+import type { Chain } from "@left-curve/sdk/types";
 import type { Rspack } from "@rsbuild/core";
 
 const isLocal = process.env.NODE_ENV === "development";
@@ -103,19 +105,19 @@ const urls = {
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
     questUrl: "https://quest-bot-devnet.dango.zone/check_username",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
     faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-testnet.dango.zone",
   },
   prod: {
     faucetUrl: "/faucet",
     questUrl: "/quest",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-mainnet.dango.zone",
   },
 }[environment]!;
@@ -130,7 +132,7 @@ const envConfig = `window.dango = ${JSON.stringify(
     chain: isLocal
       ? {
           ...chain,
-          urls: { indexer: `http://localhost:${PORT}` },
+          url:  `http://localhost:${PORT}`
         }
       : chain,
     urls: isLocal
@@ -163,7 +165,6 @@ export default defineConfig({
   resolve: {
     aliasStrategy: "prefer-alias",
     alias: {
-      // Order matters
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
@@ -173,6 +174,7 @@ export default defineConfig({
     },
   },
   source: {
+    include: [/[\\/]@left-curve[\\/]/],
     entry: {
       index: "./src/index.tsx",
     },
@@ -189,7 +191,7 @@ export default defineConfig({
     port: PORT,
     proxy: {
       "/graphql": {
-        target: `${chain.urls.indexer}/graphql`,
+        target: `${chain.url}/graphql`,
         changeOrigin: true,
         pathRewrite: { "^/graphql": "" },
         ws: true,
@@ -205,7 +207,7 @@ export default defineConfig({
         pathRewrite: { "^/quest": "" },
       },
       "/up": {
-        target: `${chain.urls.indexer}/up`,
+        target: `${chain.url}/up`,
         changeOrigin: true,
         pathRewrite: { "^/up": "" },
       },
@@ -259,6 +261,7 @@ export default defineConfig({
   plugins: [
     pluginReact(),
     pluginSvgr(),
+    pluginSourceBuild(),
     pluginNodePolyfill({
       include: ["buffer"],
     }),
@@ -280,6 +283,15 @@ export default defineConfig({
         TanStackRouterRspack({
           routesDirectory: "./src/pages",
           generatedRouteTree: "./src/app.pages.ts",
+        }),
+        paraglideRspackPlugin({
+          outdir: "../../foundation/paraglide",
+          project: "../../foundation/project.inlang",
+          emitGitIgnore: false,
+          emitPrettierIgnore: false,
+          includeEslintDisableComment: false,
+          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
+          localStorageKey: "dango.locale",
         }),
         {
           apply(compiler: Rspack.Compiler) {

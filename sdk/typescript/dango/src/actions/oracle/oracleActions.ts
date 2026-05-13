@@ -1,4 +1,4 @@
-import type { Client, Transport } from "@left-curve/sdk/types";
+import type { Client } from "@left-curve/types";
 
 import {
   type GetPricesParameters,
@@ -10,9 +10,7 @@ export type OracleQueryActions = {
   getPrices: (args?: GetPricesParameters) => GetPricesReturnType;
 };
 
-export function oracleQueryActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): OracleQueryActions {
+export function oracleQueryActions(client: Client): OracleQueryActions {
   return {
     getPrices: (args) => getPrices(client, args),
   };
