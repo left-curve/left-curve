@@ -1,6 +1,6 @@
 import { getConnector } from "./getConnector.js";
 
-import type { SignerClient } from "@left-curve/types";
+import type { SignerClient } from "@left-curve/sdk";
 import type { UID } from "@left-curve/types";
 
 import type { Config } from "../types/store.js";

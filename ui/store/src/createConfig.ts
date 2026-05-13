@@ -10,7 +10,8 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { Client, PublicClient } from "@left-curve/types";
+import type { PublicClient } from "@left-curve/sdk";
+import type { Client } from "@left-curve/types";
 
 import { subscriptionsStore } from "./subscriptions.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";

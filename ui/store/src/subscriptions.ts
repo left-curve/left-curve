@@ -1,4 +1,4 @@
-import type { PublicClient } from "@left-curve/types";
+import type { PublicClient } from "@left-curve/sdk";
 
 import type {
   GetSubscriptionDef,

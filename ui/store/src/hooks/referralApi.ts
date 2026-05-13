@@ -1,4 +1,5 @@
-import type { PublicClient, QueryRequest, Json } from "@left-curve/types";
+import type { PublicClient } from "@left-curve/sdk";
+import type { QueryRequest, Json } from "@left-curve/types";
 import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
 import type {

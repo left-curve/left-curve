@@ -10,7 +10,8 @@ import type {
 } from "@left-curve/types";
 import type { Emitter, EventData } from "./emitter.js";
 
-import type { Account, Chain, Signer, SignerClient } from "@left-curve/types";
+import type { SignerClient } from "@left-curve/sdk";
+import type { Account, Chain, Signer } from "@left-curve/types";
 import type { Storage } from "./storage.js";
 
 export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});

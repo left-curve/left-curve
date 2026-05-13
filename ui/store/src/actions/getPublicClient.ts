@@ -1,6 +1,6 @@
 import { publicActions } from "@left-curve/sdk";
 
-import type { PublicClient } from "@left-curve/types";
+import type { PublicClient } from "@left-curve/sdk";
 
 import type { Config } from "../types/index.js";
 

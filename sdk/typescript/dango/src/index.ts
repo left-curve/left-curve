@@ -49,6 +49,13 @@ export { Secp256k1 } from "@left-curve/crypto";
 /*                                   Clients                                  */
 /* -------------------------------------------------------------------------- */
 
+import type { Client, Signer } from "@left-curve/types";
+import type { PublicActions } from "./actions/publicActions.js";
+import type { SignerActions } from "./actions/signerActions.js";
+
+export type PublicClient = Client<undefined, PublicActions>;
+export type SignerClient = Client<Signer, PublicActions & SignerActions>;
+
 export { createBaseClient } from "./clients/baseClient.js";
 export { createPublicClient } from "./clients/publicClient.js";
 export { createSignerClient } from "./clients/signerClient.js";
