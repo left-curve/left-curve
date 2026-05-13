@@ -116,20 +116,27 @@
           ignore_errors: true
       when: deployment_dir.stat.exists
 
-    - name: Check devnet data directory exists
-      stat:
-        path: "{{ ansible_facts['env']['HOME'] }}/devnet/{{ deployment_name }}"
-      register: devnet_data_dir
-      when: remove_devnet_data | default(false) | bool
-
     - name: Remove devnet data directory
-      file:
-        path: "{{ ansible_facts['env']['HOME'] }}/devnet/{{ deployment_name }}"
-        state: absent
       become: true
-      when:
-        - remove_devnet_data | default(false) | bool
-        - devnet_data_dir.stat.exists
+      shell: |
+        set -euo pipefail
+        name="{{ deployment_name | default('') }}"
+        if [[ ! "$name" =~ ^[0-9]{14}$ ]]; then
+          echo "invalid deployment name: must be a 14-digit timestamp ('$name')" >&2
+          exit 2
+        fi
+        target="/home/{{ deploy_user }}/devnet/${name}"
+        if [[ -d "$target" ]]; then
+          rm -rf --one-file-system -- "$target"
+          echo "deleted ${target}"
+        else
+          echo "absent"
+        fi
+      args:
+        executable: /bin/bash
+      register: cleanup_devnet_data
+      changed_when: "'deleted' in cleanup_devnet_data.stdout"
+      when: remove_devnet_data | default(false) | bool
 
     - name: Remove lock file
       file:
