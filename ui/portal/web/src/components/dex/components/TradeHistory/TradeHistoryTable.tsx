@@ -4,7 +4,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { GraphqlQueryResult } from "@left-curve/dango/types";
+import type { GraphqlQueryResult } from "@left-curve/types";
 
 type TradeHistoryTableProps<T extends { blockHeight: number }> = {
   data: GraphqlQueryResult<T> | undefined;

@@ -24,7 +24,7 @@ export { requestRemote, type WindowDangoStore } from "./remote.js";
 
 export * as hyperlane from "./hyperlane.js";
 
-export { local, devnet, mainnet, testnet, http, graphql } from "@left-curve/dango";
+export { local, devnet, mainnet, testnet, createTransport } from "@left-curve/sdk";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Hooks                                   */

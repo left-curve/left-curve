@@ -1,11 +1,9 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "../../app/mutations/execute.js";
-import { truncateDec } from "../../../utils/index.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
+import { truncateDec } from "@left-curve/utils";
 
-import type { Address, Transport } from "@left-curve/sdk/types";
-import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
-import type { AppConfig, DangoClient, Signer, TypedDataParameter } from "../../../types/index.js";
+import type { Address, Client, Signer, TypedDataParameter } from "@left-curve/types";
+import type { SignAndBroadcastTxReturnType } from "#actions/app/mutations/signAndBroadcastTx.js";
 
 export type SetFeeShareRatioParameters = {
   sender: Address;
@@ -14,16 +12,15 @@ export type SetFeeShareRatioParameters = {
 
 export type SetFeeShareRatioReturnType = SignAndBroadcastTxReturnType;
 
-export async function setFeeShareRatio<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function setFeeShareRatio(
+  client: Client<Signer>,
   parameters: SetFeeShareRatioParameters,
 ): SetFeeShareRatioReturnType {
   const { sender, shareRatio } = parameters;
 
   const truncatedRatio = truncateDec(shareRatio);
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg = {
     referral: {

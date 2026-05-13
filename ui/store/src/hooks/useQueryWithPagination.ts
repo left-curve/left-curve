@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import type { GraphqlPagination, GraphqlQueryResult } from "@left-curve/dango/types";
+import type { GraphqlPagination, GraphqlQueryResult } from "@left-curve/types";
 import type {
   DefaultError,
   QueryClient,

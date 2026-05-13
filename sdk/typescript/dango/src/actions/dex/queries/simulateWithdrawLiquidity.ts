@@ -1,10 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, CoinPair, GetDexQueryMsg, Prettify } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "../../../types/app.js";
-import type { CoinPair, GetDexQueryMsg } from "../../../types/dex.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetDexQueryMsg<"simulateWithdrawLiquidity">;
 
@@ -25,16 +22,11 @@ export type SimulateWithdrawLiquidityReturnType = Promise<CoinPair>;
  * @param parameters.height - The block height to query at (default is the latest block).
  * @returns The amount of base and quote tokens that would be received from the withdrawal.
  */
-export async function simulateWithdrawLiquidity<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function simulateWithdrawLiquidity(
+  client: Client,
   parameters: SimulateWithdrawLiquidityParameters,
 ): SimulateWithdrawLiquidityReturnType {
   const { baseDenom, quoteDenom, lpBurnAmount, height = 0 } = parameters;
-
-  const action = getAction(client, getAppConfig, "getAppConfig");
 
   const msg: ActionMsg = {
     simulateWithdrawLiquidity: {
@@ -44,7 +36,7 @@ export async function simulateWithdrawLiquidity<
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.dex, msg, height });
 }

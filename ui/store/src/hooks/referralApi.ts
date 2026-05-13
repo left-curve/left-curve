@@ -1,8 +1,6 @@
-import type { PublicClient, QueryRequest, Json } from "@left-curve/dango/types";
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
+import type { PublicClient } from "@left-curve/sdk";
+import type { QueryRequest, Json } from "@left-curve/types";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
 import type {
   UserReferralData,

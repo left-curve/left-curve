@@ -8,8 +8,8 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import type { Address } from "@left-curve/dango/types";
-import { formatUnits } from "@left-curve/dango/utils";
+import type { Address } from "@left-curve/types";
+import { formatUnits } from "@left-curve/utils";
 import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 

@@ -1,8 +1,8 @@
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
-import { createPublicClient } from "@left-curve/dango";
-import { uid } from "@left-curve/dango/utils";
+import { createPublicClient } from "@left-curve/sdk";
+import { uid } from "@left-curve/utils";
 
 import { eip6963 } from "./connectors/eip6963.js";
 import { type EventData, createEmitter } from "./createEmitter.js";
@@ -10,7 +10,8 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { Client, PublicClient, Transport } from "@left-curve/dango/types";
+import type { PublicClient } from "@left-curve/sdk";
+import type { Client } from "@left-curve/types";
 
 import { subscriptionsStore } from "./subscriptions.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
@@ -18,9 +19,7 @@ import type { EIP6963ProviderDetail } from "./types/eip6963.js";
 import type { Config, CreateConfigParameters, State, StoreApi } from "./types/store.js";
 import { CoinStore } from "./stores/coinStore.js";
 
-export function createConfig<transport extends Transport = Transport>(
-  parameters: CreateConfigParameters<transport>,
-): Config<transport> {
+export function createConfig(parameters: CreateConfigParameters): Config {
   const {
     multiInjectedProviderDiscovery = true,
     version = 0,
@@ -66,7 +65,6 @@ export function createConfig<transport extends Transport = Transport>(
   }
 
   function setup(connectorFn: CreateConnectorFn): Connector {
-    // Set up emitter with uid and add to connector so they are "linked" together.
     const emitter = createEmitter<ConnectorEventMap>(uid());
     const connector = {
       ...connectorFn({
@@ -80,23 +78,20 @@ export function createConfig<transport extends Transport = Transport>(
       uid: emitter.uid,
     };
 
-    // Start listening for `connect` events on connector setup
-    // This allows connectors to "connect" themselves without user interaction
-    // (e.g. MetaMask's "Manually connect to current site")
     emitter.on("connect", connect);
     connector.setup?.();
 
     return connector;
   }
 
-  let _client: Client<transport> | undefined;
+  let _client: Client | undefined;
 
-  function getClient(): Client<transport> {
+  function getClient(): Client {
     if (_client) return _client;
 
     const client = createPublicClient({
       chain: rest.chain,
-      transport: (parameters) => rest.transport({ ...parameters }),
+      transport: rest.transport,
     });
 
     _client = client;
@@ -129,7 +124,6 @@ export function createConfig<transport extends Transport = Transport>(
           const persisted = state as Record<string, unknown>;
           const initialState = getInitialState();
 
-          // v1 → v2: migrate { userIndex, userStatus } to { user: { index } }
           if (savedVersion === 1 && persisted) {
             const userIndex = persisted.userIndex as number | undefined;
             return {
@@ -179,7 +173,6 @@ export function createConfig<transport extends Transport = Transport>(
 
   if (multiInjectedProviderDiscovery) {
     const timeout = setTimeout(() => store.setState((x) => ({ ...x, isMipdLoaded: true })), 500);
-    // EIP-6963 subscribe for new wallet providers
     mipd?.subscribe((providerDetails) => {
       clearTimeout(timeout);
       const connectorIdSet = new Set();
@@ -197,10 +190,6 @@ export function createConfig<transport extends Transport = Transport>(
         newConnectors.push(connector);
       }
 
-      // The `connectors` vanilla store is not persisted, so its update does
-      // not need to wait for hydration. Always apply it — dropping MIPD
-      // connectors on the floor during the hydration window used to cause
-      // silent wallet-login failures on first page load.
       connectors.setState((x) => [...x, ...newConnectors], true);
       if (!storage || store.persist.hasHydrated()) {
         store.setState((x) => ({ ...x, isMipdLoaded: true }));
@@ -240,17 +229,12 @@ export function createConfig<transport extends Transport = Transport>(
   function connect(data: EventData<ConnectorEventMap, "connect">) {
     const connector = connectors.getState().find((c) => c.uid === data.uid);
     if (!connector) {
-      // A `connect` event fired for a connector that isn't in the list.
-      // This used to silently swallow the event — surface it loudly instead
-      // so any remaining race or lifecycle bug shows up in telemetry.
       const error = new Error(`connect event received for unknown connector uid: ${data.uid}`);
       if (onError) onError(error);
       else console.error(error);
       return;
     }
 
-    // Wire ongoing change/disconnect listeners outside the setState reducer so
-    // the reducer stays pure. Listeners are idempotent via listenerCount check.
     if (!connector.emitter.listenerCount("change")) {
       connector.emitter.on("change", change);
     }
@@ -288,8 +272,6 @@ export function createConfig<transport extends Transport = Transport>(
         if (connector.emitter.listenerCount("disconnect")) {
           connection.connector.emitter.off("disconnect", disconnect);
         }
-        // The `connect` listener is attached once in setup() and never
-        // removed, so there's no need to re-attach it here.
       }
 
       x.connectors.delete(data.uid);
@@ -342,7 +324,6 @@ export function createConfig<transport extends Transport = Transport>(
       if (typeof value === "function") newState = value(store.getState());
       else newState = value;
 
-      // Reset state if it got set to something not matching the base state
       const initialState = getInitialState();
       if (typeof newState !== "object") newState = initialState;
       const isCorrupt = Object.keys(initialState).some((x) => !(x in newState));

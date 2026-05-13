@@ -1,6 +1,7 @@
 {
   "name": "@left-curve/applets-kit",
   "version": "0.1.0",
+  "private": true,
   "scripts": {
     "ci": "pnpm lint",
     "lint": "pnpm biome check --write ./src",
@@ -9,8 +10,6 @@
     "clean:build": "rm -rf ./build",
     "sb:dev": "storybook dev -p 6006",
     "sb:build": "storybook build",
-    "pre-dev": "tsc",
-    "dev": "tsc -w",
     "build": "pnpm tsup --clean"
   },
   "main": "./build/index.cjs",
@@ -27,11 +26,13 @@
   ],
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
     },
     "./components": {
+      "source": "./src/components/index.ts",
       "types": "./build/components/index.d.ts",
       "import": "./build/components/index.js",
       "default": "./build/components/index.cjs"
@@ -47,14 +48,15 @@
   "dependencies": {
     "zustand": "catalog:",
     "@headlessui/react": "^2.1.10",
-    "@left-curve/dango": "workspace:^",
     "@left-curve/foundation": "workspace:^",
     "@left-curve/store": "workspace:^",
     "@microlink/react-json-view": "^1.26.2",
     "@zxing/library": "^0.21.3",
     "framer-motion": "catalog:",
     "qr-code-styling": "^1.7.2",
-    "tailwind-variants": "catalog:"
+    "tailwind-variants": "catalog:",
+    "@left-curve/types": "workspace:^",
+    "@left-curve/utils": "workspace:^"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",

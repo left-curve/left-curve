@@ -1,10 +1,13 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type {
+  Client,
+  GetDexQueryMsg,
+  OrderId,
+  OrdersByUserResponse,
+  Prettify,
+} from "@left-curve/types";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "../../../types/app.js";
-import type { GetDexQueryMsg, OrderId, OrdersByUserResponse } from "../../../types/dex.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetDexQueryMsg<"ordersByUser">;
 
@@ -22,16 +25,11 @@ export type OrdersByUserReturnType = Promise<Record<OrderId, OrdersByUserRespons
  * @param parameters.height The height at which to query the pairs
  * @returns The orders by user response.
  */
-export async function ordersByUser<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function ordersByUser(
+  client: Client,
   parameters: OrdersByUserParameters,
 ): OrdersByUserReturnType {
   const { height = 0, ...queryMsg } = parameters;
-
-  const action = getAction(client, getAppConfig, "getAppConfig");
 
   const msg: ActionMsg = {
     ordersByUser: {
@@ -39,7 +37,7 @@ export async function ordersByUser<
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.dex, msg, height });
 }

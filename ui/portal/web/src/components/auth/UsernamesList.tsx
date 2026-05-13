@@ -1,7 +1,7 @@
 import { IconButton, IconChevronRight } from "@left-curve/applets-kit";
 import { Fragment } from "react";
 
-import type { User } from "@left-curve/dango/types";
+import type { User } from "@left-curve/types";
 import type React from "react";
 
 type UsernamesListProps = {

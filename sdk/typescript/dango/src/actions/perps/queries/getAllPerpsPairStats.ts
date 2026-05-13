@@ -1,13 +1,10 @@
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { PerpsPairStats } from "../../../types/dex.js";
+import type { Client, PerpsPairStats } from "@left-curve/types";
 
 export type GetAllPerpsPairStatsReturnType = Promise<PerpsPairStats[]>;
 
-export async function getAllPerpsPairStats<transport extends Transport>(
-  client: Client<transport>,
-): GetAllPerpsPairStatsReturnType {
+export async function getAllPerpsPairStats(client: Client): GetAllPerpsPairStatsReturnType {
   const document = /* GraphQL */ `
     query AllPerpsPairStats {
       allPerpsPairStats {

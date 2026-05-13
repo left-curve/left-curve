@@ -1,9 +1,12 @@
-import type { Address, GetTxMessage, Transport } from "@left-curve/sdk/types";
+import type {
+  Address,
+  Client,
+  GetTxMessage,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "@left-curve/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
-import type { DangoClient } from "../../../types/clients.js";
-import type { Signer } from "../../../types/signer.js";
-import type { TxMessageType, TypedDataParameter } from "../../../types/typedData.js";
 
 type Message = GetTxMessage<"upgrade">;
 
@@ -13,8 +16,8 @@ export type UpgradeParameters = {
 
 export type UpgradeReturnType = Promise<SignAndBroadcastTxReturnType>;
 
-export async function upgrade<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function upgrade(
+  client: Client<Signer>,
   parameters: UpgradeParameters,
 ): UpgradeReturnType {
   const { sender, height, cargoVersion, gitTag, url } = parameters;

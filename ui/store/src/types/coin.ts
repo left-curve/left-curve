@@ -1,4 +1,4 @@
-import type { Denom, Prettify } from "@left-curve/dango/types";
+import type { Denom, Prettify } from "@left-curve/types";
 
 export type WithPrice<T> = T & {
   readonly price: string;

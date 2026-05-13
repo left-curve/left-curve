@@ -18,10 +18,8 @@
     "dev": "turbo dev",
     "test:e2e": "pnpm portal-web test:e2e",
     "machine-translate": "pnpm -F ui-config machine-translate",
-    "dev:sdk": "turbo dev -F=./sdk/typescript/**",
-    "dev:applets": "turbo dev -F=./ui/applets/**",
-    "dev:portal-web": "turbo dev -F=./sdk/typescript/** -F=./ui/store -F=./ui/foundation -F @left-curve/applets-kit -F @left-curve/portal-web",
-    "dev:portal-app": "turbo dev -F=./sdk/typescript/** -F=./ui/store -F=./ui/foundation -F @left-curve/portal-app",
+    "dev:portal-web": "pnpm -F @left-curve/portal-web dev",
+    "dev:portal-app": "turbo dev -F @left-curve/foundation -F @left-curve/portal-app",
     "build:sdk": "turbo build -F=./sdk/typescript/**",
     "build:graph": "turbo build --graph=build-graph.png",
     "build:portal-web": "turbo build -F @left-curve/portal-web",
@@ -34,10 +32,15 @@
     "foundation": "pnpm -F foundation",
     "grug": "pnpm -F grug",
     "kit": "pnpm -F applets-kit",
-    "bump": "pnpm -r 'bump'"
+    "bump": "pnpm -r 'bump'",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "publish-packages": "changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.3",
+    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "catalog:",
     "tsup": "^8.3.0",
     "turbo": "^2.0.11",
@@ -57,4 +60,3 @@
     }
   }
 }
-

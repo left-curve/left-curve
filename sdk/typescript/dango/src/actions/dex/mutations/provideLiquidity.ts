@@ -1,16 +1,9 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Coins, Denom, Transport } from "@left-curve/sdk/types";
-import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
-import type {
-  AppConfig,
-  DangoClient,
-  DexExecuteMsg,
-  Signer,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { Address, Coins, Denom } from "@left-curve/types";
+import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
+import type { Client, DexExecuteMsg, Signer, TypedDataParameter } from "@left-curve/types";
 
 export type ProvideLiquidityParameters = {
   sender: Address;
@@ -21,15 +14,13 @@ export type ProvideLiquidityParameters = {
 
 export type ProvideLiquidityReturnType = BroadcastTxSyncReturnType;
 
-export async function provideLiquidity<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function provideLiquidity(
+  client: Client<Signer>,
   parameters: ProvideLiquidityParameters,
 ): ProvideLiquidityReturnType {
   const { baseDenom, quoteDenom, funds, sender } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg: DexExecuteMsg = {
     provideLiquidity: {

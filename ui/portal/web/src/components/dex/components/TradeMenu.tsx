@@ -52,9 +52,9 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/utils";
 import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants";
-import type { PerpsTimeInForce } from "@left-curve/dango/types";
+import type { PerpsTimeInForce } from "@left-curve/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
 import { computeOtherPairsUsedMargin } from "../helpers/math";
