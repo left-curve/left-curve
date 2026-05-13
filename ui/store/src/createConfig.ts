@@ -2,7 +2,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/sdk";
-import { uid } from "@left-curve/sdk/utils";
+import { uid } from "@left-curve/utils";
 
 import { eip6963 } from "./connectors/eip6963.js";
 import { type EventData, createEmitter } from "./createEmitter.js";
@@ -10,7 +10,7 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { Client, PublicClient } from "@left-curve/sdk/types";
+import type { Client, PublicClient } from "@left-curve/types";
 
 import { subscriptionsStore } from "./subscriptions.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";

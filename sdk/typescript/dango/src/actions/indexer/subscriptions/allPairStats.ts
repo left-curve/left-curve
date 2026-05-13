@@ -1,7 +1,6 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-import { getAllPairStats } from "../../dex/queries/getAllPairStats.js";
-
-import type { Client, PairStats, SubscriptionCallbacks } from "../../../types/index.js";
+import type { Client, PairStats, SubscriptionCallbacks } from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
+import { getAllPairStats } from "#actions/dex/queries/getAllPairStats.js";
 
 export type AllPairStatsSubscriptionParameters = SubscriptionCallbacks<{
   allPairStats: PairStats[];

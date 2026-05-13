@@ -7,7 +7,7 @@ import { registerUser } from "@left-curve/sdk/actions";
 
 import { useMutation } from "@tanstack/react-query";
 import { useChainId } from "./useChainId.js";
-import type { Address, Key } from "@left-curve/sdk/types";
+import type { Address, Key } from "@left-curve/types";
 import type { EIP1193Provider } from "../types/eip1193.js";
 import { useSessionKey } from "./useSessionKey.js";
 import type { Connector } from "../types/connector.js";

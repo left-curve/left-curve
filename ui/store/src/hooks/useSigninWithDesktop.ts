@@ -1,13 +1,13 @@
-import { encodeBase64, encodeUtf8, serializeJson } from "@left-curve/sdk/encoding";
+import { encodeBase64, encodeUtf8, serializeJson } from "@left-curve/encoding";
 
 import { useChainId } from "./useChainId.js";
 import { useConnectors } from "./useConnectors.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
-import { Secp256k1 } from "@left-curve/sdk/crypto";
+import { Secp256k1 } from "@left-curve/crypto";
 import { MessageExchanger } from "../messageExchanger.js";
 
-import type { NestedOmit, Result, SessionResponse } from "@left-curve/sdk/types";
+import type { NestedOmit, Result, SessionResponse } from "@left-curve/types";
 import type { UseConnectorsReturnType } from "./useConnectors.js";
 import type { UseSubmitTxParameters, UseSubmitTxReturnType } from "./useSubmitTx.js";
 

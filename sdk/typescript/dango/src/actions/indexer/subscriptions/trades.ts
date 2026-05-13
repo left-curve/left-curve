@@ -1,6 +1,5 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-
-import type { Client, Denom, SubscriptionCallbacks, Trade } from "../../../types/index.js";
+import type { Client, Denom, SubscriptionCallbacks, Trade } from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
 
 export type TradesSubscriptionParameters = SubscriptionCallbacks<{
   trades: Trade;

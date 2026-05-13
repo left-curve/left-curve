@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/complexity/noStaticOnlyClass: we want to wrap all together in a class */
-import { decodeBase64, decodeUtf8, encodeBase64, encodeUtf8 } from "@left-curve/sdk/encoding";
+import { decodeBase64, decodeUtf8, encodeBase64, encodeUtf8 } from "@left-curve/encoding";
 
 export class WebCryptoECDH {
   static #subtle = window?.crypto?.subtle;

@@ -1,16 +1,8 @@
-import { getAppConfig } from "../../../index.js";
-import type { Address, Hex } from "../../../types/index.js";
-import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import type { Address, Hex } from "@left-curve/types";
+import { type ExecuteReturnType, execute } from "#actions/app/mutations/execute.js";
 
-import { getAction } from "../../index.js";
-import type {
-  AppConfig,
-  Client,
-  Key,
-  KeyHash,
-  Signer,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { Client, Key, KeyHash, Signer, TypedDataParameter } from "@left-curve/types";
 
 export type UpdateKeyParameters = {
   sender: Address;
@@ -33,9 +25,7 @@ export async function updateKey(
 ): UpdateKeyReturnType {
   const { keyHash, action, sender } = parameters;
 
-  const getter = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getter<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const UpdateKeyMsg = {
     updateKey: {

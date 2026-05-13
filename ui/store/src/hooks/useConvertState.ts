@@ -6,9 +6,9 @@ import { usePairStats } from "./usePairStats.js";
 import { usePrices } from "./usePrices.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import { formatUnits, parseUnits } from "@left-curve/sdk/utils";
+import { formatUnits, parseUnits } from "@left-curve/utils";
 
-import type { Address, Coin, PairUpdate } from "@left-curve/sdk/types";
+import type { Address, Coin, PairUpdate } from "@left-curve/types";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { useAccount } from "./useAccount.js";
 import { useSigningClient } from "./useSigningClient.js";

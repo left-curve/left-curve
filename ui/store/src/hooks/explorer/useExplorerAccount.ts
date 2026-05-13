@@ -9,7 +9,7 @@ import type {
   PerpsOrdersByUserResponse,
   PerpsUserStateExtended,
   PerpsVaultState,
-} from "@left-curve/sdk/types";
+} from "@left-curve/types";
 
 export type ExplorerPerpsData = {
   userState: PerpsUserStateExtended | null;

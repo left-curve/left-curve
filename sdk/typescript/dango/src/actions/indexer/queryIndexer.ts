@@ -1,4 +1,4 @@
-import type { Client, JsonValue } from "../../types/index.js";
+import type { Client, JsonValue } from "@left-curve/types";
 
 export type QueryIndexerParameters = {
   document: string;

@@ -9,10 +9,12 @@ import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
+import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { GenerateSW } from "workbox-webpack-plugin";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
+import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
 import { devnet, local, testnet, mainnet } from "@left-curve/sdk";
 
@@ -130,7 +132,7 @@ const envConfig = `window.dango = ${JSON.stringify(
     chain: isLocal
       ? {
           ...chain,
-          urls: { indexer: `http://localhost:${PORT}` },
+          url:  `http://localhost:${PORT}`
         }
       : chain,
     urls: isLocal
@@ -163,7 +165,6 @@ export default defineConfig({
   resolve: {
     aliasStrategy: "prefer-alias",
     alias: {
-      // Order matters
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
@@ -173,6 +174,7 @@ export default defineConfig({
     },
   },
   source: {
+    include: [/[\\/]@left-curve[\\/]/],
     entry: {
       index: "./src/index.tsx",
     },
@@ -259,6 +261,7 @@ export default defineConfig({
   plugins: [
     pluginReact(),
     pluginSvgr(),
+    pluginSourceBuild(),
     pluginNodePolyfill({
       include: ["buffer"],
     }),
@@ -280,6 +283,15 @@ export default defineConfig({
         TanStackRouterRspack({
           routesDirectory: "./src/pages",
           generatedRouteTree: "./src/app.pages.ts",
+        }),
+        paraglideRspackPlugin({
+          outdir: "../../foundation/paraglide",
+          project: "../../foundation/project.inlang",
+          emitGitIgnore: false,
+          emitPrettierIgnore: false,
+          includeEslintDisableComment: false,
+          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
+          localStorageKey: "dango.locale",
         }),
         {
           apply(compiler: Rspack.Compiler) {

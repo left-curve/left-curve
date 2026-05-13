@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ERC20_ABI, INFURA_URLS } from "@left-curve/sdk/hyperlane";
 
 import type { Chain } from "viem";
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/types";
 import type { useBridgeState } from "./useBridgeState.js";
 
 export type UseEvmBalancesParameters = {

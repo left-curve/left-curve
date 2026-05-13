@@ -1,9 +1,7 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Client, Prettify } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, GetDexQueryMsg, OrderResponse, Prettify } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "../../index.js";
-import type { AppConfig } from "../../../types/app.js";
-import type { GetDexQueryMsg, OrderResponse } from "../../../types/dex.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetDexQueryMsg<"order">;
 
@@ -21,15 +19,13 @@ export type GetOrderReturnType = Promise<OrderResponse>;
 export async function getOrder(client: Client, parameters: GetOrderParameters): GetOrderReturnType {
   const { orderId, height = 0 } = parameters;
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-
   const msg: ActionMsg = {
     order: {
       orderId,
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.dex, msg, height });
 }

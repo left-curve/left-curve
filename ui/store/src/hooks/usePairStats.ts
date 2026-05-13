@@ -4,9 +4,9 @@ import { create } from "zustand";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import { Decimal, formatUnits } from "@left-curve/sdk/utils";
+import { Decimal, formatUnits } from "@left-curve/utils";
 
-import type { PairStats } from "@left-curve/sdk/types";
+import type { PairStats } from "@left-curve/types";
 import type { AnyCoin } from "../types/coin.js";
 
 export type NormalizedPairStats = {

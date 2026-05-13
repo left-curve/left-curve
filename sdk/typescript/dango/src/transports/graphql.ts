@@ -1,10 +1,16 @@
-import { HttpRequestError, UrlRequiredError, createBatchScheduler, wait } from "../utils/index.js";
-import { createClient } from "graphql-ws";
-import { graphqlClient } from "../http/graphqlClient.js";
+import type {
+  GraphQLClientResponse,
+  GraphqlOperation,
+  RequestFn,
+  SubscribeFn,
+  Transport,
+} from "@left-curve/types";
+import { createBatchScheduler, wait } from "@left-curve/utils";
 import { EventEmitter } from "eventemitter3";
-
-import type { RequestFn, SubscribeFn, Transport } from "../types/transports.js";
-import type { GraphQLClientResponse, GraphqlOperation } from "../types/graphql.js";
+import { createClient } from "graphql-ws";
+import { HttpRequestError } from "#errors/request.js";
+import { UrlRequiredError } from "#errors/transports.js";
+import { graphqlClient } from "#http/graphqlClient.js";
 
 export type WsRetryConfig = {
   maxRetries?: number;

@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import { Decimal, formatNumber, formatUnits, parseUnits } from "@left-curve/sdk/utils";
+import { Decimal, formatNumber, formatUnits, parseUnits } from "@left-curve/utils";
 
-import type { Denom, Funds, Price } from "@left-curve/sdk/types";
-import type { FormatNumberOptions } from "@left-curve/sdk/utils";
+import type { Denom, Funds, Price } from "@left-curve/types";
+import type { FormatNumberOptions } from "@left-curve/utils";
 import type { AnyCoin } from "../types/coin.js";
 
 export type UsePricesParameters = {

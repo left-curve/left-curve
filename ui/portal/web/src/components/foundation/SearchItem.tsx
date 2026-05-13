@@ -4,7 +4,7 @@ import { useFavApplets } from "@left-curve/store";
 import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import type { AccountDetails, Address, ContractInfo, User } from "@left-curve/sdk/types";
+import type { AccountDetails, Address, ContractInfo, User } from "@left-curve/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
 import type { MouseEvent, PropsWithChildren } from "react";
 

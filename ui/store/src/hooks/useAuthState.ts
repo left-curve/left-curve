@@ -10,7 +10,7 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useChainId } from "./useChainId.js";
 import { useConfig } from "./useConfig.js";
 
-import type { Address, Key, KeyHash, SigningSession, User } from "@left-curve/sdk/types";
+import type { Address, Key, KeyHash, SigningSession, User } from "@left-curve/types";
 import type { EIP1193Provider } from "../types/eip1193.js";
 import type { Connector } from "../types/connector.js";
 

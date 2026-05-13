@@ -31,7 +31,7 @@ import {
   Tabs,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/types";
 import { isValidAddress } from "@left-curve/sdk";
 import {
   Decimal,
@@ -40,7 +40,7 @@ import {
   truncateDec,
   wait,
   withResolvers,
-} from "@left-curve/sdk/utils";
+} from "@left-curve/utils";
 import { perpsMarginAsset } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";

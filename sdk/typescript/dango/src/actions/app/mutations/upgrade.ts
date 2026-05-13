@@ -1,9 +1,12 @@
-import type { Address, GetTxMessage } from "../../../types/index.js";
+import type {
+  Address,
+  Client,
+  GetTxMessage,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "@left-curve/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
-import type { Client } from "../../../types/client.js";
-import type { Signer } from "../../../types/signer.js";
-import type { TxMessageType, TypedDataParameter } from "../../../types/typedData.js";
 
 type Message = GetTxMessage<"upgrade">;
 

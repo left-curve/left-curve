@@ -35,7 +35,7 @@ import {
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
-import { Decimal, formatNumber } from "@left-curve/sdk/utils";
+import { Decimal, formatNumber } from "@left-curve/utils";
 
 import { Cell, FormattedNumber, IconLink, Table, Tabs } from "@left-curve/applets-kit";
 import { CountBadge } from "../../foundation/CountBadge";
@@ -49,7 +49,7 @@ import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { ConditionalOrder, OrderId, PairId } from "@left-curve/sdk/types";
+import type { ConditionalOrder, OrderId, PairId } from "@left-curve/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;

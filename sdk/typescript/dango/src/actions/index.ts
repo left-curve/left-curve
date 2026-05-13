@@ -1,112 +1,70 @@
 /* -------------------------------------------------------------------------- */
-/*                                Grug Actions                                */
+/*                                App Queries                                 */
 /* -------------------------------------------------------------------------- */
 
 export {
   type GetBalanceParameters,
   type GetBalanceReturnType,
   getBalance,
-} from "./getBalance.js";
+} from "./app/queries/getBalance.js";
 
 export {
   type GetBalancesParameters,
   type GetBalancesReturnType,
   getBalances,
-} from "./getBalances.js";
+} from "./app/queries/getBalances.js";
 
 export {
   type GetSupplyParameters,
   type GetSupplyReturnType,
   getSupply,
-} from "./getSupply.js";
+} from "./app/queries/getSupply.js";
 
 export {
   type GetSuppliesParameters,
   type GetSuppliesReturnType,
   getSupplies,
-} from "./getSupplies.js";
+} from "./app/queries/getSupplies.js";
 
 export {
   type GetCodeParameters,
   type GetCodeReturnType,
   getCode,
-} from "./getCode.js";
+} from "./app/queries/getCode.js";
 
 export {
   type GetCodesParameters,
   type GetCodesReturnType,
   getCodes,
-} from "./getCodes.js";
-
-export {
-  type QueryStatusReturnType,
-  queryStatus,
-} from "./queryStatus.js";
-
-export {
-  type QueryAppParameters,
-  type QueryAppReturnType,
-  queryApp,
-} from "./queryApp.js";
-
-export {
-  type QueryAbciParameters,
-  type QueryAbciReturnType,
-  queryAbci,
-} from "./queryAbci.js";
-
-export {
-  type QueryTxParameters,
-  type QueryTxReturnType,
-  queryTx,
-} from "./queryTx.js";
+} from "./app/queries/getCodes.js";
 
 export {
   type QueryWasmRawParameters,
   type QueryWasmRawReturnType,
   queryWasmRaw,
-} from "./queryWasmRaw.js";
+} from "./app/queries/queryWasmRaw.js";
 
 export {
   type QueryWasmSmartParameters,
   type QueryWasmSmartReturnType,
   queryWasmSmart,
-} from "./queryWasmSmart.js";
-
-export {
-  type GetAppConfigParameters,
-  type GetAppConfigReturnType,
-  getAppConfig,
-} from "./getAppConfig.js";
-
-export {
-  type SimulateParameters,
-  type SimulateReturnType,
-  simulate,
-} from "./simulate.js";
+} from "./app/queries/queryWasmSmart.js";
 
 export {
   type GetContractInfoParameters,
   type GetContractInfoReturnType,
   getContractInfo,
-} from "./getContractInfo.js";
+} from "./app/queries/getContractInfo.js";
 
 export {
   type GetContractsInfoParameters,
   type GetContractsInfoReturnType,
   getContractsInfo,
-} from "./getContractsInfo.js";
-
-export { getAction } from "./getAction.js";
+} from "./app/queries/getContractsInfo.js";
 
 /* -------------------------------------------------------------------------- */
 /*                              Actions Builders                              */
 /* -------------------------------------------------------------------------- */
-
-export {
-  type GrugActions,
-  grugActions,
-} from "./grugActions.js";
 
 export {
   type PublicActions,

@@ -1,7 +1,7 @@
 import { queryBlock } from "@left-curve/sdk/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
-import type { BlockInfo } from "@left-curve/sdk/types";
+import type { BlockInfo } from "@left-curve/types";
 import type { Config } from "../types/store.js";
 
 export type GetBlockParameters = {

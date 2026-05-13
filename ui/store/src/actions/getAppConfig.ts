@@ -1,4 +1,4 @@
-import { plainObject, invertObject } from "@left-curve/sdk/utils";
+import { plainObject, invertObject } from "@left-curve/utils";
 import { getPublicClient } from "./getPublicClient.js";
 
 import type {
@@ -10,7 +10,7 @@ import type {
   PairUpdate,
   PerpsParam,
   PerpsPairParam,
-} from "@left-curve/sdk/types";
+} from "@left-curve/types";
 import type { Config } from "../types/store.js";
 
 export type GetAppConfigData = {

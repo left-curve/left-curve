@@ -1,11 +1,7 @@
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "../../../encoding/index.js";
-import type { Client, Prettify, Tx, TxData, UnsignedTx } from "../../../types/index.js";
-
-import { withRetry } from "../../../utils/index.js";
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
+import type { Client, Prettify, Tx, TxData, UnsignedTx } from "@left-curve/types";
+import { withRetry } from "@left-curve/utils";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 import { queryTx } from "../queries/queryTx.js";
 
 export type BroadcastTxSyncParameters = {

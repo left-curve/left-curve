@@ -1,6 +1,6 @@
-import { Sha256, ripemd160 } from "../crypto/index.js";
-import { decodeHex, encodeHex, isHex } from "../encoding/index.js";
-import type { Address, Hex } from "../types/index.js";
+import { Sha256, ripemd160 } from "@left-curve/crypto";
+import { decodeHex, encodeHex, isHex } from "@left-curve/encoding";
+import type { Address, Hex } from "@left-curve/types";
 
 export type ComputeAddressParameters = {
   deployer: Address;

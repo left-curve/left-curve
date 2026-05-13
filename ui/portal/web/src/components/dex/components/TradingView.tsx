@@ -19,7 +19,7 @@ import {
 } from "../helpers/chartLines";
 
 import type { AnyCoin } from "@left-curve/store/types";
-import type { OrdersByUserResponse, WithId } from "@left-curve/sdk/types";
+import type { OrdersByUserResponse, WithId } from "@left-curve/types";
 
 type TradingViewProps = {
   coins: { base: AnyCoin; quote: AnyCoin };

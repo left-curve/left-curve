@@ -1,8 +1,7 @@
-import { getAppConfig, queryWasmSmart } from "../../../index.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
 
-import { getAction } from "../../index.js";
-import type { Client } from "../../../types/index.js";
-import type { AppConfig, User, UserIndexOrName } from "../../../types/index.js";
+import type { Client, User, UserIndexOrName } from "@left-curve/types";
 
 export type GetUserParameters = {
   userIndexOrName: UserIndexOrName;
@@ -22,9 +21,7 @@ export async function getUser(client: Client, parameters: GetUserParameters): Ge
   const { userIndexOrName, height = 0 } = parameters;
   const msg = { user: userIndexOrName };
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

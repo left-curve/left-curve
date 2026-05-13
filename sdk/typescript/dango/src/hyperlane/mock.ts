@@ -1,5 +1,5 @@
-import { type KeyPair, Secp256k1, ethHashMessage, keccak256 } from "../crypto/index.js";
-import { encodeEndian32, encodeHex, encodeUtf8 } from "../encoding/index.js";
+import { type KeyPair, Secp256k1, ethHashMessage, keccak256 } from "@left-curve/crypto";
+import { encodeEndian32, encodeHex, encodeUtf8 } from "@left-curve/encoding";
 import { Addr32 } from "./addr32.js";
 import { Metadata } from "./multisig.js";
 

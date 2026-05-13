@@ -1,6 +1,6 @@
-import { sha256 } from "../crypto/index.js";
-import { encodeHex, encodeUtf8 } from "../encoding/index.js";
-import type { KeyHash } from "../types/key.js";
+import { sha256 } from "@left-curve/crypto";
+import { encodeHex, encodeUtf8 } from "@left-curve/encoding";
+import type { KeyHash } from "@left-curve/types";
 
 /**
  * Create a key hash from a public key or credential id.

@@ -1,7 +1,6 @@
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { Client } from "../../../types/index.js";
-import type { PairStats } from "../../../types/dex.js";
+import type { Client, PairStats } from "@left-curve/types";
 
 export type GetAllPairStatsReturnType = Promise<PairStats[]>;
 

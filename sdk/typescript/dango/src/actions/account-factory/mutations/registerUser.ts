@@ -1,9 +1,9 @@
-import { getAppConfig, simulate } from "../../../index.js";
-import { broadcastTxSync } from "../../app/mutations/broadcastTxSync.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { simulate } from "#actions/app/queries/simulate.js";
+import { broadcastTxSync } from "#actions/app/mutations/broadcastTxSync.js";
 
-import { getAction } from "../../index.js";
-import type { AppConfig, Client, Key, KeyHash, Signature, Signer } from "../../../types/index.js";
-import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
+import type { Client, Key, KeyHash, Signature, Signer } from "@left-curve/types";
+import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
 
 export type RegisterUserParameters = {
   key: Key;
@@ -31,9 +31,7 @@ export async function registerUser(
 ): RegisterUserReturnType {
   const { keyHash, key, seed, signature, referrer } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const registerMsg = {
     registerUser: {
@@ -53,9 +51,7 @@ export async function registerUser(
     },
   };
 
-  const simulateAction = getAction(client, simulate, "simulate");
-
-  const { gasUsed } = await simulateAction({
+  const { gasUsed } = await simulate(client, {
     simulate: { sender: addresses.accountFactory, msgs: [executeMsg], data: null },
   });
 

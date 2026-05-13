@@ -4,8 +4,8 @@ import { getUser } from "@left-curve/sdk/actions";
 import { createConnector } from "./createConnector.js";
 import { requestRemote } from "../remote.js";
 
-import type { KeyHash, ArbitrarySignatureOutcome, SignatureOutcome } from "@left-curve/sdk/types";
-import type { Address } from "@left-curve/sdk/types";
+import type { KeyHash, ArbitrarySignatureOutcome, SignatureOutcome } from "@left-curve/types";
+import type { Address } from "@left-curve/types";
 
 export function remote() {
   return createConnector<undefined>(({ transport, getUserIndex, emitter, chain }) => {

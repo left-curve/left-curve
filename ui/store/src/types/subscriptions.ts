@@ -18,7 +18,7 @@ import type {
   SubscriptionEvent as DangoSubscriptionEvent,
   Trade,
   Username,
-} from "@left-curve/sdk/types";
+} from "@left-curve/types";
 
 export type SubscriptionSchema = [
   {

@@ -4,7 +4,7 @@ import { useConfig } from "./useConfig.js";
 import { create } from "zustand";
 import { TradePairStore } from "../stores/tradePairStore.js";
 
-import type { PerpsTrade } from "@left-curve/sdk/types";
+import type { PerpsTrade } from "@left-curve/types";
 
 export type UseLivePerpsTradesStoreState = {
   trades: PerpsTrade[];

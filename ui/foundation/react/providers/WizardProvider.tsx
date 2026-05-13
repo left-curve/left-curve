@@ -1,6 +1,6 @@
 "use client";
 
-import { deserializeJson, serializeJson } from "@left-curve/sdk/encoding";
+import { deserializeJson, serializeJson } from "@left-curve/encoding";
 import React, {
   cloneElement,
   createContext,

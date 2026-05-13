@@ -8,7 +8,7 @@ import { SearchTokenTable } from "./SearchTokenTable";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
-import type { PairId, /* PairUpdate, */ PerpsPairParam } from "@left-curve/sdk/types";
+import type { PairId, /* PairUpdate, */ PerpsPairParam } from "@left-curve/types";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 

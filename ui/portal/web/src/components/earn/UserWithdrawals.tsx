@@ -1,7 +1,7 @@
 import { Table, useApp, type TableColumn } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/sdk/utils";
+import { formatNumber } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import type { PerpsUnlock } from "@left-curve/sdk/types";
+import type { PerpsUnlock } from "@left-curve/types";
 
 type UserWithdrawalsProps = {
   unlocks: PerpsUnlock[];

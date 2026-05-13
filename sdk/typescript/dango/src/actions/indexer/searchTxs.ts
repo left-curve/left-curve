@@ -1,8 +1,11 @@
-import type { Client, Prettify } from "../../types/index.js";
+import type {
+  Client,
+  GraphqlPagination,
+  GraphqlQueryResult,
+  IndexedTransaction,
+  Prettify,
+} from "@left-curve/types";
 import { queryIndexer } from "./queryIndexer.js";
-
-import type { GraphqlPagination, GraphqlQueryResult } from "../../types/graphql.js";
-import type { IndexedTransaction } from "../../types/indexer.js";
 
 export type SearchTxsParameters = Prettify<
   GraphqlPagination & {

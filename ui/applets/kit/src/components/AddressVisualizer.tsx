@@ -9,7 +9,7 @@ import { TruncateResponsive } from "./TruncateResponsive";
 import { IconLink } from "./icons/IconLink";
 import { IconUserCircle } from "./icons/IconUserCircle";
 
-import type { Address, AllLeafKeys, AppConfig } from "@left-curve/sdk/types";
+import type { Address, AllLeafKeys, AppConfig } from "@left-curve/types";
 import type React from "react";
 
 type AddressVisualizerProps = {

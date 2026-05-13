@@ -1,6 +1,4 @@
-import type { Client } from "../../types/client.js";
-import type { Signer } from "../../types/signer.js";
-import type { AppConfig } from "../../types/app.js";
+import type { AppConfig, Client, JsonValue, Signer } from "@left-curve/types";
 
 import {
   type BroadcastTxSyncParameters,
@@ -41,11 +39,66 @@ import { type QueryStatusReturnType, queryStatus } from "./queries/queryStatus.j
 import { type QueryTxParameters, type QueryTxReturnType, queryTx } from "./queries/queryTx.js";
 import { type SimulateParameters, type SimulateReturnType, simulate } from "./queries/simulate.js";
 
+import {
+  type GetBalanceParameters,
+  type GetBalanceReturnType,
+  getBalance,
+} from "./queries/getBalance.js";
+import {
+  type GetBalancesParameters,
+  type GetBalancesReturnType,
+  getBalances,
+} from "./queries/getBalances.js";
+import {
+  type GetSupplyParameters,
+  type GetSupplyReturnType,
+  getSupply,
+} from "./queries/getSupply.js";
+import {
+  type GetSuppliesParameters,
+  type GetSuppliesReturnType,
+  getSupplies,
+} from "./queries/getSupplies.js";
+import { type GetCodeParameters, type GetCodeReturnType, getCode } from "./queries/getCode.js";
+import { type GetCodesParameters, type GetCodesReturnType, getCodes } from "./queries/getCodes.js";
+import {
+  type GetContractInfoParameters,
+  type GetContractInfoReturnType,
+  getContractInfo,
+} from "./queries/getContractInfo.js";
+import {
+  type GetContractsInfoParameters,
+  type GetContractsInfoReturnType,
+  getContractsInfo,
+} from "./queries/getContractsInfo.js";
+import {
+  type QueryWasmRawParameters,
+  type QueryWasmRawReturnType,
+  queryWasmRaw,
+} from "./queries/queryWasmRaw.js";
+import {
+  type QueryWasmSmartParameters,
+  type QueryWasmSmartReturnType,
+  queryWasmSmart,
+} from "./queries/queryWasmSmart.js";
+
 export type AppQueryActions = {
   getAppConfig: () => Promise<AppConfig>;
+  getBalance: (args: GetBalanceParameters) => GetBalanceReturnType;
+  getBalances: (args: GetBalancesParameters) => GetBalancesReturnType;
+  getSupply: (args: GetSupplyParameters) => GetSupplyReturnType;
+  getSupplies: (args?: GetSuppliesParameters) => GetSuppliesReturnType;
+  getCode: (args: GetCodeParameters) => GetCodeReturnType;
+  getCodes: (args?: GetCodesParameters) => GetCodesReturnType;
+  getContractInfo: (args: GetContractInfoParameters) => GetContractInfoReturnType;
+  getContractsInfo: (args?: GetContractsInfoParameters) => GetContractsInfoReturnType;
   queryTx(args: QueryTxParameters): QueryTxReturnType;
   queryApp(args: QueryAppParameters): QueryAppReturnType;
   queryStatus(): QueryStatusReturnType;
+  queryWasmRaw: (args: QueryWasmRawParameters) => QueryWasmRawReturnType;
+  queryWasmSmart: <value extends JsonValue>(
+    args: QueryWasmSmartParameters,
+  ) => QueryWasmSmartReturnType<value>;
   simulate(args: SimulateParameters): SimulateReturnType;
 };
 
@@ -65,9 +118,19 @@ export type AppMutationActions = {
 export function appQueryActions(client: Client): AppQueryActions {
   return {
     getAppConfig: () => getAppConfig(client),
+    getBalance: (args) => getBalance(client, args),
+    getBalances: (args) => getBalances(client, args),
+    getSupply: (args) => getSupply(client, args),
+    getSupplies: (args) => getSupplies(client, args),
+    getCode: (args) => getCode(client, args),
+    getCodes: (args) => getCodes(client, args),
+    getContractInfo: (args) => getContractInfo(client, args),
+    getContractsInfo: (args) => getContractsInfo(client, args),
     queryTx: (args) => queryTx(client, args),
     queryApp: (args) => queryApp(client, args),
     queryStatus: () => queryStatus(client),
+    queryWasmRaw: (args) => queryWasmRaw(client, args),
+    queryWasmSmart: (args) => queryWasmSmart(client, args),
     simulate: (args) => simulate(client, args),
   };
 }

@@ -1,5 +1,4 @@
-import type { Address } from "../types/index.js";
-import type { AccountIndex, User } from "../types/account.js";
+import type { AccountIndex, Address, User } from "@left-curve/types";
 
 export type ToAccountParameters = {
   user: User;

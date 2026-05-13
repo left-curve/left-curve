@@ -1,11 +1,15 @@
-import type { Address, Message } from "../../../types/index.js";
-
-import { composeTxTypedData } from "../../../utils/typedData.js";
-import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
-import { getAccountInfo } from "../../account-factory/queries/getAccountInfo.js";
+import type {
+  Address,
+  Client,
+  Message,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "@left-curve/types";
+import { composeTxTypedData } from "@left-curve/utils";
+import { getAccountSeenNonces } from "#actions/account-factory/queries/getAccountSeenNonces.js";
+import { getAccountInfo } from "#actions/account-factory/queries/getAccountInfo.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
-
-import type { Client, Signer, TxMessageType, TypedDataParameter } from "../../../types/index.js";
 
 import { queryStatus } from "../queries/queryStatus.js";
 import { simulate } from "../queries/simulate.js";

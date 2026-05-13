@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { createContext } from "../utils/context";
 
 import type { PropsWithChildren } from "react";
-import type { FormatNumberOptions } from "@left-curve/sdk/utils";
+import type { FormatNumberOptions } from "@left-curve/utils";
 import type { ToastController } from "../types/toast";
 
 export type AppState = {

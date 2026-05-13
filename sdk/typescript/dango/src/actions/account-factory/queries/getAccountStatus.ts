@@ -1,7 +1,6 @@
-import { queryWasmSmart } from "../../../index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
 
-import type { Address, Client } from "../../../types/index.js";
-import type { UserStatus } from "../../../types/account.js";
+import type { Address, Client, UserStatus } from "@left-curve/types";
 
 export type GetAccountStatusParameters = {
   address: Address;

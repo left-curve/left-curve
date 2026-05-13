@@ -1,9 +1,7 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Client, Denom } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, Denom, DexQueryMsg, PairParams } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "../../index.js";
-import type { AppConfig } from "../../../types/app.js";
-import type { DexQueryMsg, PairParams } from "../../../types/dex.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 export type GetPairParameters = {
   quoteDenom: Denom;
@@ -24,8 +22,6 @@ export type GetPairReturnType = Promise<PairParams>;
 export async function getPair(client: Client, parameters: GetPairParameters): GetPairReturnType {
   const { quoteDenom, baseDenom, height = 0 } = parameters;
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-
   const msg: DexQueryMsg = {
     pair: {
       quoteDenom,
@@ -33,7 +29,7 @@ export async function getPair(client: Client, parameters: GetPairParameters): Ge
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.dex, msg, height });
 }

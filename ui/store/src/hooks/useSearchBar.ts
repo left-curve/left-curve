@@ -3,7 +3,7 @@ import { useMemo, useReducer, useState } from "react";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAppConfig } from "./useAppConfig.js";
 
-import { wait } from "@left-curve/sdk/utils";
+import { wait } from "@left-curve/utils";
 import { isValidAddress } from "@left-curve/sdk";
 import fuzzysort from "fuzzysort";
 
@@ -15,7 +15,7 @@ import type {
   IndexedBlock,
   IndexedTransaction,
   User,
-} from "@left-curve/sdk/types";
+} from "@left-curve/types";
 
 export type UseSearchBarParameters = {
   debounceMs?: number;

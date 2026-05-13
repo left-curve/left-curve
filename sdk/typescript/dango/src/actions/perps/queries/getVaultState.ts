@@ -1,14 +1,13 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Client, Prettify } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, Prettify } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "../../index.js";
-import type { AppConfig } from "../../../types/app.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 import type {
   PerpsQueryMsg,
   PerpsState,
   PerpsUserStateExtended,
   PerpsVaultState,
-} from "../../../types/perps.js";
+} from "@left-curve/types";
 
 export type GetPerpsVaultStateParameters = Prettify<{ height?: number }>;
 
@@ -20,8 +19,7 @@ export async function getPerpsVaultState(
 ): GetPerpsVaultStateReturnType {
   const { height = 0 } = parameters ?? {};
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
   const perpsContract = addresses.perps;
 
   const stateMsg: PerpsQueryMsg = { state: {} };

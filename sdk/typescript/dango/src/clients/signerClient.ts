@@ -1,9 +1,8 @@
 import { createBaseClient } from "./baseClient.js";
-import { publicActions } from "../actions/publicActions.js";
-import { signerActions } from "../actions/signerActions.js";
+import { publicActions } from "#actions/publicActions.js";
+import { signerActions } from "#actions/signerActions.js";
 
-import type { Client } from "../types/client.js";
-import type { SignerClient, SignerClientConfig } from "../types/clients.js";
+import type { Client, SignerClient, SignerClientConfig } from "@left-curve/types";
 
 export function createSignerClient(parameters: SignerClientConfig): SignerClient {
   const { name = "Signer Client", type = "dango" } = parameters;

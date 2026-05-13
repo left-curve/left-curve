@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { CoinStore } from "./coinStore.js";
 
-import type { PairId } from "@left-curve/sdk/types";
+import type { PairId } from "@left-curve/types";
 
 export type TradePairState = {
   mode: "spot" | "perps";

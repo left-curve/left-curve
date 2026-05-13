@@ -5,7 +5,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Button, IconButton, IconClose, IconTrash, useApp } from "@left-curve/applets-kit";
 
-import type { KeyHash } from "@left-curve/sdk/types";
+import type { KeyHash } from "@left-curve/types";
 interface Props {
   keyHash: KeyHash;
 }

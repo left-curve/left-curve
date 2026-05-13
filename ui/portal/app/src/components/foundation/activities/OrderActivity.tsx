@@ -1,7 +1,7 @@
 import type React from "react";
 import { Pressable, View, type GestureResponderEvent } from "react-native";
 import { twMerge } from "@left-curve/foundation";
-import { OrderType, type OrderTypes } from "@left-curve/sdk/types";
+import { OrderType, type OrderTypes } from "@left-curve/types";
 import { IconLimitOrder } from "../icons/IconLimitOrder";
 import { IconMarketOrder } from "../icons/IconMarketOrder";
 

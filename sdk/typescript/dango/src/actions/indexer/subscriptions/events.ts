@@ -1,11 +1,10 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-
 import type {
   Client,
   EventFilter,
   SubscriptionCallbacks,
   SubscriptionEvent,
-} from "../../../types/index.js";
+} from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
 
 export type EventsSubscriptionParameters = SubscriptionCallbacks<{
   events: SubscriptionEvent[];

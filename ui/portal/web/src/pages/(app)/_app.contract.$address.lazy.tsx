@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/types";
 import { ContractExplorer } from "~/components/explorer/ContractExplorer";
 
 import { MobileTitle } from "~/components/foundation/MobileTitle";

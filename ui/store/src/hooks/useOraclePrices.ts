@@ -3,9 +3,9 @@ import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { createBlockStore } from "./createBlockStore.js";
 
-import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/sdk/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
-import type { Denom, Price, QueryRequest } from "@left-curve/sdk/types";
+import type { Denom, Price, QueryRequest } from "@left-curve/types";
 
 type UseOraclePricesParameters = {
   subscribe?: boolean;

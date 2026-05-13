@@ -1,4 +1,4 @@
-import { deserializeJson, serializeJson } from "@left-curve/sdk/encoding";
+import { deserializeJson, serializeJson } from "@left-curve/encoding";
 
 import { createMemoryStorage } from "./memoryStorage.js";
 

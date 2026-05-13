@@ -1,6 +1,5 @@
-import type { Client } from "../../../types/index.js";
-import type { Base64, TxResponse } from "../../../types/index.js";
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import type { Base64, Client, TxResponse } from "@left-curve/types";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
 export type QueryTxParameters = {
   hash: Base64;

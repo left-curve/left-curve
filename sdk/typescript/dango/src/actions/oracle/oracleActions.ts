@@ -1,4 +1,4 @@
-import type { Client } from "../../types/index.js";
+import type { Client } from "@left-curve/types";
 
 import {
   type GetPricesParameters,

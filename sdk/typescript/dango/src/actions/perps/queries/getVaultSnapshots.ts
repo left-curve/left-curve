@@ -1,9 +1,7 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Client, Prettify } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, PerpsQueryMsg, Prettify, VaultSnapshot } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "../../index.js";
-import type { AppConfig } from "../../../types/app.js";
-import type { PerpsQueryMsg, VaultSnapshot } from "../../../types/perps.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 export type GetVaultSnapshotsParameters = Prettify<{
   min?: number;
@@ -19,8 +17,7 @@ export async function getVaultSnapshots(
 ): GetVaultSnapshotsReturnType {
   const { min, max, height = 0 } = parameters ?? {};
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg: PerpsQueryMsg = {
     vaultSnapshots: {

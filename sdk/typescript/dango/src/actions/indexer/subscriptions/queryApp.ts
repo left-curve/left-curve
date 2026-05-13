@@ -1,12 +1,6 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-import { queryApp } from "../../app/queries/queryApp.js";
-
-import type {
-  Client,
-  QueryRequest,
-  QueryResponse,
-  SubscriptionCallbacks,
-} from "../../../types/index.js";
+import type { Client, QueryRequest, QueryResponse, SubscriptionCallbacks } from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
+import { queryApp } from "#actions/app/queries/queryApp.js";
 
 export type QueryAppSubscriptionParameters = SubscriptionCallbacks<{
   queryApp: {

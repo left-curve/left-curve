@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { Button, IconButton, IconClose, Input, numberMask, useApp } from "@left-curve/applets-kit";
-import { Decimal } from "@left-curve/sdk/utils";
+import { Decimal } from "@left-curve/utils";
 import { useInputs } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useStorage } from "@left-curve/store";

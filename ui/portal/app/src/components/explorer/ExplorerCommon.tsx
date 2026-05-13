@@ -1,5 +1,5 @@
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { formatUnits } from "@left-curve/sdk/utils";
+import { formatUnits } from "@left-curve/utils";
 import { useApp } from "@left-curve/foundation";
 import { useConfig, usePrices } from "@left-curve/store";
 import { useMemo, useState } from "react";
@@ -14,7 +14,7 @@ import {
   TextCopy,
 } from "~/components/foundation";
 
-import type { Address, Coins, IndexedTransaction } from "@left-curve/sdk/types";
+import type { Address, Coins, IndexedTransaction } from "@left-curve/types";
 import type React from "react";
 
 export const ExplorerScreen: React.FC<React.PropsWithChildren> = ({ children }) => {

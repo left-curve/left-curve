@@ -7,9 +7,9 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
-import { Decimal, formatUnits, parseUnits } from "@left-curve/sdk/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
 
-import type { PairUpdate } from "@left-curve/sdk/types";
+import type { PairUpdate } from "@left-curve/types";
 
 export type UsePoolLiquidityStateParameters = {
   pair: PairUpdate;

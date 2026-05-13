@@ -1,5 +1,5 @@
 import { Badge, FormattedNumber, twMerge, useTheme } from "@left-curve/applets-kit";
-import { Decimal } from "@left-curve/sdk/utils";
+import { Decimal } from "@left-curve/utils";
 import { getReferralLink, useAccount, useConfig } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { Ref } from "react";

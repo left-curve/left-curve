@@ -1,10 +1,6 @@
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "../../../encoding/index.js";
-import { queryIndexer } from "../../indexer/queryIndexer.js";
-
-import type { Client, SimulateRequest, SimulateResponse } from "../../../types/index.js";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
+import type { Client, SimulateRequest, SimulateResponse } from "@left-curve/types";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
 export type SimulateParameters = {
   simulate: SimulateRequest;

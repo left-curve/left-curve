@@ -6,8 +6,7 @@ import { type AppMutationActions, appMutationActions } from "./app/appActions.js
 import { type DexMutationActions, dexMutationActions } from "./dex/dexActions.js";
 import { type PerpsMutationActions, perpsMutationActions } from "./perps/perpsActions.js";
 
-import type { Client } from "../types/client.js";
-import type { Signer } from "../types/signer.js";
+import type { Client, Signer } from "@left-curve/types";
 
 export type SignerActions = AppMutationActions &
   AccountFactoryMutationActions &

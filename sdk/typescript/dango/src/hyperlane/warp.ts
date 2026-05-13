@@ -1,6 +1,6 @@
-import { encodeUint } from "../encoding/index.js";
+import { encodeUint } from "@left-curve/encoding";
 
-import type { Encoder } from "../types/index.js";
+import type { Encoder } from "@left-curve/types";
 import type { Addr32 } from "./addr32.js";
 
 export class TokenMessage implements Encoder {

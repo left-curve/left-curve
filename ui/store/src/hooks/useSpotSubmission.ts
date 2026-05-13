@@ -3,9 +3,9 @@ import { useAccount } from "./useAccount.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useBalances } from "./useBalances.js";
 
-import { Decimal, formatUnits, parseUnits } from "@left-curve/sdk/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
 
-import type { CreateOrderRequest, PairId, PriceOption } from "@left-curve/sdk/types";
+import type { CreateOrderRequest, PairId, PriceOption } from "@left-curve/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
 
 type UseSpotSubmissionParameters = {

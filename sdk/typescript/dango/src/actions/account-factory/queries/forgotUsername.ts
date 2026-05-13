@@ -1,8 +1,7 @@
-import { getAppConfig, queryWasmSmart } from "../../../index.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
 
-import { getAction } from "../../index.js";
-import type { Client } from "../../../types/index.js";
-import type { AppConfig, KeyHash, User } from "../../../types/index.js";
+import type { Client, KeyHash, User } from "@left-curve/types";
 
 export type ForgotUsernameParameters = {
   keyHash: KeyHash;
@@ -28,9 +27,7 @@ export async function forgotUsername(
   const { keyHash, limit, startAfter, height = 0 } = parameters;
   const msg = { forgotUsername: { keyHash, limit, startAfter } };
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, {
     contract: addresses.accountFactory,

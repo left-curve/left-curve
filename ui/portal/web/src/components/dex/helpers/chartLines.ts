@@ -1,6 +1,6 @@
 import type * as TV from "@left-curve/tradingview";
-import { Direction } from "@left-curve/sdk/types";
-import { Decimal, adjustPrice } from "@left-curve/sdk/utils";
+import { Direction } from "@left-curve/types";
+import { Decimal, adjustPrice } from "@left-curve/utils";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type {
@@ -8,7 +8,7 @@ import type {
   PerpsPositionExtended,
   PerpsOrdersByUserResponse,
   WithId,
-} from "@left-curve/sdk/types";
+} from "@left-curve/types";
 
 type ChartLine = {
   price: number;

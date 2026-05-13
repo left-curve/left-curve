@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Skeleton } from "./Skeleton";
 
 import type React from "react";
-import type { BlockInfo } from "@left-curve/sdk/types";
+import type { BlockInfo } from "@left-curve/types";
 
 type CurrentBlockProps = {
   classNames?: {

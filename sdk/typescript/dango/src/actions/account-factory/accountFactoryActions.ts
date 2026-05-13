@@ -1,4 +1,4 @@
-import type { TxParameters } from "../../types/index.js";
+import type { Client, Signer, TxParameters } from "@left-curve/types";
 
 import {
   type RegisterUserParameters,
@@ -52,8 +52,6 @@ import {
   createSession,
 } from "./mutations/createSession.js";
 
-import type { Client } from "../../types/client.js";
-import type { Signer } from "../../types/signer.js";
 import {
   forgotUsername,
   type ForgotUsernameParameters,

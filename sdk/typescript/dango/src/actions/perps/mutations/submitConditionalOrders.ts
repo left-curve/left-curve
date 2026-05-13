@@ -1,16 +1,9 @@
-import { getAppConfig } from "../../../index.js";
-import { getAction } from "../../index.js";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address } from "../../../types/index.js";
-import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
-import type {
-  AppConfig,
-  Client,
-  Signer,
-  TriggerDirection,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { Address } from "@left-curve/types";
+import type { SignAndBroadcastTxReturnType } from "#actions/app/mutations/signAndBroadcastTx.js";
+import type { Client, Signer, TriggerDirection, TypedDataParameter } from "@left-curve/types";
 
 export type SubmitConditionalOrderInput = {
   pairId: string;
@@ -37,8 +30,7 @@ export async function submitConditionalOrders(
     throw new Error("submitConditionalOrders requires at least one order");
   }
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const executeMsgs = orders.map((order) => {
     const { pairId, size, triggerPrice, triggerDirection, maxSlippage } = order;

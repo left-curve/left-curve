@@ -1,9 +1,13 @@
-import { getCoinsTypedData } from "../../../utils/typedData.js";
+import type {
+  Address,
+  Client,
+  Coins,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "@left-curve/types";
+import { getCoinsTypedData } from "@left-curve/utils";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
-import type { Address, Coins } from "../../../types/index.js";
-
-import type { Client, Signer, TxMessageType, TypedDataParameter } from "../../../types/index.js";
 
 export type TransferParameters = {
   sender: Address;

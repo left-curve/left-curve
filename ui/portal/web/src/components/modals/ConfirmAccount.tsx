@@ -10,11 +10,11 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import { formatUnits, wait } from "@left-curve/sdk/utils";
+import { formatUnits, wait } from "@left-curve/utils";
 import { useAccount, useConfig, usePrices } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/types";
 import type { useNavigate } from "@tanstack/react-router";
 
 type ConfirmAccountProps = {

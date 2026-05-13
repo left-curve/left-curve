@@ -1,7 +1,6 @@
 import { queryIndexer } from "./queryIndexer.js";
 
-import type { Client } from "../../types/index.js";
-import type { IndexedBlock } from "../../types/indexer.js";
+import type { Client, IndexedBlock } from "@left-curve/types";
 
 export type QueryBlockParameters = {
   height?: number;

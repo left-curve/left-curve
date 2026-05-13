@@ -1,4 +1,4 @@
-import type { Result } from "@left-curve/sdk/types";
+import type { Result } from "@left-curve/types";
 
 export type RemoteRequest<Args = any[]> = {
   id: string;

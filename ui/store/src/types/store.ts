@@ -7,7 +7,7 @@ import type {
   UID,
   Username,
   UserStatus,
-} from "@left-curve/sdk/types";
+} from "@left-curve/types";
 
 import type { NativeCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";

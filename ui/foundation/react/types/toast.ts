@@ -1,4 +1,4 @@
-import type { ValueOrFunction } from "@left-curve/sdk/types";
+import type { ValueOrFunction } from "@left-curve/types";
 import type { Renderable } from "./react";
 
 export type ToastDefinition = {

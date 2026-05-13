@@ -1,8 +1,12 @@
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { Client, DateTime } from "../../../types/index.js";
-import type { CandleIntervals, PerpsCandle } from "../../../types/dex.js";
-import type { GraphqlQueryResult } from "../../../types/graphql.js";
+import type {
+  CandleIntervals,
+  Client,
+  DateTime,
+  GraphqlQueryResult,
+  PerpsCandle,
+} from "@left-curve/types";
 
 export type QueryPerpsCandlesParameters = {
   after?: string;

@@ -4,9 +4,9 @@ import { useConfig } from "./useConfig.js";
 import { useAccount } from "./useAccount.js";
 import { createBlockStore } from "./createBlockStore.js";
 
-import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/sdk/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
-import type { PerpsUserState, QueryRequest } from "@left-curve/sdk/types";
+import type { PerpsUserState, QueryRequest } from "@left-curve/types";
 
 export const perpsMarginAsset = {
   name: "US Dollar",

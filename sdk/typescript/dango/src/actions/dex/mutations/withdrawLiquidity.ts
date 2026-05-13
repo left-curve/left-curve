@@ -1,16 +1,9 @@
-import { getAppConfig } from "../../../index.js";
-import { getAction } from "../../index.js";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Coins, Denom } from "../../../types/index.js";
-import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
-import type {
-  AppConfig,
-  Client,
-  DexExecuteMsg,
-  Signer,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { Address, Coins, Denom } from "@left-curve/types";
+import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
+import type { Client, DexExecuteMsg, Signer, TypedDataParameter } from "@left-curve/types";
 
 export type WithdrawLiquidityParameters = {
   sender: Address;
@@ -27,9 +20,7 @@ export async function withdrawLiquidity(
 ): WithdrawLiquidityReturnType {
   const { baseDenom, quoteDenom, funds, sender } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg: DexExecuteMsg = {
     withdrawLiquidity: {

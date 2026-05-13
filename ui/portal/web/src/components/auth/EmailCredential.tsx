@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button, IconEmail, IconLeft, Input, OtpInput, Spinner } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { wait } from "@left-curve/sdk/utils";
+import { wait } from "@left-curve/utils";
 import { PRIVY_ERRORS_MAPPING } from "~/constants";
 
 import type { Connector } from "@left-curve/store/types";

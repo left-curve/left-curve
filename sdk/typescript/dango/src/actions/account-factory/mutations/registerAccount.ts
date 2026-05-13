@@ -1,9 +1,14 @@
-import { getAppConfig } from "../../../index.js";
-import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { type ExecuteReturnType, execute } from "#actions/app/mutations/execute.js";
 
-import { getAction } from "../../index.js";
-import type { Address, Funds, TxParameters } from "../../../types/index.js";
-import type { AppConfig, Client, Signer, TypedDataParameter } from "../../../types/index.js";
+import type {
+  Address,
+  Client,
+  Funds,
+  Signer,
+  TxParameters,
+  TypedDataParameter,
+} from "@left-curve/types";
 
 export type RegisterAccountParameters = {
   sender: Address;
@@ -21,9 +26,7 @@ export async function registerAccount(
   const { gasLimit } = txParameters;
   const msg = { registerAccount: {} };
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const typedData: TypedDataParameter = {
     type: [{ name: "register_account", type: "RegisterAccount" }],

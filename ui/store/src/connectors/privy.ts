@@ -1,9 +1,9 @@
-import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/sdk/encoding";
+import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/encoding";
 
 import { createKeyHash, createSignerClient, toAccount } from "@left-curve/sdk";
 import { getUser } from "@left-curve/sdk/actions";
 
-import { composeArbitraryTypedData } from "@left-curve/sdk/utils";
+import { composeArbitraryTypedData } from "@left-curve/utils";
 import { createConnector } from "./createConnector.js";
 
 import Privy, {
@@ -12,8 +12,8 @@ import Privy, {
   LocalStorage,
 } from "@privy-io/js-sdk-core";
 
-import type { Eip712Signature } from "@left-curve/sdk/types";
-import type { Address } from "@left-curve/sdk/types";
+import type { Eip712Signature } from "@left-curve/types";
+import type { Address } from "@left-curve/types";
 import type { EIP1193Provider } from "../types/eip1193.js";
 
 const ETHEREUM_HEX_CHAIN_ID = "0x1";

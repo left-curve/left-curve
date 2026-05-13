@@ -5,7 +5,7 @@ import { useToastStore, toast as toaster } from "../providers/toast";
 import { createPortal } from "react-dom";
 
 import type { ToastDefinition } from "@left-curve/foundation";
-import type { Prettify } from "@left-curve/sdk/types";
+import type { Prettify } from "@left-curve/types";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { IconToastSuccess } from "./icons/IconToastSuccess";
 import { IconToastWarning } from "./icons/IconToastWarning";

@@ -11,7 +11,7 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 
-import { Decimal } from "@left-curve/sdk/utils";
+import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   perpsTradeSettingsStore,

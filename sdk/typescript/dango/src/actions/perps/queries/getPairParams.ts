@@ -1,9 +1,7 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Client, Prettify } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, GetPerpsQueryMsg, PerpsPairParam, Prettify } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "../../index.js";
-import type { AppConfig } from "../../../types/app.js";
-import type { GetPerpsQueryMsg, PerpsPairParam } from "../../../types/perps.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"pairParams">;
 
@@ -17,15 +15,13 @@ export async function getPerpsPairParams(
 ): GetPerpsPairParamsReturnType {
   const { height = 0, ...queryMsg } = parameters ?? {};
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-
   const msg: ActionMsg = {
     pairParams: {
       ...queryMsg,
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.perps, msg, height });
 }

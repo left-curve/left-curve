@@ -25,7 +25,7 @@ import {
 
 import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { Decimal, formatUnits, parseUnits } from "@left-curve/sdk/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
 
 import {
   Button,
@@ -42,7 +42,7 @@ import { useState } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { AnyCoin } from "@left-curve/store/types";
-import type { NonNullablePropertiesBy } from "@left-curve/sdk/types";
+import type { NonNullablePropertiesBy } from "@left-curve/types";
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;

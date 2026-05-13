@@ -8,7 +8,7 @@ import { getWithdrawalFee, transferRemote } from "@left-curve/sdk/actions";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAccount } from "./useAccount.js";
 import { toAddr32 } from "@left-curve/sdk/hyperlane";
-import { formatUnits, parseUnits } from "@left-curve/sdk/utils";
+import { formatUnits, parseUnits } from "@left-curve/utils";
 
 export type UseBridgeWithdrawParameters = {
   coin: AnyCoin;

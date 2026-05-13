@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "./useAccount.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import type { OrdersByUserResponse, Prettify, WithId } from "@left-curve/sdk/types";
+import type { OrdersByUserResponse, Prettify, WithId } from "@left-curve/types";
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 
 export type UseOrdersByUserParameters = Prettify<

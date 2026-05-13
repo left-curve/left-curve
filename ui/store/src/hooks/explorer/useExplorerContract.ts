@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppConfig } from "../useAppConfig.js";
 import { usePublicClient } from "../usePublicClient.js";
 
-import type { Address, Coins, ContractInfo } from "@left-curve/sdk/types";
+import type { Address, Coins, ContractInfo } from "@left-curve/types";
 
 export type ExplorerContract = (ContractInfo & { address: Address; balances: Coins }) | null;
 

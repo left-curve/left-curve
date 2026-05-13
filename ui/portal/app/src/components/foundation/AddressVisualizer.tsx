@@ -11,7 +11,7 @@ import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { ViewProps } from "react-native";
-import type { Address, AllLeafKeys, AppConfig } from "@left-curve/sdk/types";
+import type { Address, AllLeafKeys, AppConfig } from "@left-curve/types";
 
 type AddressVisualizerProps = {
   address: Address;

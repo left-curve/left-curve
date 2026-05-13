@@ -1,10 +1,8 @@
-import { getAppConfig } from "../../../index.js";
-import { getAction } from "../../index.js";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address } from "../../../types/index.js";
-import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
-import type { AppConfig, Client, Signer, TypedDataParameter } from "../../../types/index.js";
+import type { Address, Client, Signer, TypedDataParameter } from "@left-curve/types";
+import type { SignAndBroadcastTxReturnType } from "#actions/app/mutations/signAndBroadcastTx.js";
 
 export type SetReferralParameters = {
   sender: Address;
@@ -20,8 +18,7 @@ export async function setReferral(
 ): SetReferralReturnType {
   const { sender, referrer, referee } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg = {
     referral: {

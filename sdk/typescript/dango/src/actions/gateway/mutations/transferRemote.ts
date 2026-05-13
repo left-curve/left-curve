@@ -1,13 +1,15 @@
-import { getAppConfig } from "../../../index.js";
-import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
-import { getAction } from "../../index.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { type ExecuteReturnType, execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Coins } from "../../../types/index.js";
-import type { AppConfig } from "../../../types/app.js";
-import type { Client } from "../../../types/client.js";
-import type { Remote, Addr32 } from "../../../types/hyperlane.js";
-import type { Signer } from "../../../types/signer.js";
-import type { TypedDataParameter } from "../../../types/typedData.js";
+import type {
+  Addr32,
+  Address,
+  Client,
+  Coins,
+  Remote,
+  Signer,
+  TypedDataParameter,
+} from "@left-curve/types";
 
 export type TransferRemoteParameters = {
   remote: Remote;
@@ -24,9 +26,7 @@ export async function transferRemote(
 ): TransferRemoteReturnType {
   const { remote, recipient, sender, funds } = parameters;
 
-  const getter = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getter<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg = {
     transferRemote: {

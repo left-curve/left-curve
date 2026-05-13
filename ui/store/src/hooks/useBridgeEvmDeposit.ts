@@ -5,7 +5,7 @@ import { useSigningClient } from "./useSigningClient.js";
 import { useAccount } from "./useAccount.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
-import { parseUnits } from "@left-curve/sdk/utils";
+import { parseUnits } from "@left-curve/utils";
 
 import { ERC20_ABI, HYPERLANE_ROUTER_ABI, INFURA_URLS, toAddr32 } from "@left-curve/sdk/hyperlane";
 
@@ -13,7 +13,7 @@ import type { Connector } from "../types/connector.js";
 import type { Chain as ViemChain } from "viem";
 import type { AnyCoin } from "../types/coin.js";
 import type { EIP1193Provider } from "../types/eip1193.js";
-import type { MailBoxConfig, NonNullablePropertiesBy } from "@left-curve/sdk/types";
+import type { MailBoxConfig, NonNullablePropertiesBy } from "@left-curve/types";
 import type { useBridgeState } from "./useBridgeState.js";
 
 const MAX_SAFE = 2n ** 256n - 1n;

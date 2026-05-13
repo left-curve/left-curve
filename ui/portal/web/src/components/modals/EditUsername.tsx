@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { wait } from "@left-curve/sdk/utils";
+import { wait } from "@left-curve/utils";
 
 import {
   Button,
@@ -16,7 +16,7 @@ import {
 } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, usePublicClient, useSigningClient, useSubmitTx } from "@left-curve/store";
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/types";
 
 export const EditUsername = forwardRef((_props, _ref) => {
   const { hideModal } = useApp();

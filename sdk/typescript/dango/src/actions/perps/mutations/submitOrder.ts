@@ -1,17 +1,15 @@
-import { getAppConfig } from "../../../index.js";
-import { getAction } from "../../index.js";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address } from "../../../types/index.js";
-import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
+import type { Address } from "@left-curve/types";
+import type { SignAndBroadcastTxReturnType } from "#actions/app/mutations/signAndBroadcastTx.js";
 import type {
-  AppConfig,
   ChildOrder,
   Client,
   PerpsOrderKind,
   Signer,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
 
 export type SubmitPerpsOrderParameters = {
   sender: Address;
@@ -31,8 +29,7 @@ export async function submitPerpsOrder(
 ): SubmitPerpsOrderReturnType {
   const { sender, pairId, size, kind, reduceOnly, tp, sl } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const buildChildOrder = (child: ChildOrder) => ({
     triggerPrice: child.triggerPrice,

@@ -1,7 +1,13 @@
-import type { Address, Hex, Json } from "../../../types/index.js";
+import type {
+  Address,
+  Client,
+  Hex,
+  Json,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "@left-curve/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
-import type { Client, Signer, TxMessageType, TypedDataParameter } from "../../../types/index.js";
 
 export type MigrateParameters = {
   sender: Address;

@@ -1,17 +1,15 @@
-import { getAppConfig } from "../../../index.js";
-import { getAction } from "../../index.js";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Coin } from "../../../types/index.js";
-import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
+import type { Address, Coin } from "@left-curve/types";
+import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
 import type {
-  AppConfig,
   Client,
   DexExecuteMsg,
   Signer,
   SwapRoute,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
 
 export type SwapExactAmountOutParameters = {
   sender: Address;
@@ -28,9 +26,7 @@ export async function swapExactAmountOut(
 ): SwapExactAmountOutReturnType {
   const { route, output, sender, input } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg: DexExecuteMsg = {
     swapExactAmountOut: {

@@ -6,7 +6,7 @@ import type {
   OneOf,
   Prettify,
   RequiredBy,
-} from "@left-curve/sdk/types";
+} from "@left-curve/types";
 
 type EIP1193RequestFn<
   methods extends readonly {

@@ -1,10 +1,17 @@
-import { encodeBase64, encodeUtf8 } from "../../../encoding/index.js";
-import type { Address, Funds, Hex, Json } from "../../../types/index.js";
-import { computeAddress } from "../../../account/address.js";
-import { getCoinsTypedData } from "../../../utils/typedData.js";
+import { encodeBase64, encodeUtf8 } from "@left-curve/encoding";
+import type {
+  Address,
+  Client,
+  Funds,
+  Hex,
+  Json,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "@left-curve/types";
+import { getCoinsTypedData } from "@left-curve/utils";
+import { computeAddress } from "#account/address.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
-import type { Client, Signer, TxMessageType, TypedDataParameter } from "../../../types/index.js";
 
 export type InstantiateParameters = {
   sender: Address;

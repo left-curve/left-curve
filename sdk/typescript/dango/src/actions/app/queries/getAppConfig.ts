@@ -1,7 +1,6 @@
-import type { Client } from "../../../types/index.js";
+import type { AppConfig, Client } from "@left-curve/types";
 
-import { getAction, queryApp } from "../../index.js";
-import type { AppConfig } from "../../../types/index.js";
+import { queryApp } from "./queryApp.js";
 
 export type GetAppConfigParameters = {
   height?: number;
@@ -28,9 +27,7 @@ export async function getAppConfig(
 
   if (config) return config;
 
-  const action = getAction(client, queryApp, "queryApp");
-
-  const res = await action({ query, height });
+  const res = await queryApp(client, { query, height });
 
   if ("appConfig" in res) {
     const { appConfig } = res;

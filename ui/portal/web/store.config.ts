@@ -11,7 +11,7 @@ import { createIndexedDBStorage } from "./storage.config";
 import { coins } from "@left-curve/foundation/coins";
 
 import type { Config } from "@left-curve/store/types";
-import { serializeJson } from "@left-curve/sdk/encoding";
+import { serializeJson } from "@left-curve/encoding";
 
 import { PRIVY_APP_ID, PRIVY_CLIENT_ID } from "~/constants";
 

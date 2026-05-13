@@ -1,6 +1,5 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-
-import type { Client, IndexedAccountEvent, SubscriptionCallbacks } from "../../../types/index.js";
+import type { Client, IndexedAccountEvent, SubscriptionCallbacks } from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
 
 export type AccountSubscriptionParameters = SubscriptionCallbacks<{
   accounts: IndexedAccountEvent[];

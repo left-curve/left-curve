@@ -1,4 +1,4 @@
-import type { GraphqlQueryResult } from "@left-curve/sdk/types";
+import type { GraphqlQueryResult } from "@left-curve/types";
 
 type WithPaginationParameters = {
   limit?: number;

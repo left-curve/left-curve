@@ -15,7 +15,7 @@ import { TransactionsTable } from "./TransactionsTable";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { IndexedBlock } from "@left-curve/sdk/types";
+import type { IndexedBlock } from "@left-curve/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 
 import type React from "react";

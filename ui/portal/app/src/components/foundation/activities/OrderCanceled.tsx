@@ -4,8 +4,8 @@ import { useRouter } from "expo-router";
 
 import { useConfig } from "@left-curve/store";
 import { Modals, useApp, twMerge } from "@left-curve/foundation";
-import { Direction, OrderType, TimeInForceOption, type OrderTypes } from "@left-curve/sdk/types";
-import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/sdk/utils";
+import { Direction, OrderType, TimeInForceOption, type OrderTypes } from "@left-curve/types";
+import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/utils";
 import { OrderActivity } from "./OrderActivity";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 

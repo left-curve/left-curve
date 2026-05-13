@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { Denom } from "@left-curve/sdk/types";
+import type { Denom } from "@left-curve/types";
 import type { AnyCoin, NativeCoin } from "../types/coin.js";
 
 export type CoinStore = {

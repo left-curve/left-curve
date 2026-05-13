@@ -2,7 +2,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useApp } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/sdk/utils";
+import { formatNumber } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useEpochPoints } from "@left-curve/store";
 

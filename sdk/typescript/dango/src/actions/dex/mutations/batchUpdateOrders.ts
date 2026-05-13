@@ -1,15 +1,17 @@
-import { getAppConfig } from "../../../index.js";
-import { getAction } from "../../index.js";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Coins, Json, Prettify } from "../../../types/index.js";
-import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
-
-import type { AppConfig } from "../../../types/app.js";
-import type { Client } from "../../../types/client.js";
-import type { GetDexExecuteMsg } from "../../../types/dex.js";
-import type { Signer } from "../../../types/signer.js";
-import type { TypedDataParameter } from "../../../types/typedData.js";
+import type {
+  Address,
+  Client,
+  Coins,
+  GetDexExecuteMsg,
+  Json,
+  Prettify,
+  Signer,
+  TypedDataParameter,
+} from "@left-curve/types";
+import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
 
 type ActionMsg = GetDexExecuteMsg<"batchUpdateOrders">;
 
@@ -28,9 +30,7 @@ export async function batchUpdateOrders(
 ): BatchUpdateOrdersReturnType {
   const { creates = [], cancels, funds, sender } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg = {
     batchUpdateOrders: {

@@ -1,11 +1,11 @@
 import { createSessionSigner, createSignerClient, toAccount } from "@left-curve/sdk";
 import { getUser } from "@left-curve/sdk/actions";
-import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/sdk/encoding";
+import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/encoding";
 
 import { createConnector } from "./createConnector.js";
 
-import type { SigningSession } from "@left-curve/sdk/types";
-import type { Address } from "@left-curve/sdk/types";
+import type { SigningSession } from "@left-curve/types";
+import type { Address } from "@left-curve/types";
 
 import { createStorage } from "../storages/createStorage.js";
 import type { Storage } from "../types/storage.js";

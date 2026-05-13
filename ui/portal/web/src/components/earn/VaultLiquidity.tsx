@@ -15,7 +15,7 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 import { perpsMarginAsset, useAccount, useVaultLiquidityState } from "@left-curve/store";
-import { formatNumber } from "@left-curve/sdk/utils";
+import { formatNumber } from "@left-curve/utils";
 
 import type { VaultPerformancePeriod } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";

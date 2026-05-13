@@ -1,5 +1,4 @@
-import type { Client } from "../../types/client.js";
-import type { Signer } from "../../types/signer.js";
+import type { Client, Signer } from "@left-curve/types";
 
 import {
   type GetPerpsUserStateParameters,

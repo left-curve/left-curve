@@ -1,7 +1,7 @@
-import { Decimal, adjustPrice } from "@left-curve/sdk/utils";
-import { CandleInterval } from "@left-curve/sdk/types";
+import { Decimal, adjustPrice } from "@left-curve/utils";
+import { CandleInterval } from "@left-curve/types";
 
-import type { Candle, CandleIntervals, PerpsCandle, PublicClient } from "@left-curve/sdk/types";
+import type { Candle, CandleIntervals, PerpsCandle, PublicClient } from "@left-curve/types";
 import type { useConfig } from "@left-curve/store";
 import type { AnyCoin } from "@left-curve/store/types";
 import type { QueryClient } from "@tanstack/react-query";

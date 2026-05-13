@@ -1,7 +1,6 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-import { getAllPerpsPairStats } from "../../perps/queries/getAllPerpsPairStats.js";
-
-import type { Client, PerpsPairStats, SubscriptionCallbacks } from "../../../types/index.js";
+import type { Client, PerpsPairStats, SubscriptionCallbacks } from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
+import { getAllPerpsPairStats } from "#actions/perps/queries/getAllPerpsPairStats.js";
 
 export type AllPerpsPairStatsSubscriptionParameters = SubscriptionCallbacks<{
   allPerpsPairStats: PerpsPairStats[];

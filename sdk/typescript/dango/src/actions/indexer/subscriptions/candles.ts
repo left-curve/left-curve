@@ -1,12 +1,11 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-
 import type {
   Candle,
   CandleIntervals,
   Client,
   Denom,
   SubscriptionCallbacks,
-} from "../../../types/index.js";
+} from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
 
 export type CandlesSubscriptionParameters = SubscriptionCallbacks<{
   candles: Candle[];

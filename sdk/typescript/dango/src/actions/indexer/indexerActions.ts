@@ -1,6 +1,6 @@
 import { type QueryBlockParameters, type QueryBlockReturnType, queryBlock } from "./queryBlock.js";
 
-import type { Client } from "../../types/index.js";
+import type { Client } from "@left-curve/types";
 import { type SearchTxsParameters, type SearchTxsReturnType, searchTxs } from "./searchTxs.js";
 
 import {

@@ -136,7 +136,7 @@ export {
   getFeeRateOverride,
 } from "./queries/getFeeRateOverride.js";
 
-export type { FeeRateOverride, VaultSnapshot } from "../../types/perps.js";
+export type { FeeRateOverride, VaultSnapshot } from "@left-curve/types";
 
 export {
   type VaultAddLiquidityParameters,

@@ -1,6 +1,7 @@
-import { HttpRequestError, TimeoutError, withTimeout } from "../utils/index.js";
-
-import type { GraphqlClient, GraphqlClientOptions } from "../types/graphql.js";
+import type { GraphqlClient, GraphqlClientOptions } from "@left-curve/types";
+import { withTimeout } from "@left-curve/utils";
+import { HttpRequestError } from "#errors/request.js";
+import { TimeoutError } from "#errors/timeout.js";
 
 export function graphqlClient(url: string, options: GraphqlClientOptions = {}): GraphqlClient {
   return {

@@ -1,5 +1,5 @@
-import type { Client, ClientConfig, ClientExtend, Signer } from "../types/index.js";
-import { uid } from "../utils/uid.js";
+import type { Client, ClientConfig, ClientExtend, Signer } from "@left-curve/types";
+import { uid } from "@left-curve/utils";
 
 export function createBaseClient<
   signer extends Signer | undefined = undefined,

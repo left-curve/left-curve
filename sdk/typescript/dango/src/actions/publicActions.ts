@@ -1,6 +1,4 @@
-import type { Client } from "../types/client.js";
-
-import { type GrugActions, grugActions } from "./grugActions.js";
+import type { Client } from "@left-curve/types";
 
 import {
   type AccountFactoryQueryActions,
@@ -12,8 +10,7 @@ import { type IndexerActions, indexerActions } from "./indexer/indexerActions.js
 import { type OracleQueryActions, oracleQueryActions } from "./oracle/oracleActions.js";
 import { type PerpsQueryActions, perpsQueryActions } from "./perps/perpsActions.js";
 
-export type PublicActions = Omit<GrugActions, "queryStatus" | "getAppConfig"> &
-  AppQueryActions &
+export type PublicActions = AppQueryActions &
   AccountFactoryQueryActions &
   IndexerActions &
   OracleQueryActions &
@@ -22,7 +19,6 @@ export type PublicActions = Omit<GrugActions, "queryStatus" | "getAppConfig"> &
 
 export function publicActions(client: Client): PublicActions {
   return {
-    ...grugActions(client),
     ...appQueryActions(client),
     ...indexerActions(client),
     ...oracleQueryActions(client),

@@ -1,5 +1,5 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Address, Client } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Address, Client } from "@left-curve/types";
 
 export type GetAccountSeenNoncesParameters = {
   address: Address;

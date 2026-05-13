@@ -1,6 +1,6 @@
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { BlockInfo, Client } from "../../../types/index.js";
+import type { BlockInfo, Client } from "@left-curve/types";
 
 export type QueryStatusReturnType = Promise<{
   chainId: string;

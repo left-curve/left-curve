@@ -1,9 +1,7 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Client, Denom } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, Denom, Remote } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "../../index.js";
-import type { AppConfig } from "../../../types/app.js";
-import type { Remote } from "../../../types/hyperlane.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 export type GetWithdrawalFeeParameters = {
   denom: Denom;
@@ -27,9 +25,7 @@ export async function getWithdrawalFee(
 ): GetWithdrawalFeeReturnType {
   const { height = 0, denom, remote } = parameters;
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg = { withdrawal_fee: { denom, remote } };
 

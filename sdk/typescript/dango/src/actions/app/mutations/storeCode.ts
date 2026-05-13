@@ -1,7 +1,12 @@
-import type { Address, Base64 } from "../../../types/index.js";
+import type {
+  Address,
+  Base64,
+  Client,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "@left-curve/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
-import type { Client, Signer, TxMessageType, TypedDataParameter } from "../../../types/index.js";
 
 export type StoreCodeParameters = {
   sender: Address;

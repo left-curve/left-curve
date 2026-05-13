@@ -3,17 +3,17 @@ import {
   parseAsn1Signature,
   requestWebAuthnSignature,
   sha256,
-} from "@left-curve/sdk/crypto";
+} from "@left-curve/crypto";
 
-import { encodeBase64, encodeUtf8, serialize } from "@left-curve/sdk/encoding";
+import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
 
 import { createKeyHash, createSignerClient, toAccount } from "@left-curve/sdk";
 import { getUser } from "@left-curve/sdk/actions";
-import { getNavigatorOS, getRootDomain } from "@left-curve/sdk/utils";
+import { getNavigatorOS, getRootDomain } from "@left-curve/utils";
 
 import { createConnector } from "./createConnector.js";
 
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;

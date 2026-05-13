@@ -1,9 +1,7 @@
-import { queryWasmSmart } from "../../../index.js";
-import type { Client, Prettify } from "../../../types/index.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, CoinPair, GetDexQueryMsg, Prettify } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "../../index.js";
-import type { AppConfig } from "../../../types/app.js";
-import type { CoinPair, GetDexQueryMsg } from "../../../types/dex.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetDexQueryMsg<"simulateWithdrawLiquidity">;
 
@@ -30,8 +28,6 @@ export async function simulateWithdrawLiquidity(
 ): SimulateWithdrawLiquidityReturnType {
   const { baseDenom, quoteDenom, lpBurnAmount, height = 0 } = parameters;
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
-
   const msg: ActionMsg = {
     simulateWithdrawLiquidity: {
       baseDenom,
@@ -40,7 +36,7 @@ export async function simulateWithdrawLiquidity(
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.dex, msg, height });
 }

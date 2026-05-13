@@ -1,7 +1,7 @@
 import { toAccount } from "@left-curve/sdk";
 import { getAccountStatus, getUser } from "@left-curve/sdk/actions";
 
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/types";
 import { type Config, ConnectionStatus, type StoreUser } from "../types/store.js";
 
 export type ReconnectReturnType = void;
