@@ -66,18 +66,23 @@ pub enum ExecuteMsg {
     /// The map is the new complete set of rate-limited denoms:
     ///
     /// - A denom absent from the map is not rate-limited — outbound
-    ///   transfers of it are unrestricted by quota (only reserves and
-    ///   withdrawal fees still apply). Any existing quota entry for a
-    ///   dropped denom is cleared in the same block.
-    /// - A denom mapped to `0` is fully locked — the quota is set to
-    ///   zero, so no outbound transfer passes until the admin raises
-    ///   the limit or removes the denom.
-    /// - A denom mapped to a positive fraction less than `1` has its
-    ///   quota enforced at `supply × limit` per cron window.
+    ///   transfers of it are unrestricted (only reserves and withdrawal
+    ///   fees still apply). Any existing supply snapshot and trailing-
+    ///   window history for a dropped denom are cleared in the same block.
+    /// - A denom mapped to `0` is fully locked — the cap is set to zero,
+    ///   so no outbound transfer passes until the admin raises the limit
+    ///   or removes the denom.
+    /// - A denom mapped to a positive fraction less than `1` is enforced
+    ///   as a trailing-24h cap: a withdraw is rejected when the sum of
+    ///   withdraws over the trailing 24 hours plus the new request would
+    ///   exceed `supply_snapshot × limit`. The supply snapshot is taken
+    ///   by the cron handler once per refresh period and is also seeded
+    ///   on the first `SetRateLimits` that adds the denom.
     ///
-    /// A call only tightens outstanding quotas immediately: each denom's
-    /// quota becomes `min(current_quota, supply × new_limit)`. Raises
-    /// take effect on the next cron tick.
+    /// A configured-limit change takes effect immediately on the next
+    /// withdraw (`cap` rises or falls with `limit`), but the supply
+    /// snapshot is not refreshed by this call — it only moves at cron
+    /// ticks, so deposits between cron ticks cannot enlarge the cap.
     ///
     /// Can only be called by the chain owner.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
@@ -167,6 +172,19 @@ pub enum QueryMsg {
         start_after: Option<(Addr, Denom)>,
         limit: Option<u32>,
     },
+
+    /// Look up the rate-limit status for a denom: the supply snapshot, the
+    /// derived cap, and the trailing-24h withdraw volume. Returns `None` if
+    /// the denom is not rate-limited.
+    #[returns(Option<RateLimitStatus>)]
+    RateLimitStatus { denom: Denom },
+
+    /// Enumerate the rate-limit status for every rate-limited denom.
+    #[returns(Vec<RateLimitStatusItem>)]
+    RateLimitStatuses {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde)]
@@ -195,4 +213,21 @@ pub struct QueryPersonalQuotasResponseItem {
     pub user: Addr,
     pub denom: Denom,
     pub quota: PersonalQuota,
+}
+
+/// Rate-limit status for a single rate-limited denom: the supply snapshot
+/// taken at the last cron tick (or at the denom's first registration), the
+/// derived cap `supply_snapshot × limit`, and the rolling sum of withdraws
+/// over the trailing 24 hours. Available headroom is `cap − used_in_last_24h`.
+#[grug::derive(Serde)]
+pub struct RateLimitStatus {
+    pub supply_snapshot: Uint128,
+    pub cap: Uint128,
+    pub used_in_last_24h: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct RateLimitStatusItem {
+    pub denom: Denom,
+    pub status: RateLimitStatus,
 }
