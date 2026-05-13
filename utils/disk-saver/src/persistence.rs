@@ -1,7 +1,6 @@
 use {
     crate::error::Error,
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{BorshDeExt, BorshSerExt},
     lzma_rs::{lzma_compress, lzma_decompress},
     std::{
         fs::{self, OpenOptions},
@@ -98,7 +97,7 @@ impl DiskPersistence {
             tracing::warn!(file_path = %self.file_path.display(), "File already exists, saving anyway");
         }
 
-        let serialized = data.to_borsh_vec()?;
+        let serialized = borsh::to_vec(data)?;
 
         let parent = Path::new(&self.file_path)
             .parent()
@@ -276,9 +275,9 @@ impl DiskPersistence {
             let mut decompressed = Vec::new();
             lzma_decompress(&mut disk_data.as_slice(), &mut decompressed)?;
 
-            decompressed.deserialize_borsh()?
+            borsh::from_slice(&decompressed)?
         } else {
-            disk_data.deserialize_borsh()?
+            borsh::from_slice(&disk_data)?
         };
 
         Ok(data)

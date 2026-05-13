@@ -4356,6 +4356,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "disk-saver"
+version = "0.0.0"
+dependencies = [
+ "assertor",
+ "borsh",
+ "error-backtrace",
+ "lzma-rs",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "dispatch2"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6296,10 +6309,10 @@ dependencies = [
  "aws-credential-types",
  "aws-sdk-s3",
  "borsh",
+ "disk-saver",
  "error-backtrace",
  "grug-app",
  "grug-types",
- "indexer-disk-saver",
  "metrics",
  "roaring",
  "serde",
@@ -6336,20 +6349,6 @@ dependencies = [
  "strum_macros 0.28.0",
  "thiserror 2.0.18",
  "tokio",
- "tracing",
-]
-
-[[package]]
-name = "indexer-disk-saver"
-version = "0.0.0"
-dependencies = [
- "assertor",
- "borsh",
- "error-backtrace",
- "grug-types",
- "lzma-rs",
- "tempfile",
- "thiserror 2.0.18",
  "tracing",
 ]
 
@@ -6437,12 +6436,12 @@ dependencies = [
  "async-stream",
  "async-trait",
  "dango-types",
+ "disk-saver",
  "error-backtrace",
  "grug",
  "grug-app",
  "grug-types",
  "indexer-cache",
- "indexer-disk-saver",
  "itertools 0.14.0",
  "metrics",
  "sea-orm",
@@ -8541,9 +8540,9 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
+ "disk-saver",
  "dotenvy",
  "grug",
- "indexer-disk-saver",
  "metrics",
  "pyth-lazer-client",
  "pyth-lazer-protocol",

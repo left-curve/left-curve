@@ -16,8 +16,8 @@ metrics = ["dep:metrics"]
 anyhow              = { workspace = true }
 async-stream        = { workspace = true }
 async-trait         = { workspace = true }
+disk-saver          = { workspace = true }
 grug                = { workspace = true }
-indexer-disk-saver  = { workspace = true }
 metrics             = { workspace = true, optional = true }
 pyth-lazer-client   = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
