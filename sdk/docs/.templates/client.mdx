@@ -1,0 +1,68 @@
+---
+# Client page template — copy this file when drafting a Client page.
+# Replace ALL CAPS placeholders. Delete this comment block when done.
+#
+# A Client page documents an entry-point that creates a client object or class.
+# Examples: createPublicClient, createSignerClient (TS); Exchange, Info (Python); Client (Rust).
+---
+
+# CLIENT_NAME
+
+ONE-SENTENCE DESCRIPTION OF WHAT THIS CLIENT DOES AND WHEN TO USE IT.
+
+## Setup
+
+```LANG
+// Show creation + minimal configuration. Include imports.
+import { createPublicClient, http } from "@left-curve/sdk"
+
+const client = createPublicClient({
+  transport: http("https://..."),
+  // other config
+})
+```
+
+## Configuration
+
+**`OPTION_1`** — `TYPE`. WHAT IT CONTROLS. DEFAULT IF ANY.
+
+**`OPTION_2`** — `TYPE`, optional, default: `VALUE`. WHAT IT CONTROLS.
+
+<!-- Repeat per option. Definition list. -->
+
+## Methods
+
+<!-- All methods/actions extended on this client.                       -->
+<!-- Use a compact table with links to per-action pages.                -->
+<!-- Group by domain (app, dex, perps, ...) if the list is long.        -->
+
+### DOMAIN_NAME
+
+| Method | Description |
+|--------|-------------|
+| [`methodName`](../actions/DOMAIN/methodName) | ONE-LINE |
+| [`methodName`](../actions/DOMAIN/methodName) | ONE-LINE |
+
+### ANOTHER_DOMAIN
+
+| Method | Description |
+|--------|-------------|
+| ... | ... |
+
+## End-to-end example
+
+```LANG
+// Realistic multi-step usage that ties config + a few methods together.
+// This is the only page where multi-step examples are encouraged.
+```
+
+## Notes
+
+<!-- OPTIONAL. Common pitfalls, lifecycle (does it need to be closed?), thread-safety. -->
+
+- POINT 1
+
+## See also
+
+- [RELATED_CLIENT](./RELATED_CLIENT) — when to use this one vs that one
+- [Concepts: Clients](../../concepts/clients)

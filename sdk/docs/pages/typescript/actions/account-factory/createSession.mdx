@@ -1,0 +1,68 @@
+# createSession
+
+Sign a `SigningSessionInfo` payload with the client signer and return the credential bundle. The bundle can then drive [`createSessionSigner`](../../concepts/signers-and-authentication) for delegated signing.
+
+## Signature
+
+```ts
+function createSession(
+  client: Client<Signer>,
+  parameters: {
+    pubKey: Uint8Array
+    expireAt: number
+  },
+): Promise<{
+  keyHash: KeyHash
+  authorization: StandardCredential
+  sessionInfo: SigningSessionInfo
+}>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner, createSessionSigner } from "@left-curve/sdk"
+import { Secp256k1 } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+
+const sessionKey = Secp256k1.makeKeyPair()
+const expireAt = Date.now() + 24 * 60 * 60 * 1000 // 24h
+
+const bundle = await client.createSession({
+  pubKey: sessionKey.getPublicKey(),
+  expireAt,
+})
+
+const sessionSigner = createSessionSigner({
+  publicKey: sessionKey.getPublicKey(),
+  privateKey: /* sessionKey's private bytes */ new Uint8Array(),
+  keyHash: bundle.keyHash,
+  sessionInfo: bundle.sessionInfo,
+  authorization: bundle.authorization,
+})
+```
+
+## Parameters
+
+**`pubKey`** — `Uint8Array`. The session key's compressed public key.
+
+**`expireAt`** — `number`. Expiry as a Unix timestamp in milliseconds. The action converts to seconds before signing.
+
+## Returns
+
+**`{ keyHash, authorization, sessionInfo }`** — `authorization` is the `StandardCredential` from the primary key, signing `sessionInfo`. `sessionInfo` carries the chain id, session pubkey (base64), and expiry (seconds, as string).
+
+## Notes
+
+- The signer must implement `signArbitrary`. For session signers, only the primary signer (e.g. `PrivateKeySigner`) can create new sessions.
+- Throws "unsupported credential type" if the signer returns a non-standard credential.
+
+## See also
+
+- [`createSessionSigner`](../../concepts/signers-and-authentication) — turns the bundle into a `Signer`
+- [Concepts: Signers & Authentication](../../concepts/signers-and-authentication)

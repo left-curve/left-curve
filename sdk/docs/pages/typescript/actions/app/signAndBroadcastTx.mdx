@@ -1,0 +1,67 @@
+# signAndBroadcastTx
+
+Sign a list of messages with the client signer and broadcast the resulting transaction. The end-to-end entry point for every mutation.
+
+## Signature
+
+```ts
+function signAndBroadcastTx(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    messages: Message[]
+    gasLimit?: number
+    typedData?: TypedDataParameter<TxMessageType>
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const result = await client.signAndBroadcastTx({
+  sender,
+  messages: [
+    {
+      transfer: {
+        "0xabcdef1234567890abcdef1234567890abcdef12": { dango: "1000000" },
+      },
+    },
+  ],
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. Account that sends and pays for the transaction.
+
+**`messages`** — `Message[]`. The list of messages to execute (transfer, execute, instantiate, etc.).
+
+**`gasLimit`** — `number`, optional. Skip simulation and use this gas limit directly. When omitted, the SDK calls [`simulate`](./simulate) and applies the default 1.3× scaling.
+
+**`typedData`** — `TypedDataParameter<TxMessageType>`, optional. Pre-built EIP-712 typed data structure for the messages. When omitted, the action consumer builds it (every action like `transfer`, `execute` does this).
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](./broadcastTxSync).
+
+## Notes
+
+- The client must have a signer; throws "client must have a signer" otherwise.
+- Calls [`getAccountSeenNonces`](../account-factory/getAccountSeenNonces) and [`getAccountInfo`](../account-factory/getAccountInfo) to derive the nonce and user index automatically.
+- Throws "account not found" if the sender has no on-chain account.
+
+## See also
+
+- [`transfer`](./transfer), [`execute`](./execute), [`instantiate`](./instantiate) — higher-level wrappers
+- [Concepts: Transactions](../../concepts/transactions)

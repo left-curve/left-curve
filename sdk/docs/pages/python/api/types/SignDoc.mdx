@@ -1,0 +1,33 @@
+# SignDoc
+
+What gets canonical-JSON encoded and SHA-256 hashed before signing.
+
+## Definition
+
+```python
+class SignDoc(TypedDict):
+    sender: Addr
+    gas_limit: int
+    messages: list[Message]
+    data: Metadata
+```
+
+## Fields
+
+**`sender`** — `Addr`.
+
+**`gas_limit`** — `int`.
+
+**`messages`** — `list[Message]`. Note: field name is `messages`, NOT `msgs`. This differs from `UnsignedTx` / `Tx` — a faithful mirror of the Rust types.
+
+**`data`** — `Metadata`.
+
+## Notes
+
+- `Metadata`'s `expiry` field is dropped from the canonical bytes when `None` (the chain uses `skip_serializing_none`). `sign_doc_canonical_json` performs this stripping.
+
+## See also
+
+- [`sign_doc_canonical_json`](../functions/sign_doc_canonical_json) — canonical encoding
+- [`sign_doc_sha256`](../functions/sign_doc_sha256) — 32-byte digest
+- [`Tx`](./Tx) and [`UnsignedTx`](./UnsignedTx) — wire envelopes

@@ -1,0 +1,32 @@
+# PerpsEvent
+
+A perps event — fill, liquidation, or deleverage. The `data` field is a discriminated payload.
+
+## Definition
+
+```ts
+type PerpsEvent = {
+  idx: number
+  blockHeight: number
+  txHash: string
+  eventType: "order_filled" | "liquidated" | "deleveraged"
+  userAddr: string
+  pairId: string
+  data: OrderFilledData | LiquidatedData | DeleveragedData
+  createdAt: string
+}
+```
+
+## Notes
+
+- Narrow `data` by `eventType`:
+  ```ts
+  if (event.eventType === "order_filled") {
+    const filled = event.data as OrderFilledData
+  }
+  ```
+
+## See also
+
+- [`queryPerpsEvents`](../actions/perps/queryPerpsEvents)
+- [`PerpsTrade`](./PerpsTrade)

@@ -1,0 +1,56 @@
+# vaultRemoveLiquidity
+
+Burn vault shares to schedule a withdrawal. The corresponding cash is unlocked after the vault cooldown period.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function vaultRemoveLiquidity(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    sharesToBurn: string
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.vaultRemoveLiquidity({ sender, sharesToBurn: "1000000" })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The withdrawer.
+
+**`sharesToBurn`** — `string`. Vault shares to burn, base units (`uint128`).
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- The actual cash release happens after `PerpsParam.vaultCooldownPeriod` and surfaces as a `PerpsUnlock` entry on the user's state.
+
+## See also
+
+- [`vaultAddLiquidity`](./vaultAddLiquidity)
+- [`getPerpsUserState`](./getPerpsUserState)
+- [`getPerpsParam`](./getPerpsParam)

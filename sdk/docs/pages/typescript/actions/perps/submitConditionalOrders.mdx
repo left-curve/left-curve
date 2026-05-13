@@ -1,0 +1,79 @@
+# submitConditionalOrders
+
+Submit a batch of trigger-based conditional perps orders in one transaction.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function submitConditionalOrders(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    orders: {
+      pairId: string
+      size?: string
+      triggerPrice: string
+      triggerDirection: "above" | "below"
+      maxSlippage: string
+    }[]
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.submitConditionalOrders({
+  sender,
+  orders: [
+    {
+      pairId: "BTC-PERP",
+      size: "0.1",
+      triggerPrice: "70000",
+      triggerDirection: "above",
+      maxSlippage: "0.005",
+    },
+    {
+      pairId: "BTC-PERP",
+      size: "-0.05",
+      triggerPrice: "60000",
+      triggerDirection: "below",
+      maxSlippage: "0.005",
+    },
+  ],
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The trader.
+
+**`orders`** — array of conditional order specs. See [`submitConditionalOrder`](./submitConditionalOrder) for each field's meaning.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- Throws `Error("submitConditionalOrders requires at least one order")` if `orders.length === 0`.
+
+## See also
+
+- [`submitConditionalOrder`](./submitConditionalOrder)
+- [`cancelConditionalOrder`](./cancelConditionalOrder)

@@ -1,0 +1,54 @@
+# Installation
+
+Add `dango-sdk` to a Cargo project.
+
+## Requirements
+
+- Rust 1.85+ (2024 edition).
+- A `tokio` runtime — every network call is async.
+
+## Add the dependency
+
+```toml
+[dependencies]
+dango-sdk = { git = "https://github.com/left-curve/left-curve" }
+tokio     = { version = "1", features = ["macros", "rt-multi-thread"] }
+anyhow    = "1"
+futures   = "0.3"
+```
+
+`dango-sdk` is not yet published to crates.io. Pin the dependency to a tag or commit when running in production:
+
+```toml
+dango-sdk = { git = "https://github.com/left-curve/left-curve", tag = "vX.Y.Z" }
+```
+
+## Features
+
+| Feature   | Default | Effect |
+|-----------|---------|--------|
+| `tracing` | off     | Emits `tracing::debug!` events for every GraphQL request, subscription handshake, and subscription id. No public symbols change. |
+
+Enable it when wiring the SDK into an app that already uses `tracing`:
+
+```toml
+dango-sdk = { git = "...", features = ["tracing"] }
+```
+
+## What you get
+
+The crate re-exports everything users need at the root:
+
+```rust
+use dango_sdk::{
+    HttpClient, WsClient, Session, SubscriptionStream, SubscriptionVariables,
+    SingleSigner, Secret, Secp256k1, Eip712, Keystore,
+    WsError,
+};
+```
+
+It also re-exports `indexer_graphql_types::*`, so subscription and query types — `SubscribeBlock`, `subscribe_block::Variables`, `accounts::Variables`, `PageInfo`, … — are reachable directly from `dango_sdk`.
+
+## Next
+
+- [First call](./first-call) — issue a query against a live Dango node.

@@ -1,0 +1,63 @@
+# perps_events
+
+Indexer event stream with filter and sort knobs; cursor-paginated.
+
+## Signature
+
+```python
+def perps_events(
+    self,
+    *,
+    user_addr: Addr | None = None,
+    event_type: str | None = None,
+    pair_id: PairId | None = None,
+    block_height: int | None = None,
+    first: int | None = None,
+    after: str | None = None,
+    sort_by: PerpsEventSortBy = PerpsEventSortBy.BLOCK_HEIGHT_DESC,
+) -> Connection[PerpsEvent]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr, PerpsEventSortBy
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+page = info.perps_events(
+    user_addr=Addr("0x..."),
+    event_type="order_filled",
+    first=20,
+    sort_by=PerpsEventSortBy.BLOCK_HEIGHT_DESC,
+)
+for event in page.nodes:
+    print(event["blockHeight"], event["eventType"], event["data"])
+```
+
+## Parameters
+
+**`user_addr`** — `Addr | None`, optional.
+
+**`event_type`** — `str | None`, optional. Free-form string (the indexer schema does NOT constrain it to an enum).
+
+**`pair_id`** — `PairId | None`, optional.
+
+**`block_height`** — `int | None`, optional.
+
+**`first`** — `int | None`, optional. Page size.
+
+**`after`** — `str | None`, optional. Cursor for the next page.
+
+**`sort_by`** — `PerpsEventSortBy`, optional. `BLOCK_HEIGHT_ASC` or `BLOCK_HEIGHT_DESC`. Default: `BLOCK_HEIGHT_DESC` (matches the indexer's server-side default).
+
+## Returns
+
+**`Connection[PerpsEvent]`** — a page of [`PerpsEvent`](../../types/PerpsEvent) plus cursors.
+
+## See also
+
+- [`perps_events_all`](./perps_events_all) — walk every event matching a filter
+- [`subscribe_user_events`](./subscribe_user_events) — live stream counterpart

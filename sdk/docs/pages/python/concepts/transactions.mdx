@@ -1,0 +1,100 @@
+# Transactions
+
+**What this teaches:** what happens between `exchange.submit_order(...)` and a tx hash, and what to do when something diverges.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## The pipeline
+
+Every `Exchange` method routes through one private helper, `_send_action(messages)`, which runs three steps:
+
+1. **Simulate.** Build an [`UnsignedTx`](../api/types/UnsignedTx) from the messages + current nonce, send it to `Info.simulate`, read back `gas_used`.
+2. **Sign.** Add `Exchange.DEFAULT_GAS_OVERHEAD` (770 000 — empirically measured cost of a secp256k1 verify) to the simulated `gas_used`, build a [`SignDoc`](../api/types/SignDoc), and sign it via the [`Wallet`](./signers) protocol.
+3. **Broadcast.** Send the signed [`Tx`](../api/types/Tx) via `Info.broadcast_tx_sync` and return the BroadcastTxOutcome envelope.
+
+The chain rejects under-gas transactions. Simulation is the only way to compute the correct gas — never hard-code a value.
+
+## A grounded example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr, PairId, TimeInForce
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+result = exchange.submit_limit_order(
+    PairId("perp/ethusd"),
+    size="0.5",                # positive = buy
+    limit_price="1500",
+    time_in_force=TimeInForce.GTC,
+)
+print(result["check_tx"]["events"])
+```
+
+The returned `dict` is the raw BroadcastTxOutcome from the GraphQL endpoint. Order fills are surfaced via indexer events, not via the broadcast envelope; query `Info.orders_by_user` or subscribe to user events to confirm.
+
+## Nonce handling
+
+`SingleSigner.next_nonce` increments on every `sign_tx` call, success or failure. The chain rejects duplicate nonces, so optimistic increment is safer than waiting for broadcast success.
+
+If a broadcast fails for a reason that does NOT consume the nonce (e.g. a network timeout before the request reached the chain), the local `next_nonce` is now one ahead. Two recovery paths:
+
+```python
+# Re-fetch from chain
+exchange.signer.next_nonce = exchange.signer.query_next_nonce(exchange._info)
+
+# Or rewind manually if you know the tx never landed
+exchange.signer.next_nonce -= 1
+```
+
+Direct mutation is intentional — the `SingleSigner` attributes are public and mutable for exactly this reason.
+
+## Batching
+
+`batch_update_orders` packs multiple submits/cancels into one transaction. The chain enforces `1 <= len <= max_action_batch_size` (governance-tunable, fixture default 5). All actions execute atomically — either every action succeeds or none does.
+
+```python
+from dango.utils.types import (
+    Addr, CancelAction, ClientOrderIdRef, OrderId, PairId, SubmitAction, TimeInForce,
+)
+
+actions = [
+    SubmitAction(
+        pair_id=PairId("perp/ethusd"),
+        size="0.5",
+        kind={"limit": {"limit_price": "1500", "time_in_force": "GTC", "client_order_id": None}},
+    ),
+    CancelAction(spec=OrderId("12345")),
+    CancelAction(spec=ClientOrderIdRef(value=7)),
+]
+exchange.batch_update_orders(actions)
+```
+
+`SubmitAction` and `CancelAction` are the user-facing forms. The `Exchange` translates them into the externally-tagged wire shapes before signing.
+
+## Direct access to the pipeline
+
+For custom messages outside the `Exchange` method set, build the pieces by hand:
+
+```python
+from dango.utils.types import Addr
+
+messages = [
+    {"execute": {"contract": Addr("0x..."), "msg": {"my_custom": {}}, "funds": {}}},
+]
+
+unsigned = exchange.signer.build_unsigned_tx(messages, exchange._chain_id)
+sim = exchange._info.simulate(unsigned)
+signed = exchange.signer.sign_tx(messages, exchange._chain_id, int(sim["gas_used"]) + 770_000)
+outcome = exchange._info.broadcast_tx_sync(signed)
+```
+
+The `_info` and `_chain_id` attributes are name-mangled by convention (leading underscore) — accessing them is fine for power users who need this seam.
+
+## Next
+
+- [Subscriptions](./subscriptions) — real-time streams
+- [Error handling](./error-handling) — what each exception means

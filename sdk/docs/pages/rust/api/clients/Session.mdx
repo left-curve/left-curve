@@ -1,0 +1,104 @@
+# Session
+
+A live WebSocket session that hosts multiple concurrent subscriptions over a single connection.
+
+## Setup
+
+A `Session` is produced by [`WsClient::connect`](../methods/ws-client/connect); it has no public constructor.
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Session, WsClient},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let session: Session = WsClient::new("wss://api-mainnet.dango.zone/graphql")?
+        .connect()
+        .await?;
+    let _ = session;
+    Ok(())
+}
+```
+
+```rust
+pub struct Session {
+    inner: Arc<SessionInner>,
+}
+```
+
+`Session` is `Debug + Clone`. Cloning shares the same underlying connection and command channel.
+
+## Configuration
+
+`Session` has no configuration surface. The keepalive interval and protocol are fixed at construction time.
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`subscribe`](../methods/session/subscribe) | Multiplex a new GraphQL subscription onto the existing connection. |
+
+## End-to-end example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscribeBlock, SubscribeTrades, WsClient, subscribe_block, subscribe_trades},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let session = WsClient::new("wss://api-mainnet.dango.zone/graphql")?
+        .connect()
+        .await?;
+
+    let mut blocks = session
+        .subscribe::<SubscribeBlock>(subscribe_block::Variables {})
+        .await?;
+    let mut trades = session
+        .subscribe::<SubscribeTrades>(subscribe_trades::Variables {
+            base_denom:  "dango".into(),
+            quote_denom: "bridge/usdc".into(),
+        })
+        .await?;
+
+    loop {
+        tokio::select! {
+            Some(item) = blocks.next() => println!("block: {item:?}"),
+            Some(item) = trades.next() => println!("trade: {item:?}"),
+            else => break,
+        }
+    }
+
+    // Both streams and `session` drop here; the connection is closed.
+    Ok(())
+}
+```
+
+## Lifecycle
+
+`Session` is backed by an `Arc`. The connection stays open as long as:
+
+- at least one `Session` clone is alive, **or**
+- at least one [`SubscriptionStream`](../subscriptions/SubscriptionStream) derived from this session is alive.
+
+When the last `Session` clone drops, the inner `Drop` impl sends a `Close` command to the background driver task; remaining streams keep working until the server closes the connection or the stream itself is dropped. When the last stream then drops, the connection closes cleanly.
+
+> **Warning:** holding a `Session` clone alive after every stream has been dropped keeps the connection open with no subscriptions. The server may close it for inactivity (close code 3008) despite the keepalive pings — recreate via `WsClient::connect` if needed.
+
+Individual stream drops send a `complete` to the server for that subscription id, freeing the slot in the 30-per-connection cap.
+
+## Notes
+
+- The first nine bits of every subscription id are generated from an internal `AtomicU64` per session. Ids are local to one `Session` — they do not collide across sessions.
+- Subscription order on the wire is the order of `subscribe` calls. The server may reply out of order.
+- `Session::subscribe` returns `Err` only if the command channel to the driver task is closed (i.e. the session is dead).
+
+## See also
+
+- [WsClient](./WsClient) — what creates a `Session`.
+- [SubscriptionStream](../subscriptions/SubscriptionStream) — the stream type returned by `subscribe`.
+- [Concepts: Subscriptions](../../concepts/subscriptions) — when to use a `Session` vs `WsClient::subscribe`.

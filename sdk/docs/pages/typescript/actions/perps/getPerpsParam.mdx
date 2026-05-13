@@ -1,0 +1,39 @@
+# getPerpsParam
+
+Read the global perps parameters: max unlocks, max open orders, fee schedules, funding period, vault config.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPerpsParam(
+  client: Client,
+  parameters?: { height?: number },
+): Promise<PerpsParam>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const param = await client.getPerpsParam()
+```
+
+## Parameters
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsParam`** — `{ maxUnlocks, maxOpenOrders, makerFeeRates, takerFeeRates, fundingPeriod, vaultTotalWeight, referralActive, ... }`.
+
+## See also
+
+- [`getPerpsState`](./getPerpsState) — runtime state
+- [`getPerpsPairParams`](./getPerpsPairParams)

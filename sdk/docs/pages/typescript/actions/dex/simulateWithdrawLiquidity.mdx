@@ -1,0 +1,54 @@
+# simulateWithdrawLiquidity
+
+Simulate burning a given amount of LP tokens. Returns the base/quote coins the burn would yield.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function simulateWithdrawLiquidity(
+  client: Client,
+  parameters: {
+    baseDenom: Denom
+    quoteDenom: Denom
+    lpBurnAmount: string
+    height?: number
+  },
+): Promise<CoinPair>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const [base, quote] = await client.simulateWithdrawLiquidity({
+  baseDenom: "dango",
+  quoteDenom: "bridge/usdc",
+  lpBurnAmount: "1000000",
+})
+```
+
+## Parameters
+
+**`baseDenom`** — `Denom`. Base asset of the pair.
+
+**`quoteDenom`** — `Denom`. Quote asset of the pair.
+
+**`lpBurnAmount`** — `string`. Amount of LP tokens to burn, base units.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`CoinPair`** — `[Coin, Coin]` tuple of `[baseCoin, quoteCoin]`.
+
+## See also
+
+- [`withdrawLiquidity`](./withdrawLiquidity)
+- [`provideLiquidity`](./provideLiquidity)

@@ -41,9 +41,6 @@ target/
 ui/portal/web/public/images
 **/.turbo
 
-# SDK
-sdk/typescript/docs
-
 # UI
 **/.next
 **/.vercel

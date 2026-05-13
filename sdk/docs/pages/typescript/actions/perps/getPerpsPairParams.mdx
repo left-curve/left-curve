@@ -1,0 +1,46 @@
+# getPerpsPairParams
+
+Read parameters across every perps pair, paginated.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPerpsPairParams(
+  client: Client,
+  parameters?: {
+    startAfter?: string
+    limit?: number
+    height?: number
+  },
+): Promise<Record<string, PerpsPairParam>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const all = await client.getPerpsPairParams({ limit: 50 })
+```
+
+## Parameters
+
+**`startAfter`** — `string`, optional. Pair id to start after.
+
+**`limit`** — `number`, optional. Maximum entries.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`Record<string, PerpsPairParam>`** — keyed by pair id.
+
+## See also
+
+- [`getPerpsPairParam`](./getPerpsPairParam) — single-pair variant

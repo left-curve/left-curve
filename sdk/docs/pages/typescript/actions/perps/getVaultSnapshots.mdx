@@ -1,0 +1,46 @@
+# getVaultSnapshots
+
+Read historical vault equity and share supply snapshots over a height range.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getVaultSnapshots(
+  client: Client,
+  parameters?: {
+    min?: number
+    max?: number
+    height?: number
+  },
+): Promise<Record<string, VaultSnapshot>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const snapshots = await client.getVaultSnapshots({ min: 1_000, max: 5_000 })
+```
+
+## Parameters
+
+**`min`** — `number`, optional. Inclusive lower bound (converted to string before sending).
+
+**`max`** — `number`, optional. Inclusive upper bound (converted to string).
+
+**`height`** — `number`, optional. Block height for the query itself. Default `0` (latest).
+
+## Returns
+
+**`Record<string, VaultSnapshot>`** — keyed by block height. Each snapshot is `{ equity, shareSupply }`.
+
+## See also
+
+- [`getPerpsVaultState`](./getPerpsVaultState)

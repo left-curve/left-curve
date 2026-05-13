@@ -1,0 +1,35 @@
+# pair_param
+
+Per-pair parameters. Returns `None` if the pair is not configured.
+
+## Signature
+
+```python
+def pair_param(self, pair_id: PairId) -> PairParam | None
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+param = info.pair_param(PairId("perp/ethusd"))
+if param is not None:
+    print(param["tick_size"], param["bucket_sizes"])
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`. The pair identifier (e.g. `"perp/ethusd"`).
+
+## Returns
+
+**`PairParam | None`** — TypedDict with per-pair configuration. `None` if the pair is not configured. See [`PairParam`](../../types/PairParam) for the full field list.
+
+## See also
+
+- [`pair_params`](./pair_params) — enumerate all pairs
+- [`pair_state`](./pair_state) — runtime state counterpart

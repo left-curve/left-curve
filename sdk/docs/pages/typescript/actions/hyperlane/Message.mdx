@@ -1,0 +1,60 @@
+# Message
+
+Encode a Hyperlane mailbox message. Outputs the binary layout the Hyperlane router expects.
+
+## Signature
+
+```ts
+class Message implements Encoder {
+  version: number
+  nonce: number
+  originDomain: Domain
+  sender: Addr32
+  destinationDomain: Domain
+  recipient: Addr32
+  body: Uint8Array
+
+  static from(params: Omit<Message, "encode" | "decode">): Message
+  encode(): Uint8Array
+}
+
+const MAILBOX_VERSION: number          // 3
+const HYPERLANE_DOMAIN_KEY: string     // "HYPERLANE"
+```
+
+## Example
+
+```ts
+import { Addr32, Message, MAILBOX_VERSION } from "@left-curve/sdk/hyperlane"
+
+const msg = Message.from({
+  version: MAILBOX_VERSION,
+  nonce: 0,
+  originDomain: 1,
+  sender: Addr32.from("0x1234567890abcdef1234567890abcdef12345678"),
+  destinationDomain: 2,
+  recipient: Addr32.from("0xabcdef1234567890abcdef1234567890abcdef12"),
+  body: new Uint8Array([1, 2, 3]),
+})
+
+const wire: Uint8Array = msg.encode() // 77 + body bytes
+```
+
+## Encoding layout
+
+`encode()` produces a buffer of `77 + body.byteLength` bytes:
+
+| Offset | Length | Field             |
+|--------|--------|-------------------|
+| 0      | 1      | `version`         |
+| 1      | 4      | `nonce` (BE)      |
+| 5      | 4      | `originDomain` (BE) |
+| 9      | 32     | `sender`          |
+| 41     | 4      | `destinationDomain` (BE) |
+| 45     | 32     | `recipient`       |
+| 77     | N      | `body`            |
+
+## See also
+
+- [`Addr32`](./Addr32)
+- [`TokenMessage`](./TokenMessage) — common body payload

@@ -1,0 +1,77 @@
+# order
+
+Place a single Hyperliquid-style order. Routes to the native `submit_order`.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+## Signature
+
+```python
+def order(
+    self,
+    name: str,
+    is_buy: bool,
+    sz: float,
+    limit_px: float,
+    order_type: OrderType,
+    reduce_only: bool = False,
+    cloid: Cloid | None = None,
+    builder: Any = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+from dango.utils.signing import Secp256k1Wallet
+
+wallet = Secp256k1Wallet.from_mnemonic("...", subaccount_index=0)
+exchange = Exchange(
+    wallet,
+    base_url="https://api-mainnet.dango.zone",
+    account_address="0x...",
+)
+
+result = exchange.order(
+    name="BTC",
+    is_buy=True,
+    sz=0.5,
+    limit_px=65000.0,
+    order_type={"limit": {"tif": "Gtc"}},
+)
+```
+
+## Parameters
+
+**`name`** — `str`. Hyperliquid coin name (e.g. `"BTC"`, `"ETH"`). Resolved to a Dango `pair_id` via `info.name_to_pair`.
+
+**`is_buy`** — `bool`. `True` for a long, `False` for a short.
+
+**`sz`** — `float`. Order size in base units of the coin.
+
+**`limit_px`** — `float`. Limit price.
+
+**`order_type`** — `OrderType`. Hyperliquid order-type dict, e.g. `{"limit": {"tif": "Gtc"}}` or `{"trigger": {...}}`.
+
+**`reduce_only`** — `bool`, default `False`. Reduce-only flag.
+
+**`cloid`** — `Cloid | None`, default `None`. Optional client order id (128-bit). **Hashed to a 64-bit `ClientOrderId` via SHA-256.** The cloid returned in the Dango response is the truncated value, not the original.
+
+**`builder`** — Unused. Dango has no builder-fee marketplace; pass anything (ignored).
+
+## Returns
+
+`dict[str, Any]` — Hyperliquid-shaped order response envelope.
+
+## Notes
+
+- See [Hyperliquid SDK migration](../../hyperliquid) for the full `Cloid` asymmetry discussion.
+
+## See also
+
+- [`bulk_orders`](./bulk_orders) — batch many orders in one call
+- [`cancel`](./cancel) — cancel an open order
+- [`submit_order`](../../../api/methods/exchange/submit_order) — native equivalent

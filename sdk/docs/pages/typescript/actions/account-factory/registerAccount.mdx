@@ -1,0 +1,54 @@
+# registerAccount
+
+Register an additional account for an existing user.
+
+## Signature
+
+```ts
+function registerAccount(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    funds?: Funds
+  },
+  txParameters?: { gasLimit?: number },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.registerAccount({ sender }, { gasLimit: 250_000 })
+```
+
+## Parameters
+
+**`sender`** — `Address`. An existing account of the user.
+
+**`funds`** — `Funds`, optional. Initial coins to send into the new account.
+
+**`txParameters`** — `{ gasLimit?: number }`, optional. Positional second argument used by the action builder to forward gas overrides.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- The action builder accepts `txParameters` as a positional second argument, not as a field on the first parameter. This is unique among mutations.
+- The new account address can be derived ahead of time via [`getNextAccountIndex`](./getNextAccountIndex) + [`computeAddress`](../../concepts/encoding-and-types).
+
+## See also
+
+- [`registerUser`](./registerUser)
+- [`getNextAccountIndex`](./getNextAccountIndex)

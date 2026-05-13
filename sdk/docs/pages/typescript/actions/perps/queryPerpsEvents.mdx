@@ -1,0 +1,63 @@
+# queryPerpsEvents
+
+Read perps events — fills, liquidations, deleverages — paginated cursor-style. Optional filters by user, event type, pair, or block height.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function queryPerpsEvents(
+  client: Client,
+  parameters: {
+    after?: string
+    before?: string
+    first?: number
+    last?: number
+    sortBy?: "BLOCK_HEIGHT_ASC" | "BLOCK_HEIGHT_DESC"
+    userAddr?: string
+    eventType?: string
+    pairId?: string
+    blockHeight?: number
+  },
+): Promise<GraphqlQueryResult<PerpsEvent>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const page = await client.queryPerpsEvents({
+  pairId: "BTC-PERP",
+  eventType: "order_filled",
+  first: 100,
+  sortBy: "BLOCK_HEIGHT_DESC",
+})
+```
+
+## Parameters
+
+**`after`**, **`before`**, **`first`**, **`last`** — pagination cursors and sizes.
+
+**`sortBy`** — `"BLOCK_HEIGHT_ASC" | "BLOCK_HEIGHT_DESC"`, optional.
+
+**`userAddr`** — `string`, optional. Filter by trader.
+
+**`eventType`** — `string`, optional. `"order_filled"`, `"liquidated"`, or `"deleveraged"`.
+
+**`pairId`** — `string`, optional. Filter by pair.
+
+**`blockHeight`** — `number`, optional. Filter by block.
+
+## Returns
+
+**`GraphqlQueryResult<PerpsEvent>`** — `{ pageInfo, nodes }`. Each `PerpsEvent` has `idx`, `blockHeight`, `txHash`, `eventType`, `userAddr`, `pairId`, and a discriminated `data` payload.
+
+## See also
+
+- [`queryPerpsCandles`](./queryPerpsCandles)

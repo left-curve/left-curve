@@ -1,0 +1,44 @@
+# getPerpsVaultState
+
+Read vault state — share supply, equity, and the vault's own perps positions.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPerpsVaultState(
+  client: Client,
+  parameters?: { height?: number },
+): Promise<PerpsVaultState>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const state = await client.getPerpsVaultState()
+```
+
+## Parameters
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsVaultState`** — `{ shareSupply, equity, depositWithdrawalActive, margin, positions, reservedMargin, openOrderCount }`.
+
+## Notes
+
+- This action runs two on-chain queries internally: `getPerpsState` for `shareSupply` and `getPerpsUserStateExtended` (with `includeEquity: true`) for the vault contract's own positions.
+
+## See also
+
+- [`vaultAddLiquidity`](./vaultAddLiquidity)
+- [`vaultRemoveLiquidity`](./vaultRemoveLiquidity)
+- [`getVaultSnapshots`](./getVaultSnapshots)

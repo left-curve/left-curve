@@ -1,0 +1,35 @@
+# orders_by_user
+
+All resting limit orders for one user, keyed by chain `OrderId`.
+
+## Signature
+
+```python
+def orders_by_user(self, user: Addr) -> dict[OrderId, dict[str, Any]]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+orders = info.orders_by_user(Addr("0x..."))
+for oid, order in orders.items():
+    print(oid, order["pair_id"], order["size"], order["limit_price"])
+```
+
+## Parameters
+
+**`user`** — `Addr`. The user's account address.
+
+## Returns
+
+**`dict[OrderId, dict[str, Any]]`** — map of order id to order details. The value shape matches [`QueryOrdersByUserResponseItem`](../../types/QueryOrdersByUserResponseItem) — cast to that TypedDict for typed access.
+
+## See also
+
+- [`order`](./order) — fetch one order by id
+- [`cancel_order`](../exchange/cancel_order) — cancel by `OrderId`

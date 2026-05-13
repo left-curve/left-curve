@@ -1,0 +1,56 @@
+# cancel_conditional_order
+
+Cancel a conditional order by `ConditionalOrderRef`, by `AllForPair`, or `"all"` for every conditional order.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def cancel_conditional_order(
+    self,
+    spec: CancelConditionalSpec,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import (
+    Addr, AllForPair, ConditionalOrderRef, PairId, TriggerDirection,
+)
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# Cancel one specific conditional order
+exchange.cancel_conditional_order(
+    ConditionalOrderRef(pair_id=PairId("perp/ethusd"), trigger_direction=TriggerDirection.ABOVE),
+)
+
+# Cancel every conditional order on one pair
+exchange.cancel_conditional_order(AllForPair(pair_id=PairId("perp/ethusd")))
+
+# Cancel every conditional order on every pair
+exchange.cancel_conditional_order("all")
+```
+
+## Parameters
+
+**`spec`** — `ConditionalOrderRef | AllForPair | Literal["all"]`. The cancel target.
+
+- `ConditionalOrderRef(pair_id, trigger_direction)` cancels one specific conditional order.
+- `AllForPair(pair_id)` cancels every conditional order on one pair.
+- `"all"` cancels every conditional order for this account.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## See also
+
+- [`submit_conditional_order`](./submit_conditional_order) — counterpart submit
+- [`ConditionalOrderRef`](../../types/ConditionalOrderRef) and [`AllForPair`](../../types/AllForPair)

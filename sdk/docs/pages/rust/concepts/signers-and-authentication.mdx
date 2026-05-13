@@ -1,0 +1,114 @@
+# Signers and authentication
+
+**What this teaches:** how the `Secret` trait, `Secp256k1`/`Eip712`, and `SingleSigner` fit together to sign Dango transactions.
+
+## Mental model
+
+Dango authenticates accounts by a `(user_index, nonce, signature)` tuple over the transaction's `SignDoc`. The SDK splits this into two layers:
+
+- A [`Secret`](../api/traits/Secret) holds a private key and knows how to sign a `SignDoc`. Implementations: [`Secp256k1`](../api/traits/Secret) (raw secp256k1 + SHA-256) and [`Eip712`](../api/traits/Secret) (EIP-712 typed data).
+- A [`SingleSigner`](../api/clients/SingleSigner) wraps a `Secret` together with the on-chain account context — `address`, `user_index`, `nonce` — and produces signed `Tx` values.
+
+## Secrets
+
+```rust
+use dango_sdk::{Secp256k1, Secret};
+
+// Random key.
+let secret = Secp256k1::new_random();
+
+// From raw bytes.
+let secret = Secp256k1::from_bytes([0u8; 32])?;
+
+// From a BIP-39 mnemonic and BIP-44 coin type (60 = Ethereum).
+use bip32::Mnemonic;
+let mnemonic = Mnemonic::new("abandon abandon abandon ...", Default::default())?;
+let secret   = Secp256k1::from_mnemonic(&mnemonic, 60)?;
+
+// Ethereum-flavoured (EIP-712 typed-data signatures).
+use dango_sdk::Eip712;
+let secret = Eip712::new_random();
+// Ok::<(), anyhow::Error>(())
+```
+
+`Secret::key()` is what the account factory stores; `Secret::key_hash()` is what `Credential::Standard` references. `Eip712::key_hash` is `sha256(addr.to_string())` over the derived Ethereum address — distinct from `Secp256k1::key_hash` which hashes the compressed pubkey.
+
+## SingleSigner — the typestate builder
+
+`SingleSigner<S, I, N>` carries phantom-typed flags for whether `user_index` and `nonce` have been filled in. The compiler refuses to call `sign_transaction` until both are `Defined`.
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
+    grug::Addr,
+    std::str::FromStr,
+};
+
+async fn build_signer(http: &HttpClient) -> Result<SingleSigner<Secp256k1>> {
+    let address = Addr::from_str("0x0000000000000000000000000000000000000000")?;
+    let secret  = Secp256k1::new_random();
+
+    let signer = SingleSigner::new(address, secret)
+        .with_query_user_index(http).await?
+        .with_query_nonce(http).await?;
+
+    Ok(signer)
+}
+```
+
+See [SingleSigner](../api/clients/SingleSigner) for the full state diagram and each transition's signature.
+
+## Discovering an existing account
+
+When the only thing on hand is a `Secret`, ask the account factory for the first account associated with that key:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, SingleSigner},
+};
+
+async fn for_key(http: &HttpClient, secret: Secp256k1) -> Result<SingleSigner<Secp256k1, _, _>> {
+    SingleSigner::new_first_address_available(http, secret, None).await
+}
+```
+
+This calls `QueryForgotUsernameRequest` with `limit: 1` against the account factory and resolves the user's master account. Pass an `AppConfig` reference to skip the extra query for the factory address.
+
+## Signing a transaction
+
+`SingleSigner<S, Defined<UserIndex>, Defined<Nonce>>` implements `grug::Signer`:
+
+```rust
+use {
+    grug::{Message, NonEmpty, Signer},
+};
+
+let tx = signer.sign_transaction(
+    NonEmpty::new(vec![/* messages */])?,
+    "dango-1",
+    1_000_000,
+)?;
+```
+
+`sign_transaction` auto-increments the in-memory nonce on every successful call — a single signer can produce a stream of consecutive transactions without re-querying. See [Transactions](./transactions) for end-to-end mechanics.
+
+## Recovering an existing private key
+
+`Keystore::from_file` returns raw `[u8; 32]`. Wrap it before signing:
+
+```rust
+use dango_sdk::{Keystore, Secp256k1, Secret};
+
+let bytes  = Keystore::from_file("./key.json", "hunter2")?;
+let secret = Secp256k1::from_bytes(bytes)?;
+// Ok::<(), anyhow::Error>(())
+```
+
+For Ethereum-flavoured signing, use `Eip712::from_bytes(bytes)?` instead.
+
+## Next
+
+- [Transactions](./transactions) — compose messages, sign, broadcast, poll.
+- [SingleSigner](../api/clients/SingleSigner) — the full typestate API.

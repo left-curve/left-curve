@@ -1,0 +1,33 @@
+# PageInfo
+
+Cursor-pagination metadata. Mirrors the GraphQL `PageInfo` object.
+
+## Definition
+
+```python
+@dataclass(frozen=True)
+class PageInfo:
+    has_previous_page: bool
+    has_next_page: bool
+    start_cursor: str | None
+    end_cursor: str | None
+```
+
+## Fields
+
+**`has_previous_page`** — `bool`.
+
+**`has_next_page`** — `bool`. Pass `after=end_cursor` to fetch the next page.
+
+**`start_cursor`** — `str | None`. Cursor of the first node in this page.
+
+**`end_cursor`** — `str | None`. Cursor of the last node in this page.
+
+## Notes
+
+- snake_case attributes — this is a user-facing dataclass, not a wire shape. The `_make_page_info` helper crosses the camelCase boundary once.
+
+## See also
+
+- [`Connection`](./Connection) — the page container
+- [`paginate_all`](../functions/paginate_all) — walks pages using these cursors

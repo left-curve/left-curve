@@ -1,0 +1,39 @@
+# PerpsTrade
+
+A perps trade fill.
+
+## Definition
+
+```ts
+type PerpsTrade = {
+  orderId: string
+  pairId: string
+  user: string
+  fillPrice: string
+  fillSize: string
+  closingSize: string
+  openingSize: string
+  realizedPnl: string
+  fee: string
+  createdAt: string
+  blockHeight: number
+  tradeIdx: number
+  fillId?: string | null
+  isMaker?: boolean | null
+}
+```
+
+## Fields
+
+**`closingSize`**, **`openingSize`** — portion of the fill that closed an existing position vs opened new exposure.
+
+**`realizedPnl`** — closing PnL. Prior to v0.17.0 also bundled funding; later versions report it separately.
+
+**`fillId`** — shared between the two `OrderFilled` events of a single match. `null` for trades before v0.15.0.
+
+**`isMaker`** — `true` for maker, `false` for taker, `null` for trades before v0.16.0.
+
+## See also
+
+- [`perpsTradesSubscription`](../actions/indexer/perpsTradesSubscription)
+- [`PerpsEvent`](./PerpsEvent)

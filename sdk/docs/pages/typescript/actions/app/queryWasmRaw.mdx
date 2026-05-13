@@ -1,0 +1,51 @@
+# queryWasmRaw
+
+Read a raw base64 value from a contract's storage at a specific key.
+
+## Signature
+
+```ts
+function queryWasmRaw(
+  client: Client,
+  parameters: {
+    contract: Address
+    key: Base64
+    height?: number
+  },
+): Promise<WasmRawResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import { encodeBase64, encodeUtf8 } from "@left-curve/encoding"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const contract: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const key = encodeBase64(encodeUtf8("config"))
+const value = await client.queryWasmRaw({ contract, key })
+```
+
+## Parameters
+
+**`contract`** — `Address`. The contract to read from.
+
+**`key`** — `Base64`. The storage key, base64-encoded.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`WasmRawResponse`** — `Base64 | undefined`. Undefined when no value is stored at the key.
+
+## Notes
+
+- For typed queries, use [`queryWasmSmart`](./queryWasmSmart) instead — it serializes a JSON message and decodes the typed response.
+
+## See also
+
+- [`queryWasmSmart`](./queryWasmSmart) — typed JSON queries
+- [`queryApp`](./queryApp) — generic query

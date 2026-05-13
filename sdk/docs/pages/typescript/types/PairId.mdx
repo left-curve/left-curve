@@ -1,0 +1,29 @@
+# PairId
+
+The identifier of a spot trading pair — base and quote denom.
+
+## Definition
+
+```ts
+type PairId = {
+  baseDenom: string
+  quoteDenom: string
+}
+```
+
+## Construction
+
+```ts
+import type { PairId } from "@left-curve/sdk"
+
+const dangoUsdc: PairId = { baseDenom: "dango", quoteDenom: "bridge/usdc" }
+```
+
+## Notes
+
+- A `SwapRoute` is `PairId[]` — an ordered list of hops.
+
+## See also
+
+- [`PairParams`](./PairParams)
+- [`getPair`](../actions/dex/getPair)

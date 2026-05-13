@@ -1,0 +1,48 @@
+# forgotUsername
+
+List the users associated with a key hash. Useful for username recovery flows.
+
+## Signature
+
+```ts
+function forgotUsername(
+  client: Client,
+  parameters: {
+    keyHash: KeyHash
+    limit?: number
+    startAfter?: number
+    height?: number
+  },
+): Promise<User[]>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { KeyHash } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const keyHash: KeyHash = "ABCDEF0123456789..."
+
+const users = await client.forgotUsername({ keyHash })
+```
+
+## Parameters
+
+**`keyHash`** — `KeyHash`. Uppercase hex SHA-256 of the public key.
+
+**`limit`** — `number`, optional. Maximum users to return.
+
+**`startAfter`** — `number`, optional. User index to start after (exclusive).
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`User[]`** — list of users; each `User` contains `index`, `name`, `keys`, and `accounts`.
+
+## See also
+
+- [`getUser`](./getUser) — fetch by index or name
+- [`getUserKeys`](./getUserKeys)

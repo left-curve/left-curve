@@ -1,0 +1,160 @@
+# Exchange
+
+Build, sign, and broadcast Dango perps transactions on behalf of one account. Subclass of [`API`](./API).
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Setup
+
+```python
+from eth_account import Account
+
+from dango.exchange import Exchange
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+account = Account.from_key("0x...")
+exchange = Exchange(
+    account,
+    MAINNET_API_URL,
+    account_address=Addr("0x..."),
+)
+```
+
+## Constructor
+
+```python
+Exchange(
+    wallet: Wallet | LocalAccount,
+    base_url: str,
+    *,
+    account_address: Addr,
+    user_index: int | None = None,
+    next_nonce: int | None = None,
+    chain_id: str | None = None,
+    timeout: float | None = None,
+    info: Info | None = None,
+    perps_contract: Addr | None = None,
+) -> None
+```
+
+## Configuration
+
+**`wallet`** — `Wallet | LocalAccount`. A [`Secp256k1Wallet`](./Secp256k1Wallet) (or any object satisfying the `Wallet` protocol), or an `eth_account.LocalAccount`. The `LocalAccount` branch wraps the account's raw secp256k1 secret as `Secp256k1Wallet.from_eth_account` — NOT EIP-712.
+
+**`base_url`** — `str`. GraphQL endpoint URL. Use `MAINNET_API_URL`, `TESTNET_API_URL`, or `LOCAL_API_URL` from `dango.utils.constants`.
+
+**`account_address`** — `Addr`. The Dango account this Exchange transacts as. Decoupled from the wallet's address (one key can control multiple accounts).
+
+**`user_index`** — `int | None`, optional. Skips the auto-resolution round-trip when set. Default: auto-resolved from the account-factory contract.
+
+**`next_nonce`** — `int | None`, optional. Skips the auto-resolution round-trip when set. Default: auto-resolved from the account's `seen_nonces` window.
+
+**`chain_id`** — `str | None`, optional. Skips the `query_status` round-trip. Default: auto-resolved.
+
+**`timeout`** — `float | None`, optional. HTTP timeout in seconds applied to the embedded `requests.Session`. Default: no timeout.
+
+**`info`** — `Info | None`, optional. Reuse an existing `Info` instance for the read path (simulate, broadcast, nonce, user_index, chain_id). Default: a fresh `Info` over the same `base_url`.
+
+**`perps_contract`** — `Addr | None`, optional. Override the perps contract address. Default: `PERPS_CONTRACT_MAINNET`.
+
+## Class attribute
+
+**`DEFAULT_GAS_OVERHEAD: Final[int] = 770_000`** — fixed gas added on top of simulated `gas_used` to cover signature verification (which `Info.simulate` deliberately skips). Override in a subclass for tests; do not monkeypatch.
+
+## Properties
+
+**`address -> Addr`** — the Dango account address this Exchange transacts as.
+
+**`signer -> SingleSigner`** — the underlying [`SingleSigner`](./SingleSigner); exposed for manual nonce tweaks in tests.
+
+## Methods
+
+### Margin
+
+| Method | Description |
+|--------|-------------|
+| [`deposit_margin`](../methods/exchange/deposit_margin) | Deposit USDC into the perps margin sub-account (base units) |
+| [`withdraw_margin`](../methods/exchange/withdraw_margin) | Withdraw USDC from the perps margin sub-account (USD) |
+
+### Orders
+
+| Method | Description |
+|--------|-------------|
+| [`submit_order`](../methods/exchange/submit_order) | Place a single perps order |
+| [`cancel_order`](../methods/exchange/cancel_order) | Cancel by chain `OrderId`, `ClientOrderIdRef`, or `"all"` |
+| [`batch_update_orders`](../methods/exchange/batch_update_orders) | Submit and/or cancel multiple orders atomically |
+| [`submit_market_order`](../methods/exchange/submit_market_order) | Market order with a slippage cap (convenience) |
+| [`submit_limit_order`](../methods/exchange/submit_limit_order) | Limit order (convenience) |
+
+### Conditional orders (TP/SL)
+
+| Method | Description |
+|--------|-------------|
+| [`submit_conditional_order`](../methods/exchange/submit_conditional_order) | Place a TP/SL order (reduce-only by construction) |
+| [`cancel_conditional_order`](../methods/exchange/cancel_conditional_order) | Cancel a conditional order |
+
+### Vault
+
+| Method | Description |
+|--------|-------------|
+| [`add_liquidity`](../methods/exchange/add_liquidity) | Debit USD margin to mint LP shares |
+| [`remove_liquidity`](../methods/exchange/remove_liquidity) | Burn LP shares (subject to cooldown) |
+
+### Referrals & liquidation
+
+| Method | Description |
+|--------|-------------|
+| [`set_referral`](../methods/exchange/set_referral) | Bind the signer as referee of a referrer |
+| [`liquidate`](../methods/exchange/liquidate) | Force-close an underwater user's positions |
+
+## End-to-end example
+
+```python
+from eth_account import Account
+
+from dango.exchange import Exchange
+from dango.info import Info
+from dango.utils.constants import PERPS_CONTRACT_TESTNET, TESTNET_API_URL
+from dango.utils.types import Addr, PairId, TimeInForce
+
+account = Account.from_key("0x...")
+info = Info(TESTNET_API_URL, perps_contract=Addr(PERPS_CONTRACT_TESTNET))
+exchange = Exchange(
+    account,
+    TESTNET_API_URL,
+    account_address=Addr("0x..."),
+    info=info,
+    perps_contract=Addr(PERPS_CONTRACT_TESTNET),
+)
+
+# Place a resting limit order.
+result = exchange.submit_limit_order(
+    PairId("perp/ethusd"),
+    size="0.5",
+    limit_price="1500",
+    time_in_force=TimeInForce.GTC,
+)
+print(result)
+
+# Read back open orders and cancel.
+orders = info.orders_by_user(exchange.address)
+for oid in orders:
+    exchange.cancel_order(oid)
+    break
+```
+
+## Notes
+
+- `Exchange.signer.next_nonce` increments on every `sign_tx` call, even on broadcast failure. Reset it manually if a broadcast did not reach the chain.
+- `Exchange` is sync. There is no asyncio surface.
+- The embedded `requests.Session` is thread-safe for read queries but only one transaction can be signing at a time (nonce sequencing).
+
+## See also
+
+- [`Info`](./Info) — the read-side counterpart
+- [`Secp256k1Wallet`](./Secp256k1Wallet) — the only shipping wallet implementation
+- [Concepts: Transactions](../../concepts/transactions) — the simulate/sign/broadcast pipeline

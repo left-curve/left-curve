@@ -1,0 +1,61 @@
+# user_state_extended
+
+`user_state` plus computed equity, margin, PnL fields. Each computed field is gated by an `include_*` flag so the contract can skip the work when not needed.
+
+## Signature
+
+```python
+def user_state_extended(
+    self,
+    user: Addr,
+    *,
+    include_equity: bool = True,
+    include_available_margin: bool = True,
+    include_maintenance_margin: bool = True,
+    include_unrealized_pnl: bool = True,
+    include_unrealized_funding: bool = True,
+    include_liquidation_price: bool = False,
+) -> UserStateExtended | None
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+state = info.user_state_extended(Addr("0x..."), include_liquidation_price=True)
+if state is not None:
+    print("equity:", state["equity"], "available:", state["available_margin"])
+```
+
+## Parameters
+
+**`user`** — `Addr`. The user's account address.
+
+**`include_equity`** — `bool`, optional. Default: `True`.
+
+**`include_available_margin`** — `bool`, optional. Default: `True`.
+
+**`include_maintenance_margin`** — `bool`, optional. Default: `True`.
+
+**`include_unrealized_pnl`** — `bool`, optional. Default: `True`.
+
+**`include_unrealized_funding`** — `bool`, optional. Default: `True`.
+
+**`include_liquidation_price`** — `bool`, optional. Default: `False`.
+
+## Returns
+
+**`UserStateExtended | None`** — TypedDict including `equity`, `available_margin`, `maintenance_margin`, and per-position `unrealized_pnl` / `unrealized_funding` / `liquidation_price` (per the flags). `None` if the user has no margin record. See [`UserStateExtended`](../../types/UserStateExtended).
+
+## Notes
+
+- The Rust `QueryMsg::UserStateExtended` variant has an additional `include_all` boolean that overrides every per-flag knob; the Python SDK deliberately omits it — there should be one canonical way to ask for everything.
+
+## See also
+
+- [`user_state`](./user_state) — base shape without computed fields
+- [`liquidate`](../exchange/liquidate) — call sites that need `include_liquidation_price`

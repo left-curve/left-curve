@@ -1,0 +1,29 @@
+# perps_param
+
+Global perps parameters: fee schedules, OI caps, funding period, batch size, vault settings.
+
+## Signature
+
+```python
+def perps_param(self) -> Param
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+params = info.perps_param()
+print(params["max_action_batch_size"], params["funding_period"])
+```
+
+## Returns
+
+**`Param`** — TypedDict with global perps configuration. See [`Param`](../../types/Param) for the full field list.
+
+## See also
+
+- [`pair_params`](./pair_params) — per-pair parameters
+- [`perps_state`](./perps_state) — runtime state counterpart

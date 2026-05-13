@@ -1,0 +1,65 @@
+# registerUser
+
+Create a new user and their first account in a single transaction. Submitted by the account factory itself (sender-less from the caller's perspective).
+
+## Signature
+
+```ts
+function registerUser(
+  client: Client<Signer | undefined>,
+  parameters: {
+    key: Key
+    keyHash: KeyHash
+    seed: number
+    signature: Signature
+    referrer?: number
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import { createKeyHash } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromRandomKey()
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer,
+})
+
+// Build the signature off-band per the chain's registration protocol.
+await client.registerUser({
+  key: { secp256k1: "base64-encoded-pubkey" },
+  keyHash: await signer.getKeyHash(),
+  seed: 1,
+  signature: { secp256k1: "base64-signature" },
+})
+```
+
+## Parameters
+
+**`key`** — `Key`. The public key to register (`{ secp256k1 }`, `{ secp256r1 }`, or `{ ethereum }`).
+
+**`keyHash`** — `KeyHash`. SHA-256 of the public key, uppercase hex.
+
+**`seed`** — `number`. Salt input — see [`createAccountSalt`](../../concepts/encoding-and-types).
+
+**`signature`** — `Signature`. Signature proving control of the key.
+
+**`referrer`** — `number`, optional. Referrer's user index.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- Unlike normal mutations, `registerUser` is submitted by the account factory contract itself. The action calls `simulate` for gas and broadcasts an unsigned tx (the contract is its own credential).
+
+## See also
+
+- [`registerAccount`](./registerAccount) — add more accounts to an existing user
+- [Concepts: Signers & Authentication](../../concepts/signers-and-authentication)

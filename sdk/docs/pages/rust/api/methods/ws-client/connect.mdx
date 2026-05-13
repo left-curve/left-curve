@@ -1,0 +1,47 @@
+# WsClient::connect
+
+Open a WebSocket connection and return a [`Session`](../../clients/Session) that can host multiple concurrent subscriptions.
+
+## Signature
+
+```rust
+pub async fn connect(&self) -> Result<Session, anyhow::Error>;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Session, WsClient},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let session: Session = WsClient::new("wss://api-mainnet.dango.zone/graphql")?
+        .connect()
+        .await?;
+    let _ = session;
+    Ok(())
+}
+```
+
+## Returns
+
+**`Session`** — a multiplexed session over the new connection. Cloning is cheap. The connection closes when the last `Session` clone and every derived stream have been dropped.
+
+## Notes
+
+- Performs the `connection_init`/`connection_ack` handshake before returning.
+- Spawns a background `tokio` task that drives the socket (handles subscribe commands, pings, server messages). Requires a multi-threaded runtime — `tokio::spawn` is called internally.
+- Errors:
+  - `WebSocket connection failed: …` — TLS handshake or TCP error.
+  - `failed to send connection_init: …` — initial write failed.
+  - `unexpected message before connection_ack: …` — server replied off-protocol.
+  - `WebSocket closed before connection_ack` — server hung up during handshake.
+
+## See also
+
+- [`Session::subscribe`](../session/subscribe) — open a subscription on the session.
+- [`subscribe`](./subscribe) — one-shot dedicated connection.
+- [Concepts: Subscriptions](../../../concepts/subscriptions) — multiplexed vs dedicated.

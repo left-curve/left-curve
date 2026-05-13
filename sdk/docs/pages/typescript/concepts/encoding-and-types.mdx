@@ -1,0 +1,81 @@
+# Encoding & Types
+
+**What this teaches:** base-unit vs human-readable amounts, when to use `Decimal` vs `bigint` vs `number`, and how the SDK's JSON serialization handles snake_case.
+
+## Base units, always
+
+Every amount the chain returns or accepts is in base units, as a `string`. `dango` has 6 decimals — 1 DANGO is `"1000000"`. `bridge/usdc` has 6 decimals as well.
+
+```ts
+const oneDango = "1000000"        // base units
+const twoBridge = "2000000"       // base units
+```
+
+Never parse amounts into `number` for math:
+
+```ts
+// BAD — silent precision loss above 2^53
+const total = Number("9007199254740993") + Number("1")
+
+// GOOD — keep as string, do math with bigint or Decimal
+import { Decimal } from "@left-curve/utils"
+const total = Decimal("9007199254740993").add("1")
+```
+
+> **Warning:** `getBalance` returns a `number` and will overflow for amounts above 2^53. For accurate accounting use [`getBalances`](../actions/app/getBalances) (returns `Coins`, i.e. `Record<Denom, string>`) and parse with `Decimal` or `BigInt`.
+
+## When to use which
+
+| Type      | Use for                                                |
+|-----------|--------------------------------------------------------|
+| `bigint`  | On-chain integer math, atomic amounts, nonces          |
+| `Decimal` | Prices, rates, anything with a non-integer dimension   |
+| `number`  | Block heights, indices, viewport math, timers          |
+| `string`  | The wire format for all on-chain amounts               |
+
+```ts
+import { Decimal, formatUnits, parseUnits } from "@left-curve/utils"
+
+// Display: base units → human-readable string
+const display = formatUnits("1234567", 6) // "1.234567"
+
+// Submit: human-readable string → base units
+const atomic = parseUnits("1.5", 6) // "1500000"
+
+// Math: keep as Decimal until you serialize
+const price = Decimal("100.25")
+const qty = Decimal("3")
+const notional = price.mul(qty).toFixed(6) // "300.750000"
+```
+
+## JSON shape on the wire
+
+Contract messages are snake_case on the wire and camelCase in TypeScript. The SDK converts automatically via `snakeCaseJsonSerialization` and `camelCaseJsonDeserialization` from `@left-curve/encoding`. Write camelCase in your code:
+
+```ts
+await client.execute({
+  sender,
+  execute: {
+    contract,
+    msg: { batchUpdateOrders: { creates: [...] } }, // camelCase
+  },
+})
+```
+
+## Branded types
+
+`Address`, `Denom`, `Hex`, `Base64`, and others are branded types from `@left-curve/types`. They are structurally strings but the brand prevents passing a denom where an address is expected:
+
+```ts
+import type { Address, Denom } from "@left-curve/sdk"
+
+const addr = "0x1234567890abcdef1234567890abcdef12345678" as Address
+const denom = "dango" as Denom
+
+// type error — Address is not assignable to Denom
+// transfer({ denom: addr, ... })
+```
+
+## Next
+
+- [Error Handling](./error-handling) — what throws and how to narrow it

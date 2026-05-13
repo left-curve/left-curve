@@ -1,0 +1,39 @@
+# getCode
+
+Fetch a stored Wasm code blob by its hash.
+
+## Signature
+
+```ts
+function getCode(
+  client: Client,
+  parameters: {
+    hash: Hex
+    height?: number
+  },
+): Promise<CodeResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const code = await client.getCode({ hash: "0xabc123..." })
+```
+
+## Parameters
+
+**`hash`** — `Hex`. SHA-256 hash of the Wasm bytecode.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`CodeResponse`** — alias for `Code`. Contains the bytecode and status fields.
+
+## See also
+
+- [`getCodes`](./getCodes) — paginated list of stored codes
+- [`storeCode`](./storeCode) — upload a new code

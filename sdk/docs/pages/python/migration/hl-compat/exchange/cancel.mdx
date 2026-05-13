@@ -1,0 +1,38 @@
+# cancel
+
+Cancel one open order by its on-chain `oid`. The `name` argument is verified for parity (typos fail loudly).
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+## Signature
+
+```python
+def cancel(self, name: str, oid: int) -> dict[str, Any]
+```
+
+## Example
+
+```python
+result = exchange.cancel("BTC", oid=12345)
+```
+
+## Parameters
+
+**`name`** — `str`. HL coin name (e.g. `"BTC"`). Used only for verification — `info.name_to_pair(name)` runs first to surface typos before the cancel is dispatched.
+
+**`oid`** — `int`. On-chain order id to cancel.
+
+## Returns
+
+`dict[str, Any]` — Hyperliquid-shaped cancel envelope.
+
+## Notes
+
+- Native cancel only needs the `oid`, but verifying `name` first gives a clearer error if the caller passes the wrong coin.
+
+## See also
+
+- [`bulk_cancel`](./bulk_cancel) — cancel multiple orders in one call
+- [`cancel_order`](../../../api/methods/exchange/cancel_order) — native equivalent

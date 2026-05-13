@@ -1,0 +1,30 @@
+# CancelAction
+
+User-facing form of a cancel request. Pass to [`batch_update_orders`](../methods/exchange/batch_update_orders).
+
+## Definition
+
+```python
+@dataclass(frozen=True)
+class CancelAction:
+    spec: OrderId | ClientOrderIdRef | Literal["all"]
+```
+
+## Fields
+
+**`spec`** — `OrderId | ClientOrderIdRef | Literal["all"]`. The cancel target. See [`cancel_order`](../methods/exchange/cancel_order) for the same parameter shape.
+
+## Construction
+
+```python
+from dango.utils.types import CancelAction, ClientOrderIdRef, OrderId
+
+a = CancelAction(spec=OrderId("12345"))
+b = CancelAction(spec=ClientOrderIdRef(value=7))
+c = CancelAction(spec="all")
+```
+
+## See also
+
+- [`SubmitAction`](./SubmitAction) — counterpart for submits
+- [`batch_update_orders`](../methods/exchange/batch_update_orders) — consumer

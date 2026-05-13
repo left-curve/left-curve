@@ -1,0 +1,46 @@
+# Exchange.bulk_cancel_by_cloid (HL-compat)
+
+Cancel multiple open orders by `cloid` in one batched native call.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def bulk_cancel_by_cloid(
+    self,
+    cancel_requests: Iterable[dict[str, Any]],
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+from dango.hyperliquid_compatibility.types import Cloid
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+ex.bulk_cancel_by_cloid([
+    {"coin": "ETH", "cloid": Cloid("0x12345678901234567890123456789012")},
+    {"coin": "BTC", "cloid": Cloid("0xabcdef00abcdef00abcdef00abcdef00")},
+])
+```
+
+## Parameters
+
+**`cancel_requests`** — `Iterable[dict[str, Any]]`. Each entry has `coin` and `cloid` (must be a `Cloid` instance — `TypeError` otherwise). Empty iterables raise `ValueError`.
+
+## Returns
+
+**`dict[str, Any]`** — HL status envelope with `response.type="cancelByCloid"`.
+
+## Notes
+
+- See [Migration: Cloid asymmetry](../../hyperliquid#1-cloid-is-hashed-lossily-the-cloid-in-responses-is-not-the-cloid-you-sent) for the lossy hash semantics.
+
+## See also
+
+- [`cancel_by_cloid`](./cancel_by_cloid) — single-cancel counterpart

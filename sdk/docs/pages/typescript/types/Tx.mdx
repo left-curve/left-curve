@@ -1,0 +1,36 @@
+# Tx
+
+A signed transaction. Holds messages, sender, gas, credential, and metadata.
+
+## Definition
+
+```ts
+type Tx<Credential = Json, Metadata = Json> = {
+  sender: Address
+  msgs: Message[]
+  gasLimit: number
+  credential: Credential
+  data: Metadata
+}
+
+type UnsignedTx = Pick<Tx, "sender" | "msgs">
+```
+
+## Fields
+
+**`sender`** — `Address`. The signing/paying account.
+
+**`msgs`** — `Message[]`. The list of messages to execute.
+
+**`gasLimit`** — `number`. Maximum gas the tx may consume.
+
+**`credential`** — `Json` (typically `Credential`). The signature bundle.
+
+**`data`** — `Json` (typically `{ chainId, userIndex, nonce }`). EIP-712 metadata signed with the tx.
+
+## See also
+
+- [`Message`](./Message)
+- [`Credential`](./Credential)
+- [`signAndBroadcastTx`](../actions/app/signAndBroadcastTx)
+- [Concepts: Transactions](../concepts/transactions)

@@ -1,0 +1,35 @@
+# ConditionalOrderRef
+
+User-facing form of a single conditional-order cancel target.
+
+## Definition
+
+```python
+@dataclass(frozen=True)
+class ConditionalOrderRef:
+    pair_id: PairId
+    trigger_direction: TriggerDirection
+```
+
+## Fields
+
+**`pair_id`** — `PairId`.
+
+**`trigger_direction`** — `TriggerDirection`.
+
+## Construction
+
+```python
+from dango.utils.types import ConditionalOrderRef, PairId, TriggerDirection
+
+ref = ConditionalOrderRef(pair_id=PairId("perp/ethusd"), trigger_direction=TriggerDirection.ABOVE)
+```
+
+## Notes
+
+- A user holds at most one conditional order per `(pair_id, trigger_direction)` combination, so this tuple uniquely identifies the cancel target.
+
+## See also
+
+- [`AllForPair`](./AllForPair) — cancel every conditional order on one pair
+- [`cancel_conditional_order`](../methods/exchange/cancel_conditional_order) — consumer

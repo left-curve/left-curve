@@ -1,0 +1,66 @@
+# submit_market_order
+
+Place a market order with a slippage cap. Convenience wrapper over [`submit_order`](./submit_order).
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def submit_market_order(
+    self,
+    pair_id: PairId,
+    size: float | int | str | Decimal,
+    *,
+    max_slippage: float | str | Decimal = 0.01,
+    reduce_only: bool = False,
+    tp: ChildOrder | None = None,
+    sl: ChildOrder | None = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr, PairId
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# Buy 0.5 ETH with up to 1% slippage (default)
+exchange.submit_market_order(PairId("perp/ethusd"), size="0.5")
+
+# Sell 0.5 ETH with up to 0.5% slippage
+exchange.submit_market_order(PairId("perp/ethusd"), size="-0.5", max_slippage="0.005")
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+**`size`** — `float | int | str | Decimal`. Signed quantity (positive = buy, negative = sell). Zero is rejected.
+
+**`max_slippage`** — `float | str | Decimal`, optional. Maximum acceptable slippage as a dimensionless ratio. `0.01` = 1%. Default: `0.01`.
+
+**`reduce_only`** — `bool`, optional. Default: `False`.
+
+**`tp`** — `ChildOrder | None`, optional. Take-profit child order.
+
+**`sl`** — `ChildOrder | None`, optional. Stop-loss child order.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- `max_slippage` is a `Dimensionless` field — passes through `dango_decimal`. Precision capped at 6 places.
+- The market order does not carry a `client_order_id`.
+
+## See also
+
+- [`submit_limit_order`](./submit_limit_order) — limit-order counterpart
+- [`submit_order`](./submit_order) — the underlying method

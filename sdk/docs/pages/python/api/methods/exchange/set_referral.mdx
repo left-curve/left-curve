@@ -1,0 +1,44 @@
+# set_referral
+
+Bind the signer as a referee of `referrer`. Accepts a user_index `int` or a username `str`.
+
+## Signature
+
+```python
+def set_referral(self, referrer: int | str) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# By user_index
+exchange.set_referral(42)
+
+# By username
+exchange.set_referral("alice")
+```
+
+## Parameters
+
+**`referrer`** — `int | str`. The referrer's `user_index` (non-negative `int`) or `username` (non-empty `str`).
+
+- `int`: used directly as the referrer's `user_index`. Negative values are rejected (`ValueError`); `bool` is rejected (`TypeError`).
+- `str`: triggers a username lookup against the account-factory contract. Empty strings are rejected (`ValueError`).
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- The signer's own `user_index` (the referee) is auto-filled from `Exchange.signer.user_index`.
+- Username lookup is not cached — usernames are theoretically rebindable per the contract docs, and a fresh query costs one cheap round-trip.
+
+## See also
+
+- [Concepts: Transactions](../../../concepts/transactions) — the underlying pipeline

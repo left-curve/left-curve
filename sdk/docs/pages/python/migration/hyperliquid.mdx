@@ -1,0 +1,129 @@
+# Migrating from the Hyperliquid Python SDK
+
+You came from `hyperliquid-python-sdk`. The `dango` package ships an HL-shaped facade under `dango.hyperliquid_compatibility` so most of your code keeps working with one-line import swaps. **Read this page first.** There are sharp edges.
+
+```python
+# Before
+from hyperliquid.exchange import Exchange
+from hyperliquid.info import Info
+from hyperliquid.utils.types import Cloid, OrderType
+
+# After
+from dango.hyperliquid_compatibility.exchange import Exchange
+from dango.hyperliquid_compatibility.info import Info
+from dango.hyperliquid_compatibility.types import Cloid, OrderType
+```
+
+## What will burn you
+
+### 1. Cloid is hashed lossily — the cloid in responses is NOT the cloid you sent
+
+HL's `Cloid` is 16 bytes (128 bits). Dango's `ClientOrderId` is `Uint64` (64 bits). The compat layer accepts the same 16-byte hex string HL expects, but `Cloid.to_uint64()` collapses it via SHA-256 and keeps only the first 8 bytes:
+
+```python
+from dango.hyperliquid_compatibility.types import Cloid
+
+c = Cloid("0x12345678901234567890123456789012")
+c.to_uint64()    # 16-byte cloid → 8-byte int (deterministic, lossy)
+```
+
+**The cloid the chain records and returns is the Uint64 — NOT the original 16-byte HL cloid.** If you rely on round-tripping a `Cloid` across submit → response → cancel, you must keep your own mapping (e.g. by calling `c.to_uint64()` before submission and matching against the response).
+
+Two different 16-byte cloids can collide in the 8-byte Uint64. Probability is ~2**-32 over ~4 billion cloids — negligible for any realistic workload, not zero.
+
+### 2. `market_open` / `market_close` silently ignore `px`
+
+HL's `px` parameter is the limit price computed from oracle ± slippage. Dango's market order computes its own slippage band against the contract's mark price. The wrapper accepts `px` for signature parity but **does not use it**:
+
+```python
+# `px=1500` is silently ignored
+ex.market_open("ETH", is_buy=True, sz=0.5, px=1500.0, slippage=0.01)
+```
+
+If your bot relies on `px` clamping at the SDK layer, you must enforce it yourself before calling.
+
+### 3. `set_expires_after` is a no-op
+
+The wrapper stores `expires_after` on `self` but does NOT thread it into the signed metadata. HL's `expiresAfter` enforcement does not currently apply. Track this is a known gap.
+
+```python
+ex.set_expires_after(1700000000000)   # stored, but does nothing on the wire
+```
+
+### 4. `Info.query_order_by_oid` ignores `user`
+
+Dango orders are keyed by `oid` alone. The wrapper accepts `user` for signature parity but does NOT forward it to the contract — passing a wrong address still returns the order:
+
+```python
+info.query_order_by_oid("0xunrelated", 12345)   # `user` ignored
+```
+
+## What you must change explicitly
+
+### Construction: `account_address` is required
+
+HL allowed `account_address=None` and defaulted to the wallet's EVM address. Dango decouples the signing key from the on-chain account. The compat `Exchange` constructor rejects `None`:
+
+```python
+# Will raise ValueError
+Exchange(wallet, base_url="...")
+
+# Correct
+Exchange(wallet, base_url="...", account_address="0x...")
+```
+
+`vault_address` and `spot_meta` reject any non-None value (Dango has no vault address abstraction and no spot universe).
+
+### Default URL is local, not mainnet
+
+HL's default `base_url` was the production API. The compat `Exchange` and `Info` default to `LOCAL_API_URL` to prevent accidental mainnet hits. Pass an explicit URL.
+
+## Methods that wrap native equivalents
+
+| HL-compat method | Native equivalent | Notes |
+|------------------|-------------------|-------|
+| `Exchange.order` | `submit_order` | `is_buy + sz` → signed `size` |
+| `Exchange.bulk_orders` (multi) | `batch_update_orders` | Single-order shortcut uses `submit_order` directly |
+| `Exchange.cancel` | `cancel_order(OrderId(...))` | `name` verified for parity |
+| `Exchange.bulk_cancel` | `batch_update_orders([CancelAction(...)])` | |
+| `Exchange.cancel_by_cloid` | `cancel_order(ClientOrderIdRef(...))` | Lossy hash, see above |
+| `Exchange.bulk_cancel_by_cloid` | `batch_update_orders` of cloid cancels | |
+| `Exchange.modify_order` / `bulk_modify_orders_new` | `batch_update_orders` of paired Cancel+Submit | No first-class modify on chain |
+| `Exchange.market_open` | `submit_market_order` | `px` ignored |
+| `Exchange.market_close` | `submit_market_order(reduce_only=True)` | Reads position via `Info.user_state` first |
+| `Exchange.set_referrer` | `set_referral` | |
+| `Info.user_state` | `user_state_extended` + reshape | |
+| `Info.open_orders` | `orders_by_user` + reshape | |
+| `Info.all_mids` | `all_perps_pair_stats` | Uses `currentPrice` as mid |
+| `Info.meta` | `pair_params` | Synthesizes `szDecimals=6` |
+| `Info.meta_and_asset_ctxs` | `pair_params` + `pair_states` + `all_perps_pair_stats` | |
+| `Info.l2_snapshot` | `pair_param` + `liquidity_depth` | Picks smallest bucket |
+| `Info.candles_snapshot` | `perps_candles` | HL interval string → `CandleInterval` |
+| `Info.user_fills` / `_by_time` | `perps_events_all(event_type="order_filled")` + dedupe | |
+| `Info.query_order_by_oid` | `order` | `user` ignored |
+| `Info.historical_orders` | `perps_events_all(event_type="order_persisted")` + `order_removed` | |
+| `Info.subscribe(type=...)` | `subscribe_perps_trades` / `subscribe_perps_candles` / `subscribe_user_events` / `subscribe_query_app` | Dispatch by `subscription["type"]` |
+| `Info.unsubscribe` | `unsubscribe` | Ignores the `subscription` arg |
+| `Info.disconnect_websocket` | `disconnect_websocket` | |
+
+For per-method behavior and HL-versus-native divergences, see the [HL-compat method pages](./hl-compat/exchange/order) under this section.
+
+## Methods that diverge from upstream in subtle ways
+
+- `Info.user_state`: `assetPositions` entries report `marginUsed="0"` and `returnOnEquity="0"` — Dango doesn't track per-position margin/RoE (cross-only). `leverage.value=1` always; `maxLeverage=1` always. `cumFunding` series are always `"0"` (funding folds into realized PnL on each fill, no per-position series).
+- `Info.meta`: `szDecimals` is hardcoded to `6` for every asset (Dango uses a uniform settlement decimals; HL is per-asset).
+- `Info.meta_and_asset_ctxs`: `PerpAssetCtx.markPx`, `oraclePx`, `midPx` report the same value (the indexer's `currentPrice`). HL distinguishes the three.
+- `Info.l2_snapshot`: HL doesn't take a `bucket_size`; the compat layer picks the smallest from `pair_param.bucket_sizes`. `n=1` always (Dango doesn't expose per-bucket order count). `time=0` always (no server timestamp on depth queries).
+- `Info.candles_snapshot`: Supported intervals are `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, `1w`. Other HL intervals raise `ValueError`.
+- `Info.user_fills` / `user_fills_by_time`: Dango emits both maker and taker rows per fill; the wrapper dedupes by `fill_id` and prefers the taker side.
+- `Info.subscribe(type="allMids")`: not yet implemented; raises `NotImplementedError`.
+- `Info.subscribe(type="activeAssetCtx" | "activeAssetData")`: `markPx`/`oraclePx` report `"0"` until parallel `pair_stats` polling is wired in.
+
+## Methods that are not implemented
+
+Many HL methods have no Dango analog (the chain is perps-only, cross-margin only, with no spot deploys / TWAP / sub-accounts). The wrapper raises `NotImplementedError` with a one-line reason rather than silently no-op. See [Missing methods](./missing-methods) for the full list (42 on `Exchange`, 25 on `Info`).
+
+## See also
+
+- [Missing methods](./missing-methods) — every `NotImplementedError` stub, grouped by class
+- [HL-compat `Exchange.order`](./hl-compat/exchange/order) — start the per-method tour

@@ -1,0 +1,44 @@
+# remove_liquidity
+
+Burn LP shares to schedule a counterparty-vault withdrawal (subject to cooldown).
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def remove_liquidity(self, shares_to_burn: int) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# Burn 50 LP shares
+exchange.remove_liquidity(50)
+```
+
+## Parameters
+
+**`shares_to_burn`** — `int`. Number of shares to burn (Uint128). Must be a positive `int` (not `bool`, not `float`). Raises `TypeError` on non-int, `ValueError` on zero / negative.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope. The actual USD release happens after the vault cooldown period elapses.
+
+## Notes
+
+- The vault cooldown period is in [`perps_param`](../info/perps_param)'s `vault_cooldown_period` field.
+- Pending unlocks surface in [`user_state`](../info/user_state)'s `unlocks` list.
+
+## See also
+
+- [`add_liquidity`](./add_liquidity) — counterpart that mints shares
+- [`user_state`](../info/user_state) — inspect `unlocks` to track pending releases

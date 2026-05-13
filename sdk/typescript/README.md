@@ -6,7 +6,7 @@ TypeScript SDK for the [Dango](https://dango.exchange) ecosystem.
 
 | Package                    | Description                                                                      |
 | -------------------------- | -------------------------------------------------------------------------------- |
-| [`config`](./config)       | Common configurations for tsconfig, tsup, biome, typedoc                         |
+| [`config`](./config)       | Common configurations for tsconfig, tsup, biome                                  |
 | [`dango`](./dango)         | Clients, actions, chains, and transports for interacting with the Dango chain    |
 | [`types`](./types)         | TypeScript type definitions used across the ecosystem                            |
 | [`encoding`](./encoding)   | Hex, base64, binary, JSON, and UTF-8 encoding utilities                          |

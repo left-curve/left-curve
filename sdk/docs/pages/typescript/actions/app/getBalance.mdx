@@ -1,0 +1,50 @@
+# getBalance
+
+Read the balance of a single denom for an address.
+
+## Signature
+
+```ts
+function getBalance(
+  client: Client,
+  parameters: {
+    address: Address
+    denom: Denom
+    height?: number
+  },
+): Promise<number>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const amount = await client.getBalance({ address, denom: "dango" })
+```
+
+## Parameters
+
+**`address`** — `Address`. The account to query.
+
+**`denom`** — `Denom`. The token denomination.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`number`** — the balance in base units, parsed via `parseInt`.
+
+## Notes
+
+> **Warning:** the return type is `number`. Amounts above 2^53 lose precision silently. For accurate accounting, use [`getBalances`](./getBalances), which returns `Coins` (a `Record<Denom, string>`), and parse with `BigInt` or [`Decimal`](../../concepts/encoding-and-types).
+
+## See also
+
+- [`getBalances`](./getBalances) — paginated balances, returns string amounts
+- [`getSupply`](./getSupply) — total supply of one denom
+- [Concepts: Encoding & Types](../../concepts/encoding-and-types)

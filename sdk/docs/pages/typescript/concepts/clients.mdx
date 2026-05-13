@@ -1,0 +1,76 @@
+# Clients
+
+**What this teaches:** when to use `createPublicClient` vs `createSignerClient`, and how both relate to `createBaseClient`.
+
+## Mental model
+
+A client bundles three things: a transport (the GraphQL endpoint), a chain config, and a signer (optional). On top of that, actions extend the client object so you can call `client.getBalance({...})` instead of `getBalance(client, {...})`.
+
+The split:
+
+- `createBaseClient` — bare scaffolding with `transport`, `chain`, optional `signer`, and `extend()`. You only call this directly when you need to assemble actions yourself.
+- `createPublicClient` — base + `publicActions`. Read-only. No signer.
+- `createSignerClient` — base + `publicActions` + `signerActions`. Requires a `Signer`. Can broadcast transactions.
+
+## When to use which
+
+Use a public client for indexers, dashboards, anything that does not mutate state:
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+
+const balances = await client.getBalances({
+  address: "0x1234567890abcdef1234567890abcdef12345678",
+})
+```
+
+Use a signer client when you need to broadcast:
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!)
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer,
+})
+
+await client.transfer({
+  sender: "0x1234567890abcdef1234567890abcdef12345678",
+  transfer: {
+    "0xabcdef1234567890abcdef1234567890abcdef12": { dango: "1000000" },
+  },
+})
+```
+
+A signer client has every method a public client has plus the mutation surface. It is a strict superset.
+
+## Gateway namespacing
+
+The `gateway` domain is the only one with namespaced actions. You call them as `client.gateway.transferRemote(...)`, not `client.transferRemote(...)`. Every other domain is flat on the client.
+
+```ts
+await client.gateway.transferRemote({ remote, recipient, sender, funds })
+await client.gateway.getWithdrawalFee({ denom, remote })
+```
+
+## Tree-shakable style
+
+Every method on a client is also exported as a standalone function. Use that form when bundle size matters:
+
+```ts
+import { createPublicClient, createTransport, getBalance, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const amount = await getBalance(client, { address, denom: "dango" })
+```
+
+## Next
+
+- [Signers & Authentication](./signers-and-authentication) — what to plug into `signer`

@@ -1,0 +1,56 @@
+# Keystore::write_to_file
+
+Encrypt a `Secret`'s private key and write a pretty-printed JSON keystore file.
+
+## Signature
+
+```rust
+pub fn write_to_file<S, F, P>(
+    secret: &S,
+    filename: F,
+    password: P,
+) -> anyhow::Result<Self>
+where
+    S:          Secret,
+    S::Private: AsRef<[u8]>,
+    S::Public:  Into<ByteArray<33>>,
+    F:          AsRef<Path>,
+    P:          AsRef<[u8]>;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Keystore, Secp256k1, Secret},
+};
+
+fn save() -> Result<Keystore> {
+    let secret = Secp256k1::new_random();
+    Keystore::write_to_file(&secret, "./key.json", "hunter2")
+}
+```
+
+## Parameters
+
+**`secret`** — `&S: Secret`. The key to encrypt. The bounds limit this to secrets with 32-byte private keys and 33-byte compressed public keys — `Secp256k1` and `Eip712` both qualify.
+
+**`filename`** — `AsRef<Path>`. Output path. The file is overwritten if present.
+
+**`password`** — `AsRef<[u8]>`. Encryption password.
+
+## Returns
+
+**`Keystore`** — the same value that was written to disk (with freshly generated `salt` and `nonce`).
+
+## Notes
+
+- Each call generates a fresh 16-byte salt and 12-byte nonce from `OsRng`. Saving the same key twice yields different files.
+- The file contains the unencrypted compressed public key alongside the ciphertext. The private key is not recoverable without the password.
+- File I/O errors propagate as `anyhow::Error`.
+
+## See also
+
+- [`from_file`](./from_file) — counterpart.
+- [`Keystore`](../../clients/Keystore) — file format.

@@ -1,0 +1,47 @@
+# getPerpsUserState
+
+Read the perps state for a single user.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPerpsUserState(
+  client: Client,
+  parameters: {
+    user: Address
+    height?: number
+  },
+): Promise<PerpsUserState | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const user: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const state = await client.getPerpsUserState({ user })
+```
+
+## Parameters
+
+**`user`** — `Address`. The trader.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsUserState | null`** — `{ margin, vaultShares, positions, unlocks, reservedMargin, openOrderCount }` or `null` if the user has no perps state.
+
+## See also
+
+- [`getPerpsUserStateExtended`](./getPerpsUserStateExtended) — adds PnL, equity, liquidation prices
+- [`getPerpsOrdersByUser`](./getPerpsOrdersByUser)

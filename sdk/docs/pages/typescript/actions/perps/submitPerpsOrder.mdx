@@ -1,0 +1,89 @@
+# submitPerpsOrder
+
+Submit a market or limit perps order, optionally with take-profit and stop-loss children.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function submitPerpsOrder(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    pairId: string
+    size: string
+    kind: PerpsOrderKind
+    reduceOnly: boolean
+    tp?: ChildOrder
+    sl?: ChildOrder
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+// Market order
+await client.submitPerpsOrder({
+  sender,
+  pairId: "BTC-PERP",
+  size: "0.1",
+  kind: { market: { maxSlippage: "0.005" } },
+  reduceOnly: false,
+})
+
+// Limit order
+await client.submitPerpsOrder({
+  sender,
+  pairId: "BTC-PERP",
+  size: "-0.05",
+  kind: {
+    limit: { limitPrice: "65000", timeInForce: "GTC" },
+  },
+  reduceOnly: false,
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The trader.
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`size`** — `string`. Position size. Positive opens long, negative opens short.
+
+**`kind`** — `PerpsOrderKind`. Discriminated union: `{ market: { maxSlippage } }` or `{ limit: { limitPrice, timeInForce, clientOrderId? } }`. `timeInForce` is `"GTC"`, `"IOC"`, or `"POST"`. `clientOrderId` is not allowed with `"IOC"`.
+
+**`reduceOnly`** — `boolean`. When `true`, the order can only reduce an existing position.
+
+**`tp`** — `ChildOrder`, optional. Take-profit `{ triggerPrice, maxSlippage, size? }`.
+
+**`sl`** — `ChildOrder`, optional. Stop-loss `{ triggerPrice, maxSlippage, size? }`.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- `clientOrderId` is normalized: `null`/`undefined` is stripped from both the message and the typed-data structure.
+
+## See also
+
+- [`cancelPerpsOrder`](./cancelPerpsOrder)
+- [`submitConditionalOrder`](./submitConditionalOrder)
+- [`getPerpsOrdersByUser`](./getPerpsOrdersByUser)

@@ -1,0 +1,53 @@
+# Exchange.bulk_modify_orders_new (HL-compat)
+
+Batch a list of cancel + submit pairs into one `batch_update_orders` call.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def bulk_modify_orders_new(
+    self,
+    modify_requests: Iterable[dict[str, Any]],
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+
+ex.bulk_modify_orders_new([
+    {
+        "oid": 12345,
+        "order": {
+            "coin": "ETH",
+            "is_buy": True,
+            "sz": 0.75,
+            "limit_px": 1490.0,
+            "order_type": {"limit": {"tif": "Gtc"}},
+            "reduce_only": False,
+        },
+    },
+])
+```
+
+## Parameters
+
+**`modify_requests`** — `Iterable[dict[str, Any]]`. Each entry has `oid` (`int | Cloid`) and `order` (an HL-shaped `OrderRequest`).
+
+Empty iterables raise `ValueError`.
+
+## Returns
+
+**`dict[str, Any]`** — HL status envelope with `response.type="batchModify"`. One status entry per modify request.
+
+## See also
+
+- [`modify_order`](./modify_order) — single-modify counterpart

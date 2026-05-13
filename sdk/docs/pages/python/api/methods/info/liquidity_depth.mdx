@@ -1,0 +1,52 @@
+# liquidity_depth
+
+Aggregated bid/ask depth at a chosen price-bucket granularity.
+
+## Signature
+
+```python
+def liquidity_depth(
+    self,
+    pair_id: PairId,
+    *,
+    bucket_size: str,
+    limit: int | None = None,
+) -> LiquidityDepthResponse
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+# Fetch the smallest bucket size advertised for this pair
+param = info.pair_param(PairId("perp/ethusd"))
+bucket = min(param["bucket_sizes"], key=float) if param else "0.10000"
+
+depth = info.liquidity_depth(PairId("perp/ethusd"), bucket_size=bucket, limit=5)
+print(depth["bids"], depth["asks"])
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+**`bucket_size`** — `str`. The wire form of `UsdPrice` — a 6-decimal fixed-point string. Must match one of the entries in this pair's `pair_param.bucket_sizes`; mismatched values are rejected by the contract.
+
+**`limit`** — `int | None`, optional. Maximum number of levels per side. Default: `None` (whole book).
+
+## Returns
+
+**`LiquidityDepthResponse`** — `{bids: dict[UsdPrice, LiquidityDepth], asks: dict[UsdPrice, LiquidityDepth]}`. Both sides are price-keyed maps.
+
+## Notes
+
+- The SDK does not validate `bucket_size` client-side. A round-trip rejection is cheap; callers who want to avoid it should fetch `pair_param(pair_id).bucket_sizes` first.
+
+## See also
+
+- [`pair_param`](./pair_param) — inspect `bucket_sizes` before calling

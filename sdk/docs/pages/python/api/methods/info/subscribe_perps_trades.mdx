@@ -1,0 +1,56 @@
+# subscribe_perps_trades
+
+Stream real-time perps trade fills for one pair.
+
+## Signature
+
+```python
+def subscribe_perps_trades(
+    self,
+    pair_id: PairId,
+    callback: Callable[[Trade], None],
+) -> int
+```
+
+## Example
+
+```python
+import time
+
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import PairId
+
+info = Info(MAINNET_API_URL)
+
+def on_trade(trade):
+    if isinstance(trade, dict) and "_error" in trade:
+        print("error:", trade["_error"])
+        return
+    print(trade["fillPrice"], trade["fillSize"])
+
+sid = info.subscribe_perps_trades(PairId("perp/ethusd"), on_trade)
+time.sleep(15)
+info.unsubscribe(sid)
+info.disconnect_websocket()
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+**`callback`** — `Callable[[Trade], None]`. Invoked once per fill with the unwrapped [`Trade`](../../types/Trade) payload (camelCase keys). Errors arrive as `{"_error": ...}` through the same callback.
+
+## Returns
+
+**`int`** — the subscription id. Pass to `unsubscribe(sid)` to drop.
+
+## Notes
+
+- Per API doc §8.2: the server replays cached recent trades on connect, then streams new fills as they happen.
+- Callbacks fire on the WebSocket reader thread. Keep them fast.
+
+## See also
+
+- [`subscribe_perps_candles`](./subscribe_perps_candles) — OHLCV stream
+- [Concepts: Subscriptions](../../../concepts/subscriptions) — the WebSocket model

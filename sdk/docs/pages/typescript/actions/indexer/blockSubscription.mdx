@@ -1,0 +1,50 @@
+# blockSubscription
+
+Subscribe to new finalized blocks. WebSocket only.
+
+## Signature
+
+```ts
+function blockSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    block: Omit<IndexedBlock, "transactions">
+  }>,
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const unsubscribe = client.blockSubscription({
+  next: ({ block }) => console.log("new block", block.blockHeight),
+  error: (err) => console.error(err),
+})
+
+// later
+unsubscribe()
+```
+
+## Parameters
+
+**`next`** — `(data: { block }) => void`. Called for each new block. The `block` payload excludes the transaction list (use [`queryBlock`](./queryBlock) for that).
+
+**`error`** — `(err: unknown) => void`, optional.
+
+**`complete`** — `() => void`, optional.
+
+## Returns
+
+**`() => void`** — call to unsubscribe.
+
+## Notes
+
+- Throws if the transport has `disableWs: true` or the WS client failed to connect.
+
+## See also
+
+- [`queryBlock`](./queryBlock)
+- [Concepts: Subscriptions](../../concepts/subscriptions)

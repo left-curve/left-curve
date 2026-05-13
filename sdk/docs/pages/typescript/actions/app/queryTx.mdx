@@ -1,0 +1,42 @@
+# queryTx
+
+Fetch an indexed transaction by hash.
+
+## Signature
+
+```ts
+function queryTx(
+  client: Client,
+  parameters: { hash: Base64 },
+): Promise<TxResponse | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const tx = await client.queryTx({ hash: "abc123base64..." })
+if (tx) {
+  console.log(tx.height, tx.tx_result.code)
+}
+```
+
+## Parameters
+
+**`hash`** — `Base64`. The transaction hash.
+
+## Returns
+
+**`TxResponse | null`** — `null` if the indexer has not seen the transaction. `tx_result.code === 0` means success; non-zero means failure.
+
+## Notes
+
+- `signAndBroadcastTx` polls this internally up to 30 times at 500ms intervals.
+- The indexer may lag behind the chain by a block or two; expect `null` immediately after broadcasting.
+
+## See also
+
+- [`broadcastTxSync`](./broadcastTxSync) — broadcast a signed tx
+- [`searchTxs`](../indexer/searchTxs) — paginated search

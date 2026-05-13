@@ -1,0 +1,33 @@
+# UnsignedTx
+
+A transaction body ready for `Info.simulate`.
+
+## Definition
+
+```python
+class UnsignedTx(TypedDict):
+    sender: Addr
+    msgs: list[Message]
+    data: Metadata
+```
+
+## Fields
+
+**`sender`** — `Addr`. The signing account address.
+
+**`msgs`** — `list[Message]`. Messages to include in the transaction.
+
+**`data`** — `Metadata`. Per-tx metadata (user_index, chain_id, nonce, expiry).
+
+## Construction
+
+```python
+unsigned = exchange.signer.build_unsigned_tx(messages, exchange._chain_id)
+sim = exchange._info.simulate(unsigned)
+```
+
+## See also
+
+- [`Tx`](./Tx) — signed counterpart
+- [`SignDoc`](./SignDoc) — what gets canonical-JSON encoded and signed
+- [`SingleSigner.build_unsigned_tx`](../classes/SingleSigner#build_unsigned_tx) — builder

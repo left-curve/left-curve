@@ -1,0 +1,54 @@
+# add_liquidity
+
+Debit USD from the trading margin to mint counterparty-vault LP shares.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def add_liquidity(
+    self,
+    amount: float | int | str | Decimal,
+    *,
+    min_shares_to_mint: int | None = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# Deposit 100 USD of margin into the LP vault
+exchange.add_liquidity(100)
+
+# With slippage protection: revert if minting fewer than 95 shares
+exchange.add_liquidity("100.00", min_shares_to_mint=95)
+```
+
+## Parameters
+
+**`amount`** — `float | int | str | Decimal`. USD amount, canonicalised via `dango_decimal`. Must be positive (`ValueError` on zero / negative).
+
+**`min_shares_to_mint`** — `int | None`, optional. Slippage guard: revert if fewer than this many shares would be minted. `None` (default) disables the guard. `bool` is rejected (`TypeError`); negative ints are rejected (`ValueError`).
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- The USD amount is debited from the caller's existing trading margin — NOT attached as funds on the execute message.
+- Vault deposits flow inside the contract; the wallet boundary is not crossed.
+
+## See also
+
+- [`remove_liquidity`](./remove_liquidity) — counterpart that burns shares
+- [`deposit_margin`](./deposit_margin) — top up margin before adding liquidity

@@ -1,0 +1,72 @@
+# submit_order
+
+Place a single perps order. Size is signed: positive = buy, negative = sell.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def submit_order(
+    self,
+    pair_id: PairId,
+    size: float | int | str | Decimal,
+    kind: OrderKind,
+    *,
+    reduce_only: bool = False,
+    tp: ChildOrder | None = None,
+    sl: ChildOrder | None = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from typing import cast
+
+from dango.exchange import Exchange
+from dango.utils.types import Addr, OrderKind, PairId
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# A buy-side GTC limit order.
+kind = cast(
+    OrderKind,
+    {"limit": {"limit_price": "1500.000000", "time_in_force": "GTC", "client_order_id": None}},
+)
+exchange.submit_order(PairId("perp/ethusd"), size="0.5", kind=kind)
+```
+
+In practice, prefer the higher-level helpers [`submit_limit_order`](./submit_limit_order) and [`submit_market_order`](./submit_market_order) — they construct the `OrderKind` for you.
+
+## Parameters
+
+**`pair_id`** — `PairId`. E.g. `PairId("perp/ethusd")`.
+
+**`size`** — `float | int | str | Decimal`. Signed quantity. Positive = buy, negative = sell. Zero is rejected (`ValueError`). Routed through [`dango_decimal`](../../functions/dango_decimal) — precision capped at 6 places.
+
+**`kind`** — `OrderKind`. The externally-tagged wire shape: `{"market": {"max_slippage": "<dec>"}}` or `{"limit": {"limit_price": "<dec>", "time_in_force": "GTC"|"IOC"|"POST", "client_order_id": "<int>"|None}}`.
+
+**`reduce_only`** — `bool`, optional. Default: `False`. When `True`, the order can only reduce an existing position.
+
+**`tp`** — `ChildOrder | None`, optional. Take-profit child order. Default: `None`.
+
+**`sl`** — `ChildOrder | None`, optional. Stop-loss child order. Default: `None`.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope. Fills surface via indexer events; query [`orders_by_user`](../info/orders_by_user) or subscribe to user events to confirm.
+
+## Notes
+
+- Zero-sized orders are rejected client-side. The chain would also reject them — failing early surfaces a friendlier error.
+- All decimal inputs collapse to `"0.000000"` if equivalent to zero, so the zero check is unambiguous across `0`, `0.0`, `"0"`, `Decimal("0")`.
+
+## See also
+
+- [`submit_limit_order`](./submit_limit_order) — convenience helper for limit orders
+- [`submit_market_order`](./submit_market_order) — convenience helper for market orders
+- [`batch_update_orders`](./batch_update_orders) — atomic multi-order submission

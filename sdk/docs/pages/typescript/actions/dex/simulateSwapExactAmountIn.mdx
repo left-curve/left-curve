@@ -1,0 +1,51 @@
+# simulateSwapExactAmountIn
+
+Quote the output of a swap given an exact input amount and a route.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function simulateSwapExactAmountIn(
+  client: Client,
+  parameters: {
+    input: Coin
+    route: SwapRoute
+    height?: number
+  },
+): Promise<Coin>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const quote = await client.simulateSwapExactAmountIn({
+  input: { denom: "dango", amount: "1000000000" },
+  route: [{ baseDenom: "dango", quoteDenom: "bridge/usdc" }],
+})
+console.log(quote.amount)
+```
+
+## Parameters
+
+**`input`** — `Coin`. Exact input `{ denom, amount }` in base units.
+
+**`route`** — `SwapRoute`. Array of `PairId` hops.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`Coin`** — the simulated output `{ denom, amount }`.
+
+## See also
+
+- [`swapExactAmountIn`](./swapExactAmountIn) — submit the swap
+- [`simulateSwapExactAmountOut`](./simulateSwapExactAmountOut)

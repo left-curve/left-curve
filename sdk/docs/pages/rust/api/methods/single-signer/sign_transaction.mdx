@@ -1,0 +1,65 @@
+# SingleSigner::sign_transaction
+
+Sign a set of messages and produce a broadcast-ready `Tx`.
+
+## Signature
+
+```rust
+impl<S: Secret> Signer for SingleSigner<S> {
+    fn sign_transaction(
+        &mut self,
+        msgs: NonEmpty<Vec<Message>>,
+        chain_id: &str,
+        gas_limit: u64,
+    ) -> grug::StdResult<grug::Tx>;
+}
+```
+
+From `impl Signer` (requires `Defined<UserIndex> + Defined<Nonce>`).
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, SingleSigner},
+    grug::{BroadcastClient, Coins, Message, NonEmpty, Signer},
+};
+
+async fn submit(
+    http: &HttpClient,
+    signer: &mut SingleSigner<impl dango_sdk::Secret>,
+) -> Result<()> {
+    let messages = NonEmpty::new(vec![
+        Message::transfer(grug::Addr::mock(1), Coins::one("bridge/usdc", 100_u128)?)?,
+    ])?;
+    let tx = signer.sign_transaction(messages, "dango-1", 1_000_000)?;
+    let _  = http.broadcast_tx(tx).await?;
+    Ok(())
+}
+```
+
+## Parameters
+
+**`msgs`** — `NonEmpty<Vec<Message>>`. The messages to include.
+
+**`chain_id`** — `&str`. Target chain id.
+
+**`gas_limit`** — `u64`. Maximum gas the transaction is allowed to consume.
+
+## Returns
+
+**`grug::Tx`** — `sender`, `msgs`, `gas_limit`, JSON-encoded metadata, and a JSON-encoded `Credential::Standard { key_hash, signature }`.
+
+## Notes
+
+- **Side effect:** `*self.nonce.inner_mut() += 1`. The in-memory nonce is advanced even though the method takes `&mut self`. Successive calls produce successive transactions without re-querying.
+- On broadcast failure, the in-memory nonce is now ahead of the chain. Call `SequencedSigner::update_nonce` (or [`query_next_nonce`](./query_next_nonce) + [`with_nonce`](./with_nonce)) to resync.
+- `Eip712` signatures are EIP-712 typed-data with domain `{ name: "dango", chain_id: EIP155_CHAIN_ID, verifying_contract: <sender as U160> }`.
+- Errors are `grug::StdError` from JSON encoding or the `Secret::sign_transaction` call.
+
+## See also
+
+- [`unsigned_transaction`](./unsigned_transaction) — same metadata, no signature.
+- [`update_nonce`](./update_nonce) — resync after broadcast failure.
+- [Concepts: Transactions](../../../concepts/transactions) — submit-and-poll flow.

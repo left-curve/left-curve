@@ -1,0 +1,64 @@
+# configure
+
+Update the chain config, the app config, or both. Only the chain owner can submit.
+
+## Signature
+
+```ts
+function configure(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    newCfg?: ChainConfig
+    newAppCfg?: Json
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { configure } from "@left-curve/sdk"
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await configure(client, {
+  sender,
+  newCfg: {
+    owner: "0xowner...",
+    bank: "0xbank...",
+    taxman: "0xtax...",
+    cronjobs: {},
+    permissions: { upload: "everybody", instantiate: "everybody" },
+    maxOrphanAge: 86400,
+  },
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. Must equal the chain owner.
+
+**`newCfg`** — `ChainConfig`, optional. New chain-level config.
+
+**`newAppCfg`** — `Json`, optional. New app-level config (matches `AppConfig`).
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](./broadcastTxSync).
+
+## Notes
+
+- Not bundled into `appMutationActions`. Call as a free function: `configure(client, {...})`.
+
+## See also
+
+- [`getAppConfig`](./getAppConfig)
+- [`upgrade`](./upgrade)

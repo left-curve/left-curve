@@ -1,0 +1,59 @@
+# cancelConditionalOrder
+
+Cancel one conditional order, all for a pair, or every conditional order.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function cancelConditionalOrder(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    request: PerpsCancelConditionalOrderRequest
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+
+type PerpsCancelConditionalOrderRequest =
+  | { one: { pairId: string; triggerDirection: "above" | "below" } }
+  | { allForPair: { pairId: string } }
+  | "all"
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.cancelConditionalOrder({
+  sender,
+  request: { one: { pairId: "BTC-PERP", triggerDirection: "above" } },
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The trader.
+
+**`request`** — `PerpsCancelConditionalOrderRequest`. `"all"`, `{ one: {...} }`, or `{ allForPair: { pairId } }`.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`submitConditionalOrder`](./submitConditionalOrder)
+- [`submitConditionalOrders`](./submitConditionalOrders)

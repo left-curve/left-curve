@@ -1,0 +1,49 @@
+# searchTxs
+
+Search indexed transactions by hash or sender, paginated.
+
+## Signature
+
+```ts
+function searchTxs(
+  client: Client,
+  parameters: {
+    hash?: string
+    senderAddress?: string
+    after?: string
+    before?: string
+    first?: number
+    last?: number
+    sortBy?: string
+  },
+): Promise<GraphqlQueryResult<IndexedTransaction>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const page = await client.searchTxs({
+  senderAddress: "0x1234567890abcdef1234567890abcdef12345678",
+  first: 50,
+})
+```
+
+## Parameters
+
+**`hash`** — `string`, optional. Filter by tx hash.
+
+**`senderAddress`** — `string`, optional. Filter by sender.
+
+**`after`**, **`before`**, **`first`**, **`last`**, **`sortBy`** — standard GraphQL pagination.
+
+## Returns
+
+**`GraphqlQueryResult<IndexedTransaction>`** — `{ pageInfo, nodes }`.
+
+## See also
+
+- [`queryTx`](../app/queryTx) — single-tx fetch
+- [`queryBlock`](./queryBlock)

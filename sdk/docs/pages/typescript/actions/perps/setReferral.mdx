@@ -1,0 +1,53 @@
+# setReferral
+
+Set a referrer/referee mapping for fee sharing.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function setReferral(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    referrer: number
+    referee: number
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.setReferral({ sender, referrer: 42, referee: 99 })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The submitting account.
+
+**`referrer`** — `number`. Referrer's user index.
+
+**`referee`** — `number`. Referee's user index.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`setFeeShareRatio`](./setFeeShareRatio)

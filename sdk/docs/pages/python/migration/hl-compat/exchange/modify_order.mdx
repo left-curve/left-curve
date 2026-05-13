@@ -1,0 +1,72 @@
+# Exchange.modify_order (HL-compat)
+
+Atomic cancel + replace, emulated as a single batched action.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def modify_order(
+    self,
+    oid: int | Cloid,
+    name: str,
+    is_buy: bool,
+    sz: float,
+    limit_px: float,
+    order_type: OrderType,
+    reduce_only: bool = False,
+    cloid: Cloid | None = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+
+ex.modify_order(
+    oid=12345,
+    name="ETH",
+    is_buy=True,
+    sz=0.75,
+    limit_px=1490.0,
+    order_type={"limit": {"tif": "Gtc"}},
+)
+```
+
+## Parameters
+
+**`oid`** — `int | Cloid`. The order to cancel. `int` is the chain order id; `Cloid` triggers a Uint64-by-cloid cancel.
+
+**`name`** — `str`. HL coin name.
+
+**`is_buy`** — `bool`.
+
+**`sz`** — `float`.
+
+**`limit_px`** — `float`.
+
+**`order_type`** — `OrderType`. Only `{"limit": ...}` is supported; `{"trigger": ...}` raises.
+
+**`reduce_only`** — `bool`, optional. Default: `False`.
+
+**`cloid`** — `Cloid | None`, optional. Client id for the **new** order (independent from the `oid` being cancelled).
+
+## Returns
+
+**`dict[str, Any]`** — HL status envelope with `response.type="batchModify"`.
+
+## Notes
+
+- Dango has no first-class modify message. The wrapper packs a `CancelAction` + `SubmitAction` into one `batch_update_orders` call so the cancel and the new submission settle in the same block.
+
+## See also
+
+- [`bulk_modify_orders_new`](./bulk_modify_orders_new) — multi-modify counterpart
+- [Native `batch_update_orders`](../../../api/methods/exchange/batch_update_orders)

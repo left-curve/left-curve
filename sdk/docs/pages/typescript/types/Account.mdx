@@ -1,0 +1,38 @@
+# Account
+
+A single on-chain account belonging to a user.
+
+## Definition
+
+```ts
+type Account = {
+  readonly address: Address
+  readonly index: AccountIndex
+  readonly owner: number
+}
+```
+
+## Fields
+
+**`address`** — `Address`. The account's on-chain address.
+
+**`index`** — `AccountIndex` (`number`). The account's index within its user.
+
+**`owner`** — `number`. The owning user's index.
+
+## Construction
+
+Use the [`toAccount`](../concepts/encoding-and-types) helper to assemble one from a `User`, `AccountIndex`, and `Address`.
+
+```ts
+import { toAccount } from "@left-curve/sdk"
+import type { Account, User } from "@left-curve/sdk"
+
+const account: Account = toAccount({ user, accountIndex: 0, address })
+```
+
+## See also
+
+- [`AccountInfo`](./AccountInfo) — `{ index, owner }` (no address)
+- [`AccountDetails`](./AccountDetails) — adds `username`
+- [`User`](./User)

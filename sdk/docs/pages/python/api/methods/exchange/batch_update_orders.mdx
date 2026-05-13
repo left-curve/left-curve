@@ -1,0 +1,61 @@
+# batch_update_orders
+
+Submit and cancel multiple orders atomically in one transaction.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```python
+def batch_update_orders(
+    self,
+    actions: list[SubmitOrCancelAction],
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from typing import cast
+
+from dango.exchange import Exchange
+from dango.utils.types import (
+    Addr, CancelAction, ClientOrderIdRef, OrderId, OrderKind, PairId, SubmitAction,
+)
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+kind = cast(
+    OrderKind,
+    {"limit": {"limit_price": "1500.000000", "time_in_force": "GTC", "client_order_id": None}},
+)
+
+exchange.batch_update_orders([
+    SubmitAction(pair_id=PairId("perp/ethusd"), size="0.5", kind=kind),
+    CancelAction(spec=OrderId("12345")),
+    CancelAction(spec=ClientOrderIdRef(value=7)),
+])
+```
+
+## Parameters
+
+**`actions`** — `list[SubmitOrCancelAction]`. A list of `SubmitAction` and/or `CancelAction` dataclasses. Must contain at least one action (`ValueError` on empty list).
+
+The chain enforces `1 <= len <= max_action_batch_size` (governance-tunable, fixture default 5). Over-sized batches are rejected by the chain, not by the SDK — the SDK does not track governance changes locally.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope. All actions execute atomically: either every action succeeds or none does.
+
+## Notes
+
+- Use this method to atomically cancel+replace (modify) an order: pair a `CancelAction` with a `SubmitAction` in one call.
+
+## See also
+
+- [`submit_order`](./submit_order) — single-order submission
+- [`cancel_order`](./cancel_order) — single-order cancellation
+- [`SubmitAction`](../../types/SubmitAction) and [`CancelAction`](../../types/CancelAction)

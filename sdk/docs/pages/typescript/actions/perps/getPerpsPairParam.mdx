@@ -1,0 +1,44 @@
+# getPerpsPairParam
+
+Read the parameters of a single perps pair: tick size, margin ratios, max OI, funding rate cap.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPerpsPairParam(
+  client: Client,
+  parameters: {
+    pairId: string
+    height?: number
+  },
+): Promise<PerpsPairParam | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const params = await client.getPerpsPairParam({ pairId: "BTC-PERP" })
+```
+
+## Parameters
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsPairParam | null`** — params including `tickSize`, `minOrderSize`, `maxAbsOi`, `maxAbsFundingRate`, `initialMarginRatio`, `maintenanceMarginRatio`, vault weights, and `bucketSizes`.
+
+## See also
+
+- [`getPerpsPairParams`](./getPerpsPairParams)
+- [`getPerpsParam`](./getPerpsParam)

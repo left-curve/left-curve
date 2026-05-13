@@ -1,0 +1,35 @@
+# volume
+
+A user's cumulative trading volume in USD. Used for fee-tier resolution.
+
+## Signature
+
+```python
+def volume(self, user: Addr, *, since: int | None = None) -> str
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+lifetime = info.volume(Addr("0x..."))
+print("lifetime volume USD:", lifetime)
+```
+
+## Parameters
+
+**`user`** — `Addr`. The user's account address.
+
+**`since`** — `int | None`, optional. Nanosecond-timestamp lower bound (matches Dango's `Timestamp` wire format). Default: `None` (lifetime).
+
+## Returns
+
+**`str`** — a 6-decimal `UsdValue` string. Parse with `Decimal(...)` if you need arithmetic.
+
+## See also
+
+- [`user_state`](./user_state) — current margin + positions
