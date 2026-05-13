@@ -4,7 +4,7 @@ import { useAccount } from "./useAccount.js";
 import { useStorage } from "./useStorage.js";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { snakeToCamel, uid } from "@left-curve/dango/utils";
+import { snakeToCamel, uid } from "@left-curve/sdk/utils";
 
 import type {
   Address,
@@ -17,7 +17,7 @@ import type {
   LiquidatedData,
   DeleveragedData,
   UID,
-} from "@left-curve/dango/types";
+} from "@left-curve/sdk/types";
 import { useBalances } from "./useBalances.js";
 
 export type Activities = {

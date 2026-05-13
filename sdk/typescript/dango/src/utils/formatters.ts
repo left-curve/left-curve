@@ -1,4 +1,4 @@
-import { Decimal } from "@left-curve/sdk/utils";
+import { Decimal } from "./index.js";
 
 export type DisplayPart = {
   type: "integer" | "decimal" | "group" | "fraction" | "subscript" | "suffix" | "literal";

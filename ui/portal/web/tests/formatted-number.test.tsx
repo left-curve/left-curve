@@ -5,7 +5,7 @@ import {
   formatDisplayNumber,
   type FormatNumberOptions,
   type DisplayPart,
-} from "@left-curve/dango/utils";
+} from "@left-curve/sdk/utils";
 
 /**
  * Minimal replica of FormattedNumber that uses the real formatDisplayNumber

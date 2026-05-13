@@ -9,12 +9,12 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/sdk/utils";
 import { useConfig, usePrices } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { Coin } from "@left-curve/dango/types";
+import type { Coin } from "@left-curve/sdk/types";
 import type { ModalRef } from "./RootModal";
 
 type ConfirmSwapProps = {

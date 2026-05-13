@@ -1,5 +1,5 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Address, Client } from "../../../types/index.js";
 
 export type GetAccountSeenNoncesParameters = {
   address: Address;
@@ -15,16 +15,13 @@ export type GetAccountSeenNoncesReturnType = Promise<[number, number[]]>;
  * @param parameters.height The height at which to query the account state.
  * @returns An array of nonces.
  */
-export async function getAccountSeenNonces<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getAccountSeenNonces(
+  client: Client,
   parameters: GetAccountSeenNoncesParameters,
 ): GetAccountSeenNoncesReturnType {
   const { address, height = 0 } = parameters;
   const msg = { seenNonces: {} };
-  const nonces = await queryWasmSmart<number[], chain, signer>(client, {
+  const nonces = await queryWasmSmart<number[]>(client, {
     contract: address,
     msg,
     height,

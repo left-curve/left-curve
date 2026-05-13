@@ -1,5 +1,5 @@
-import { Secp256k1, sha256 } from "@left-curve/sdk/crypto";
-import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
+import { Secp256k1, sha256 } from "../crypto/index.js";
+import { encodeBase64, serialize } from "../encoding/index.js";
 
 import type { SessionCredential, SignDoc, Signer, SigningSession } from "../types/index.js";
 import type { ArbitraryDoc } from "../types/signature.js";

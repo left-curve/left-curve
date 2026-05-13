@@ -1,4 +1,4 @@
-import type { Address, ExtractFromUnion, KeyOfUnion } from "@left-curve/sdk/types";
+import type { Address, ExtractFromUnion, KeyOfUnion } from "./index.js";
 
 export type TriggerDirection = "above" | "below";
 

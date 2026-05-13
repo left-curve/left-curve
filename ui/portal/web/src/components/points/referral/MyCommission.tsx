@@ -11,7 +11,7 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatNumber } from "@left-curve/sdk/utils";
 import { formatDate } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {

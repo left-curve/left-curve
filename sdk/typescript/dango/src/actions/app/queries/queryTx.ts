@@ -1,26 +1,15 @@
-import { queryTx as internalQueryTx } from "@left-curve/sdk/actions";
-
-import type { QueryTxParameters, QueryTxReturnType } from "@left-curve/sdk/actions";
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { Chain } from "../../../types/chain.js";
-import type { Signer } from "../../../types/signer.js";
+import type { Client } from "../../../types/index.js";
+import type { Base64, TxResponse } from "../../../types/index.js";
 import { queryIndexer } from "../../indexer/queryIndexer.js";
 
-/**
- * Query the application state.
- * @param parameters
- * @param parameters.query The query request.
- * @param parameters.height The height at which to query the application state.
- * @returns The query response.
- */
-export async function queryTx<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(client: Client<Transport, chain, signer>, parameters: QueryTxParameters): QueryTxReturnType {
-  const { hash } = parameters;
-  const { transport } = client;
+export type QueryTxParameters = {
+  hash: Base64;
+};
 
-  if (transport.type !== "http-graphql") return await internalQueryTx(client, parameters);
+export type QueryTxReturnType = Promise<TxResponse | null>;
+
+export async function queryTx(client: Client, parameters: QueryTxParameters): QueryTxReturnType {
+  const { hash } = parameters;
 
   const document = `
     query tx($hash: String!) {
@@ -59,7 +48,7 @@ export async function queryTx<
     };
   };
 
-  const { transactions } = await queryIndexer<TxReturnType, chain, signer>(client, {
+  const { transactions } = await queryIndexer<TxReturnType>(client, {
     document,
     variables: { hash },
   });

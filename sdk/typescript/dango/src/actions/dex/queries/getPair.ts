@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Denom, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client, Denom } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { DexQueryMsg, PairParams } from "../../../types/dex.js";
 
@@ -22,10 +21,7 @@ export type GetPairReturnType = Promise<PairParams>;
  * @param parameters.height The height at which to query the pairs
  * @returns The prices.
  */
-export async function getPair<chain extends Chain | undefined, signer extends Signer | undefined>(
-  client: Client<Transport, chain, signer>,
-  parameters: GetPairParameters,
-): GetPairReturnType {
+export async function getPair(client: Client, parameters: GetPairParameters): GetPairReturnType {
   const { quoteDenom, baseDenom, height = 0 } = parameters;
 
   const action = getAction(client, getAppConfig, "getAppConfig");

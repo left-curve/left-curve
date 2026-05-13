@@ -1,11 +1,11 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
+import { getAppConfig } from "../../../index.js";
+import { getAction } from "../../index.js";
 import { execute } from "../../app/mutations/execute.js";
 import { truncateDec } from "../../../utils/index.js";
 
-import type { Address, Transport } from "@left-curve/sdk/types";
+import type { Address } from "../../../types/index.js";
 import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
-import type { AppConfig, DangoClient, Signer, TypedDataParameter } from "../../../types/index.js";
+import type { AppConfig, Client, Signer, TypedDataParameter } from "../../../types/index.js";
 
 export type SetFeeShareRatioParameters = {
   sender: Address;
@@ -14,8 +14,8 @@ export type SetFeeShareRatioParameters = {
 
 export type SetFeeShareRatioReturnType = SignAndBroadcastTxReturnType;
 
-export async function setFeeShareRatio<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function setFeeShareRatio(
+  client: Client<Signer>,
   parameters: SetFeeShareRatioParameters,
 ): SetFeeShareRatioReturnType {
   const { sender, shareRatio } = parameters;

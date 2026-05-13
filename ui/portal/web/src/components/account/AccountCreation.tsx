@@ -16,7 +16,7 @@ import {
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/sdk/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {

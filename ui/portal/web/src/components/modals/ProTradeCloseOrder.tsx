@@ -6,7 +6,7 @@ import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 
-import type { OrderId } from "@left-curve/dango/types";
+import type { OrderId } from "@left-curve/sdk/types";
 
 export const ProTradeCloseOrder = forwardRef<void, { orderId: OrderId }>(({ orderId }) => {
   const { hideModal } = useApp();

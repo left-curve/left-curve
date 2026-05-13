@@ -31,8 +31,8 @@ import {
   Tabs,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import type { Address } from "@left-curve/dango/types";
-import { isValidAddress } from "@left-curve/dango";
+import type { Address } from "@left-curve/sdk/types";
+import { isValidAddress } from "@left-curve/sdk";
 import {
   Decimal,
   formatUnits,
@@ -40,7 +40,7 @@ import {
   truncateDec,
   wait,
   withResolvers,
-} from "@left-curve/dango/utils";
+} from "@left-curve/sdk/utils";
 import { perpsMarginAsset } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";

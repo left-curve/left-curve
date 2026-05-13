@@ -1,11 +1,11 @@
-import { createSignerClient, toAccount } from "@left-curve/dango";
-import { getUser } from "@left-curve/dango/actions";
+import { createSignerClient, toAccount } from "@left-curve/sdk";
+import { getUser } from "@left-curve/sdk/actions";
 
 import { createConnector } from "./createConnector.js";
 import { requestRemote } from "../remote.js";
 
-import type { KeyHash, ArbitrarySignatureOutcome, SignatureOutcome } from "@left-curve/dango/types";
-import type { Address } from "@left-curve/dango/types";
+import type { KeyHash, ArbitrarySignatureOutcome, SignatureOutcome } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/sdk/types";
 
 export function remote() {
   return createConnector<undefined>(({ transport, getUserIndex, emitter, chain }) => {
@@ -18,6 +18,7 @@ export function remote() {
         const client = createSignerClient({
           signer: this,
           type: "remote",
+          chain,
           transport,
         });
 

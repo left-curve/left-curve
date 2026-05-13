@@ -4,9 +4,9 @@ import { FormattedNumber, PairAssets } from "@left-curve/applets-kit";
 import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/sdk/utils";
 
-import type { Coin } from "@left-curve/dango/types";
+import type { Coin } from "@left-curve/sdk/types";
 
 interface SpotProps {
   coin: Coin;

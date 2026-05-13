@@ -2,11 +2,8 @@ import { useEffect } from "react";
 import { useConfig } from "./useConfig.js";
 import { useAppConfig } from "./useAppConfig.js";
 
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
-import { Decimal } from "@left-curve/dango/utils";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/sdk/encoding";
+import { Decimal } from "@left-curve/sdk/utils";
 
 import {
   Direction,
@@ -15,7 +12,7 @@ import {
   type LiquidityDepthResponse,
   type PairId,
   type QueryRequest,
-} from "@left-curve/dango/types";
+} from "@left-curve/sdk/types";
 import type { AnyCoin } from "../types/coin.js";
 import { create } from "zustand";
 

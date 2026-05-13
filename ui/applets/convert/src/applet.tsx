@@ -15,7 +15,7 @@ import {
 import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
 
 import { createContext, useInputs } from "@left-curve/applets-kit";
-import { Decimal, formatNumber, formatUnits, withResolvers } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, formatUnits, withResolvers } from "@left-curve/sdk/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PropsWithChildren } from "react";

@@ -1,5 +1,4 @@
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { DangoClient } from "../../types/clients.js";
+import type { Client } from "../../types/client.js";
 import type { Signer } from "../../types/signer.js";
 
 import {
@@ -20,9 +19,7 @@ export type GatewayQueryActions = {
   };
 };
 
-export function gatewayQueryActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): GatewayQueryActions {
+export function gatewayQueryActions(client: Client): GatewayQueryActions {
   return {
     gateway: {
       getWithdrawalFee: (...args) => getWithdrawalFee(client, ...args),
@@ -36,9 +33,7 @@ export type GatewayMutationActions = {
   };
 };
 
-export function gatewayMutationActions<transport extends Transport = Transport>(
-  client: DangoClient<transport, Signer>,
-): GatewayMutationActions {
+export function gatewayMutationActions(client: Client<Signer>): GatewayMutationActions {
   return {
     gateway: {
       transferRemote: (...args) => transferRemote(client, ...args),

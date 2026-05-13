@@ -9,7 +9,7 @@ import {
   Table,
   useApp,
 } from "@left-curve/applets-kit";
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatNumber } from "@left-curve/sdk/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useEpochPoints } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";

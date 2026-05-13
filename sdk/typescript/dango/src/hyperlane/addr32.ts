@@ -1,6 +1,6 @@
-import { decodeHex, encodeHex } from "@left-curve/sdk/encoding";
+import { decodeHex, encodeHex } from "../encoding/index.js";
 
-import type { Address, Encoder } from "@left-curve/sdk/types";
+import type { Address, Encoder } from "../types/index.js";
 
 export function toAddr32(address: `0x${string}`): Address {
   return `${address.slice(2).padStart(64, "0")}`.toLowerCase() as Address;

@@ -1,5 +1,5 @@
-import { sha256 } from "@left-curve/sdk/crypto";
-import { encodeHex, encodeUtf8 } from "@left-curve/sdk/encoding";
+import { sha256 } from "../crypto/index.js";
+import { encodeHex, encodeUtf8 } from "../encoding/index.js";
 import type { KeyHash } from "../types/key.js";
 
 /**

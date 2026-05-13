@@ -1,12 +1,12 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
+import { getAppConfig } from "../../../index.js";
+import { getAction } from "../../index.js";
 import { execute } from "../../app/mutations/execute.js";
 
-import type { Address, Transport } from "@left-curve/sdk/types";
+import type { Address } from "../../../types/index.js";
 import type { SignAndBroadcastTxReturnType } from "../../app/mutations/signAndBroadcastTx.js";
 import type {
   AppConfig,
-  DangoClient,
+  Client,
   PerpsCancelConditionalOrderRequest,
   Signer,
   TypedDataParameter,
@@ -20,8 +20,8 @@ export type CancelConditionalOrderParameters = {
 
 export type CancelConditionalOrderReturnType = SignAndBroadcastTxReturnType;
 
-export async function cancelConditionalOrder<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function cancelConditionalOrder(
+  client: Client<Signer>,
   parameters: CancelConditionalOrderParameters,
 ): CancelConditionalOrderReturnType {
   const { sender, request } = parameters;

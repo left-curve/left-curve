@@ -4,10 +4,10 @@ import { useConfig } from "./useConfig.js";
 import { useStorage } from "./useStorage.js";
 
 import { chains } from "../hyperlane.js";
-import { toAddr32 } from "@left-curve/dango/hyperlane";
+import { toAddr32 } from "@left-curve/sdk/hyperlane";
 
 import type { AnyCoin } from "../types/coin.js";
-import type { HyperlaneConfig } from "@left-curve/dango/types";
+import type { HyperlaneConfig } from "@left-curve/sdk/types";
 import { useAccount } from "./useAccount.js";
 
 export type UseBridgeStateParameters = {

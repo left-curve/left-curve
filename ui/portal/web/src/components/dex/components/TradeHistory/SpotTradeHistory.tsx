@@ -6,9 +6,9 @@ import {
   useQueryWithPagination,
   useTradeCoins,
 } from "@left-curve/store";
-import { calculateTradeSize, Decimal } from "@left-curve/dango/utils";
+import { calculateTradeSize, Decimal } from "@left-curve/sdk/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { TimeInForceOption, type Trade } from "@left-curve/dango/types";
+import { TimeInForceOption, type Trade } from "@left-curve/sdk/types";
 import { TradeHistoryTable } from "./TradeHistoryTable";
 
 import type { TableColumn } from "@left-curve/applets-kit";

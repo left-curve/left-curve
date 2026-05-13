@@ -35,7 +35,6 @@
   "dependencies": {
     "@inlang/cli": "^3.0.3",
     "@inlang/paraglide-js": "^2.2.0",
-    "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
     "concurrently": "^9.2.1",
     "date-fns-tz": "^3.2.0",
@@ -44,7 +43,8 @@
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "^1.0.7",
     "clsx": "^2.1.1",
-    "tailwind-variants": "catalog:"
+    "tailwind-variants": "catalog:",
+    "@left-curve/sdk": "workspace:^"
   },
   "devDependencies": {
     "react": "catalog:",

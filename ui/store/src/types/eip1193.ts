@@ -5,9 +5,19 @@ import type {
   Hex,
   OneOf,
   Prettify,
-  RequestFn,
   RequiredBy,
-} from "@left-curve/dango/types";
+} from "@left-curve/sdk/types";
+
+type EIP1193RequestFn<
+  methods extends readonly {
+    Method: string;
+    Parameters?: unknown;
+    ReturnType?: unknown;
+  }[] = readonly [],
+> = <_method extends methods[number]["Method"]>(args: {
+  method: _method;
+  params?: Extract<methods[number], { Method: _method }>["Parameters"];
+}) => Promise<Extract<methods[number], { Method: _method }>["ReturnType"]>;
 
 type Index = `0x${string}`;
 type Quantity = `0x${string}`;
@@ -1216,7 +1226,7 @@ type EIP1474Methods = [...PublicRpcSchema, ...WalletRpcSchema];
 
 export type EIP1193Provider = Prettify<
   EIP1193Events & {
-    request: RequestFn<EIP1474Methods>;
+    request: EIP1193RequestFn<EIP1474Methods>;
   }
 >;
 

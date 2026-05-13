@@ -2,7 +2,7 @@ import { getAppConfig } from "../actions/getAppConfig.js";
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
-import type { Prettify } from "@left-curve/dango/types";
+import type { Prettify } from "@left-curve/sdk/types";
 import type { QueryOptions } from "@tanstack/query-core";
 import type {
   GetAppConfigData as GetAppConfigActionData,

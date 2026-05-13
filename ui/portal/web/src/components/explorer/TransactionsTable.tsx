@@ -5,7 +5,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Cell, CursorPagination, Table } from "@left-curve/applets-kit";
 
 import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
-import type { IndexedTransaction } from "@left-curve/dango/types";
+import type { IndexedTransaction } from "@left-curve/sdk/types";
 
 type TransactionsTableProps = {
   transactions?: IndexedTransaction[];

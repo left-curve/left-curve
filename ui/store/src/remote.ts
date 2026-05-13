@@ -1,9 +1,9 @@
 "use client";
 
-import { uid } from "@left-curve/dango/utils";
-import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
+import { uid } from "@left-curve/sdk/utils";
+import { deserializeJson, serializeJson } from "@left-curve/sdk/encoding";
 
-import type { Chain } from "@left-curve/dango/types";
+import type { Chain } from "@left-curve/sdk/types";
 import type { NativeCoin } from "./types/coin.js";
 import type { RemoteResponse } from "./types/remote.js";
 import type { Connection } from "./types/connector.js";

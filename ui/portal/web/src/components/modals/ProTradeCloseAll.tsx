@@ -6,7 +6,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
-import type { OrderId } from "@left-curve/dango/types";
+import type { OrderId } from "@left-curve/sdk/types";
 
 export const ProTradeCloseAll = forwardRef<void, { ordersId: OrderId[] }>(({ ordersId }) => {
   const { hideModal } = useApp();

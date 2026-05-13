@@ -1,4 +1,4 @@
-import type { Coin } from "@left-curve/sdk/types";
+import type { Coin } from "./index.js";
 
 export type PoolId = number;
 

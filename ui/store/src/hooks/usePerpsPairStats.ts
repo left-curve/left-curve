@@ -4,9 +4,9 @@ import { create } from "zustand";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/sdk/utils";
 
-import type { PerpsPairStats } from "@left-curve/dango/types";
+import type { PerpsPairStats } from "@left-curve/sdk/types";
 
 export type NormalizedPerpsPairStats = {
   pairId: string;

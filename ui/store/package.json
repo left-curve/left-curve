@@ -40,13 +40,13 @@
     }
   },
   "dependencies": {
-    "@left-curve/dango": "workspace:^",
     "@privy-io/js-sdk-core": "^0.56.3",
     "eventemitter3": "catalog:",
     "fuzzysort": "^3.1.0",
     "use-sync-external-store": "^1.2.2",
     "viem": "^2.39.0",
-    "zustand": "catalog:"
+    "zustand": "catalog:",
+    "@left-curve/sdk": "workspace:^"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",

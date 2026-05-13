@@ -7,9 +7,9 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
-import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/sdk/utils";
 
-import type { PairUpdate } from "@left-curve/dango/types";
+import type { PairUpdate } from "@left-curve/sdk/types";
 
 export type UsePoolLiquidityStateParameters = {
   pair: PairUpdate;

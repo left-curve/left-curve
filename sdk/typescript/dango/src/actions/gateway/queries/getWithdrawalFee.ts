@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Denom, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client, Denom } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { Remote } from "../../../types/hyperlane.js";
 
@@ -22,11 +21,8 @@ export type GetWithdrawalFeeReturnType = Promise<string>;
  * @param parameters.height The height at which to query the withdrawal fee.
  * @returns The withdrawal fee.
  */
-export async function getWithdrawalFee<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getWithdrawalFee(
+  client: Client,
   parameters: GetWithdrawalFeeParameters,
 ): GetWithdrawalFeeReturnType {
   const { height = 0, denom, remote } = parameters;

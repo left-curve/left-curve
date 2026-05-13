@@ -1,6 +1,6 @@
-import { Sha256 } from "@left-curve/sdk/crypto";
-import { decodeHex, encodeEndian32, encodeUtf8, serialize } from "@left-curve/sdk/encoding";
-import type { Address, Message } from "@left-curve/sdk/types";
+import { Sha256 } from "../crypto/index.js";
+import { decodeHex, encodeEndian32, encodeUtf8, serialize } from "../encoding/index.js";
+import type { Address, Message } from "../types/index.js";
 
 /**
  * Generate sign byte that the grug-account contract expects.

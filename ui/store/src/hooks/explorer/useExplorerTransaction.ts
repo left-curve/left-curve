@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "../usePublicClient.js";
 
-import type { IndexedTransaction } from "@left-curve/dango/types";
+import type { IndexedTransaction } from "@left-curve/sdk/types";
 
 export type UseExplorerTransactionReturn = IndexedTransaction | null;
 

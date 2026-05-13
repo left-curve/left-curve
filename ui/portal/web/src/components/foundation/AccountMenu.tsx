@@ -46,11 +46,11 @@ import { CountBadge } from "./CountBadge";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
 import { Activities } from "../activities/Activities";
 
-import { Direction } from "@left-curve/dango/types";
+import { Direction } from "@left-curve/sdk/types";
 
 import type React from "react";
-import type { Coins } from "@left-curve/dango/types";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import type { Coins } from "@left-curve/sdk/types";
+import { Decimal, formatNumber } from "@left-curve/sdk/utils";
 
 const [AccountMenuProvider, useAccountMenu] = createContext<{
   balances: Coins;

@@ -15,7 +15,7 @@ import {
   ExplorerSectionCard,
 } from "~/components/explorer/ExplorerCommon";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/sdk/types";
 
 export default function TxExplorerScreen() {
   const { txHash } = useLocalSearchParams<{ txHash: string }>();

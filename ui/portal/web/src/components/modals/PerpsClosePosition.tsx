@@ -12,7 +12,7 @@ import { useAccount, useConfig, useSigningClient, useStorage, useSubmitTx } from
 import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useCallback, useMemo, useState } from "react";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/sdk/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 

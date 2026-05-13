@@ -1,9 +1,9 @@
-import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
+import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/sdk/encoding";
 
-import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
-import { getUser } from "@left-curve/dango/actions";
+import { createKeyHash, createSignerClient, toAccount } from "@left-curve/sdk";
+import { getUser } from "@left-curve/sdk/actions";
 
-import { composeArbitraryTypedData } from "@left-curve/dango/utils";
+import { composeArbitraryTypedData } from "@left-curve/sdk/utils";
 import { createConnector } from "./createConnector.js";
 
 import Privy, {
@@ -12,8 +12,8 @@ import Privy, {
   LocalStorage,
 } from "@privy-io/js-sdk-core";
 
-import type { Eip712Signature } from "@left-curve/dango/types";
-import type { Address } from "@left-curve/dango/types";
+import type { Eip712Signature } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/sdk/types";
 import type { EIP1193Provider } from "../types/eip1193.js";
 
 const ETHEREUM_HEX_CHAIN_ID = "0x1";
@@ -57,6 +57,7 @@ export function privy(parameters: PrivyConnectorParameters) {
         const client = createSignerClient({
           signer: this,
           type: "privy",
+          chain,
           transport,
         });
 

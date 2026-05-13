@@ -1,8 +1,8 @@
-import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import { getAppConfig, queryWasmSmart } from "../../../index.js";
 import type { AccountIndex, AppConfig, Username } from "../../../types/index.js";
 
-import { getAction } from "@left-curve/sdk/actions";
-import type { Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
+import { getAction } from "../../index.js";
+import type { Client } from "../../../types/index.js";
 
 export type GetNextAccountIndexParameters = {
   username: Username;
@@ -19,11 +19,8 @@ export type GetNextAccountIndexReturnType = Promise<AccountIndex>;
  * @param parameters.height The height at which to get the accounts.
  * @returns The index.
  */
-export async function getNextAccountIndex<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getNextAccountIndex(
+  client: Client,
   parameters: GetNextAccountIndexParameters,
 ): GetNextAccountIndexReturnType {
   const { username, height = 0 } = parameters;

@@ -4,11 +4,11 @@ import type { AnyCoin } from "../types/coin.js";
 import type { useBridgeState } from "./useBridgeState.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { useSigningClient } from "./useSigningClient.js";
-import { getWithdrawalFee, transferRemote } from "@left-curve/dango/actions";
+import { getWithdrawalFee, transferRemote } from "@left-curve/sdk/actions";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAccount } from "./useAccount.js";
-import { toAddr32 } from "@left-curve/dango/hyperlane";
-import { formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { toAddr32 } from "@left-curve/sdk/hyperlane";
+import { formatUnits, parseUnits } from "@left-curve/sdk/utils";
 
 export type UseBridgeWithdrawParameters = {
   coin: AnyCoin;

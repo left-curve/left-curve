@@ -5,7 +5,7 @@ import { twMerge } from "@left-curve/foundation";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import type React from "react";
-import type { JsonString, JsonValue, OneRequired } from "@left-curve/dango/types";
+import type { JsonString, JsonValue, OneRequired } from "@left-curve/sdk/types";
 
 type JsonVisualizerProps = {
   collapsed?: boolean | number;

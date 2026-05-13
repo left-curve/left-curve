@@ -1,5 +1,6 @@
-import { type GrugActions, grugActions } from "@left-curve/sdk";
-import type { Client, Transport } from "@left-curve/sdk/types";
+import type { Client } from "../types/client.js";
+
+import { type GrugActions, grugActions } from "./grugActions.js";
 
 import {
   type AccountFactoryQueryActions,
@@ -19,9 +20,7 @@ export type PublicActions = Omit<GrugActions, "queryStatus" | "getAppConfig"> &
   DexQueryActions &
   PerpsQueryActions;
 
-export function publicActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): PublicActions {
+export function publicActions(client: Client): PublicActions {
   return {
     ...grugActions(client),
     ...appQueryActions(client),

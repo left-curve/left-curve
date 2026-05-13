@@ -2,7 +2,7 @@ import { useApp } from "@left-curve/foundation";
 import { useAccount, useConfig } from "@left-curve/store";
 import { View } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";
-import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
+import { deserializeJson, serializeJson } from "@left-curve/sdk/encoding";
 import { useCallback, useRef } from "react";
 
 import type React from "react";

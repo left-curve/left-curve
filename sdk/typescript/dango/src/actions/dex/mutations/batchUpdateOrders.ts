@@ -1,12 +1,12 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
+import { getAppConfig } from "../../../index.js";
+import { getAction } from "../../index.js";
 import { execute } from "../../app/mutations/execute.js";
 
-import type { Address, Coins, Json, Prettify, Transport } from "@left-curve/sdk/types";
+import type { Address, Coins, Json, Prettify } from "../../../types/index.js";
 import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 
 import type { AppConfig } from "../../../types/app.js";
-import type { DangoClient } from "../../../types/clients.js";
+import type { Client } from "../../../types/client.js";
 import type { GetDexExecuteMsg } from "../../../types/dex.js";
 import type { Signer } from "../../../types/signer.js";
 import type { TypedDataParameter } from "../../../types/typedData.js";
@@ -22,8 +22,8 @@ export type BatchUpdateOrdersParameters = Prettify<{
 
 export type BatchUpdateOrdersReturnType = BroadcastTxSyncReturnType;
 
-export async function batchUpdateOrders<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function batchUpdateOrders(
+  client: Client<Signer>,
   parameters: BatchUpdateOrdersParameters,
 ): BatchUpdateOrdersReturnType {
   const { creates = [], cancels, funds, sender } = parameters;

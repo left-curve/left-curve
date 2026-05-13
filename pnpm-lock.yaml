@@ -115,28 +115,6 @@ importers:
 
   sdk/typescript/dango:
     dependencies:
-      '@left-curve/sdk':
-        specifier: workspace:^
-        version: link:../grug
-      eventemitter3:
-        specifier: 'catalog:'
-        version: 5.0.1
-      graphql:
-        specifier: ^16.10.0
-        version: 16.10.0
-      graphql-ws:
-        specifier: '>=6.0.0'
-        version: 6.0.4(graphql@16.10.0)(ws@8.18.3)
-    devDependencies:
-      '@left-curve/config':
-        specifier: workspace:^
-        version: link:../config
-      vitest:
-        specifier: 'catalog:'
-        version: 2.1.1(@types/node@22.7.5)(jsdom@29.0.1(@noble/hashes@1.8.0))(less@1.7.5)(lightningcss@1.31.1)(terser@5.34.1)
-
-  sdk/typescript/grug:
-    dependencies:
       '@noble/curves':
         specifier: ^1.6.0
         version: 1.9.1
@@ -158,6 +136,12 @@ importers:
       eventemitter3:
         specifier: 'catalog:'
         version: 5.0.1
+      graphql:
+        specifier: ^16.10.0
+        version: 16.10.0
+      graphql-ws:
+        specifier: '>=6.0.0'
+        version: 6.0.4(graphql@16.10.0)(ws@8.18.3)
       superjson:
         specifier: ^2.2.1
         version: 2.2.2
@@ -177,12 +161,12 @@ importers:
       '@left-curve/applets-kit':
         specifier: workspace:^
         version: link:../kit
-      '@left-curve/dango':
-        specifier: workspace:^
-        version: link:../../../sdk/typescript/dango
       '@left-curve/foundation':
         specifier: workspace:^
         version: link:../../foundation
+      '@left-curve/sdk':
+        specifier: workspace:^
+        version: link:../../../sdk/typescript/dango
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
@@ -232,12 +216,12 @@ importers:
       '@headlessui/react':
         specifier: ^2.1.10
         version: 2.2.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      '@left-curve/dango':
-        specifier: workspace:^
-        version: link:../../../sdk/typescript/dango
       '@left-curve/foundation':
         specifier: workspace:^
         version: link:../../foundation
+      '@left-curve/sdk':
+        specifier: workspace:^
+        version: link:../../../sdk/typescript/dango
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
@@ -329,7 +313,7 @@ importers:
       '@inlang/paraglide-js':
         specifier: ^2.2.0
         version: 2.2.0
-      '@left-curve/dango':
+      '@left-curve/sdk':
         specifier: workspace:^
         version: link:../../sdk/typescript/dango
       '@left-curve/store':
@@ -396,12 +380,12 @@ importers:
       '@left-curve/config':
         specifier: workspace:*
         version: link:../../../sdk/typescript/config
-      '@left-curve/dango':
-        specifier: workspace:*
-        version: link:../../../sdk/typescript/dango
       '@left-curve/foundation':
         specifier: workspace:*
         version: link:../../foundation
+      '@left-curve/sdk':
+        specifier: workspace:^
+        version: link:../../../sdk/typescript/dango
       '@left-curve/store':
         specifier: workspace:*
         version: link:../../store
@@ -535,12 +519,12 @@ importers:
       '@left-curve/applets-kit':
         specifier: workspace:^
         version: link:../../applets/kit
-      '@left-curve/dango':
-        specifier: workspace:^
-        version: link:../../../sdk/typescript/dango
       '@left-curve/foundation':
         specifier: workspace:^
         version: link:../../foundation
+      '@left-curve/sdk':
+        specifier: workspace:^
+        version: link:../../../sdk/typescript/dango
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
@@ -681,7 +665,7 @@ importers:
 
   ui/store:
     dependencies:
-      '@left-curve/dango':
+      '@left-curve/sdk':
         specifier: workspace:^
         version: link:../../sdk/typescript/dango
       '@privy-io/js-sdk-core':
@@ -9498,14 +9482,17 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@7.0.3:
     resolution: {integrity: sha512-DPSke0pXhTZgoF/d+WSt2QaKMCFSfx7QegxEWT+JOuHF5aWrKEn0G+ztjuJg/gG8/ItK+rbPCD/yNv8yyih6Cg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:

@@ -168,7 +168,7 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.endpoint"]()}
             </p>
             <p className="break-all whitespace-normal">
-              {chain.urls.indexer.replace(/\/graphql$/, "")}
+              {chain.url.replace(/\/graphql$/, "")}
             </p>
           </div>
 

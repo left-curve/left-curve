@@ -14,7 +14,7 @@ import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { IndexedTransaction } from "@left-curve/dango/types";
+import type { IndexedTransaction } from "@left-curve/sdk/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 

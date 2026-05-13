@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/sdk/utils";
 import { usePublicClient } from "./usePublicClient.js";
 
-import type { VaultSnapshot } from "@left-curve/dango/types";
+import type { VaultSnapshot } from "@left-curve/sdk/types";
 
 export type VaultPerformancePoint = {
   date: string;

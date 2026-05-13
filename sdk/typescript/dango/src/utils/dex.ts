@@ -1,5 +1,5 @@
 import { Direction } from "../types/dex.js";
-import { Decimal } from "@left-curve/sdk/utils";
+import { Decimal } from "./index.js";
 
 import type { Trade } from "../types/dex.js";
 import type { RateSchedule } from "../types/perps.js";

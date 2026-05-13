@@ -14,9 +14,9 @@ import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { GenerateSW } from "workbox-webpack-plugin";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 
-import { devnet, local, testnet, mainnet } from "@left-curve/dango";
+import { devnet, local, testnet, mainnet } from "@left-curve/sdk";
 
-import type { Chain } from "@left-curve/dango/types";
+import type { Chain } from "@left-curve/sdk/types";
 import type { Rspack } from "@rsbuild/core";
 
 const isLocal = process.env.NODE_ENV === "development";
@@ -103,19 +103,19 @@ const urls = {
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
     questUrl: "https://quest-bot-devnet.dango.zone/check_username",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
     faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-testnet.dango.zone",
   },
   prod: {
     faucetUrl: "/faucet",
     questUrl: "/quest",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-mainnet.dango.zone",
   },
 }[environment]!;
@@ -189,7 +189,7 @@ export default defineConfig({
     port: PORT,
     proxy: {
       "/graphql": {
-        target: `${chain.urls.indexer}/graphql`,
+        target: `${chain.url}/graphql`,
         changeOrigin: true,
         pathRewrite: { "^/graphql": "" },
         ws: true,
@@ -205,7 +205,7 @@ export default defineConfig({
         pathRewrite: { "^/quest": "" },
       },
       "/up": {
-        target: `${chain.urls.indexer}/up`,
+        target: `${chain.url}/up`,
         changeOrigin: true,
         pathRewrite: { "^/up": "" },
       },

@@ -1,5 +1,5 @@
 /** Forked from https://github.com/wevm/wagmi/blob/main/packages/react/src/hooks/useSyncExternalStoreWithTracked.ts */
-import { assertDeepEqual } from "@left-curve/dango/utils";
+import { assertDeepEqual } from "@left-curve/sdk/utils";
 import { useRef } from "react";
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector.js";
 

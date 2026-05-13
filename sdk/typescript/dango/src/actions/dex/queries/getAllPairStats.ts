@@ -1,13 +1,11 @@
 import { queryIndexer } from "../../indexer/queryIndexer.js";
 
-import type { Client, Transport } from "@left-curve/sdk/types";
+import type { Client } from "../../../types/index.js";
 import type { PairStats } from "../../../types/dex.js";
 
 export type GetAllPairStatsReturnType = Promise<PairStats[]>;
 
-export async function getAllPairStats<transport extends Transport>(
-  client: Client<transport>,
-): GetAllPairStatsReturnType {
+export async function getAllPairStats(client: Client): GetAllPairStatsReturnType {
   const document = /* GraphQL */ `
     query AllPairStats {
       allPairStats {

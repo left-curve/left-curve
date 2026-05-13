@@ -1,7 +1,6 @@
-import { encodeBase64 } from "@left-curve/sdk/encoding";
+import { encodeBase64 } from "../../../encoding/index.js";
 
-import type { Transport } from "@left-curve/sdk/types";
-import type { DangoClient } from "../../../types/clients.js";
+import type { Client } from "../../../types/client.js";
 import type { StandardCredential } from "../../../types/credential.js";
 import type { KeyHash } from "../../../types/key.js";
 import type { SigningSessionInfo } from "../../../types/session.js";
@@ -18,8 +17,8 @@ export type CreateSessionReturnType = Promise<{
   sessionInfo: SigningSessionInfo;
 }>;
 
-export async function createSession<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function createSession(
+  client: Client<Signer>,
   parameters: CreateSessionParameters,
 ): CreateSessionReturnType {
   const { expireAt, pubKey } = parameters;

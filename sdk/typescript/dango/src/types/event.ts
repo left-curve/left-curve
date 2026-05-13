@@ -1,4 +1,4 @@
-import type { Address, Coins, Denom, Hex, Json, JsonValue, UID } from "@left-curve/sdk/types";
+import type { Address, Coins, Denom, Hex, Json, JsonValue, UID } from "./index.js";
 import type { Directions, OrderId, TimeInForceOptions } from "./dex.js";
 
 export type EventFilter = {

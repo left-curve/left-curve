@@ -8,7 +8,7 @@ import {
 import { formatInTimeZone } from "date-fns-tz";
 
 import type { DateArg, FormatOptions } from "date-fns";
-import type { Prettify } from "@left-curve/dango/types";
+import type { Prettify } from "@left-curve/sdk/types";
 
 /**
  *

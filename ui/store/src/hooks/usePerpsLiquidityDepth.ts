@@ -3,12 +3,9 @@ import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { createBlockStore } from "./createBlockStore.js";
 
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/sdk/encoding";
 
-import type { PerpsLiquidityDepthResponse, QueryRequest } from "@left-curve/dango/types";
+import type { PerpsLiquidityDepthResponse, QueryRequest } from "@left-curve/sdk/types";
 
 type UsePerpsLiquidityDepthParameters = {
   pairId: string;

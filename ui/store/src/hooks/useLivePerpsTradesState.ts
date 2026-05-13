@@ -4,7 +4,7 @@ import { useConfig } from "./useConfig.js";
 import { create } from "zustand";
 import { TradePairStore } from "../stores/tradePairStore.js";
 
-import type { PerpsTrade } from "@left-curve/dango/types";
+import type { PerpsTrade } from "@left-curve/sdk/types";
 
 export type UseLivePerpsTradesStoreState = {
   trades: PerpsTrade[];

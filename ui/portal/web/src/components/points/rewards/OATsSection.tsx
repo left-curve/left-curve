@@ -1,7 +1,7 @@
 import { Button, toast, useMediaQuery } from "@left-curve/applets-kit";
 import { Modals, useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { withResolvers } from "@left-curve/dango/utils";
+import { withResolvers } from "@left-curve/sdk/utils";
 import {
   useAccount,
   useConnectors,

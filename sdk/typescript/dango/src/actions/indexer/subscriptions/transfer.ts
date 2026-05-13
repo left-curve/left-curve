@@ -1,13 +1,6 @@
 import { createSubscription } from "../../../utils/createSubscription.js";
 
-import type {
-  Chain,
-  Client,
-  IndexedTransferEvent,
-  Signer,
-  SubscriptionCallbacks,
-  Transport,
-} from "../../../types/index.js";
+import type { Client, IndexedTransferEvent, SubscriptionCallbacks } from "../../../types/index.js";
 
 export type TransferSubscriptionParameters = SubscriptionCallbacks<{
   transfers: IndexedTransferEvent[];
@@ -25,11 +18,8 @@ export type TransferSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription, including the username and callbacks.
  * @returns A function to unsubscribe from the transfer events.
  */
-export function transferSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function transferSubscription(
+  client: Client,
   parameters: TransferSubscriptionParameters,
 ): TransferSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");

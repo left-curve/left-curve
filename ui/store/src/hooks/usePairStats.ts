@@ -4,9 +4,9 @@ import { create } from "zustand";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import { Decimal, formatUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits } from "@left-curve/sdk/utils";
 
-import type { PairStats } from "@left-curve/dango/types";
+import type { PairStats } from "@left-curve/sdk/types";
 import type { AnyCoin } from "../types/coin.js";
 
 export type NormalizedPairStats = {

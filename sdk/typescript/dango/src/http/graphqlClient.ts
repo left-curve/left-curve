@@ -1,4 +1,4 @@
-import { HttpRequestError, TimeoutError, withTimeout } from "@left-curve/sdk/utils";
+import { HttpRequestError, TimeoutError, withTimeout } from "../utils/index.js";
 
 import type { GraphqlClient, GraphqlClientOptions } from "../types/graphql.js";
 

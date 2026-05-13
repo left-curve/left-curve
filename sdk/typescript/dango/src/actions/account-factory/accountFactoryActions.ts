@@ -1,4 +1,4 @@
-import type { Client, Transport, TxParameters } from "@left-curve/sdk/types";
+import type { TxParameters } from "../../types/index.js";
 
 import {
   type RegisterUserParameters,
@@ -52,7 +52,7 @@ import {
   createSession,
 } from "./mutations/createSession.js";
 
-import type { DangoClient } from "../../types/clients.js";
+import type { Client } from "../../types/client.js";
 import type { Signer } from "../../types/signer.js";
 import {
   forgotUsername,
@@ -101,9 +101,7 @@ export type AccountFactoryMutationActions = {
   updateUsername: (args: UpdateUsernameParameters) => UpdateUsernameReturnType;
 };
 
-export function accountFactoryQueryActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): AccountFactoryQueryActions {
+export function accountFactoryQueryActions(client: Client): AccountFactoryQueryActions {
   return {
     forgotUsername: (args) => forgotUsername(client, args),
     getAccountInfo: (args) => getAccountInfo(client, args),
@@ -117,8 +115,8 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
   };
 }
 
-export function accountFactoryMutationActions<transport extends Transport = Transport>(
-  client: DangoClient<transport, Signer>,
+export function accountFactoryMutationActions(
+  client: Client<Signer>,
 ): AccountFactoryMutationActions {
   return {
     registerUser: (...args) => registerUser(client, ...args),

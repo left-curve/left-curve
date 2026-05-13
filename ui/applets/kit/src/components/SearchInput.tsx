@@ -5,7 +5,7 @@ import { useClickAway } from "../hooks/useClickAway.js";
 import { useControlledState } from "@left-curve/foundation";
 
 import { twMerge } from "@left-curve/foundation";
-import { wait } from "@left-curve/dango/utils";
+import { wait } from "@left-curve/sdk/utils";
 
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";

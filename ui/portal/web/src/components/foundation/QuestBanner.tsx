@@ -1,6 +1,6 @@
 import { Button, twMerge, useApp, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
-import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, formatUnits } from "@left-curve/sdk/utils";
 import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";

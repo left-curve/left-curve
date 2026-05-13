@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { withPagination } from "../handlers/pagination.js";
 
-import type { GraphqlPagination, GraphqlQueryResult } from "@left-curve/dango/types";
+import type { GraphqlPagination, GraphqlQueryResult } from "@left-curve/sdk/types";
 import type { DefinedInitialDataInfiniteOptions, InfiniteData } from "@tanstack/react-query";
 
 export type UseInfiniteGraphqlQueryParameters<T> = {

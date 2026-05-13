@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client, Prettify } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { GetDexQueryMsg, OrderId, OrdersByUserResponse } from "../../../types/dex.js";
 
@@ -22,11 +21,8 @@ export type OrdersByUserReturnType = Promise<Record<OrderId, OrdersByUserRespons
  * @param parameters.height The height at which to query the pairs
  * @returns The orders by user response.
  */
-export async function ordersByUser<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function ordersByUser(
+  client: Client,
   parameters: OrdersByUserParameters,
 ): OrdersByUserReturnType {
   const { height = 0, ...queryMsg } = parameters;

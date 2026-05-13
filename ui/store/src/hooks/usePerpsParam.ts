@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "./usePublicClient.js";
 
-import type { PerpsParam } from "@left-curve/dango/types";
+import type { PerpsParam } from "@left-curve/sdk/types";
 
 export type UsePerpsParamParameters = {
   enabled?: boolean;

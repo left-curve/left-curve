@@ -1,6 +1,6 @@
-import { publicActions } from "@left-curve/dango";
+import { publicActions } from "@left-curve/sdk";
 
-import type { PublicClient } from "@left-curve/dango/types";
+import type { PublicClient } from "@left-curve/sdk/types";
 
 import type { Config } from "../types/index.js";
 

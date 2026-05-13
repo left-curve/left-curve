@@ -9,7 +9,7 @@ import type {
   PerpsOrdersByUserResponse,
   PerpsUserStateExtended,
   PerpsVaultState,
-} from "@left-curve/dango/types";
+} from "@left-curve/sdk/types";
 
 export type ExplorerPerpsData = {
   userState: PerpsUserStateExtended | null;

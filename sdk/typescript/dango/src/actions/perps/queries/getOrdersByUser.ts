@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client, Prettify } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { GetPerpsQueryMsg, PerpsOrdersByUserResponse } from "../../../types/perps.js";
 
@@ -14,11 +13,8 @@ export type GetPerpsOrdersByUserParameters = Prettify<
 
 export type GetPerpsOrdersByUserReturnType = Promise<PerpsOrdersByUserResponse>;
 
-export async function getPerpsOrdersByUser<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getPerpsOrdersByUser(
+  client: Client,
   parameters: GetPerpsOrdersByUserParameters,
 ): GetPerpsOrdersByUserReturnType {
   const { height = 0, ...queryMsg } = parameters;

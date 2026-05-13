@@ -1,4 +1,5 @@
-import type { Address, Base64, DateTime, Hex } from "@left-curve/sdk/types";
+import type { Address } from "./address.js";
+import type { Base64, DateTime, Hex } from "./encoding.js";
 
 export type KeyHash = Hex;
 

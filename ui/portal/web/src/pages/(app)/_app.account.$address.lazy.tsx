@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { AccountExplorer } from "~/components/explorer/AccountExplorer";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/sdk/types";
 
 import { MobileTitle } from "~/components/foundation/MobileTitle";
 import { m } from "@left-curve/foundation/paraglide/messages.js";

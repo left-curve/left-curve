@@ -1,6 +1,7 @@
 import config from "@left-curve/config/tsup/common.json" with { type: "json" };
 
 import { type Options, defineConfig } from "tsup";
+
 /**
  * @see https://tsup.egoist.dev/#usage
  */

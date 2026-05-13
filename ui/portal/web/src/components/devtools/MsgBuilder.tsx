@@ -16,8 +16,8 @@ import {
 } from "@left-curve/store";
 import { Editor } from "@monaco-editor/react";
 import { useMutation } from "@tanstack/react-query";
-import { tryCatch } from "@left-curve/dango/utils";
-import { upgrade, configure } from "@left-curve/dango/actions";
+import { tryCatch } from "@left-curve/sdk/utils";
+import { upgrade, configure } from "@left-curve/sdk/actions";
 
 import { useState, type PropsWithChildren } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";

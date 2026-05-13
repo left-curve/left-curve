@@ -1,8 +1,8 @@
-import { Secp256k1, sha256 } from "@left-curve/sdk/crypto";
-import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
+import { Secp256k1, sha256 } from "../crypto/index.js";
+import { encodeBase64, serialize } from "../encoding/index.js";
 import { createKeyHash } from "../account/key.js";
 
-import type { KeyPair } from "@left-curve/sdk/crypto";
+import type { KeyPair } from "../crypto/index.js";
 import type { ArbitraryTypedData, KeyHash, SignDoc, Signer } from "../types/index.js";
 
 export class PrivateKeySigner implements Signer {

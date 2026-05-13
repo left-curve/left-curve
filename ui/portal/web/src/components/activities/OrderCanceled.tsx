@@ -5,9 +5,9 @@ import { forwardRef, useImperativeHandle } from "react";
 
 import { OrderActivity } from "./OrderActivity";
 import { PairAssets, twMerge } from "@left-curve/applets-kit";
-import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
+import { Direction, OrderType, TimeInForceOption } from "@left-curve/sdk/types";
 
-import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/sdk/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { ActivityRef } from "./Activity";

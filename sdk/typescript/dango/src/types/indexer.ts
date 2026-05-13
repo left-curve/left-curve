@@ -1,4 +1,4 @@
-import type { Address, Hex, Json, JsonString, UID } from "@left-curve/sdk/types";
+import type { Address, Hex, Json, JsonString, UID } from "./index.js";
 
 export type IndexedBlock = {
   blockHeight: number;

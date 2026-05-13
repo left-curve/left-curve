@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { usePublicClient } from "./usePublicClient.js";
 import { useQuery } from "@tanstack/react-query";
 
-import type { TransportMode } from "@left-curve/dango/utils";
+import type { TransportMode } from "@left-curve/sdk/utils";
 
 type ServiceStatus = "success" | "error" | "warning";
 

@@ -1,14 +1,6 @@
 import { createSubscription } from "../../../utils/createSubscription.js";
 
-import type {
-  Chain,
-  Client,
-  Denom,
-  Signer,
-  SubscriptionCallbacks,
-  Trade,
-  Transport,
-} from "../../../types/index.js";
+import type { Client, Denom, SubscriptionCallbacks, Trade } from "../../../types/index.js";
 
 export type TradesSubscriptionParameters = SubscriptionCallbacks<{
   trades: Trade;
@@ -28,11 +20,8 @@ export type TradesSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the trade events.
  */
-export function tradesSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function tradesSubscription(
+  client: Client,
   parameters: TradesSubscriptionParameters,
 ): TradesSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");

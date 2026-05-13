@@ -1,4 +1,4 @@
-import type { Base64 } from "@left-curve/sdk/types";
+import type { Base64 } from "./index.js";
 import type { StandardCredential } from "./credential.js";
 import type { KeyHash } from "./key.js";
 

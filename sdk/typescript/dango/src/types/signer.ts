@@ -1,4 +1,4 @@
-import type { Signer as GrugSigner, JsonValue } from "@left-curve/sdk/types";
+import type { JsonValue } from "./encoding.js";
 import type { KeyHash } from "./key.js";
 import type {
   ArbitraryDoc,
@@ -7,10 +7,10 @@ import type {
   SignatureOutcome,
 } from "./signature.js";
 
-export type Signer = GrugSigner<{
+export type Signer = {
   getKeyHash(): Promise<KeyHash>;
   signTx(signDoc: SignDoc): Promise<SignatureOutcome>;
   signArbitrary<T extends JsonValue = JsonValue>(
     payload: ArbitraryDoc<T>,
   ): Promise<ArbitrarySignatureOutcome>;
-}>;
+};

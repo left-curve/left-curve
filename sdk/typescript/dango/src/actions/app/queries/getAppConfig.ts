@@ -1,7 +1,7 @@
-import type { Client, Transport } from "@left-curve/sdk/types";
+import type { Client } from "../../../types/index.js";
 
-import { getAction, queryApp } from "@left-curve/sdk/actions";
-import type { AppConfig, Chain, Signer } from "../../../types/index.js";
+import { getAction, queryApp } from "../../index.js";
+import type { AppConfig } from "../../../types/index.js";
 
 export type GetAppConfigParameters = {
   height?: number;
@@ -17,11 +17,8 @@ let config: AppConfig | undefined;
  * @param parameters.height The height at which to get the application configuration.
  * @returns The application configuration.
  */
-export async function getAppConfig<
-  chain extends Chain | undefined = Chain | undefined,
-  signer extends Signer | undefined = Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getAppConfig(
+  client: Client,
   parameters: GetAppConfigParameters = {},
 ): GetAppConfigReturnType {
   const { height = 0 } = parameters;

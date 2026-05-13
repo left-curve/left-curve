@@ -1,4 +1,7 @@
-import type { Client, Transport } from "@left-curve/sdk/types";
+import type { Client } from "../../types/client.js";
+import type { Signer } from "../../types/signer.js";
+import type { AppConfig } from "../../types/app.js";
+
 import {
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
@@ -32,22 +35,11 @@ import {
   transfer,
 } from "./mutations/transfer.js";
 
-import type {
-  QueryAppParameters,
-  QueryAppReturnType,
-  QueryTxParameters,
-  QueryTxReturnType,
-  SimulateParameters,
-  SimulateReturnType,
-} from "@left-curve/sdk/actions";
-import type { AppConfig } from "../../types/app.js";
-import type { DangoClient } from "../../types/clients.js";
-import type { Signer } from "../../types/signer.js";
 import { getAppConfig } from "./queries/getAppConfig.js";
-import { queryApp } from "./queries/queryApp.js";
+import { type QueryAppParameters, type QueryAppReturnType, queryApp } from "./queries/queryApp.js";
 import { type QueryStatusReturnType, queryStatus } from "./queries/queryStatus.js";
-import { queryTx } from "./queries/queryTx.js";
-import { simulate } from "./queries/simulate.js";
+import { type QueryTxParameters, type QueryTxReturnType, queryTx } from "./queries/queryTx.js";
+import { type SimulateParameters, type SimulateReturnType, simulate } from "./queries/simulate.js";
 
 export type AppQueryActions = {
   getAppConfig: () => Promise<AppConfig>;
@@ -70,9 +62,7 @@ export type AppMutationActions = {
   transfer(args: TransferParameters): TransferReturnType;
 };
 
-export function appQueryActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): AppQueryActions {
+export function appQueryActions(client: Client): AppQueryActions {
   return {
     getAppConfig: () => getAppConfig(client),
     queryTx: (args) => queryTx(client, args),
@@ -82,9 +72,7 @@ export function appQueryActions<transport extends Transport = Transport>(
   };
 }
 
-export function appMutationActions<transport extends Transport = Transport>(
-  client: DangoClient<transport, Signer>,
-): AppMutationActions {
+export function appMutationActions(client: Client<Signer>): AppMutationActions {
   return {
     broadcastTxSync: (args) => broadcastTxSync(client, args),
     execute: (args) => execute(client, args),

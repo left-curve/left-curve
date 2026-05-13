@@ -1,4 +1,4 @@
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "./index.js";
 
 export type Addr32 = `0x${string}`;
 export type MailBoxConfig = {

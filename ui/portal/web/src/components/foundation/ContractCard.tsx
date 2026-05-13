@@ -1,6 +1,6 @@
 import { AddressVisualizer, Badge, TextCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/sdk/types";
 import type React from "react";
 
 type ContractCardProps = {

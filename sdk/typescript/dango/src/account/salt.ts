@@ -1,4 +1,4 @@
-import { decodeBase64, decodeHex, encodeEndian32 } from "@left-curve/sdk/encoding";
+import { decodeBase64, decodeHex, encodeEndian32 } from "../encoding/index.js";
 import type { Key, KeyHash } from "../types/key.js";
 import { KeyTag } from "../types/key.js";
 import { isValidAddress } from "./address.js";

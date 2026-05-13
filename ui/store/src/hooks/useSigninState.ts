@@ -5,7 +5,7 @@ import { useConnectors } from "./useConnectors.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useChainId } from "./useChainId.js";
 
-import type { SigningSession, User } from "@left-curve/dango/types";
+import type { SigningSession, User } from "@left-curve/sdk/types";
 
 type ScreenState = "options" | "usernames" | "email" | "wallets";
 export type UseSigninStateParameters = {

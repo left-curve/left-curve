@@ -1,6 +1,6 @@
 import { queryIndexer } from "../../indexer/queryIndexer.js";
 
-import type { Address, Client, Transport } from "@left-curve/sdk/types";
+import type { Address, Client } from "../../../types/index.js";
 import type { Trade } from "../../../types/dex.js";
 import type { GraphqlQueryResult } from "../../../types/graphql.js";
 
@@ -12,8 +12,8 @@ export type QueryTradesParameters = {
 
 export type QueryTradesReturnType = Promise<GraphqlQueryResult<Trade>>;
 
-export async function queryTrades<transport extends Transport>(
-  client: Client<transport>,
+export async function queryTrades(
+  client: Client,
   parameters: QueryTradesParameters,
 ): QueryTradesReturnType {
   const document = /* GraphQL */ `

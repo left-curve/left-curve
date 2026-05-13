@@ -13,11 +13,11 @@ import {
 } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/sdk/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { PairUpdate } from "@left-curve/dango/types";
+import type { PairUpdate } from "@left-curve/sdk/types";
 import { useEffect, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 

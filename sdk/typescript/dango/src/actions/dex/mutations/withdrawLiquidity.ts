@@ -1,12 +1,12 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
+import { getAppConfig } from "../../../index.js";
+import { getAction } from "../../index.js";
 import { execute } from "../../app/mutations/execute.js";
 
-import type { Address, Coins, Denom, Transport } from "@left-curve/sdk/types";
+import type { Address, Coins, Denom } from "../../../types/index.js";
 import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 import type {
   AppConfig,
-  DangoClient,
+  Client,
   DexExecuteMsg,
   Signer,
   TypedDataParameter,
@@ -21,8 +21,8 @@ export type WithdrawLiquidityParameters = {
 
 export type WithdrawLiquidityReturnType = BroadcastTxSyncReturnType;
 
-export async function withdrawLiquidity<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function withdrawLiquidity(
+  client: Client<Signer>,
   parameters: WithdrawLiquidityParameters,
 ): WithdrawLiquidityReturnType {
   const { baseDenom, quoteDenom, funds, sender } = parameters;

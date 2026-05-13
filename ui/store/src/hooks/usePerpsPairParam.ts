@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "./usePublicClient.js";
 
-import type { PerpsPairParam } from "@left-curve/dango/types";
+import type { PerpsPairParam } from "@left-curve/sdk/types";
 
 export type UsePerpsPairParamParameters = {
   pairId: string;

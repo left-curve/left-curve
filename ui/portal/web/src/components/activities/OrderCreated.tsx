@@ -5,8 +5,8 @@ import { forwardRef, useImperativeHandle } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Modals, PairAssets, twMerge, useApp } from "@left-curve/applets-kit";
-import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
-import { calculatePrice, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { Direction, OrderType, TimeInForceOption } from "@left-curve/sdk/types";
+import { calculatePrice, formatNumber, formatUnits } from "@left-curve/sdk/utils";
 
 import type { ActivityRef } from "./Activity";
 import type { ActivityRecord } from "@left-curve/store";

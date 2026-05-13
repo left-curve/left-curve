@@ -11,7 +11,7 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/sdk/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   perpsTradeSettingsStore,
@@ -25,7 +25,7 @@ import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useEffect, useMemo, useState } from "react";
 
-import type { SubmitConditionalOrderInput } from "@left-curve/dango/actions";
+import type { SubmitConditionalOrderInput } from "@left-curve/sdk/actions";
 
 import { TPSLPositionInfo } from "./TPSLPositionInfo";
 import { useTPSLPriceSync } from "../dex/hooks/useTPSLPriceSync";

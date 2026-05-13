@@ -1,6 +1,6 @@
-import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
+import { camelToSnake, recursiveTransform } from "./index.js";
 
-import type { Coins, Json, Message } from "@left-curve/sdk/types";
+import type { Coins, Json, Message } from "../types/index.js";
 
 import type {
   ArbitraryTypedData,

@@ -13,7 +13,7 @@ import {
 import { forwardRef } from "react";
 import { twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { formatOrderId, formatUnits } from "@left-curve/dango/utils";
+import { formatOrderId, formatUnits } from "@left-curve/sdk/utils";
 
 import type { useNavigate } from "@tanstack/react-router";
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";

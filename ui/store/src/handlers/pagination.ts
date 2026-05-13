@@ -1,4 +1,4 @@
-import type { GraphqlQueryResult } from "@left-curve/dango/types";
+import type { GraphqlQueryResult } from "@left-curve/sdk/types";
 
 type WithPaginationParameters = {
   limit?: number;

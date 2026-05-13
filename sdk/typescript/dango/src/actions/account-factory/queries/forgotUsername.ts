@@ -1,7 +1,7 @@
-import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import { getAppConfig, queryWasmSmart } from "../../../index.js";
 
-import { getAction } from "@left-curve/sdk/actions";
-import type { Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
+import { getAction } from "../../index.js";
+import type { Client } from "../../../types/index.js";
 import type { AppConfig, KeyHash, User } from "../../../types/index.js";
 
 export type ForgotUsernameParameters = {
@@ -21,11 +21,8 @@ export type ForgotUsernameReturnType = Promise<User[]>;
  * @param parameters.height The height at which query is made.
  * @returns The user(s)
  */
-export async function forgotUsername<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function forgotUsername(
+  client: Client,
   parameters: ForgotUsernameParameters,
 ): ForgotUsernameReturnType {
   const { keyHash, limit, startAfter, height = 0 } = parameters;

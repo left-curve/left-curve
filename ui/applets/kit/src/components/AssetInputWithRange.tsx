@@ -1,7 +1,7 @@
 import { useAccount, usePrices } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/sdk/utils";
 import { numberMask } from "@left-curve/foundation";
 
 import { FormattedNumber } from "./FormattedNumber";
@@ -13,7 +13,7 @@ import { Skeleton } from "./Skeleton";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { useInputs } from "@left-curve/foundation";
-import type { Coins } from "@left-curve/dango/types";
+import type { Coins } from "@left-curve/sdk/types";
 
 type AssetInputWithRangeProps = {
   name: string;

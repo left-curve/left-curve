@@ -1,5 +1,5 @@
-import type { Address } from "@left-curve/dango/types";
-import type { UID } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/sdk/types";
+import type { UID } from "@left-curve/sdk/types";
 
 import type { Config } from "../types/store.js";
 

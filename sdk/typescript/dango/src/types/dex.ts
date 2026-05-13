@@ -6,7 +6,7 @@ import type {
   KeyOfUnion,
   Option,
   Timestamp,
-} from "@left-curve/sdk/types";
+} from "./index.js";
 import type { Username } from "./account.js";
 
 export type SwapRoute = PairId[];

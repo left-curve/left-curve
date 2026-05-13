@@ -1,13 +1,8 @@
-import type { Address, Funds, Json, Transport } from "@left-curve/sdk/types";
+import type { Address, Funds, Json } from "../../../types/index.js";
 import { getCoinsTypedData } from "../../../utils/typedData.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
-import type {
-  DangoClient,
-  Signer,
-  TxMessageType,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { Client, Signer, TxMessageType, TypedDataParameter } from "../../../types/index.js";
 
 export type ExecuteParameters = {
   sender: Address;
@@ -24,8 +19,8 @@ export type ExecuteMsg = {
 
 export type ExecuteReturnType = SignAndBroadcastTxReturnType;
 
-export async function execute<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function execute(
+  client: Client<Signer>,
   parameters: ExecuteParameters,
 ): ExecuteReturnType {
   const { sender, gasLimit, execute } = parameters;

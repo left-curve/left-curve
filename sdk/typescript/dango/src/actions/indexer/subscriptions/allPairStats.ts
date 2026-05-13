@@ -1,14 +1,7 @@
 import { createSubscription } from "../../../utils/createSubscription.js";
 import { getAllPairStats } from "../../dex/queries/getAllPairStats.js";
 
-import type {
-  Chain,
-  Client,
-  PairStats,
-  Signer,
-  SubscriptionCallbacks,
-  Transport,
-} from "../../../types/index.js";
+import type { Client, PairStats, SubscriptionCallbacks } from "../../../types/index.js";
 
 export type AllPairStatsSubscriptionParameters = SubscriptionCallbacks<{
   allPairStats: PairStats[];
@@ -26,18 +19,14 @@ export type AllPairStatsSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the all pair stats events.
  */
-export function allPairStatsSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function allPairStatsSubscription(
+  client: Client,
   parameters: AllPairStatsSubscriptionParameters,
 ): AllPairStatsSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const { httpInterval = 5_000, ...callbacks } = parameters;
   const { subscribe } = client;
-  const { polling, batch } = client.transport;
 
   const query = /* GraphQL */ `
     subscription AllPairStatsSubscription {
@@ -64,15 +53,13 @@ export function allPairStatsSubscription<
           },
         ),
       httpQuery: async () => {
-        const allPairStats = await getAllPairStats(client as Client<Transport>);
+        const allPairStats = await getAllPairStats(client as Client);
         return { allPairStats };
       },
       httpInterval,
       emitter: subscribe.emitter!,
       getStatus: subscribe.getClientStatus!,
       onError: callbacks.error,
-      polling,
-      batch,
     },
     (data) => callbacks.next(data),
   );

@@ -3,12 +3,9 @@ import { createSubscription } from "../../../utils/createSubscription.js";
 import type {
   Candle,
   CandleIntervals,
-  Chain,
   Client,
   Denom,
-  Signer,
   SubscriptionCallbacks,
-  Transport,
 } from "../../../types/index.js";
 
 export type CandlesSubscriptionParameters = SubscriptionCallbacks<{
@@ -28,11 +25,8 @@ export type CandlesSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the candle events.
  */
-export function candlesSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function candlesSubscription(
+  client: Client,
   parameters: CandlesSubscriptionParameters,
 ): CandlesSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");

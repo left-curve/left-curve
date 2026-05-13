@@ -1,4 +1,4 @@
-import type { Address } from "@left-curve/sdk/types";
+import type { Address } from "./index.js";
 import type { Key, KeyHash } from "./key.js";
 
 export type User = {

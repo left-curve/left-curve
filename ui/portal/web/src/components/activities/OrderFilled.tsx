@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { forwardRef, useImperativeHandle } from "react";
 import { useConfig, usePrices } from "@left-curve/store";
 
-import { Direction, TimeInForceOption } from "@left-curve/dango/types";
+import { Direction, TimeInForceOption } from "@left-curve/sdk/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { twMerge } from "@left-curve/foundation";
 import {
@@ -12,7 +12,7 @@ import {
   Decimal,
   formatNumber,
   formatUnits,
-} from "@left-curve/dango/utils";
+} from "@left-curve/sdk/utils";
 import { FormattedNumber, PairAssets } from "@left-curve/applets-kit";
 
 import { OrderActivity } from "./OrderActivity";

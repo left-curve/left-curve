@@ -1,12 +1,12 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
+import { getAppConfig } from "../../../index.js";
+import { getAction } from "../../index.js";
 import { execute } from "../../app/mutations/execute.js";
 
-import type { Address, Coin, Transport } from "@left-curve/sdk/types";
+import type { Address, Coin } from "../../../types/index.js";
 import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 import type {
   AppConfig,
-  DangoClient,
+  Client,
   DexExecuteMsg,
   Signer,
   SwapRoute,
@@ -22,8 +22,8 @@ export type SwapExactAmountInParameters = {
 
 export type SwapExactAmountInReturnType = BroadcastTxSyncReturnType;
 
-export async function swapExactAmountIn<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function swapExactAmountIn(
+  client: Client<Signer>,
   parameters: SwapExactAmountInParameters,
 ): SwapExactAmountInReturnType {
   const { route, minimumOutput, sender, input } = parameters;

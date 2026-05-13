@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client, Prettify } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { PerpsQueryMsg, VaultSnapshot } from "../../../types/perps.js";
 
@@ -14,11 +13,8 @@ export type GetVaultSnapshotsParameters = Prettify<{
 
 export type GetVaultSnapshotsReturnType = Promise<Record<string, VaultSnapshot>>;
 
-export async function getVaultSnapshots<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getVaultSnapshots(
+  client: Client,
   parameters?: GetVaultSnapshotsParameters,
 ): GetVaultSnapshotsReturnType {
   const { min, max, height = 0 } = parameters ?? {};

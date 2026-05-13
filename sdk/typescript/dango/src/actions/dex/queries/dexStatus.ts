@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { DexQueryMsg } from "../../../types/dex.js";
 
@@ -18,8 +17,8 @@ export type DexStatusReturnType = Promise<boolean>;
  * @param parameters.height The height at which to query the dex status.
  * @returns The DEX status.
  */
-export async function dexStatus<chain extends Chain | undefined, signer extends Signer | undefined>(
-  client: Client<Transport, chain, signer>,
+export async function dexStatus(
+  client: Client,
   parameters: DexStatusParameters = {},
 ): DexStatusReturnType {
   const { height = 0 } = parameters;

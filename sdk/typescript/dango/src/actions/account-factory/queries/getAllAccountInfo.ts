@@ -1,6 +1,6 @@
-import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
-import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
+import { getAppConfig, queryWasmSmart } from "../../../index.js";
+import { getAction } from "../../index.js";
+import type { Address, Client } from "../../../types/index.js";
 import type { AccountInfo, AppConfig } from "../../../types/index.js";
 
 export type GetAllAccountInfoParameters = {
@@ -19,11 +19,8 @@ export type GetAllAccountInfoReturnType = Promise<Record<Address, AccountInfo>>;
  * @param parameters.height The height at which to get all account info.
  * @returns A record of address and account info.
  */
-export async function getAllAccountInfo<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getAllAccountInfo(
+  client: Client,
   parameters: GetAllAccountInfoParameters,
 ): GetAllAccountInfoReturnType {
   const { startAfter, limit, height = 0 } = parameters;

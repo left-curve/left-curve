@@ -1,13 +1,6 @@
 import { createSubscription } from "../../../utils/createSubscription.js";
 
-import type {
-  Chain,
-  Client,
-  IndexedBlock,
-  Signer,
-  SubscriptionCallbacks,
-  Transport,
-} from "../../../types/index.js";
+import type { Client, IndexedBlock, SubscriptionCallbacks } from "../../../types/index.js";
 
 export type BlockSubscriptionParameters = SubscriptionCallbacks<{
   block: Omit<IndexedBlock, "transactions">;
@@ -22,11 +15,8 @@ export type BlockSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the block events.
  */
-export function blockSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function blockSubscription(
+  client: Client,
   parameters: BlockSubscriptionParameters,
 ): BlockSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");

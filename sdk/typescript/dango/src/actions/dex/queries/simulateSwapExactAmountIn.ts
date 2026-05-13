@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Coin, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client, Coin } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { DexQueryMsg, SwapRoute } from "../../../types/dex.js";
 
@@ -22,11 +21,8 @@ export type SimulateSwapExactAmountInReturnType = Promise<Coin>;
  * @param parameters.height The height at which to query the prices.
  * @returns The prices.
  */
-export async function simulateSwapExactAmountIn<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function simulateSwapExactAmountIn(
+  client: Client,
   parameters: SimulateSwapExactAmountInParameters,
 ): SimulateSwapExactAmountInReturnType {
   const { input, route, height = 0 } = parameters;

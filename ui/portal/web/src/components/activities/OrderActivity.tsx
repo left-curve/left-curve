@@ -1,4 +1,4 @@
-import { OrderType, type OrderTypes } from "@left-curve/dango/types";
+import { OrderType, type OrderTypes } from "@left-curve/sdk/types";
 
 import { IconLimitOrder, IconMarketOrder, twMerge } from "@left-curve/applets-kit";
 

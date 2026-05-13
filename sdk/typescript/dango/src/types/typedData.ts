@@ -1,4 +1,4 @@
-import type { Address, Json, JsonValue, Message } from "@left-curve/sdk/types";
+import type { Address, Json, JsonValue, Message } from "./index.js";
 
 // biome-ignore format: no formatting
 type MBytes =

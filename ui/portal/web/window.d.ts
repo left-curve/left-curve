@@ -1,4 +1,4 @@
-import type { Chain } from "@left-curve/dango/types";
+import type { Chain } from "@left-curve/sdk/types";
 
 declare global {
   interface Window {

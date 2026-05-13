@@ -15,10 +15,10 @@
   "module": "./exports.ts",
   "dependencies": {
     "@left-curve/applets-kit": "workspace:^",
-    "@left-curve/dango": "workspace:^",
     "@left-curve/foundation": "workspace:^",
     "@left-curve/store": "workspace:^",
-    "use-sync-external-store": "^1.2.2"
+    "use-sync-external-store": "^1.2.2",
+    "@left-curve/sdk": "workspace:^"
   },
   "devDependencies": {
     "@rsbuild/plugin-svgr": "^1.2.2",

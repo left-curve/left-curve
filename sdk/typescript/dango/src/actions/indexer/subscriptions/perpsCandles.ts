@@ -2,12 +2,9 @@ import { createSubscription } from "../../../utils/createSubscription.js";
 
 import type {
   CandleIntervals,
-  Chain,
   Client,
   PerpsCandle,
-  Signer,
   SubscriptionCallbacks,
-  Transport,
 } from "../../../types/index.js";
 
 export type PerpsCandlesSubscriptionParameters = SubscriptionCallbacks<{
@@ -26,11 +23,8 @@ export type PerpsCandlesSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the perps candle events.
  */
-export function perpsCandlesSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function perpsCandlesSubscription(
+  client: Client,
   parameters: PerpsCandlesSubscriptionParameters,
 ): PerpsCandlesSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");

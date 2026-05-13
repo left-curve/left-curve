@@ -1,27 +1,25 @@
-import type {
-  Base64,
-  SignDoc as GrugSignDoc,
-  SignatureOutcome as GrugSignatureOutcome,
-  JsonValue,
-} from "@left-curve/sdk/types";
+import type { Base64 } from "./encoding.js";
+import type { JsonValue } from "./encoding.js";
 import type { Credential } from "./credential.js";
-
 import type { ArbitraryTypedData, TxMessageType, TypedData } from "./typedData.js";
 
-export type SignDoc = GrugSignDoc<TypedData<TxMessageType>>;
+export type SignDoc = TypedData<TxMessageType>;
 
 export type ArbitraryDoc<T extends JsonValue = JsonValue> = ArbitraryTypedData<T>;
 
-export type SignatureOutcome = GrugSignatureOutcome<SignDoc, Credential>;
+export type SignatureOutcome = {
+  credential: Credential;
+  signed: SignDoc;
+};
 
-export type ArbitrarySignatureOutcome = GrugSignatureOutcome<JsonValue, Credential>;
+export type ArbitrarySignatureOutcome = {
+  credential: Credential;
+  signed: JsonValue;
+};
 
 export type Signature =
-  /** An Secp256k1 signature. */
   | { secp256k1: Secp256k1Signature }
-  /** An Secp256r1 signature signed by a Passkey, along with necessary metadata. */
   | { passkey: PasskeySignature }
-  /** An EVM signature signed by a wallet, along with its typedata. */
   | { eip712: Eip712Signature };
 
 export type Secp256k1Signature = Base64;
@@ -34,6 +32,11 @@ export type PasskeySignature = {
 
 export type Eip712Signature = {
   sig: Base64;
-  /** The EIP712 typed data object containing types, domain and the message. */
   typed_data: Base64;
+};
+
+export type RawSignature = {
+  r: string;
+  s: string;
+  v: number;
 };

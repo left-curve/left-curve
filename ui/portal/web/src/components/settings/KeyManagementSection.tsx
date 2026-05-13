@@ -11,8 +11,8 @@ import {
   useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { decodeBase64, encodeHex } from "@left-curve/dango/encoding";
-import { uid } from "@left-curve/dango/utils";
+import { decodeBase64, encodeHex } from "@left-curve/sdk/encoding";
+import { uid } from "@left-curve/sdk/utils";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";

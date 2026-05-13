@@ -1,4 +1,4 @@
-import type { Timestamp } from "@left-curve/sdk/types";
+import type { Timestamp } from "./index.js";
 import type { Username } from "./account.js";
 
 export type Metadata = {

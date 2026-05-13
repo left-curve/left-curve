@@ -1,4 +1,4 @@
-import type { Json } from "@left-curve/sdk/types";
+import type { Json } from "./index.js";
 
 export type DataChannelConfig = {
   rtcConfiguration: RTCConfiguration;

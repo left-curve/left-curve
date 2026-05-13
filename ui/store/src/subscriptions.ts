@@ -1,4 +1,4 @@
-import type { PublicClient } from "@left-curve/dango/types";
+import type { PublicClient } from "@left-curve/sdk/types";
 
 import type {
   GetSubscriptionDef,

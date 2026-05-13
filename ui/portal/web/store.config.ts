@@ -1,7 +1,7 @@
 import {
   createAsyncStorage,
   createConfig,
-  graphql,
+  createTransport,
   passkey,
   session,
   privy,
@@ -11,7 +11,7 @@ import { createIndexedDBStorage } from "./storage.config";
 import { coins } from "@left-curve/foundation/coins";
 
 import type { Config } from "@left-curve/store/types";
-import { serializeJson } from "@left-curve/dango/encoding";
+import { serializeJson } from "@left-curve/sdk/encoding";
 
 import { PRIVY_APP_ID, PRIVY_CLIENT_ID } from "~/constants";
 
@@ -21,7 +21,7 @@ export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chain,
   version: 2,
-  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true, polling: false, lazy: false }),
+  transport: createTransport(`${chain.url}/graphql`, { batch: true, polling: false, lazy: false }),
   coins,
   connectors: [
     passkey(),

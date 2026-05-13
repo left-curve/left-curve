@@ -1,14 +1,6 @@
 import { createSubscription } from "../../../utils/createSubscription.js";
 
-import type {
-  Address,
-  Chain,
-  Client,
-  IndexedEvent,
-  Signer,
-  SubscriptionCallbacks,
-  Transport,
-} from "../../../types/index.js";
+import type { Address, Client, IndexedEvent, SubscriptionCallbacks } from "../../../types/index.js";
 
 export type EventsByAddressesSubscriptionParameters = SubscriptionCallbacks<{
   eventByAddresses: IndexedEvent[];
@@ -26,11 +18,8 @@ export type EventsByAddressesSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription, including the addresses and callbacks.
  * @returns A function to unsubscribe from the events.
  */
-export function eventsByAddressesSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function eventsByAddressesSubscription(
+  client: Client,
   parameters: EventsByAddressesSubscriptionParameters,
 ): EventsByAddressesSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");

@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client, Prettify } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { CoinPair, GetDexQueryMsg } from "../../../types/dex.js";
 
@@ -25,11 +24,8 @@ export type SimulateWithdrawLiquidityReturnType = Promise<CoinPair>;
  * @param parameters.height - The block height to query at (default is the latest block).
  * @returns The amount of base and quote tokens that would be received from the withdrawal.
  */
-export async function simulateWithdrawLiquidity<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function simulateWithdrawLiquidity(
+  client: Client,
   parameters: SimulateWithdrawLiquidityParameters,
 ): SimulateWithdrawLiquidityReturnType {
   const { baseDenom, quoteDenom, lpBurnAmount, height = 0 } = parameters;

@@ -1,8 +1,8 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "../../../index.js";
+import type { Client } from "../../../types/index.js";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Denom, Signer } from "@left-curve/sdk/types";
+import { getAction, getAppConfig } from "../../index.js";
+import type { Denom } from "../../../types/index.js";
 import type { AppConfig } from "../../../types/app.js";
 import type { Price } from "../../../types/oracle.js";
 
@@ -22,8 +22,8 @@ export type GetPricesReturnType = Promise<Record<Denom, Price>>;
  * @param parameters.height The height at which to query the prices.
  * @returns The prices.
  */
-export async function getPrices<chain extends Chain | undefined, signer extends Signer | undefined>(
-  client: Client<Transport, chain, signer>,
+export async function getPrices(
+  client: Client,
   parameters: GetPricesParameters = {},
 ): GetPricesReturnType {
   const { startAfter, limit, height = 0 } = parameters;

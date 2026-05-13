@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAccount } from "./useAccount.js";
 
-import type { FeeRateOverride } from "@left-curve/dango/types";
+import type { FeeRateOverride } from "@left-curve/sdk/types";
 
 export type UseFeeRateOverrideParameters = {
   enabled?: boolean;

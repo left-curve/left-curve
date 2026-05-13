@@ -4,7 +4,7 @@ import { useConfig } from "./useConfig.js";
 import { create } from "zustand";
 import { TradePairStore } from "../stores/tradePairStore.js";
 
-import type { Trade } from "@left-curve/dango/types";
+import type { Trade } from "@left-curve/sdk/types";
 
 export type UseLiveSpotTradesStoreState = {
   trades: Trade[];

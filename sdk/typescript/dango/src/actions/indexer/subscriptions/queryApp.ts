@@ -2,13 +2,10 @@ import { createSubscription } from "../../../utils/createSubscription.js";
 import { queryApp } from "../../app/queries/queryApp.js";
 
 import type {
-  Chain,
   Client,
   QueryRequest,
   QueryResponse,
-  Signer,
   SubscriptionCallbacks,
-  Transport,
 } from "../../../types/index.js";
 
 export type QueryAppSubscriptionParameters = SubscriptionCallbacks<{
@@ -32,17 +29,13 @@ export type QueryAppSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the query app events.
  */
-export function queryAppSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function queryAppSubscription(
+  client: Client,
   parameters: QueryAppSubscriptionParameters,
 ): QueryAppSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const { request, interval, httpInterval = 5_000, ...callbacks } = parameters;
-  const { polling, batch } = client.transport;
   const { subscribe } = client;
 
   const query = /* GraphQL */ `
@@ -77,8 +70,6 @@ export function queryAppSubscription<
       emitter: subscribe.emitter!,
       getStatus: subscribe.getClientStatus!,
       onError: callbacks.error,
-      polling,
-      batch,
     },
     (data) => callbacks.next(data),
   );

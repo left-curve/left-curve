@@ -1,6 +1,6 @@
 import { queryIndexer } from "../../indexer/queryIndexer.js";
 
-import type { Client, DateTime, Transport } from "@left-curve/sdk/types";
+import type { Client, DateTime } from "../../../types/index.js";
 import type { Candle, CandleIntervals } from "../../../types/dex.js";
 import type { GraphqlQueryResult } from "../../../types/graphql.js";
 
@@ -16,8 +16,8 @@ export type QueryCandlesParameters = {
 
 export type QueryCandlesReturnType = Promise<GraphqlQueryResult<Candle>>;
 
-export async function queryCandles<transport extends Transport>(
-  client: Client<transport>,
+export async function queryCandles(
+  client: Client,
   parameters: QueryCandlesParameters,
 ): QueryCandlesReturnType {
   const document = /* GraphQL */ `

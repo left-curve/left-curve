@@ -1,9 +1,9 @@
-import { getAppConfig } from "@left-curve/sdk";
+import { getAppConfig } from "../../../index.js";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
-import { getAction } from "@left-curve/sdk/actions";
-import type { Address, Funds, Transport, TxParameters } from "@left-curve/sdk/types";
-import type { AppConfig, DangoClient, Signer, TypedDataParameter } from "../../../types/index.js";
+import { getAction } from "../../index.js";
+import type { Address, Funds, TxParameters } from "../../../types/index.js";
+import type { AppConfig, Client, Signer, TypedDataParameter } from "../../../types/index.js";
 
 export type RegisterAccountParameters = {
   sender: Address;
@@ -12,8 +12,8 @@ export type RegisterAccountParameters = {
 
 export type RegisterAccountReturnType = ExecuteReturnType;
 
-export async function registerAccount<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function registerAccount(
+  client: Client<Signer>,
   parameters: RegisterAccountParameters,
   txParameters: TxParameters = {},
 ): RegisterAccountReturnType {

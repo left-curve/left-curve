@@ -1,6 +1,6 @@
 import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
 
-import { capitalize, formatUnits } from "@left-curve/dango/utils";
+import { capitalize, formatUnits } from "@left-curve/sdk/utils";
 import { FormattedNumber } from "./FormattedNumber";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { twMerge } from "@left-curve/foundation";
@@ -17,10 +17,10 @@ import type {
   OneRequired,
   PairId,
   Prettify,
-} from "@left-curve/dango/types";
+} from "@left-curve/sdk/types";
 import { format } from "date-fns";
 
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { FormatNumberOptions } from "@left-curve/sdk/utils";
 import type { AnyCoin } from "@left-curve/store/types";
 import { memo } from "react";
 import type React from "react";

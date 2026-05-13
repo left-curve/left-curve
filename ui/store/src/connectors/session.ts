@@ -1,11 +1,11 @@
-import { createSessionSigner, createSignerClient, toAccount } from "@left-curve/dango";
-import { getUser } from "@left-curve/dango/actions";
-import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/dango/encoding";
+import { createSessionSigner, createSignerClient, toAccount } from "@left-curve/sdk";
+import { getUser } from "@left-curve/sdk/actions";
+import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/sdk/encoding";
 
 import { createConnector } from "./createConnector.js";
 
-import type { SigningSession } from "@left-curve/dango/types";
-import type { Address } from "@left-curve/dango/types";
+import type { SigningSession } from "@left-curve/sdk/types";
+import type { Address } from "@left-curve/sdk/types";
 
 import { createStorage } from "../storages/createStorage.js";
 import type { Storage } from "../types/storage.js";
@@ -40,6 +40,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
         const client = createSignerClient({
           signer: this,
           type: "session",
+          chain,
           transport,
         });
 
@@ -77,7 +78,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
           signer: this,
           chain,
           type: "session",
-          transport: transport,
+          transport,
         });
       },
       async getKeyHash() {

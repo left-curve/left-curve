@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { usePrices } from "./usePrices.js";
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/sdk/utils";
 
 import type { AnyCoin, WithAmount } from "../types/coin.js";
 

@@ -1,6 +1,6 @@
-import { encodeEndian32 } from "@left-curve/sdk/encoding";
+import { encodeEndian32 } from "../encoding/index.js";
 
-import type { Encoder } from "@left-curve/sdk/types";
+import type { Encoder } from "../types/index.js";
 import type { Addr32 } from "./addr32.js";
 
 export type ValidatorSet = {

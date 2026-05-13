@@ -13,7 +13,7 @@ import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 import { TransactionsTable } from "./TransactionsTable";
 
-import type { Address, IndexedTransaction } from "@left-curve/dango/types";
+import type { Address, IndexedTransaction } from "@left-curve/sdk/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 

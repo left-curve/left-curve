@@ -1,9 +1,4 @@
-import type {
-  HttpRequestParameters,
-  JsonValue,
-  MaybePromise,
-  TransportSchemaOverride,
-} from "@left-curve/sdk/types";
+import type { MaybePromise } from "./utils.js";
 import type { GraphQLError } from "graphql";
 
 export type GraphqlOperation<variables extends object | undefined = undefined> = {
@@ -20,11 +15,6 @@ export type GraphqlClient = {
     params: HttpRequestParameters<body>,
   ) => Promise<body extends GraphqlOperation<variables> ? response : response[]>;
 };
-export interface GraphQLSchemaOverride<T = JsonValue> extends TransportSchemaOverride {
-  Method: string;
-  Parameters?: Record<string, unknown>;
-  ReturnType: T;
-}
 
 export type GraphQLClientResponse<data = unknown> = {
   status: number;
@@ -35,17 +25,17 @@ export type GraphQLClientResponse<data = unknown> = {
 };
 
 export type GraphqlClientOptions = {
-  /** Request configuration to pass to `fetch`. */
   fetchOptions?: Omit<RequestInit, "body">;
-  /** A callback to handle the request. */
   onRequest?: (
     request: Request,
     init: RequestInit,
   ) => MaybePromise<void | undefined | (RequestInit & { url?: string | undefined })>;
-  /** A callback to handle the response. */
   onResponse?: (response: Response) => Promise<void> | void;
-  /** The timeout (in ms) for the request. */
   timeout?: number | undefined;
+};
+
+export type HttpRequestParameters<body = unknown> = GraphqlClientOptions & {
+  body: body;
 };
 
 export type PageInfo = {

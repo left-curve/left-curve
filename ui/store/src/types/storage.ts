@@ -1,4 +1,4 @@
-import type { JsonValue } from "@left-curve/dango/types";
+import type { JsonValue } from "@left-curve/sdk/types";
 
 export type AbstractStorage = {
   getItem(key: string): string | null | undefined | Promise<string | null | undefined>;

@@ -1,4 +1,4 @@
-import { assertDeepEqual } from "@left-curve/dango/utils";
+import { assertDeepEqual } from "@left-curve/sdk/utils";
 
 import type { Config } from "../types/store.js";
 import { type GetAccountReturnType, getAccount } from "./getAccount.js";

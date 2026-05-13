@@ -2,7 +2,7 @@ import { Button, IconButton, IconClose, WarningContainer, useApp } from "@left-c
 
 import { forwardRef, useImperativeHandle } from "react";
 
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatNumber } from "@left-curve/sdk/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 

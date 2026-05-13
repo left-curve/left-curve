@@ -1,6 +1,6 @@
-import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
-import type { Chain, Client, Hex, Signer, Transport } from "@left-curve/sdk/types";
+import { getAppConfig, queryWasmSmart } from "../../../index.js";
+import { getAction } from "../../index.js";
+import type { Client, Hex } from "../../../types/index.js";
 import type { AppConfig } from "../../../types/index.js";
 
 export type GetCodeHashParameters = {
@@ -15,11 +15,8 @@ export type GetCodeHashReturnType = Promise<Hex>;
  * @param parameters.height The height at which to query the code hash.
  * @returns The account code hash.
  */
-export async function getCodeHash<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getCodeHash(
+  client: Client,
   parameters?: GetCodeHashParameters,
 ): GetCodeHashReturnType {
   const { height = 0 } = parameters || {};

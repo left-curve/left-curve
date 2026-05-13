@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useState } from "react";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { isValidAddress } from "@left-curve/dango";
+import { isValidAddress } from "@left-curve/sdk";
 import { ethAddressMask } from "@left-curve/applets-kit";
 import { useConnectors } from "@left-curve/store";
 
