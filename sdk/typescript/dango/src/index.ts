@@ -49,16 +49,11 @@ export { Secp256k1 } from "@left-curve/crypto";
 /*                                   Clients                                  */
 /* -------------------------------------------------------------------------- */
 
-import type { Client, Signer } from "@left-curve/types";
-import type { PublicActions } from "./actions/publicActions.js";
-import type { SignerActions } from "./actions/signerActions.js";
-
-export type PublicClient = Client<undefined, PublicActions>;
-export type SignerClient = Client<Signer, PublicActions & SignerActions>;
+export type { PublicClientConfig, SignerClientConfig } from "@left-curve/types";
 
 export { createBaseClient } from "./clients/baseClient.js";
-export { createPublicClient } from "./clients/publicClient.js";
-export { createSignerClient } from "./clients/signerClient.js";
+export { createPublicClient, type PublicClient } from "./clients/publicClient.js";
+export { createSignerClient, type SignerClient } from "./clients/signerClient.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Transports                                 */
@@ -70,7 +65,7 @@ export { createTransport } from "./transports/graphql.js";
 /*                                  Networks                                  */
 /* -------------------------------------------------------------------------- */
 
-export { local, devnet, testnet, mainnet } from "./chains/index.js";
+export { devnet, testnet, mainnet } from "./chains/index.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Account                                  */

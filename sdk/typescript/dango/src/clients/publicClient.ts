@@ -1,7 +1,10 @@
 import { createBaseClient } from "./baseClient.js";
 import { publicActions } from "#actions/publicActions.js";
 
-import type { Client, PublicClient, PublicClientConfig } from "@left-curve/types";
+import type { Client, PublicClientConfig } from "@left-curve/types";
+import type { PublicActions } from "#actions/publicActions.js";
+
+export type PublicClient = Client<undefined, PublicActions>;
 
 export function createPublicClient(parameters: PublicClientConfig): PublicClient {
   const { name = "Public Client" } = parameters;

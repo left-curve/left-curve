@@ -183,8 +183,6 @@ export type {
 } from "./account.js";
 
 export type {
-  PublicClient,
-  SignerClient,
   PublicClientConfig,
   SignerClientConfig,
 } from "./clients.js";
