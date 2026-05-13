@@ -653,7 +653,13 @@ jobs:
         env:
           CROSS_IMAGE: ${{ steps.config.outputs.image }}
         run: |
-          docker pull $CROSS_IMAGE
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            if docker pull "$CROSS_IMAGE"; then exit 0; fi
+            echo "pull failed (attempt $i), retrying in $((i*10))s..."
+            sleep $((i*10))
+          done
+          exit 1
 
       - name: build binary with cross
         if: env.BACKEND_CHANGED == 'true'
