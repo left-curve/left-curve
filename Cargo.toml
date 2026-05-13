@@ -77,7 +77,6 @@ rust-version  = "1.89" # clickhouse-rs 0.14 requires rust 1.89+
 version       = "0.0.0"
 
 [workspace.dependencies]
-actix                       = "0.13"
 actix-codec                 = "0.5"
 actix-cors                  = "0.7"
 actix-files                 = "0"
@@ -100,7 +99,6 @@ aws-config                  = "1"
 aws-credential-types        = "1"
 aws-sdk-s3                  = "1"
 axum                        = { version = "0.8", features = ["ws"] }
-backtrace                   = "0.3"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
@@ -129,7 +127,6 @@ graphql_client              = "0.14"
 hex                         = "0.4"
 hex-literal                 = "1"
 home                        = "0.5"
-http                        = "1"
 humantime                   = "2"
 ics23                       = "0.12"
 itertools                   = "0.14"
@@ -138,7 +135,6 @@ libc                        = "0.2"
 lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.18"
-num-format                  = "0.4"
 num_cpus                    = "1"
 opentelemetry               = "0.31"
 opentelemetry-otlp          = { version = "0.31", features = ["grpc-tonic", "trace"] }
@@ -148,8 +144,6 @@ p256                        = "0.13"
 parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
-proc-macro2                 = "1"
-prometheus                  = "0.14"
 proptest                    = "1"
 prost                       = "0.14"
 pyth-lazer-client           = "22.0.0"
@@ -167,7 +161,6 @@ sentry-actix                = "0.47"
 serde                       = "1"
 serde_json                  = "1"
 serde_with                  = "3"
-serial_test                 = "3"
 sha2                        = "0.10"
 sha3                        = "0.10"
 signature                   = "2"
@@ -183,11 +176,9 @@ thiserror                   = "2"
 tokio                       = { version = "1", features = ["full"] }
 tokio-stream                = { version = "0.1", features = ["sync"] }
 tokio-tungstenite           = { version = "0.28", features = ["native-tls"] }
-toml                        = "0.9"
 tower                       = "0.5"
 tower-abci                  = "0.19"
 tracing                     = { version = "0.1" }
-tracing-attributes          = { version = "0.1" }
 tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 typenum                     = "1"
@@ -199,7 +190,6 @@ wasmer-middlewares          = "7"
 # Left curve packages
 dango-account           = { path = "dango/account" }
 dango-account-factory   = { path = "dango/account-factory" }
-dango-amm               = { path = "dango/amm" }
 dango-auth              = { path = "dango/auth" }
 dango-bank              = { path = "dango/bank" }
 dango-dex               = { path = "dango/dex" }
@@ -219,7 +209,6 @@ dango-vesting           = { path = "dango/vesting" }
 dango-warp              = { path = "dango/warp" }
 grug                    = { path = "grug/std" }
 grug-app                = { path = "grug/app" }
-grug-auth               = { path = "grug/auth" }
 grug-crypto             = { path = "grug/crypto" }
 grug-db-disk            = { path = "grug/db/disk" }
 grug-db-memory          = { path = "grug/db/memory" }

@@ -68,26 +68,6 @@ pub enum MathError {
     #[backtrace(private_constructor)]
     DivisionByZero { a: String },
 
-    #[error("remainder by zero: {a} % 0")]
-    #[backtrace(private_constructor)]
-    RemainderByZero { a: String },
-
-    #[error("multiply a non-negative lhs with a negative rhs: {ty}({a}) * {b}")]
-    #[backtrace(private_constructor)]
-    NegativeMul {
-        ty: &'static str,
-        a: String,
-        b: String,
-    },
-
-    #[error("divide a non-negative lhs with a negative rhs: {ty}({a}) / {b}")]
-    #[backtrace(private_constructor)]
-    NegativeDiv {
-        ty: &'static str,
-        a: String,
-        b: String,
-    },
-
     #[error("square root of negative: sqrt({a})")]
     #[backtrace(private_constructor)]
     NegativeSqrt { a: String },
@@ -180,29 +160,6 @@ impl MathError {
         T: ToString,
     {
         Self::_division_by_zero(a.to_string())
-    }
-
-    pub fn remainder_by_zero<T>(a: T) -> Self
-    where
-        T: ToString,
-    {
-        Self::_remainder_by_zero(a.to_string())
-    }
-
-    pub fn negative_mul<A, B>(a: A, b: B) -> Self
-    where
-        A: ToString,
-        B: ToString,
-    {
-        Self::_negative_mul(type_name::<A>(), a.to_string(), b.to_string())
-    }
-
-    pub fn negative_div<A, B>(a: A, b: B) -> Self
-    where
-        A: ToString,
-        B: ToString,
-    {
-        Self::_negative_div(type_name::<A>(), a.to_string(), b.to_string())
     }
 
     pub fn negative_sqrt<T>(a: T) -> Self

@@ -15,7 +15,6 @@ version.workspace       = true
 path = "src/lib.rs"
 
 [features]
-metrics = ["dep:metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
@@ -25,6 +24,5 @@ grug-types         = { workspace = true }
 indexer-cache      = { workspace = true }
 indexer-clickhouse = { workspace = true }
 indexer-sql        = { workspace = true }
-metrics            = { workspace = true, optional = true }
 tokio              = { workspace = true }
 tracing            = { workspace = true, optional = true }

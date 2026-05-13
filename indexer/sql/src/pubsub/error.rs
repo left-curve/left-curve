@@ -1,9 +1,6 @@
 #[error_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum PubSubError {
-    #[error("Failed to publish item")]
-    PublishFailed,
-
     #[error(transparent)]
     #[backtrace(new)]
     Sqlx(sqlx::Error),
