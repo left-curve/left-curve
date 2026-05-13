@@ -84,6 +84,21 @@ function PriceTick({ x, y, payload }: { x?: number; y?: number; payload?: { valu
   );
 }
 
+const CHANGE_TICK_WIDTH = 40;
+
+function ChangeTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: number } }) {
+  if (!payload) return null;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <foreignObject x={-CHANGE_TICK_WIDTH} y={-8} width={CHANGE_TICK_WIDTH} height={16}>
+        <span className="block w-full text-right diatype-xs-medium text-ink-tertiary-500">
+          {`${payload.value.toFixed(1)}%`}
+        </span>
+      </foreignObject>
+    </g>
+  );
+}
+
 type VaultPerformanceChartProps = {
   period: VaultPerformancePeriod;
   onPeriodChange: (period: VaultPerformancePeriod) => void;
@@ -169,8 +184,8 @@ export function VaultPerformanceChart({ period, onPeriodChange }: VaultPerforman
             <YAxis
               yAxisId="change"
               orientation="left"
-              tickFormatter={(v: number) => `${v.toFixed(1)}%`}
-              tick={AXIS_TICK_STYLE}
+              width={CHANGE_TICK_WIDTH}
+              tick={<ChangeTick />}
               stroke="var(--color-outline-secondary-gray)"
               tickLine={false}
               axisLine={false}
