@@ -1,9 +1,9 @@
 #[cfg(feature = "metrics")]
-use grug_httpd::metrics::GaugeGuard;
+use crate::metrics::GaugeGuard;
 use {
+    crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
-    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     indexer_sql::entity,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::sync::{
@@ -23,7 +23,7 @@ impl BlockSubscription {
         ctx: &Context<'a>,
     ) -> Result<impl Stream<Item = entity::blocks::Model> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let last_block = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)

@@ -106,12 +106,21 @@ where
     let indexer_cache = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
-    let mut hooked_indexer = HookedIndexer::new();
-
     let indexer_context_callback = indexer.context.clone();
 
-    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
-    hooked_indexer.add_indexer(indexer).await.unwrap();
+    // The mock httpd doesn't talk to a real Clickhouse — wire up a mocked
+    // context so `HookedIndexer` can hold a real `ClickhouseIndexer` value.
+    let indexer_clickhouse_context = indexer_clickhouse::context::Context::new(
+        "http://localhost:8123".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    )
+    .with_mock();
+    let clickhouse_indexer =
+        indexer_clickhouse::indexer::Indexer::new(indexer_clickhouse_context.clone());
+
+    let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::<SimpleCommitment>::new(),
@@ -137,24 +146,12 @@ where
 
     let app = suite.read().await.app.clone_without_indexer();
 
-    let indexer_httpd_context = indexer_httpd::context::Context::new(
+    let dango_httpd_context = indexer_httpd::context::FullContext::new(
         indexer_cache_context,
-        sql_context.clone(),
+        sql_context,
+        indexer_clickhouse_context,
         Arc::new(app),
         Arc::new(mock_client),
-    );
-
-    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
-        "http://localhost:8123".to_string(),
-        "default".to_string(),
-        "default".to_string(),
-        "default".to_string(),
-    );
-
-    let dango_httpd_context = dango_httpd::context::Context::new(
-        indexer_httpd_context.clone(),
-        indexer_clickhouse_context.clone(),
-        sql_context,
         None,
     );
 
@@ -166,7 +163,7 @@ where
     };
 
     let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    dango_httpd::server::run_server(
+    indexer_httpd::server::run_server(
         &httpd_config,
         dango_httpd_context,
         shutdown_flag,

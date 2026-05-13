@@ -145,9 +145,9 @@ pub async fn setup_test_with_indexer(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::Context,
-    dango_httpd::context::Context,
-    dango_indexer_clickhouse::context::Context,
+    indexer_httpd::context::FullContext,
+    indexer_httpd::context::FullContext,
+    indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
     setup_test_with_indexer_and_custom_genesis(test_opt, GenesisOption::preset_test()).await
@@ -167,9 +167,9 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::Context,
-    dango_httpd::context::Context,
-    dango_indexer_clickhouse::context::Context,
+    indexer_httpd::context::FullContext,
+    indexer_httpd::context::FullContext,
+    indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
     let database_url = std::env::var("DATABASE_URL")
@@ -186,12 +186,10 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let sql_context = indexer.context.clone();
 
-    let mut hooked_indexer = HookedIndexer::new();
-
     let indexer_cache = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
-    let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+    let mut clickhouse_context = indexer_clickhouse::context::Context::new(
         format!(
             "http://{}:{}",
             std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
@@ -208,15 +206,9 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         clickhouse_context = clickhouse_context.with_mock();
     }
 
-    hooked_indexer.add_indexer(indexer_cache).await.unwrap();
-    hooked_indexer.add_indexer(indexer).await.unwrap();
+    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
 
-    let clickhouse_indexer =
-        dango_indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
-    hooked_indexer
-        .add_indexer(clickhouse_indexer)
-        .await
-        .unwrap();
+    let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
 
     let db = MemDb::new();
     let vm = RustVm::new();
@@ -235,17 +227,12 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
-    let indexer_httpd_context = indexer_httpd::context::Context::new(
+    let dango_httpd_context = indexer_httpd::context::FullContext::new(
         indexer_cache_context,
-        sql_context.clone(),
+        sql_context,
+        clickhouse_context.clone(),
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
-    );
-
-    let dango_httpd_context = dango_httpd::context::Context::new(
-        indexer_httpd_context.clone(),
-        clickhouse_context.clone(),
-        sql_context,
         None,
     );
 
@@ -255,7 +242,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         codes,
         contracts,
         validator_sets,
-        indexer_httpd_context,
+        dango_httpd_context.clone(),
         dango_httpd_context,
         clickhouse_context,
         db_guard,

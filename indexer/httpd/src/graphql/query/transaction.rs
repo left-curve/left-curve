@@ -1,6 +1,6 @@
 use {
     crate::{
-        context::Context,
+        context::FullContext,
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{connection::*, *},
@@ -75,7 +75,7 @@ impl TransactionQuery {
             EmptyFields,
         >,
     > {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         paginate_models(
             app_ctx,

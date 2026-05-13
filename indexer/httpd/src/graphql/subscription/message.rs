@@ -1,10 +1,10 @@
 #[cfg(feature = "metrics")]
-use grug_httpd::metrics::GaugeGuard;
+use crate::metrics::GaugeGuard;
 use {
     super::MAX_PAST_BLOCKS,
+    crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
-    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     indexer_sql::entity::{self, blocks::latest_block_height},
     itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
@@ -22,7 +22,7 @@ pub struct MessageSubscription;
 
 impl MessageSubscription {
     async fn get_messages(
-        app_ctx: &crate::context::Context,
+        app_ctx: &crate::context::FullContext,
         block_heights: RangeInclusive<i64>,
     ) -> Vec<entity::messages::Model> {
         entity::messages::Entity::find()
@@ -48,7 +48,7 @@ impl MessageSubscription {
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::messages::Model>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
 

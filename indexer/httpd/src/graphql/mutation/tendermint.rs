@@ -14,7 +14,7 @@ impl TendermintMutation {
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Transaction as JSON")] tx: Tx,
     ) -> Result<BroadcastTxOutcome, Error> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let http_request_details = ctx.data::<HttpRequestDetails>()?;
 

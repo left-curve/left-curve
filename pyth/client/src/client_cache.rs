@@ -2,8 +2,8 @@ use {
     crate::{PythClient, PythClientTrait},
     async_stream::stream,
     async_trait::async_trait,
+    disk_saver::persistence::DiskPersistence,
     grug::{Inner, Lengthy, NonEmpty},
-    indexer_disk_saver::persistence::DiskPersistence,
     pyth_types::{LeEcdsaMessage, PriceUpdate, PythId, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{

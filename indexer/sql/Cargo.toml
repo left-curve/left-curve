@@ -17,22 +17,20 @@ async-graphql        = ["dep:async-graphql", "dango-types/async-graphql", "grug-
 http-request-details = []
 metrics              = ["dep:metrics"]
 testing              = []
-tracing              = ["dep:tracing", "indexer-cache/tracing", "indexer-disk-saver/tracing"]
+tracing              = ["dep:tracing", "disk-saver/tracing", "indexer-cache/tracing"]
 
 [dependencies]
 anyhow             = { workspace = true }
 async-graphql      = { workspace = true, optional = true }
 async-stream       = { workspace = true }
 async-trait        = { workspace = true }
-borsh              = { workspace = true }
 dango-types        = { workspace = true, features = ["sea-orm"] }
+disk-saver         = { workspace = true }
 error-backtrace    = { workspace = true }
-futures            = { workspace = true }
 grug               = { workspace = true }
 grug-app           = { workspace = true }
 grug-types         = { workspace = true, features = ["chrono", "sea-orm"] }
 indexer-cache      = { workspace = true }
-indexer-disk-saver = { workspace = true }
 itertools          = { workspace = true }
 metrics            = { workspace = true, optional = true }
 sea-orm            = { workspace = true }
@@ -40,8 +38,6 @@ sea-orm-migration  = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
 sqlx               = { workspace = true }
-strum              = { workspace = true }
-strum_macros       = { workspace = true }
 tempfile           = { workspace = true }
 thiserror          = { workspace = true }
 tokio              = { workspace = true, features = ["sync"] }

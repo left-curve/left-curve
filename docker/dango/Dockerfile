@@ -18,7 +18,7 @@ RUN apt-get update && \
 # RUN useradd --create-home --shell /bin/bash $USERNAME
 
 COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/
-COPY dango/indexer/httpd/static /app/www
+COPY indexer/httpd/static /app/www
 # RUN chown $USERNAME:$USERNAME /usr/local/bin/dango
 
 # USER $USERNAME

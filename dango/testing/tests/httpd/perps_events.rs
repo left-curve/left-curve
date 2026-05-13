@@ -1,7 +1,6 @@
 use {
     crate::call_graphql_query,
     assertor::*,
-    dango_graphql_types::{PerpsEvents, perps_events},
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},
@@ -10,6 +9,7 @@ use {
     graphql_client::GraphQLQuery,
     grug::Addressable,
     grug_app::Indexer,
+    indexer_graphql_types::{PerpsEvents, perps_events},
 };
 
 /// Query a user's perps events and verify that only `order_filled` events
