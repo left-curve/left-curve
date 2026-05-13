@@ -293,6 +293,22 @@ deploy-preview-latest:
       --limit {{ovh1}},{{ovh2}},{{ovh3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-preview-latest.log
 
+# List all PR deployments with age on ovh1 and ovh2
+list-pr-deploys:
+  ansible-playbook list-pr-deploys.yml --limit 100.96.253.40,100.107.248.71
+
+# Delete the deploy of a specific PR
+delete-pr number:
+  ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}} --limit 100.96.253.40,100.107.248.71
+
+# Delete a specific devnet deploy by timestamp (e.g. just delete-devnet-deploy 20260122064234)
+delete-devnet-deploy timestamp:
+  ansible-playbook delete-old-devnet-deploys.yml -e deployment_name={{timestamp}} --limit 100.96.253.40,100.107.248.71
+
+# Delete a specific devnet deploy AND its data directory under ~/devnet/<timestamp>
+delete-devnet-deploy-with-data timestamp:
+  ansible-playbook delete-old-devnet-deploys.yml -e deployment_name={{timestamp}} -e remove_devnet_data=true --limit 100.96.253.40,100.107.248.71
+
 # --------------------------------- Hyperlane ----------------------------------
 
 # Deploy Hyperlane agent locally
@@ -445,24 +461,6 @@ b2-mark-bucket-deletable name:
       --tags mark-bucket-deletable \
       -e b2_bucket={{name}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-mark-bucket-deletable.log
-
-# -------------------------------- PR Deploys ----------------------------------
-
-# List all PR deployments with age on ovh1 and ovh2
-list-pr-deploys:
-  ansible-playbook list-pr-deploys.yml --limit 100.96.253.40,100.107.248.71
-
-# Delete the deploy of a specific PR
-delete-pr number:
-  ansible-playbook delete-full-app.yml -e deployment_name=pr-{{number}} --limit 100.96.253.40,100.107.248.71
-
-# Delete a specific devnet deploy by timestamp (e.g. just delete-devnet-deploy 20260122064234)
-delete-devnet-deploy timestamp:
-  ansible-playbook delete-old-devnet-deploys.yml -e deployment_name={{timestamp}} --limit 100.96.253.40,100.107.248.71
-
-# Delete a specific devnet deploy AND its data directory under ~/devnet/<timestamp>
-delete-devnet-deploy-with-data timestamp:
-  ansible-playbook delete-old-devnet-deploys.yml -e deployment_name={{timestamp}} -e remove_devnet_data=true --limit 100.96.253.40,100.107.248.71
 
 # ------------------------------ Database Download ------------------------------
 
