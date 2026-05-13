@@ -43,7 +43,6 @@ members = [
   "hyperlane/va",
   "indexer/cache",
   "indexer/clickhouse",
-  "indexer/disk-saver",
   "indexer/graphql-types",
   "indexer/hooked",
   "indexer/httpd",
@@ -55,6 +54,7 @@ members = [
   "sdk/rust",
   "sdk/rust/cli",
   "utils/config-parser",
+  "utils/disk-saver",
   "utils/dyn-event",
   "utils/error-backtrace",
   "utils/error-backtrace/derive",
@@ -233,7 +233,6 @@ hyperlane-types         = { path = "hyperlane/types" }
 hyperlane-va            = { path = "hyperlane/va" }
 indexer-cache           = { path = "indexer/cache" }
 indexer-clickhouse      = { path = "indexer/clickhouse" }
-indexer-disk-saver      = { path = "indexer/disk-saver" }
 indexer-graphql-types   = { path = "indexer/graphql-types" }
 indexer-hooked          = { path = "indexer/hooked" }
 indexer-httpd           = { path = "indexer/httpd", features = ["tracing"] }
@@ -245,6 +244,7 @@ pyth-types              = { path = "pyth/types" }
 
 # Utilities
 config-parser   = { path = "utils/config-parser" }
+disk-saver      = { path = "utils/disk-saver" }
 dyn-event       = { path = "utils/dyn-event" }
 error-backtrace = { path = "utils/error-backtrace" }
 eth-utils       = { path = "utils/eth" }

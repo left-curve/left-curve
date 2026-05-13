@@ -39,7 +39,7 @@ pub enum IndexerError {
     Persist(tempfile::PersistError),
 
     #[error(transparent)]
-    Persistence(indexer_disk_saver::error::Error),
+    Persistence(disk_saver::error::Error),
 
     #[error("wrong event type")]
     WrongEventType,
