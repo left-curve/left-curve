@@ -409,7 +409,7 @@ mod tests {
             super::super::{BANK_SUPPLIES, OLD_OUTBOUND_QUOTAS, do_gateway_rolling_window_seed},
             dango_gateway::{RATE_LIMITS, SUPPLY_SNAPSHOTS},
             dango_types::gateway::RateLimit,
-            grug::{Denom, MockStorage, NumberConst, Udec128, Uint128, btree_map},
+            grug::{Denom, MockStorage, Udec128, Uint128, btree_map},
             std::str::FromStr,
         };
 
