@@ -65,7 +65,7 @@ export { createTransport } from "./transports/graphql.js";
 /*                                  Networks                                  */
 /* -------------------------------------------------------------------------- */
 
-export { devnet, testnet, mainnet } from "./chains/index.js";
+export { local, devnet, testnet, mainnet } from "./chains/index.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Account                                  */
