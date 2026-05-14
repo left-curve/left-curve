@@ -1,11 +1,11 @@
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 
 import type {
   DeleveragedData,
   LiquidatedData,
   OrderFilledData,
   PerpsEvent,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 
 const PERPS_EVENT_LABELS: Record<string, string> = {
   order_filled: "Trade",
