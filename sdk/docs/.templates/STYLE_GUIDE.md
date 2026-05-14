@@ -79,7 +79,7 @@ For **Concept** pages: free-form. Required header: one-line "What this teaches y
 
 ### DEX currently disabled
 
-Every page documenting a DEX action (e.g., `swapExactAmountIn`, `provideLiquidity`, `submitOrder`, etc., across TS/Python/Rust) **must** open with a warning callout immediately under the H1 description:
+Every page documenting a **spot DEX** action **must** open with a warning callout immediately under the H1 description:
 
 ```mdx
 :::warning[DEX currently disabled]
@@ -87,9 +87,11 @@ The Dango DEX is currently disabled. Calls described on this page will not execu
 :::
 ```
 
-Scope: any action under `actions/dex/`, `actions/perps/` (perps trade through the DEX), or Python/Rust pages that document equivalent functionality.
+**In scope:** TS `actions/dex/*` (`swapExactAmountIn`, `provideLiquidity`, `batchUpdateOrders`, etc.), TS `concepts/transactions.mdx` (uses a DEX swap example), Rust `concepts/transactions.mdx` (demonstrates `dex::ExecuteMsg::SubmitOrders`).
 
-This callout sits above all other content. Reviewers must verify it's present on every applicable page.
+**Out of scope (do NOT add the warning):** perps actions in any language. Dango perps are live; only the spot DEX is disabled. The Python SDK is perps-only, so no Python page carries this warning.
+
+Reviewers must verify presence on every applicable page and absence on every perps page.
 
 ## What NOT to include
 
