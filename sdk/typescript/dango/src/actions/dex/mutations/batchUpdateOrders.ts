@@ -1,15 +1,17 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Coins, Json, Prettify, Transport } from "@left-curve/sdk/types";
-import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
-
-import type { AppConfig } from "../../../types/app.js";
-import type { DangoClient } from "../../../types/clients.js";
-import type { GetDexExecuteMsg } from "../../../types/dex.js";
-import type { Signer } from "../../../types/signer.js";
-import type { TypedDataParameter } from "../../../types/typedData.js";
+import type {
+  Address,
+  Client,
+  Coins,
+  GetDexExecuteMsg,
+  Json,
+  Prettify,
+  Signer,
+  TypedDataParameter,
+} from "@left-curve/types";
+import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
 
 type ActionMsg = GetDexExecuteMsg<"batchUpdateOrders">;
 
@@ -22,15 +24,13 @@ export type BatchUpdateOrdersParameters = Prettify<{
 
 export type BatchUpdateOrdersReturnType = BroadcastTxSyncReturnType;
 
-export async function batchUpdateOrders<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function batchUpdateOrders(
+  client: Client<Signer>,
   parameters: BatchUpdateOrdersParameters,
 ): BatchUpdateOrdersReturnType {
   const { creates = [], cancels, funds, sender } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg = {
     batchUpdateOrders: {

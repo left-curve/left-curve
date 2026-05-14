@@ -1,0 +1,61 @@
+# query_app
+
+Run an app-level query against the node at a given height.
+
+## Signature
+
+```rust
+impl QueryClient for HttpClient {
+    type Error = anyhow::Error;
+    type Proof = grug::Proof;
+
+    async fn query_app(
+        &self,
+        query: Query,
+        height: Option<u64>,
+    ) -> Result<QueryResponse, Self::Error>;
+}
+```
+
+`Query` and `QueryResponse` are re-exported by the SDK.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::{Query, QueryClient, QueryConfigRequest},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client   = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let response = client.query_app(Query::Config(QueryConfigRequest {}), None).await?;
+    println!("{response:?}");
+    Ok(())
+}
+```
+
+For most app-level fetches, prefer the typed `QueryClientExt` helpers — `query_app_config`, `query_balance`, `query_wasm_smart`, … — that build on top of `query_app`.
+
+## Parameters
+
+**`query`** — `Query`. The typed query enum (`Config`, `WasmSmart`, `Balance`, …).
+
+**`height`** — `Option<u64>`. Block height to query at, or `None` for the latest committed state.
+
+## Returns
+
+**`QueryResponse`** — the variant that matches the input `Query`. Callers usually pattern-match or unwrap into the expected variant.
+
+## Notes
+
+- Hits the GraphQL `queryApp` resolver. Errors bubble through `anyhow::Error`.
+- Use a fixed `height` for snapshot consistency across multiple reads.
+
+## See also
+
+- [`query_store`](./query_store) — raw store reads.
+- [`simulate`](./simulate) — dry-run a transaction.
+- [Concepts: Encoding and types](../../../concepts/encoding-and-types) — `Query` variants.

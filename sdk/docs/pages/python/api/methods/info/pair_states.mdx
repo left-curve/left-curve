@@ -1,0 +1,41 @@
+# pair_states
+
+Enumerate per-pair runtime states; paginated.
+
+## Signature
+
+```python
+def pair_states(
+    self,
+    *,
+    start_after: PairId | None = None,
+    limit: int = 30,
+) -> dict[PairId, PairState]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+states = info.pair_states()
+for pair_id, s in states.items():
+    print(pair_id, s["funding_rate"])
+```
+
+## Parameters
+
+**`start_after`** — `PairId | None`, optional. Cursor for the next page. Default: `None`.
+
+**`limit`** — `int`, optional. Page size. Default: `30`.
+
+## Returns
+
+**`dict[PairId, PairState]`** — map of pair id to runtime state.
+
+## See also
+
+- [`pair_state`](./pair_state) — fetch one pair
+- [`pair_params`](./pair_params) — enumerate parameters

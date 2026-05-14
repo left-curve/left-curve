@@ -1,0 +1,46 @@
+# transferSubscription
+
+Subscribe to live transfer events for a single username. WebSocket only.
+
+## Signature
+
+```ts
+function transferSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    transfers: IndexedTransferEvent[]
+  }> & {
+    username: string
+    sinceBlockHeight?: number
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const unsubscribe = client.transferSubscription({
+  username: "alice",
+  next: ({ transfers }) => transfers.forEach((t) => console.log(t.fromAddress, t.amount)),
+})
+```
+
+## Parameters
+
+**`username`** — `string`. The user to watch.
+
+**`sinceBlockHeight`** — `number`, optional. Replay from this height.
+
+**`next`**, **`error`**, **`complete`** — callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## See also
+
+- [`transfer`](../app/transfer)
+- [`eventsByAddressesSubscription`](./eventsByAddressesSubscription)

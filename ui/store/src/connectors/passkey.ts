@@ -3,17 +3,17 @@ import {
   parseAsn1Signature,
   requestWebAuthnSignature,
   sha256,
-} from "@left-curve/dango/crypto";
+} from "@left-curve/crypto";
 
-import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding";
+import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
 
-import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
-import { getUser } from "@left-curve/dango/actions";
-import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
+import { createKeyHash, createSignerClient, toAccount } from "@left-curve/sdk";
+import { getUser } from "@left-curve/sdk/actions";
+import { getNavigatorOS, getRootDomain } from "@left-curve/utils";
 
 import { createConnector } from "./createConnector.js";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;
@@ -32,6 +32,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         const client = createSignerClient({
           signer: this,
           type: "passkey",
+          chain,
           transport,
         });
 

@@ -128,7 +128,6 @@ export function http(url?: string, config: HttpTransportConfig = {}) { ... }
 - `tsup` for bundling
 - `.js` extensions in all imports
 - Barrel files with explicit type exports
-- `TypeDoc` for documentation generation
 
 ## Dependencies
 

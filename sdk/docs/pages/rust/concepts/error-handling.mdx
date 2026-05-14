@@ -1,0 +1,128 @@
+# Error handling
+
+**What this teaches:** the two error shapes in `dango-sdk` — `anyhow::Error` for one-shot calls, [`WsError`](../api/errors/WsError) inside subscription items — and how to recover from each.
+
+## Mental model
+
+`dango-sdk` returns `anyhow::Result<T>` (`Result<T, anyhow::Error>`) from every fallible async or sync method. The trait impls on `HttpClient` set `type Error = anyhow::Error`, so the same pattern propagates from `query_app`, `broadcast_tx`, and friends.
+
+The single exception is subscriptions. A `SubscriptionStream<T>` yields `Result<Response<T>, WsError>` — a typed enum because callers need to discriminate between "decode failure" and "server-side subscription error".
+
+## `anyhow::Error`: when and how to inspect
+
+Use `?` to propagate. When you need to react to a specific failure, downcast:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::QueryClient,
+};
+
+async fn try_query(http: &HttpClient) -> Result<()> {
+    match http.simulate(my_unsigned_tx()).await {
+        Ok(outcome) => println!("ok: gas={}", outcome.gas_used),
+        Err(err) => {
+            // Drill into the source chain for a specific cause type.
+            if let Some(req_err) = err.downcast_ref::<reqwest::Error>() {
+                eprintln!("transport: {req_err}");
+            } else {
+                eprintln!("other: {err:#}");
+            }
+        }
+    }
+    Ok(())
+}
+// fn my_unsigned_tx() -> grug::UnsignedTx { ... }
+```
+
+The `:#` format spec prints the full cause chain. Prefer `tracing::error!(?err)` in production.
+
+## Common error sources
+
+| Where | What you'll see |
+|-------|-----------------|
+| `HttpClient::new` | URL parse error (`url::ParseError`). |
+| `query_app`, `simulate`, `broadcast_tx`, `paginate_*` | `reqwest::Error` for network failure; `anyhow!("no data returned …")` when GraphQL returned `errors` and no `data`; deserialization errors from `serde_json`. |
+| `query_block` (REST) | `reqwest::Error` plus HTTP status (`error_for_status` formats body into the message). |
+| `SingleSigner::new_first_address_available` | `anyhow!("no user index found for key hash …")` when the factory returns nothing. |
+| `Keystore::from_file` | I/O, JSON parse, or AES-GCM decryption failures. |
+| `WsClient::connect` | `Invalid URL scheme: …`, handshake send error, unexpected pre-`connection_ack` frame. |
+
+## `WsError`: subscription items
+
+`SubscriptionStream<T>` items are `Result<graphql_client::Response<T>, WsError>`:
+
+```rust
+use {
+    dango_sdk::WsError,
+    futures::StreamExt,
+};
+
+while let Some(item) = stream.next().await {
+    match item {
+        Ok(resp) => {
+            if let Some(errors) = resp.errors {
+                eprintln!("graphql payload errors: {errors:?}");
+            }
+            if let Some(data) = resp.data {
+                /* handle data */
+            }
+        }
+        Err(WsError::Closed(reason)) => {
+            eprintln!("ws closed: {reason}");
+            break;
+        }
+        Err(WsError::Transport(msg)) => {
+            eprintln!("transport: {msg}");
+            break;
+        }
+        Err(WsError::Subscription(payload)) => {
+            eprintln!("subscription error: {payload}");
+            // Server-side error scoped to this subscription;
+            // the stream is over but the connection may still be alive.
+        }
+        Err(WsError::Decode(msg)) => {
+            eprintln!("decode: {msg}");
+        }
+    }
+}
+// Ok::<(), anyhow::Error>(())
+```
+
+`WsError::Closed` and `WsError::Transport` terminate the stream. `WsError::Subscription` is server-side: the stream ends but the parent [`Session`](../api/clients/Session) keeps running for other subscriptions. `WsError::Decode` is recoverable in principle but means the schema and the client disagree.
+
+## Retry policy
+
+The SDK does not retry. Wrap calls with `tokio-retry`, `backon`, or a hand-rolled loop:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::SearchTxClient,
+    std::time::Duration,
+    tokio::time::sleep,
+};
+
+async fn wait_for(http: &HttpClient, hash: grug::Hash256) -> Result<()> {
+    for attempt in 0..40 {
+        match http.search_tx(hash).await {
+            Ok(_) => return Ok(()),
+            Err(err) if attempt < 39 => {
+                eprintln!("waiting (attempt {attempt}): {err}");
+                sleep(Duration::from_millis(500)).await;
+            }
+            Err(err) => return Err(err),
+        }
+    }
+    unreachable!()
+}
+```
+
+Pick a bound that matches the operation. Don't retry forever — backoff is the caller's responsibility.
+
+## Next
+
+- [Rate limits and quotas](./rate-limits) — what to do when the server returns 429.
+- [`WsError`](../api/errors/WsError) — the variants in detail.

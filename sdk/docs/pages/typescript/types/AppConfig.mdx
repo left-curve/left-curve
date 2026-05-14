@@ -1,0 +1,48 @@
+# AppConfig
+
+The Dango app-level configuration: system contract addresses, fee rates, liquidation parameters, and minimum deposits.
+
+## Definition
+
+```ts
+type AppConfig = {
+  addresses: {
+    accountFactory: Address
+    gateway: Address
+    lending: Address
+    oracle: Address
+    dex: Address
+    perps: Address
+    warp: Address
+    taxman: Address
+    hyperlane: {
+      ism: Address
+      mailbox: Address
+      va: Address
+    }
+  }
+  makerFeeRate: string
+  takerFeeRate: string
+  maxLiquidationBonus: string
+  minLiquidationBonus: string
+  targetUtilizationRate: string
+  minimumDeposit: Record<Denom, string>
+}
+```
+
+## Fields
+
+**`addresses`** — every well-known system contract.
+
+**`makerFeeRate`**, **`takerFeeRate`** — DEX fee rates (as decimal strings).
+
+**`maxLiquidationBonus`**, **`minLiquidationBonus`** — bounds on liquidation incentives.
+
+**`targetUtilizationRate`** — lending pool target.
+
+**`minimumDeposit`** — `Record<Denom, string>`. Minimum amount per denom for new accounts.
+
+## See also
+
+- [`ChainConfig`](./ChainConfig)
+- [`getAppConfig`](../actions/app/getAppConfig)

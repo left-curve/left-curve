@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useConfig } from "@left-curve/store";
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { formatNumber, formatUnits } from "@left-curve/utils";
 import { twMerge, useApp } from "@left-curve/foundation";
 
 import type { ActivityRecord } from "@left-curve/store";

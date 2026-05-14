@@ -1,7 +1,6 @@
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { PerpsPairStats } from "../../../types/dex.js";
+import type { Client, PerpsPairStats } from "@left-curve/types";
 
 export type GetPerpsPairStatsParameters = {
   pairId: string;
@@ -9,8 +8,8 @@ export type GetPerpsPairStatsParameters = {
 
 export type GetPerpsPairStatsReturnType = Promise<PerpsPairStats>;
 
-export async function getPerpsPairStats<transport extends Transport>(
-  client: Client<transport>,
+export async function getPerpsPairStats(
+  client: Client,
   parameters: GetPerpsPairStatsParameters,
 ): GetPerpsPairStatsReturnType {
   const document = /* GraphQL */ `

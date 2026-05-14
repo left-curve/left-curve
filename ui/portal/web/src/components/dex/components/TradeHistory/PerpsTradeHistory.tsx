@@ -1,6 +1,6 @@
 import { Cell, FormattedNumber, Tooltip } from "@left-curve/applets-kit";
 import { usePublicClient, useAccount, useQueryWithPagination } from "@left-curve/store";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TradeHistoryTable } from "./TradeHistoryTable";
 
@@ -10,7 +10,7 @@ import type {
   OrderFilledData,
   LiquidatedData,
   DeleveragedData,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 
 const eventTypeLabels: Record<string, string> = {
   order_filled: "Trade",

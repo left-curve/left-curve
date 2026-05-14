@@ -1,13 +1,5 @@
-import { createSubscription } from "../../../utils/createSubscription.js";
-
-import type {
-  Chain,
-  Client,
-  IndexedAccountEvent,
-  Signer,
-  SubscriptionCallbacks,
-  Transport,
-} from "../../../types/index.js";
+import type { Client, IndexedAccountEvent, SubscriptionCallbacks } from "@left-curve/types";
+import { createSubscription } from "@left-curve/utils";
 
 export type AccountSubscriptionParameters = SubscriptionCallbacks<{
   accounts: IndexedAccountEvent[];
@@ -24,11 +16,8 @@ export type AccountSubscriptionReturnType = () => void;
  * @param parameters The parameters for the subscription.
  * @returns A function to unsubscribe from the subscription.
  */
-export function accountSubscription<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export function accountSubscription(
+  client: Client,
   parameters: AccountSubscriptionParameters,
 ): AccountSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");

@@ -1,0 +1,35 @@
+# bulk_cancel
+
+Cancel multiple open orders by chain `oid` in one batched native call.
+
+## Signature
+
+```python
+def bulk_cancel(self, cancel_requests: Iterable[dict[str, Any]]) -> dict[str, Any]
+```
+
+## Example
+
+```python
+result = exchange.bulk_cancel([
+    {"coin": "BTC", "oid": 12345},
+    {"coin": "ETH", "oid": 67890},
+])
+```
+
+## Parameters
+
+**`cancel_requests`** — `Iterable[dict[str, Any]]`. Each dict must have `coin` (HL coin name) and `oid` (int order id). Empty input raises `ValueError`.
+
+## Returns
+
+`dict[str, Any]` — Hyperliquid-shaped bulk-cancel envelope.
+
+## Notes
+
+- Each `coin` is verified via `info.name_to_pair` before dispatch — a typo fails loudly here rather than silently cancelling under an unknown pair.
+
+## See also
+
+- [`cancel`](./cancel) — cancel a single order
+- [`batch_update_orders`](../../../api/methods/exchange/batch_update_orders) — native equivalent

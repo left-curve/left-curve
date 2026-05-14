@@ -1,0 +1,86 @@
+# Project setup
+
+Wire up a real project: pick an environment, configure a signer, hold one `Info` and one `Exchange`.
+
+## Pick a network
+
+The SDK ships URLs and chain IDs as module constants. Import them from `dango.utils.constants`:
+
+```python
+from dango.utils.constants import (
+    MAINNET_API_URL,
+    TESTNET_API_URL,
+    LOCAL_API_URL,
+    CHAIN_ID_MAINNET,
+    CHAIN_ID_TESTNET,
+    PERPS_CONTRACT_MAINNET,
+    PERPS_CONTRACT_TESTNET,
+)
+```
+
+`Exchange` and `Info` default the perps contract to mainnet. Pass `perps_contract=PERPS_CONTRACT_TESTNET` (or any other deployment address) explicitly when targeting another chain.
+
+## Store keys in environment variables
+
+Use `python-dotenv` or your orchestrator's env injection. The SDK reads no env vars on its own — you read them and pass values to the constructors.
+
+```text title=".env"
+DANGO_SECRET_KEY=0x...                  # 32-byte hex secret
+DANGO_ACCOUNT_ADDRESS=0x...             # Dango account address (NOT the EVM address)
+```
+
+:::warning
+the Dango account address is decoupled from the signing key. The same secp256k1 key can control multiple Dango accounts. Always set `DANGO_ACCOUNT_ADDRESS` explicitly — never derive it from the wallet's EVM address.
+:::
+
+## Build the signer trio
+
+```python
+import os
+
+from eth_account import Account
+
+from dango.exchange import Exchange
+from dango.info import Info
+from dango.utils.constants import PERPS_CONTRACT_TESTNET, TESTNET_API_URL
+from dango.utils.types import Addr
+
+secret = os.environ["DANGO_SECRET_KEY"]
+account = Account.from_key(secret)
+address = Addr(os.environ["DANGO_ACCOUNT_ADDRESS"])
+
+info = Info(TESTNET_API_URL, perps_contract=Addr(PERPS_CONTRACT_TESTNET))
+exchange = Exchange(
+    account,
+    TESTNET_API_URL,
+    account_address=address,
+    info=info,
+    perps_contract=Addr(PERPS_CONTRACT_TESTNET),
+)
+```
+
+`Exchange` accepts either an `eth_account.LocalAccount` or any object implementing the [`Wallet`](../concepts/signers) protocol. Passing a `LocalAccount` triggers automatic wrapping as `Secp256k1Wallet` (raw secp256k1 over SHA-256, NOT EIP-712).
+
+Reuse the same `Info` for the `Exchange`'s read queries (chain status, simulate, broadcast, nonce, user_index). Without `info=info`, the `Exchange` builds its own `Info` against the same `base_url` — fine, just an extra HTTP session.
+
+## A first signed transaction
+
+```python
+from dango.utils.types import PairId, TimeInForce
+
+result = exchange.submit_limit_order(
+    PairId("perp/ethusd"),
+    size="0.1",            # signed: positive = buy, negative = sell
+    limit_price="1500",
+    time_in_force=TimeInForce.GTC,
+)
+print(result)
+```
+
+`submit_limit_order` runs `simulate` → `sign` → `broadcast` and returns the BroadcastTxOutcome envelope.
+
+## Next
+
+- [Concepts: Clients](../concepts/clients) — when to use which class
+- [Concepts: Transactions](../concepts/transactions) — the simulate/sign/broadcast pipeline
+- [Concepts: Error handling](../concepts/error-handling) — what each exception means

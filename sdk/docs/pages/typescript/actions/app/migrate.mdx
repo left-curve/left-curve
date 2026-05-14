@@ -1,0 +1,61 @@
+# migrate
+
+Migrate a contract to a new code hash. Only the contract's admin can call this.
+
+## Signature
+
+```ts
+function migrate(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    contract: Address
+    newCodeHash: Hex
+    msg: Json
+    typedData?: TypedDataParameter
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+const contract: Address = "0xabcdef1234567890abcdef1234567890abcdef12"
+
+await client.migrate({
+  sender,
+  contract,
+  newCodeHash: "0xdef...456",
+  msg: { migrate: {} },
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. Must equal the contract's admin.
+
+**`contract`** — `Address`. The contract to migrate.
+
+**`newCodeHash`** — `Hex`. Hash of the new Wasm code (already stored).
+
+**`msg`** — `Json`. Migrate message (camelCase).
+
+**`typedData`** — `TypedDataParameter`, optional. Override the EIP-712 body schema.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](./broadcastTxSync).
+
+## See also
+
+- [`instantiate`](./instantiate)
+- [`getContractInfo`](./getContractInfo) — read the current admin

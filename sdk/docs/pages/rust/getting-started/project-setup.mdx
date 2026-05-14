@@ -1,0 +1,109 @@
+# Project setup
+
+Wire endpoints, keys, and the async runtime for a real application.
+
+## Endpoints
+
+Pick one HTTP endpoint and (optionally) a paired WebSocket endpoint:
+
+| Network    | HTTP                               | WebSocket                              |
+|------------|------------------------------------|----------------------------------------|
+| Mainnet    | `https://api-mainnet.dango.zone`   | `wss://api-mainnet.dango.zone/graphql` |
+| Local node | `http://localhost:8080`            | `ws://localhost:8080/graphql`          |
+
+`HttpClient::new` accepts the bare HTTP origin; it appends `/graphql` and the REST paths internally. `WsClient::from_http_url` accepts an HTTP origin and rewrites the scheme — see [WsClient](../api/clients/WsClient).
+
+## Configuration via environment
+
+Read endpoint and key material from the environment. Keep secrets out of source files.
+
+```rust
+use {
+    anyhow::{Context, Result},
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner, WsClient},
+    grug::Addr,
+    std::{env, str::FromStr},
+};
+
+#[derive(Debug)]
+struct Config {
+    http_url:    String,
+    ws_url:      String,
+    chain_id:    String,
+    address:     Addr,
+    private_key: [u8; 32],
+}
+
+fn load() -> Result<Config> {
+    Ok(Config {
+        http_url:    env::var("DANGO_HTTP_URL").context("DANGO_HTTP_URL not set")?,
+        ws_url:      env::var("DANGO_WS_URL").context("DANGO_WS_URL not set")?,
+        chain_id:    env::var("DANGO_CHAIN_ID").unwrap_or_else(|_| "dango-1".into()),
+        address:     Addr::from_str(&env::var("DANGO_ADDRESS")?)?,
+        private_key: hex::decode(env::var("DANGO_PRIVATE_KEY")?)?
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("DANGO_PRIVATE_KEY must be 32 bytes hex"))?,
+    })
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let cfg = load()?;
+
+    let http   = HttpClient::new(&cfg.http_url)?;
+    let ws     = WsClient::new(&cfg.ws_url)?;
+    let secret = Secp256k1::from_bytes(cfg.private_key)?;
+
+    let signer = SingleSigner::new(cfg.address, secret)
+        .with_query_user_index(&http).await?
+        .with_query_nonce(&http).await?;
+
+    println!("ready: {}", signer.address);
+    let _ = ws;
+    Ok(())
+}
+```
+
+## Loading keys from an encrypted file
+
+For local CLIs, persist a 32-byte private key in an AES-256-GCM keystore file. See [Keystore](../api/clients/Keystore) for the format.
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Keystore, Secp256k1, Secret},
+};
+
+fn load_secret(path: &str, password: &str) -> Result<Secp256k1> {
+    let bytes = Keystore::from_file(path, password)?;
+    Secp256k1::from_bytes(bytes)
+}
+```
+
+Wrap the raw bytes in [`Secp256k1`](../api/traits/Secret) or [`Eip712`](../api/traits/Secret) depending on the account's signing scheme.
+
+## Runtime
+
+Every network call is async. Use the multi-threaded runtime in real apps:
+
+```rust
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+async fn main() -> anyhow::Result<()> { /* ... */ Ok(()) }
+```
+
+For libraries that own their runtime, expose `async fn` entry points and let the caller pick.
+
+## Logging
+
+Enable the `tracing` feature when the host app uses `tracing`:
+
+```toml
+dango-sdk = { git = "...", features = ["tracing"] }
+```
+
+This emits `debug!` events on every GraphQL request, response, and subscription handshake. No public symbols change.
+
+## Next
+
+- [Concepts: Clients](../concepts/clients) — pick the right client for the job.
+- [Concepts: Transactions](../concepts/transactions) — compose, sign, broadcast.

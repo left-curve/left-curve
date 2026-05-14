@@ -1,0 +1,42 @@
+# getSupplies
+
+Read a paginated map of total supplies across denoms.
+
+## Signature
+
+```ts
+function getSupplies(
+  client: Client,
+  parameters?: {
+    startAfter?: Denom
+    limit?: number
+    height?: number
+  },
+): Promise<Coins>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const supplies = await client.getSupplies({ limit: 100 })
+```
+
+## Parameters
+
+**`startAfter`** — `Denom`, optional. Denom to start after (exclusive).
+
+**`limit`** — `number`, optional. Maximum entries to return.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`Coins`** — `Record<Denom, string>` of supplies.
+
+## See also
+
+- [`getSupply`](./getSupply) — single-denom variant
+- [`getBalances`](./getBalances)

@@ -1,0 +1,20 @@
+# Hex
+
+A hex-encoded string.
+
+## Definition
+
+```ts
+type Hex = string
+```
+
+## Notes
+
+- Used for code hashes, key bytes, and key hashes. Some hex strings are conventionally lower-case (code hashes), others upper-case (key hashes).
+- For strict template-literal typing (`0x${string}`), use [`Address`](./Address) instead.
+- Validate with `isHex` from `@left-curve/encoding`; convert with `encodeHex` / `decodeHex`.
+
+## See also
+
+- [`Base64`](./Base64)
+- [Concepts: Encoding & Types](../concepts/encoding-and-types)

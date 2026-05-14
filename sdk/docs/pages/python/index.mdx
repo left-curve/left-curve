@@ -1,0 +1,31 @@
+# Dango Python SDK
+
+Sync Python client for the Dango perpetual futures exchange. Wraps the GraphQL HTTP and WebSocket endpoints behind three classes: `Exchange` for signed actions, `Info` for read queries and subscriptions, and `Secp256k1Wallet`/`SingleSigner` for keys and nonces.
+
+The distribution package is named `dango`. Both `dango/__init__.py` and `dango/hyperliquid_compatibility/__init__.py` are empty — import everything from submodules:
+
+```python
+from dango.exchange import Exchange
+from dango.info import Info
+from dango.utils.signing import Secp256k1Wallet, SingleSigner
+from dango.utils.types import Addr, PairId, TimeInForce
+from dango.utils.constants import MAINNET_API_URL, PERPS_CONTRACT_MAINNET
+```
+
+## Where to start
+
+- [Installation](./getting-started/installation) — install the wheel and set up a virtualenv
+- [First call](./getting-started/first-call) — run a read query against mainnet in five minutes
+- [Project setup](./getting-started/project-setup) — networks, env vars, signer construction
+
+## Reference
+
+- [Classes](./api/classes/Exchange) — `Exchange`, `Info`, `WebsocketManager`, `API`, `Secp256k1Wallet`, `SingleSigner`
+- Methods — per-method pages under [`Exchange`](./api/classes/Exchange#methods), [`Info`](./api/classes/Info#methods), and [`WebsocketManager`](./api/classes/WebsocketManager#methods)
+- [Helpers](./api/helpers/paginate_all) — module-level helpers (`paginate_all`, `dango_decimal`, `sign_doc_canonical_json`, `sign_doc_sha256`)
+- [Types](./api/types/Addr) — user-facing aliases, dataclasses, enums
+- [Errors](./api/errors/Error) — `Error`, `ClientError`, `ServerError`, `GraphQLError`, `TxFailed`
+
+## Migrating from Hyperliquid
+
+The package ships an HL-shaped facade under `dango.hyperliquid_compatibility`. Swap your imports and most existing HL code keeps working — but there are sharp edges. Read [Migration: Hyperliquid SDK](./migration/hyperliquid) before flipping the switch.

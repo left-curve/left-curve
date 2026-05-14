@@ -1,0 +1,18 @@
+# OrderId
+
+A spot order id.
+
+## Definition
+
+```ts
+type OrderId = string
+```
+
+## Notes
+
+- Returned by the chain after a new order lands. Use [`ordersByUser`](../actions/dex/ordersByUser) to enumerate active ids for an account.
+
+## See also
+
+- [`getOrder`](../actions/dex/getOrder)
+- [`batchUpdateOrders`](../actions/dex/batchUpdateOrders)

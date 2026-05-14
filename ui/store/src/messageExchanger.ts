@@ -1,6 +1,6 @@
-import { uid, withResolvers } from "@left-curve/dango/utils";
+import { uid, withResolvers } from "@left-curve/utils";
 import { WebCryptoECDH } from "./ecdh.js";
-import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
+import { deserializeJson, serializeJson } from "@left-curve/encoding";
 
 type MessageData<T = any> = {
   id: string;

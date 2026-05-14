@@ -1,0 +1,34 @@
+# getCodeHash
+
+Read the current code hash for newly-created accounts.
+
+## Signature
+
+```ts
+function getCodeHash(
+  client: Client,
+  parameters?: { height?: number },
+): Promise<Hex>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const codeHash = await client.getCodeHash()
+```
+
+## Parameters
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`Hex`** — the SHA-256 hash of the account contract's Wasm.
+
+## See also
+
+- [`registerUser`](./registerUser)
+- [`getCode`](../app/getCode)

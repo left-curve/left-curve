@@ -1,0 +1,28 @@
+# Dango Rust SDK
+
+The Rust SDK is a thin GraphQL + REST client over a Dango node, plus key-management and transaction-signing utilities.
+
+It exposes:
+
+- [`HttpClient`](./api/clients/HttpClient) — queries (`query_app`, `query_store`, `simulate`, `query_block`, …), tx broadcast, and macro-generated paginators for indexer connections.
+- [`WsClient`](./api/clients/WsClient) and [`Session`](./api/clients/Session) — GraphQL subscriptions over `graphql-transport-ws`.
+- [`SingleSigner`](./api/clients/SingleSigner) — typestate signer for Dango single-signature accounts.
+- [`Secret`](./api/traits/Secret) trait with `Secp256k1` and `Eip712` implementations, and [`Keystore`](./api/clients/Keystore) for AES-256-GCM at-rest encryption.
+
+The SDK is a thin transport: there are no Dango action helpers. Transactions are composed by building `Message`s (re-exported by the SDK) and passing them to the signer.
+
+## Start here
+
+- [Installation](./getting-started/installation) — add `dango-sdk` to a Cargo project.
+- [First call](./getting-started/first-call) — query the chain status with `HttpClient`.
+- [Project setup](./getting-started/project-setup) — endpoints, keys, env vars, runtime.
+
+## Concepts
+
+- [Clients](./concepts/clients) — when to reach for `HttpClient` vs `WsClient`.
+- [Signers and authentication](./concepts/signers-and-authentication) — the `Secret` trait and `SingleSigner`.
+- [Transactions](./concepts/transactions) — compose, sign, broadcast.
+- [Subscriptions](./concepts/subscriptions) — multiplexed `Session` vs dedicated `WsClient::subscribe`.
+- [Encoding and types](./concepts/encoding-and-types) — base units, `Addr`, `Hash256`, codegen response types.
+- [Error handling](./concepts/error-handling) — `anyhow::Error` everywhere except subscription items, which surface `WsError`.
+- [Rate limits and quotas](./concepts/rate-limits) — server-side limits and how to shape the client around them.

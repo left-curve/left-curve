@@ -1,0 +1,64 @@
+# upgrade
+
+Schedule a chain upgrade at a future block. Only the chain owner can submit.
+
+## Signature
+
+```ts
+function upgrade(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    height: number
+    cargoVersion: string
+    gitTag?: string
+    url?: string
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { upgrade } from "@left-curve/sdk"
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await upgrade(client, {
+  sender,
+  height: 1_000_000,
+  cargoVersion: "0.18.0",
+  gitTag: "v0.18.0",
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. Must equal the chain owner.
+
+**`height`** — `number`. Block height at which the upgrade takes effect.
+
+**`cargoVersion`** — `string`. Expected `Cargo.toml` version of the target binary.
+
+**`gitTag`** — `string`, optional. Git tag of the release.
+
+**`url`** — `string`, optional. URL pointing to release notes or binaries.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](./broadcastTxSync).
+
+## Notes
+
+- The action is not bundled into `appMutationActions` — call it as a free function: `upgrade(client, {...})`.
+
+## See also
+
+- [`configure`](./configure) — update chain and app configs

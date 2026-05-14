@@ -1,0 +1,76 @@
+# submit_conditional_order
+
+Place a conditional (TP/SL) order. Reduce-only by construction.
+
+The order fires as a market order when the oracle price crosses
+`trigger_price` in the chosen direction. `max_slippage` is bounded at
+submission by the per-pair `max_market_slippage`; if governance later
+tightens that cap, a stale conditional is cancelled by the cron with
+`reason = SlippageCapTightened`. See protocol book:
+`perps/2-order-matching` §3b.
+
+## Signature
+
+```python
+def submit_conditional_order(
+    self,
+    pair_id: PairId,
+    size: float | int | str | Decimal | None,
+    trigger_price: float | int | str | Decimal,
+    trigger_direction: TriggerDirection,
+    max_slippage: float | int | str | Decimal,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr, PairId, TriggerDirection
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# Stop loss: close 0.5 ETH long if price drops below 1400
+exchange.submit_conditional_order(
+    PairId("perp/ethusd"),
+    size="-0.5",                       # negative = sell (closes a long)
+    trigger_price="1400",
+    trigger_direction=TriggerDirection.BELOW,
+    max_slippage="0.01",
+)
+
+# Take profit: close the entire position when price hits 1700
+exchange.submit_conditional_order(
+    PairId("perp/ethusd"),
+    size=None,                         # None = close entire position
+    trigger_price="1700",
+    trigger_direction=TriggerDirection.ABOVE,
+    max_slippage="0.01",
+)
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+**`size`** — `float | int | str | Decimal | None`. Signed quantity. Negative closes a long (sells), positive closes a short (buys). `None` closes the entire position at trigger time. Zero is rejected (`ValueError`).
+
+**`trigger_price`** — `float | int | str | Decimal`. Price at which the order triggers.
+
+**`trigger_direction`** — `TriggerDirection`. `TriggerDirection.ABOVE` (trigger when price >= trigger_price) or `TriggerDirection.BELOW`.
+
+**`max_slippage`** — `float | int | str | Decimal`. Maximum slippage when the triggered order executes; a `Dimensionless` ratio.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- Conditional orders are always reduce-only by construction — `reduce_only` is not a parameter.
+- The sign on `size` (when not `None`) is the caller's responsibility. The contract does not double-check direction against the open position.
+
+## See also
+
+- [`cancel_conditional_order`](./cancel_conditional_order) — counterpart cancel
+- [`TriggerDirection`](../../types/TriggerDirection)

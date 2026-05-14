@@ -41,8 +41,9 @@ target/
 ui/portal/web/public/images
 **/.turbo
 
-# SDK
-sdk/typescript/docs
+# Docs (Vocs)
+sdk/docs/.vocs
+sdk/docs/.templates/review
 
 # UI
 **/.next

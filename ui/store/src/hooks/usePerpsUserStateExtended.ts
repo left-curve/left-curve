@@ -4,16 +4,13 @@ import { useConfig } from "./useConfig.js";
 import { useAccount } from "./useAccount.js";
 import { createBlockStore } from "./createBlockStore.js";
 
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
 import type {
   PerpsPositionExtended,
   PerpsUserStateExtended,
   QueryRequest,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 
 export const perpsUserStateExtendedStore = createBlockStore({
   initialState: {

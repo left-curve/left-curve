@@ -4,12 +4,9 @@ import { useConfig } from "./useConfig.js";
 import { useAccount } from "./useAccount.js";
 import { createBlockStore } from "./createBlockStore.js";
 
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
-import type { PerpsOrdersByUserResponse, QueryRequest } from "@left-curve/dango/types";
+import type { PerpsOrdersByUserResponse, QueryRequest } from "@left-curve/types";
 
 export const perpsOrdersByUserStore = createBlockStore({
   initialState: { orders: null as PerpsOrdersByUserResponse | null },

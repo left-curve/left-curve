@@ -1,0 +1,32 @@
+# PublicKey
+
+A public key as returned by the indexer — includes metadata like creation time and key type.
+
+## Definition
+
+```ts
+type PublicKey = {
+  keyHash: KeyHash
+  publicKey: Hex
+  keyType: "SECP256R1" | "SECP256K1" | "ETHEREUM"
+  createdBlockHeight: number
+  createdAt: DateTime
+}
+```
+
+## Fields
+
+**`keyHash`** — `KeyHash`. The hash of the public key.
+
+**`publicKey`** — `Hex`. The public key bytes, hex-encoded.
+
+**`keyType`** — uppercase of one of `KeyTag`'s keys.
+
+**`createdBlockHeight`** — `number`. Height at which the key was added.
+
+**`createdAt`** — `DateTime`. ISO 8601 timestamp.
+
+## See also
+
+- [`Key`](./Key) — the on-chain representation
+- [`getUserKeys`](../actions/account-factory/getUserKeys)

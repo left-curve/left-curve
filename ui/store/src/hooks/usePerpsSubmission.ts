@@ -2,9 +2,9 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { useAccount } from "./useAccount.js";
 import { useSigningClient } from "./useSigningClient.js";
 
-import { truncateDec } from "@left-curve/dango/utils";
+import { truncateDec } from "@left-curve/utils";
 
-import type { ChildOrder, PerpsOrderKind, PerpsTimeInForce } from "@left-curve/dango/types";
+import type { ChildOrder, PerpsOrderKind, PerpsTimeInForce } from "@left-curve/types";
 
 type UsePerpsSubmissionParameters = {
   perpsPairId: string;

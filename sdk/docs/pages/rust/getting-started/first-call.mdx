@@ -1,0 +1,67 @@
+# First call
+
+A five-minute hello-world that queries chain status with `HttpClient`.
+
+## The program
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::BlockClient,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+
+    let block = client.query_block(None).await?;
+
+    println!("latest height: {}", block.info.height);
+    println!("chain id:      {}", block.info.chain_id);
+    println!("timestamp:     {}", block.info.timestamp);
+
+    Ok(())
+}
+```
+
+`BlockClient` supplies `query_block`. `HttpClient` implements it, so the method is reachable once the trait is in scope.
+
+## What just happened
+
+1. `HttpClient::new` wraps a `reqwest::Client` around the Dango HTTP endpoint. No network call is made.
+2. `query_block(None)` hits the REST endpoint `GET /block/info` and parses the response into a `Block`.
+3. Errors propagate as `anyhow::Error` via `?`.
+
+## Querying contract state
+
+Most "what's my balance" calls go through the `QueryClientExt` blanket trait, which is automatically reachable on `HttpClient`:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::{Addr, Denom, QueryClientExt},
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+
+    let address = Addr::from_str("0x0000000000000000000000000000000000000000")?;
+    let denom   = Denom::from_str("bridge/usdc")?;
+
+    let balance = client.query_balance(address, denom, None).await?;
+    println!("balance: {balance}");
+
+    Ok(())
+}
+```
+
+`query_balance`, `query_app_config`, `query_wasm_smart`, and the other `QueryClientExt` methods. See [Clients](../concepts/clients) for the full list reachable on `HttpClient`.
+
+## Next
+
+- [Project setup](./project-setup) — wiring endpoints, keys, and env vars.
+- [Concepts: Clients](../concepts/clients) — `HttpClient` vs `WsClient`.

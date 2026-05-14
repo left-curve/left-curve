@@ -1,0 +1,54 @@
+# paginate_accounts
+
+Fetch every account in the indexer's `accounts` connection, paginating forward.
+
+## Signature
+
+```rust
+pub async fn paginate_accounts(
+    &self,
+    page_size: i64,
+    variables: accounts::Variables,
+) -> Result<Vec<accounts::AccountsAccountsNodes>, anyhow::Error>;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, accounts},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+
+    let accounts = client
+        .paginate_accounts(100, accounts::Variables::default())
+        .await?;
+
+    println!("{} accounts", accounts.len());
+    Ok(())
+}
+```
+
+## Parameters
+
+**`page_size`** — `i64`. Number of items per request. The indexer caps `first` at 100.
+
+**`variables`** — `accounts::Variables`. Query filters. Pagination fields (`after`, `before`, `first`, `last`) are overwritten by the loop; only the filter fields you set are honored.
+
+## Returns
+
+**`Vec<accounts::AccountsAccountsNodes>`** — every node in the connection, in the indexer's natural order.
+
+## Notes
+
+- This wrapper only does forward pagination. Use [`paginate_all`](./paginate_all) for backward traversal.
+- Stops when `page_info.has_next_page` is false or `end_cursor` is `None`.
+
+## See also
+
+- [`paginate_all`](./paginate_all) — generic version with closures.
+- [Concepts: Encoding and types](../../../concepts/encoding-and-types) — connection node shape.

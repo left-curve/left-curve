@@ -1,17 +1,15 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { execute } from "#actions/app/mutations/execute.js";
 
-import type { Address, Coin, Transport } from "@left-curve/sdk/types";
-import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
+import type { Address, Coin } from "@left-curve/types";
+import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
 import type {
-  AppConfig,
-  DangoClient,
+  Client,
   DexExecuteMsg,
   Signer,
   SwapRoute,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
 
 export type SwapExactAmountInParameters = {
   sender: Address;
@@ -22,15 +20,13 @@ export type SwapExactAmountInParameters = {
 
 export type SwapExactAmountInReturnType = BroadcastTxSyncReturnType;
 
-export async function swapExactAmountIn<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function swapExactAmountIn(
+  client: Client<Signer>,
   parameters: SwapExactAmountInParameters,
 ): SwapExactAmountInReturnType {
   const { route, minimumOutput, sender, input } = parameters;
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const msg: DexExecuteMsg = {
     swapExactAmountIn: {

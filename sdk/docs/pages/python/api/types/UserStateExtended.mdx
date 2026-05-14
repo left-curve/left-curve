@@ -1,0 +1,46 @@
+# UserStateExtended
+
+A user's state plus computed equity / margin / PnL fields.
+
+## Definition
+
+```python
+class UserStateExtended(TypedDict):
+    margin: UsdValue
+    vault_shares: Uint128
+    unlocks: list[Unlock]
+    reserved_margin: UsdValue
+    open_order_count: int
+    equity: UsdValue | None
+    available_margin: UsdValue | None
+    maintenance_margin: UsdValue | None
+    positions: dict[PairId, PositionExtended]
+```
+
+## Fields
+
+Inherits the base [`UserState`](./UserState) fields plus:
+
+**`equity`** — `UsdValue | None`. Total account value. `None` when `include_equity=False`.
+
+**`available_margin`** — `UsdValue | None`. Margin available to open new positions / withdraw.
+
+**`maintenance_margin`** — `UsdValue | None`. Minimum margin required to avoid liquidation.
+
+**`positions`** — `dict[PairId, PositionExtended]`. Per-position `unrealized_pnl`, `unrealized_funding`, `liquidation_price` added (each may be `None` per the `include_*` flags on the query).
+
+## Construction
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+state = info.user_state_extended(Addr("0x..."), include_liquidation_price=True)
+```
+
+## See also
+
+- [`UserState`](./UserState) — base shape
+- [`user_state_extended`](../methods/info/user_state_extended) — fetcher

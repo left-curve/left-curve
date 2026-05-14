@@ -12,7 +12,7 @@ import type { UseSuspenseQueryResult } from "@tanstack/react-query";
 import type { QueryParameter } from "../query.js";
 import { useConfig } from "./useConfig.js";
 
-import type { Prettify } from "@left-curve/dango/types";
+import type { Prettify } from "@left-curve/types";
 import type { Config, ConfigParameter } from "../types/store.js";
 
 export type UseAppConfigParameters<

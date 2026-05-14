@@ -1,24 +1,21 @@
-## Grug and Dango SDK
+## Dango SDK
 
-You can find more info in our [documentation](https://grug-sdk.pages.dev/).
+TypeScript SDK for the [Dango](https://dango.exchange) ecosystem.
 
 ## Packages
 
-#### `/packages`
-
-| Package                       | Description                                                                                                                                                 |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`config`](./config)          | Common configurations for tsconfig, tsup, biome, typedoc                                                                                                    |
-| [`dango`](./dango/)           | The SDK package provides a set of tools and utilities to interact with [Dango] chain                                                                        |
-| [`crypto`](./grug/crypto)     | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
-| [`encoding`](./grug/encoding) | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
-| [`grug-sdk`](./grug)          | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
-| [`types`](./grug/types)       | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
-| [`utils`](./grug/utils)       | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
+| Package                    | Description                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| [`config`](./config)       | Common configurations for tsconfig, tsup, biome                                  |
+| [`dango`](./dango)         | Clients, actions, chains, and transports for interacting with the Dango chain    |
+| [`types`](./types)         | TypeScript type definitions used across the ecosystem                            |
+| [`encoding`](./encoding)   | Hex, base64, binary, JSON, and UTF-8 encoding utilities                          |
+| [`utils`](./utils)         | Decimal math, formatting, assertions, and general utilities                      |
+| [`crypto`](./crypto)       | Hash functions, key pairs, WebAuthn, and cryptographic primitives                |
 
 ## Supported JS environments
 
-Packages in the workspace are compiled to JavaScript ES2022, targeting the latest ECMAScript standard, and support both ESM and CJS module formats.
+Packages are compiled to JavaScript ES2022 and support both ESM and CJS module formats.
 
 1. Node.js 21+
 2. Modern browsers (Chromium/Firefox/Safari)
@@ -36,8 +33,7 @@ We are grateful to both the [Wevm] and [Confio] team for their open-source contr
 
 TBD
 
-[Grug]: https://grug.build/
-[Dango]: ../../dango
+[Dango]: https://dango.exchange
 [Wevm]: https://wevm.dev/
 [Wagmi]: https://github.com/wevm/wagmi
 [Viem]: https://github.com/wevm/viem

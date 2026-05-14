@@ -1,8 +1,6 @@
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { PerpsEvent } from "../../../types/indexer.js";
-import type { GraphqlQueryResult } from "../../../types/graphql.js";
+import type { Client, GraphqlQueryResult, PerpsEvent } from "@left-curve/types";
 
 export type QueryPerpsEventsParameters = {
   after?: string;
@@ -18,8 +16,8 @@ export type QueryPerpsEventsParameters = {
 
 export type QueryPerpsEventsReturnType = Promise<GraphqlQueryResult<PerpsEvent>>;
 
-export async function queryPerpsEvents<transport extends Transport>(
-  client: Client<transport>,
+export async function queryPerpsEvents(
+  client: Client,
   parameters: QueryPerpsEventsParameters,
 ): QueryPerpsEventsReturnType {
   const document = /* GraphQL */ `

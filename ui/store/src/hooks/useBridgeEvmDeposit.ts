@@ -5,20 +5,15 @@ import { useSigningClient } from "./useSigningClient.js";
 import { useAccount } from "./useAccount.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
-import { parseUnits } from "@left-curve/dango/utils";
+import { parseUnits } from "@left-curve/utils";
 
-import {
-  ERC20_ABI,
-  HYPERLANE_ROUTER_ABI,
-  INFURA_URLS,
-  toAddr32,
-} from "@left-curve/dango/hyperlane";
+import { ERC20_ABI, HYPERLANE_ROUTER_ABI, INFURA_URLS, toAddr32 } from "@left-curve/sdk/hyperlane";
 
 import type { Connector } from "../types/connector.js";
 import type { Chain as ViemChain } from "viem";
 import type { AnyCoin } from "../types/coin.js";
 import type { EIP1193Provider } from "../types/eip1193.js";
-import type { MailBoxConfig, NonNullablePropertiesBy } from "@left-curve/dango/types";
+import type { MailBoxConfig, NonNullablePropertiesBy } from "@left-curve/types";
 import type { useBridgeState } from "./useBridgeState.js";
 
 const MAX_SAFE = 2n ** 256n - 1n;
@@ -61,24 +56,24 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
       return createWalletClient({
         chain: chain as ViemChain,
         transport: custom(provider),
-        account: evmAddress,
+        account: evmAddress as `0x${string}`,
       });
     },
   });
 
   const allowanceQuery = useQuery({
     enabled: !!wallet.data && !!router,
-    queryKey: ["bridge_evm", "allowance", wallet?.data?.account.address, router.coin],
+    queryKey: ["bridge_evm", "allowance", wallet?.data?.account?.address, router.coin],
     initialData: MAX_SAFE,
     queryFn: async () => {
       if (router.coin === "native") return MAX_SAFE;
       const { data: client } = wallet as NonNullablePropertiesBy<typeof wallet, "data">;
 
       return await publicClient.readContract({
-        address: router.coin,
+        address: router.coin as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "allowance",
-        args: [client.account.address, router.address],
+        args: [client.account!.address, router.address as `0x${string}`],
       });
     },
   });
@@ -95,10 +90,10 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
         await client.switchChain({ id: chain.id });
 
         const approveHash = await client.writeContract({
-          address: router.coin,
+          address: router.coin as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [router.address, depositAmount],
+          args: [router.address as `0x${string}`, depositAmount],
         });
 
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -130,10 +125,10 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
         await client.switchChain({ id: chain.id });
 
         const txHash = await client.writeContract({
-          address: router.address,
+          address: router.address as `0x${string}`,
           abi: HYPERLANE_ROUTER_ABI,
           functionName: "transferRemote",
-          args: [localDomain, `0x${recipientAddress}`, depositAmount],
+          args: [localDomain, `0x${recipientAddress}` as `0x${string}`, depositAmount],
           value,
         });
 

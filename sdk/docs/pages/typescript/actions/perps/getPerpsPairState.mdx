@@ -1,0 +1,45 @@
+# getPerpsPairState
+
+Read on-chain pair state — long/short OI, funding per unit, and current funding rate.
+
+`fundingPerUnit` is the pair-level running accumulator; per-position accrued
+funding is `size × (fundingPerUnit − entryFundingPerUnit)` and settles lazily
+whenever a position is touched. `fundingRate` is the clamped per-day rate
+finalised at the most recent funding collection. See protocol book:
+`perps/3-funding` §3–§4.
+
+## Signature
+
+```ts
+function getPerpsPairState(
+  client: Client,
+  parameters: {
+    pairId: string
+    height?: number
+  },
+): Promise<PerpsPairState | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const state = await client.getPerpsPairState({ pairId: "BTC-PERP" })
+```
+
+## Parameters
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsPairState | null`** — `{ longOi, shortOi, fundingPerUnit, fundingRate }`, or `null` if the pair has no state yet.
+
+## See also
+
+- [`getPerpsLiquidityDepth`](./getPerpsLiquidityDepth)
+- [`getPerpsState`](./getPerpsState)

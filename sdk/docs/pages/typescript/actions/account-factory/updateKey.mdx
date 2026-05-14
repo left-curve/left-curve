@@ -1,0 +1,67 @@
+# updateKey
+
+Insert or delete a key on the calling account.
+
+Keys are stored on the user record (`User.keys: BTreeMap<KeyHash, Key>`) and
+indexed by hash for authentication lookups. Adding or removing a key here is
+how a user rotates credentials; the signature against the new key is verified
+against the registered hash on every subsequent transaction. See protocol
+book: `overview/3-dango-contracts` §4.
+
+## Signature
+
+```ts
+function updateKey(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    action: "delete" | { insert: Key }
+    keyHash: KeyHash
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+// Add a new secp256k1 key
+await client.updateKey({
+  sender,
+  action: { insert: { secp256k1: "base64-encoded-new-pubkey" } },
+  keyHash: "ABCDEF...new-hash",
+})
+
+// Remove an existing key
+await client.updateKey({
+  sender,
+  action: "delete",
+  keyHash: "ABCDEF...old-hash",
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The calling account.
+
+**`action`** — `"delete" | { insert: Key }`. Discriminated by string vs object.
+
+**`keyHash`** — `KeyHash`. The hash of the key being inserted or deleted.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`getUserKeys`](./getUserKeys) — list current keys
+- [`createSession`](./createSession) — session-key alternative

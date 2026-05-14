@@ -1,10 +1,10 @@
 import { Cell, Table, useApp } from "@left-curve/applets-kit";
 import { useConfig, usePrices } from "@left-curve/store";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/utils";
 
 import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
-import type { Coins } from "@left-curve/dango/types";
+import type { Coins } from "@left-curve/types";
 import type { AnyCoin, WithAmount, WithPrice } from "@left-curve/store/types";
 
 export type AssetsTableProps = {

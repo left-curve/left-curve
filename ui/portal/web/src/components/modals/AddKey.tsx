@@ -14,7 +14,7 @@ import {
   IconKey,
   useApp,
 } from "@left-curve/applets-kit";
-import { createKeyHash } from "@left-curve/dango";
+import { createKeyHash } from "@left-curve/sdk";
 import { AuthOptions } from "../auth/AuthOptions";
 import { PasskeyCredential } from "../auth/PasskeyCredential";
 import { EmailCredential } from "../auth/EmailCredential";

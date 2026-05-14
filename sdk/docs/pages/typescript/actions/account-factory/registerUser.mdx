@@ -1,0 +1,72 @@
+# registerUser
+
+Create a new user and their first account in a single transaction. Submitted by the account factory itself (sender-less from the caller's perspective).
+
+Registration requires a pre-existing deposit (≥ `min_deposit`) sent to the
+factory, a signed `RegisterUserData` proving control of the public key, and a
+chain id binding. If `referrer` is provided, the factory atomically forwards
+a `SetReferral` to the perps contract. The username on the new user record
+is immutable once set. See protocol book: `overview/3-dango-contracts` §3.
+
+## Signature
+
+```ts
+function registerUser(
+  client: Client<Signer | undefined>,
+  parameters: {
+    key: Key
+    keyHash: KeyHash
+    seed: number
+    signature: Signature
+    referrer?: number
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromRandomKey()
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer,
+})
+
+// Build the signature off-band per the chain's registration protocol.
+await client.registerUser({
+  key: { secp256k1: "base64-encoded-pubkey" },
+  keyHash: await signer.getKeyHash(),
+  seed: 1,
+  signature: { secp256k1: "base64-signature" },
+})
+```
+
+## Parameters
+
+**`key`** — `Key`. The public key to register (`{ secp256k1 }`, `{ secp256r1 }`, or `{ ethereum }`).
+
+**`keyHash`** — `KeyHash`. SHA-256 of the public key, uppercase hex.
+
+**`seed`** — `number`. Salt input — see [`createAccountSalt`](../../concepts/encoding-and-types).
+
+**`signature`** — `Signature`. Signature proving control of the key.
+
+**`referrer`** — `number`, optional. Referrer's user index.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- Unlike normal mutations, `registerUser` is submitted by the account factory contract itself. The action calls `simulate` for gas and broadcasts an unsigned tx (the contract is its own credential).
+- Exactly one `RegisterUser` message is allowed per transaction (anti-batching constraint).
+- Nonce jump on the resulting account is limited to 100 to bound the seen-nonce set.
+
+## See also
+
+- [`registerAccount`](./registerAccount) — add more accounts to an existing user
+- [Concepts: Signers & Authentication](../../concepts/signers-and-authentication)

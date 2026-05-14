@@ -1,0 +1,35 @@
+# queryBlock
+
+Fetch a block (by height or latest) with its transactions and cron outcomes.
+
+## Signature
+
+```ts
+function queryBlock(
+  client: Client,
+  parameters?: { height?: number },
+): Promise<IndexedBlock>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const block = await client.queryBlock({ height: 12345 })
+const latest = await client.queryBlock()
+```
+
+## Parameters
+
+**`height`** — `number`, optional. Block height. Omit for latest.
+
+## Returns
+
+**`IndexedBlock`** — `{ blockHeight, createdAt, hash, appHash, cronsOutcomes, transactions }`. Each `IndexedTransaction` carries hash, sender, type, messages, and gas accounting.
+
+## See also
+
+- [`searchTxs`](./searchTxs) — paginated tx search
+- [`queryStatus`](../app/queryStatus) — just the chain id + latest block header

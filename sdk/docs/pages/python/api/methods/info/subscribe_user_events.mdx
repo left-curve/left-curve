@@ -1,0 +1,57 @@
+# subscribe_user_events
+
+Stream events for one user, optionally filtered by `event_type`.
+
+## Signature
+
+```python
+def subscribe_user_events(
+    self,
+    user: Addr,
+    callback: Callable[[PerpsEvent], None],
+    *,
+    event_types: list[str] | None = None,
+) -> int
+```
+
+## Example
+
+```python
+import time
+
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL)
+
+sid = info.subscribe_user_events(
+    Addr("0x..."),
+    print,
+    event_types=["order_filled", "order_removed"],
+)
+time.sleep(60)
+info.unsubscribe(sid)
+info.disconnect_websocket()
+```
+
+## Parameters
+
+**`user`** — `Addr`. The user's account address.
+
+**`callback`** — `Callable[[PerpsEvent], None]`. Invoked once per event.
+
+**`event_types`** — `list[str] | None`, optional. Restrict to these event types. The filter rule is **(type=A AND user=X) OR (type=B AND user=X)** — the union of types intersected with the user. Default: `None` (every event for the user).
+
+## Returns
+
+**`int`** — the subscription id.
+
+## Notes
+
+- Event types match the chain's perps event enum: `order_filled`, `order_persisted`, `order_removed`, `liquidated`, `deleveraged`, `referral_set`, etc.
+
+## See also
+
+- [`perps_events_all`](./perps_events_all) — historical counterpart
+- [Concepts: Subscriptions](../../../concepts/subscriptions)

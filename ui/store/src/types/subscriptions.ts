@@ -12,13 +12,13 @@ import type {
   PerpsCandle,
   PerpsPairStats,
   PerpsTrade,
-  PublicClient,
   QueryRequest,
   QueryResponse,
   SubscriptionEvent as DangoSubscriptionEvent,
   Trade,
   Username,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
+import type { PublicClient } from "@left-curve/sdk";
 
 export type SubscriptionSchema = [
   {

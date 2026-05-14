@@ -1,0 +1,27 @@
+# TypeScript SDK
+
+The TypeScript SDK is a viem-style client for the Dango execution environment. It speaks GraphQL over HTTP and WebSocket to a Dango indexer, signs transactions with EIP-712 typed data, and ships as six packages: `@left-curve/sdk`, `@left-curve/crypto`, `@left-curve/encoding`, `@left-curve/types`, `@left-curve/utils`, and `@left-curve/config`.
+
+## Start here
+
+- [Installation](./getting-started/installation) — install the SDK and its peer requirements
+- [First Call](./getting-started/first-call) — five-minute hello world against testnet
+- [Project Setup](./getting-started/project-setup) — networks, signers, env vars
+
+## Concepts
+
+- [Packages](./concepts/packages) — what lives in which package, and when to reach for a sub-package
+- [Clients](./concepts/clients) — `createPublicClient` vs `createSignerClient`
+- [Signers & Authentication](./concepts/signers-and-authentication) — `PrivateKeySigner`, session signers, passkeys
+- [Transactions](./concepts/transactions) — sign, broadcast, poll
+- [Subscriptions](./concepts/subscriptions) — the WebSocket model
+- [Encoding & Types](./concepts/encoding-and-types) — base units, `Decimal`, `bigint`
+- [Error Handling](./concepts/error-handling) — `BaseError` hierarchy
+- [Rate Limits & Quotas](./concepts/rate-limits) — 167 reqs / 10s, 30 subs / WS
+
+## API Reference
+
+- Clients: [createPublicClient](./clients/createPublicClient), [createSignerClient](./clients/createSignerClient), [createBaseClient](./clients/createBaseClient)
+- Actions, grouped by domain: [App](./actions/app/transfer), [DEX](./actions/dex/swapExactAmountIn), [Perps](./actions/perps/submitPerpsOrder), [Account Factory](./actions/account-factory/registerUser), [Gateway](./actions/gateway/transferRemote), [Indexer](./actions/indexer/queryBlock), [Oracle](./actions/oracle/getPrices), [Hyperlane](./actions/hyperlane/Addr32)
+- [Types](./types/Address) — major user-facing types
+- [Errors](./errors/BaseError) — `BaseError` and friends

@@ -3,9 +3,9 @@ import { forwardRef, useImperativeHandle } from "react";
 import { useConfig } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { Direction, TimeInForceOption } from "@left-curve/dango/types";
+import { Direction, TimeInForceOption } from "@left-curve/types";
 import { twMerge } from "@left-curve/foundation";
-import { calculatePrice } from "@left-curve/dango/utils";
+import { calculatePrice } from "@left-curve/utils";
 
 import { OrderActivity } from "./OrderActivity";
 

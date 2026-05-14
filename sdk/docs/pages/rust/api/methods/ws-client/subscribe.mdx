@@ -1,0 +1,68 @@
+# WsClient::subscribe
+
+Open a dedicated WebSocket connection and start a single subscription.
+
+## Signature
+
+```rust
+pub async fn subscribe<Q>(
+    &self,
+    variables: Q::Variables,
+) -> Result<SubscriptionStream<Q::ResponseData>, anyhow::Error>
+where
+    Q:               GraphQLQuery + Unpin + Send + Sync + 'static,
+    Q::Variables:    Unpin + Send + Sync + 'static,
+    Q::ResponseData: DeserializeOwned + Unpin + Send + Sync + 'static;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscribeTrades, WsClient, subscribe_trades},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = WsClient::new("wss://api-mainnet.dango.zone/graphql")?;
+
+    let mut stream = client
+        .subscribe::<SubscribeTrades>(subscribe_trades::Variables {
+            base_denom:  "dango".into(),
+            quote_denom: "bridge/usdc".into(),
+        })
+        .await?;
+
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(resp) => println!("trade: {resp:?}"),
+            Err(err) => { eprintln!("ws: {err}"); break; }
+        }
+    }
+    Ok(())
+}
+```
+
+## Parameters
+
+**`variables`** — `Q::Variables`. Typed variables for the subscription query. Each generated subscription has its own snake-case module with a `Variables` struct.
+
+**Type parameter `Q`** — the `GraphQLQuery` marker struct for the subscription (e.g. `SubscribeTrades`, `SubscribeBlock`).
+
+## Returns
+
+**`SubscriptionStream<Q::ResponseData>`** — a boxed `Stream` of `Result<Response<T>, WsError>`. The connection closes when the stream is dropped.
+
+## Notes
+
+- Convenience wrapper over [`connect`](./connect) + [`Session::subscribe`](../session/subscribe). The session is owned by the stream and dropped together.
+- Each call opens a new socket. Prefer `connect` + `Session::subscribe` for multi-stream programs.
+- Stream items are typed via the codegen `ResponseData`. See [Concepts: Encoding and types](../../../concepts/encoding-and-types) for the shape.
+
+## See also
+
+- [`connect`](./connect) — open a multiplexed session.
+- [`SubscriptionStream`](../../subscriptions/SubscriptionStream) — the returned type.
+- [`SubscriptionVariables`](../../subscriptions/SubscriptionVariables) — sugar that flips the call order.

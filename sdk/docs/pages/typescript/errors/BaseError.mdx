@@ -1,0 +1,66 @@
+# BaseError
+
+Base class for every SDK error. Carries structured metadata for triage.
+
+## Definition
+
+```ts
+class BaseError extends Error {
+  override name: string             // "BaseError"
+  shortMessage: string
+  details: string
+  metaMessages?: string[]
+
+  constructor(shortMessage: string, args?: {
+    cause?: BaseError | Error
+    details?: string
+    metaMessages?: string[]
+    name?: string
+  })
+}
+```
+
+## Fields
+
+**`name`** — `string`. Discriminator. Overridden by subclasses (`"HttpRequestError"`, `"TimeoutError"`, `"UrlRequiredError"`).
+
+**`shortMessage`** — `string`. The one-line summary passed at construction.
+
+**`details`** — `string`. Detailed explanation. Derived from `cause.details` (when cause is a `BaseError`) or `cause.message`, else from the explicit `details` arg.
+
+**`metaMessages`** — `string[] | undefined`. Contextual lines composed into the final `message`.
+
+## Narrowing
+
+`BaseError` is **not** currently exported from `@left-curve/sdk`. There is no `@left-curve/sdk/errors` subpath. Narrow by `name` instead of `instanceof`:
+
+```ts
+try {
+  await client.getBalance({ address, denom: "dango" })
+} catch (err) {
+  if (err instanceof Error && err.name === "HttpRequestError") {
+    // handle network failure
+  }
+}
+```
+
+The final `message` is composed as:
+
+```
+{shortMessage}
+{metaMessages joined by newline}
+
+Details: {details}
+```
+
+## Notes
+
+- For richer narrowing today, check `err.name` against the known discriminator strings (`"BaseError"`, `"HttpRequestError"`, `"TimeoutError"`, `"UrlRequiredError"`).
+- See [Concepts: Error Handling](../concepts/error-handling) for the recommended pattern.
+
+## See also
+
+- [`HttpRequestError`](./HttpRequestError)
+- [`TimeoutError`](./TimeoutError)
+- [`UrlRequiredError`](./UrlRequiredError)
+- [Concepts: Error Handling](../concepts/error-handling)

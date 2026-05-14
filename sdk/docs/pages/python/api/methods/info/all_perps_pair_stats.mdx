@@ -1,0 +1,28 @@
+# all_perps_pair_stats
+
+24-hour stats for every active pair.
+
+## Signature
+
+```python
+def all_perps_pair_stats(self) -> list[PerpsPairStats]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+for stats in info.all_perps_pair_stats():
+    print(stats["pairId"], stats["currentPrice"], stats["volume24H"])
+```
+
+## Returns
+
+**`list[PerpsPairStats]`** — one entry per pair. See [`PerpsPairStats`](../../types/PerpsPairStats).
+
+## See also
+
+- [`perps_pair_stats`](./perps_pair_stats) — single-pair lookup

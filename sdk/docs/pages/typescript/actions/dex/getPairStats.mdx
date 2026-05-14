@@ -1,0 +1,51 @@
+# getPairStats
+
+Read 24h indexer-computed stats for a single pair: current price, 24h-ago price, 24h volume, and 24h change.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPairStats(
+  client: Client,
+  parameters: {
+    baseDenom: string
+    quoteDenom: string
+  },
+): Promise<PairStats>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const stats = await client.getPairStats({
+  baseDenom: "dango",
+  quoteDenom: "bridge/usdc",
+})
+```
+
+## Parameters
+
+**`baseDenom`** — `string`. Base asset denom.
+
+**`quoteDenom`** — `string`. Quote asset denom.
+
+## Returns
+
+**`PairStats`** — `{ baseDenom, quoteDenom, currentPrice, price24HAgo, volume24H, priceChange24H }`.
+
+## Notes
+
+- Sourced from the indexer's GraphQL schema, not the on-chain DEX contract. Indexer lag may apply.
+
+## See also
+
+- [`getAllPairStats`](./getAllPairStats)
+- [`allPairStatsSubscription`](../indexer/allPairStatsSubscription)

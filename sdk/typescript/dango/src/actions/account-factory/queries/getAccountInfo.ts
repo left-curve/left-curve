@@ -1,8 +1,8 @@
-import { getAction, getAppConfig, queryWasmSmart } from "@left-curve/sdk/actions";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
 import { getUser } from "./getUser.js";
 
-import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
-import type { AccountDetails, AccountInfo, AppConfig } from "../../../types/index.js";
+import type { AccountDetails, AccountInfo, Address, Client } from "@left-curve/types";
 
 export type GetAccountInfoParameters = {
   address: Address;
@@ -18,21 +18,16 @@ export type GetAccountInfoReturnType = Promise<AccountDetails | null>;
  * @param parameters.height The height at which to get the account info.
  * @returns The account info.
  */
-export async function getAccountInfo<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getAccountInfo(
+  client: Client,
   parameters: GetAccountInfoParameters,
 ): GetAccountInfoReturnType {
   const { address, height = 0 } = parameters;
   const msg = { account: { address } };
 
-  const action = getAction(client, getAppConfig, "getAppConfig");
+  const { addresses } = await getAppConfig(client);
 
-  const { addresses } = await action<AppConfig>({});
-
-  const account = await queryWasmSmart<AccountInfo, chain, signer>(client, {
+  const account = await queryWasmSmart<AccountInfo>(client, {
     contract: addresses.accountFactory,
     msg,
     height,

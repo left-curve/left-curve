@@ -1,16 +1,15 @@
-import type { Address, Message, Transport } from "@left-curve/sdk/types";
-
-import { composeTxTypedData } from "../../../utils/typedData.js";
-import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
-import { getAccountInfo } from "../../account-factory/queries/getAccountInfo.js";
-import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
-
 import type {
-  DangoClient,
+  Address,
+  Client,
+  Message,
   Signer,
   TxMessageType,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
+import { composeTxTypedData } from "@left-curve/utils";
+import { getAccountSeenNonces } from "#actions/account-factory/queries/getAccountSeenNonces.js";
+import { getAccountInfo } from "#actions/account-factory/queries/getAccountInfo.js";
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 import { queryStatus } from "../queries/queryStatus.js";
 import { simulate } from "../queries/simulate.js";
@@ -24,8 +23,8 @@ export type SignAndBroadcastTxParameters = {
 
 export type SignAndBroadcastTxReturnType = BroadcastTxSyncReturnType;
 
-export async function signAndBroadcastTx<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function signAndBroadcastTx(
+  client: Client<Signer>,
   parameters: SignAndBroadcastTxParameters,
 ): SignAndBroadcastTxReturnType {
   if (!client.signer) throw new Error("client must have a signer");

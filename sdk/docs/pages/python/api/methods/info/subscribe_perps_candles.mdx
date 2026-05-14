@@ -1,0 +1,52 @@
+# subscribe_perps_candles
+
+Stream OHLCV candles for one pair at one interval.
+
+## Signature
+
+```python
+def subscribe_perps_candles(
+    self,
+    pair_id: PairId,
+    interval: CandleInterval,
+    callback: Callable[[PerpsCandle], None],
+) -> int
+```
+
+## Example
+
+```python
+import time
+
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import CandleInterval, PairId
+
+info = Info(MAINNET_API_URL)
+
+sid = info.subscribe_perps_candles(
+    PairId("perp/ethusd"),
+    CandleInterval.ONE_MINUTE,
+    print,
+)
+time.sleep(60)
+info.unsubscribe(sid)
+info.disconnect_websocket()
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+**`interval`** — `CandleInterval`.
+
+**`callback`** — `Callable[[PerpsCandle], None]`. Invoked once per candle. The server may emit multiple candles on reconnect; the SDK fan-out delivers them one at a time.
+
+## Returns
+
+**`int`** — the subscription id.
+
+## See also
+
+- [`perps_candles`](./perps_candles) — historical counterpart
+- [Concepts: Subscriptions](../../../concepts/subscriptions)
