@@ -5,6 +5,7 @@ showLogo: true
 
 import { HomePage } from 'vocs/components'
 import { PackageCard, PackageCardGrid } from '../components/PackageCard'
+import { InstallTabs } from '../components/InstallTabs'
 
 <HomePage.Root>
   <HomePage.Tagline>SDKs for the Dango perpetual futures exchange</HomePage.Tagline>
@@ -32,7 +33,15 @@ import { PackageCard, PackageCardGrid } from '../components/PackageCard'
     packageName="dango"
     summary="Exchange + Info classes, plus a Hyperliquid-compatibility layer that re-uses your existing hyperliquid-python-sdk code."
     bestFor="quantitative research, backtests, scripts migrated from Hyperliquid."
-    install={<pre><code>uv add dango</code></pre>}
+    install={
+      <InstallTabs
+        commands={[
+          { label: "uv", command: "uv add dango" },
+          { label: "pip", command: "pip install dango" },
+          { label: "poetry", command: "poetry add dango" },
+        ]}
+      />
+    }
     href="/python/getting-started/installation"
   />
   <PackageCard
@@ -40,7 +49,14 @@ import { PackageCard, PackageCardGrid } from '../components/PackageCard'
     packageName="dango-sdk"
     summary="async GraphQL client, WebSocket subscriptions, key management, transaction signing."
     bestFor="low-latency market makers, on-chain services, async Tokio workloads."
-    install={<pre><code>{`[dependencies]\ndango-sdk = "0"`}</code></pre>}
+    install={
+      <InstallTabs
+        commands={[
+          { label: "cargo", command: "cargo add dango-sdk" },
+          { label: "Cargo.toml", command: '[dependencies]\ndango-sdk = "0"' },
+        ]}
+      />
+    }
     href="/rust/getting-started/installation"
   />
 </PackageCardGrid>

@@ -1,14 +1,18 @@
+import { InstallTabs } from '../../../components/InstallTabs'
+
 # Installation
 
 Install the `dango` package from PyPI. Requires Python 3.14 or newer.
 
 ## Install
 
-```bash
-uv add dango
-# or: pip install dango
-# or: poetry add dango
-```
+<InstallTabs
+  commands={[
+    { label: "uv", command: "uv add dango" },
+    { label: "pip", command: "pip install dango" },
+    { label: "poetry", command: "poetry add dango" },
+  ]}
+/>
 
 ## Dependencies
 
