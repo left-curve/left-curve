@@ -636,6 +636,12 @@
     "title": "Website Under Maintenance",
     "description": "We are currently undergoing maintenance. We apologize for any inconvenience this may cause and appreciate your patience."
   },
+  "geoblock": {
+    "bannerLead": "Your IP address indicates that you are in a country or region outside of Dango's service zone. We do not provide services to your location.",
+    "bannerEmphasis": "You may only place reduce-only orders.",
+    "bannerTail": "For help, open a support ticket on Discord.",
+    "accessRestricted": "Access Restricted"
+  },
   "notFound": {
     "title": "Page not found!",
     "description": "Sorry! We couldn’t find what you were looking for...",
