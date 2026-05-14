@@ -17,7 +17,7 @@ impl QueryClient for HttpClient {
 }
 ```
 
-`Query` and `QueryResponse` come from `grug`.
+`Query` and `QueryResponse` are re-exported by the SDK.
 
 ## Example
 
@@ -37,17 +37,17 @@ async fn main() -> Result<()> {
 }
 ```
 
-For most app-level fetches, prefer the typed [`QueryClientExt`](https://docs.rs/grug) helpers — `query_app_config`, `query_balance`, `query_wasm_smart`, … — that build on top of `query_app`.
+For most app-level fetches, prefer the typed `QueryClientExt` helpers — `query_app_config`, `query_balance`, `query_wasm_smart`, … — that build on top of `query_app`.
 
 ## Parameters
 
-**`query`** — `grug::Query`. The typed query enum (`Config`, `WasmSmart`, `Balance`, …).
+**`query`** — `Query`. The typed query enum (`Config`, `WasmSmart`, `Balance`, …).
 
 **`height`** — `Option<u64>`. Block height to query at, or `None` for the latest committed state.
 
 ## Returns
 
-**`grug::QueryResponse`** — the variant that matches the input `Query`. Callers usually pattern-match or unwrap into the expected variant.
+**`QueryResponse`** — the variant that matches the input `Query`. Callers usually pattern-match or unwrap into the expected variant.
 
 ## Notes
 

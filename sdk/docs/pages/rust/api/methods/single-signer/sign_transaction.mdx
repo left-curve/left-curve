@@ -49,14 +49,14 @@ async fn submit(
 
 ## Returns
 
-**`grug::Tx`** — `sender`, `msgs`, `gas_limit`, JSON-encoded metadata, and a JSON-encoded `Credential::Standard { key_hash, signature }`.
+**`Tx`** — `sender`, `msgs`, `gas_limit`, JSON-encoded metadata, and a JSON-encoded `Credential::Standard { key_hash, signature }`.
 
 ## Notes
 
 - **Side effect:** `*self.nonce.inner_mut() += 1`. The in-memory nonce is advanced even though the method takes `&mut self`. Successive calls produce successive transactions without re-querying.
 - On broadcast failure, the in-memory nonce is now ahead of the chain. Call `SequencedSigner::update_nonce` (or [`query_next_nonce`](./query_next_nonce) + [`with_nonce`](./with_nonce)) to resync.
 - `Eip712` signatures are EIP-712 typed-data with domain `{ name: "dango", chain_id: EIP155_CHAIN_ID, verifying_contract: <sender as U160> }`.
-- Errors are `grug::StdError` from JSON encoding or the `Secret::sign_transaction` call.
+- Errors are `StdError` from JSON encoding or the `Secret::sign_transaction` call.
 
 ## See also
 

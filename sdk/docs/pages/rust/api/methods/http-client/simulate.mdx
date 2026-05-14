@@ -8,7 +8,7 @@ Dry-run an unsigned transaction against the latest committed state and return it
 async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, anyhow::Error>;
 ```
 
-From `impl QueryClient for HttpClient`. `UnsignedTx` and `TxOutcome` come from `grug`.
+From `impl QueryClient for HttpClient`. `UnsignedTx` and `TxOutcome` are re-exported by the SDK.
 
 ## Example
 
@@ -32,11 +32,11 @@ async fn estimate_gas(
 
 ## Parameters
 
-**`tx`** — `grug::UnsignedTx`. The transaction body (sender, messages, metadata) without a signature.
+**`tx`** — `UnsignedTx`. The transaction body (sender, messages, metadata) without a signature.
 
 ## Returns
 
-**`grug::TxOutcome`** — the simulated outcome, including `gas_used`, `gas_limit`, the success/failure result, and emitted events.
+**`TxOutcome`** — the simulated outcome, including `gas_used`, `gas_limit`, the success/failure result, and emitted events.
 
 ## Notes
 

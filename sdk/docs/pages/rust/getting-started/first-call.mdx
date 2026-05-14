@@ -25,17 +25,17 @@ async fn main() -> Result<()> {
 }
 ```
 
-`BlockClient` is the grug trait that supplies `query_block`. `HttpClient` implements it, so the method is reachable once the trait is in scope.
+`BlockClient` supplies `query_block`. `HttpClient` implements it, so the method is reachable once the trait is in scope.
 
 ## What just happened
 
 1. `HttpClient::new` wraps a `reqwest::Client` around the Dango HTTP endpoint. No network call is made.
-2. `query_block(None)` hits the REST endpoint `GET /block/info` and parses the response into a `grug::Block`.
+2. `query_block(None)` hits the REST endpoint `GET /block/info` and parses the response into a `Block`.
 3. Errors propagate as `anyhow::Error` via `?`.
 
 ## Querying contract state
 
-Most "what's my balance" calls go through the grug `QueryClientExt` blanket trait, which is automatically reachable on `HttpClient`:
+Most "what's my balance" calls go through the `QueryClientExt` blanket trait, which is automatically reachable on `HttpClient`:
 
 ```rust
 use {
@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 }
 ```
 
-`query_balance`, `query_app_config`, `query_wasm_smart`, and the other `QueryClientExt` methods are owned by `grug`, not `dango-sdk`. See [Clients](../concepts/clients) for the full list reachable on `HttpClient`.
+`query_balance`, `query_app_config`, `query_wasm_smart`, and the other `QueryClientExt` methods. See [Clients](../concepts/clients) for the full list reachable on `HttpClient`.
 
 ## Next
 

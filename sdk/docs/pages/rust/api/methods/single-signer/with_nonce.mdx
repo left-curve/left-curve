@@ -41,7 +41,7 @@ fn build() -> Result<SingleSigner<Secp256k1, _, _>> {
 ## Notes
 
 - Use `0` for a brand-new account that has never signed a transaction. Otherwise call [`with_query_nonce`](./with_query_nonce) (or [`query_next_nonce`](./query_next_nonce) directly).
-- A signer with `Defined<UserIndex> + Defined<Nonce>` implements `grug::Signer`.
+- A signer with `Defined<UserIndex> + Defined<Nonce>` implements `Signer`.
 
 ## See also
 

@@ -9,7 +9,7 @@ It exposes:
 - [`SingleSigner`](./api/clients/SingleSigner) — typestate signer for Dango single-signature accounts.
 - [`Secret`](./api/traits/Secret) trait with `Secp256k1` and `Eip712` implementations, and [`Keystore`](./api/clients/Keystore) for AES-256-GCM at-rest encryption.
 
-The SDK is a thin transport: there are no Dango action helpers. Transactions are composed by building `Message`s (re-exported from `grug`) and passing them to the signer.
+The SDK is a thin transport: there are no Dango action helpers. Transactions are composed by building `Message`s (re-exported by the SDK) and passing them to the signer.
 
 ## Start here
 

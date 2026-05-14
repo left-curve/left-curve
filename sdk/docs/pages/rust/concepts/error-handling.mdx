@@ -4,7 +4,7 @@
 
 ## Mental model
 
-`dango-sdk` returns `anyhow::Result<T>` (`Result<T, anyhow::Error>`) from every fallible async or sync method. The grug trait impls on `HttpClient` set `type Error = anyhow::Error`, so the same pattern propagates from `query_app`, `broadcast_tx`, and friends.
+`dango-sdk` returns `anyhow::Result<T>` (`Result<T, anyhow::Error>`) from every fallible async or sync method. The trait impls on `HttpClient` set `type Error = anyhow::Error`, so the same pattern propagates from `query_app`, `broadcast_tx`, and friends.
 
 The single exception is subscriptions. A `SubscriptionStream<T>` yields `Result<Response<T>, WsError>` — a typed enum because callers need to discriminate between "decode failure" and "server-side subscription error".
 

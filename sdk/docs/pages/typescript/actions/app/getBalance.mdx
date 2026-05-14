@@ -12,19 +12,23 @@ function getBalance(
     denom: Denom
     height?: number
   },
-): Promise<number>
+): Promise<string>
 ```
 
 ## Example
 
 ```ts
 import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import { Decimal } from "@left-curve/utils"
 import type { Address } from "@left-curve/sdk"
 
 const client = createPublicClient({ chain: testnet, transport: createTransport() })
 const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
 
 const amount = await client.getBalance({ address, denom: "dango" })
+
+// Parse with Decimal or BigInt for arithmetic
+const human = Decimal(amount).div(Decimal(10).pow(6)) // assuming 6 decimals
 ```
 
 ## Parameters
@@ -37,16 +41,10 @@ const amount = await client.getBalance({ address, denom: "dango" })
 
 ## Returns
 
-**`number`** — the balance in base units, parsed via `parseInt`.
-
-## Notes
-
-:::warning
-the return type is `number`. Amounts above 2^53 lose precision silently. For accurate accounting, use [`getBalances`](./getBalances), which returns `Coins` (a `Record<Denom, string>`), and parse with `BigInt` or [`Decimal`](../../concepts/encoding-and-types).
-:::
+**`string`** — the balance in base units, exactly as returned by the chain. Parse with `BigInt` or [`Decimal`](../../concepts/encoding-and-types) before doing arithmetic.
 
 ## See also
 
-- [`getBalances`](./getBalances) — paginated balances, returns string amounts
+- [`getBalances`](./getBalances) — all balances for an address as a `Coins` record
 - [`getSupply`](./getSupply) — total supply of one denom
 - [Concepts: Encoding & Types](../../concepts/encoding-and-types)

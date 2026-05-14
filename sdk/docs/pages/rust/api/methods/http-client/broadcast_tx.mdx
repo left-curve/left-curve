@@ -33,11 +33,11 @@ async fn submit(
 
 ## Parameters
 
-**`tx`** — `grug::Tx`. A signed transaction produced by `Signer::sign_transaction`.
+**`tx`** — `Tx`. A signed transaction produced by `Signer::sign_transaction`.
 
 ## Returns
 
-**`grug::BroadcastTxOutcome`** — the mempool decision. Carries `tx_hash: Hash256` and `check_tx: CheckTxOutcome` (where `CheckTxOutcome` exposes the success/error detail). Inclusion in a block is *not* guaranteed by a successful response — poll [`search_tx`](./search_tx) until the transaction appears.
+**`BroadcastTxOutcome`** — the mempool decision. Carries `tx_hash: Hash256` and `check_tx: CheckTxOutcome` (where `CheckTxOutcome` exposes the success/error detail). Inclusion in a block is *not* guaranteed by a successful response — poll [`search_tx`](./search_tx) until the transaction appears.
 
 ## Notes
 

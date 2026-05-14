@@ -34,7 +34,7 @@ const amount = await client.getBalance({ address, denom: "dango" })
 console.log(amount)
 ```
 
-`getBalance` returns a `number`. For amounts above 2^53 use [`getBalances`](../actions/app/getBalances), which preserves the string form. See the warning on [`getBalance`](../actions/app/getBalance).
+`getBalance` returns a base-unit `string`. Parse with `BigInt` or `Decimal` before doing arithmetic — see [Encoding & Types](../concepts/encoding-and-types).
 
 ## Next
 

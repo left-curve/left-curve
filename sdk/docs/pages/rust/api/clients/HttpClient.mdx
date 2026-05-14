@@ -36,7 +36,7 @@ impl HttpClient {
 
 ## Methods
 
-The methods are split between own pagination helpers and the four grug trait impls. Bring the trait into scope to call its methods.
+The methods are split between own pagination helpers and the four trait impls. Bring the trait into scope to call its methods.
 
 ### Pagination (own methods)
 
@@ -50,7 +50,7 @@ The methods are split between own pagination helpers and the four grug trait imp
 | [`paginate_events`](../methods/http-client/paginate_events)             | All events, forward pagination. |
 | [`paginate_messages`](../methods/http-client/paginate_messages)         | All messages, forward pagination. |
 
-### `impl QueryClient` (from `grug`)
+### `impl QueryClient` 
 
 | Method | Description |
 |--------|-------------|
@@ -58,30 +58,30 @@ The methods are split between own pagination helpers and the four grug trait imp
 | [`query_store`](../methods/http-client/query_store) | Read a raw key from store, optionally with a proof. |
 | [`simulate`](../methods/http-client/simulate)       | Dry-run an `UnsignedTx` and return its outcome. |
 
-### `impl BlockClient` (from `grug`)
+### `impl BlockClient` 
 
 | Method | Description |
 |--------|-------------|
 | [`query_block`](../methods/http-client/query_block)                 | Fetch a block by height (REST `/block/info`). |
 | [`query_block_outcome`](../methods/http-client/query_block_outcome) | Fetch a block's execution outcome (REST `/block/result`). |
 
-### `impl BroadcastClient` (from `grug`)
+### `impl BroadcastClient` 
 
 | Method | Description |
 |--------|-------------|
 | [`broadcast_tx`](../methods/http-client/broadcast_tx) | Submit a signed transaction with `tx-sync` semantics. |
 
-### `impl SearchTxClient` (from `grug`)
+### `impl SearchTxClient` 
 
 | Method | Description |
 |--------|-------------|
 | [`search_tx`](../methods/http-client/search_tx) | Look up a transaction outcome by hash. |
 
-### Extension methods (from `grug::QueryClientExt`)
+### Extension methods (from `QueryClientExt`)
 
-`grug::QueryClientExt` is a blanket trait over `QueryClient`. It is reachable on `HttpClient` once `grug::QueryClientExt` is in scope. These are owned by `grug` and documented there:
+`QueryClientExt` is a blanket trait over `QueryClient`. It is reachable on `HttpClient` once `QueryClientExt` is in scope:
 
-| Method | (from grug) |
+| Method |  |
 |--------|-------------|
 | `query_app_config` | Typed `AppConfig` fetch. |
 | `query_balance`    | Single denom balance. |
@@ -95,7 +95,7 @@ The methods are split between own pagination helpers and the four grug trait imp
 | `query_contract`   | Contract info. |
 | `query_contracts`  | List contracts. |
 
-See the [grug `QueryClientExt` docs](https://docs.rs/grug) for full signatures.
+See the `QueryClientExt` reference for full signatures.
 
 ## End-to-end example
 

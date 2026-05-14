@@ -54,7 +54,7 @@ pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 | Nonce-only | `Undefined<UserIndex>` | `Defined<Nonce>` | `nonce()`, `with_user_index`, `with_query_user_index`. |
 | Ready | `Defined<UserIndex>` | `Defined<Nonce>` | `Signer`, `SequencedSigner`, `user_index()`, `nonce()`. |
 
-`Defined<T>` and `Undefined<T>` are grug typestate helpers. The compiler enforces both fields are `Defined` before `sign_transaction` is callable.
+`Defined<T>` and `Undefined<T>` are typestate helpers. The compiler enforces both fields are `Defined` before `sign_transaction` is callable.
 
 This is a common Rust idiom for builders that must reach a complete state before being usable, but it is unusual in TypeScript/Python where missing fields would be a runtime check.
 
@@ -98,8 +98,8 @@ This is a common Rust idiom for builders that must reach a complete state before
 
 | Trait | Where | Methods |
 |-------|-------|---------|
-| `Addressable` (`grug`) | all states | `address()` |
-| `Signer` (`grug`) | `Defined<UserIndex> + Defined<Nonce>` | [`unsigned_transaction`](../methods/single-signer/unsigned_transaction), [`sign_transaction`](../methods/single-signer/sign_transaction) |
+| `Addressable`  | all states | `address()` |
+| `Signer`  | `Defined<UserIndex> + Defined<Nonce>` | [`unsigned_transaction`](../methods/single-signer/unsigned_transaction), [`sign_transaction`](../methods/single-signer/sign_transaction) |
 | `SequencedSigner` (`dango_types::signer`) | `Defined<Nonce>` | [`query_nonce`](../methods/single-signer/query_nonce), [`update_nonce`](../methods/single-signer/update_nonce) |
 
 ## End-to-end example

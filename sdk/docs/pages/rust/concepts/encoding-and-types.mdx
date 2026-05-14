@@ -4,14 +4,14 @@
 
 ## Where types live
 
-`dango-sdk` is thin: most user-facing types are re-exported from `grug`, `dango_types`, and `indexer_graphql_types`.
+`dango-sdk` is thin: most user-facing types are re-exported by the SDK, `dango_types`, and `indexer_graphql_types`.
 
 | Type | Crate | Notes |
 |------|-------|-------|
-| `Addr`, `Hash256`, `Binary`, `ByteArray<N>` | `grug` | Strongly-typed wrappers over fixed-size byte arrays. |
-| `Message`, `Tx`, `UnsignedTx`, `Block`, `BlockOutcome`, `TxOutcome` | `grug` | Core chain types. |
-| `Coins`, `Denom`, `Coin`, `Uint128`, `Uint256` | `grug` | Bank balances and unsigned integers. |
-| `NonEmpty<T>`, `Defined<T>`, `Undefined<T>`, `MaybeDefined<T>` | `grug` | Typestate helpers. |
+| `Addr`, `Hash256`, `Binary`, `ByteArray<N>` | Core | Strongly-typed wrappers over fixed-size byte arrays. |
+| `Message`, `Tx`, `UnsignedTx`, `Block`, `BlockOutcome`, `TxOutcome` | Core | Core chain types. |
+| `Coins`, `Denom`, `Coin`, `Uint128`, `Uint256` | Core | Bank balances and unsigned integers. |
+| `NonEmpty<T>`, `Defined<T>`, `Undefined<T>`, `MaybeDefined<T>` | Core | Typestate helpers. |
 | `Key`, `Signature`, `SignDoc`, `Nonce`, `UserIndex` | `dango_types::auth` / `dango_types::account_factory` | Account-factory primitives. |
 | `PageInfo`, `<query>::Variables`, `<query>::ResponseData`, generated `*Nodes`/`*Edges` | `indexer_graphql_types` | GraphQL codegen surface, re-exported at the `dango_sdk` crate root. |
 | `SubscribeBlock`, …, `SubscribeQueryStatus` (×14) | `indexer_graphql_types` | One marker struct per subscription. Each has a snake-case module of `Variables`/`ResponseData`. |
@@ -21,11 +21,11 @@
 
 Amounts on the wire are integers in base units (the contract's smallest denomination). `Coins::one("bridge/usdc", 100_000_000_u128)` is 100 USDC, not 100 micro-USDC.
 
-`grug` exposes `Uint128`/`Uint256` for amounts. Convert to display units at the edge — there is no SDK-side `Decimal`.
+the SDK exposes `Uint128`/`Uint256` for amounts. Convert to display units at the edge — there is no SDK-side `Decimal`.
 
 ## Addresses
 
-`grug::Addr` is a 20-byte fixed array, hex-encoded with the `0x` prefix in display form.
+`Addr` is a 20-byte fixed array, hex-encoded with the `0x` prefix in display form.
 
 ```rust
 use {grug::Addr, std::str::FromStr};
@@ -38,7 +38,7 @@ let bytes: [u8; 20] = addr.into_inner();
 
 ## Hashes
 
-`grug::Hash256` is a 32-byte hash, hex-encoded. Used for transaction hashes, key hashes, and content hashes.
+`Hash256` is a 32-byte hash, hex-encoded. Used for transaction hashes, key hashes, and content hashes.
 
 ```rust
 use {grug::Hash256, std::str::FromStr};
@@ -71,7 +71,7 @@ Indexer queries return Relay-style connections: `{ nodes, page_info: PageInfo }`
 
 ## Serializing dynamic payloads
 
-Smart-contract calls and queries are JSON-encoded. `grug` provides `JsonSerExt` / `JsonDeExt` for typed encode/decode of any `Serialize`/`Deserialize` value:
+Smart-contract calls and queries are JSON-encoded. the SDK provides `JsonSerExt` / `JsonDeExt` for typed encode/decode of any `Serialize`/`Deserialize` value:
 
 ```rust
 use grug::JsonSerExt;

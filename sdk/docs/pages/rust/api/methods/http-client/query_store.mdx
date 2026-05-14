@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
 
 ## Parameters
 
-**`key`** — `grug::Binary`. Raw storage key bytes.
+**`key`** — `Binary`. Raw storage key bytes.
 
 **`height`** — `Option<u64>`. Block height to read at, or `None` for the latest committed state.
 
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
 ## Notes
 
 - For typed contract storage, prefer `QueryClientExt::query_wasm_raw` or `query_wasm_smart` — both wrap `query_app` with the correct query variant.
-- Proofs are borsh-encoded `grug::Proof` values. Decoding is handled by the SDK.
+- Proofs are borsh-encoded `Proof` values. Decoding is handled by the SDK.
 
 ## See also
 

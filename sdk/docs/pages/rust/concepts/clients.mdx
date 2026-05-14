@@ -15,7 +15,7 @@ There is no shared "Client" abstraction. Pick the one that matches the call patt
 
 `HttpClient` wraps a `reqwest::Client`. It is `Debug + Clone`; cloning shares the underlying connection pool — pass it around freely.
 
-It implements four grug traits, which is where the queries live:
+It implements four upstream query traits, which is where the queries live:
 
 - `QueryClient` — `query_app`, `query_store`, `simulate`.
 - `BlockClient` — `query_block`, `query_block_outcome` (REST, not GraphQL).
@@ -40,9 +40,9 @@ async fn main() -> Result<()> {
 }
 ```
 
-### Methods from `grug::QueryClientExt`
+### Extension methods on `HttpClient`
 
-Because `HttpClient` implements `QueryClient`, the grug blanket trait `QueryClientExt` lights up a suite of convenience methods. These are owned by `grug`, not `dango-sdk`:
+Because `HttpClient` implements `QueryClient`, the `QueryClientExt` blanket trait lights up a suite of convenience methods:
 
 | Method | What it does |
 |--------|--------------|
@@ -58,7 +58,7 @@ Because `HttpClient` implements `QueryClient`, the grug blanket trait `QueryClie
 | `query_contract`   | Fetch a contract's info. |
 | `query_contracts`  | List contracts. |
 
-See the [grug `QueryClientExt` docs](https://docs.rs/grug) for full signatures.
+See the `QueryClientExt` reference for full signatures.
 
 ### Pagination
 
