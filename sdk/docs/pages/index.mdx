@@ -49,16 +49,15 @@ import { InstallTabs } from '../components/InstallTabs'
     packageName="dango-sdk"
     summary="async GraphQL client, WebSocket subscriptions, key management, transaction signing."
     bestFor="low-latency market makers, on-chain services, async Tokio workloads."
-    install={
-      <InstallTabs
-        commands={[
-          { label: "cargo", command: "cargo add dango-sdk" },
-          { label: "Cargo.toml", command: '[dependencies]\ndango-sdk = "0"' },
-        ]}
-      />
-    }
     href="/rust/getting-started/installation"
-  />
+  >
+
+```toml
+[dependencies]
+dango-sdk = "0"
+```
+
+  </PackageCard>
 </PackageCardGrid>
 
 ## What every SDK gives you

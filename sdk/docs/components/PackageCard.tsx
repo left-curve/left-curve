@@ -40,8 +40,17 @@ export type PackageCardProps = {
   packageName: string;
   summary: string;
   bestFor: string;
-  install: ReactNode;
   href: string;
+  /**
+   * Inline JSX install snippet (e.g., `<HomePage.InstallPackage />` or
+   * `<InstallTabs />`). Mutually exclusive with `children`.
+   */
+  install?: ReactNode;
+  /**
+   * MDX content for the install slot. Use this when you want a markdown
+   * code fence (so Vocs/Shiki syntax-highlights the snippet).
+   */
+  children?: ReactNode;
 };
 
 export function PackageCard({
@@ -50,6 +59,7 @@ export function PackageCard({
   summary,
   bestFor,
   install,
+  children,
   href,
 }: PackageCardProps) {
   return (
@@ -61,7 +71,7 @@ export function PackageCard({
       <p className="docs-PackageCard__bestFor">
         <strong>Best for:</strong> {bestFor}
       </p>
-      <div className="docs-PackageCard__install">{install}</div>
+      <div className="docs-PackageCard__install">{children ?? install}</div>
       <p className="docs-PackageCard__link">
         <a href={href}>Get started →</a>
       </p>
