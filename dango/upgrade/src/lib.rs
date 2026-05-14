@@ -1,9 +1,15 @@
 use {
     dango_gateway::{RATE_LIMITS, SUPPLY_SNAPSHOTS},
     dango_types::config::AppConfig,
-    grug::{BlockInfo, Denom, JsonDeExt, Map, StdResult, Storage, Uint128},
-    grug_app::{APP_CONFIG, AppResult, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
+    grug::{Addr, BlockInfo, Denom, JsonDeExt, Map, StdResult, Storage, Uint128, addr},
+    grug_app::{APP_CONFIG, AppResult, CHAIN_ID, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
 };
+
+const MAINNET_CHAIN_ID: &str = "dango-1";
+const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbea4f");
+
+const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
+const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
 
 /// Storage key the rate-limit-hardening release used for the per-denom
 /// draining outbound cap. The rolling-window release replaces it with
@@ -17,6 +23,20 @@ const OLD_OUTBOUND_QUOTAS: Map<&Denom, Uint128> = Map::new("outbound_quota");
 const BANK_SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
+    // Find the address of the perps contract corresponding to the current chain.
+    let perps_address = {
+        let chain_id = CHAIN_ID.load(&storage)?;
+        match chain_id.as_str() {
+            MAINNET_CHAIN_ID => MAINNET_PERPS_ADDRESS,
+            TESTNET_CHAIN_ID => TESTNET_PERPS_ADDRESS,
+            _ => panic!("unknown chain id: {chain_id}"),
+        }
+    };
+
+    // Create the prefixed storage for the perps contract.
+    let _perps_storage =
+        StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &perps_address]);
+
     // Look up the bank and gateway addresses for the gateway rolling-window
     // migration. Reading from on-chain config keeps the migration portable
     // across mainnet, testnet, and devnet without a per-chain address table.
@@ -30,7 +50,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     // in the same place.
     let mut gateway_storage =
         StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &gateway_address]);
-    let bank_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &bank_address]);
+    let bank_storage = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &bank_address]);
 
     do_gateway_rolling_window_seed(&mut gateway_storage, &bank_storage)?;
 
