@@ -1,0 +1,33 @@
+# ClientOrderIdRef
+
+User-facing wrapper around a client-assigned order id. Disambiguates from `OrderId` at runtime.
+
+## Definition
+
+```python
+@dataclass(frozen=True)
+class ClientOrderIdRef:
+    value: int
+```
+
+## Fields
+
+**`value`** — `int`. The client-assigned order id (Uint64 on the wire).
+
+## Construction
+
+```python
+from dango.utils.types import ClientOrderIdRef
+
+ref = ClientOrderIdRef(value=7)
+```
+
+## Notes
+
+- The wrapper exists because both `OrderId` and `ClientOrderId` reduce to `str` at runtime. Without it, `cancel_order(7)` would be ambiguous.
+- Frozen — instances are hashable and immutable.
+
+## See also
+
+- [`cancel_order`](../methods/exchange/cancel_order) — accepts `OrderId`, `ClientOrderIdRef`, or `"all"`
+- [`ClientOrderId`](./ClientOrderId) — the underlying alias

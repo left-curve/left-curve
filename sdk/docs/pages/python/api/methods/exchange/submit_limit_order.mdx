@@ -1,0 +1,85 @@
+# submit_limit_order
+
+Place a limit order. Convenience wrapper over [`submit_order`](./submit_order).
+
+`limit_price` must fall within the per-pair symmetric oracle band
+(`|limit_price − oracle| ≤ oracle × max_limit_price_deviation`) at submission;
+the band is re-checked against the current oracle on every resting maker
+when it is encountered during matching. See protocol book:
+`perps/2-order-matching` §3a, §6b.
+
+## Signature
+
+```python
+def submit_limit_order(
+    self,
+    pair_id: PairId,
+    size: float | int | str | Decimal,
+    limit_price: float | str | Decimal,
+    *,
+    time_in_force: TimeInForce = TimeInForce.GTC,
+    client_order_id: int | None = None,
+    reduce_only: bool = False,
+    tp: ChildOrder | None = None,
+    sl: ChildOrder | None = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr, PairId, TimeInForce
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# A buy-side GTC limit at 1500
+exchange.submit_limit_order(
+    PairId("perp/ethusd"),
+    size="0.5",
+    limit_price="1500",
+    time_in_force=TimeInForce.GTC,
+)
+
+# A post-only sell with a client order id
+exchange.submit_limit_order(
+    PairId("perp/ethusd"),
+    size="-0.5",
+    limit_price="1550",
+    time_in_force=TimeInForce.POST,
+    client_order_id=42,
+)
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+**`size`** — `float | int | str | Decimal`. Signed quantity (positive = buy, negative = sell).
+
+**`limit_price`** — `float | str | Decimal`. The limit price in USD; canonicalised via [`dango_decimal`](../../helpers/dango_decimal).
+
+**`time_in_force`** — `TimeInForce`, optional. `TimeInForce.GTC` (good-till-cancelled), `TimeInForce.IOC` (immediate-or-cancel), `TimeInForce.POST` (post-only). Default: `TimeInForce.GTC`.
+
+**`client_order_id`** — `int | None`, optional. Client-assigned id (Uint64). Used to later cancel via `cancel_order(ClientOrderIdRef(value=...))`. Default: `None`.
+
+**`reduce_only`** — `bool`, optional. Default: `False`.
+
+**`tp`** — `ChildOrder | None`, optional.
+
+**`sl`** — `ChildOrder | None`, optional.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- `time_in_force.value` (a plain `str`) is what lands on the wire; passing the enum object directly is preferred for type safety.
+- A POST-only order that would cross the book at submission is rejected by the chain.
+
+## See also
+
+- [`submit_market_order`](./submit_market_order) — market-order counterpart
+- [`cancel_order`](./cancel_order) — cancel by `ClientOrderIdRef`
+- [`TimeInForce`](../../types/TimeInForce)

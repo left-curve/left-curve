@@ -1,0 +1,37 @@
+# Info.meta_and_asset_ctxs (HL-compat)
+
+HL `metaAndAssetCtxs` — meta bundled with per-asset ctx.
+
+## Signature
+
+```python
+def meta_and_asset_ctxs(self) -> list[Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+meta, ctxs = info.meta_and_asset_ctxs()
+```
+
+## Returns
+
+**`list[Any]`** — a two-element list: `[meta, list[PerpAssetCtx]]`.
+
+## Divergences from upstream
+
+- `markPx`, `oraclePx`, `midPx` all report the same value (the indexer's `currentPrice`). HL would distinguish the three.
+- `szDecimals` from `meta` is hardcoded to `6`.
+
+## Notes
+
+- HL combines this atomically in one call. Dango needs three queries (`pair_params`, `pair_states`, `all_perps_pair_stats`); the wrapper runs them sequentially.
+
+## See also
+
+- [Native `pair_params`](../../../api/methods/info/pair_params)
+- [Native `pair_states`](../../../api/methods/info/pair_states)
+- [Native `all_perps_pair_stats`](../../../api/methods/info/all_perps_pair_stats)

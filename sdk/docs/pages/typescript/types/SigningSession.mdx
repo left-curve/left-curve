@@ -1,0 +1,43 @@
+# SigningSession
+
+A session-key bundle. Pair the ephemeral session key with the primary-key authorization that legitimizes it.
+
+## Definition
+
+```ts
+type SigningSession = {
+  publicKey: Uint8Array
+  privateKey: Uint8Array
+  keyHash: string
+  sessionInfo: SigningSessionInfo
+  authorization: StandardCredential
+}
+
+type SigningSessionInfo = {
+  chainId: string
+  sessionKey: Base64
+  expireAt: string  // seconds, as string
+}
+```
+
+## Fields
+
+**`publicKey`** — `Uint8Array`. Session key's public bytes.
+
+**`privateKey`** — `Uint8Array`. Session key's private bytes.
+
+**`keyHash`** — `string`. The primary key's hash (used to look up the authorization on chain).
+
+**`sessionInfo`** — `SigningSessionInfo`. Chain id, session pubkey, expiry.
+
+**`authorization`** — `StandardCredential`. The primary key's signature over `sessionInfo`.
+
+## Construction
+
+Use [`createSession`](../actions/account-factory/createSession) on a signer client to mint a bundle, then persist it.
+
+## See also
+
+- [`createSession`](../actions/account-factory/createSession)
+- [`createSessionSigner`](../concepts/signers-and-authentication)
+- [`Credential`](./Credential)

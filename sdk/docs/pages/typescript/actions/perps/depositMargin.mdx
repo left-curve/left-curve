@@ -1,0 +1,56 @@
+# depositMargin
+
+Deposit `bridge/usdc` collateral into the perps account.
+
+The perps contract holds margin internally as a USD value. Deposits attach
+`bridge/usdc` base units as funds; the contract credits the user's
+`userState.margin` 1:1 at the fixed \$1 settlement rate. See protocol book:
+`perps/1-margin` §2.
+
+## Signature
+
+```ts
+function depositMargin(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    amount: string
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.depositMargin({ sender, amount: "1000000000" })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The trader.
+
+**`amount`** — `string`. `bridge/usdc` amount in base units.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- The deposit currency is hard-coded to `bridge/usdc` in the message body.
+- Asymmetric with [`withdrawMargin`](./withdrawMargin): deposit takes base units of `bridge/usdc`, withdraw takes a USD value. The asymmetry mirrors the on-chain contract.
+
+## See also
+
+- [`withdrawMargin`](./withdrawMargin)
+- [`getPerpsUserState`](./getPerpsUserState)

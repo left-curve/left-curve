@@ -1,0 +1,48 @@
+# bulk_orders
+
+Place multiple Hyperliquid-style orders in one batched native call.
+
+## Signature
+
+```python
+def bulk_orders(
+    self,
+    order_requests: Iterable[OrderRequest],
+    *,
+    builder: Any = None,
+    grouping: Grouping = "na",
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+
+result = exchange.bulk_orders([
+    {"coin": "BTC", "is_buy": True, "sz": 0.5, "limit_px": 65000, "order_type": {"limit": {"tif": "Gtc"}}, "reduce_only": False},
+    {"coin": "ETH", "is_buy": False, "sz": 2.0, "limit_px": 3200, "order_type": {"limit": {"tif": "Gtc"}}, "reduce_only": False},
+])
+```
+
+## Parameters
+
+**`order_requests`** — `Iterable[OrderRequest]`. List of Hyperliquid order-request dicts (same shape per item as `order()` arguments).
+
+**`builder`** — Keyword-only, unused. Raises `NotImplementedError` if non-`None` — Dango has no builder fee marketplace.
+
+**`grouping`** — Keyword-only, `Grouping`, default `"na"`. Raises `NotImplementedError` for any non-`"na"` value — the order-grouping concept is HL-specific.
+
+## Returns
+
+`dict[str, Any]` — Hyperliquid-shaped bulk-order envelope.
+
+## Notes
+
+- Routes to `batch_update_orders` on the native Exchange.
+- `cloid` per item is hashed to 64-bit via SHA-256 — see [`order`](./order).
+
+## See also
+
+- [`order`](./order) — single-order entry
+- [`batch_update_orders`](../../../api/methods/exchange/batch_update_orders) — native equivalent

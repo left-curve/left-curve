@@ -1,0 +1,26 @@
+# BlockInfo
+
+A block header. Used by `queryStatus` to return the latest block.
+
+## Definition
+
+```ts
+type BlockInfo = {
+  height: string
+  timestamp: string
+  hash: string
+}
+```
+
+## Fields
+
+**`height`** — `string`. Block height (string-encoded to avoid 2^53 overflow concerns).
+
+**`timestamp`** — `string`. Block timestamp.
+
+**`hash`** — `string`. Block hash.
+
+## See also
+
+- [`queryStatus`](../actions/app/queryStatus)
+- [`IndexedBlock`](./IndexedBlock) — block with transaction list

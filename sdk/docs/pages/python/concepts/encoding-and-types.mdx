@@ -1,0 +1,82 @@
+# Encoding & Types
+
+**What this teaches:** how Dango encodes numbers on the wire, where snake_case vs camelCase boundaries are, and how the SDK's type aliases map to runtime values.
+
+## Decimal strings everywhere
+
+Every USD price, USD value, quantity, and dimensionless ratio is a fixed-decimal string with 6 places of precision on the wire. The `dango_decimal()` helper produces the canonical form:
+
+```python
+from decimal import Decimal
+
+from dango.utils.types import dango_decimal
+
+dango_decimal(1.5)             # "1.500000"
+dango_decimal("1.5")           # "1.500000"
+dango_decimal(Decimal("1.5"))  # "1.500000"
+dango_decimal(1500)            # "1500.000000"
+```
+
+If you pass a value that requires more than 6 fractional digits, `dango_decimal` raises `ValueError`. NaN and infinity raise too. Use this helper anywhere you construct a wire shape by hand; the public `Exchange` methods invoke it for you.
+
+Two HTTP-side scalars do not go through `dango_decimal`:
+
+- `Uint128` / `Uint64` — base-10 integer strings (e.g. order ids, share counts). Build with `str(int_value)`.
+- `Timestamp` — nanosecond-precision integer strings.
+
+## Base units vs USD
+
+`Exchange.deposit_margin(amount)` takes `amount` as **base units** (a `Uint128`). 1.50 USDC = `1_500_000` (since `SETTLEMENT_DECIMALS = 6`).
+
+`Exchange.withdraw_margin(amount)` takes `amount` as **USD** (a `UsdValue`). 1.50 USDC = `1.5` (or `"1.5"`, or `Decimal("1.5")`).
+
+This asymmetry mirrors the on-chain contract: deposits travel inside a `Coins` map (base units), while withdrawals carry a `UsdValue` payload. The SDK does not hide this — it tracks the wire format directly.
+
+## NewType aliases are runtime strings
+
+Every identifier alias in `dango.utils.types` (e.g. `Addr`, `PairId`, `OrderId`) is `NewType(name, str)`. At runtime they are plain `str`; at type-check time they are nominal. Construct them explicitly to keep the type checker happy:
+
+```python
+from dango.utils.types import Addr, OrderId, PairId
+
+addr = Addr("0x...")
+pair = PairId("perp/ethusd")
+oid = OrderId("12345")
+```
+
+The `Uint64` and `Uint128` aliases are also `NewType(name, str)` — wire numbers, not Python `int`. `UserIndex` and `Nonce` are the exceptions: they wrap `int`.
+
+## Enums are StrEnum
+
+`TimeInForce`, `TriggerDirection`, `CandleInterval`, `KeyType`, `AccountStatus`, `ReasonForOrderRemoval`, `PerpsEventSortBy` all inherit from `enum.StrEnum`. The `.value` attribute is the wire form:
+
+```python
+from dango.utils.types import CandleInterval, TimeInForce, TriggerDirection
+
+TimeInForce.GTC.value          # "GTC"
+TriggerDirection.ABOVE.value   # "above"
+CandleInterval.ONE_MINUTE      # "ONE_MINUTE"
+```
+
+`TimeInForce` and `KeyType` use uppercase wire values; `TriggerDirection`, `AccountStatus`, and `ReasonForOrderRemoval` use lowercase snake_case. The `CandleInterval` enum is uppercase because it crosses the indexer GraphQL boundary (see below).
+
+## The case convention boundary
+
+Two GraphQL endpoints back the SDK and they speak different cases:
+
+- **Smart contract queries** (`query_app_smart`) use **snake_case** keys, because Rust serde encodes contract structs with `rename_all = "snake_case"`.
+- **Indexer queries** (`perps_candles`, `perps_events`, `perps_pair_stats`, `subscribe_perps_trades`, etc.) use **camelCase**.
+
+The SDK preserves both. TypedDicts for contract-side types (`UserState`, `Position`, `Param`, etc.) use snake_case attributes. TypedDicts for indexer-side types (`PerpsCandle`, `PerpsEvent`, `Trade`, `Block`) keep camelCase verbatim and silence Ruff's `N815` warning per field.
+
+The only crossover is [`PageInfo`](../api/types/PageInfo) and [`Connection`](../api/types/Connection) — they are user-facing pagination dataclasses and use snake_case. `_make_page_info` and `_make_connection` cross the boundary once and the rest of the code stays snake_case.
+
+## Frozen dataclasses for user-facing actions
+
+`SubmitAction`, `CancelAction`, `ConditionalOrderRef`, `AllForPair`, `ClientOrderIdRef` are frozen dataclasses — the ergonomic forms callers pass to `batch_update_orders` and the cancel methods. The `Exchange` translates them to the externally-tagged wire shape (`{"submit": ...}` / `{"cancel": ...}` / `{"one": ...}` / `"all"`) internally.
+
+`ClientOrderIdRef(value=7)` exists because `OrderId` is `NewType("OrderId", str)` and `ClientOrderId` is `NewType("ClientOrderId", str)` — at runtime both are strings. The dataclass wrapper disambiguates `cancel_order(7)` vs `cancel_order(OrderId("7"))` at the call site.
+
+## Next
+
+- [Error handling](./error-handling) — exception classes and what each catches

@@ -1,0 +1,61 @@
+# transferRemote
+
+Send funds to a remote chain via the gateway contract.
+
+## Signature
+
+```ts
+function transferRemote(
+  client: Client<Signer>,
+  parameters: {
+    remote: Remote
+    recipient: Addr32
+    sender: Address
+    funds: Coins
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.gateway.transferRemote({
+  sender,
+  remote: { warp: { domain: 1, contract: "0xabc..." } },
+  recipient: "0x000000000000000000000000abcdef1234567890abcdef1234567890abcdef12",
+  funds: { "bridge/usdc": "100000000" },
+})
+```
+
+## Parameters
+
+**`remote`** — `Remote`. `{ warp: { domain, contract: Addr32 } }` or the string `"bitcoin"`.
+
+**`recipient`** — `Addr32`. 32-byte hex recipient on the remote chain.
+
+**`sender`** — `Address`. The local sender.
+
+**`funds`** — `Coins`. Coins to send.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- Namespaced under `client.gateway.*`.
+
+## See also
+
+- [`getWithdrawalFee`](./getWithdrawalFee)
+- [Concepts: Clients](../../concepts/clients) — gateway namespacing

@@ -1,0 +1,39 @@
+# Info.user_fills (HL-compat)
+
+HL `userFills` — flat list of trade fills for one user.
+
+## Signature
+
+```python
+def user_fills(self, address: str) -> list[Fill]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+fills = info.user_fills("0x...")
+for fill in fills:
+    print(fill["coin"], fill["dir"], fill["px"], fill["sz"])
+```
+
+## Parameters
+
+**`address`** — `str`. The user's account address.
+
+## Returns
+
+**`list[Fill]`** — flat list of fills with HL-shaped keys.
+
+## Divergences from upstream
+
+- Dango emits both maker and taker rows per fill (paired by `fill_id`). The wrapper dedupes by `fill_id` and prefers the taker side (the "aggressor's view" that HL historically reports).
+- `tid` is synthesised from `(block_height, idx)` to keep the upstream `int` type — Dango uses string `fill_id`.
+- `feeToken` is hardcoded to `"USDC"` (Dango fees are settled in `bridge/usdc`).
+
+## See also
+
+- [`user_fills_by_time`](./user_fills_by_time) — time-windowed counterpart
+- [Native `perps_events_all`](../../../api/methods/info/perps_events_all)

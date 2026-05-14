@@ -1,0 +1,92 @@
+# Clients
+
+**What this teaches:** when to use `HttpClient` and when to use `WsClient`, and what each one is wired to under the hood.
+
+## Mental model
+
+The SDK ships two transports:
+
+- [`HttpClient`](../api/clients/HttpClient) — one-shot queries and transaction broadcast over GraphQL and REST. Cloneable, no live connection.
+- [`WsClient`](../api/clients/WsClient) — GraphQL subscriptions over `graphql-transport-ws`. Cheap factory value; the actual socket lives in a [`Session`](../api/clients/Session).
+
+There is no shared "Client" abstraction. Pick the one that matches the call pattern.
+
+## HttpClient
+
+`HttpClient` wraps a `reqwest::Client`. It is `Debug + Clone`; cloning shares the underlying connection pool — pass it around freely.
+
+It implements four upstream query traits, which is where the queries live:
+
+- `QueryClient` — `query_app`, `query_store`, `simulate`.
+- `BlockClient` — `query_block`, `query_block_outcome` (REST, not GraphQL).
+- `BroadcastClient` — `broadcast_tx`.
+- `SearchTxClient` — `search_tx`.
+
+Bringing the traits into scope is what unlocks the methods:
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::{BlockClient, BroadcastClient, QueryClient, SearchTxClient},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let block  = client.query_block(None).await?;
+    println!("height: {}", block.info.height);
+    Ok(())
+}
+```
+
+### Extension methods on `HttpClient`
+
+Because `HttpClient` implements `QueryClient`, the `QueryClientExt` blanket trait lights up a suite of convenience methods:
+
+| Method | What it does |
+|--------|--------------|
+| `query_app_config` | Fetch the typed `AppConfig`. |
+| `query_balance`    | Fetch a single denom balance for an address. |
+| `query_balances`   | Fetch all balances for an address. |
+| `query_supply`     | Fetch total supply for one denom. |
+| `query_supplies`   | Fetch total supplies. |
+| `query_wasm_smart` | Run a typed smart query on a contract. |
+| `query_wasm_raw`   | Read a raw storage slot from a contract. |
+| `query_code`       | Fetch a Wasm bytecode by hash. |
+| `query_codes`      | List uploaded code hashes. |
+| `query_contract`   | Fetch a contract's info. |
+| `query_contracts`  | List contracts. |
+
+See the `QueryClientExt` reference for full signatures.
+
+### Pagination
+
+`HttpClient` ships own pagination helpers on top of the GraphQL connection types:
+
+- `paginate_all` — generic forward/backward loop driven by closures.
+- `paginate_accounts`, `paginate_transfers`, `paginate_transactions`, `paginate_blocks`, `paginate_events`, `paginate_messages` — typed wrappers for each indexer connection.
+
+Use the typed wrappers when the query type matches; use `paginate_all` when shaping a custom traversal.
+
+## WsClient
+
+`WsClient` holds nothing but a parsed `Url`. Cloning is free.
+
+Two ways to consume it:
+
+- [`WsClient::connect`](../api/methods/ws-client/connect) → [`Session`](../api/clients/Session). Open one socket and multiplex multiple subscriptions over it. Drop the `Session` and every derived stream to close the connection.
+- [`WsClient::subscribe`](../api/methods/ws-client/subscribe). Open a dedicated socket for one subscription. Drop the stream to close.
+
+Subscription items are `Result<Response<T>, WsError>`. The first error variant `WsError::Closed` ends the stream. See [Subscriptions](./subscriptions) for which entry point to pick.
+
+## Lifecycle
+
+- `HttpClient` has no `Drop` hook. Reuse one instance for the lifetime of the program.
+- `WsClient` is a config object; copy it freely.
+- `Session` runs a background `tokio` task spawned by `connect`. The last `Session` clone drops it via a `Close` command. See [Session](../api/clients/Session).
+
+## Next
+
+- [Signers and authentication](./signers-and-authentication) — sign transactions before broadcasting.
+- [Subscriptions](./subscriptions) — when to use `Session::subscribe` vs `WsClient::subscribe`.

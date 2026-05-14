@@ -1,0 +1,44 @@
+# dango_decimal
+
+Return the canonical fixed-decimal string form of `x`. Raises if precision is lost.
+
+## Signature
+
+```python
+def dango_decimal(
+    x: float | int | str | Decimal,
+    max_places: int = 6,
+) -> str
+```
+
+## Example
+
+```python
+from decimal import Decimal
+
+from dango.utils.types import dango_decimal
+
+dango_decimal(1.5)              # "1.500000"
+dango_decimal("1.5")            # "1.500000"
+dango_decimal(Decimal("1.5"))   # "1.500000"
+dango_decimal(1500)             # "1500.000000"
+```
+
+## Parameters
+
+**`x`** — `float | int | str | Decimal`. The value to canonicalise. `bool` and `NaN`/`Inf` are rejected.
+
+**`max_places`** — `int`, optional. Maximum allowed fractional digits. Values requiring more precision raise `ValueError`. Default: `6` (matches the Dango wire convention for `UsdValue` / `UsdPrice` / `Dimensionless` / `Quantity`).
+
+## Returns
+
+**`str`** — a fixed-point decimal string with exactly `max_places` fractional digits.
+
+## Notes
+
+- Used by every method that constructs a `UsdValue`/`UsdPrice`/`Dimensionless`/`Quantity` field on the wire.
+- For `Uint128` / `Uint64` (order ids, share counts, base-unit amounts), stringify with `str(int_value)` — not this helper.
+
+## See also
+
+- [Concepts: Encoding & Types](../../concepts/encoding-and-types) — wire-format conventions

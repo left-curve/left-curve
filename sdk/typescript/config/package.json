@@ -4,8 +4,7 @@
   "files": [
     "ts",
     "biome",
-    "tsup",
-    "typedoc"
+    "tsup"
   ],
   "license": "TBD",
   "homepage": "https://dango.exchange",

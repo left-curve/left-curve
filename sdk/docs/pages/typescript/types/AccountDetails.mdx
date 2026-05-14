@@ -1,0 +1,27 @@
+# AccountDetails
+
+`Account` plus the owner's username. Returned by [`getAccountInfo`](../actions/account-factory/getAccountInfo) after resolving the user.
+
+## Definition
+
+```ts
+type AccountDetails = Account & {
+  readonly username: Username
+}
+```
+
+## Fields
+
+**`address`** — `Address`. Account address.
+
+**`index`** — `AccountIndex` (`number`).
+
+**`owner`** — `number`. User index.
+
+**`username`** — `Username` (`string`). The user's username.
+
+## See also
+
+- [`Account`](./Account)
+- [`User`](./User)
+- [`getAccountInfo`](../actions/account-factory/getAccountInfo)

@@ -21,7 +21,6 @@
     "build",
     "src",
     "!**/*.spec.ts",
-    "!typedoc.json",
     "!tsup.config.ts"
   ],
   "exports": {

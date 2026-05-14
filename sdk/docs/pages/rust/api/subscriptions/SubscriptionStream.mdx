@@ -1,0 +1,65 @@
+# SubscriptionStream
+
+A type alias for the pinned, boxed `Stream` returned by every subscription call.
+
+## Definition
+
+```rust
+pub type SubscriptionStream<T> =
+    Pin<Box<dyn Stream<Item = Result<Response<T>, WsError>> + Send>>;
+```
+
+`Response<T>` is `graphql_client::Response<T>`, with `data: Option<T>` and `errors: Option<Vec<...>>`. `WsError` is the SDK's WebSocket error enum.
+
+## Construction
+
+`SubscriptionStream<T>` is produced by:
+
+- [`WsClient::subscribe`](../methods/ws-client/subscribe) — dedicated connection.
+- [`Session::subscribe`](../methods/session/subscribe) — multiplexed.
+- [`SubscriptionVariables::subscribe`](./SubscriptionVariables) — sugar over `WsClient::subscribe`.
+
+There is no public constructor outside the SDK.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscribeBlock, WsClient, WsError, subscribe_block},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let ws = WsClient::new("wss://api-mainnet.dango.zone/graphql")?;
+    let mut stream = ws
+        .subscribe::<SubscribeBlock>(subscribe_block::Variables {})
+        .await?;
+
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(resp) => println!("data: {:?}", resp.data),
+            Err(WsError::Closed(reason)) => {
+                eprintln!("closed: {reason}");
+                break;
+            }
+            Err(err) => eprintln!("ws: {err}"),
+        }
+    }
+    Ok(())
+}
+```
+
+## Notes
+
+- `Send` but **not** `Sync`. Move the stream into a single task; do not share by reference across threads.
+- Already pinned and boxed — no need for an outer `Box::pin` when consuming with `StreamExt::next`.
+- Dropping the stream sends a `Complete` to the server and frees the slot in the 30-per-connection cap.
+- On `WsError::Closed` or `WsError::Transport`, the stream terminates. `WsError::Subscription` terminates this stream but the parent [`Session`](../clients/Session) keeps running for other subscriptions.
+
+## See also
+
+- [`WsError`](../errors/WsError).
+- [`WsClient::subscribe`](../methods/ws-client/subscribe).
+- [`Session::subscribe`](../methods/session/subscribe).

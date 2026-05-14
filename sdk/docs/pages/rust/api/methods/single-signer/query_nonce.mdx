@@ -1,0 +1,55 @@
+# SingleSigner::query_nonce
+
+Fetch the next unused nonce. Trait method of `SequencedSigner` (from `dango_types::signer`).
+
+## Signature
+
+```rust
+#[async_trait]
+impl<S> SequencedSigner for SingleSigner<S, Defined<Nonce>>
+where
+    S: Secret + Send + Sync,
+{
+    async fn query_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, SingleSigner},
+    dango_types::signer::SequencedSigner,
+};
+
+async fn check_nonce(
+    http: &HttpClient,
+    signer: &SingleSigner<impl dango_sdk::Secret + Send + Sync>,
+) -> Result<()> {
+    let on_chain = signer.query_nonce(http).await?;
+    println!("on-chain: {on_chain}, in-memory: {}", signer.nonce());
+    Ok(())
+}
+```
+
+## Parameters
+
+**`client`** — `&C` implementing `QueryClient`.
+
+## Returns
+
+**`Nonce`** — same value as [`query_next_nonce`](./query_next_nonce); this is the `SequencedSigner` adapter.
+
+## Notes
+
+- Only available when `nonce` is `Defined` (the trait bound `SequencedSigner` requires it).
+- Identical body to `query_next_nonce`; exposed via the trait so generic code over `SequencedSigner` can reach it.
+
+## See also
+
+- [`query_next_nonce`](./query_next_nonce) — equivalent non-trait method.
+- [`update_nonce`](./update_nonce) — refresh `self.nonce` in place.

@@ -1,0 +1,28 @@
+# PairState
+
+Per-pair runtime state: open interest, funding accumulator, current funding rate.
+
+## Definition
+
+```python
+class PairState(TypedDict):
+    long_oi: Quantity
+    short_oi: Quantity
+    funding_per_unit: FundingPerUnit
+    funding_rate: FundingRate
+```
+
+## Fields
+
+**`long_oi`** — `Quantity`. Long-side open interest.
+
+**`short_oi`** — `Quantity`. Short-side open interest.
+
+**`funding_per_unit`** — `FundingPerUnit`. Funding accumulator (per-unit funding accrual since pair creation).
+
+**`funding_rate`** — `FundingRate`. Current funding rate (per `Param.funding_period`).
+
+## See also
+
+- [`pair_state`](../methods/info/pair_state) — fetcher
+- [`PairParam`](./PairParam) — parameters counterpart

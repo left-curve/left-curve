@@ -1,0 +1,40 @@
+# simulate
+
+Dry-run an `UnsignedTx`. Returns `gas_used`, `gas_limit`, and the simulated result.
+
+## Signature
+
+```python
+def simulate(self, tx: UnsignedTx) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+unsigned = exchange.signer.build_unsigned_tx(messages, exchange._chain_id)
+sim = info.simulate(unsigned)
+gas_used = int(sim["gas_used"])
+```
+
+## Parameters
+
+**`tx`** — `UnsignedTx`. A TypedDict with `sender`, `msgs`, and `data` (the `Metadata`). Build via [`SingleSigner.build_unsigned_tx`](../../classes/SingleSigner#build_unsigned_tx).
+
+## Returns
+
+**`dict[str, Any]`** — `{gas_used, gas_limit, result}`. The simulate path deliberately skips signature verification, so callers must add `Exchange.DEFAULT_GAS_OVERHEAD` (770 000) on top of `gas_used` for the broadcast gas limit.
+
+## Notes
+
+- `Exchange._send_action` runs this internally; direct callers only need it when building custom transactions outside the `Exchange` method set.
+
+## See also
+
+- [`broadcast_tx_sync`](./broadcast_tx_sync) — submit after simulate+sign
+- [Concepts: Transactions](../../../concepts/transactions) — the full pipeline

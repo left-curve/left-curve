@@ -1,0 +1,44 @@
+# TimeoutError
+
+Thrown when a request exceeds its configured timeout.
+
+## Definition
+
+```ts
+class TimeoutError extends BaseError {
+  override name: string             // "TimeoutError"
+
+  constructor(args: {
+    body: object | object[]
+    url: string
+  })
+}
+```
+
+## Fields
+
+Inherits `shortMessage` (`"The request took too long to respond."`), `details` (`"The request timed out."`), `metaMessages` (`["URL: ...", "Request body: ..."]`), `name` from [`BaseError`](./BaseError).
+
+## Construction
+
+The transport throws this internally. Typical handling:
+
+```ts
+try {
+  await client.queryStatus()
+} catch (err) {
+  if (err instanceof Error && err.name === "TimeoutError") {
+    // back off and retry
+  } else {
+    throw err
+  }
+}
+```
+
+The default timeout is 10 seconds. Override via `createTransport(url, { timeout: 5000 })`.
+
+## See also
+
+- [`HttpRequestError`](./HttpRequestError)
+- [`BaseError`](./BaseError)
+- [Concepts: Rate Limits & Quotas](../concepts/rate-limits) — when to back off

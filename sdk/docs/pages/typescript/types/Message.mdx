@@ -1,0 +1,42 @@
+# Message
+
+A discriminated union of the seven transaction-level messages Dango accepts.
+
+## Definition
+
+```ts
+type Message =
+  | { configure: MsgConfigure }
+  | { upgrade: MsgUpgrade }
+  | { transfer: MsgTransfer }
+  | { upload: MsgStoreCode }
+  | { instantiate: MsgInstantiate }
+  | { execute: MsgExecute }
+  | { migrate: MsgMigrate }
+```
+
+## Variants
+
+**`configure`** — update chain or app config.
+
+**`upgrade`** — schedule a chain upgrade.
+
+**`transfer`** — `Record<Address, Coins>`. Send funds to one or more recipients.
+
+**`upload`** — store a Wasm code blob (`{ code: Base64 }`).
+
+**`instantiate`** — create a new contract (`{ codeHash, msg, salt, funds?, admin? }`).
+
+**`execute`** — call a deployed contract (`{ contract, msg, funds? }`).
+
+**`migrate`** — change a contract's code hash (`{ contract, newCodeHash, msg }`).
+
+## Notes
+
+- Use the `in` operator to narrow: `if ("transfer" in msg) { ... }`.
+- For one-off construction, the typed wrappers ([`transfer`](../actions/app/transfer), [`execute`](../actions/app/execute), etc.) are simpler. Build `Message` values directly only when batching multiple kinds in one tx via [`signAndBroadcastTx`](../actions/app/signAndBroadcastTx).
+
+## See also
+
+- [`Tx`](./Tx)
+- [`signAndBroadcastTx`](../actions/app/signAndBroadcastTx)

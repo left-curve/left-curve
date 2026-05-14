@@ -1,0 +1,54 @@
+# broadcastTxSync
+
+Broadcast a signed transaction via the indexer mutation and poll for inclusion.
+
+## Signature
+
+```ts
+function broadcastTxSync(
+  client: Client,
+  parameters: { tx: Tx | UnsignedTx },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+
+// Most callers use signAndBroadcastTx instead, which builds and signs the tx.
+const result = await client.broadcastTxSync({
+  tx: {
+    sender: "0x1234567890abcdef1234567890abcdef12345678",
+    msgs: [{ transfer: { "0xabcdef...": { dango: "1000000" } } }],
+    gasLimit: 200_000,
+    credential: { /* ... */ },
+    data: { /* metadata */ },
+  },
+})
+```
+
+## Parameters
+
+**`tx`** — `Tx | UnsignedTx`. A signed transaction. `UnsignedTx` is accepted but the chain will reject it unless the sender is a contract address.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — the transaction hash plus `TxData` fields (`code`, `gas_used`, `gas_wanted`, `log`).
+
+## Notes
+
+- After broadcasting, the function polls `queryTx` up to 30 times at 500ms intervals (~15 seconds). It throws if the tx never lands or if `tx_result.code !== 0`.
+- For end-to-end signing, use [`signAndBroadcastTx`](./signAndBroadcastTx) — it builds the metadata, simulates gas, signs, and broadcasts in one call.
+
+## See also
+
+- [`signAndBroadcastTx`](./signAndBroadcastTx) — the typical entry point
+- [`queryTx`](./queryTx) — fetch a tx by hash
+- [Concepts: Transactions](../../concepts/transactions)

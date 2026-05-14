@@ -1,0 +1,39 @@
+# getUserKeys
+
+Fetch the list of public keys associated with a user, via the indexer.
+
+## Signature
+
+```ts
+function getUserKeys(
+  client: Client,
+  parameters: { userIndex: number },
+): Promise<PublicKey[]>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const keys = await client.getUserKeys({ userIndex: 42 })
+keys.forEach((k) => console.log(k.keyType, k.keyHash))
+```
+
+## Parameters
+
+**`userIndex`** — `number`. The user's numeric index.
+
+## Returns
+
+**`PublicKey[]`** — array of `{ keyHash, publicKey, keyType, createdBlockHeight, createdAt }`.
+
+## Notes
+
+- Queries the indexer's GraphQL endpoint, not the on-chain contract. Indexer lag may apply.
+
+## See also
+
+- [`getUser`](./getUser) — pulls `keys` from the on-chain contract
+- [`updateKey`](./updateKey)

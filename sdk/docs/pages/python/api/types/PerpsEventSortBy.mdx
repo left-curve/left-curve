@@ -1,0 +1,29 @@
+# PerpsEventSortBy
+
+Sort order for indexer event queries.
+
+## Definition
+
+```python
+class PerpsEventSortBy(StrEnum):
+    BLOCK_HEIGHT_ASC = "BLOCK_HEIGHT_ASC"
+    BLOCK_HEIGHT_DESC = "BLOCK_HEIGHT_DESC"
+```
+
+## Construction
+
+```python
+from dango.utils.types import PerpsEventSortBy
+
+sort = PerpsEventSortBy.BLOCK_HEIGHT_DESC
+```
+
+## Notes
+
+- The indexer only accepts these two values; no ordering by other fields.
+- `BLOCK_HEIGHT_DESC` is the server-side default and matches the Python kwarg default.
+
+## See also
+
+- [`perps_events`](../methods/info/perps_events) — paginated event stream
+- [`perps_events_all`](../methods/info/perps_events_all) — walker over every event

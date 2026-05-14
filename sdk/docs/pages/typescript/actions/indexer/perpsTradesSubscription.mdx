@@ -1,0 +1,46 @@
+# perpsTradesSubscription
+
+Subscribe to live perps trades for a pair. Uses WebSocket when available; falls back to HTTP polling.
+
+## Signature
+
+```ts
+function perpsTradesSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    perpsTrades: PerpsTrade
+  }> & {
+    pairId: string
+    httpInterval?: number
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const unsubscribe = client.perpsTradesSubscription({
+  pairId: "BTC-PERP",
+  next: ({ perpsTrades }) => console.log(perpsTrades.fillPrice, perpsTrades.fillSize),
+})
+```
+
+## Parameters
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`httpInterval`** — `number`, optional, default `3000`. Poll interval (ms) used when WS is unavailable.
+
+**`next`**, **`error`**, **`complete`** — callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## See also
+
+- [`queryPerpsEvents`](../perps/queryPerpsEvents)
+- [`tradesSubscription`](./tradesSubscription)

@@ -1,0 +1,34 @@
+# QueryOrdersByUserResponseItem
+
+One item in [`Info.orders_by_user`](../methods/info/orders_by_user)'s response map. Same shape as `QueryOrderResponse` minus `user` (the map is already keyed by user).
+
+## Definition
+
+```python
+class QueryOrdersByUserResponseItem(TypedDict):
+    pair_id: PairId
+    size: Quantity
+    limit_price: UsdPrice
+    reduce_only: bool
+    reserved_margin: UsdValue
+    created_at: Timestamp
+```
+
+## Fields
+
+**`pair_id`** — `PairId`.
+
+**`size`** — `Quantity`. Signed remaining size.
+
+**`limit_price`** — `UsdPrice`.
+
+**`reduce_only`** — `bool`.
+
+**`reserved_margin`** — `UsdValue`.
+
+**`created_at`** — `Timestamp`. ns-precision integer string.
+
+## See also
+
+- [`orders_by_user`](../methods/info/orders_by_user) — fetcher
+- [`QueryOrderResponse`](./QueryOrderResponse) — single-order counterpart

@@ -1,0 +1,35 @@
+# unsubscribe
+
+Drop a subscription locally and tell the server to stop streaming.
+
+## Signature
+
+```python
+def unsubscribe(self, subscription_id: int) -> bool
+```
+
+## Example
+
+```python
+from dango.websocket_manager import WebsocketManager
+
+manager = WebsocketManager("https://api-mainnet.dango.zone")
+manager.start()
+sid = manager.subscribe(document, variables, print)
+
+# ... later ...
+manager.unsubscribe(sid)
+```
+
+## Parameters
+
+**`subscription_id`** — `int`. The id returned by a previous `subscribe` call.
+
+## Returns
+
+**`bool`** — `True` if the subscription was registered. `False` if the id was unknown. The `complete` frame to the server is best-effort — sending failures are swallowed (the server will drop the subscription anyway when the connection eventually closes).
+
+## See also
+
+- [`subscribe`](./subscribe) — register a subscription
+- [`stop`](./stop) — close the whole connection

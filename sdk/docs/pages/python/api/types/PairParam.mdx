@@ -1,0 +1,35 @@
+# PairParam
+
+Per-pair perps parameters: tick size, margin ratios, vault tuning, bucket sizes.
+
+## Definition
+
+```python
+class PairParam(TypedDict):
+    tick_size: UsdPrice
+    min_order_size: UsdValue
+    max_limit_price_deviation: Dimensionless
+    max_market_slippage: Dimensionless
+    max_abs_oi: Quantity
+    max_abs_funding_rate: FundingRate
+    initial_margin_ratio: Dimensionless
+    maintenance_margin_ratio: Dimensionless
+    impact_size: UsdValue
+    vault_liquidity_weight: Dimensionless
+    vault_half_spread: Dimensionless
+    vault_max_quote_size: Quantity
+    vault_size_skew_factor: Dimensionless
+    vault_spread_skew_factor: Dimensionless
+    vault_max_skew_size: Quantity
+    funding_rate_multiplier: Dimensionless
+    bucket_sizes: list[UsdPrice]
+```
+
+## Fields
+
+Covers price tick / minimum size, margin ratios, vault market-maker tuning, funding-rate caps, and the list of bid/ask aggregation `bucket_sizes` used by [`liquidity_depth`](../methods/info/liquidity_depth).
+
+## See also
+
+- [`pair_param`](../methods/info/pair_param) — fetcher
+- [`PairState`](./PairState) — runtime state counterpart

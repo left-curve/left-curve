@@ -1,0 +1,60 @@
+# query_store
+
+Read a raw key from the chain's state store, optionally with a Merkle proof.
+
+## Signature
+
+```rust
+async fn query_store(
+    &self,
+    key: Binary,
+    height: Option<u64>,
+    prove: bool,
+) -> Result<(Option<Binary>, Option<grug::Proof>), anyhow::Error>;
+```
+
+From `impl QueryClient for HttpClient`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::{Binary, QueryClient},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+
+    let key   = Binary::from(b"my/key".to_vec());
+    let (value, proof) = client.query_store(key, None, false).await?;
+
+    println!("value: {value:?}");
+    println!("proof: {proof:?}");
+    Ok(())
+}
+```
+
+## Parameters
+
+**`key`** — `Binary`. Raw storage key bytes.
+
+**`height`** — `Option<u64>`. Block height to read at, or `None` for the latest committed state.
+
+**`prove`** — `bool`. When `true`, requests a Merkle proof alongside the value.
+
+## Returns
+
+**`(Option<Binary>, Option<grug::Proof>)`** — the value at the given key (or `None` if absent) and an optional proof. The proof is returned only when `prove = true` and the node has the witness available.
+
+## Notes
+
+- For typed contract storage, prefer `QueryClientExt::query_wasm_raw` or `query_wasm_smart` — both wrap `query_app` with the correct query variant.
+- Proofs are borsh-encoded `Proof` values. Decoding is handled by the SDK.
+
+## See also
+
+- [`query_app`](./query_app) — typed app queries.
+- [Concepts: Encoding and types](../../../concepts/encoding-and-types) — `Binary` semantics.
