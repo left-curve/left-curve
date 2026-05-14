@@ -1,4 +1,4 @@
-import { Steps } from 'vocs/components'
+import { Step, Steps } from 'vocs/components'
 
 # Transactions
 
@@ -13,19 +13,18 @@ The Dango DEX is currently disabled. Calls described on this page will not execu
 The Rust SDK does not ship Dango action helpers — there is no `client.transfer(...)` or `client.submit_order(...)`. Transactions are built by hand:
 
 <Steps>
-
-### Compose
-Build a `NonEmpty<Vec<Message>>`. This is where the Dango contract knowledge lives — encode the contract message yourself (`Message::execute`, `Message::transfer`, …).
-
-### Sign
-Call [`SingleSigner::sign_transaction`](../api/clients/SingleSigner) to produce a `Tx`.
-
-### Broadcast
-Submit via `BroadcastClient::broadcast_tx` on `HttpClient`.
-
-### Poll
-Wait for inclusion with `SearchTxClient::search_tx`.
-
+  <Step title="Compose">
+    Build a `NonEmpty<Vec<Message>>`. This is where the Dango contract knowledge lives — encode the contract message yourself (`Message::execute`, `Message::transfer`, …).
+  </Step>
+  <Step title="Sign">
+    Call [`SingleSigner::sign_transaction`](../api/clients/SingleSigner) to produce a `Tx`.
+  </Step>
+  <Step title="Broadcast">
+    Submit via `BroadcastClient::broadcast_tx` on `HttpClient`.
+  </Step>
+  <Step title="Poll">
+    Wait for inclusion with `SearchTxClient::search_tx`.
+  </Step>
 </Steps>
 
 ## Compose

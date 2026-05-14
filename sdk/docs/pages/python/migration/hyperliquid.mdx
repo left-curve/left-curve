@@ -1,18 +1,29 @@
+import { CodeTab, CodeTabs } from '../../../components/CodeTabs'
+
 # Migrating from the Hyperliquid Python SDK
 
 You came from `hyperliquid-python-sdk`. The `dango` package ships an HL-shaped facade under `dango.hyperliquid_compatibility` so most of your code keeps working with one-line import swaps. **Read this page first.** There are sharp edges.
 
+<CodeTabs labels={["Before — hyperliquid", "After — dango"]} defaultIndex={1}>
+  <CodeTab>
+
 ```python
-# Before — hyperliquid
 from hyperliquid.exchange import Exchange
 from hyperliquid.info import Info
 from hyperliquid.utils.types import Cloid, OrderType
+```
 
-# After — dango
+  </CodeTab>
+  <CodeTab>
+
+```python
 from dango.hyperliquid_compatibility.exchange import Exchange
 from dango.hyperliquid_compatibility.info import Info
 from dango.hyperliquid_compatibility.types import Cloid, OrderType
 ```
+
+  </CodeTab>
+</CodeTabs>
 
 ## What will burn you
 

@@ -4,6 +4,7 @@ showLogo: true
 ---
 
 import { HomePage } from 'vocs/components'
+import { PackageCard, PackageCardGrid } from '../components/PackageCard'
 
 <HomePage.Root>
   <HomePage.Tagline>SDKs for the Dango perpetual futures exchange</HomePage.Tagline>
@@ -17,56 +18,32 @@ import { HomePage } from 'vocs/components'
   </HomePage.Buttons>
 </HomePage.Root>
 
-<div className="sdk-cards">
-
-<div className="sdk-card">
-
-### TypeScript
-
-`@left-curve/sdk` — viem-style client. Public and signer clients, action functions, WebSocket subscriptions, tree-shakable imports.
-
-**Best for:** browser dApps, Node.js services, indexers, automated traders.
-
-<HomePage.InstallPackage name="@left-curve/sdk" />
-
-[Get started with TypeScript →](/typescript/getting-started/installation)
-
-</div>
-
-<div className="sdk-card">
-
-### Python
-
-`dango` — Exchange + Info classes, plus a Hyperliquid-compatibility layer that re-uses your existing `hyperliquid-python-sdk` code.
-
-**Best for:** quantitative research, backtests, scripts migrated from Hyperliquid.
-
-```bash
-uv add dango
-```
-
-[Get started with Python →](/python/getting-started/installation)
-
-</div>
-
-<div className="sdk-card">
-
-### Rust
-
-`dango-sdk` — async GraphQL client, WebSocket subscriptions, key management, transaction signing. Composes `grug` primitives directly.
-
-**Best for:** low-latency market makers, on-chain services, tooling that already depends on `grug`.
-
-```toml
-[dependencies]
-dango-sdk = "0"
-```
-
-[Get started with Rust →](/rust/getting-started/installation)
-
-</div>
-
-</div>
+<PackageCardGrid>
+  <PackageCard
+    title="TypeScript"
+    packageName="@left-curve/sdk"
+    summary="viem-style client. Public and signer clients, action functions, WebSocket subscriptions, tree-shakable imports."
+    bestFor="browser dApps, Node.js services, indexers, automated traders."
+    install={<HomePage.InstallPackage name="@left-curve/sdk" />}
+    href="/typescript/getting-started/installation"
+  />
+  <PackageCard
+    title="Python"
+    packageName="dango"
+    summary="Exchange + Info classes, plus a Hyperliquid-compatibility layer that re-uses your existing hyperliquid-python-sdk code."
+    bestFor="quantitative research, backtests, scripts migrated from Hyperliquid."
+    install={<pre><code>uv add dango</code></pre>}
+    href="/python/getting-started/installation"
+  />
+  <PackageCard
+    title="Rust"
+    packageName="dango-sdk"
+    summary="async GraphQL client, WebSocket subscriptions, key management, transaction signing."
+    bestFor="low-latency market makers, on-chain services, async Tokio workloads."
+    install={<pre><code>{`[dependencies]\ndango-sdk = "0"`}</code></pre>}
+    href="/rust/getting-started/installation"
+  />
+</PackageCardGrid>
 
 ## What every SDK gives you
 
@@ -81,30 +58,3 @@ dango-sdk = "0"
 - New to Dango? Each language section opens with a five-minute "First call" guide.
 - Migrating from Hyperliquid? Start with the [Python migration guide](/python/migration/hyperliquid).
 - Building production infrastructure? Read [Rate Limits & Quotas](/typescript/concepts/rate-limits) for your language.
-
-<style>{`
-  .sdk-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.25rem;
-    margin: 2.5rem 0 1.5rem;
-  }
-  .sdk-card {
-    padding: 1.25rem 1.5rem;
-    border: 1px solid var(--vocs-color_border, rgba(127, 127, 127, 0.2));
-    border-radius: 12px;
-    background: var(--vocs-color_background2, transparent);
-    transition: border-color 0.2s ease, transform 0.2s ease;
-  }
-  .sdk-card:hover {
-    border-color: var(--vocs-color_borderAccent, rgba(127, 127, 127, 0.5));
-    transform: translateY(-2px);
-  }
-  .sdk-card h3 {
-    margin-top: 0 !important;
-    margin-bottom: 0.75rem !important;
-  }
-  .sdk-card pre {
-    margin: 0.75rem 0 !important;
-  }
-`}</style>
