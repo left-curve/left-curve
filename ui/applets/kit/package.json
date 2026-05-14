@@ -45,7 +45,6 @@
     }
   },
   "dependencies": {
-    "zustand": "catalog:",
     "@headlessui/react": "^2.1.10",
     "@left-curve/foundation": "workspace:^",
     "@left-curve/store": "workspace:^",
@@ -53,6 +52,7 @@
     "@zxing/library": "^0.21.3",
     "framer-motion": "catalog:",
     "qr-code-styling": "^1.7.2",
+    "react-day-picker": "9.14.0",
     "tailwind-variants": "catalog:",
     "@left-curve/types": "workspace:^",
     "@left-curve/utils": "workspace:^"

@@ -1,5 +1,6 @@
 import {
   Badge,
+  Button,
   createContext,
   Modals,
   Spinner,
@@ -32,6 +33,8 @@ import {
   allPerpsPairStatsStore,
   useCurrentPrice,
   useOraclePrices,
+  usePublicClient,
+  useAccount,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
@@ -45,7 +48,12 @@ import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
 import { TradeHeader } from "./TradeHeader";
 import { ErrorBoundary } from "react-error-boundary";
-import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
+import {
+  SpotTradeHistory,
+  PerpsTradeHistory,
+  TradeHistoryFilterProvider,
+  TradeHistoryToolbar,
+} from "./TradeHistory";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
@@ -251,7 +259,7 @@ const ProTradeHistory: React.FC = () => {
 
   return (
     <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
-      <div className="relative">
+      <div className="relative flex items-center justify-between">
         <Tabs
           color="line-red"
           layoutId="tabs-open-orders"
@@ -277,11 +285,19 @@ const ProTradeHistory: React.FC = () => {
         </Tabs>
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
-      <div className="w-full h-full relative">
-        {activeTab === "positions" && mode === "perps" ? <PerpsPositionsTable /> : null}
-        {activeTab === "open-orders" ? <UnifiedOpenOrders /> : null}
-        {activeTab === "trade-history" ? <ProTradeOrdersHistory /> : null}
-      </div>
+      {activeTab === "trade-history" ? (
+        <TradeHistoryFilterProvider>
+          <TradeHistoryToolbar mode={mode} />
+          <div className="w-full h-full relative">
+            <ProTradeOrdersHistory />
+          </div>
+        </TradeHistoryFilterProvider>
+      ) : (
+        <div className="w-full h-full relative">
+          {activeTab === "positions" && mode === "perps" ? <PerpsPositionsTable /> : null}
+          {activeTab === "open-orders" ? <UnifiedOpenOrders /> : null}
+        </div>
+      )}
     </div>
   );
 };
