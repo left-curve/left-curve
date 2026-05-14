@@ -1,5 +1,5 @@
-import { calculateTradeSize, Decimal } from "@left-curve/dango/utils";
-import { Direction, TimeInForceOption } from "@left-curve/dango/types";
+import { calculateTradeSize, Decimal } from "@left-curve/utils";
+import { Direction, TimeInForceOption } from "@left-curve/types";
 
 import type {
   DeleveragedData,
@@ -7,7 +7,7 @@ import type {
   OrderFilledData,
   PerpsEvent,
   Trade,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 
 const PERPS_EVENT_LABELS: Record<string, string> = {
   order_filled: "Trade",
