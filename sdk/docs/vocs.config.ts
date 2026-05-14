@@ -448,15 +448,15 @@ function pythonSidebar() {
         { text: "Info methods", collapsed: true, items: infoMethods },
         { text: "WebsocketManager methods", collapsed: true, items: wsMethods },
         {
-          text: "Functions",
+          text: "Helpers",
           items: [
-            { text: "dango_decimal", link: "/python/api/functions/dango_decimal" },
-            { text: "paginate_all", link: "/python/api/functions/paginate_all" },
+            { text: "dango_decimal", link: "/python/api/helpers/dango_decimal" },
+            { text: "paginate_all", link: "/python/api/helpers/paginate_all" },
             {
               text: "sign_doc_canonical_json",
-              link: "/python/api/functions/sign_doc_canonical_json",
+              link: "/python/api/helpers/sign_doc_canonical_json",
             },
-            { text: "sign_doc_sha256", link: "/python/api/functions/sign_doc_sha256" },
+            { text: "sign_doc_sha256", link: "/python/api/helpers/sign_doc_sha256" },
           ],
         },
         { text: "Types", collapsed: true, items: typeNames },

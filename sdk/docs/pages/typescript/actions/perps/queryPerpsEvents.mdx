@@ -43,7 +43,7 @@ const page = await client.queryPerpsEvents({
 
 **`userAddr`** — `string`, optional. Filter by trader.
 
-**`eventType`** — `string`, optional. `"order_filled"`, `"liquidated"`, or `"deleveraged"`.
+**`eventType`** — `string`, optional. `"order_filled"`, `"liquidated"`, or `"deleveraged"`. `order_filled` events carry a `fill_id` and are emitted for both regular and liquidation fills; `liquidated` and `deleveraged` (ADL) events carry no `fill_id` because they are position transfers at the bankruptcy price, not order-book matches.
 
 **`pairId`** — `string`, optional. Filter by pair.
 

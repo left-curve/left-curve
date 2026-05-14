@@ -2,6 +2,11 @@
 
 Burn vault shares to schedule a withdrawal. The corresponding cash is unlocked after the vault cooldown period.
 
+The release value is computed as
+`effectiveEquity × (sharesToBurn / effectiveSupply)` at burn time, but the USD
+is not credited immediately — a cooldown is enforced to prevent LPs from
+front-running known losses. See protocol book: `perps/5-vault` §3.
+
 ## Signature
 
 ```ts
@@ -43,6 +48,8 @@ await client.vaultRemoveLiquidity({ sender, sharesToBurn: "1000000" })
 ## Notes
 
 - The actual cash release happens after `PerpsParam.vaultCooldownPeriod` and surfaces as a `PerpsUnlock` entry on the user's state.
+- Withdrawals revert if the vault's `effectiveEquity` is non-positive.
+- Total concurrent unlocks per user are capped at `PerpsParam.maxUnlocks`.
 
 ## See also
 

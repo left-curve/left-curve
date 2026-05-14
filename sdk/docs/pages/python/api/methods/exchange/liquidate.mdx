@@ -2,6 +2,14 @@
 
 Force-close an underwater user's positions. Permissionless — anyone can call.
 
+The contract closes the minimum set of positions needed to restore
+`equity ≥ MM × (1 + liquidation_buffer_ratio)`, starting with the largest MM
+contributors. Closure runs against the order book first; any unfilled
+remainder is auto-deleveraged (ADL) against the most profitable counter-
+parties at the liquidated user's bankruptcy price. Liquidation fills (book
+and ADL) carry zero trading fees; the liquidation fee goes to the insurance
+fund, not the vault. See protocol book: `perps/4-liquidation-and-adl`.
+
 ## Signature
 
 ```python

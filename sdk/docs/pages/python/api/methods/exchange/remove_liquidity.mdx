@@ -2,6 +2,11 @@
 
 Burn LP shares to schedule a counterparty-vault withdrawal (subject to cooldown).
 
+The release value is computed as
+`effective_equity × (shares_to_burn / effective_supply)` at burn time, but the
+USD is not credited immediately — the cooldown prevents LPs from front-running
+known losses. See protocol book: `perps/5-vault` §3.
+
 ## Signature
 
 ```python

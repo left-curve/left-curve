@@ -2,6 +2,11 @@
 
 Register an additional account for an existing user.
 
+Each user has a `BTreeMap<AccountIndex, Addr>` of up to 5 accounts; this
+action mints the next one and (optionally) seeds it with `funds`. The new
+account's address can be computed deterministically ahead of time. See
+protocol book: `overview/3-dango-contracts` §3.
+
 ## Signature
 
 ```ts
@@ -47,6 +52,7 @@ await client.registerAccount({ sender }, { gasLimit: 250_000 })
 
 - The action builder accepts `txParameters` as a positional second argument, not as a field on the first parameter. This is unique among mutations.
 - The new account address can be derived ahead of time via [`getNextAccountIndex`](./getNextAccountIndex) + [`computeAddress`](../../concepts/encoding-and-types).
+- Rejected if the user already owns 5 accounts (the per-user cap).
 
 ## See also
 

@@ -1,6 +1,12 @@
 # setFeeShareRatio
 
-Set the referrer fee share ratio. The ratio is truncated via `truncateDec` before signing.
+Opt in as a referrer and set the share ratio rebated to referees.
+
+Calling this is how a user becomes referrable: it gates which fraction of the
+level-1 commission the referrer rebates to each referee on every fill. The
+ratio is capped at 50 % on-chain and can only increase once set. Eligibility
+also requires `lifetimeVolume ≥ minReferrerVolume` (bypassed for users with a
+commission-rate override). See protocol book: `perps/6-referral` §3a.
 
 ## Signature
 
@@ -34,7 +40,7 @@ await client.setFeeShareRatio({ sender, shareRatio: "0.25" })
 
 **`sender`** — `Address`. The referrer.
 
-**`shareRatio`** — `string`. Decimal ratio (e.g. `"0.25"` for 25 %).
+**`shareRatio`** — `string`. Decimal ratio (e.g. `"0.25"` for 25 %). On-chain cap is 50 %; can only be raised once set.
 
 ## Returns
 

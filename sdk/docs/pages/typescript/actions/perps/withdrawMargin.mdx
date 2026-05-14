@@ -2,6 +2,11 @@
 
 Withdraw collateral from the perps account.
 
+The perps contract holds margin internally as a USD value; this action specifies
+a USD amount to release and the contract converts it to settlement-currency
+tokens (floor-rounded to base units) at the fixed \$1 rate. The withdrawal is
+capped by the user's available margin — see protocol book: `perps/1-margin` §3.
+
 ## Signature
 
 ```ts
@@ -27,18 +32,24 @@ const client = createSignerClient({
 })
 const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
 
-await client.withdrawMargin({ sender, amount: "500000000" })
+// Withdraw 500 USD (6-decimal UsdValue wire form)
+await client.withdrawMargin({ sender, amount: "500.000000" })
 ```
 
 ## Parameters
 
 **`sender`** — `Address`. The trader.
 
-**`amount`** — `string`. Amount in base units.
+**`amount`** — `string`. USD value to withdraw (6-decimal `UsdValue` wire form, e.g. `"500.000000"` = 500 USD). NOT base units — the contract converts to settlement tokens internally at \$1.
 
 ## Returns
 
 **`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- Asymmetric with [`depositMargin`](./depositMargin): deposit attaches `bridge/usdc` base units as funds, withdraw specifies a USD value in the message body. The asymmetry mirrors the on-chain contract.
+- Rejected by the chain if the requested amount exceeds `availableMargin = max(0, equity − usedMargin − reservedMargin)`.
 
 ## See also
 

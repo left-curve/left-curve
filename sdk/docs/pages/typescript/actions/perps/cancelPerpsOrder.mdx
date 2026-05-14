@@ -2,6 +2,11 @@
 
 Cancel one or all perps orders.
 
+Cancelling releases the order's reserved margin back to the user's available
+margin and decrements `open_order_count`. If the user state becomes empty after
+all cancellations, it is deleted from storage. See protocol book:
+`perps/2-order-matching` §12.
+
 ## Signature
 
 ```ts

@@ -2,6 +2,12 @@
 
 Bind the signer as a referee of `referrer`. Accepts a user_index `int` or a username `str`.
 
+The referrer must already have opted in via `SetFeeShareRatio`; a user cannot
+refer themselves; the relationship is immutable once stored. On every
+subsequent fill the referee pays, the contract walks up to 5 upstream
+referrers and credits each level the marginal commission rate beyond what
+lower levels already captured. See protocol book: `perps/6-referral` §3b, §5.
+
 ## Signature
 
 ```python

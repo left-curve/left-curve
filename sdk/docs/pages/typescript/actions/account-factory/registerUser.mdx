@@ -2,6 +2,12 @@
 
 Create a new user and their first account in a single transaction. Submitted by the account factory itself (sender-less from the caller's perspective).
 
+Registration requires a pre-existing deposit (≥ `min_deposit`) sent to the
+factory, a signed `RegisterUserData` proving control of the public key, and a
+chain id binding. If `referrer` is provided, the factory atomically forwards
+a `SetReferral` to the perps contract. The username on the new user record
+is immutable once set. See protocol book: `overview/3-dango-contracts` §3.
+
 ## Signature
 
 ```ts
@@ -21,7 +27,6 @@ function registerUser(
 
 ```ts
 import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
-import { createKeyHash } from "@left-curve/sdk"
 
 const signer = PrivateKeySigner.fromRandomKey()
 const client = createSignerClient({
@@ -58,6 +63,8 @@ await client.registerUser({
 ## Notes
 
 - Unlike normal mutations, `registerUser` is submitted by the account factory contract itself. The action calls `simulate` for gas and broadcasts an unsigned tx (the contract is its own credential).
+- Exactly one `RegisterUser` message is allowed per transaction (anti-batching constraint).
+- Nonce jump on the resulting account is limited to 100 to bound the seen-nonce set.
 
 ## See also
 

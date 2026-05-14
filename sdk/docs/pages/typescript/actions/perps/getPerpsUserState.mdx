@@ -2,6 +2,12 @@
 
 Read the perps state for a single user.
 
+Returns the raw on-chain state record — deposited USD margin, vault shares,
+per-pair positions (size, entry price, entry funding accumulator), pending
+vault unlocks, reserved margin, and open-order count — without computing
+derived equity, PnL, or liquidation prices. Use
+[`getPerpsUserStateExtended`](./getPerpsUserStateExtended) for those.
+
 ## Signature
 
 ```ts

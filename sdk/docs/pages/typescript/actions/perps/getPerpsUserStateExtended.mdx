@@ -2,6 +2,12 @@
 
 Read the extended perps state for a user, with optional PnL, equity, margin, and liquidation flags.
 
+Each computed field is gated by an `include_*` flag so the contract can skip
+unrequested work. The derivations come straight from the book:
+`equity = collateralValue + Σ unrealisedPnl − Σ accruedFunding`,
+`MM = Σ |size| × oracle × mmr`, and a user is liquidatable when
+`equity < MM`. See protocol book: `perps/1-margin` §4–§6.
+
 ## Signature
 
 ```ts

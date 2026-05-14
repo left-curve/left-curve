@@ -2,6 +2,13 @@
 
 Submit a single trigger-based conditional perps order.
 
+Conditional orders are reduce-only by construction — they fire as a market
+order once the oracle price crosses `triggerPrice` in the chosen direction.
+`maxSlippage` is bounded at submission by the per-pair `max_market_slippage`
+cap; if governance later tightens that cap, a stale conditional is cancelled
+with `reason = SlippageCapTightened`. See protocol book:
+`perps/2-order-matching` §3b.
+
 ## Signature
 
 ```ts
@@ -51,9 +58,9 @@ await client.submitConditionalOrder({
 
 **`triggerPrice`** — `string`. Price that activates the order.
 
-**`triggerDirection`** — `"above" | "below"`. Direction the price must cross to trigger.
+**`triggerDirection`** — `"above" | "below"`. Direction the oracle price must cross to fire.
 
-**`maxSlippage`** — `string`. Max slippage applied when filling.
+**`maxSlippage`** — `string`. Dimensionless ratio applied when the triggered market order executes. Must satisfy `≤ pair.max_market_slippage` at submission time.
 
 ## Returns
 

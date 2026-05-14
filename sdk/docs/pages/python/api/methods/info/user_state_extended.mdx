@@ -2,6 +2,11 @@
 
 `user_state` plus computed equity, margin, PnL fields. Each computed field is gated by an `include_*` flag so the contract can skip the work when not needed.
 
+Derivations come straight from the book:
+`equity = collateral_value + Σ unrealised_pnl − Σ accrued_funding`,
+`MM = Σ |size| × oracle × mmr`, and a user is liquidatable when
+`equity < MM`. See protocol book: `perps/1-margin` §4–§6.
+
 ## Signature
 
 ```python

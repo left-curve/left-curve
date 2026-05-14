@@ -2,6 +2,12 @@
 
 Change the username on the calling account's user record.
 
+Usernames live in a chain-wide unique index on the user record; the chain
+rejects collisions and reserves names. Note that the protocol book describes
+the original `name` field as immutable once set on `RegisterUser` — this
+action surfaces a chain-side rename path that is only available where the
+contract permits it.
+
 ## Signature
 
 ```ts

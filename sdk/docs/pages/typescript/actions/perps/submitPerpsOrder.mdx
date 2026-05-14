@@ -2,6 +2,11 @@
 
 Submit a market or limit perps order, optionally with take-profit and stop-loss children.
 
+Orders are decomposed into closing and opening portions against the user's
+existing position before matching, and each fill settles funding, PnL, and the
+volume-tiered fee in-place on USD margin. See protocol book:
+`perps/2-order-matching`.
+
 ## Signature
 
 ```ts
@@ -59,9 +64,9 @@ await client.submitPerpsOrder({
 
 **`pairId`** — `string`. Perps pair identifier.
 
-**`size`** — `string`. Position size. Positive opens long, negative opens short.
+**`size`** — `string`. Signed quantity. Positive = buy (opens long / closes short), negative = sell. Zero is rejected.
 
-**`kind`** — `PerpsOrderKind`. Discriminated union: `{ market: { maxSlippage } }` or `{ limit: { limitPrice, timeInForce, clientOrderId? } }`. `timeInForce` is `"GTC"`, `"IOC"`, or `"POST"`. `clientOrderId` is not allowed with `"IOC"`.
+**`kind`** — `PerpsOrderKind`. Discriminated union: `{ market: { maxSlippage } }` or `{ limit: { limitPrice, timeInForce, clientOrderId? } }`. `timeInForce` is `"GTC"` (rest on book), `"IOC"` (immediate-or-cancel — discard unfilled), or `"POST"` (post-only — reject if it would cross). `maxSlippage` is bounded by the per-pair `max_market_slippage` cap. `clientOrderId` is not allowed with `"IOC"`.
 
 **`reduceOnly`** — `boolean`. When `true`, the order can only reduce an existing position.
 
@@ -76,6 +81,9 @@ await client.submitPerpsOrder({
 ## Notes
 
 - `clientOrderId` is normalized: `null`/`undefined` is stripped from both the message and the typed-data structure.
+- The chain rejects orders that fail pre-match checks: per-pair tick-size alignment, OI cap, slippage cap, limit-price band relative to oracle, and pre-match margin (worst-case 100 % fill IM + projected fee + reserved margin must be covered by equity). See `perps/2-order-matching` §3a, §3b, §5, §11.
+- Market and IOC limit orders revert with "no liquidity at acceptable price" if nothing fills; GTC remainders rest on the book and reserve `|openingSize| × limitPrice × imr` until cancelled or filled.
+- Reduce-only orders skip the pre-match margin and OI checks; they reserve zero margin.
 
 ## See also
 

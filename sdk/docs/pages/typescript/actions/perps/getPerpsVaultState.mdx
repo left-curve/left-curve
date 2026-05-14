@@ -2,6 +2,12 @@
 
 Read vault state — share supply, equity, and the vault's own perps positions.
 
+The vault is itself a `User` in the perps contract: it carries positions
+accumulated from market-making fills and computes equity by the same
+formula as any other user. `depositWithdrawalActive` flips to `false` when
+the vault's `effectiveEquity` is non-positive (catastrophic loss). See
+protocol book: `perps/5-vault` §4.
+
 ## Signature
 
 ```ts

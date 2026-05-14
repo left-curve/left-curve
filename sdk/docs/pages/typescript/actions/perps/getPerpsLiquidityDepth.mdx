@@ -2,6 +2,10 @@
 
 Read bid and ask depth buckets for a perps pair.
 
+`bucketSize` must match one of the granularities pre-configured on the pair
+(see `PerpsPairParam.bucketSizes`); mismatched values are rejected by the
+contract. The vault is typically the dominant maker on both sides.
+
 ## Signature
 
 ```ts

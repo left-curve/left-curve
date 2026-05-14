@@ -2,6 +2,13 @@
 
 Set a referrer/referee mapping for fee sharing.
 
+Links the referee to a chain of up to five upstream referrers; each fill the
+referee pays goes through the per-level commission split described in
+protocol book: `perps/6-referral` §5. Constraints: a user cannot refer
+themselves, the referrer must already have opted in via
+[`setFeeShareRatio`](./setFeeShareRatio), and the relationship is immutable
+once stored.
+
 ## Signature
 
 ```ts

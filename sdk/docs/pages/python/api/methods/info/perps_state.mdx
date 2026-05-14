@@ -2,6 +2,12 @@
 
 Global perps runtime state: last funding time, vault share supply, treasury, insurance fund.
 
+The insurance fund collects liquidation fees and absorbs bad debt; it can go
+negative when accumulated bad debt exceeds fees collected, with future fees
+naturally replenishing it. The vault and insurance fund are isolated —
+external liquidation losses never touch vault margin. See protocol book:
+`perps/4-liquidation-and-adl` §7.
+
 ## Signature
 
 ```python

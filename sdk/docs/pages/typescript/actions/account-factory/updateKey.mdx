@@ -2,6 +2,12 @@
 
 Insert or delete a key on the calling account.
 
+Keys are stored on the user record (`User.keys: BTreeMap<KeyHash, Key>`) and
+indexed by hash for authentication lookups. Adding or removing a key here is
+how a user rotates credentials; the signature against the new key is verified
+against the registered hash on every subsequent transaction. See protocol
+book: `overview/3-dango-contracts` §4.
+
 ## Signature
 
 ```ts

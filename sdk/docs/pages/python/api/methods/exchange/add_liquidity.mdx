@@ -2,6 +2,11 @@
 
 Debit USD from the trading margin to mint counterparty-vault LP shares.
 
+The vault is the perps exchange's passive market maker; LPs share its
+inventory-skew-aware quoting PnL. Shares are minted via the ERC-4626 virtual
+shares pattern, floor-rounded. Use `min_shares_to_mint` as a slippage guard
+when the vault equity is moving. See protocol book: `perps/5-vault` §2.
+
 ## Signature
 
 ```python
@@ -42,6 +47,7 @@ exchange.add_liquidity("100.00", min_shares_to_mint=95)
 
 - The USD amount is debited from the caller's existing trading margin — NOT attached as funds on the execute message.
 - Vault deposits flow inside the contract; the wallet boundary is not crossed.
+- Deposits revert if the vault's `effective_equity` is non-positive (catastrophic loss).
 
 ## See also
 

@@ -2,6 +2,10 @@
 
 Aggregated bid/ask depth at a chosen price-bucket granularity.
 
+`bucket_size` must match one of the granularities pre-configured on the pair
+(`pair_param.bucket_sizes`). The vault is typically the dominant maker on
+both sides.
+
 ## Signature
 
 ```python

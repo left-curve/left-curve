@@ -2,6 +2,12 @@
 
 Read on-chain pair state — long/short OI, funding per unit, and current funding rate.
 
+`fundingPerUnit` is the pair-level running accumulator; per-position accrued
+funding is `size × (fundingPerUnit − entryFundingPerUnit)` and settles lazily
+whenever a position is touched. `fundingRate` is the clamped per-day rate
+finalised at the most recent funding collection. See protocol book:
+`perps/3-funding` §3–§4.
+
 ## Signature
 
 ```ts

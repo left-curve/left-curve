@@ -41,7 +41,7 @@ for event in page.nodes:
 
 **`user_addr`** — `Addr | None`, optional.
 
-**`event_type`** — `str | None`, optional. Free-form string (the indexer schema does NOT constrain it to an enum).
+**`event_type`** — `str | None`, optional. Free-form string (the indexer schema does NOT constrain it to an enum). Common values: `"order_filled"` (regular and liquidation book fills, both carrying a `fill_id`), `"liquidated"`, and `"deleveraged"` (ADL — position transfers at the bankruptcy price, no `fill_id`).
 
 **`pair_id`** — `PairId | None`, optional.
 

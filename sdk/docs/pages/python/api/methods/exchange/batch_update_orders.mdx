@@ -2,6 +2,12 @@
 
 Submit and cancel multiple orders atomically in one transaction.
 
+All actions execute under a single tx — either every action succeeds or none
+does. This is the idiomatic way to cancel-and-replace (modify) a resting
+limit order: pair a `CancelAction` with a `SubmitAction` in one call. Each
+submission still passes the per-order pre-match checks described in
+`perps/2-order-matching`.
+
 ## Signature
 
 ```python

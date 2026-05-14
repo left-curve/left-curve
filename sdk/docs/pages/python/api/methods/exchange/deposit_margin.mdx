@@ -2,6 +2,11 @@
 
 Deposit USDC into the perps margin sub-account. Amount is in **base units** (Uint128).
 
+The perps contract holds margin internally as a USD value; deposits attach
+`bridge/usdc` base units as funds and the contract credits the user's
+`user_state.margin` 1:1 at the fixed \$1 settlement rate. See protocol book:
+`perps/1-margin` §2.
+
 ## Signature
 
 ```python

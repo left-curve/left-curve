@@ -2,6 +2,11 @@
 
 Sign a `SigningSessionInfo` payload with the client signer and return the credential bundle. The bundle can then drive [`createSessionSigner`](../../concepts/signers-and-authentication) for delegated signing.
 
+A session credential lets an ephemeral keypair sign transactions on the
+primary key's behalf until `expireAt`. The primary key signs a one-shot
+`SigningSessionInfo` covering the session pubkey and expiry; the chain
+verifies that envelope on every session-signed transaction.
+
 ## Signature
 
 ```ts

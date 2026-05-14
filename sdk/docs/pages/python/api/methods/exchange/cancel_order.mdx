@@ -2,6 +2,10 @@
 
 Cancel an open order by chain `OrderId`, by `ClientOrderIdRef`, or `"all"` to cancel every open order.
 
+Cancellation releases the order's reserved margin back to the user's available
+margin and decrements `open_order_count`. See protocol book:
+`perps/2-order-matching` §12.
+
 ## Signature
 
 ```python

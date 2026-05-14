@@ -2,6 +2,12 @@
 
 Place a limit order. Convenience wrapper over [`submit_order`](./submit_order).
 
+`limit_price` must fall within the per-pair symmetric oracle band
+(`|limit_price − oracle| ≤ oracle × max_limit_price_deviation`) at submission;
+the band is re-checked against the current oracle on every resting maker
+when it is encountered during matching. See protocol book:
+`perps/2-order-matching` §3a, §6b.
+
 ## Signature
 
 ```python
@@ -51,7 +57,7 @@ exchange.submit_limit_order(
 
 **`size`** — `float | int | str | Decimal`. Signed quantity (positive = buy, negative = sell).
 
-**`limit_price`** — `float | str | Decimal`. The limit price in USD; canonicalised via [`dango_decimal`](../../functions/dango_decimal).
+**`limit_price`** — `float | str | Decimal`. The limit price in USD; canonicalised via [`dango_decimal`](../../helpers/dango_decimal).
 
 **`time_in_force`** — `TimeInForce`, optional. `TimeInForce.GTC` (good-till-cancelled), `TimeInForce.IOC` (immediate-or-cancel), `TimeInForce.POST` (post-only). Default: `TimeInForce.GTC`.
 

@@ -2,6 +2,11 @@
 
 A user's cumulative trading volume in USD. Used for fee-tier resolution.
 
+Drives the volume-tiered fee schedule (maker/taker rates) and the lifetime
+volume gate for opting in as a referrer (`min_referrer_volume`). The 30-day
+rolling volume of a referrer's direct referees additionally determines their
+commission tier — see protocol book: `perps/6-referral` §6b.
+
 ## Signature
 
 ```python

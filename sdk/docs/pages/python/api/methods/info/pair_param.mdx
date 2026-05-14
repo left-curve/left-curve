@@ -2,6 +2,12 @@
 
 Per-pair parameters. Returns `None` if the pair is not configured.
 
+Drives every pre-trade check: `tick_size` for price alignment, `min_order_size`
+for dust rejection, `max_abs_oi` for the per-side OI cap, the IM/MM ratios for
+margin, `max_abs_funding_rate` for the funding clamp, and `bucket_sizes` for
+liquidity depth queries. See protocol book: `perps/7-risk` for calibration
+guidance.
+
 ## Signature
 
 ```python

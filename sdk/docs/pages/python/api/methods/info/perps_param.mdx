@@ -2,6 +2,13 @@
 
 Global perps parameters: fee schedules, OI caps, funding period, batch size, vault settings.
 
+These chain-wide knobs include the volume-tiered `maker_fee_rates` /
+`taker_fee_rates`, `protocol_fee_rate` (treasury cut), `liquidation_fee_rate`
+and `liquidation_buffer_ratio`, the global `funding_period`, vault settings
+(`vault_cooldown_period`, `vault_total_weight`, `vault_deposit_cap`), and the
+referral master switch (`referral_active`, `min_referrer_volume`,
+`referrer_commission_rates`). Per-pair fields live in `pair_param`.
+
 ## Signature
 
 ```python

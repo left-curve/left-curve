@@ -2,6 +2,10 @@
 
 List a user's active perps orders.
 
+Returns only resting limit orders that have not been fully filled or
+cancelled; the count matches the user's `open_order_count` and the sum of
+`reserved_margin` across these orders equals `user_state.reservedMargin`.
+
 ## Signature
 
 ```ts

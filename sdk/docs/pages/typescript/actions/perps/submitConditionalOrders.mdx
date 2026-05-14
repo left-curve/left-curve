@@ -2,6 +2,11 @@
 
 Submit a batch of trigger-based conditional perps orders in one transaction.
 
+Each order is reduce-only by construction and fires as a market order once
+the oracle price crosses its `triggerPrice` in the chosen direction. See
+[`submitConditionalOrder`](./submitConditionalOrder) for the per-order
+mechanics.
+
 ## Signature
 
 ```ts

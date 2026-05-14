@@ -2,6 +2,12 @@
 
 Place a market order with a slippage cap. Convenience wrapper over [`submit_order`](./submit_order).
 
+Market orders are IOC: the unfilled remainder is discarded, and the order
+reverts entirely if nothing fills. `max_slippage` is bounded at submission by
+the per-pair `max_market_slippage`; the worst acceptable execution price is
+`oracle × (1 ± max_slippage)` for bid/ask respectively. See protocol book:
+`perps/2-order-matching` §3, §3b.
+
 ## Signature
 
 ```python

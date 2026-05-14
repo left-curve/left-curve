@@ -2,6 +2,13 @@
 
 Read the global perps parameters: max unlocks, max open orders, fee schedules, funding period, vault config.
 
+These chain-wide knobs include the volume-tiered `makerFeeRates` /
+`takerFeeRates`, `protocolFeeRate` (treasury cut), `liquidationFeeRate` and
+`liquidationBufferRatio`, the global `fundingPeriod`, vault settings
+(`vaultCooldownPeriod`, `vaultTotalWeight`, `vaultDepositCap`), and the
+referral master switch (`referralActive`, `minReferrerVolume`,
+`referrerCommissionRates`). Per-pair fields live in `getPerpsPairParam`.
+
 ## Signature
 
 ```ts

@@ -2,6 +2,13 @@
 
 Place a conditional (TP/SL) order. Reduce-only by construction.
 
+The order fires as a market order when the oracle price crosses
+`trigger_price` in the chosen direction. `max_slippage` is bounded at
+submission by the per-pair `max_market_slippage`; if governance later
+tightens that cap, a stale conditional is cancelled by the cron with
+`reason = SlippageCapTightened`. See protocol book:
+`perps/2-order-matching` §3b.
+
 ## Signature
 
 ```python
