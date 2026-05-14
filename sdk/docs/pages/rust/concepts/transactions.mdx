@@ -1,3 +1,5 @@
+import { Steps } from 'vocs/components'
+
 # Transactions
 
 **What this teaches:** the full path from `Message` to confirmed transaction, using only `dango-sdk` and `grug` primitives.
@@ -6,17 +8,25 @@
 The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
 :::
 
-
 ## Mental model
 
 The Rust SDK does not ship Dango action helpers — there is no `client.transfer(...)` or `client.submit_order(...)`. Transactions are built by hand:
 
-1. Compose a `NonEmpty<Vec<Message>>`.
-2. Sign with [`SingleSigner::sign_transaction`](../api/clients/SingleSigner) to produce a `Tx`.
-3. Broadcast via `BroadcastClient::broadcast_tx` on `HttpClient`.
-4. Poll for inclusion with `SearchTxClient::search_tx`.
+<Steps>
 
-Step 1 is where the Dango contract knowledge lives — encode the contract message yourself (`Message::execute`, `Message::transfer`, …).
+### Compose
+Build a `NonEmpty<Vec<Message>>`. This is where the Dango contract knowledge lives — encode the contract message yourself (`Message::execute`, `Message::transfer`, …).
+
+### Sign
+Call [`SingleSigner::sign_transaction`](../api/clients/SingleSigner) to produce a `Tx`.
+
+### Broadcast
+Submit via `BroadcastClient::broadcast_tx` on `HttpClient`.
+
+### Poll
+Wait for inclusion with `SearchTxClient::search_tx`.
+
+</Steps>
 
 ## Compose
 
@@ -82,7 +92,9 @@ let tx = signer.sign_transaction(messages, "dango-1", gas_limit)?;
 
 `sign_transaction` consumes the current nonce and increments the in-memory value, so successive calls produce successive transactions without an extra round-trip.
 
-> **Warning:** the nonce is incremented even when broadcast eventually fails. After a broadcast failure, call `SequencedSigner::update_nonce` to resync against the chain.
+:::warning
+the nonce is incremented even when broadcast eventually fails. After a broadcast failure, call `SequencedSigner::update_nonce` to resync against the chain.
+:::
 
 ## Broadcast
 

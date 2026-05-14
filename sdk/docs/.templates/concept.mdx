@@ -20,13 +20,15 @@ Guidelines:
 - Lead with the **mental model** before any code
 - One concrete example beats three abstract paragraphs
 - Show the wrong way + the right way when a footgun is common
-- Use callouts (`> **Note:**`, `> **Warning:**`) sparingly — only for real surprises
+- Use Vocs callout directives (`:::note`, `:::warning`, `:::tip`, `:::danger`) sparingly — only for real surprises. Never use `> **Warning:**` blockquotes.
 - Link to Reference pages for specifics; don't re-explain APIs in concepts
 - Code blocks: imports always included, realistic values, language-fenced
 
 Example callout (use sparingly):
 
-> **Warning:** Submitting a transaction without setting `gasLimit` will use the network default, which may underestimate for complex contract calls.
+:::warning
+Submitting a transaction without setting `gasLimit` will use the network default, which may underestimate for complex contract calls.
+:::
 
 ## Next
 

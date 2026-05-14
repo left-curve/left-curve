@@ -57,7 +57,9 @@ Treat this as a logical error: the request reached the server but the query fail
 
 [`TxFailed`](../api/errors/TxFailed) — `broadcast_tx_sync` succeeded at the HTTP/GraphQL layer but the transaction was rejected by the chain. The BroadcastTxOutcome carries an `err` result.
 
-> **Note:** as of this writing, the SDK returns the BroadcastTxOutcome envelope unchanged from `Exchange._send_action`. `TxFailed` is defined for callers and downstream tooling to raise; the SDK does not raise it automatically. Inspect the returned dict's `check_tx.code` and `result.err` fields to detect failures.
+:::note
+as of this writing, the SDK returns the BroadcastTxOutcome envelope unchanged from `Exchange._send_action`. `TxFailed` is defined for callers and downstream tooling to raise; the SDK does not raise it automatically. Inspect the returned dict's `check_tx.code` and `result.err` fields to detect failures.
+:::
 
 ## Subscription errors do not raise
 

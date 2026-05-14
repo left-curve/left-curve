@@ -41,7 +41,9 @@ const amount = await client.getBalance({ address, denom: "dango" })
 
 ## Notes
 
-> **Warning:** the return type is `number`. Amounts above 2^53 lose precision silently. For accurate accounting, use [`getBalances`](./getBalances), which returns `Coins` (a `Record<Denom, string>`), and parse with `BigInt` or [`Decimal`](../../concepts/encoding-and-types).
+:::warning
+the return type is `number`. Amounts above 2^53 lose precision silently. For accurate accounting, use [`getBalances`](./getBalances), which returns `Coins` (a `Record<Denom, string>`), and parse with `BigInt` or [`Decimal`](../../concepts/encoding-and-types).
+:::
 
 ## See also
 

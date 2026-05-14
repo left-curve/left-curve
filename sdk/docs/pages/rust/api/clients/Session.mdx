@@ -87,7 +87,9 @@ async fn main() -> Result<()> {
 
 When the last `Session` clone drops, the inner `Drop` impl sends a `Close` command to the background driver task; remaining streams keep working until the server closes the connection or the stream itself is dropped. When the last stream then drops, the connection closes cleanly.
 
-> **Warning:** holding a `Session` clone alive after every stream has been dropped keeps the connection open with no subscriptions. The server may close it for inactivity (close code 3008) despite the keepalive pings — recreate via `WsClient::connect` if needed.
+:::warning
+holding a `Session` clone alive after every stream has been dropped keeps the connection open with no subscriptions. The server may close it for inactivity (close code 3008) despite the keepalive pings — recreate via `WsClient::connect` if needed.
+:::
 
 Individual stream drops send a `complete` to the server for that subscription id, freeing the slot in the 30-per-connection cap.
 

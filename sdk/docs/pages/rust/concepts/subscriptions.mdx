@@ -129,7 +129,9 @@ while let Some(item) = stream.next().await {
 
 The server caps each connection at 30 concurrent subscriptions. When you need more, shard across multiple `WsClient`/`Session` pairs.
 
-> **Warning:** subscription streams are `Send` but not `Sync`. Move them into a single task — don't share by reference across threads.
+:::warning
+subscription streams are `Send` but not `Sync`. Move them into a single task — don't share by reference across threads.
+:::
 
 ## Next
 

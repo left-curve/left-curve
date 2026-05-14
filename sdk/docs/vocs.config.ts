@@ -43,6 +43,7 @@ function typescriptSidebar() {
     },
     {
       text: "Concepts",
+      collapsed: true,
       items: [
         { text: "Packages", link: "/typescript/concepts/packages" },
         { text: "Clients", link: "/typescript/concepts/clients" },
@@ -55,14 +56,17 @@ function typescriptSidebar() {
       ],
     },
     {
-      text: "Clients",
-      collapsed: false,
+      text: "API Reference",
       items: [
-        { text: "createPublicClient", link: "/typescript/clients/createPublicClient" },
-        { text: "createSignerClient", link: "/typescript/clients/createSignerClient" },
-        { text: "createBaseClient", link: "/typescript/clients/createBaseClient" },
-      ],
-    },
+        {
+          text: "Clients",
+          collapsed: true,
+          items: [
+            { text: "createPublicClient", link: "/typescript/clients/createPublicClient" },
+            { text: "createSignerClient", link: "/typescript/clients/createSignerClient" },
+            { text: "createBaseClient", link: "/typescript/clients/createBaseClient" },
+          ],
+        },
     {
       text: "Actions: App",
       collapsed: true,
@@ -276,6 +280,8 @@ function typescriptSidebar() {
         { text: "UrlRequiredError", link: "/typescript/errors/UrlRequiredError" },
       ],
     },
+      ],
+    },
   ];
 }
 
@@ -413,6 +419,7 @@ function pythonSidebar() {
     },
     {
       text: "Concepts",
+      collapsed: true,
       items: [
         { text: "Clients", link: "/python/concepts/clients" },
         { text: "Signers", link: "/python/concepts/signers" },
@@ -489,6 +496,7 @@ function rustSidebar() {
     },
     {
       text: "Concepts",
+      collapsed: true,
       items: [
         { text: "Clients", link: "/rust/concepts/clients" },
         { text: "Signers & Authentication", link: "/rust/concepts/signers-and-authentication" },

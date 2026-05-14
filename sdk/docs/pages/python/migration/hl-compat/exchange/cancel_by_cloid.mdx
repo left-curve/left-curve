@@ -33,7 +33,9 @@ ex.cancel_by_cloid("ETH", Cloid("0x12345678901234567890123456789012"))
 
 **`dict[str, Any]`** — HL status envelope with `response.type="cancelByCloid"`.
 
-> **Warning:** the Uint64 derived from the cloid is the only thing the chain sees. If two different 16-byte cloids hash to the same Uint64 (probability ~2**-32 over ~4 billion cloids), the cancel applies to whichever order claimed that Uint64 first.
+:::warning
+the Uint64 derived from the cloid is the only thing the chain sees. If two different 16-byte cloids hash to the same Uint64 (probability ~2**-32 over ~4 billion cloids), the cancel applies to whichever order claimed that Uint64 first.
+:::
 
 ## See also
 

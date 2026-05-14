@@ -36,7 +36,9 @@ console.log(config.addresses.accountFactory)
 
 ## Notes
 
-> **Warning:** `getAppConfig` memoizes the result in a module-level cache. The first successful call wins; subsequent calls ignore the `height` argument and return the cached config. If you need to read the config at multiple heights, use [`queryApp`](./queryApp) directly.
+:::warning
+`getAppConfig` memoizes the result in a module-level cache. The first successful call wins; subsequent calls ignore the `height` argument and return the cached config. If you need to read the config at multiple heights, use [`queryApp`](./queryApp) directly.
+:::
 
 ## See also
 

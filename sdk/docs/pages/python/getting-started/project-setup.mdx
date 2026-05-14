@@ -29,7 +29,9 @@ DANGO_SECRET_KEY=0x...                  # 32-byte hex secret
 DANGO_ACCOUNT_ADDRESS=0x...             # Dango account address (NOT the EVM address)
 ```
 
-> **Warning:** the Dango account address is decoupled from the signing key. The same secp256k1 key can control multiple Dango accounts. Always set `DANGO_ACCOUNT_ADDRESS` explicitly — never derive it from the wallet's EVM address.
+:::warning
+the Dango account address is decoupled from the signing key. The same secp256k1 key can control multiple Dango accounts. Always set `DANGO_ACCOUNT_ADDRESS` explicitly — never derive it from the wallet's EVM address.
+:::
 
 ## Build the signer trio
 

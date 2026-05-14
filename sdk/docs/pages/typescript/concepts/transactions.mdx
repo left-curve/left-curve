@@ -1,3 +1,5 @@
+import { Steps } from 'vocs/components'
+
 # Transactions
 
 **What this teaches:** the sign → broadcast → poll loop, and where `signAndBroadcastTx` fits.
@@ -6,13 +8,23 @@
 The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
 :::
 
-
 ## The lifecycle
 
-1. **Build messages.** A transaction is a list of `Message` variants (`transfer`, `execute`, `instantiate`, etc.).
-2. **Sign.** The signer produces an EIP-712 typed-data signature over the messages plus metadata (chain id, nonce, sender).
-3. **Broadcast.** The signed transaction is sent via the indexer's `broadcastTxSync` mutation.
-4. **Poll.** The SDK polls `queryTx` until the indexer reports the transaction landed (or fails).
+<Steps>
+
+### Build messages
+A transaction is a list of `Message` variants (`transfer`, `execute`, `instantiate`, etc.).
+
+### Sign
+The signer produces an EIP-712 typed-data signature over the messages plus metadata (chain id, nonce, sender).
+
+### Broadcast
+The signed transaction is sent via the indexer's `broadcastTxSync` mutation.
+
+### Poll
+The SDK polls `queryTx` until the indexer reports the transaction landed (or fails).
+
+</Steps>
 
 [`signAndBroadcastTx`](../actions/app/signAndBroadcastTx) wraps all four steps. Higher-level actions like [`transfer`](../actions/app/transfer), [`execute`](../actions/app/execute), and [`swapExactAmountIn`](../actions/dex/swapExactAmountIn) build their messages then call `signAndBroadcastTx`.
 
