@@ -1,0 +1,40 @@
+# PerpsEvent
+
+One indexer event record. Keys are camelCase (indexer wire shape).
+
+## Definition
+
+```python
+class PerpsEvent(TypedDict):
+    idx: int
+    blockHeight: int
+    txHash: str
+    eventType: str
+    userAddr: str
+    pairId: str
+    data: dict[str, Any]
+    createdAt: str
+```
+
+## Fields
+
+**`idx`** — `int`. Per-block event index.
+
+**`blockHeight`** — `int`.
+
+**`txHash`** — `str`.
+
+**`eventType`** — `str`. Variant name of the on-chain perps event enum: `order_filled`, `order_persisted`, `order_removed`, `liquidated`, `deleveraged`, `referral_set`, etc.
+
+**`userAddr`** — `str`.
+
+**`pairId`** — `str`.
+
+**`data`** — `dict[str, Any]`. The event payload. Shape varies by `eventType`; cast to the matching TypedDict (`OrderFilled`, `Liquidated`, etc.) for typed access.
+
+**`createdAt`** — `str`. ISO-8601 datetime.
+
+## See also
+
+- [`perps_events`](../methods/info/perps_events) — paginated fetcher
+- [`subscribe_user_events`](../methods/info/subscribe_user_events) — live stream

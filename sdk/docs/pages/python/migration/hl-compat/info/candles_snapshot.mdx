@@ -1,0 +1,49 @@
+# Info.candles_snapshot (HL-compat)
+
+HL `candleSnapshot` — OHLCV candles in a time window.
+
+## Signature
+
+```python
+def candles_snapshot(
+    self,
+    name: str,
+    interval: str,
+    start: int,
+    end: int,
+) -> list[dict[str, Any]]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+candles = info.candles_snapshot("ETH", "1m", start=1700000000000, end=1700001000000)
+for c in candles:
+    print(c["t"], c["o"], c["c"])
+```
+
+## Parameters
+
+**`name`** — `str`. HL coin name.
+
+**`interval`** — `str`. HL form (`"1m"`, `"5m"`, `"15m"`, `"1h"`, `"4h"`, `"1d"`, `"1w"`). Other values raise `ValueError`.
+
+**`start`** — `int`. Lower bound, milliseconds since Unix epoch.
+
+**`end`** — `int`. Upper bound, milliseconds.
+
+## Returns
+
+**`list[dict[str, Any]]`** — HL-shaped candles with single-letter keys (`T`, `t`, `s`, `i`, `o`, `c`, `h`, `l`, `v`, `n`). `n=0` always (Dango doesn't track per-candle trade count).
+
+## Divergences from upstream
+
+- HL supports more intervals than Dango. Unsupported intervals raise `ValueError` with the supported list.
+
+## See also
+
+- [Native `perps_candles`](../../../api/methods/info/perps_candles)
+- [`CandleInterval`](../../../api/types/CandleInterval)

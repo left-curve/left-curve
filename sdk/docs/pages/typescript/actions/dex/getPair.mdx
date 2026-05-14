@@ -1,0 +1,50 @@
+# getPair
+
+Read the parameters of a single base/quote trading pair.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getPair(
+  client: Client,
+  parameters: {
+    baseDenom: Denom
+    quoteDenom: Denom
+    height?: number
+  },
+): Promise<PairParams>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const params = await client.getPair({
+  baseDenom: "dango",
+  quoteDenom: "bridge/usdc",
+})
+```
+
+## Parameters
+
+**`baseDenom`** — `Denom`. Base asset.
+
+**`quoteDenom`** — `Denom`. Quote asset.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PairParams`** — `{ lpDenom, curveInvariant, swapFeeRate, bucketSizes, minOrderSizeBase, minOrderSizeQuote }`.
+
+## See also
+
+- [`getPairs`](./getPairs) — paginated list
+- [`getPairStats`](./getPairStats) — 24h indexer stats

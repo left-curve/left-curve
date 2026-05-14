@@ -2,10 +2,10 @@ import { useApp } from "@left-curve/foundation";
 import { useId } from "react";
 import { twMerge } from "@left-curve/foundation";
 
-import { formatDisplayNumber } from "@left-curve/dango/utils";
+import { formatDisplayNumber } from "@left-curve/utils";
 
 import type React from "react";
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { FormatNumberOptions } from "@left-curve/utils";
 
 type FormattedNumberProps = {
   number: string | number;

@@ -1,6 +1,6 @@
 {
   "name": "@left-curve/portal-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/index.ts",
   "scripts": {
     "eas-build-pre-install": "npm install -g pnpm@10.16.1",
@@ -19,7 +19,6 @@
     "@formatjs/intl-numberformat": "^8.15.6",
     "@formatjs/intl-pluralrules": "^5.4.6",
     "@left-curve/config": "workspace:*",
-    "@left-curve/dango": "workspace:*",
     "@left-curve/foundation": "workspace:*",
     "@left-curve/store": "workspace:*",
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -56,7 +55,10 @@
     "react-native-web": "0.21.2",
     "react-native-webview": "13.16.0",
     "tailwindcss": "^3.4.17",
-    "text-encoding": "^0.7.0"
+    "text-encoding": "^0.7.0",
+    "@left-curve/types": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/utils": "workspace:^"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

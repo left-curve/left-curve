@@ -1,0 +1,25 @@
+# AccountInfo
+
+Account record stored by the account factory (no address attached).
+
+## Definition
+
+```ts
+type AccountInfo = {
+  readonly index: AccountIndex
+  readonly owner: number
+}
+```
+
+## Fields
+
+**`index`** — `AccountIndex` (`number`).
+
+**`owner`** — `number`. The owning user's index.
+
+## See also
+
+- [`Account`](./Account) — includes the address
+- [`AccountDetails`](./AccountDetails) — also includes the username
+- [`getAccountInfo`](../actions/account-factory/getAccountInfo)
+- [`getAllAccountInfo`](../actions/account-factory/getAllAccountInfo)

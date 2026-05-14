@@ -1,0 +1,50 @@
+# getBalances
+
+Read a paginated map of every balance held by an address.
+
+## Signature
+
+```ts
+function getBalances(
+  client: Client,
+  parameters: {
+    address: Address
+    startAfter?: Denom
+    limit?: number
+    height?: number
+  },
+): Promise<Coins>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const balances = await client.getBalances({ address, limit: 50 })
+// { dango: "1500000000", "bridge/usdc": "1000000", ... }
+```
+
+## Parameters
+
+**`address`** — `Address`. The account to query.
+
+**`startAfter`** — `Denom`, optional. Denom to start after (exclusive). Use the last denom from the previous page.
+
+**`limit`** — `number`, optional. Maximum entries to return.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`Coins`** — `Record<Denom, string>`. Each value is base units as a string. Safe for arbitrary precision.
+
+## See also
+
+- [`getBalance`](./getBalance) — single-denom variant
+- [`getSupplies`](./getSupplies) — chain-wide supplies
+- [Concepts: Encoding & Types](../../concepts/encoding-and-types)

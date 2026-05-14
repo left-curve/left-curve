@@ -30,6 +30,7 @@ target/
 **/.pytest_cache/
 **/.ruff_cache/
 **/.venv/
+**/dist/
 **/*.egg-info/
 
 # Node.js
@@ -40,8 +41,9 @@ target/
 ui/portal/web/public/images
 **/.turbo
 
-# SDK
-sdk/typescript/docs
+# Docs (Vocs)
+sdk/docs/.vocs
+sdk/docs/.templates/review
 
 # UI
 **/.next

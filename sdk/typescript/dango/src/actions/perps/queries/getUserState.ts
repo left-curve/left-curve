@@ -1,10 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type { Client, GetPerpsQueryMsg, PerpsUserState, Prettify } from "@left-curve/types";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "../../../types/app.js";
-import type { GetPerpsQueryMsg, PerpsUserState } from "../../../types/perps.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"userState">;
 
@@ -12,16 +9,11 @@ export type GetPerpsUserStateParameters = Prettify<ActionMsg["userState"] & { he
 
 export type GetPerpsUserStateReturnType = Promise<PerpsUserState | null>;
 
-export async function getPerpsUserState<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getPerpsUserState(
+  client: Client,
   parameters: GetPerpsUserStateParameters,
 ): GetPerpsUserStateReturnType {
   const { height = 0, ...queryMsg } = parameters;
-
-  const action = getAction(client, getAppConfig, "getAppConfig");
 
   const msg: ActionMsg = {
     userState: {
@@ -29,7 +21,7 @@ export async function getPerpsUserState<
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.perps, msg, height });
 }

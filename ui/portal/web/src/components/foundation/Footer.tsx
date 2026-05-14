@@ -2,11 +2,12 @@ import {
   FormattedNumber,
   IconDiscord,
   IconTwitter,
+  Link,
   Marquee,
   twMerge,
 } from "@left-curve/applets-kit";
 import { allPerpsPairStatsStore, useAllPerpsPairStats } from "@left-curve/store";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
 import { StatusBadge } from "./StatusBadge";
@@ -47,40 +48,38 @@ function Footer() {
       <div className="h-[17px] w-px bg-outline-secondary-gray shrink-0" />
 
       <div className="flex items-center gap-1 shrink-0">
-        <a
+        <Link
           href="/documents/Dango - Terms of Use.pdf"
           target="_blank"
           rel="noopener noreferrer"
-          className="exposure-xs-italic text-primitives-blue-light-500 px-1 hover:opacity-80"
+          className="exposure-xs-italic"
         >
           {m["footer.terms"]()}
-        </a>
-        <a
+        </Link>
+        <Link
           href="/documents/Dango - Privacy Policy.pdf"
           target="_blank"
           rel="noopener noreferrer"
-          className="exposure-xs-italic text-primitives-blue-light-500 px-1 hover:opacity-80"
+          className="exposure-xs-italic"
         >
           {m["footer.privacyPolicy"]()}
-        </a>
-        <a
+        </Link>
+        <Link
           href="https://discord.gg/BWJtyySxBM"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Discord"
-          className="text-primitives-blue-light-500 px-1 hover:opacity-80 flex items-center"
         >
-          <IconDiscord className="w-4 h-4" />
-        </a>
-        <a
+          <IconDiscord className="w-5 h-5" />
+        </Link>
+        <Link
           href="https://x.com/dango"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Twitter"
-          className="text-primitives-blue-light-500 px-1 hover:opacity-80 flex items-center"
         >
-          <IconTwitter className="w-4 h-4" />
-        </a>
+          <IconTwitter className="w-5 h-5" />
+        </Link>
       </div>
     </footer>
   );

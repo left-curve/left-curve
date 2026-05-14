@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,14 +9,16 @@ import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
+import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { GenerateSW } from "workbox-webpack-plugin";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
+import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
-import { devnet, local, testnet, mainnet } from "@left-curve/dango";
+import { devnet, local, testnet, mainnet } from "@left-curve/sdk";
 
-import type { Chain } from "@left-curve/dango/types";
+import type { Chain } from "@left-curve/sdk/types";
 import type { Rspack } from "@rsbuild/core";
 
 const isLocal = process.env.NODE_ENV === "development";
@@ -31,6 +34,17 @@ const environment = process.env.CONFIG_ENVIRONMENT || "test";
 const enabledFeatures = process.env.ENABLED_FEATURES
   ? process.env.ENABLED_FEATURES.split(",").map((f) => f.trim())
   : [];
+
+const gitCommit = (() => {
+  if (process.env.GIT_COMMIT) return process.env.GIT_COMMIT;
+  try {
+    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "unknown";
+  }
+})();
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
@@ -48,13 +62,13 @@ fs.copySync(
 
 const hyperlaneConfig = async () => {
   const mainFiles = {
-    config: "../../../dango/hyperlane-deployment/config.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments.json",
+    config: "./config/hyperlane/config.json",
+    deployment: "./config/hyperlane/deployments.json",
   };
 
   const testFiles = {
-    config: "../../../dango/hyperlane-deployment/config.testnet.json",
-    deployment: "../../../dango/hyperlane-deployment/deployments-testnet.json",
+    config: "./config/hyperlane/config.testnet.json",
+    deployment: "./config/hyperlane/deployments-testnet.json",
   };
 
   const files = environment === "prod" ? mainFiles : testFiles;
@@ -91,19 +105,19 @@ const urls = {
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
     questUrl: "https://quest-bot-devnet.dango.zone/check_username",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
     faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
     questUrl: "https://quest-bot-testnet.dango.zone/check_username",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-testnet.dango.zone",
   },
   prod: {
     faucetUrl: "/faucet",
     questUrl: "/quest",
-    upUrl: `${chain.urls.indexer}/up`,
+    upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-mainnet.dango.zone",
   },
 }[environment]!;
@@ -118,7 +132,7 @@ const envConfig = `window.dango = ${JSON.stringify(
     chain: isLocal
       ? {
           ...chain,
-          urls: { indexer: `http://localhost:${PORT}` },
+          url:  `http://localhost:${PORT}`
         }
       : chain,
     urls: isLocal
@@ -151,7 +165,6 @@ export default defineConfig({
   resolve: {
     aliasStrategy: "prefer-alias",
     alias: {
-      // Order matters
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
@@ -161,6 +174,7 @@ export default defineConfig({
     },
   },
   source: {
+    include: [/[\\/]@left-curve[\\/]/],
     entry: {
       index: "./src/index.tsx",
     },
@@ -168,6 +182,7 @@ export default defineConfig({
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
       "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
+      "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "process.env": {},
       "import.meta.env": {},
     },
@@ -176,7 +191,7 @@ export default defineConfig({
     port: PORT,
     proxy: {
       "/graphql": {
-        target: `${chain.urls.indexer}/graphql`,
+        target: `${chain.url}/graphql`,
         changeOrigin: true,
         pathRewrite: { "^/graphql": "" },
         ws: true,
@@ -192,7 +207,7 @@ export default defineConfig({
         pathRewrite: { "^/quest": "" },
       },
       "/up": {
-        target: `${chain.urls.indexer}/up`,
+        target: `${chain.url}/up`,
         changeOrigin: true,
         pathRewrite: { "^/up": "" },
       },
@@ -246,6 +261,7 @@ export default defineConfig({
   plugins: [
     pluginReact(),
     pluginSvgr(),
+    pluginSourceBuild(),
     pluginNodePolyfill({
       include: ["buffer"],
     }),
@@ -267,6 +283,15 @@ export default defineConfig({
         TanStackRouterRspack({
           routesDirectory: "./src/pages",
           generatedRouteTree: "./src/app.pages.ts",
+        }),
+        paraglideRspackPlugin({
+          outdir: "../../foundation/paraglide",
+          project: "../../foundation/project.inlang",
+          emitGitIgnore: false,
+          emitPrettierIgnore: false,
+          includeEslintDisableComment: false,
+          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
+          localStorageKey: "dango.locale",
         }),
         {
           apply(compiler: Rspack.Compiler) {
@@ -292,17 +317,8 @@ export default defineConfig({
             clientsClaim: true,
             skipWaiting: true,
             cleanupOutdatedCaches: true,
-            navigationPreload: true,
-            runtimeCaching: [
-              {
-                urlPattern: ({ request }) => request.mode === "navigate",
-                handler: "NetworkFirst",
-                options: {
-                  cacheName: "html-cache",
-                  networkTimeoutSeconds: 3,
-                },
-              },
-            ],
+            navigationPreload: false,
+            importScripts: ["/sw-disable-nav-preload.js"],
           }),
         );
       }

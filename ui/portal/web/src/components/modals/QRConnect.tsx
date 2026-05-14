@@ -10,12 +10,12 @@ import {
   useAsync,
 } from "@left-curve/applets-kit";
 
-import { decodeBase64 } from "@left-curve/dango/encoding";
+import { decodeBase64 } from "@left-curve/encoding";
 import { captureException } from "@sentry/react";
 import { WS_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { JsonValue } from "@left-curve/dango/types";
+import type { JsonValue } from "@left-curve/types";
 
 export const QRConnect = forwardRef((_props, _ref) => {
   const { toast, hideModal } = useApp();

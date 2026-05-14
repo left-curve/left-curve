@@ -1,0 +1,47 @@
+# queryIndexer
+
+Send a raw GraphQL request to the indexer and receive the typed response.
+
+## Signature
+
+```ts
+function queryIndexer<T extends JsonValue>(
+  client: Client,
+  parameters: {
+    document: string
+    variables?: Record<string, unknown>
+  },
+): Promise<T>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+
+const result = await client.request<{ block: { blockHeight: number } }>({
+  request: `query { block { blockHeight } }`,
+  params: {},
+})
+```
+
+## Parameters
+
+**`document`** — `string`. GraphQL query/mutation document.
+
+**`variables`** — `Record<string, unknown>`, optional. Variables for the query.
+
+## Returns
+
+**`T`** — the raw GraphQL `data` object. The caller asserts the shape.
+
+## Notes
+
+- `queryIndexer` is not on the client surface — it is a building block used by every typed indexer action. For end-user code, call `client.request({ request: document, params: variables })` directly, or use the typed wrappers ([`queryBlock`](./queryBlock), [`searchTxs`](./searchTxs)).
+
+## See also
+
+- [`queryBlock`](./queryBlock)
+- [`searchTxs`](./searchTxs)

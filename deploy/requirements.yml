@@ -4,10 +4,9 @@ collections:
   - name: community.general
   - name: community.clickhouse
   - name: amazon.aws
-roles:
   - name: artis3n.tailscale
-    src: artis3n.tailscale
-    version: "v5.0.1"
+    version: "1.2.1"
+roles:
   - name: MonolithProjects.github_actions_runner
     src: MonolithProjects.github_actions_runner
     version: "1.28.0"

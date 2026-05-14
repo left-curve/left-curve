@@ -1,6 +1,6 @@
 use {
     crate::{
-        context::Context,
+        context::FullContext,
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{types::connection::*, *},
@@ -59,7 +59,7 @@ impl BlockQuery {
         ctx: &async_graphql::Context<'_>,
         height: Option<u64>,
     ) -> Result<Option<entity::blocks::Model>> {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         let mut query = entity::blocks::Entity::find();
 
@@ -87,7 +87,7 @@ impl BlockQuery {
     ) -> Result<
         Connection<OpaqueCursor<BlockCursor>, entity::blocks::Model, EmptyFields, EmptyFields>,
     > {
-        let app_ctx = ctx.data::<Context>()?;
+        let app_ctx = ctx.data::<FullContext>()?;
 
         paginate_models(
             app_ctx,

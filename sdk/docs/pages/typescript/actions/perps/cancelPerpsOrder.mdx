@@ -1,0 +1,58 @@
+# cancelPerpsOrder
+
+Cancel one or all perps orders.
+
+Cancelling releases the order's reserved margin back to the user's available
+margin and decrements `open_order_count`. If the user state becomes empty after
+all cancellations, it is deleted from storage. See protocol book:
+`perps/2-order-matching` §12.
+
+## Signature
+
+```ts
+function cancelPerpsOrder(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    request: PerpsCancelOrderRequest
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+
+type PerpsCancelOrderRequest =
+  | { one: string }
+  | { oneByClientOrderId: string }
+  | "all"
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.cancelPerpsOrder({ sender, request: { one: "12345" } })
+await client.cancelPerpsOrder({ sender, request: { oneByClientOrderId: "my-order-1" } })
+await client.cancelPerpsOrder({ sender, request: "all" })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The trader.
+
+**`request`** — `PerpsCancelOrderRequest`. `"all"`, `{ one: orderId }`, or `{ oneByClientOrderId }`. The `oneByClientOrderId` form lets you cancel an order in the same block it was submitted.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`submitPerpsOrder`](./submitPerpsOrder)
+- [`cancelConditionalOrder`](./cancelConditionalOrder)

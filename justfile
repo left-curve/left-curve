@@ -26,25 +26,25 @@ install-client:
 
 # Run all tests
 test:
-  RUST_BACKTRACE=1 cargo test --all-features -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -- --nocapture
 
 # Run grug tests
 test-grug:
-  RUST_BACKTRACE=1 cargo test --all-features -p grug-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p grug-testing -- --nocapture
 
 # Run dango tests
 test-dango:
-  RUST_BACKTRACE=1 cargo test --all-features -p dango-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-testing -- --nocapture
 
 # Run dango perp tests
 test-perps:
-  RUST_BACKTRACE=1 cargo test --all-features -p dango-types perps::tests -- --nocapture
-  RUST_BACKTRACE=1 cargo test --all-features -p dango-perps -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-types perps::tests -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-perps -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
 
 # Run indexer tests
 test-indexer:
-  RUST_BACKTRACE=1 cargo test --all-features -p indexer-testing -- --nocapture
+  RUST_BACKTRACE=1 cargo test --all-features --tests -p indexer-testing -- --nocapture
 
 # Check whether the code compiles
 check:
@@ -72,8 +72,8 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p dango-httpd build_graphql_schema -- \
-    ./sdk/rust/src/schemas/schema.graphql
+  cargo run -p indexer-httpd --bin build_graphql_schema -- \
+    ./indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book
 book:

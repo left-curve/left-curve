@@ -1,0 +1,67 @@
+# perps_candles
+
+OHLCV candles for one pair at one interval; cursor-paginated.
+
+## Signature
+
+```python
+def perps_candles(
+    self,
+    pair_id: PairId,
+    interval: CandleInterval,
+    *,
+    later_than: str | None = None,
+    earlier_than: str | None = None,
+    first: int | None = None,
+    after: str | None = None,
+) -> Connection[PerpsCandle]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import CandleInterval, PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+page = info.perps_candles(
+    PairId("perp/ethusd"),
+    CandleInterval.ONE_MINUTE,
+    first=10,
+)
+for candle in page.nodes:
+    print(candle["timeStart"], candle["open"], candle["close"])
+
+if page.page_info.has_next_page:
+    next_page = info.perps_candles(
+        PairId("perp/ethusd"),
+        CandleInterval.ONE_MINUTE,
+        first=10,
+        after=page.page_info.end_cursor,
+    )
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`.
+
+**`interval`** — `CandleInterval`. Use the enum member (e.g. `CandleInterval.ONE_MINUTE`); the wire form is `interval.value` (the bare uppercase name).
+
+**`later_than`** — `str | None`, optional. ISO-8601 datetime string. Default: `None`.
+
+**`earlier_than`** — `str | None`, optional. ISO-8601 datetime string. Default: `None`.
+
+**`first`** — `int | None`, optional. Page size. Default: `None` (server-side default).
+
+**`after`** — `str | None`, optional. Cursor from a previous `page.page_info.end_cursor`. Default: `None`.
+
+## Returns
+
+**`Connection[PerpsCandle]`** — a page of [`PerpsCandle`](../../types/PerpsCandle) plus cursors. Keys are camelCase (indexer wire shape).
+
+## See also
+
+- [`paginate_all`](../../helpers/paginate_all) — walk every page
+- [`subscribe_perps_candles`](./subscribe_perps_candles) — live stream counterpart

@@ -70,8 +70,8 @@ struct Balances {
     umars: u128,
 }
 
-#[test]
-fn cronjob_works() {
+#[tokio::test]
+async fn cronjob_works() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", [("uatom", 100), ("uosmo", 100), ("umars", 100)])
         .add_account("jake", Coins::new())
@@ -91,6 +91,7 @@ fn cronjob_works() {
     // Upload the tester contract code.
     let tester_code_hash = suite
         .upload(&mut accounts["larry"], tester_code)
+        .await
         .should_succeed()
         .code_hash;
 
@@ -111,6 +112,7 @@ fn cronjob_works() {
             None,
             Coins::one("uatom", 3).unwrap(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -128,6 +130,7 @@ fn cronjob_works() {
             None,
             Coins::one("uosmo", 3).unwrap(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -145,6 +148,7 @@ fn cronjob_works() {
             None,
             Coins::one("umars", 3).unwrap(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -164,6 +168,7 @@ fn cronjob_works() {
     // cron3 scheduled at 8
     suite
         .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
+        .await
         .should_succeed();
 
     // Make some blocks.
@@ -265,12 +270,12 @@ fn cronjob_works() {
             .should_succeed_and_equal(expect);
 
         // Advance block
-        suite.make_empty_block();
+        suite.make_empty_block().await;
     }
 }
 
-#[test]
-fn cronjob_fails() {
+#[tokio::test]
+async fn cronjob_fails() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", Coins::new())
         .set_genesis_time(Timestamp::from_nanos(0))
@@ -284,6 +289,7 @@ fn cronjob_fails() {
 
     let tester_code_hash = suite
         .upload(&mut accounts["larry"], tester_code)
+        .await
         .should_succeed()
         .code_hash;
 
@@ -297,6 +303,7 @@ fn cronjob_fails() {
             None,
             Coins::default(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -308,6 +315,7 @@ fn cronjob_fails() {
 
     suite
         .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
+        .await
         .should_succeed();
 
     // Before the block, storage key `b"foo"` should have the value `b"init"`.
@@ -316,7 +324,7 @@ fn cronjob_fails() {
         .should_succeed_and_equal(Some(Binary::from(*b"init")));
 
     // Advance block and trigger the cronjob
-    let res = suite.make_empty_block().block_outcome;
+    let res = suite.make_empty_block().await.block_outcome;
     assert_eq!(res.cron_outcomes.len(), 1);
 
     // The cronjob attempts to overwrite the value with `b"cron_execute"`.

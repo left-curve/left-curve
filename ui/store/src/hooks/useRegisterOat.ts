@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConnectors } from "./useConnectors.js";
 import { registerOat, OatRateLimitError, NoOatsFoundError } from "./pointsApi.js";
-import { encodeBase64, encodeUtf8, decodeHex } from "@left-curve/dango/encoding";
+import { encodeBase64, encodeUtf8, decodeHex } from "@left-curve/encoding";
 
 export { OatRateLimitError, NoOatsFoundError };
 

@@ -2,10 +2,6 @@ use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_genesis::Contracts,
-    dango_indexer_clickhouse::{
-        entities::pair_price::PairPrice, indexer::candles::cache::CandleCache,
-    },
-    dango_sdk::{Candles, SubscribeCandles, candles, subscribe_candles},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -18,6 +14,8 @@ use {
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
+    indexer_clickhouse::{entities::pair_price::PairPrice, indexer::candles::cache::CandleCache},
+    indexer_graphql_types::{Candles, SubscribeCandles, candles, subscribe_candles},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
@@ -346,17 +344,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     // The following ensures than loading clickhouse data to a new cache result in the same
     // loaded data than our current cache
     let mut cache = CandleCache::default();
-    let pairs =
-        PairPrice::all_pairs(context.indexer_clickhouse_context.clickhouse_client()).await?;
+    let pairs = PairPrice::all_pairs(context.clickhouse_context.clickhouse_client()).await?;
 
     cache
-        .preload_pairs(
-            &pairs,
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
+        .preload_pairs(&pairs, context.clickhouse_context.clickhouse_client())
         .await?;
 
-    let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
+    let old_cache = context.clickhouse_context.candle_cache.read().await;
 
     // println!("Cache : {:#?}", old_cache.pair_prices);
     // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
@@ -431,6 +425,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                     50_000_000,
                     NonEmpty::new_unchecked(msgs),
                 )
+                .await
                 .should_succeed();
         }
 
@@ -502,17 +497,13 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     // The following ensures than loading clickhouse data to a new cache result in the same
     // loaded data than our current cache
     let mut cache = CandleCache::default();
-    let pairs =
-        PairPrice::all_pairs(context.indexer_clickhouse_context.clickhouse_client()).await?;
+    let pairs = PairPrice::all_pairs(context.clickhouse_context.clickhouse_client()).await?;
 
     cache
-        .preload_pairs(
-            &pairs,
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
+        .preload_pairs(&pairs, context.clickhouse_context.clickhouse_client())
         .await?;
 
-    let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
+    let old_cache = context.clickhouse_context.candle_cache.read().await;
 
     // println!("Cache : {:#?}", old_cache.pair_prices);
     // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
@@ -562,6 +553,7 @@ async fn create_pair_prices(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
@@ -613,6 +605,7 @@ async fn create_pair_prices(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -641,6 +634,7 @@ async fn create_pair_prices_with_tiny_price(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let tiny_price =
@@ -686,6 +680,7 @@ async fn create_pair_prices_with_tiny_price(
 
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()

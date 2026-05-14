@@ -1,0 +1,61 @@
+# getPerpsUserStateExtended
+
+Read the extended perps state for a user, with optional PnL, equity, margin, and liquidation flags.
+
+Each computed field is gated by an `include_*` flag so the contract can skip
+unrequested work. The derivations come straight from the book:
+`equity = collateralValue + Σ unrealisedPnl − Σ accruedFunding`,
+`MM = Σ |size| × oracle × mmr`, and a user is liquidatable when
+`equity < MM`. See protocol book: `perps/1-margin` §4–§6.
+
+## Signature
+
+```ts
+function getPerpsUserStateExtended(
+  client: Client,
+  parameters: {
+    user: Address
+    includeEquity?: boolean
+    includeAvailableMargin?: boolean
+    includeMaintenanceMargin?: boolean
+    includeUnrealizedPnl?: boolean
+    includeUnrealizedFunding?: boolean
+    includeLiquidationPrice?: boolean
+    includeAll?: boolean
+    height?: number
+  },
+): Promise<PerpsUserStateExtended | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const user: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const state = await client.getPerpsUserStateExtended({
+  user,
+  includeEquity: true,
+  includeUnrealizedPnl: true,
+})
+```
+
+## Parameters
+
+**`user`** — `Address`. The trader.
+
+**`includeEquity`**, **`includeAvailableMargin`**, **`includeMaintenanceMargin`**, **`includeUnrealizedPnl`**, **`includeUnrealizedFunding`**, **`includeLiquidationPrice`**, **`includeAll`** — `boolean`, optional. Toggle each computed field; `null` when not included.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsUserStateExtended | null`** — same shape as `PerpsUserState` plus `equity`, `availableMargin`, `maintenanceMargin`, and per-position `unrealizedPnl`, `unrealizedFunding`, `liquidationPrice`. Each computed field is `string | null` (null when the corresponding flag was not set).
+
+## See also
+
+- [`getPerpsUserState`](./getPerpsUserState) — non-extended variant
+- [`getPerpsVaultState`](./getPerpsVaultState)

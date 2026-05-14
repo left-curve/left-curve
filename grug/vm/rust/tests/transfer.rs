@@ -7,8 +7,8 @@ use {
 
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
-#[test]
-fn transfers() {
+#[tokio::test]
+async fn transfers() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("sender", Coins::one(DENOM.clone(), 100).unwrap())
         .add_account("receiver", Coins::new())
@@ -36,6 +36,7 @@ fn transfers() {
                 Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
             ]),
         )
+        .await
         .should_succeed();
 
     // Check balances again

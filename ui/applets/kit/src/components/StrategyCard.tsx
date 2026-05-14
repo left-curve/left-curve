@@ -1,7 +1,7 @@
 import { useConfig } from "@left-curve/store";
 import { Button } from "../components/Button.js";
 
-import type { PairSymbols, PairUpdate } from "@left-curve/dango/types";
+import type { PairSymbols, PairUpdate } from "@left-curve/types";
 import type React from "react";
 import { twMerge } from "@left-curve/foundation";
 

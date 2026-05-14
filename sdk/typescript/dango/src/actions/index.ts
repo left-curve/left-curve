@@ -1,5 +1,69 @@
 /* -------------------------------------------------------------------------- */
-/*                                   Builder                                  */
+/*                                App Queries                                 */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type GetBalanceParameters,
+  type GetBalanceReturnType,
+  getBalance,
+} from "./app/queries/getBalance.js";
+
+export {
+  type GetBalancesParameters,
+  type GetBalancesReturnType,
+  getBalances,
+} from "./app/queries/getBalances.js";
+
+export {
+  type GetSupplyParameters,
+  type GetSupplyReturnType,
+  getSupply,
+} from "./app/queries/getSupply.js";
+
+export {
+  type GetSuppliesParameters,
+  type GetSuppliesReturnType,
+  getSupplies,
+} from "./app/queries/getSupplies.js";
+
+export {
+  type GetCodeParameters,
+  type GetCodeReturnType,
+  getCode,
+} from "./app/queries/getCode.js";
+
+export {
+  type GetCodesParameters,
+  type GetCodesReturnType,
+  getCodes,
+} from "./app/queries/getCodes.js";
+
+export {
+  type QueryWasmRawParameters,
+  type QueryWasmRawReturnType,
+  queryWasmRaw,
+} from "./app/queries/queryWasmRaw.js";
+
+export {
+  type QueryWasmSmartParameters,
+  type QueryWasmSmartReturnType,
+  queryWasmSmart,
+} from "./app/queries/queryWasmSmart.js";
+
+export {
+  type GetContractInfoParameters,
+  type GetContractInfoReturnType,
+  getContractInfo,
+} from "./app/queries/getContractInfo.js";
+
+export {
+  type GetContractsInfoParameters,
+  type GetContractsInfoReturnType,
+  getContractsInfo,
+} from "./app/queries/getContractsInfo.js";
+
+/* -------------------------------------------------------------------------- */
+/*                              Actions Builders                              */
 /* -------------------------------------------------------------------------- */
 
 export {
@@ -15,7 +79,7 @@ export {
 export {
   type AppMutationActions,
   appMutationActions,
-} from "./app/index.js";
+} from "./app/appActions.js";
 
 export {
   type DexMutationActions,
@@ -29,17 +93,19 @@ export {
   accountFactoryMutationActions,
   type AccountFactoryQueryActions,
   accountFactoryQueryActions,
-} from "./account-factory/index.js";
+} from "./account-factory/accountFactoryActions.js";
 
 export {
   type GatewayMutationActions,
   gatewayMutationActions,
+  type GatewayQueryActions,
+  gatewayQueryActions,
 } from "./gateway/gatewayActions.js";
 
 export {
-  type GrugActions,
-  grugActions,
-} from "@left-curve/sdk";
+  type OracleQueryActions,
+  oracleQueryActions,
+} from "./oracle/oracleActions.js";
 
 export { indexerActions, type IndexerActions } from "./indexer/indexerActions.js";
 
@@ -48,18 +114,13 @@ export {
   perpsQueryActions,
   type PerpsMutationActions,
   perpsMutationActions,
-} from "./perps/index.js";
+} from "./perps/perpsActions.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 App Actions                                */
 /* -------------------------------------------------------------------------- */
 
 export {
-  // queries
-  type GetAppConfigParameters,
-  type GetAppConfigReturnType,
-  getAppConfig,
-  // mutations
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
   broadcastTxSync,
@@ -97,7 +158,6 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export {
-  // queries
   type GetAccountInfoParameters,
   type GetAccountInfoReturnType,
   getAccountInfo,
@@ -122,13 +182,15 @@ export {
   type GetAccountStatusParameters,
   type GetAccountStatusReturnType,
   getAccountStatus,
-  // mutations
   type RegisterAccountParameters,
   type RegisterAccountReturnType,
   registerAccount,
   type RegisterUserParameters,
   type RegisterUserReturnType,
   registerUser,
+  type UpdateKeyParameters,
+  type UpdateKeyReturnType,
+  updateKey,
   type CreateSessionParameters,
   type CreateSessionReturnType,
   createSession,
@@ -138,15 +200,11 @@ export {
 /*                               Gateway Actions                              */
 /* -------------------------------------------------------------------------- */
 
-/* --------------------------------- queries -------------------------------- */
-
 export {
   type GetWithdrawalFeeParameters,
   type GetWithdrawalFeeReturnType,
   getWithdrawalFee,
 } from "./gateway/queries/getWithdrawalFee.js";
-
-/* -------------------------------- mutations ------------------------------- */
 
 export {
   type TransferRemoteParameters,
@@ -168,6 +226,12 @@ export {
   type QueryIndexerParameters,
   queryIndexer,
 } from "./indexer/queryIndexer.js";
+
+export {
+  type SearchTxsParameters,
+  type SearchTxsReturnType,
+  searchTxs,
+} from "./indexer/searchTxs.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Dex Actions                                */
@@ -209,6 +273,42 @@ export {
 } from "./dex/queries/simulateSwapExactAmountIn.js";
 
 export {
+  type SimulateWithdrawLiquidityParameters,
+  type SimulateWithdrawLiquidityReturnType,
+  simulateWithdrawLiquidity,
+} from "./dex/queries/simulateWithdrawLiquidity.js";
+
+export {
+  type GetOrderParameters,
+  type GetOrderReturnType,
+  getOrder,
+} from "./dex/queries/getOrder.js";
+
+export {
+  type DexStatusParameters,
+  type DexStatusReturnType,
+  dexStatus,
+} from "./dex/queries/dexStatus.js";
+
+export {
+  type OrdersByUserParameters,
+  type OrdersByUserReturnType,
+  ordersByUser,
+} from "./dex/queries/ordersByUser.js";
+
+export {
+  type QueryCandlesParameters,
+  type QueryCandlesReturnType,
+  queryCandles,
+} from "./dex/queries/candles.js";
+
+export {
+  type QueryTradesParameters,
+  type QueryTradesReturnType,
+  queryTrades,
+} from "./dex/queries/trades.js";
+
+export {
   type ProvideLiquidityParameters,
   type ProvideLiquidityReturnType,
   provideLiquidity,
@@ -232,6 +332,12 @@ export {
   swapExactAmountIn,
 } from "./dex/mutations/swapExactAmountIn.js";
 
+export {
+  type BatchUpdateOrdersParameters,
+  type BatchUpdateOrdersReturnType,
+  batchUpdateOrders,
+} from "./dex/mutations/batchUpdateOrders.js";
+
 /* -------------------------------------------------------------------------- */
 /*                                Perps Actions                               */
 /* -------------------------------------------------------------------------- */
@@ -240,6 +346,9 @@ export {
   type GetPerpsUserStateParameters,
   type GetPerpsUserStateReturnType,
   getPerpsUserState,
+  type GetPerpsUserStateExtendedParameters,
+  type GetPerpsUserStateExtendedReturnType,
+  getPerpsUserStateExtended,
   type GetPerpsOrdersByUserParameters,
   type GetPerpsOrdersByUserReturnType,
   getPerpsOrdersByUser,
@@ -255,6 +364,32 @@ export {
   type GetPerpsParamParameters,
   type GetPerpsParamReturnType,
   getPerpsParam,
+  type QueryPerpsCandlesParameters,
+  type QueryPerpsCandlesReturnType,
+  queryPerpsCandles,
+  type QueryPerpsEventsParameters,
+  type QueryPerpsEventsReturnType,
+  queryPerpsEvents,
+  type GetPerpsPairStatsParameters,
+  type GetPerpsPairStatsReturnType,
+  getPerpsPairStats,
+  type GetAllPerpsPairStatsReturnType,
+  getAllPerpsPairStats,
+  type GetPerpsPairStateParameters,
+  type GetPerpsPairStateReturnType,
+  getPerpsPairState,
+  type GetPerpsStateParameters,
+  type GetPerpsStateReturnType,
+  getPerpsState,
+  type GetPerpsVaultStateParameters,
+  type GetPerpsVaultStateReturnType,
+  getPerpsVaultState,
+  type GetVaultSnapshotsParameters,
+  type GetVaultSnapshotsReturnType,
+  getVaultSnapshots,
+  type GetFeeRateOverrideParameters,
+  type GetFeeRateOverrideReturnType,
+  getFeeRateOverride,
   type DepositMarginParameters,
   type DepositMarginReturnType,
   depositMargin,
@@ -267,6 +402,18 @@ export {
   type CancelPerpsOrderParameters,
   type CancelPerpsOrderReturnType,
   cancelPerpsOrder,
+  type SetReferralParameters,
+  type SetReferralReturnType,
+  setReferral,
+  type SetFeeShareRatioParameters,
+  type SetFeeShareRatioReturnType,
+  setFeeShareRatio,
+  type VaultAddLiquidityParameters,
+  type VaultAddLiquidityReturnType,
+  vaultAddLiquidity,
+  type VaultRemoveLiquidityParameters,
+  type VaultRemoveLiquidityReturnType,
+  vaultRemoveLiquidity,
   type SubmitConditionalOrderParameters,
   type SubmitConditionalOrderReturnType,
   submitConditionalOrder,
@@ -280,52 +427,11 @@ export {
 } from "./perps/index.js";
 
 /* -------------------------------------------------------------------------- */
-/*                           Re-export Grug Actions                           */
+/*                               Oracle Actions                               */
 /* -------------------------------------------------------------------------- */
 
 export {
-  type GetBalanceParameters,
-  type GetBalanceReturnType,
-  getBalance,
-  type GetBalancesParameters,
-  type GetBalancesReturnType,
-  getBalances,
-  type QueryStatusReturnType,
-  queryStatus,
-  type GetCodeParameters,
-  type GetCodeReturnType,
-  getCode,
-  type GetCodesParameters,
-  type GetCodesReturnType,
-  getCodes,
-  type GetContractInfoParameters,
-  type GetContractInfoReturnType,
-  getContractInfo,
-  type GetContractsInfoParameters,
-  type GetContractsInfoReturnType,
-  getContractsInfo,
-  type GetSuppliesParameters,
-  type GetSuppliesReturnType,
-  getSupplies,
-  type GetSupplyParameters,
-  type GetSupplyReturnType,
-  getSupply,
-  type QueryAppParameters,
-  type QueryAppReturnType,
-  queryApp,
-  type QueryWasmRawParameters,
-  type QueryWasmRawReturnType,
-  queryWasmRaw,
-  type QueryWasmSmartParameters,
-  type QueryWasmSmartReturnType,
-  queryWasmSmart,
-  type SimulateParameters,
-  type SimulateReturnType,
-  simulate,
-  type QueryAbciParameters,
-  type QueryAbciReturnType,
-  queryAbci,
-  type QueryTxParameters,
-  type QueryTxReturnType,
-  queryTx,
-} from "@left-curve/sdk/actions";
+  type GetPricesParameters,
+  type GetPricesReturnType,
+  getPrices,
+} from "./oracle/queries/getPrices.js";

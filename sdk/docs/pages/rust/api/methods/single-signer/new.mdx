@@ -1,0 +1,49 @@
+# SingleSigner::new
+
+Construct a bare `SingleSigner` with both `user_index` and `nonce` undefined.
+
+## Signature
+
+```rust
+impl<S: Secret> SingleSigner<S, Undefined<UserIndex>, Undefined<Nonce>> {
+    pub fn new(address: Addr, secret: S) -> Self;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Secp256k1, Secret, SingleSigner},
+    grug::Addr,
+    std::str::FromStr,
+};
+
+fn build() -> Result<SingleSigner<Secp256k1, _, _>> {
+    let address = Addr::from_str("0x0000000000000000000000000000000000000000")?;
+    let secret  = Secp256k1::new_random();
+    Ok(SingleSigner::new(address, secret))
+}
+```
+
+## Parameters
+
+**`address`** — `Addr`. The on-chain account address.
+
+**`secret`** — `S: Secret`. The private key.
+
+## Returns
+
+**`SingleSigner<S, Undefined<UserIndex>, Undefined<Nonce>>`** — fill both slots with `with_user_index`/`with_nonce` (or their `with_query_*` async variants) before signing.
+
+## Notes
+
+- This is the canonical entry point when the caller already knows the address. To discover an address from a key, use [`new_first_address_available`](./new_first_address_available).
+- Sets `user_index` and `nonce` to `Undefined::new()`. The compiler refuses `sign_transaction` until both are `Defined`.
+
+## See also
+
+- [`with_user_index`](./with_user_index) / [`with_query_user_index`](./with_query_user_index).
+- [`with_nonce`](./with_nonce) / [`with_query_nonce`](./with_query_nonce).
+- [`SingleSigner`](../../clients/SingleSigner) — overview.

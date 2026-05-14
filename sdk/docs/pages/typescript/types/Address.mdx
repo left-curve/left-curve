@@ -1,0 +1,34 @@
+# Address
+
+A 0x-prefixed hex string identifying an account or contract on Dango.
+
+## Definition
+
+```ts
+type Address = `0x${string}`
+```
+
+## Construction
+
+```ts
+import type { Address } from "@left-curve/sdk"
+import { isValidAddress } from "@left-curve/sdk"
+
+const addr: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+if (!isValidAddress(candidate)) {
+  throw new Error(`invalid address: ${candidate}`)
+}
+```
+
+## Notes
+
+- A valid address is exactly 42 characters: `"0x"` plus 40 hex digits (20 bytes).
+- The branded `0x${string}` template literal type prevents arbitrary strings from being passed where addresses are expected.
+- The SDK exports two helpers: [`computeAddress`](../concepts/encoding-and-types) derives an address from `(deployer, codeHash, salt)`, and `isValidAddress` validates a string at runtime.
+
+## See also
+
+- [`Coin`](./Coin)
+- [`Account`](./Account)
+- [Concepts: Encoding & Types](../concepts/encoding-and-types)

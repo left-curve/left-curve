@@ -1,0 +1,21 @@
+# PerpsPairStats
+
+24h indexer-computed stats for a perps pair.
+
+## Definition
+
+```ts
+type PerpsPairStats = {
+  pairId: string
+  currentPrice: string | undefined
+  price24HAgo: string | undefined
+  volume24H: string
+  priceChange24H: string | undefined
+}
+```
+
+## See also
+
+- [`getPerpsPairStats`](../actions/perps/getPerpsPairStats)
+- [`getAllPerpsPairStats`](../actions/perps/getAllPerpsPairStats)
+- [`PairStats`](./PairStats)

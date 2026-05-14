@@ -1,0 +1,62 @@
+# withdrawLiquidity
+
+Withdraw passive liquidity from a pair by burning LP tokens. The redemption happens at the pool ratio.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function withdrawLiquidity(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    baseDenom: Denom
+    quoteDenom: Denom
+    funds: Coins
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.withdrawLiquidity({
+  sender,
+  baseDenom: "dango",
+  quoteDenom: "bridge/usdc",
+  funds: { "lp/dango/bridge_usdc": "1000000" },
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The LP.
+
+**`baseDenom`** — `Denom`. Base asset.
+
+**`quoteDenom`** — `Denom`. Quote asset.
+
+**`funds`** — `Coins`. The LP token to burn (lookup `lpDenom` via [`getPair`](./getPair)).
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`simulateWithdrawLiquidity`](./simulateWithdrawLiquidity) — quote first
+- [`provideLiquidity`](./provideLiquidity)

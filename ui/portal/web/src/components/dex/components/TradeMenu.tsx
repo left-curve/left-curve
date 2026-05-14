@@ -52,11 +52,12 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/utils";
 import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants";
-import type { PerpsTimeInForce } from "@left-curve/dango/types";
+import type { PerpsTimeInForce } from "@left-curve/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { orderBookStore } from "@left-curve/store";
+import { useGeoblock } from "~/components/foundation/hooks/useGeoblock";
 import { computeOtherPairsUsedMargin } from "../helpers/math";
 import { useTPSLPriceSync } from "../hooks/useTPSLPriceSync";
 
@@ -78,8 +79,9 @@ const TradeSubmitButton: React.FC<{
   label: string;
   isDisabled: boolean;
   isPending: boolean;
+  isRestricted?: boolean;
   onSubmit: () => void;
-}> = ({ action, label, isDisabled, isPending, onSubmit }) => {
+}> = ({ action, label, isDisabled, isPending, isRestricted, onSubmit }) => {
   const { isConnected } = useAccount();
   const { showModal } = useApp();
 
@@ -104,11 +106,11 @@ const TradeSubmitButton: React.FC<{
         variant={action === "sell" ? "primary" : "tertiary"}
         fullWidth
         size="md"
-        isDisabled={isDisabled}
+        isDisabled={isDisabled || isRestricted}
         isLoading={isPending}
         onClick={onSubmit}
       >
-        {label}
+        {isRestricted ? m["geoblock.accessRestricted"]() : label}
       </Button>
     </div>
   );
@@ -128,6 +130,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { isConnected } = useAccount();
+  const isGeoblocked = useGeoblock();
   const { data: appConfig } = useAppConfig();
   const { getPrice, isFetched } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const queryClient = useQueryClient();
@@ -285,6 +288,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             hasErrors
           }
           isPending={submission.isPending}
+          isRestricted={isGeoblocked}
           onSubmit={() => submission.mutateAsync()}
         />
         <div className="flex flex-col gap-1 px-4">
@@ -331,6 +335,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { isConnected } = useAccount();
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
+  const isGeoblocked = useGeoblock();
 
   const { data: appConfig } = useAppConfig();
 
@@ -432,8 +437,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   }, [appConfig?.perpsParam, userVolume, feeRateOverride]);
 
   const [tpslEnabled, setTpslEnabled] = useState(false);
-  const [reduceOnly, setReduceOnly] = useState(false);
+  const [manualReduceOnly, setReduceOnly] = useState(false);
   const [timeInForce, setTimeInForce] = useState<PerpsTimeInForce>("GTC");
+
+  const reduceOnly = isGeoblocked || manualReduceOnly;
 
   useEffect(() => setTimeInForce("GTC"), [operation]);
 
@@ -732,12 +739,12 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
         <Checkbox
           radius="md"
           size="sm"
-          isDisabled={!isConnected || submission.isPending}
+          isDisabled={!isConnected || submission.isPending || isGeoblocked}
           label={m["dex.protrade.perps.reduceOnly"]()}
           checked={reduceOnly}
           onChange={() => setReduceOnly((prev) => !prev)}
         />
-        {reduceOnly && maxSizeAmount === 0 ? (
+        {reduceOnly && maxSizeAmount === 0 && !isGeoblocked ? (
           <p className="diatype-xs-regular text-utility-warning-600">
             {m["dex.protrade.perps.errors.reduceOnlyNoPosition"]()}
           </p>
@@ -803,6 +810,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             (reduceOnly && maxSizeAmount === 0)
           }
           isPending={submission.isPending}
+          isRestricted={isGeoblocked && maxSizeAmount === 0}
           onSubmit={() => submission.mutateAsync()}
         />
         <div className="flex flex-col gap-1 px-4">

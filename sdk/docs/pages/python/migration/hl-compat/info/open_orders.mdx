@@ -1,0 +1,38 @@
+# Info.open_orders (HL-compat)
+
+HL `openOrders` — flatten Dango's keyed order map to a list.
+
+## Signature
+
+```python
+def open_orders(self, address: str, dex: str = "") -> list[dict[str, Any]]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+for order in info.open_orders("0x..."):
+    print(order["coin"], order["side"], order["sz"], order["limitPx"])
+```
+
+## Parameters
+
+**`address`** — `str`. The user's account address.
+
+**`dex`** — `str`, optional. Accepted-and-ignored.
+
+## Returns
+
+**`list[dict[str, Any]]`** — one entry per resting order with `coin`, `side` (`"A"` ask / `"B"` bid), `limitPx`, `sz` (always positive), `oid`, `timestamp` (ms), `origSz`.
+
+## Notes
+
+- Dango stores `size` as a signed quantity; the wrapper splits it into HL's `side` + positive `sz`.
+- `oid` is the Dango order id as a string. HL traders that try `int(order["oid"])` will hit `ValueError` if the id is non-numeric.
+
+## See also
+
+- [Native `orders_by_user`](../../../api/methods/info/orders_by_user)

@@ -1,0 +1,49 @@
+# query_app_smart
+
+Convenience wrapper for `{wasm_smart: ...}` queries; unwraps the envelope and returns the contract response directly.
+
+## Signature
+
+```python
+def query_app_smart(
+    self,
+    contract: Addr,
+    msg: dict[str, Any],
+    *,
+    height: int | None = None,
+) -> Any
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL, PERPS_CONTRACT_MAINNET
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+# Read the perps contract's global parameters
+params = info.query_app_smart(Addr(PERPS_CONTRACT_MAINNET), {"param": {}})
+```
+
+## Parameters
+
+**`contract`** — `Addr`. Target contract address.
+
+**`msg`** — `dict[str, Any]`. The externally-tagged query message — Rust `serde` encodes contract `QueryMsg` enums as snake_case single-key dicts (e.g. `{"param": {}}`, `{"pair_param": {"pair_id": "..."}}`).
+
+**`height`** — `int | None`, optional. Query at a specific block height. Default: `None` (latest).
+
+## Returns
+
+**Contract response** — the raw shape the contract emits, with the `wasm_smart` wrapper stripped. Cast to a TypedDict from `dango.utils.types` if you want a typed view.
+
+## Notes
+
+- The typed perps wrappers (`perps_param`, `pair_param`, `user_state`, etc.) all build on this method.
+
+## See also
+
+- [`query_app`](./query_app) — the unwrapped variant
+- [`query_app_multi`](./query_app_multi) — atomic batched queries

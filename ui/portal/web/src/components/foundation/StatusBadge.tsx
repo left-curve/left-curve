@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { TransportMode } from "@left-curve/dango/utils";
+import type { TransportMode } from "@left-curve/utils";
 
 import {
   Badge,
@@ -40,8 +40,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ className }) => {
 
   useEffect(() => {
     if (isChainPaused === undefined) return;
-    if (isChainPaused) navigate("/maintenance");
-    if (!isChainPaused && window.location.pathname === "/maintenance") navigate("/");
+    const onMaintenancePage = window.location.pathname === "/maintenance";
+    if (isChainPaused && !onMaintenancePage) navigate("/maintenance");
+    if (!isChainPaused && onMaintenancePage) navigate("/");
   }, [isChainPaused]);
 
   if (!isReady) return null;

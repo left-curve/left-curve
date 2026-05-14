@@ -3,6 +3,7 @@
 /* -------------------------------------------------------------------------- */
 
 export { Button, type ButtonProps } from "./Button";
+export { Link } from "./Link";
 export { Badge } from "./Badge";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Spinner } from "./Spinner";

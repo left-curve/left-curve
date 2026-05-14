@@ -3,13 +3,10 @@ import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { createBlockStore } from "./createBlockStore.js";
 
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
+import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
-import type { QueryRequest, RestingOrderBookState } from "@left-curve/dango/types";
-import { parseUnits } from "@left-curve/dango/utils";
+import type { QueryRequest, RestingOrderBookState } from "@left-curve/types";
+import { parseUnits } from "@left-curve/utils";
 import { TradePairStore } from "../index.js";
 
 type UseOrderBookStateParameters = {

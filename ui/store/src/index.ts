@@ -24,7 +24,7 @@ export { requestRemote, type WindowDangoStore } from "./remote.js";
 
 export * as hyperlane from "./hyperlane.js";
 
-export { local, devnet, mainnet, testnet, http, graphql } from "@left-curve/dango";
+export { local, devnet, mainnet, testnet, createTransport } from "@left-curve/sdk";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Hooks                                   */
@@ -184,6 +184,12 @@ export {
 } from "./hooks/useVaultLiquidityState.js";
 
 export { usePerpsVaultUserShares } from "./hooks/usePerpsVaultUserShares.js";
+
+export {
+  type VaultPerformancePoint,
+  type VaultPerformancePeriod,
+  useVaultSnapshots,
+} from "./hooks/useVaultSnapshots.js";
 
 export {
   type UsePairStatsParameters,

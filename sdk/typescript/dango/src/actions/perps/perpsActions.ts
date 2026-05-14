@@ -1,6 +1,4 @@
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { DangoClient } from "../../types/clients.js";
-import type { Signer } from "../../types/signer.js";
+import type { Client, Signer } from "@left-curve/types";
 
 import {
   type GetPerpsUserStateParameters,
@@ -122,6 +120,12 @@ import {
 } from "./queries/getVaultState.js";
 
 import {
+  type GetVaultSnapshotsParameters,
+  type GetVaultSnapshotsReturnType,
+  getVaultSnapshots,
+} from "./queries/getVaultSnapshots.js";
+
+import {
   type GetFeeRateOverrideParameters,
   type GetFeeRateOverrideReturnType,
   getFeeRateOverride,
@@ -176,12 +180,11 @@ export type PerpsQueryActions = {
   getPerpsPairState: (args: GetPerpsPairStateParameters) => GetPerpsPairStateReturnType;
   getPerpsState: (args?: GetPerpsStateParameters) => GetPerpsStateReturnType;
   getPerpsVaultState: (args?: GetPerpsVaultStateParameters) => GetPerpsVaultStateReturnType;
+  getVaultSnapshots: (args?: GetVaultSnapshotsParameters) => GetVaultSnapshotsReturnType;
   getFeeRateOverride: (args: GetFeeRateOverrideParameters) => GetFeeRateOverrideReturnType;
 };
 
-export function perpsQueryActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): PerpsQueryActions {
+export function perpsQueryActions(client: Client): PerpsQueryActions {
   return {
     getPerpsUserState: (args) => getPerpsUserState(client, args),
     getPerpsUserStateExtended: (args) => getPerpsUserStateExtended(client, args),
@@ -197,6 +200,7 @@ export function perpsQueryActions<transport extends Transport = Transport>(
     getPerpsPairState: (args) => getPerpsPairState(client, args),
     getPerpsState: (args) => getPerpsState(client, args),
     getPerpsVaultState: (args) => getPerpsVaultState(client, args),
+    getVaultSnapshots: (args) => getVaultSnapshots(client, args),
     getFeeRateOverride: (args) => getFeeRateOverride(client, args),
   };
 }
@@ -221,9 +225,7 @@ export type PerpsMutationActions = {
   ) => CancelConditionalOrderReturnType;
 };
 
-export function perpsMutationActions<transport extends Transport = Transport>(
-  client: DangoClient<transport, Signer>,
-): PerpsMutationActions {
+export function perpsMutationActions(client: Client<Signer>): PerpsMutationActions {
   return {
     depositMargin: (args) => depositMargin(client, args),
     withdrawMargin: (args) => withdrawMargin(client, args),

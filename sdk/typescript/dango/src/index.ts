@@ -1,9 +1,71 @@
+// Re-export commonly used items from sub-packages
+export type {
+  Address,
+  Coin,
+  Coins,
+  Chain,
+  Denom,
+  KeyHash,
+  Account,
+} from "@left-curve/types";
+
+export { Direction, OrderType, TimeInForceOption } from "@left-curve/types";
+
+export type {
+  RateSchedule,
+  PerpsUserState,
+  PerpsUserStateExtended,
+  PerpsPosition,
+  PerpsPositionExtended,
+  PerpsUnlock,
+  PerpsOrderKind,
+  PerpsTimeInForce,
+  PerpsPairParam,
+  PerpsPairState,
+  PerpsParam,
+  PerpsState,
+  PerpsOrderResponse,
+  PerpsOrderByUserItem,
+  PerpsOrdersByUserResponse,
+  PerpsLiquidityDepth,
+  PerpsLiquidityDepthResponse,
+  PerpsCancelOrderRequest,
+  PerpsCancelConditionalOrderRequest,
+  PerpsQueryMsg,
+  GetPerpsQueryMsg,
+  FeeRateOverride,
+  PerpsVaultState,
+  TriggerDirection,
+  ChildOrder,
+  ConditionalOrder,
+  VaultSnapshot,
+} from "@left-curve/types";
+
+export { formatUnits, parseUnits } from "@left-curve/utils";
+
+export { Secp256k1 } from "@left-curve/crypto";
+
+/* -------------------------------------------------------------------------- */
+/*                                   Clients                                  */
+/* -------------------------------------------------------------------------- */
+
+export type { PublicClientConfig, SignerClientConfig } from "@left-curve/types";
+
+export { createBaseClient } from "./clients/baseClient.js";
+export { createPublicClient, type PublicClient } from "./clients/publicClient.js";
+export { createSignerClient, type SignerClient } from "./clients/signerClient.js";
+
 /* -------------------------------------------------------------------------- */
 /*                                 Transports                                 */
 /* -------------------------------------------------------------------------- */
 
-export { http } from "@left-curve/sdk";
-export { graphql } from "./transports/graphql.js";
+export { createTransport } from "./transports/graphql.js";
+
+/* -------------------------------------------------------------------------- */
+/*                                  Networks                                  */
+/* -------------------------------------------------------------------------- */
+
+export { local, devnet, testnet, mainnet } from "./chains/index.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Account                                  */
@@ -19,37 +81,21 @@ export {
 } from "./account/index.js";
 
 /* -------------------------------------------------------------------------- */
-/*                                   Clients                                  */
-/* -------------------------------------------------------------------------- */
-
-export { createPublicClient, createSignerClient } from "./clients/index.js";
-export { createGrugClient } from "@left-curve/sdk";
-
-/* -------------------------------------------------------------------------- */
-/*                                   Chains                                   */
-/* -------------------------------------------------------------------------- */
-
-export { local, devnet, testnet, mainnet } from "@left-curve/sdk/chains";
-
-/* -------------------------------------------------------------------------- */
 /*                                   Signers                                  */
 /* -------------------------------------------------------------------------- */
 
 export { PrivateKeySigner, createSessionSigner } from "./signers/index.js";
 
 /* -------------------------------------------------------------------------- */
-/*                               Actions Builder                              */
+/*                              Actions Builders                              */
 /* -------------------------------------------------------------------------- */
 
 export {
-  type AppMutationActions,
-  appMutationActions,
   type PublicActions,
   publicActions,
+} from "./actions/publicActions.js";
+
+export {
   type SignerActions,
   signerActions,
-  type AccountFactoryMutationActions,
-  type AccountFactoryQueryActions,
-  accountFactoryMutationActions,
-  accountFactoryQueryActions,
-} from "./actions/index.js";
+} from "./actions/signerActions.js";

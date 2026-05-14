@@ -13,9 +13,16 @@ pub async fn create_hooked_indexer() -> (HookedIndexer, indexer_sql::Context, in
     let cache_indexer = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = cache_indexer.context.clone();
 
-    let mut hooked_indexer = HookedIndexer::new();
-    hooked_indexer.add_indexer(cache_indexer).await.unwrap();
-    hooked_indexer.add_indexer(sql_indexer).await.unwrap();
+    let clickhouse_context = indexer_clickhouse::context::Context::new(
+        "http://localhost:8123".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    )
+    .with_mock();
+    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(clickhouse_context);
+
+    let hooked_indexer = HookedIndexer::new(cache_indexer, sql_indexer, clickhouse_indexer);
 
     (hooked_indexer, sql_indexer_context, indexer_cache_context)
 }

@@ -486,11 +486,17 @@
     "pnlShare": {
       "entryPrice": "Entry Price",
       "markPrice": "Mark Price",
-      "referralCode": "Referral Code",
-      "overlay": "Overlay",
-      "saveImage": "Save Image",
       "copyLink": "Copy Link",
       "shareOnX": "Share on X"
+    },
+    "pointsShare": {
+      "weekLabel": "Week",
+      "programLabel": "Points Program"
+    },
+    "shareCard": {
+      "referralCode": "Referral Code",
+      "overlay": "Overlay",
+      "saveImage": "Save Image"
     }
   },
   "signin": {
@@ -629,6 +635,12 @@
   "maintenance": {
     "title": "Website Under Maintenance",
     "description": "We are currently undergoing maintenance. We apologize for any inconvenience this may cause and appreciate your patience."
+  },
+  "geoblock": {
+    "bannerLead": "Your IP address indicates that you are in a country or region outside of Dango's service zone. We do not provide services to your location.",
+    "bannerEmphasis": "You may only place reduce-only orders.",
+    "bannerTail": "For help, open a support ticket on Discord.",
+    "accessRestricted": "Access Restricted"
   },
   "notFound": {
     "title": "Page not found!",
@@ -839,7 +851,13 @@
   "vaultLiquidity": {
     "title": "Dango Liquidity Provider",
     "apy": "APY",
+    "apyTooltip": "Annual Percentage Yield - the projected yearly return based on performance over the selected window.",
+    "apyTooltip7D": "7D - reflects latest performance",
+    "apyTooltip14D": "14D - balanced view",
+    "apyTooltip30D": "30D - smoothed, less volatile",
+    "apyTooltip90D": "90D - long-term average",
     "tvl": "TVL",
+    "tvlTooltip": "Total Value Locked — the total amount of assets deposited in the vault.",
     "toDeposit": "You deposit",
     "availableToDeposit": "Available to deposit",
     "toGet": "You get",
@@ -867,6 +885,14 @@
     "tvlCapReached": "This vault has reached its TVL limit. Deposits are temporarily unavailable.",
     "full": "Full",
     "paused": "This vault has paused activity due to abnormal risk conditions. Your funds remain safe.",
+    "performance": "Vault performance",
+    "shareTokenPrice": "Share token price",
+    "period": "Period",
+    "dailyGain": "Daily gain",
+    "dailyLoss": "Daily loss",
+    "price": "Price",
+    "dailyChange": "Daily change",
+    "noData": "No data available",
     "modal": {
       "addLiquidity": "Add Liquidity",
       "depositing": "Depositing",
@@ -981,7 +1007,7 @@
     "exchangeWarning": "Exchange deposit addresses are not supported. Please use a self-custody wallet address.",
     "confirm": "Confirm",
     "connectedTo": "Connected to",
-    "rateLimitWarning": "As a security measure, a rate limit exists to throttle token outflows. Each rolling 24h window, up to 10% of total bridged volume may be bridged out.",
+    "rateLimitWarning": "As a security measure, a rate limit exists to throttle token outflows. Each rolling 24h window, up to 5% of total bridged volume may be bridged out.",
     "withdrawTransferHint": "Use this page to withdraw funds from Dango to Ethereum or other chains. To transfer funds between Dango accounts, use the {app} app."
   },
   "settings": {
@@ -1016,7 +1042,8 @@
         "chainId": "Chain ID",
         "latestBlockHeight": "Latest Block Height",
         "latestBlockTime": "Latest Block Time",
-        "endpoint": "Endpoint"
+        "endpoint": "Endpoint",
+        "frontendVersion": "Frontend Version"
       },
       "time": { "hours": "h", "minutes": "m", "seconds": "s" },
       "username": {
@@ -1464,6 +1491,7 @@
       "titlePoints": "PO{icon}NTS",
       "titleProgram": "PROGRAM",
       "readRules": "Read Rules",
+      "share": "Share",
       "myPoints": "My points",
       "myVolume": "My volume",
       "myRank": "My rank",
@@ -1521,7 +1549,8 @@
         "action": "Action",
         "epoch": "Epoch",
         "date": "Date",
-        "points": "Points"
+        "points": "Points",
+        "share": "Share"
       },
       "epochLabel": "Epoch {number}",
       "activities": {

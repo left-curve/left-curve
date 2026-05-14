@@ -1,0 +1,35 @@
+---
+# Concept page template — copy this file when drafting a free-form guide.
+# Replace ALL CAPS placeholders. Delete this comment block when done.
+#
+# Concept pages teach. They have NO rigid section structure.
+# Required: opening "what this teaches you" line, closing "Next" link.
+# Hard cap: 800 words. If longer, split.
+---
+
+# CONCEPT_TITLE
+
+**What this teaches:** ONE SENTENCE — WHAT THE READER LEAVES WITH.
+
+## Free-form body
+
+Write whatever serves the topic. Use H2 sections as needed. Prefer short paragraphs and frequent code blocks.
+
+Guidelines:
+
+- Lead with the **mental model** before any code
+- One concrete example beats three abstract paragraphs
+- Show the wrong way + the right way when a footgun is common
+- Use Vocs callout directives (`:::note`, `:::warning`, `:::tip`, `:::danger`) sparingly — only for real surprises. Never use `> **Warning:**` blockquotes.
+- Link to Reference pages for specifics; don't re-explain APIs in concepts
+- Code blocks: imports always included, realistic values, language-fenced
+
+Example callout (use sparingly):
+
+:::warning
+Submitting a transaction without setting `gasLimit` will use the network default, which may underestimate for complex contract calls.
+:::
+
+## Next
+
+- [NEXT_RELATED_CONCEPT](./NEXT_CONCEPT) — ONE-LINE WHY THIS COMES NEXT

@@ -1,0 +1,39 @@
+# WsClient::new
+
+Construct a `WsClient` from a `ws://` or `wss://` URL.
+
+## Signature
+
+```rust
+pub fn new(url: impl Into<String>) -> Result<Self, anyhow::Error>;
+```
+
+## Example
+
+```rust
+use {anyhow::Result, dango_sdk::WsClient};
+
+fn main() -> Result<()> {
+    let client = WsClient::new("wss://api-mainnet.dango.zone/graphql")?;
+    let _ = client;
+    Ok(())
+}
+```
+
+## Parameters
+
+**`url`** — `impl Into<String>`. A WebSocket URL. Must begin with `ws://` or `wss://`.
+
+## Returns
+
+**`WsClient`** — a cheap config holder. No network call is performed.
+
+## Notes
+
+- Returns `Err(anyhow!("Invalid URL scheme: …"))` for any non-WebSocket scheme.
+- Returns a `url::ParseError` (wrapped) when the URL is malformed.
+
+## See also
+
+- [`from_http_url`](./from_http_url) — accept `http://` / `https://` and rewrite the scheme.
+- [`connect`](./connect) — open a connection.

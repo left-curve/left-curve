@@ -1,0 +1,52 @@
+# getPerpsLiquidityDepth
+
+Read bid and ask depth buckets for a perps pair.
+
+`bucketSize` must match one of the granularities pre-configured on the pair
+(see `PerpsPairParam.bucketSizes`); mismatched values are rejected by the
+contract. The vault is typically the dominant maker on both sides.
+
+## Signature
+
+```ts
+function getPerpsLiquidityDepth(
+  client: Client,
+  parameters: {
+    pairId: string
+    bucketSize: string
+    limit?: number
+    height?: number
+  },
+): Promise<PerpsLiquidityDepthResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const depth = await client.getPerpsLiquidityDepth({
+  pairId: "BTC-PERP",
+  bucketSize: "10",
+  limit: 50,
+})
+```
+
+## Parameters
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`bucketSize`** — `string`. Price bucket width.
+
+**`limit`** — `number`, optional. Maximum buckets per side.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsLiquidityDepthResponse`** — `{ bids: Record<string, { size, notional }>, asks: Record<string, { size, notional }> }`.
+
+## See also
+
+- [`getPerpsPairState`](./getPerpsPairState) — open interest and funding

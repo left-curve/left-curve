@@ -1,9 +1,7 @@
 use {
     crate::{Credential, InstantiateMsg, PUBLIC_KEY, PublicKey, SEQUENCE, SignDoc},
     anyhow::ensure,
-    grug_types::{
-        AuthCtx, AuthMode, AuthResponse, JsonDeExt, MutableCtx, Response, SignData, StdResult, Tx,
-    },
+    grug_types::{AuthCtx, AuthMode, JsonDeExt, MutableCtx, Response, SignData, StdResult, Tx},
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
@@ -23,7 +21,7 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
     Ok(Response::new())
 }
 
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
 
     // Decode the credential, which should contain the sequence and signature.
@@ -76,7 +74,5 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             .secp256k1_verify(&sign_data, &credential.signature, &public_key)?;
     }
 
-    // This account implementation doesn't make use of the transaction
-    // backrunning feature, so we do not request a backrun.
-    Ok(AuthResponse::new().request_backrun(false))
+    Ok(Response::new())
 }

@@ -1,0 +1,28 @@
+# AllForPair
+
+Cancel every conditional order on one pair.
+
+## Definition
+
+```python
+@dataclass(frozen=True)
+class AllForPair:
+    pair_id: PairId
+```
+
+## Fields
+
+**`pair_id`** — `PairId`.
+
+## Construction
+
+```python
+from dango.utils.types import AllForPair, PairId
+
+target = AllForPair(pair_id=PairId("perp/ethusd"))
+```
+
+## See also
+
+- [`ConditionalOrderRef`](./ConditionalOrderRef) — single-order target
+- [`cancel_conditional_order`](../methods/exchange/cancel_conditional_order) — consumer

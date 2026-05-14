@@ -1,0 +1,42 @@
+import { InstallTabs } from '../../../components/InstallTabs'
+
+# Installation
+
+Install the `dango` package from PyPI. Requires Python 3.14 or newer.
+
+## Install
+
+<InstallTabs
+  commands={[
+    { label: "uv", command: "uv add dango" },
+    { label: "pip", command: "pip install dango" },
+    { label: "poetry", command: "poetry add dango" },
+  ]}
+/>
+
+## Dependencies
+
+The wheel pulls in three runtime dependencies automatically:
+
+- `eth-account` (>= 0.10) — secp256k1 primitives and BIP-39 mnemonic support
+- `requests` (>= 2.31) — sync HTTP transport for GraphQL queries and mutations
+- `websocket-client` (>= 1.5) — WebSocket transport for `graphql-transport-ws` subscriptions
+
+The SDK is sync-only. There is no asyncio surface.
+
+## Verify
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+print(info.query_status())
+```
+
+If the import resolves and `query_status()` returns a dict with a `chainId` key, the install is good.
+
+## Next
+
+- [First call](./first-call) — a runnable read query
+- [Project setup](./project-setup) — environment variables, networks, signer construction

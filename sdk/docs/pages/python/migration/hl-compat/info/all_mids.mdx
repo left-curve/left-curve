@@ -1,0 +1,36 @@
+# Info.all_mids (HL-compat)
+
+HL `allMids` — coin name → mid price string.
+
+## Signature
+
+```python
+def all_mids(self, dex: str = "") -> dict[str, str]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+mids = info.all_mids()
+for coin, mid in mids.items():
+    print(coin, mid)
+```
+
+## Parameters
+
+**`dex`** — `str`, optional. Accepted-and-ignored.
+
+## Returns
+
+**`dict[str, str]`** — coin name (uppercase) → mid price (HL decimal string).
+
+## Notes
+
+- The wrapper uses `currentPrice` from `all_perps_pair_stats` as the "mid". Dango does not separately track book mid; `currentPrice` is the last trade price from the indexer.
+
+## See also
+
+- [Native `all_perps_pair_stats`](../../../api/methods/info/all_perps_pair_stats)

@@ -1,0 +1,53 @@
+# Packages
+
+**What this teaches:** which of the six SDK packages to import from, and when reaching for a sub-package is worth it.
+
+## The split
+
+| Package               | Contents                                                   |
+|-----------------------|------------------------------------------------------------|
+| `@left-curve/sdk`     | Clients, actions, transports, chain configs, signers       |
+| `@left-curve/crypto`  | Hashes (`sha256`, `keccak256`), key pairs, WebAuthn        |
+| `@left-curve/encoding`| Hex, base64, UTF-8, JSON, binary codecs                    |
+| `@left-curve/types`   | TypeScript types and `as const` enum maps (no runtime API) |
+| `@left-curve/utils`   | `Decimal` math, formatters, retry, subscription helper     |
+| `@left-curve/config`  | Shared `tsconfig`/`biome`/`tsup` presets (config-only)     |
+
+`@left-curve/sdk` re-exports the most commonly used pieces of every sibling package, so most consumers import only from `@left-curve/sdk`.
+
+## What `@left-curve/sdk` re-exports
+
+Types: `Address`, `Coin`, `Coins`, `Chain`, `Denom`, `KeyHash`, `Account`, `PublicClientConfig`, `SignerClientConfig`, and the perps type family (`PerpsUserState`, `PerpsPairParam`, etc.).
+
+Runtime: `Direction`, `OrderType`, `TimeInForceOption` const maps. `formatUnits` and `parseUnits` from `@left-curve/utils`. `Secp256k1` from `@left-curve/crypto`.
+
+## When to reach for a sub-package
+
+Import from a sub-package directly when:
+
+- **Bundle size matters.** Pulling `@left-curve/crypto` alone is smaller than the full `@left-curve/sdk`.
+- **The symbol is not re-exported.** Examples: `Decimal`, `sha256`, `keccak256`, `encodeHex`, `withRetry`, error classes (`BaseError`, `HttpRequestError`, `TimeoutError`, `UrlRequiredError`).
+- **You write a pure utility library** that does not need clients or chains.
+
+```ts
+// Re-exported, so this works
+import { Address, Coin, formatUnits, Secp256k1 } from "@left-curve/sdk"
+
+// Not re-exported — import from the sub-package
+import { Decimal, withRetry } from "@left-curve/utils"
+import { sha256 } from "@left-curve/crypto"
+import { encodeHex } from "@left-curve/encoding"
+// Error classes are not currently exported from any package entry. See Error Handling.
+```
+
+## The hyperlane subpath
+
+Hyperlane encoders live behind a subpath, not the main entry:
+
+```ts
+import { Addr32, Message, TokenMessage } from "@left-curve/sdk/hyperlane"
+```
+
+## Next
+
+- [Clients](./clients) — the two client factories that anchor every project

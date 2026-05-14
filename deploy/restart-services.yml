@@ -77,3 +77,4 @@
       until: not (cometbft_status.json.result.sync_info.catching_up | default(true))
       retries: 30
       delay: 10
+      when: not (skip_cometbft_sync | default(false) | bool)

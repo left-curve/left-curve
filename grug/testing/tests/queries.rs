@@ -25,8 +25,8 @@ mod query_maker {
     }
 }
 
-#[test]
-fn handling_multi_query() {
+#[tokio::test]
+async fn handling_multi_query() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", Coins::one("uusdc", 123).unwrap())
         .set_chain_id("kebab")
@@ -46,5 +46,6 @@ fn handling_multi_query() {
             None,
             Coins::new(),
         )
+        .await
         .should_succeed();
 }

@@ -324,7 +324,7 @@ where
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
-    let outcome = suite.make_block(tx);
+    let outcome = suite.make_block(tx).await;
     index(index_txs, index_blocks, outcome, suite.block).await
 }
 

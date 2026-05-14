@@ -1,0 +1,56 @@
+# subscribe
+
+Register a subscription. Returns an int id usable with `unsubscribe`.
+
+## Signature
+
+```python
+def subscribe(
+    self,
+    document: str,
+    variables: dict[str, Any],
+    callback: Callable[[dict[str, Any]], None],
+) -> int
+```
+
+## Example
+
+```python
+from dango.websocket_manager import WebsocketManager
+
+manager = WebsocketManager("https://api-mainnet.dango.zone")
+manager.start()
+
+document = """
+subscription Trades($pairId: String!) {
+  perpsTrades(pairId: $pairId) {
+    fillPrice
+    fillSize
+  }
+}
+"""
+
+sid = manager.subscribe(document, {"pairId": "perp/ethusd"}, print)
+```
+
+## Parameters
+
+**`document`** — `str`. A GraphQL subscription document (`subscription { ... }`).
+
+**`variables`** — `dict[str, Any]`. Variables for the subscription.
+
+**`callback`** — `Callable[[dict[str, Any]], None]`. Invoked with each `next` message's payload. The full payload (`{"data": ..., "extensions": ...}`) is passed; the `Info` wrappers unwrap to the inner node before invoking your callback. Errors arrive as `{"_error": payload}`.
+
+## Returns
+
+**`int`** — a subscription id. Subscriptions opened before the server's `connection_ack` are queued and flushed once the ack arrives.
+
+## Notes
+
+- For typed unwrapping and per-channel ergonomics, prefer the `Info.subscribe_*` methods.
+- Callbacks fire on the WebSocket reader thread. Keep them fast.
+
+## See also
+
+- [`unsubscribe`](./unsubscribe) — drop a subscription
+- [`Info`](../../classes/Info) — high-level wrappers around this transport

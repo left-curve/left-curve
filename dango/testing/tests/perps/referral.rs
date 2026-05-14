@@ -26,12 +26,12 @@ use {
 
 /// Register a referral relationship during user registration via the account
 /// factory (the `referrer` field on `RegisterUser`).
-#[test]
-fn referral_during_user_register() {
+#[tokio::test]
+async fn referral_during_user_register() {
     let (mut suite, mut accounts, codes, contracts, ..) =
         setup_test_naive(TestOption::preset_test());
 
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
     // User1 (index 1) sets a fee share ratio so they can be a referrer.
     set_fee_share_ratio(
@@ -40,6 +40,7 @@ fn referral_during_user_register() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     let chain_id = suite.chain_id.clone();
@@ -74,6 +75,7 @@ fn referral_during_user_register() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Look up the new user's index.
@@ -100,8 +102,8 @@ fn referral_during_user_register() {
 
 /// Set a referral relationship after the user has already registered, and
 /// verify immutability + multiple referees.
-#[test]
-fn referral_after_user_register() {
+#[tokio::test]
+async fn referral_after_user_register() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // User1, User2, and User3 all set fee share ratios.
@@ -111,6 +113,7 @@ fn referral_after_user_register() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     set_fee_share_ratio(
@@ -119,6 +122,7 @@ fn referral_after_user_register() {
         &mut accounts.user2,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     set_fee_share_ratio(
@@ -127,6 +131,7 @@ fn referral_after_user_register() {
         &mut accounts.user3,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     // User2 sets User1 as referrer.
@@ -140,6 +145,7 @@ fn referral_after_user_register() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify User2's referrer is User1.
@@ -161,6 +167,7 @@ fn referral_after_user_register() {
             }),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("referee 2 already has a referrer");
 
     // User3 also sets User1 as referrer.
@@ -174,6 +181,7 @@ fn referral_after_user_register() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     assert_eq!(
@@ -194,6 +202,7 @@ fn referral_after_user_register() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     assert_eq!(
@@ -205,8 +214,8 @@ fn referral_after_user_register() {
 }
 
 /// A user cannot refer themselves.
-#[test]
-fn referral_self_refer_fails() {
+#[tokio::test]
+async fn referral_self_refer_fails() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     set_fee_share_ratio(
@@ -215,6 +224,7 @@ fn referral_self_refer_fails() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     suite
@@ -227,12 +237,13 @@ fn referral_self_refer_fails() {
             }),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("a user cannot refer themselves");
 }
 
 /// A referral cannot be set if the referrer has no fee share ratio.
-#[test]
-fn referral_without_share_ratio_fails() {
+#[tokio::test]
+async fn referral_without_share_ratio_fails() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // User1 has NOT set a share ratio. Trying to set User1 as referrer should fail.
@@ -246,12 +257,13 @@ fn referral_without_share_ratio_fails() {
             }),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("referrer 1 has no fee share ratio set");
 }
 
 /// Only the referee (or the account factory) can set the referral relationship.
-#[test]
-fn referral_wrong_caller_fails() {
+#[tokio::test]
+async fn referral_wrong_caller_fails() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     set_fee_share_ratio(
@@ -260,6 +272,7 @@ fn referral_wrong_caller_fails() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     // User3 tries to set the referral for User2 — should fail.
@@ -273,14 +286,15 @@ fn referral_wrong_caller_fails() {
             }),
             Coins::new(),
         )
+        .await
         .should_fail_with_error(
             "caller is not the account factory, chain owner, or an account owned by the referee",
         );
 }
 
 /// The fee share ratio can only increase, never decrease.
-#[test]
-fn modify_share_ratio() {
+#[tokio::test]
+async fn modify_share_ratio() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // Set initial share ratio to 20%.
@@ -290,6 +304,7 @@ fn modify_share_ratio() {
         &mut accounts.user1,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     // Verify the stored ratio.
@@ -307,6 +322,7 @@ fn modify_share_ratio() {
         &mut accounts.user1,
         Dimensionless::new_percent(10),
     )
+    .await
     .should_fail_with_error("fee share ratio can only increase");
 
     // Increase the share ratio — should succeed.
@@ -316,6 +332,7 @@ fn modify_share_ratio() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     assert_eq!(
@@ -327,8 +344,8 @@ fn modify_share_ratio() {
 }
 
 /// Fee share ratio cannot exceed the maximum (50%).
-#[test]
-fn share_ratio_exceeds_max_fails() {
+#[tokio::test]
+async fn share_ratio_exceeds_max_fails() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // 51% should fail.
@@ -338,6 +355,7 @@ fn share_ratio_exceeds_max_fails() {
         &mut accounts.user1,
         Dimensionless::new_percent(51),
     )
+    .await
     .should_fail_with_error("fee share ratio cannot exceed");
 
     // 50% should succeed.
@@ -347,6 +365,7 @@ fn share_ratio_exceeds_max_fails() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 }
 
@@ -355,8 +374,8 @@ fn share_ratio_exceeds_max_fails() {
 /// Without this guard a malicious referrer could set e.g. -50%, causing
 /// `credit_commission(referee, negative)` on every trade — silently draining
 /// the referee's margin while inflating the referrer's commission.
-#[test]
-fn negative_share_ratio_fails() {
+#[tokio::test]
+async fn negative_share_ratio_fails() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // -1% should fail.
@@ -366,12 +385,13 @@ fn negative_share_ratio_fails() {
         &mut accounts.user1,
         Dimensionless::new_percent(-1),
     )
+    .await
     .should_fail_with_error("fee share ratio cannot be negative");
 }
 
 /// Zero is a valid share ratio (referrer takes no commission from the referee).
-#[test]
-fn zero_share_ratio_accepted() {
+#[tokio::test]
+async fn zero_share_ratio_accepted() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     set_fee_share_ratio(
@@ -380,13 +400,14 @@ fn zero_share_ratio_accepted() {
         &mut accounts.user1,
         Dimensionless::ZERO,
     )
+    .await
     .should_succeed();
 }
 
 /// Setting the fee share ratio requires sufficient perps trading volume
 /// when `volume_to_be_referrer` is non-zero.
-#[test]
-fn set_share_ratio_requires_volume() {
+#[tokio::test]
+async fn set_share_ratio_requires_volume() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // Configure the perps contract to require $10,000 volume to become a
@@ -407,6 +428,7 @@ fn set_share_ratio_requires_volume() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User2 has zero volume — should fail.
@@ -416,14 +438,15 @@ fn set_share_ratio_requires_volume() {
         &mut accounts.user2,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_fail_with_error("insufficient perps volume to become a referrer");
 }
 
 /// Volume for referrer eligibility is aggregated across all accounts of a user.
 /// User1 has two accounts that each trade below the threshold individually,
 /// but together meet the $10,000 minimum.
-#[test]
-fn set_share_ratio_aggregates_volume_across_accounts() {
+#[tokio::test]
+async fn set_share_ratio_aggregates_volume_across_accounts() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // Configure the perps contract to require $10,000 volume to become a referrer.
@@ -443,10 +466,11 @@ fn set_share_ratio_aggregates_volume_across_accounts() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Register oracle prices: ETH = $1,000.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_000).await;
 
     // Create a second account for user1 (same user_index, different address).
     let mut user1_account2 = accounts
@@ -456,12 +480,13 @@ fn set_share_ratio_aggregates_volume_across_accounts() {
             contracts.account_factory,
             Coins::one(usdc::DENOM.clone(), 50_000_000_000).unwrap(),
         )
+        .await
         .unwrap();
 
     // Deposit margin: user1 accounts and user2 (counterparty).
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 10_000);
-    deposit_margin(&mut suite, contracts.perps, &mut user1_account2, 10_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 50_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 10_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut user1_account2, 10_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 50_000).await;
 
     // Trade 1: user2 sells 7 ETH at $1,000, user1 account1 buys → $7,000 notional.
     place_ask_order(
@@ -470,8 +495,9 @@ fn set_share_ratio_aggregates_volume_across_accounts() {
         &mut accounts.user2,
         UsdPrice::new_int(1_000),
         7,
-    );
-    place_market_buy(&mut suite, contracts.perps, &mut accounts.user1, 7);
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user1, 7).await;
 
     // With only $7,000 volume, user1 cannot become a referrer.
     set_fee_share_ratio(
@@ -480,6 +506,7 @@ fn set_share_ratio_aggregates_volume_across_accounts() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_fail_with_error("insufficient perps volume to become a referrer");
 
     // Trade 2: user2 sells 3 ETH at $1,000, user1 account2 buys → $3,000 notional.
@@ -489,8 +516,9 @@ fn set_share_ratio_aggregates_volume_across_accounts() {
         &mut accounts.user2,
         UsdPrice::new_int(1_000),
         3,
-    );
-    place_market_buy(&mut suite, contracts.perps, &mut user1_account2, 3);
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut user1_account2, 3).await;
 
     // Now the combined volume across both accounts is $10,000 — should succeed.
     set_fee_share_ratio(
@@ -499,18 +527,19 @@ fn set_share_ratio_aggregates_volume_across_accounts() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 }
 
 /// When `referral.active` is false, no fee commissions are applied.
-#[test]
-fn referral_active_flag() {
+#[tokio::test]
+async fn referral_active_flag() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
 
     // User1 becomes a referrer, User2 is the referee.
     set_fee_share_ratio(
@@ -519,6 +548,7 @@ fn referral_active_flag() {
         &mut accounts.user1,
         Dimensionless::new_percent(50),
     )
+    .await
     .should_succeed();
 
     suite
@@ -531,6 +561,7 @@ fn referral_active_flag() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Set commission rate override so we know the exact commission amount.
@@ -544,6 +575,7 @@ fn referral_active_flag() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Disable referral system.
@@ -563,6 +595,7 @@ fn referral_active_flag() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Record initial margins.
@@ -581,8 +614,9 @@ fn referral_active_flag() {
         &mut accounts.user8,
         UsdPrice::new_int(2_000),
         1,
-    );
-    place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1);
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1).await;
 
     // User1 (referrer) should NOT have received any commission.
     let user1_margin_after = suite
@@ -608,6 +642,7 @@ fn referral_active_flag() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trade again.
@@ -617,8 +652,9 @@ fn referral_active_flag() {
         &mut accounts.user8,
         UsdPrice::new_int(2_000),
         1,
-    );
-    place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1);
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user2, 1).await;
 
     // User1 (referrer) should now have received a commission.
     let user1_margin_final: UsdValue = suite
@@ -634,8 +670,8 @@ fn referral_active_flag() {
 
 /// Commission rate override: only owner can set, overrides volume tiers,
 /// removing the override falls back to volume-based calculation.
-#[test]
-fn commission_rate_override() {
+#[tokio::test]
+async fn commission_rate_override() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // Configure commission rate tiers.
@@ -660,11 +696,12 @@ fn commission_rate_override() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
 
     // User1 becomes a referrer.
     set_fee_share_ratio(
@@ -673,6 +710,7 @@ fn commission_rate_override() {
         &mut accounts.user1,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     // User2 sets User1 as referrer.
@@ -686,6 +724,7 @@ fn commission_rate_override() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Default commission rate is 10%.
@@ -703,6 +742,7 @@ fn commission_rate_override() {
             }),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("you don't have the right");
 
     // Owner sets override to 50%.
@@ -716,13 +756,14 @@ fn commission_rate_override() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
     assert_eq!(settings.commission_rate, CommissionRate::new_percent(50));
 
     // Trade to generate volume past the 100 USD tier.
-    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1).await;
 
     // Override still applies (ignores volume tier).
     let settings = query_referral_settings(&suite, contracts.perps, 1).unwrap();
@@ -739,6 +780,7 @@ fn commission_rate_override() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Falls back to volume-based tier (>= 100 → 20%).
@@ -747,14 +789,14 @@ fn commission_rate_override() {
 }
 
 /// Query per-referee statistics sorted by volume.
-#[test]
-fn referrer_stats() {
+#[tokio::test]
+async fn referrer_stats() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
 
     // User1 becomes a referrer.
     set_fee_share_ratio(
@@ -763,6 +805,7 @@ fn referrer_stats() {
         &mut accounts.user1,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     // User2 and User3 set User1 as referrer.
@@ -776,6 +819,7 @@ fn referrer_stats() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -788,10 +832,11 @@ fn referrer_stats() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User2 trades (volume = 1 * 2000 = $2,000).
-    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1).await;
 
     // User3 trades more (volume = 2 * 2000 = $4,000).
     // Need user3 as taker — swap user1 as maker, user3 as taker.
@@ -801,8 +846,9 @@ fn referrer_stats() {
         &mut accounts.user1,
         UsdPrice::new_int(2_000),
         2,
-    );
-    place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 2);
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 2).await;
 
     // Query stats sorted by volume descending.
     let stats: Vec<(Referee, perps::RefereeStats)> = suite
@@ -889,29 +935,29 @@ fn referrer_stats() {
 ///   - user3 (4th referrer): 10% < max(20%) → $0
 ///   - user2 (5th referrer): vault_fee × (60% - 20%) = $0.80 (marginal)
 ///   - user1 (6th referrer): outside chain depth → $0
-#[test]
-fn commission_rate_margins() {
+#[tokio::test]
+async fn commission_rate_margins() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     let params = suite
         .query_wasm_smart(contracts.perps, QueryParamRequest {})
         .unwrap();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // Deposit margin for user8 (maker) and all referee/referrer users.
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user5, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user6, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user7, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user5, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user6, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user7, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
 
     // All users become referrers with 20% share ratio.
     for user in [
-        &mut accounts.user1 as &mut dyn Signer,
+        &mut accounts.user1 as &mut (dyn Signer + Send + Sync),
         &mut accounts.user2,
         &mut accounts.user3,
         &mut accounts.user4,
@@ -924,12 +970,13 @@ fn commission_rate_margins() {
             user,
             Dimensionless::new_percent(20),
         )
+        .await
         .should_succeed();
     }
 
     // Build referral chain: user1 ← user2 ← user3 ← user4 ← user5 ← user6 ← user7.
     for (referrer, referee) in [(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7)] {
-        let sender: &mut dyn Signer = match referee {
+        let sender: &mut (dyn Signer + Send + Sync) = match referee {
             2 => &mut accounts.user2,
             3 => &mut accounts.user3,
             4 => &mut accounts.user4,
@@ -945,6 +992,7 @@ fn commission_rate_margins() {
                 &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral { referrer, referee }),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -960,6 +1008,7 @@ fn commission_rate_margins() {
                 }),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -994,8 +1043,8 @@ fn commission_rate_margins() {
     let price = UsdPrice::new_int(2_000);
     let size = 1;
     let trade_value = price.checked_mul(Quantity::new_int(size)).unwrap();
-    place_ask_order(&mut suite, contracts.perps, &mut accounts.user8, price, 1);
-    place_market_buy(&mut suite, contracts.perps, &mut accounts.user7, 1);
+    place_ask_order(&mut suite, contracts.perps, &mut accounts.user8, price, 1).await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user7, 1).await;
 
     // Read post-trade margins.
     let post_margins: Vec<UsdValue> = [
@@ -1172,8 +1221,8 @@ fn commission_rate_margins() {
 }
 
 /// Referee count increments when referral relationships are set.
-#[test]
-fn referee_count() {
+#[tokio::test]
+async fn referee_count() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // User1 becomes a referrer.
@@ -1183,6 +1232,7 @@ fn referee_count() {
         &mut accounts.user1,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     // Initially, referee_count is 0.
@@ -1200,6 +1250,7 @@ fn referee_count() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
@@ -1216,6 +1267,7 @@ fn referee_count() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
@@ -1228,6 +1280,7 @@ fn referee_count() {
         &mut accounts.user2,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     suite
@@ -1240,6 +1293,7 @@ fn referee_count() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let data_user1 = query_referral_data(&suite, contracts.perps, 1, None);
@@ -1250,14 +1304,14 @@ fn referee_count() {
 }
 
 /// Active users count increments once per referee per day.
-#[test]
-fn active_referral() {
+#[tokio::test]
+async fn active_referral() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
 
     // User1 becomes a referrer.
     set_fee_share_ratio(
@@ -1266,6 +1320,7 @@ fn active_referral() {
         &mut accounts.user1,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     // User2 and User3 set User1 as referrer.
@@ -1279,6 +1334,7 @@ fn active_referral() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1291,17 +1347,18 @@ fn active_referral() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User2 trades — cumulative_daily_active_referees should be 1, cumulative_global_active_referees should be 1.
-    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1).await;
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 1);
     assert_eq!(data.cumulative_global_active_referees, 1);
 
     // User2 trades again same day — both counters unchanged.
-    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1).await;
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 1);
@@ -1314,8 +1371,9 @@ fn active_referral() {
         &mut accounts.user1,
         UsdPrice::new_int(2_000),
         1,
-    );
-    place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 1);
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 1).await;
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 2);
@@ -1324,9 +1382,9 @@ fn active_referral() {
     // Next day, User2 trades — cumulative_daily_active_referees should be 3 (cumulative),
     // but cumulative_global_active_referees stays at 2 (User2 already traded before).
     suite.block_time = grug::Duration::from_days(1);
-    suite.make_empty_block();
+    suite.make_empty_block().await;
 
-    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1);
+    create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1).await;
 
     let data = query_referral_data(&suite, contracts.perps, 1, None);
     assert_eq!(data.cumulative_daily_active_referees, 3);
@@ -1337,11 +1395,11 @@ fn active_referral() {
 /// debited, and the taker's referrer must earn commission computed from
 /// the **net** vault fee — not from the taker's gross fee (which would
 /// overpay commissions beyond what the protocol actually collected).
-#[test]
-fn negative_maker_fee_does_not_debit_referrers() {
+#[tokio::test]
+async fn negative_maker_fee_does_not_debit_referrers() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1374,13 +1432,14 @@ fn negative_maker_fee_does_not_debit_referrers() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Deposit for users 1-4.
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000);
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
 
     // user1 is the taker's referrer; user2 is the maker's referrer. Both
     // become referrers by setting a 20% fee share ratio.
@@ -1390,6 +1449,7 @@ fn negative_maker_fee_does_not_debit_referrers() {
         &mut accounts.user1,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
     set_fee_share_ratio(
         &mut suite,
@@ -1397,13 +1457,14 @@ fn negative_maker_fee_does_not_debit_referrers() {
         &mut accounts.user2,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     // Wire the referral relationships:
     //   user4 (taker) ← user1 (referrer)
     //   user3 (maker) ← user2 (referrer)
     for (sender, referrer, referee) in [(4u32, 1u32, 4u32), (3, 2, 3)] {
-        let signer: &mut dyn Signer = match sender {
+        let signer: &mut (dyn Signer + Send + Sync) = match sender {
             3 => &mut accounts.user3,
             4 => &mut accounts.user4,
             _ => unreachable!(),
@@ -1415,6 +1476,7 @@ fn negative_maker_fee_does_not_debit_referrers() {
                 &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral { referrer, referee }),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1454,8 +1516,9 @@ fn negative_maker_fee_does_not_debit_referrers() {
         &mut accounts.user3,
         UsdPrice::new_int(2_000),
         1,
-    );
-    place_market_buy(&mut suite, contracts.perps, &mut accounts.user4, 1);
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user4, 1).await;
 
     // Snapshot margins after.
     let margin_after: Vec<UsdValue> = user_addrs
@@ -1520,8 +1583,8 @@ fn negative_maker_fee_does_not_debit_referrers() {
 
 /// A payer without a referrer still gets a `FeeDistributed` event with
 /// correct protocol_fee, vault_fee, and empty commissions.
-#[test]
-fn fee_distributed_event_without_referrer() {
+#[tokio::test]
+async fn fee_distributed_event_without_referrer() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // Set protocol fee to 50%.
@@ -1541,11 +1604,12 @@ fn fee_distributed_event_without_referrer() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
 
     // Trade without any referral relationship.
     place_ask_order(
@@ -1554,8 +1618,10 @@ fn fee_distributed_event_without_referrer() {
         &mut accounts.user1,
         UsdPrice::new_int(2_000),
         1,
-    );
-    let events = place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1);
+    )
+    .await;
+    let events =
+        place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1).await;
 
     let fee_events: Vec<FeeDistributed> = events
         .search_event::<CheckedContractEvent>()
@@ -1599,8 +1665,8 @@ fn fee_distributed_event_without_referrer() {
 
 /// A payer with a referrer gets a `FeeDistributed` event with correct
 /// protocol_fee, vault_fee (reduced by commissions), and commissions.
-#[test]
-fn fee_distributed_event_with_referrer() {
+#[tokio::test]
+async fn fee_distributed_event_with_referrer() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // Set protocol fee to 50%.
@@ -1620,12 +1686,13 @@ fn fee_distributed_event_with_referrer() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
 
     // User1 becomes a referrer with 20% share ratio.
     set_fee_share_ratio(
@@ -1634,6 +1701,7 @@ fn fee_distributed_event_with_referrer() {
         &mut accounts.user1,
         Dimensionless::new_percent(20),
     )
+    .await
     .should_succeed();
 
     // User2 sets User1 as referrer.
@@ -1647,6 +1715,7 @@ fn fee_distributed_event_with_referrer() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Set a known commission rate override for deterministic math.
@@ -1660,6 +1729,7 @@ fn fee_distributed_event_with_referrer() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User8 places ask (maker), User2 (referee) buys (taker).
@@ -1670,8 +1740,10 @@ fn fee_distributed_event_with_referrer() {
         &mut accounts.user8,
         UsdPrice::new_int(2_000),
         1,
-    );
-    let events = place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1);
+    )
+    .await;
+    let events =
+        place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1).await;
 
     let fee_events: Vec<FeeDistributed> = events
         .search_event::<CheckedContractEvent>()
@@ -1722,8 +1794,8 @@ fn fee_distributed_event_with_referrer() {
 /// opted in (no `FEE_SHARE_RATIO` entry), the referee's trades must still
 /// settle. The referrer's share ratio defaults to zero, so the full
 /// commission flows to the referrer and the referee receives no rebate.
-#[test]
-fn fee_distributed_event_with_referrer_without_share_ratio() {
+#[tokio::test]
+async fn fee_distributed_event_with_referrer_without_share_ratio() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
     // Set protocol fee to 50%.
@@ -1743,12 +1815,13 @@ fn fee_distributed_event_with_referrer_without_share_ratio() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000);
-    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
 
     // Note: deliberately do NOT call `set_fee_share_ratio` for user1 — the
     // chain owner is wiring up the relationship via the bypass below.
@@ -1764,6 +1837,7 @@ fn fee_distributed_event_with_referrer_without_share_ratio() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Set a known commission rate override for deterministic math.
@@ -1777,6 +1851,7 @@ fn fee_distributed_event_with_referrer_without_share_ratio() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User8 places ask (maker), User2 (referee) buys (taker).
@@ -1787,8 +1862,10 @@ fn fee_distributed_event_with_referrer_without_share_ratio() {
         &mut accounts.user8,
         UsdPrice::new_int(2_000),
         1,
-    );
-    let events = place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1);
+    )
+    .await;
+    let events =
+        place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user2, 1).await;
 
     let fee_events: Vec<FeeDistributed> = events
         .search_event::<CheckedContractEvent>()
@@ -1830,24 +1907,799 @@ fn fee_distributed_event_with_referrer_without_share_ratio() {
 }
 
 // ---------------------------------------------------------------------------
+// Edge-case: a referrer with commission_rate_override = 100% (the cap).
+//
+// On mainnet a referrer A is being given the maximum commission rate of 100%
+// while sitting at level 2 of the chain (A → B → trader), with B at 45% and
+// both A and B running share_ratio = 0. The interesting consequence is that
+// the *entire* vault fee on a fee-paying fill is funnelled to the referrers
+// (B gets 45%, A gets the marginal 55%) and the vault's net cut on that fill
+// is zero. The tests below pin this behavior across direct/indirect chains
+// and taker/maker fills (positive and rebate maker fee).
+// ---------------------------------------------------------------------------
+
+/// Direct chain A → trader. A.cr = 100%, A.sr = 0. Trader is the taker.
+///
+/// Per book/perps/6-referral.md §5a:
+///   referee_share      = vault_fee × 100% × 0   = 0
+///   referrer_commission = vault_fee × 100% × 1  = vault_fee
+///
+/// All of vault_fee flows to A; the vault's net cut is zero.
+#[tokio::test]
+async fn cr_100_direct_referrer_taker() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    let params = suite
+        .query_wasm_smart(contracts.perps, QueryParamRequest {})
+        .unwrap();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
+
+    // A opts in as a referrer with share_ratio = 0.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+
+    // Trader (user3) is referee of A (user1).
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 1, 100)
+        .await
+        .should_succeed();
+
+    let user_addrs = [accounts.user1.address(), accounts.user3.address()];
+    let margin_before = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    // user4 (no referrer) places ask; trader (taker) market buys.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user4,
+        UsdPrice::new_int(2_000),
+        1,
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user3, 1).await;
+
+    let margin_after = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    // vault_fee = $2,000 × 0.1% = $2.
+    let vault_fee = UsdValue::new_int(2_000)
+        .checked_mul(params.taker_fee_rates.base)
+        .unwrap();
+    assert_eq!(vault_fee, UsdValue::new_int(2));
+
+    // A receives the entire vault_fee.
+    assert_eq!(
+        margin_after[0].checked_sub(margin_before[0]).unwrap(),
+        vault_fee,
+        "A (cr=100%, sr=0) should receive the entire vault_fee",
+    );
+
+    // Trader paid the full taker fee, no rebate share.
+    assert_eq!(
+        margin_before[1].checked_sub(margin_after[1]).unwrap(),
+        vault_fee,
+        "trader pays the full taker fee with no rebate (sr=0)",
+    );
+}
+
+/// **Mainnet scenario.** Indirect chain A → B → trader. A.cr = 100%, B.cr =
+/// 45%, both share_ratio = 0. Trader is the taker.
+///
+/// Per book/perps/6-referral.md §§5a-5b:
+///   level 1 (B): vault_fee × 45% × 1   = vault_fee × 45%
+///   level 2 (A): vault_fee × (100% − 45%) = vault_fee × 55%
+///   total = vault_fee × 100% → entire vault_fee distributed; vault net = 0.
+///
+/// Also asserts the `FeeDistributed` event reflects this (vault_fee in the
+/// event drops to zero post-commission, commissions = [0, 0.90, 1.10]).
+#[tokio::test]
+async fn cr_100_indirect_referrer_taker() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    let params = suite
+        .query_wasm_smart(contracts.perps, QueryParamRequest {})
+        .unwrap();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
+
+    // A and B both opt in as referrers with share_ratio = 0.
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user2,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+
+    // Wire chain: user1 (A) ← user2 (B) ← user3 (trader).
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 2,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 1, 100)
+        .await
+        .should_succeed();
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 2, 45)
+        .await
+        .should_succeed();
+
+    let user_addrs = [
+        accounts.user1.address(),
+        accounts.user2.address(),
+        accounts.user3.address(),
+    ];
+    let margin_before = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    // user4 (no referrer) places ask; trader (taker) market buys.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user4,
+        UsdPrice::new_int(2_000),
+        1,
+    )
+    .await;
+    let events =
+        place_market_buy_with_events(&mut suite, contracts.perps, &mut accounts.user3, 1).await;
+
+    let margin_after = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    let vault_fee = UsdValue::new_int(2_000)
+        .checked_mul(params.taker_fee_rates.base)
+        .unwrap();
+    assert_eq!(vault_fee, UsdValue::new_int(2));
+
+    let expected_b = vault_fee
+        .checked_mul(CommissionRate::new_percent(45))
+        .unwrap();
+    let expected_a = vault_fee
+        .checked_mul(CommissionRate::new_percent(55))
+        .unwrap();
+    assert_eq!(expected_b, UsdValue::new_percent(90));
+    assert_eq!(
+        expected_a,
+        UsdValue::new_int(1)
+            .checked_add(UsdValue::new_percent(10))
+            .unwrap()
+    );
+
+    assert_eq!(
+        margin_after[0].checked_sub(margin_before[0]).unwrap(),
+        expected_a,
+        "A (level-2, cr=100%) should receive marginal commission",
+    );
+    assert_eq!(
+        margin_after[1].checked_sub(margin_before[1]).unwrap(),
+        expected_b,
+        "B (level-1, cr=45%, sr=0) should receive the full level-1 commission",
+    );
+    assert_eq!(
+        margin_before[2].checked_sub(margin_after[2]).unwrap(),
+        vault_fee,
+        "trader pays the full taker fee with no rebate (sr=0)",
+    );
+
+    // Verify the FeeDistributed event: protocol_fee = 0, vault_fee post-
+    // commission = 0 (vault keeps nothing), commissions = [0, B, A].
+    let fee_events: Vec<FeeDistributed> = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "fee_distributed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json().unwrap())
+        .collect();
+    let trader_event = fee_events
+        .iter()
+        .find(|e| e.payer_addr == accounts.user3.address())
+        .expect("trader must have a FeeDistributed event");
+    assert_eq!(trader_event.protocol_fee, UsdValue::ZERO);
+    assert_eq!(
+        trader_event.vault_fee,
+        UsdValue::ZERO,
+        "vault keeps nothing — entire vault_fee distributed to A and B",
+    );
+    assert_eq!(trader_event.commissions, vec![
+        UsdValue::ZERO,
+        expected_b,
+        expected_a
+    ]);
+}
+
+/// Direct chain A → trader. A.cr = 100%, A.sr = 0. Trader is the maker on a
+/// fill where both sides pay a positive fee, so the maker contributes weight
+/// to the per-party split.
+///
+/// With taker = maker = 5 bps and protocol = 0, total_positive splits the
+/// vault_fee 50/50, so the maker's vault_fee portion = trade_value × 5 bps
+/// = $1.00. A receives that full $1.00 (cr=100%, sr=0).
+#[tokio::test]
+async fn cr_100_direct_referrer_maker_positive_fee() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    let pair = pair_id();
+
+    // taker = +5 bps, maker = +5 bps, protocol = 0.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: perps::Param {
+                    taker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(500),
+                        ..Default::default()
+                    },
+                    maker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(500),
+                        ..Default::default()
+                    },
+                    protocol_fee_rate: Dimensionless::ZERO,
+                    referral_active: true,
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => default_pair_param(),
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
+
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 1, 100)
+        .await
+        .should_succeed();
+
+    let user_addrs = [accounts.user1.address(), accounts.user3.address()];
+    let margin_before = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    // Trader places post-only ask; user4 (no referrer) market buys.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user3,
+        UsdPrice::new_int(2_000),
+        1,
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user4, 1).await;
+
+    let margin_after = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    let trade_value = UsdValue::new_int(2_000);
+    let maker_fee = trade_value
+        .checked_mul(Dimensionless::new_raw(500))
+        .unwrap();
+    // Maker's vault_fee portion = vault_fee × maker_weight = (taker_fee + maker_fee)
+    // × (maker_fee / (taker_fee + maker_fee)) = maker_fee, with protocol = 0.
+    let expected_maker_vault_fee = maker_fee;
+    let expected_a = expected_maker_vault_fee
+        .checked_mul(CommissionRate::new_percent(100))
+        .unwrap();
+
+    assert_eq!(expected_maker_vault_fee, UsdValue::new_int(1));
+
+    assert_eq!(
+        margin_after[0].checked_sub(margin_before[0]).unwrap(),
+        expected_a,
+        "A (cr=100%) should receive maker's full vault_fee portion",
+    );
+    // Trader paid maker_fee, got referee_share = 0 (sr = 0).
+    assert_eq!(
+        margin_before[1].checked_sub(margin_after[1]).unwrap(),
+        maker_fee,
+        "trader pays the full maker fee with no rebate (sr=0)",
+    );
+}
+
+/// Indirect chain A → B → trader. A.cr = 100%, B.cr = 45%, both sr = 0.
+/// Trader is the maker on a positive-fee fill.
+///
+/// Maker's vault_fee portion = $1.00 (as in the direct case). Of that:
+///   level 1 (B): $1.00 × 45% = $0.45
+///   level 2 (A): $1.00 × 55% = $0.55
+#[tokio::test]
+async fn cr_100_indirect_referrer_maker_positive_fee() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    let pair = pair_id();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: perps::Param {
+                    taker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(500),
+                        ..Default::default()
+                    },
+                    maker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(500),
+                        ..Default::default()
+                    },
+                    protocol_fee_rate: Dimensionless::ZERO,
+                    referral_active: true,
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => default_pair_param(),
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
+
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user2,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 2,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 1, 100)
+        .await
+        .should_succeed();
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 2, 45)
+        .await
+        .should_succeed();
+
+    let user_addrs = [
+        accounts.user1.address(),
+        accounts.user2.address(),
+        accounts.user3.address(),
+    ];
+    let margin_before = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user3,
+        UsdPrice::new_int(2_000),
+        1,
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user4, 1).await;
+
+    let margin_after = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    let trade_value = UsdValue::new_int(2_000);
+    let maker_fee = trade_value
+        .checked_mul(Dimensionless::new_raw(500))
+        .unwrap();
+    let expected_maker_vault_fee = maker_fee;
+    let expected_b = expected_maker_vault_fee
+        .checked_mul(CommissionRate::new_percent(45))
+        .unwrap();
+    let expected_a = expected_maker_vault_fee
+        .checked_mul(CommissionRate::new_percent(55))
+        .unwrap();
+
+    assert_eq!(
+        margin_after[0].checked_sub(margin_before[0]).unwrap(),
+        expected_a,
+        "A (level-2, cr=100%) should receive marginal commission on maker's portion",
+    );
+    assert_eq!(
+        margin_after[1].checked_sub(margin_before[1]).unwrap(),
+        expected_b,
+        "B (level-1, cr=45%, sr=0) should receive its full level-1 commission",
+    );
+    assert_eq!(
+        margin_before[2].checked_sub(margin_after[2]).unwrap(),
+        maker_fee,
+        "trader pays the full maker fee with no rebate (sr=0)",
+    );
+}
+
+/// Direct chain A → trader. A.cr = 100%, A.sr = 0. Trader is the maker on a
+/// fill where the maker fee is *negative* (rebate). The trader's vault_fee
+/// portion clamps to zero (per the proportional split in submit_order.rs),
+/// so A's commission must be zero — and crucially A must NOT be debited.
+#[tokio::test]
+async fn cr_100_direct_referrer_maker_rebate() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    let pair = pair_id();
+
+    // taker = +3 bps, maker = -1 bps (rebate), protocol = 20%.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: perps::Param {
+                    taker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(300),
+                        ..Default::default()
+                    },
+                    maker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(-100),
+                        ..Default::default()
+                    },
+                    protocol_fee_rate: Dimensionless::new_percent(20),
+                    referral_active: true,
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => default_pair_param(),
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
+
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 1, 100)
+        .await
+        .should_succeed();
+
+    let user_addrs = [accounts.user1.address(), accounts.user3.address()];
+    let margin_before = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    // Trader (rebating maker) places post-only ask; user4 markets in.
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user3,
+        UsdPrice::new_int(2_000),
+        1,
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user4, 1).await;
+
+    let margin_after = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    // A must NOT be debited despite cr=100% — maker's vault_fee portion is 0
+    // (rebater contributes zero weight), so every commission term is 0.
+    assert_eq!(
+        margin_after[0], margin_before[0],
+        "A (cr=100%) must not be debited when trader is a rebating maker",
+    );
+
+    // Trader's margin gain = full rebate (no referee_share since vault_fee=0).
+    let rebate = UsdValue::new_int(2_000)
+        .checked_mul(Dimensionless::new_raw(100))
+        .unwrap();
+    assert_eq!(
+        margin_after[1].checked_sub(margin_before[1]).unwrap(),
+        rebate,
+        "trader receives the full maker rebate ($0.20)",
+    );
+}
+
+/// Indirect chain A → B → trader. A.cr = 100%, B.cr = 45%, both sr = 0.
+/// Trader is the maker on a rebate fill. Both A and B must NOT be debited.
+#[tokio::test]
+async fn cr_100_indirect_referrer_maker_rebate() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
+
+    let pair = pair_id();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: perps::Param {
+                    taker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(300),
+                        ..Default::default()
+                    },
+                    maker_fee_rates: RateSchedule {
+                        base: Dimensionless::new_raw(-100),
+                        ..Default::default()
+                    },
+                    protocol_fee_rate: Dimensionless::new_percent(20),
+                    referral_active: true,
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => default_pair_param(),
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
+    deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
+
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user1,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+    set_fee_share_ratio(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user2,
+        Dimensionless::new_percent(0),
+    )
+    .await
+    .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 1,
+                referee: 2,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetReferral {
+                referrer: 2,
+                referee: 3,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 1, 100)
+        .await
+        .should_succeed();
+    set_commission_rate_override(&mut suite, contracts.perps, &mut accounts.owner, 2, 45)
+        .await
+        .should_succeed();
+
+    let user_addrs = [
+        accounts.user1.address(),
+        accounts.user2.address(),
+        accounts.user3.address(),
+    ];
+    let margin_before = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    place_ask_order(
+        &mut suite,
+        contracts.perps,
+        &mut accounts.user3,
+        UsdPrice::new_int(2_000),
+        1,
+    )
+    .await;
+    place_market_buy(&mut suite, contracts.perps, &mut accounts.user4, 1).await;
+
+    let margin_after = snapshot_margins(&suite, contracts.perps, &user_addrs);
+
+    assert_eq!(
+        margin_after[0], margin_before[0],
+        "A (level-2, cr=100%) must not be debited on a maker rebate",
+    );
+    assert_eq!(
+        margin_after[1], margin_before[1],
+        "B (level-1, cr=45%) must not be debited on a maker rebate",
+    );
+
+    let rebate = UsdValue::new_int(2_000)
+        .checked_mul(Dimensionless::new_raw(100))
+        .unwrap();
+    assert_eq!(
+        margin_after[2].checked_sub(margin_before[2]).unwrap(),
+        rebate,
+        "trader receives the full maker rebate ($0.20)",
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn set_fee_share_ratio(
+async fn set_fee_share_ratio(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     perps: Addr,
-    user: &mut dyn Signer,
+    user: &mut (dyn Signer + Send + Sync),
     ratio: FeeShareRatio,
 ) -> TxOutcome {
-    suite.execute(
-        user,
-        perps,
-        &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetFeeShareRatio { share_ratio: ratio }),
-        Coins::new(),
-    )
+    suite
+        .execute(
+            user,
+            perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetFeeShareRatio {
+                share_ratio: ratio,
+            }),
+            Coins::new(),
+        )
+        .await
 }
 
-fn register_oracle_prices(
+async fn set_commission_rate_override(
+    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    owner: &mut (dyn Signer + Send + Sync),
+    user: u32,
+    rate_percent: i128,
+) -> TxOutcome {
+    suite
+        .execute(
+            owner,
+            perps,
+            &perps::ExecuteMsg::Referral(perps::ReferralMsg::SetCommissionRateOverride {
+                user,
+                commission_rate: Op::Insert(CommissionRate::new_percent(rate_percent)),
+            }),
+            Coins::new(),
+        )
+        .await
+}
+
+fn snapshot_margins(
+    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
+    perps: Addr,
+    addrs: &[Addr],
+) -> Vec<UsdValue> {
+    addrs
+        .iter()
+        .map(|addr| {
+            suite
+                .query_wasm_smart(perps, perps::QueryUserStateRequest { user: *addr })
+                .should_succeed()
+                .map(|s: perps::UserState| s.margin)
+                .unwrap_or(UsdValue::ZERO)
+        })
+        .collect()
+}
+
+async fn register_oracle_prices(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     accounts: &mut dango_testing::TestAccounts,
     contracts: &dango_genesis::Contracts,
@@ -1871,13 +2723,14 @@ fn register_oracle_prices(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }
 
-fn deposit_margin(
+async fn deposit_margin(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     perps: Addr,
-    user: &mut dyn Signer,
+    user: &mut (dyn Signer + Send + Sync),
     usd_amount: u128,
 ) {
     let amount = Uint128::new(usd_amount * 1_000_000);
@@ -1888,13 +2741,14 @@ fn deposit_margin(
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), amount).unwrap(),
         )
+        .await
         .should_succeed();
 }
 
-fn place_ask_order(
+async fn place_ask_order(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     perps: Addr,
-    user: &mut dyn Signer,
+    user: &mut (dyn Signer + Send + Sync),
     price: UsdPrice,
     size: u128,
 ) {
@@ -1916,13 +2770,14 @@ fn place_ask_order(
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }
 
-fn place_market_buy(
+async fn place_market_buy(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     perps: Addr,
-    user: &mut dyn Signer,
+    user: &mut (dyn Signer + Send + Sync),
     size: u128,
 ) {
     suite
@@ -1941,11 +2796,12 @@ fn place_market_buy(
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }
 
 /// Place a limit ask (user1) then a market buy (user2) to produce a fill.
-fn create_perps_fill(
+async fn create_perps_fill(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     accounts: &mut dango_testing::TestAccounts,
     perps: Addr,
@@ -1958,14 +2814,15 @@ fn create_perps_fill(
         &mut accounts.user1,
         UsdPrice::new_int(price as i128),
         size,
-    );
-    place_market_buy(suite, perps, &mut accounts.user2, size);
+    )
+    .await;
+    place_market_buy(suite, perps, &mut accounts.user2, size).await;
 }
 
-fn place_market_buy_with_events(
+async fn place_market_buy_with_events(
     suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
     perps: Addr,
-    user: &mut dyn Signer,
+    user: &mut (dyn Signer + Send + Sync),
     size: u128,
 ) -> grug::TxEvents {
     suite
@@ -1984,6 +2841,7 @@ fn place_market_buy_with_events(
             })),
             Coins::new(),
         )
+        .await
         .should_succeed()
         .events
 }

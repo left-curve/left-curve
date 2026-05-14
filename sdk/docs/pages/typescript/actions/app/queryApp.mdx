@@ -1,0 +1,52 @@
+# queryApp
+
+Send a generic typed query against the app and receive the matching `QueryResponse` variant.
+
+## Signature
+
+```ts
+function queryApp(
+  client: Client,
+  parameters: {
+    query: Json
+    height?: number
+  },
+): Promise<QueryResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const res = await client.queryApp({
+  query: { balance: { address, denom: "dango" } },
+})
+if ("balance" in res) {
+  console.log(res.balance.amount)
+}
+```
+
+## Parameters
+
+**`query`** — `Json`. A `QueryRequest` variant — e.g. `{ balance: { address, denom } }`, `{ contracts: {...} }`, `{ wasmSmart: {...} }`.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`QueryResponse`** — a discriminated union. Narrow with the `in` operator to extract the matching variant.
+
+## Notes
+
+- Most callers use the typed wrappers (`getBalance`, `getContractInfo`, etc.). Use `queryApp` directly only for variants that lack a wrapper or for batched `multi` queries.
+- The SDK does not auto-narrow the response — you must check the variant name.
+
+## See also
+
+- [`queryWasmSmart`](./queryWasmSmart) — typed wrapper for `wasmSmart` queries
+- [`queryStatus`](./queryStatus) — typed wrapper for chain status

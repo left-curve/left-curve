@@ -1,0 +1,54 @@
+# PageInfo
+
+Cursor metadata for indexer GraphQL connections.
+
+## Definition
+
+```rust
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageInfo {
+    pub start_cursor:      Option<String>,
+    pub end_cursor:        Option<String>,
+    pub has_next_page:     bool,
+    pub has_previous_page: bool,
+}
+```
+
+Re-exported at the `dango_sdk` crate root from `indexer_graphql_types`.
+
+## Fields
+
+**`start_cursor`** — `Option<String>`. Cursor of the first node in this page. `None` when the page is empty.
+
+**`end_cursor`** — `Option<String>`. Cursor of the last node. Pass as `after:` to fetch the next page.
+
+**`has_next_page`** — `bool`. `true` when more pages exist after this one (forward).
+
+**`has_previous_page`** — `bool`. `true` when pages exist before this one (backward).
+
+## Construction
+
+```rust
+use dango_sdk::PageInfo;
+
+let pi = PageInfo {
+    start_cursor:      Some("cursor:0".into()),
+    end_cursor:        Some("cursor:100".into()),
+    has_next_page:     true,
+    has_previous_page: false,
+};
+let _ = pi;
+```
+
+The codegen connection types — `accounts::AccountsAccounts`, `transfers::TransfersTransfers`, … — each have their own `PageInfo` field with the same shape. `paginate_all` accepts a closure that converts the per-query `PageInfo` into this common type so the pagination loop is type-agnostic.
+
+## Notes
+
+- Connections follow the Relay cursor spec. Cursors are opaque strings; don't parse them.
+- Forward pagination uses `end_cursor` + `after:`. Backward uses `start_cursor` + `before:`.
+
+## See also
+
+- [`paginate_all`](../methods/http-client/paginate_all).
+- [Concepts: Encoding and types](../../concepts/encoding-and-types) — connection shape.

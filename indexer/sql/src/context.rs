@@ -1,21 +1,21 @@
 use {
     crate::{
-        event_cache::EventCacheWriter,
-        pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
+        dango_migration, entity::perps_trade::PerpsTrade, event_cache::EventCacheWriter,
+        grug_migration, pubsub::PubSub, write::perps_trades::PerpsTradeCache,
     },
-    indexer_sql_migration::{Migrator, MigratorTrait},
-    sea_orm::{
-        ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
-        sqlx::{self},
-    },
+    sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection},
+    sea_orm_migration::MigratorTrait,
     std::sync::Arc,
+    tokio::sync::RwLock,
 };
 
 #[derive(Clone)]
 pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
+    pub perps_trade_pubsub: Arc<dyn PubSub<PerpsTrade> + Send + Sync>,
     pub event_cache: EventCacheWriter,
+    pub perps_trade_cache: Arc<RwLock<PerpsTradeCache>>,
 }
 
 impl std::fmt::Debug for Context {
@@ -23,41 +23,28 @@ impl std::fmt::Debug for Context {
         f.debug_struct("Context")
             .field("db", &self.db)
             .field("pubsub", &"<PubSub trait object>")
+            .field("perps_trade_pubsub", &"<PubSub trait object>")
             .field("event_cache", &"<EventCacheWriter>")
+            .field("perps_trade_cache", &"<PerpsTradeCache>")
             .finish()
     }
 }
 
 impl Context {
-    /// Create a new context with the same database connection but a separate pubsub instance
-    /// This allows independent indexers to share the DB connection pool but have their own pubsub
-    pub async fn with_separate_pubsub(&self) -> Result<Self, sea_orm::DbErr> {
-        let new_pubsub: Arc<dyn PubSub<u64> + Send + Sync> = match &self.db {
-            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-                let pool: &sqlx::PgPool = self.db.get_postgres_connection_pool();
-                Arc::new(
-                    PostgresPubSub::new(pool.clone(), "blocks")
-                        .await
-                        .map_err(|e| {
-                            sea_orm::DbErr::Custom(format!("Failed to create PostgresPubSub: {e}"))
-                        })?,
-                )
-            },
-            _ => {
-                // For non-Postgres databases, use in-memory pubsub
-                Arc::new(MemoryPubSub::new(100))
-            },
-        };
-
-        Ok(Context {
-            db: self.db.clone(),
-            pubsub: new_pubsub,
-            event_cache: self.event_cache.clone(),
-        })
+    /// Run both the grug-side and dango-side sea-orm migrators sequentially.
+    /// Each migrator maintains its own physical migration table
+    /// (`grug_seaql_migrations` and `dango_seaql_migrations`).
+    pub async fn migrate_db(&self) -> Result<(), sea_orm::DbErr> {
+        grug_migration::Migrator::up(&self.db, None).await?;
+        dango_migration::Migrator::up(&self.db, None).await?;
+        Ok(())
     }
 
-    pub async fn migrate_db(&self) -> Result<(), sea_orm::DbErr> {
-        Migrator::up(&self.db, None).await
+    /// Preload the in-memory perps trade cache from recent `OrderFilled` events
+    /// in the `perps_events` table.
+    pub async fn preload_perps_trade_cache(&self) -> Result<(), crate::error::IndexerError> {
+        let mut cache = self.perps_trade_cache.write().await;
+        cache.preload(&self.db).await
     }
 
     /// Close the database connection. Call this before dropping if you're

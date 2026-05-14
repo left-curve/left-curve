@@ -1,11 +1,11 @@
 use {
     assertor::*,
-    dango_indexer_sql::entity,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
     grug_app::Indexer,
+    indexer_sql::entity,
     itertools::Itertools,
     sea_orm::EntityTrait,
 };
@@ -16,23 +16,23 @@ async fn index_account_creations() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let users = dango_indexer_sql::entity::users::Entity::find()
+    let users = indexer_sql::entity::users::Entity::find()
         .all(&dango_context.db)
         .await?;
 
-    let accounts = dango_indexer_sql::entity::accounts::Entity::find()
+    let accounts = indexer_sql::entity::accounts::Entity::find()
         .all(&dango_context.db)
         .await?;
 
-    let account_users = dango_indexer_sql::entity::accounts_users::Entity::find()
+    let account_users = indexer_sql::entity::accounts_users::Entity::find()
         .all(&dango_context.db)
         .await?;
 
-    let public_keys = dango_indexer_sql::entity::public_keys::Entity::find()
+    let public_keys = indexer_sql::entity::public_keys::Entity::find()
         .all(&dango_context.db)
         .await?;
 
@@ -61,13 +61,13 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
-        dango_indexer_sql::entity::accounts::Entity::find()
-            .find_with_related(dango_indexer_sql::entity::users::Entity)
+        indexer_sql::entity::accounts::Entity::find()
+            .find_with_related(indexer_sql::entity::users::Entity)
             .all(&dango_context.db)
             .await?;
 
@@ -92,15 +92,17 @@ async fn index_single_user_multiple_single_signature_accounts() -> anyhow::Resul
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let mut test_account1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes);
+    let mut test_account1 =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
 
-    let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+    let test_account2 =
+        add_account_with_existing_user(&mut suite, &contracts, &mut test_account1).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
-        dango_indexer_sql::entity::accounts::Entity::find()
-            .find_with_related(dango_indexer_sql::entity::users::Entity)
+        indexer_sql::entity::accounts::Entity::find()
+            .find_with_related(indexer_sql::entity::users::Entity)
             .all(&dango_context.db)
             .await?;
 

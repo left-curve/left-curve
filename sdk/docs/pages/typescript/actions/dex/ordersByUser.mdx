@@ -1,0 +1,53 @@
+# ordersByUser
+
+List a user's active orders across all pairs.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function ordersByUser(
+  client: Client,
+  parameters: {
+    user: Address
+    startAfter?: OrderId
+    limit?: number
+    height?: number
+  },
+): Promise<Record<OrderId, OrdersByUserResponse>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const user: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const orders = await client.ordersByUser({ user, limit: 100 })
+```
+
+## Parameters
+
+**`user`** — `Address`. The user to query.
+
+**`startAfter`** — `OrderId`, optional. Order id to start after (exclusive).
+
+**`limit`** — `number`, optional. Maximum entries to return.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`Record<OrderId, OrdersByUserResponse>`** — keyed by order id; each value is `{ baseDenom, quoteDenom, direction, price, amount, remaining }`.
+
+## See also
+
+- [`getOrder`](./getOrder)
+- [`batchUpdateOrders`](./batchUpdateOrders)

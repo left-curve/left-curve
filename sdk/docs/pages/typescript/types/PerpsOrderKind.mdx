@@ -1,0 +1,37 @@
+# PerpsOrderKind
+
+A perps order's kind — market or limit.
+
+## Definition
+
+```ts
+type PerpsOrderKind =
+  | { market: { maxSlippage: string } }
+  | {
+      limit: {
+        limitPrice: string
+        timeInForce: "GTC" | "IOC" | "POST"
+        clientOrderId?: string | null
+      }
+    }
+```
+
+## Construction
+
+```ts
+import type { PerpsOrderKind } from "@left-curve/sdk"
+
+const market: PerpsOrderKind = { market: { maxSlippage: "0.005" } }
+const limit: PerpsOrderKind = {
+  limit: { limitPrice: "65000", timeInForce: "GTC" },
+}
+```
+
+## Notes
+
+- `clientOrderId` is not allowed with `timeInForce: "IOC"`.
+
+## See also
+
+- [`submitPerpsOrder`](../actions/perps/submitPerpsOrder)
+- [`cancelPerpsOrder`](../actions/perps/cancelPerpsOrder)

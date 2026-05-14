@@ -1,0 +1,36 @@
+# Info.meta (HL-compat)
+
+HL `meta` — perp universe metadata.
+
+## Signature
+
+```python
+def meta(self, dex: str = "") -> Meta
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+meta = info.meta()
+for asset in meta["universe"]:
+    print(asset["name"], asset["szDecimals"])
+```
+
+## Parameters
+
+**`dex`** — `str`, optional. Accepted-and-ignored.
+
+## Returns
+
+**`Meta`** — `{"universe": [{"name": str, "szDecimals": int}]}`.
+
+## Divergences from upstream
+
+- `szDecimals` is hardcoded to `6` for every asset (Dango uses a uniform settlement decimals). HL distinguishes per-asset.
+
+## See also
+
+- [Native `pair_params`](../../../api/methods/info/pair_params)

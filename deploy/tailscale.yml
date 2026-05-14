@@ -3,9 +3,7 @@
   remote_user: debian
   vars_files:
     - vaults/debian/root_vault.yml
-  collections:
-    - artis3n.tailscale
   vars:
     tailscale_args: "--accept-dns=false"
   roles:
-    - role: artis3n.tailscale
+    - role: artis3n.tailscale.machine

@@ -1,0 +1,42 @@
+# getAccountSeenNonces
+
+Read the most-recent nonces consumed by an account. Used internally by `signAndBroadcastTx` to compute the next nonce.
+
+## Signature
+
+```ts
+function getAccountSeenNonces(
+  client: Client,
+  parameters: {
+    address: Address
+    height?: number
+  },
+): Promise<[number, number[]]>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const [nextNonce, seenNonces] = await client.getAccountSeenNonces({ address })
+```
+
+## Parameters
+
+**`address`** — `Address`. The account.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`[number, number[]]`** — tuple of `[nextNonce, seenNonces]`. `nextNonce` is `seenNonces[seenNonces.length - 1] + 1`, or `0` if no nonces have been seen.
+
+## See also
+
+- [`signAndBroadcastTx`](../app/signAndBroadcastTx) — uses this internally
+- [`getAccountInfo`](./getAccountInfo)

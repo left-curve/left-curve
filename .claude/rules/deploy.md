@@ -49,6 +49,91 @@ Key playbooks:
 Most playbooks require both the `deploy` and `debian` SSH keys. Use `--limit <ip>`
 to target a specific server.
 
+## Internal-API host setup
+
+Hosts with `internal_api_enabled: true` in `host_vars` expose a direct-origin
+hostname `api-<network>-internal-<hostname>.dango.zone` to a manually-managed
+partner-IP allowlist. Traffic bypasses Cloudflare entirely — the A record is
+non-proxied and points straight at the host's public IP.
+
+### Why the DNAT-to-tailscale-IP trick
+
+Docker's port-publish iptables rules live in the FORWARD chain (via the
+`DOCKER` chain in PREROUTING) and bypass UFW's INPUT chain. A per-IP UFW
+allowlist on port 80/443 would have no effect against Docker-published ports.
+
+The fix: a custom PREROUTING DNAT rewrites the destination from the public
+IP to the host's tailscale IP (a local interface address). Because the new
+destination is LOCAL, the packet traverses INPUT — where UFW's per-IP
+allowlist actually applies. Don't "simplify" this by removing the DNAT.
+
+### Enabling on a new host
+
+1. Set `internal_api_enabled: true` in `deploy/host_vars/<ip>.yml`.
+2. Deploy the Traefik router rule:
+   ```bash
+   just update-traefik-routes mainnet <tailscale-ip>
+   ```
+3. Apply firewall + DNS automation (idempotent):
+   ```bash
+   uv run ansible-playbook playbook.yml --tags internal-api --limit <ip>
+   ```
+   This persists `net.ipv4.ip_forward=1`, inserts an ANSIBLE-MANAGED `*nat`
+   block in `/etc/ufw/before.rules` (DNAT public 80/443 → `tailscale_ip` plus
+   `POSTROUTING -o wg0 MASQUERADE`), runs `ufw reload`, makes sure the DNAT
+   rules sit above Docker's PREROUTING chain, and creates a non-proxied A
+   record per `dango_networks` entry.
+4. Add per-partner UFW INPUT allows manually — these stay outside Ansible
+   because they're rare, sensitive changes:
+   ```bash
+   sudo ufw allow in on enp8s0 proto tcp from <partner-ip> to any port 80
+   sudo ufw allow in on enp8s0 proto tcp from <partner-ip> to any port 443
+   ```
+   Until an IP has both entries, all its public 80/443 traffic is dropped
+   (safe default).
+
+### First-apply migration for hand-configured hosts
+
+If a host already has an unmanaged `*nat` block in `/etc/ufw/before.rules`
+(added by hand, no ANSIBLE markers around it), strip it before the first
+apply. Otherwise the new `blockinfile` task inserts a duplicate block and
+`iptables-restore` rejects the file.
+
+```bash
+ssh <host>
+sudo nano /etc/ufw/before.rules
+# delete the existing *nat ... COMMIT block (the unmarked one)
+```
+
+Run with `--check --diff --tags internal-api --limit <ip>` afterward — a
+clean dry-run should only show the blockinfile insert (and possibly the
+iptables reorder).
+
+### Don't replicate cargo from older hosts
+
+The `ufw route allow ... out on wg0 ...` rules visible in older `ufw status`
+dumps are dead code. They specify outgoing interface `wg0`, but the actual
+packet path is `enp8s0 → docker bridge (br-XXXX)` (Docker's DOCKER-chain
+DNAT rewrites the destination to the container IP). The rules never match;
+Docker's own auto-inserted FORWARD ACCEPT rules are what let traffic
+through. The automation deliberately omits them.
+
+### SSL certificates
+
+Unaffected. `roles/traefik/tasks/main.yml` uses certbot's DNS-01 challenge
+via Cloudflare API, and the wildcard cert for `*.dango.zone` already covers
+`api-<network>-internal-<hostname>.dango.zone` — no extra cert work.
+
+### Where the code lives
+
+- Traefik router rule: `roles/full-app/templates/traefik-services.yml`
+  (Jinja conditional on `internal_api_enabled`).
+- Firewall: `roles/common/tasks/internal_api_firewall.yml`, included from
+  `roles/common/tasks/main.yml` under `tags: internal-api`.
+- `reload ufw` handler: `roles/common/handlers/main.yml`.
+- DNS A record: tail of `roles/cloudflared/tasks/cloudflare_tunnel.yml`.
+- Per-host flag: `deploy/host_vars/<ip>.yml` → `internal_api_enabled: true`.
+
 ## Linting
 
 Always lint YAML files after modifications and before commits:

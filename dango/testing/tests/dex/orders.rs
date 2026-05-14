@@ -23,8 +23,8 @@ use {
 /// deserialize. However, let's just assume an attacker somehow circumvents that
 /// (which would require him to collude with a validator), then the contract
 /// would still reject the order.
-#[test]
-fn cannot_submit_order_with_zero_amount() {
+#[tokio::test]
+async fn cannot_submit_order_with_zero_amount() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Attempt to submit a limit order with zero amount.
@@ -44,6 +44,7 @@ fn cannot_submit_order_with_zero_amount() {
             },
             Coins::one(usdc::DENOM.clone(), 1).unwrap(),
         )
+        .await
         .should_fail_with_error(StdError::zero_value::<Uint128>());
 
     // Attempt to submit a market order with zero amount.
@@ -63,11 +64,12 @@ fn cannot_submit_order_with_zero_amount() {
             },
             Coins::one(usdc::DENOM.clone(), 1).unwrap(),
         )
+        .await
         .should_fail_with_error(StdError::zero_value::<Uint128>());
 }
 
-#[test]
-fn cannot_submit_orders_in_non_existing_pairs() {
+#[tokio::test]
+async fn cannot_submit_orders_in_non_existing_pairs() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     suite
@@ -86,6 +88,7 @@ fn cannot_submit_orders_in_non_existing_pairs() {
             },
             Coins::one(usdc::DENOM.clone(), 1).unwrap(),
         )
+        .await
         .should_fail_with_error(format!(
             "pair not found with base `{}` and quote `{}`",
             atom::DENOM.clone(),
@@ -234,7 +237,8 @@ fn cannot_submit_orders_in_non_existing_pairs() {
     => panics "insufficient funds for batch updating orders";
     "two submission insufficient funds"
 )]
-fn submit_and_cancel_orders(
+#[tokio::test]
+async fn submit_and_cancel_orders(
     creates: Vec<CreateOrderRequest>,
     cancels: Option<CancelOrderRequest>,
     funds: Coins,
@@ -257,6 +261,7 @@ fn submit_and_cancel_orders(
             },
             funds,
         )
+        .await
         .should_succeed();
 
     // Cancel the order.
@@ -270,6 +275,7 @@ fn submit_and_cancel_orders(
             },
             coins! { dango::DENOM.clone() => 1 },
         )
+        .await
         .should_succeed();
 
     // Check that the user balance has not changed.
@@ -458,7 +464,8 @@ fn submit_and_cancel_orders(
     };
     "submit one order then cancel it and place a new order excess funds are returned"
 )]
-fn submit_orders_then_cancel_and_submit_in_same_message(
+#[tokio::test]
+async fn submit_orders_then_cancel_and_submit_in_same_message(
     initial_orders: Vec<CreateOrderRequest>,
     initial_funds: Coins,
     cancellations: Option<CancelOrderRequest>,
@@ -480,6 +487,7 @@ fn submit_orders_then_cancel_and_submit_in_same_message(
             },
             initial_funds,
         )
+        .await
         .should_succeed();
 
     // Record the user's balance
@@ -496,6 +504,7 @@ fn submit_orders_then_cancel_and_submit_in_same_message(
             },
             second_funds,
         )
+        .await
         .should_succeed();
 
     // Check that the user balance has changed
@@ -523,8 +532,8 @@ fn submit_orders_then_cancel_and_submit_in_same_message(
         });
 }
 
-#[test]
-fn submit_and_cancel_order_in_same_block() {
+#[tokio::test]
+async fn submit_and_cancel_order_in_same_block() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Record the user's balance
@@ -572,6 +581,7 @@ fn submit_and_cancel_order_in_same_block() {
     // Execute the transaction in a block
     suite
         .make_block(vec![tx])
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -685,7 +695,8 @@ fn submit_and_cancel_order_in_same_block() {
     };
     "dango/usdc with start after and limit"
 )]
-fn query_orders_by_pair(
+#[tokio::test]
+async fn query_orders_by_pair(
     orders_to_submit: Vec<((Denom, Denom), Direction, u128, u128)>,
     (base_denom, quote_denom): (Denom, Denom),
     start_after: Option<OrderId>,
@@ -764,6 +775,7 @@ fn query_orders_by_pair(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -849,7 +861,8 @@ fn query_orders_by_pair(
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "ask smaller than minimum order size"
 )]
-fn limit_order_minimum_order_size(
+#[tokio::test]
+async fn limit_order_minimum_order_size(
     order: CreateOrderRequest,
     funds: Coins,
     min_order_size_quote: Uint128,
@@ -860,33 +873,32 @@ fn limit_order_minimum_order_size(
 
     // Update the pair params with the minimum order size
 
-    suite
+    let pair_params = suite
         .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
-            suite
-                .execute(
-                    &mut accounts.owner,
-                    contracts.dex,
-                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        params: PairParams {
-                            lp_denom: pair_params.lp_denom.clone(),
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: pair_params.pool_type.clone(),
-                            min_order_size_quote,
-                            min_order_size_base,
-                        },
-                    }])),
-                    Coins::new(),
-                )
-                .should_succeed();
-            true
-        });
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    lp_denom: pair_params.lp_denom.clone(),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: pair_params.swap_fee_rate,
+                    pool_type: pair_params.pool_type.clone(),
+                    min_order_size_quote,
+                    min_order_size_base,
+                },
+            }])),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
 
     // Submit the order
     match expected_error {
@@ -901,6 +913,7 @@ fn limit_order_minimum_order_size(
                     },
                     funds,
                 )
+                .await
                 .should_succeed();
         },
 
@@ -915,6 +928,7 @@ fn limit_order_minimum_order_size(
                     },
                     funds,
                 )
+                .await
                 .should_fail_with_error(error);
         },
     }
@@ -1070,7 +1084,8 @@ fn limit_order_minimum_order_size(
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "ask smaller than minimum order size no slippage"
 )]
-fn market_order_minimum_order_size(
+#[tokio::test]
+async fn market_order_minimum_order_size(
     limit_order: CreateOrderRequest,
     market_order: CreateOrderRequest,
     limit_order_funds: Coins,
@@ -1082,30 +1097,29 @@ fn market_order_minimum_order_size(
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Update the pair params with the minimum order size
-    suite
+    let pair_params = suite
         .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
-            suite
-                .execute(
-                    &mut accounts.owner,
-                    contracts.dex,
-                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        params: PairParams {
-                            min_order_size_quote,
-                            min_order_size_base,
-                            ..pair_params.clone()
-                        },
-                    }])),
-                    Coins::new(),
-                )
-                .should_succeed();
-            true
-        });
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    min_order_size_quote,
+                    min_order_size_base,
+                    ..pair_params.clone()
+                },
+            }])),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
 
     // Submit the limit order to create a resting order book
     suite
@@ -1118,6 +1132,7 @@ fn market_order_minimum_order_size(
             },
             limit_order_funds,
         )
+        .await
         .should_succeed();
 
     // Submit the order
@@ -1133,6 +1148,7 @@ fn market_order_minimum_order_size(
                     },
                     market_order_funds,
                 )
+                .await
                 .should_succeed();
         },
         Some(error) => {
@@ -1146,13 +1162,14 @@ fn market_order_minimum_order_size(
                     },
                     market_order_funds,
                 )
+                .await
                 .should_fail_with_error(error);
         },
     }
 }
 
-#[test]
-fn orders_cannot_be_created_for_non_existing_pair() {
+#[tokio::test]
+async fn orders_cannot_be_created_for_non_existing_pair() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Submit limit order
@@ -1172,6 +1189,7 @@ fn orders_cannot_be_created_for_non_existing_pair() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(format!(
             "pair not found with base `{}` and quote `{}`",
             dango::DENOM.clone(),
@@ -1195,6 +1213,7 @@ fn orders_cannot_be_created_for_non_existing_pair() {
             },
             Coins::new(),
         )
+        .await
         .should_fail_with_error(format!(
             "pair not found with base `{}` and quote `{}`",
             dango::DENOM.clone(),
@@ -1212,8 +1231,8 @@ fn orders_cannot_be_created_for_non_existing_pair() {
 /// of 1 * 100 = 100 quote asset deposit, and refund the excess 50, at the time
 /// of order creation. Then, if the user cancels the order, he gets the remaining
 /// 100 back.
-#[test]
-fn create_and_cancel_order_with_remainder() {
+#[tokio::test]
+async fn create_and_cancel_order_with_remainder() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     suite.balances().record(&accounts.user1);
@@ -1234,6 +1253,7 @@ fn create_and_cancel_order_with_remainder() {
             },
             Coins::one(usdc::DENOM.clone(), 150).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1246,6 +1266,7 @@ fn create_and_cancel_order_with_remainder() {
             },
             Coins::default(),
         )
+        .await
         .should_succeed();
 
     suite.balances().should_change(&accounts.user1, btree_map! {

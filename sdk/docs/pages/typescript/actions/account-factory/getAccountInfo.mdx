@@ -1,0 +1,47 @@
+# getAccountInfo
+
+Fetch account details (index, owner, username) for a given account address.
+
+## Signature
+
+```ts
+function getAccountInfo(
+  client: Client,
+  parameters: {
+    address: Address
+    height?: number
+  },
+): Promise<AccountDetails | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const info = await client.getAccountInfo({ address })
+console.log(info?.username, info?.index)
+```
+
+## Parameters
+
+**`address`** — `Address`. The account address.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`AccountDetails | null`** — `{ address, index, owner, username }` or `null` if the address is not a registered account.
+
+## Notes
+
+- This makes two queries: one to the account factory and one to resolve the user's username via [`getUser`](./getUser).
+
+## See also
+
+- [`getAccountStatus`](./getAccountStatus) — user state (`active`/`inactive`/`frozen`)
+- [`getAllAccountInfo`](./getAllAccountInfo)

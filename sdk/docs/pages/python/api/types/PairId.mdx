@@ -1,0 +1,26 @@
+# PairId
+
+A perps pair identifier. `NewType("PairId", str)` — at runtime it is a plain `str`.
+
+## Definition
+
+```python
+PairId = NewType("PairId", str)
+```
+
+## Construction
+
+```python
+from dango.utils.types import PairId
+
+pair = PairId("perp/ethusd")
+```
+
+## Notes
+
+- Dango pair ids are lowercase strings with the prefix `perp/` and the suffix `usd` (every pair settles in USD). Examples: `perp/ethusd`, `perp/btcusd`, `perp/solusd`.
+- Use [`Info.pair_params`](../methods/info/pair_params) to enumerate the configured pairs.
+
+## See also
+
+- [`Addr`](./Addr) — sibling identifier alias

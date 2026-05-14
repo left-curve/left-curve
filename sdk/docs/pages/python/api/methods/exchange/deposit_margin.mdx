@@ -1,0 +1,44 @@
+# deposit_margin
+
+Deposit USDC into the perps margin sub-account. Amount is in **base units** (Uint128).
+
+The perps contract holds margin internally as a USD value; deposits attach
+`bridge/usdc` base units as funds and the contract credits the user's
+`user_state.margin` 1:1 at the fixed \$1 settlement rate. See protocol book:
+`perps/1-margin` §2.
+
+## Signature
+
+```python
+def deposit_margin(self, amount: int) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# 1.50 USDC = 1_500_000 base units (SETTLEMENT_DECIMALS = 6)
+outcome = exchange.deposit_margin(1_500_000)
+```
+
+## Parameters
+
+**`amount`** — `int`. USDC in base units. Must be a positive `int` (not `bool`, not `float`). The settlement denom is `bridge/usdc` with 6 decimals — `1_000_000` is one USDC. Raises `TypeError` on non-int, `ValueError` on zero or negative.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope. Inspect `check_tx`/`deliver_tx` (or the test-shape `code`/`hash`/`events`) for outcome details.
+
+## Notes
+
+- The wire shape uses a `funds` map (`Coins`) — base units are correct. Use [`withdraw_margin`](./withdraw_margin) for the opposite direction, which takes USD instead.
+- `to=None` (the default) sends funds to the signer's own margin sub-account. v1 does not expose the `to` override.
+
+## See also
+
+- [`withdraw_margin`](./withdraw_margin) — counterpart that takes USD instead of base units
+- [Concepts: Encoding & Types](../../../concepts/encoding-and-types) — base units vs USD

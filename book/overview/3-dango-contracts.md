@@ -125,7 +125,7 @@ When the host receives a transaction, it calls the sender account's `authenticat
 2. Verify the account is Active (or in Simulate mode).
 3. Verify the nonce is valid (not seen, not too far ahead).
 4. Verify the signature against the signing key registered in the factory.
-5. Return `AuthResponse { request_backrun }`.
+5. Return `Response`.
 
 ## 5. Taxman (`dango/taxman/`)
 

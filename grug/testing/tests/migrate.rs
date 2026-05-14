@@ -93,8 +93,8 @@ mod tester {
     }
 }
 
-#[test]
-fn migrate() {
+#[tokio::test]
+async fn migrate() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::new())
@@ -129,14 +129,20 @@ fn migrate() {
             Some(admin_addr),
             Coins::default(),
         )
+        .await
         .should_succeed();
 
-    let v2_code_hash = suite.upload(&mut admin, v2).should_succeed().code_hash;
+    let v2_code_hash = suite
+        .upload(&mut admin, v2)
+        .await
+        .should_succeed()
+        .code_hash;
 
     // Try migrate from non_owner
     {
         suite
             .migrate(&mut attacker, contract, v2_code_hash, &MigrateMsg::Fail)
+            .await
             .should_fail_with_error("sender does not have permission to perform this action");
     }
 
@@ -144,6 +150,7 @@ fn migrate() {
     {
         suite
             .migrate(&mut admin, contract, v2_code_hash, &MigrateMsg::Fail)
+            .await
             .should_fail_with_error("host returned error: migrate failed");
 
         // Check the code_hash is still the old one
@@ -161,6 +168,7 @@ fn migrate() {
 
         suite
             .migrate(&mut admin, contract, v2_code_hash, &MigrateMsg::Ok)
+            .await
             .should_succeed();
 
         // Check the code_hash is still the old one
@@ -178,8 +186,8 @@ fn migrate() {
     }
 }
 
-#[test]
-fn migrate_no_admin() {
+#[tokio::test]
+async fn migrate_no_admin() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::new())
@@ -209,12 +217,18 @@ fn migrate_no_admin() {
             None,
             Coins::default(),
         )
+        .await
         .should_succeed();
 
-    let v2_code_hash = suite.upload(&mut admin, v2).should_succeed().code_hash;
+    let v2_code_hash = suite
+        .upload(&mut admin, v2)
+        .await
+        .should_succeed()
+        .code_hash;
 
     // Admin not set, migrate fails
     suite
         .migrate(&mut admin, contract, v2_code_hash, &MigrateMsg::Ok)
+        .await
         .should_fail_with_error("sender does not have permission to perform this action");
 }

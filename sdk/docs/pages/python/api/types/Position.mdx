@@ -1,0 +1,31 @@
+# Position
+
+One open perps position. Returned inside [`UserState`](./UserState).
+
+## Definition
+
+```python
+class Position(TypedDict):
+    size: Quantity
+    entry_price: UsdPrice
+    entry_funding_per_unit: FundingPerUnit
+    conditional_order_above: ConditionalOrder | None
+    conditional_order_below: ConditionalOrder | None
+```
+
+## Fields
+
+**`size`** — `Quantity`. Signed quantity (positive = long, negative = short).
+
+**`entry_price`** — `UsdPrice`. Volume-weighted entry price in USD.
+
+**`entry_funding_per_unit`** — `FundingPerUnit`. Funding accumulator snapshot at entry; used to compute realized funding on close.
+
+**`conditional_order_above`** — `ConditionalOrder | None`. The take-profit / stop-loss order with `TriggerDirection.ABOVE`, if any.
+
+**`conditional_order_below`** — `ConditionalOrder | None`. The conditional order with `TriggerDirection.BELOW`, if any.
+
+## See also
+
+- [`PositionExtended`](./PositionExtended) — same plus computed PnL / liquidation price
+- [`UserState`](./UserState) — container

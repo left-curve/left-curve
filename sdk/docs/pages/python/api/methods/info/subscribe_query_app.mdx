@@ -1,0 +1,67 @@
+# subscribe_query_app
+
+Re-run a `queryApp` request every N blocks. The callback receives the contract response under `payload["response"]`.
+
+## Signature
+
+```python
+def subscribe_query_app(
+    self,
+    request: dict[str, Any],
+    callback: Callable[[dict[str, Any]], None],
+    *,
+    block_interval: int = 10,
+) -> int
+```
+
+## Example
+
+```python
+import time
+
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL, PERPS_CONTRACT_MAINNET
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL)
+
+request = {
+    "wasm_smart": {
+        "contract": Addr(PERPS_CONTRACT_MAINNET),
+        "msg": {"state": {}},
+    },
+}
+
+def on_payload(payload):
+    if "_error" in payload:
+        print("error:", payload["_error"])
+        return
+    print("block:", payload.get("blockHeight"), "state:", payload["response"])
+
+sid = info.subscribe_query_app(request, on_payload, block_interval=5)
+time.sleep(30)
+info.unsubscribe(sid)
+info.disconnect_websocket()
+```
+
+## Parameters
+
+**`request`** — `dict[str, Any]`. Same shape as [`query_app`](./query_app) accepts.
+
+**`callback`** — `Callable[[dict[str, Any]], None]`. Invoked once per polling interval with `{"blockHeight": int, "response": <contract response>}`. Single-key requests are auto-unwrapped — `payload["response"]` is the contract's own response shape (not the `{wasm_smart: ...}` envelope).
+
+**`block_interval`** — `int`, optional. Polling interval in blocks. Default: `10` (~10s at Dango's ~1s block time).
+
+## Returns
+
+**`int`** — the subscription id.
+
+## Notes
+
+- Use this to "subscribe to" contract state when no native subscription exists (e.g. L2 depth, user state).
+- For multi-query requests (`{"multi": [...]}`), the callback sees the multi list under `payload["response"]`.
+
+## See also
+
+- [`query_app`](./query_app) — one-shot counterpart
+- [Concepts: Subscriptions](../../../concepts/subscriptions)

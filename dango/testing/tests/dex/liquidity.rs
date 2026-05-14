@@ -26,8 +26,8 @@ use {
     test_case::test_case,
 };
 
-#[test]
-fn only_owner_can_create_passive_pool() {
+#[tokio::test]
+async fn only_owner_can_create_passive_pool() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let lp_denom = Denom::try_from("dex/pool/xrp/usdc").unwrap();
@@ -55,6 +55,7 @@ fn only_owner_can_create_passive_pool() {
             }])),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("you don't have the right, O you don't have the right");
 
     // Attempt to create pair as owner. Should succeed.
@@ -80,6 +81,7 @@ fn only_owner_can_create_passive_pool() {
             }])),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }
 
@@ -209,7 +211,8 @@ fn only_owner_can_create_passive_pool() {
     Uint128::new(199_899_999)
     ; "geometric pool provision at different ratio 2"
 )]
-fn provide_liquidity(
+#[tokio::test]
+async fn provide_liquidity(
     provision: Coins,
     swap_fee: Udec128,
     pool_type: PassiveLiquidity,
@@ -226,34 +229,32 @@ fn provide_liquidity(
         usdc::DENOM.clone()  => 100,
     };
 
-    suite
+    let pair_params = suite
         .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
-            // Update pair params
-            suite
-                .execute(
-                    &mut accounts.owner,
-                    contracts.dex,
-                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        params: PairParams {
-                            lp_denom: pair_params.lp_denom.clone(),
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: Bounded::new_unchecked(swap_fee),
-                            pool_type,
-                            min_order_size_quote: Uint128::ZERO,
-                            min_order_size_base: Uint128::ZERO,
-                        },
-                    }])),
-                    Coins::new(),
-                )
-                .should_succeed();
-            true
-        });
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    lp_denom: pair_params.lp_denom.clone(),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(swap_fee),
+                    pool_type,
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                },
+            }])),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
 
     // Register the oracle prices
     for (denom, price) in oracle_prices {
@@ -270,6 +271,7 @@ fn provide_liquidity(
                 }),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -284,6 +286,7 @@ fn provide_liquidity(
             },
             initial_reserves.clone(),
         )
+        .await
         .should_succeed();
 
     // Record the users initial balances.
@@ -307,6 +310,7 @@ fn provide_liquidity(
             },
             provision.clone(),
         )
+        .await
         .should_succeed();
 
     // Ensure that the dex balance has increased by the expected amount.
@@ -340,43 +344,41 @@ fn provide_liquidity(
         );
 }
 
-#[test]
-fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
+#[tokio::test]
+async fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Update pair params
-    suite
+    let pair_params = suite
         .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
-            // Update pair params
-            suite
-                .execute(
-                    &mut accounts.owner,
-                    contracts.dex,
-                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        params: PairParams {
-                            lp_denom: pair_params.lp_denom.clone(),
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: PassiveLiquidity::Geometric(Geometric {
-                                spacing: Udec128::ONE,
-                                ratio: Bounded::new_unchecked(Udec128::ONE),
-                                limit: 10,
-                            }),
-                            min_order_size_quote: Uint128::ZERO,
-                            min_order_size_base: Uint128::ZERO,
-                        },
-                    }])),
-                    Coins::new(),
-                )
-                .should_succeed();
-            true
-        });
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    lp_denom: pair_params.lp_denom.clone(),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: pair_params.swap_fee_rate,
+                    pool_type: PassiveLiquidity::Geometric(Geometric {
+                        spacing: Udec128::ONE,
+                        ratio: Bounded::new_unchecked(Udec128::ONE),
+                        limit: 10,
+                    }),
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                },
+            }])),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
 
     // Since there is no oracle price, liquidity provision should fail.
     suite
@@ -393,6 +395,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                 usdc::DENOM.clone() => 100_000,
             },
         )
+        .await
         .should_fail_with_error(StdError::data_not_found::<PrecisionlessPrice>(
             PYTH_PRICES.path(USDC_USD_ID.id).storage_key(),
         ));
@@ -416,7 +419,12 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
     };
     "withdraw half"
 )]
-fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds_returned: Coins) {
+#[tokio::test]
+async fn withdraw_liquidity(
+    lp_burn_amount: Uint128,
+    swap_fee: Udec128,
+    expected_funds_returned: Coins,
+) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
@@ -427,34 +435,32 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         usdc::DENOM.clone()  => 100,
     };
 
-    suite
+    let pair_params = suite
         .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
-            // Update pair params
-            suite
-                .execute(
-                    &mut accounts.owner,
-                    contracts.dex,
-                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        params: PairParams {
-                            lp_denom: pair_params.lp_denom.clone(),
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: Bounded::new_unchecked(swap_fee),
-                            pool_type: pair_params.pool_type.clone(),
-                            min_order_size_quote: Uint128::ZERO,
-                            min_order_size_base: Uint128::ZERO,
-                        },
-                    }])),
-                    Coins::new(),
-                )
-                .should_succeed();
-            true
-        });
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    lp_denom: pair_params.lp_denom.clone(),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(swap_fee),
+                    pool_type: pair_params.pool_type.clone(),
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                },
+            }])),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
 
     // Register the oracle prices
     suite
@@ -470,6 +476,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -485,6 +492,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Owner provides some initial liquidity.
@@ -499,6 +507,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             },
             initial_reserves.clone(),
         )
+        .await
         .should_succeed();
 
     // User provides some liquidity.
@@ -517,6 +526,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             },
             provided_funds.clone(),
         )
+        .await
         .should_succeed();
 
     // record user and dex balances
@@ -536,6 +546,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             },
             coins! { lp_denom.clone() => lp_burn_amount },
         )
+        .await
         .should_succeed();
 
     // Assert that the user's balances have changed as expected.
@@ -981,7 +992,8 @@ fn balance_changes_from_coins(
     ];
     "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders"
 )]
-fn curve_on_orderbook(
+#[tokio::test]
+async fn curve_on_orderbook(
     pool_type: PassiveLiquidity,
     swap_fee_rate: Udec128,
     pool_liquidity: Coins,
@@ -1004,37 +1016,36 @@ fn curve_on_orderbook(
             None,                // No chain config update
             Some(app_config),    // App config update
         )
+        .await
         .should_succeed();
 
     // Update pair params
-    suite
+    let pair_params = suite
         .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
             base_denom: eth::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
-            // Provide liquidity with owner account
-            suite
-                .execute(
-                    &mut accounts.owner,
-                    contracts.dex,
-                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
-                        base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        params: PairParams {
-                            lp_denom: pair_params.lp_denom.clone(),
-                            pool_type,
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                            min_order_size_quote: Uint128::ZERO,
-                            min_order_size_base: Uint128::ZERO,
-                        },
-                    }])),
-                    pool_liquidity.clone(),
-                )
-                .should_succeed();
-            true
-        });
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params: PairParams {
+                    lp_denom: pair_params.lp_denom.clone(),
+                    pool_type,
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                },
+            }])),
+            pool_liquidity.clone(),
+        )
+        .await
+        .should_succeed();
 
     // Register oracle price source for USDC
     suite
@@ -1050,6 +1061,7 @@ fn curve_on_orderbook(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Register oracle price source for ETH
@@ -1066,6 +1078,7 @@ fn curve_on_orderbook(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Provide liquidity with owner account
@@ -1080,6 +1093,7 @@ fn curve_on_orderbook(
             },
             pool_liquidity.clone(),
         )
+        .await
         .should_succeed();
 
     // Record dex and user balances
@@ -1110,6 +1124,7 @@ fn curve_on_orderbook(
     // successful.
     suite
         .make_block(txs)
+        .await
         .block_outcome
         .tx_outcomes
         .into_iter()
@@ -1756,7 +1771,8 @@ fn curve_on_orderbook(
     });
     "multiple orders on both sides, two orders per bucket, bucket size 20, cancel some orders"
 )]
-fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancellation(
+#[tokio::test]
+async fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancellation(
     limit_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
     cancels: Option<CancelOrderRequest>,
     bucket_size: Price,
@@ -1787,6 +1803,7 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
             }])),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Register oracle price sources for ETH and USDC
@@ -1803,6 +1820,7 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1818,6 +1836,7 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Calculate required funds for market orders
@@ -1878,6 +1897,7 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
             },
             funds,
         )
+        .await
         .should_succeed();
 
     // Query the liquidity depth
@@ -1901,6 +1921,7 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Query the liquidity depth
@@ -1917,8 +1938,8 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
         );
 }
 
-#[test]
-fn decrease_liquidity_depths_minimal_failing_test() {
+#[tokio::test]
+async fn decrease_liquidity_depths_minimal_failing_test() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Register oracle price sources for ETH and USDC
@@ -1935,6 +1956,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Submit new orders with user1
@@ -1965,6 +1987,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
                 usdc::DENOM.clone() => 411_000_000,
             },
         )
+        .await
         .should_succeed();
 
     // Submit matching orders with user2
@@ -1988,6 +2011,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
                 eth::DENOM.clone() => 117304 * 2,
             },
         )
+        .await
         .should_succeed();
 
     // Assert that orderbook is empty
@@ -2001,8 +2025,8 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         .should_succeed_and_equal(BTreeMap::new());
 }
 
-#[test]
-fn provide_liquidity_fails_when_minimum_output_is_not_met() {
+#[tokio::test]
+async fn provide_liquidity_fails_when_minimum_output_is_not_met() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let expected_mint_amount = Uint128::new(100_000_000) - MINIMUM_LIQUIDITY;
@@ -2021,6 +2045,7 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
                 usdc::DENOM.clone() => 100,
             },
         )
+        .await
         .should_fail_with_error(format!(
             "LP mint amount is less than the minimum output: {} < {}",
             expected_mint_amount,
@@ -2028,8 +2053,8 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
         ));
 }
 
-#[test]
-fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
+#[tokio::test]
+async fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
@@ -2048,6 +2073,7 @@ fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
                 usdc::DENOM.clone() => 100,
             },
         )
+        .await
         .should_succeed();
 
     let lp_balance = suite
@@ -2071,6 +2097,7 @@ fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
             },
             Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         )
+        .await
         .should_fail_with_error(format!(
             "withdrawn assets are less than the minimum output: {:?} < {:?}",
             CoinPair::try_from(coins! {

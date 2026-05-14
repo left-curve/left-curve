@@ -15,8 +15,10 @@ use {
     awc::BoxedSocket,
     core::str,
     futures_util::{sink::SinkExt, stream::StreamExt},
-    grug_httpd::subscription_limiter::SubscriptionLimiter,
-    indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
+    indexer_httpd::{
+        context::FullContext, graphql::build_full_schema, server::config_app,
+        subscription_limiter::SubscriptionLimiter,
+    },
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
@@ -28,13 +30,10 @@ use {
     tokio::time::{Duration, timeout},
 };
 
-// Re-export PageInfo from dango_sdk for use in pagination helpers
-pub use dango_sdk::PageInfo;
-
-// Re-export query modules for use in pagination helpers
-pub use dango_sdk::{
-    Blocks, Events, Messages, Transactions, blocks as blocks_query, events as events_query,
-    messages as messages_query, transactions as transactions_query,
+// Re-export PageInfo and query modules for use in pagination helpers
+pub use indexer_graphql_types::{
+    Blocks, Events, Messages, PageInfo, Transactions, blocks as blocks_query,
+    events as events_query, messages as messages_query, transactions as transactions_query,
 };
 
 pub mod block;
@@ -52,14 +51,14 @@ pub enum PaginationDirection {
 ///
 /// This is the base macro that can be used with any context type by providing
 /// an app builder expression. Use `impl_indexer_paginate!` for the common case
-/// with `indexer_httpd::context::Context`.
+/// with `indexer_httpd::context::FullContext`.
 ///
 /// # Arguments
 ///
 /// * `$fn_name` - The name of the generated function
-/// * `$context_type` - The context type (e.g., `indexer_httpd::context::Context`)
+/// * `$context_type` - The context type (e.g., `indexer_httpd::context::FullContext`)
 /// * `$query_type` - The GraphQL query type (e.g., `Blocks`)
-/// * `$module` - The module containing the query types (e.g., `dango_sdk::blocks`)
+/// * `$module` - The module containing the query types (e.g., `indexer_graphql_types::blocks`)
 /// * `$field` - The response field name (e.g., `blocks`)
 /// * `$node_type` - The node type returned by the query
 /// * `$app_builder` - Expression to build the app from context
@@ -149,7 +148,7 @@ macro_rules! impl_indexer_paginate {
     ($fn_name:ident, $query_type:ty, $module:ident, $field:ident, $node_type:ident) => {
         $crate::impl_paginate!(
             $fn_name,
-            indexer_httpd::context::Context,
+            indexer_httpd::context::FullContext,
             $query_type,
             $module,
             $field,
@@ -255,7 +254,7 @@ impl<R> DerefMut for GraphQLCustomResponse<R> {
 }
 
 pub fn build_app_service(
-    app_ctx: Context,
+    app_ctx: FullContext,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -265,7 +264,7 @@ pub fn build_app_service(
         Error = actix_web::Error,
     >,
 > {
-    let graphql_schema = build_schema(app_ctx.clone());
+    let graphql_schema = build_full_schema(app_ctx.clone());
 
     build_actix_app(app_ctx, graphql_schema)
 }
@@ -602,13 +601,13 @@ where
 
 /// Calls a GraphQL subscription and returns the first response.
 pub async fn call_ws_graphql<F, A, B, R>(
-    context: Context,
+    context: FullContext,
     app_builder: F,
     request_body: GraphQLCustomRequest<'_>,
 ) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
     R: DeserializeOwned,
-    F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
+    F: Fn(FullContext) -> App<A> + Clone + Send + Sync + 'static,
     A: ServiceFactory<
             ServiceRequest,
             Response = ServiceResponse<B>,
@@ -684,7 +683,7 @@ where
 }
 
 pub fn build_actix_app<G>(
-    app_ctx: Context,
+    app_ctx: FullContext,
     graphql_schema: G,
 ) -> App<
     impl ServiceFactory<
@@ -711,7 +710,7 @@ where
 ///
 /// See <https://github.com/async-graphql/async-graphql/discussions/1630>.
 pub fn build_actix_app_with_config<F, G>(
-    app_ctx: Context,
+    app_ctx: FullContext,
     graphql_schema: G,
     config_app: F,
 ) -> App<
@@ -725,7 +724,7 @@ pub fn build_actix_app_with_config<F, G>(
 >
 where
     G: Clone + 'static,
-    F: FnOnce(Context, G) -> Box<dyn Fn(&mut ServiceConfig)>,
+    F: FnOnce(FullContext, G) -> Box<dyn Fn(&mut ServiceConfig)>,
 {
     let app = App::new()
         .app_data(web::Data::new(SubscriptionLimiter::new(10, 5000)))

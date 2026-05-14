@@ -1,6 +1,5 @@
-import { decodeBase64, decodeHex, encodeEndian32 } from "@left-curve/sdk/encoding";
-import type { Key, KeyHash } from "../types/key.js";
-import { KeyTag } from "../types/key.js";
+import { decodeBase64, decodeHex, encodeEndian32 } from "@left-curve/encoding";
+import { KeyTag, type Key, type KeyHash } from "@left-curve/types";
 import { isValidAddress } from "./address.js";
 
 type CreateAccountSaltParameters = {

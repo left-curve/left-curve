@@ -1,1 +1,1 @@
-../../../../../sdk/rust/src/schemas/queries/perpsCandles.graphql
+../../../../../indexer/graphql-types/src/schemas/queries/perpsCandles.graphql

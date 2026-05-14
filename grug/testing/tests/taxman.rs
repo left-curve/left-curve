@@ -151,7 +151,8 @@ mod taxman {
     None;
     "successful tx"
 )]
-fn withholding_and_finalizing_fee_works(
+#[tokio::test]
+async fn withholding_and_finalizing_fee_works(
     sender_balance_before: u128,
     send_amount: u128,
     gas_limit: u64,
@@ -178,15 +179,17 @@ fn withholding_and_finalizing_fee_works(
 
     let to = accounts["receiver"].address;
 
-    let outcome = suite.send_message_with_gas(
-        &mut accounts["sender"],
-        gas_limit,
-        Message::transfer(
-            to,
-            Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
+    let outcome = suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            gas_limit,
+            Message::transfer(
+                to,
+                Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
+            )
+            .unwrap(),
         )
-        .unwrap(),
-    );
+        .await;
 
     match maybe_err {
         Some(err) => {
@@ -216,8 +219,8 @@ fn withholding_and_finalizing_fee_works(
 // If it does fail though, we simply discard all state changes and events emitted
 // by the transaction, as if it never happened. We also print a log to the CLI
 // at the ERROR tracing level to raise developer's awareness.
-#[test]
-fn finalizing_fee_erroring() {
+#[tokio::test]
+async fn finalizing_fee_erroring() {
     let bugged_taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))
         .with_withhold_fee(Box::new(taxman::withhold_fee))
         .with_finalize_fee(Box::new(taxman::bugged_finalize_fee))
@@ -238,11 +241,13 @@ fn finalizing_fee_erroring() {
     // Send a transaction with a single message.
     // `withhold_fee` must pass, which should be the case as we're requesting
     // zero gas limit.
-    let outcome = suite.send_message_with_gas(
-        &mut accounts["sender"],
-        2000,
-        Message::transfer(to, Coins::new()).unwrap(),
-    );
+    let outcome = suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            2000,
+            Message::transfer(to, Coins::new()).unwrap(),
+        )
+        .await;
 
     // Result should be an error.
     let failing = outcome.should_fail_with_error("division by zero: 1 / 0");

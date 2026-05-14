@@ -26,8 +26,8 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
     (suite, accounts, contracts.vesting)
 }
 
-#[test]
-fn missing_funds() {
+#[tokio::test]
+async fn missing_funds() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -44,11 +44,12 @@ fn missing_funds() {
             },
             Coins::default(),
         )
+        .await
         .should_fail_with_error("invalid payment: expecting 1, found 0");
 }
 
-#[test]
-fn non_owner_creating_position() {
+#[tokio::test]
+async fn non_owner_creating_position() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -65,11 +66,12 @@ fn non_owner_creating_position() {
             },
             Coins::one(dango::DENOM.clone(), 100).unwrap(),
         )
+        .await
         .should_fail_with_error("you don't have the right");
 }
 
-#[test]
-fn not_dango_token() {
+#[tokio::test]
+async fn not_dango_token() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -86,14 +88,15 @@ fn not_dango_token() {
             },
             Coins::one(usdc::DENOM.clone(), 100).unwrap(),
         )
+        .await
         .should_fail_with_error(StdError::invalid_payment(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
         ));
 }
 
-#[test]
-fn before_unlocking_starting_time() {
+#[tokio::test]
+async fn before_unlocking_starting_time() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -110,6 +113,7 @@ fn before_unlocking_starting_time() {
             },
             TEST_AMOUNT.clone(),
         )
+        .await
         .should_succeed();
 
     let initial_balance = suite
@@ -127,6 +131,7 @@ fn before_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_fail_with_error("nothing to claim");
     }
 
@@ -141,6 +146,7 @@ fn before_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         suite
@@ -165,6 +171,7 @@ fn before_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         suite
@@ -189,6 +196,7 @@ fn before_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         suite
@@ -204,8 +212,8 @@ fn before_unlocking_starting_time() {
     }
 }
 
-#[test]
-fn after_unlocking_starting_time() {
+#[tokio::test]
+async fn after_unlocking_starting_time() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -222,6 +230,7 @@ fn after_unlocking_starting_time() {
             },
             TEST_AMOUNT.clone(),
         )
+        .await
         .should_succeed();
 
     let initial_balance = suite
@@ -239,6 +248,7 @@ fn after_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_fail_with_error("nothing to claim");
     }
 
@@ -253,6 +263,7 @@ fn after_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_fail_with_error("nothing to claim");
     }
 
@@ -268,6 +279,7 @@ fn after_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         suite
@@ -292,6 +304,7 @@ fn after_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         suite
@@ -316,6 +329,7 @@ fn after_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         suite
@@ -331,8 +345,8 @@ fn after_unlocking_starting_time() {
     }
 }
 
-#[test]
-fn terminate_before_unlocking_starting_time_never_claimed() {
+#[tokio::test]
+async fn terminate_before_unlocking_starting_time_never_claimed() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -349,6 +363,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             },
             TEST_AMOUNT.clone(),
         )
+        .await
         .should_succeed();
 
     let epoch = epoch(ONE_MONTH * 27, TEST_AMOUNT.amount);
@@ -375,6 +390,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
                 },
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check the status of the position after terminate
@@ -397,6 +413,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check the balance of the user
@@ -415,6 +432,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check if the position is removed
@@ -434,8 +452,8 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
     }
 }
 
-#[test]
-fn terminate_before_unlocking_starting_time_with_claimed() {
+#[tokio::test]
+async fn terminate_before_unlocking_starting_time_with_claimed() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -452,6 +470,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             },
             TEST_AMOUNT.clone(),
         )
+        .await
         .should_succeed();
 
     let epoch = epoch(ONE_MONTH * 27, TEST_AMOUNT.amount);
@@ -477,6 +496,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check the balance of the user
@@ -503,6 +523,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
                 },
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check the status of the position after terminate
@@ -528,6 +549,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check if the position is removed
@@ -547,8 +569,8 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
     }
 }
 
-#[test]
-fn terminate_after_unlocking_starting_time() {
+#[tokio::test]
+async fn terminate_after_unlocking_starting_time() {
     let (mut suite, mut accounts, vesting_addr) = setup_test();
 
     suite
@@ -565,6 +587,7 @@ fn terminate_after_unlocking_starting_time() {
             },
             TEST_AMOUNT.clone(),
         )
+        .await
         .should_succeed();
 
     let initial_balance = suite
@@ -589,6 +612,7 @@ fn terminate_after_unlocking_starting_time() {
                 },
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check the status of the position after terminate
@@ -611,6 +635,7 @@ fn terminate_after_unlocking_starting_time() {
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
+            .await
             .should_succeed();
 
         // Check if the position is removed

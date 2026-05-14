@@ -1,0 +1,117 @@
+# WsClient
+
+A WebSocket factory that speaks `graphql-transport-ws` on top of `tokio-tungstenite` for Dango GraphQL subscriptions.
+
+## Setup
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::WsClient,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = WsClient::new("wss://api-mainnet.dango.zone/graphql")?;
+    let _ = client;
+    Ok(())
+}
+```
+
+```rust
+pub struct WsClient { /* url: Url */ }
+
+impl WsClient {
+    pub fn new(url: impl Into<String>) -> Result<Self, anyhow::Error>;
+    pub fn from_http_url(url: impl Into<String>) -> Result<Self, anyhow::Error>;
+}
+```
+
+`new` accepts only `ws://` or `wss://` URLs. `from_http_url` rewrites `http://` → `ws://` and `https://` → `wss://`, passing through schemes that are already WebSocket. Both are syntactic — neither opens a connection.
+
+## Configuration
+
+`WsClient` is a thin config holder: just a parsed `Url`. No options are exposed; the keepalive interval (15 s) is fixed.
+
+## Methods
+
+| Method | Description |
+|--------|-------------|
+| [`new`](../methods/ws-client/new)                       | Construct from a `ws://` or `wss://` URL. |
+| [`from_http_url`](../methods/ws-client/from_http_url)   | Construct from an `http://`/`https://` URL, rewriting the scheme. |
+| [`connect`](../methods/ws-client/connect)               | Open a connection and return a multiplexed [`Session`](./Session). |
+| [`subscribe`](../methods/ws-client/subscribe)           | Open a dedicated connection for one subscription. |
+
+## End-to-end example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscribeBlock, WsClient, subscribe_block},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = WsClient::new("wss://api-mainnet.dango.zone/graphql")?;
+
+    // One subscription, dedicated connection.
+    let mut stream = client
+        .subscribe::<SubscribeBlock>(subscribe_block::Variables {})
+        .await?;
+    while let Some(item) = stream.next().await {
+        println!("{item:?}");
+    }
+    Ok(())
+}
+```
+
+For many concurrent subscriptions, use `connect` and reuse a [`Session`](./Session):
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscribeBlock, SubscribeTrades, WsClient, subscribe_block, subscribe_trades},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let session = WsClient::new("wss://api-mainnet.dango.zone/graphql")?
+        .connect()
+        .await?;
+
+    let mut blocks = session
+        .subscribe::<SubscribeBlock>(subscribe_block::Variables {})
+        .await?;
+    let mut trades = session
+        .subscribe::<SubscribeTrades>(subscribe_trades::Variables {
+            base_denom:  "dango".into(),
+            quote_denom: "bridge/usdc".into(),
+        })
+        .await?;
+
+    loop {
+        tokio::select! {
+            Some(item) = blocks.next() => println!("block: {item:?}"),
+            Some(item) = trades.next() => println!("trade: {item:?}"),
+            else => break,
+        }
+    }
+    Ok(())
+}
+```
+
+## Notes
+
+- `WsClient` is `Debug + Clone`. Cloning is free.
+- `WsClient::subscribe` opens a dedicated connection. Each call costs one full handshake. Prefer [`Session::subscribe`](./Session) when streaming multiple subscriptions in one task.
+- The server caps each connection at 30 concurrent subscriptions. See [Rate Limits](../../concepts/rate-limits).
+- The SDK sends a `Ping` every 15 s on every open connection (below the server's 30 s `keepalive_timeout`).
+
+## See also
+
+- [Session](./Session) — multiplexed connection handle.
+- [SubscriptionStream](../subscriptions/SubscriptionStream) — the returned stream type.
+- [SubscriptionVariables](../subscriptions/SubscriptionVariables) — sugar for typed variables.
+- [Concepts: Subscriptions](../../concepts/subscriptions) — when to use which entry point.

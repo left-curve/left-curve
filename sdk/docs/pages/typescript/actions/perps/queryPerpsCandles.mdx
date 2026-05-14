@@ -1,0 +1,53 @@
+# queryPerpsCandles
+
+Read historical perps candles for a pair at a given interval. Paginated cursor-style.
+
+## Signature
+
+```ts
+function queryPerpsCandles(
+  client: Client,
+  parameters: {
+    pairId: string
+    interval: CandleIntervals
+    after?: string
+    first?: number
+    earlierThan?: DateTime
+    laterThan?: DateTime
+  },
+): Promise<GraphqlQueryResult<PerpsCandle>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const page = await client.queryPerpsCandles({
+  pairId: "BTC-PERP",
+  interval: "ONE_MINUTE",
+  first: 100,
+})
+```
+
+## Parameters
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`interval`** — `CandleIntervals`. Candle interval.
+
+**`after`** — `string`, optional. Cursor.
+
+**`first`** — `number`, optional. Page size.
+
+**`earlierThan`**, **`laterThan`** — `DateTime`, optional. ISO 8601 bounds.
+
+## Returns
+
+**`GraphqlQueryResult<PerpsCandle>`** — `{ pageInfo, nodes }`.
+
+## See also
+
+- [`perpsCandlesSubscription`](../indexer/perpsCandlesSubscription)
+- [`queryCandles`](../dex/queryCandles) — spot equivalent

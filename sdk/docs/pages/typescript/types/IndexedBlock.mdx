@@ -1,0 +1,22 @@
+# IndexedBlock
+
+A block as returned by the indexer — header plus transactions and cron outcomes.
+
+## Definition
+
+```ts
+type IndexedBlock = {
+  blockHeight: number
+  createdAt: string
+  hash: string
+  appHash: string
+  cronsOutcomes: string   // JSON-encoded outcomes
+  transactions: IndexedTransaction[]
+}
+```
+
+## See also
+
+- [`queryBlock`](../actions/indexer/queryBlock)
+- [`blockSubscription`](../actions/indexer/blockSubscription) — omits `transactions`
+- [`BlockInfo`](./BlockInfo)

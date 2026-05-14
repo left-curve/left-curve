@@ -1,12 +1,13 @@
-import type { Address, Hex, Json, Transport } from "@left-curve/sdk/types";
-import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
 import type {
-  DangoClient,
+  Address,
+  Client,
+  Hex,
+  Json,
   Signer,
   TxMessageType,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type MigrateParameters = {
   sender: Address;
@@ -18,8 +19,8 @@ export type MigrateParameters = {
 
 export type MigrateReturnType = Promise<SignAndBroadcastTxReturnType>;
 
-export async function migrate<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function migrate(
+  client: Client<Signer>,
   parameters: MigrateParameters,
 ): MigrateReturnType {
   const { sender, contract, msg, newCodeHash } = parameters;

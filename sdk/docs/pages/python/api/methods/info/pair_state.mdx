@@ -1,0 +1,41 @@
+# pair_state
+
+Per-pair runtime state: open interest, funding accumulator, current funding rate.
+
+`funding_per_unit` is the pair-level running accumulator; per-position
+accrued funding is `size × (funding_per_unit − entry_funding_per_unit)` and
+settles lazily whenever a position is touched. `funding_rate` is the clamped
+per-day rate finalised at the most recent funding collection. See protocol
+book: `perps/3-funding` §3–§4.
+
+## Signature
+
+```python
+def pair_state(self, pair_id: PairId) -> PairState | None
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+state = info.pair_state(PairId("perp/ethusd"))
+if state is not None:
+    print(state["long_oi"], state["short_oi"], state["funding_rate"])
+```
+
+## Parameters
+
+**`pair_id`** — `PairId`. The pair identifier.
+
+## Returns
+
+**`PairState | None`** — TypedDict with runtime state. `None` if the pair is not configured. See [`PairState`](../../types/PairState).
+
+## See also
+
+- [`pair_states`](./pair_states) — enumerate all pairs
+- [`pair_param`](./pair_param) — parameters counterpart

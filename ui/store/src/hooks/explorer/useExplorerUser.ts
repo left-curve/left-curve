@@ -2,7 +2,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "../usePublicClient.js";
 import { usePrices } from "../usePrices.js";
 
-import type { Address, Coins, User, UserStatus } from "@left-curve/dango/types";
+import type { Address, Coins, User, UserStatus } from "@left-curve/types";
 
 export type AccountWithDetails = {
   address: Address;

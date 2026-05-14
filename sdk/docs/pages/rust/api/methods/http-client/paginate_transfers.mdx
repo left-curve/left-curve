@@ -1,0 +1,52 @@
+# paginate_transfers
+
+Fetch every record in the indexer's `transfers` connection, paginating forward.
+
+## Signature
+
+```rust
+pub async fn paginate_transfers(
+    &self,
+    page_size: i64,
+    variables: transfers::Variables,
+) -> Result<Vec<transfers::TransfersTransfersNodes>, anyhow::Error>;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, transfers},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+
+    let transfers = client
+        .paginate_transfers(100, transfers::Variables {
+            from_address: Some("0x0000000000000000000000000000000000000000".into()),
+            ..Default::default()
+        })
+        .await?;
+
+    println!("{} transfers", transfers.len());
+    Ok(())
+}
+```
+
+## Parameters
+
+**`page_size`** — `i64`. Items per request. Indexer caps `first` at 100.
+
+**`variables`** — `transfers::Variables`. Filters (sender, recipient, denom, height range, …). Pagination fields are overwritten by the loop.
+
+## Returns
+
+**`Vec<transfers::TransfersTransfersNodes>`** — every transfer matching the filter, in the indexer's natural order.
+
+## See also
+
+- [`paginate_all`](./paginate_all) — generic, supports backward pagination.
+- [`paginate_accounts`](./paginate_accounts) — sibling for accounts.

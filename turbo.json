@@ -12,18 +12,16 @@
       "cache": false
     },
     "test": {},
-    "pre-dev": {
-      "dependsOn": ["^pre-dev"],
-      "outputs": [".next/**", "!.next/cache/**", "build/**"]
-    },
     "dev": {
-      "dependsOn": ["pre-dev"],
       "cache": false,
       "persistent": true
     },
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "build/**"]
+    },
+    "@left-curve/docs#build": {
+      "outputs": ["dist/**"]
     }
   },
   "globalEnv": [

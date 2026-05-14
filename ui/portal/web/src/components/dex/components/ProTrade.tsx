@@ -35,7 +35,7 @@ import {
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/utils";
 
 import { Cell, FormattedNumber, IconLink, Table, Tabs } from "@left-curve/applets-kit";
 import { CountBadge } from "../../foundation/CountBadge";
@@ -49,7 +49,7 @@ import { SpotTradeHistory, PerpsTradeHistory } from "./TradeHistory";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { ConditionalOrder, OrderId, PairId } from "@left-curve/dango/types";
+import type { ConditionalOrder, OrderId, PairId } from "@left-curve/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;
@@ -417,13 +417,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             className="text-right"
-            text={
-              <FormattedNumber
-                number={row.original.entryPrice}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
-            }
+            text={<FormattedNumber number={row.original.entryPrice} as="span" />}
           />
         ),
       },
@@ -435,13 +429,7 @@ const PerpsPositionsTable: React.FC = () => {
         cell: ({ row }) => (
           <Cell.Text
             className="text-right"
-            text={
-              <FormattedNumber
-                number={row.original.currentPrice.toString()}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
-            }
+            text={<FormattedNumber number={row.original.currentPrice.toString()} as="span" />}
           />
         ),
       },
@@ -522,7 +510,7 @@ const PerpsPositionsTable: React.FC = () => {
           const tpDisplay = tp ? formatNumber(tp.triggerPrice, formatNumberOptions) : "--";
           const slDisplay = sl ? formatNumber(sl.triggerPrice, formatNumberOptions) : "--";
           return (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 justify-end">
               <Cell.Text text={`${tpDisplay}/${slDisplay}`} />
               <button
                 type="button"
@@ -622,7 +610,6 @@ type UnifiedOrder = {
   pairDisplay: string;
   side: "buy" | "sell";
   type: "limit";
-  price: string;
   rawPrice: string;
   size: string;
   filled: string | null;
@@ -632,11 +619,10 @@ type UnifiedOrder = {
 };
 
 const UnifiedOpenOrders: React.FC = () => {
-  const { showModal, settings } = useApp();
+  const { showModal } = useApp();
   const { coins } = useConfig();
   const mode = TradePairStore((s) => s.mode);
 
-  const { formatNumberOptions } = settings;
   const { baseCoin } = useTradeCoins();
 
   const [showAllPairs, setShowAllPairs] = useState(true);
@@ -676,7 +662,6 @@ const UnifiedOpenOrders: React.FC = () => {
           pairDisplay: `${baseSymbol}/${quoteSymbol}`,
           side: order.direction === "bid" ? "buy" : "sell",
           type: "limit",
-          price: formatNumber(spotPrice, formatNumberOptions),
           rawPrice: spotPrice,
           size: originalSize,
           filled: filledQty,
@@ -702,7 +687,6 @@ const UnifiedOpenOrders: React.FC = () => {
           pairDisplay: label,
           side: isLong ? "buy" : "sell",
           type: "limit",
-          price: `$${formatNumber(order.limitPrice, formatNumberOptions)}`,
           rawPrice: order.limitPrice,
           size: Math.abs(Number(order.size)).toString(),
           filled: null,
@@ -713,15 +697,7 @@ const UnifiedOpenOrders: React.FC = () => {
     }
 
     return rows;
-  }, [
-    mode,
-    spotOrders.data,
-    perpsOrders,
-    showAllPairs,
-    currentPerpsPairId,
-    coins,
-    formatNumberOptions,
-  ]);
+  }, [mode, spotOrders.data, perpsOrders, showAllPairs, currentPerpsPairId, coins]);
 
   const columns: TableColumn<UnifiedOrder> = [
     {
@@ -770,12 +746,25 @@ const UnifiedOpenOrders: React.FC = () => {
     },
     {
       header: m["dex.protrade.orders.price"](),
-      cell: ({ row }) => <Cell.Text text={row.original.price} />,
+      cell: ({ row }) => (
+        <Cell.Text
+          text={
+            <FormattedNumber
+              number={row.original.rawPrice}
+              formatOptions={{
+                currency: row.original.market === "perps" ? "USD" : undefined,
+                maxFractionDigits: 6,
+              }}
+              as="span"
+            />
+          }
+        />
+      ),
     },
     {
       header: m["dex.protrade.orders.size"](),
       cell: ({ row }) => (
-        <Cell.Number formatOptions={formatNumberOptions} value={row.original.size} />
+        <Cell.Number formatOptions={{ maxFractionDigits: 6 }} value={row.original.size} />
       ),
     },
     {
@@ -787,7 +776,11 @@ const UnifiedOpenOrders: React.FC = () => {
         return (
           <Cell.Text
             text={
-              <FormattedNumber number={tradeValue} formatOptions={{ currency: "USD" }} as="span" />
+              <FormattedNumber
+                number={tradeValue}
+                formatOptions={{ currency: "USD", maxFractionDigits: 6 }}
+                as="span"
+              />
             }
           />
         );
@@ -797,7 +790,7 @@ const UnifiedOpenOrders: React.FC = () => {
       header: m["dex.protrade.orders.filled"](),
       cell: ({ row }) =>
         row.original.filled !== null ? (
-          <Cell.Number formatOptions={formatNumberOptions} value={row.original.filled} />
+          <Cell.Number formatOptions={{ maxFractionDigits: 6 }} value={row.original.filled} />
         ) : (
           <Cell.Text text="-" className="text-ink-tertiary-500" />
         ),
