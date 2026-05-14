@@ -13,6 +13,15 @@ on:
       - "sdk/rust/**"
       - "sdk/docs/**"
       - ".github/workflows/sdk-docs-deployment.yaml"
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - "sdk/typescript/**"
+      - "sdk/python/**"
+      - "sdk/rust/**"
+      - "sdk/docs/**"
+      - ".github/workflows/sdk-docs-deployment.yaml"
 
 jobs:
   deploy:
@@ -56,4 +65,4 @@ jobs:
           projectName: grug-sdk
           directory: ./sdk/docs/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${GITHUB_REF##*/}
+          branch: ${{ github.head_ref || github.ref_name }}
