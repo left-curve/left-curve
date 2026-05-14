@@ -1001,7 +1001,7 @@
     "exchangeWarning": "Exchange deposit addresses are not supported. Please use a self-custody wallet address.",
     "confirm": "Confirm",
     "connectedTo": "Connected to",
-    "rateLimitWarning": "As a security measure, a rate limit exists to throttle token outflows. Each rolling 24h window, up to 10% of total bridged volume may be bridged out.",
+    "rateLimitWarning": "As a security measure, a rate limit exists to throttle token outflows. Each rolling 24h window, up to 5% of total bridged volume may be bridged out.",
     "withdrawTransferHint": "Use this page to withdraw funds from Dango to Ethereum or other chains. To transfer funds between Dango accounts, use the {app} app."
   },
   "settings": {

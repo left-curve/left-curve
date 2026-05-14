@@ -168,6 +168,93 @@ describe("formatDisplayNumber tier logic", () => {
     });
   });
 
+  describe("maxFractionDigits override (natural precision capped)", () => {
+    it("integer value: no decimals shown", () => {
+      expect(fmt(45000, { ...defaultOpts, maxFractionDigits: 6 })).toBe("45,000");
+    });
+
+    it("value with 1 decimal: shows 1 decimal", () => {
+      expect(fmt("45123.5", { ...defaultOpts, maxFractionDigits: 6 })).toBe("45,123.5");
+    });
+
+    it("strips trailing zeros via canonical form (112345.50 → 112,345.5)", () => {
+      expect(fmt("112345.50", { ...defaultOpts, maxFractionDigits: 6 })).toBe("112,345.5");
+    });
+
+    it("BTC-scale price bypasses tier 5 integer cropping", () => {
+      expect(fmt("112345.5", { ...defaultOpts, maxFractionDigits: 6 })).toBe("112,345.5");
+    });
+
+    it("ETH-scale price bypasses tier 4 2-decimal cap", () => {
+      expect(fmt("3456.789", { ...defaultOpts, maxFractionDigits: 6 })).toBe("3,456.789");
+    });
+
+    it("rounds when natural exceeds cap (8 → 6 decimals)", () => {
+      expect(fmt("100.12345678", { ...defaultOpts, maxFractionDigits: 6 })).toBe("100.123457");
+    });
+
+    it("rounds when natural exceeds cap (tier 3 value)", () => {
+      expect(fmt("1.123456789", { ...defaultOpts, maxFractionDigits: 6 })).toBe("1.123457");
+    });
+
+    it("preserves subscript notation for tier 1 (< 0.0001)", () => {
+      expect(fmt("0.00001234", { ...defaultOpts, maxFractionDigits: 6 })).toBe("0.0₄1234");
+    });
+
+    it("tier 2 (0.0001 ≤ n < 1) uses natural precision instead of 4 sig digits", () => {
+      expect(fmt("0.123456", { ...defaultOpts, maxFractionDigits: 6 })).toBe("0.123456");
+    });
+
+    it("respects mask 2 (European: dot grouping, comma decimal)", () => {
+      expect(fmt("45123.5", { ...defaultOpts, mask: 2, maxFractionDigits: 6 })).toBe("45.123,5");
+    });
+
+    it("respects currency: USD", () => {
+      expect(fmt("112345.5", { ...usdOpts, maxFractionDigits: 6 })).toBe("$112,345.5");
+    });
+
+    it("currency with integer value shows no cents (natural precision)", () => {
+      expect(fmt(45000, { ...usdOpts, maxFractionDigits: 6 })).toBe("$45,000");
+    });
+
+    it("zero without currency: returns 0", () => {
+      expect(fmt(0, { ...defaultOpts, maxFractionDigits: 6 })).toBe("0");
+    });
+
+    it("zero with currency: returns $0.00 (existing zero-handling preserved)", () => {
+      expect(fmt(0, { ...usdOpts, maxFractionDigits: 6 })).toBe("$0.00");
+    });
+
+    it("preserves sign for negative values", () => {
+      expect(fmt("-112345.5", { ...defaultOpts, maxFractionDigits: 6 })).toBe("-112,345.5");
+    });
+
+    it("fractionDigits (exact) takes precedence over maxFractionDigits (cap)", () => {
+      expect(
+        fmt("45000.5", { ...defaultOpts, fractionDigits: 2, maxFractionDigits: 6 }),
+      ).toBe("45,000.50");
+    });
+
+    it("cap of 0 forces integer rounding (tier 5 equivalent)", () => {
+      expect(fmt("45123.789", { ...defaultOpts, maxFractionDigits: 0 })).toBe("45,124");
+    });
+
+    it("merge simulation: Open Orders BTC price stays full precision", () => {
+      const merged = { language: "en-US" as const, mask: 1 as const, maxFractionDigits: 6 };
+      expect(formatDisplayString(formatDisplayNumber("112345.5", merged))).toBe("112,345.5");
+    });
+
+    it("merge simulation: Open Orders perps price with currency stays full precision", () => {
+      const merged = {
+        language: "en-US" as const,
+        mask: 1 as const,
+        currency: "USD",
+        maxFractionDigits: 6,
+      };
+      expect(formatDisplayString(formatDisplayNumber("112345.5", merged))).toBe("$112,345.5");
+    });
+  });
+
   describe("negative numbers", () => {
     it("preserves sign across tiers", () => {
       expect(fmt("-42.1234")).toBe("-42.1234"); // tier 3
