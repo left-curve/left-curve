@@ -12,6 +12,12 @@ export type FormatNumberOptions = {
   mask: keyof typeof formatNumberMask;
   /** Override: use exactly this many fraction digits, bypassing tier logic. */
   fractionDigits?: number;
+  /**
+   * Override: show the value's natural fraction digits, capped at this many.
+   * Bypasses tier logic for values ≥ 0.0001 (subscript tier 1 is preserved).
+   * Ignored if `fractionDigits` is set.
+   */
+  maxFractionDigits?: number;
 };
 
 const formatNumberMask = {
@@ -52,6 +58,12 @@ const SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";
 
 function toUnicodeSubscript(n: string): string {
   return [...n].map((c) => SUBSCRIPT_DIGITS[+c] ?? c).join("");
+}
+
+function naturalFractionDigits(amount: ReturnType<typeof Decimal>): number {
+  const str = amount.toFixed();
+  const dotIndex = str.indexOf(".");
+  return dotIndex === -1 ? 0 : str.length - dotIndex - 1;
 }
 
 function mapIntlParts(
@@ -111,12 +123,17 @@ function intlFormatToParts(
  *
  * When `fractionDigits` is set, tiers are bypassed and exactly that many
  * fraction digits are shown.
+ *
+ * When `maxFractionDigits` is set, tiers 2–6 are bypassed and the value's
+ * natural fraction digit count (from its canonical decimal form) is shown,
+ * capped at the configured maximum. Tier 1 (subscript) is preserved so very
+ * small values stay legible.
  */
 export function formatDisplayNumber(
   _amount_: number | string,
   options: FormatNumberOptions,
 ): DisplayPart[] {
-  const { language = "en-US", currency, mask = 1, fractionDigits } = options;
+  const { language = "en-US", currency, mask = 1, fractionDigits, maxFractionDigits } = options;
   const amount = Decimal(_amount_);
   const absAmount = amount.abs();
 
@@ -136,6 +153,19 @@ export function formatDisplayNumber(
     return intlFormatToParts(amount.toNumber(), language, currency, mask, {
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits,
+    });
+  }
+
+  // maxFractionDigits override — natural precision, capped; preserves tier 1
+  if (maxFractionDigits !== undefined) {
+    if (absAmount.lt("0.0001")) {
+      return formatSubscriptParts(amount, absAmount, { language, currency, mask });
+    }
+    const natural = naturalFractionDigits(amount);
+    const digits = Math.min(natural, maxFractionDigits);
+    return intlFormatToParts(amount.toNumber(), language, currency, mask, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
     });
   }
 
