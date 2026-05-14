@@ -41,6 +41,10 @@ target/
 ui/portal/web/public/images
 **/.turbo
 
+# Docs (Vocs)
+sdk/docs/.vocs
+sdk/docs/.templates/review
+
 # UI
 **/.next
 **/.vercel
