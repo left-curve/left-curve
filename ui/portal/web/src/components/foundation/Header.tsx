@@ -18,6 +18,8 @@ import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { GeoblockBanner } from "./GeoblockBanner";
+import { useGeoblock } from "./hooks/useGeoblock";
 import { TestnetBanner } from "./TestnetBanner";
 
 interface HeaderProps {
@@ -31,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { showModal, setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
   const { isLg } = useMediaQuery();
+  const isGeoblocked = useGeoblock();
 
   const isMainnet = !["Devnet", "Testnet"].includes(chain.name);
 
@@ -82,6 +85,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       )}
     >
       {isLg ? <div id="quest-banner" className="w-full" /> : null}
+      {isLg && isProSwap && isGeoblocked ? <GeoblockBanner /> : null}
       {isLg ? <TestnetBanner /> : null}
 
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
