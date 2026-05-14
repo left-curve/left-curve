@@ -1,6 +1,6 @@
 {
   "name": "@left-curve/portal-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/index.ts",
   "scripts": {
     "eas-build-pre-install": "npm install -g pnpm@10.16.1",

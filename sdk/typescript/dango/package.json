@@ -1,7 +1,11 @@
 {
   "name": "@left-curve/sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "imports": {
     "#actions/*": "./src/actions/*",
     "#account/*": "./src/account/*",

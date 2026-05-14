@@ -1,6 +1,10 @@
 {
   "name": "@left-curve/config",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "files": [
     "ts",
     "biome",
@@ -9,5 +13,12 @@
   "license": "TBD",
   "homepage": "https://dango.exchange",
   "repository": "left-curve/left-curve",
-  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
+  "keywords": [
+    "grug",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
 }
