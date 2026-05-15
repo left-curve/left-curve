@@ -89,6 +89,10 @@ const useProgressBarState = (currentVolume: number): ProgressBarState => {
   return useMemo(() => {
     const safeVolume = Math.max(currentVolume, 0);
     const steps = calculateSteps(safeVolume);
+    // Crashes (because `steps` would be empty) when `currentVolume` is NaN
+    // or Infinity — which would happen if the API returned volume as "NaN",
+    // "Infinity", or a non-numeric string. In practice this can't happen —
+    // the Rust server-side enforces volume as a numeric string.
     const firstThreshold = steps[0].threshold;
     const lastThreshold = steps[steps.length - 1].threshold;
     const span = lastThreshold - firstThreshold;
