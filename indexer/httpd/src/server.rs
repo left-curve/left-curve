@@ -3,7 +3,11 @@ use {
     crate::{
         context::FullContext,
         middlewares::shutdown::ShutdownMiddleware,
-        routes::{self, graphql::{GraphqlRequestTimeout, graphql_route}, index::index},
+        routes::{
+            self,
+            graphql::{GraphqlRequestTimeout, graphql_route},
+            index::index,
+        },
         subscription_limiter::SubscriptionLimiter,
     },
     actix_cors::Cors,

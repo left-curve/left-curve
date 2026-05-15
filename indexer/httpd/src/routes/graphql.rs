@@ -55,10 +55,7 @@ where
                 "graphql request timed out"
             );
             BatchResponse::Single(Response::from_errors(vec![ServerError::new(
-                format!(
-                    "request exceeded {}s timeout",
-                    timeout_duration.as_secs()
-                ),
+                format!("request exceeded {}s timeout", timeout_duration.as_secs()),
                 None,
             )]))
             .into()
