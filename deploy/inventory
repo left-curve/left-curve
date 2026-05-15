@@ -19,7 +19,6 @@ deploy_user="deploy"
 100.64.79.112  # ovh6
 100.112.48.112 # ovh7
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
@@ -30,7 +29,6 @@ deploy_user="deploy"
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
@@ -42,7 +40,6 @@ deploy_user="deploy"
 100.107.248.71 # ovh2
 100.122.37.57  # ovh3
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
@@ -56,7 +53,6 @@ deploy_user="deploy"
 [full-app]
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
@@ -69,7 +65,6 @@ deploy_user="deploy"
 100.107.248.71 # ovh2
 100.122.37.57  # ovh3
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
@@ -92,7 +87,6 @@ deploy_user="deploy"
 100.96.253.40  # ovh1
 100.107.248.71 # ovh2
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
@@ -132,10 +126,9 @@ points-bot-mainnet
 
 [perp-liquidator-mainnet]
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
+100.66.152.68  # hetzner6
 100.126.8.2    # hetzner1
 100.76.197.30  # hetzner3
-100.66.152.68  # hetzner6
 
 [perp-liquidator:children]
 perp-liquidator-devnet
@@ -144,7 +137,6 @@ perp-liquidator-mainnet
 
 [hyperlane]
 100.72.62.100  # hetzner5
-100.66.234.16  # inter2
 100.126.8.2    # hetzner1
 100.90.163.19  # hetzner2
 100.76.197.30  # hetzner3
