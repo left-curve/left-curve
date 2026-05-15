@@ -3,10 +3,14 @@ use crate::metrics::GaugeGuard;
 use {
     crate::{request_ip::RequesterIp, subscription_limiter::SubscriptionLimiter},
     actix_web::{HttpRequest, HttpResponse, Resource, web},
-    async_graphql::{Data, Schema},
+    async_graphql::{BatchResponse, Data, Response, Schema, ServerError},
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
     std::time::Duration,
 };
+
+/// Per-request execution timeout for `graphql_index`, injected via `web::Data`.
+#[derive(Clone, Copy)]
+pub struct GraphqlRequestTimeout(pub Duration);
 
 pub fn graphql_route<Q, M, S>() -> Resource
 where
@@ -26,6 +30,7 @@ where
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub async fn graphql_index<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
+    timeout: web::Data<GraphqlRequestTimeout>,
     req: HttpRequest,
     gql_request: GraphQLBatchRequest,
 ) -> GraphQLResponse
@@ -39,7 +44,26 @@ where
 
     let request = gql_request.into_inner().data(details).data(requester_ip);
 
-    schema.execute_batch(request).await.into()
+    // Bound non-subscription requests; subscriptions go through `graphql_ws`.
+    let timeout_duration = timeout.0;
+    match tokio::time::timeout(timeout_duration, schema.execute_batch(request)).await {
+        Ok(response) => response.into(),
+        Err(_) => {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                timeout_secs = timeout_duration.as_secs(),
+                "graphql request timed out"
+            );
+            BatchResponse::Single(Response::from_errors(vec![ServerError::new(
+                format!(
+                    "request exceeded {}s timeout",
+                    timeout_duration.as_secs()
+                ),
+                None,
+            )]))
+            .into()
+        },
+    }
 }
 
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
