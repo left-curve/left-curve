@@ -62,6 +62,7 @@ scrape_configs:
         - 'hetzner4:9100'
         - 'hetzner5:9100'
         - 'inter2:9100'
+        - 'hetzner6:9100'
     relabel_configs:
     - source_labels: [__address__]
       regex: 'node-exporter:9100'
@@ -84,6 +85,7 @@ scrape_configs:
         - 'hetzner4:9101'
         - 'hetzner5:9101'
         - 'inter2:9101'
+        - 'hetzner6:9101'
     relabel_configs:
     - source_labels: [__address__]
       regex: 'cadvisor:8080'
@@ -131,6 +133,7 @@ scrape_configs:
       - targets: ['hetzner4:9080']
       - targets: ['hetzner5:9080']
       - targets: ['inter2:9080']
+      - targets: ['hetzner6:9080']
     relabel_configs:
     - source_labels: [__address__]
       regex: 'promtail:9080'

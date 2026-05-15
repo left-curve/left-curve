@@ -280,10 +280,42 @@ ssh debian@$TAILSCALE_IP 'grep /swapfile /proc/swaps'
 #  installimage also created a swap partition — that's fine.)
 ```
 
+## Step 10. Add to Prometheus scrape config
+
+After step 9 the host is running three infra metric sources installed by `playbook.yml`: `node-exporter` (port 9100), `cadvisor` (port 9101), and `promtail` (port 9080). Prometheus on ovh3 can already resolve the new hostname over WireGuard — `roles/prometheus/templates/docker-compose.yml` builds the container's `extra_hosts:` dynamically from inventory + host_vars, so the inventory change in step 7 is enough — but its scrape target lists are hardcoded in `roles/prometheus/templates/prometheus.yml`. Append the new hostname to each of the three relevant jobs:
+
+```yaml
+- job_name: 'node-exporter'
+  static_configs:
+    - targets:
+      - ...
+      - '<hostname>:9100'   # add
+
+- job_name: 'cadvisor'
+  static_configs:
+    - targets:
+      - ...
+      - '<hostname>:9101'   # add
+
+- job_name: 'promtail'
+  static_configs:
+    - ...
+    - targets: ['<hostname>:9080']   # add
+```
+
+Then redeploy the monitoring stack on ovh3 (this only restarts the prometheus container — no impact on the rest of the fleet):
+
+```bash
+just deploy-monitoring
+```
+
+**Verify**: open Prometheus at `http://ovh3:9091/targets` and confirm the three new entries each reach `state: UP` within a scrape interval or two (`scrape_interval: 30s`). In Grafana, `<hostname>` should now appear in the host selectors of the Node Exporter, cAdvisor, and Logs dashboards.
+
+Application-level scrapes — `traefik`, `clickhouse`, `postgres`, `dango`, `cometbft`, `hyperlane-validator`, `perp-liquidator` — need their own entries in `prometheus.yml` once you deploy those services to the host. See the existing entries in the same file for the format and labels.
+
 ## Next steps
 
 The host is now a fully provisioned member of the fleet but has no application services yet. From here:
 
 - **Application deploy**: run the relevant deploy recipe from `Justfile` (`just deploy-mainnet`, `just deploy-testnet`, etc.). For mainnet, also update the `--limit` list in the recipe to include the new tailscale IP.
-- **Monitoring**: Prometheus on ovh3 will start scraping the new node-exporter automatically once the inventory change lands.
 - **Hyperlane** (if applicable): see the `deploy-hyperlane-*` recipes — these need the new validator's KMS key set up in `group_vars/hyperlane/vault.yml`.
