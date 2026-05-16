@@ -276,11 +276,11 @@ services:
         url: "http://hetzner5:9500/metrics"
         target: "_blank"
 
-      - name: "Hyperlane Validator 2 (inter2)"
+      - name: "Hyperlane Validator 2 (hetzner6)"
         icon: "fas fa-shield-alt"
         subtitle: "Port 9500"
         tag: "hyperlane"
-        url: "http://inter2:9500/metrics"
+        url: "http://hetzner6:9500/metrics"
         target: "_blank"
 
       - name: "Hyperlane Validator 3 (hetzner1)"
@@ -370,11 +370,11 @@ services:
         url: "http://hetzner5:9080"
         target: "_blank"
 
-      - name: "Promtail - Inter2"
+      - name: "Promtail - Hetzner6"
         logo: "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/refs/heads/main/png/loki.png"
         subtitle: "Log Shipper"
         tag: "promtail"
-        url: "http://inter2:9080"
+        url: "http://hetzner6:9080"
         target: "_blank"
 
   - name: "Container Logs"
@@ -436,11 +436,11 @@ services:
         url: "http://hetzner5:9090"
         target: "_blank"
 
-      - name: "Dozzle - Inter2"
+      - name: "Dozzle - Hetzner6"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dozzle.png"
         subtitle: "Docker Logs"
         tag: "dozzle"
-        url: "http://inter2:9090"
+        url: "http://hetzner6:9090"
         target: "_blank"
 
   - name: "Other Services"
@@ -498,11 +498,11 @@ services:
         url: "http://hetzner5:8888"
         target: "_blank"
 
-      - name: "Traefik - Inter2"
+      - name: "Traefik - Hetzner6"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/traefik.png"
         subtitle: "Mainnet LB"
         tag: "proxy"
-        url: "http://inter2:8888"
+        url: "http://hetzner6:8888"
         target: "_blank"
 
       - name: "Traefik - Hetzner1"

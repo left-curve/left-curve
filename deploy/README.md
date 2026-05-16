@@ -14,7 +14,7 @@ exposed to the public internet through Cloudflare tunnels.
 | ovh1     | 100.96.253.40  | 10.99.0.1    | devnet         |
 | ovh2     | 100.107.248.71 | 10.99.0.2    | devnet         |
 | ovh3     | 100.122.37.57  | 10.99.0.3    | monitoring hub |
-| inter2   | 100.66.234.16  | 10.99.0.13   | mainnet        |
+| hetzner6 | 100.66.152.68  | 10.99.0.15   | mainnet        |
 | hetzner1 | 100.126.8.2    | 10.99.0.8    | mainnet        |
 | hetzner2 | 100.90.163.19  | 10.99.0.9    | testnet        |
 | hetzner3 | 100.76.197.30  | 10.99.0.10   | mainnet        |
@@ -62,7 +62,7 @@ exposed to the public internet through Cloudflare tunnels.
 
 | Service     | Description                               | Location                   |
 | ----------- | ----------------------------------------- | -------------------------- |
-| hyperlane   | Cross-chain message validators + relayers | inter2, hetzner1-5         |
+| hyperlane   | Cross-chain message validators + relayers | hetzner1-6                 |
 | minio       | S3-compatible object storage              | ovh3                       |
 | uptimekuma  | Service health monitoring                 | ovh3                       |
 | vaultwarden | Password manager                          | ovh3                       |
