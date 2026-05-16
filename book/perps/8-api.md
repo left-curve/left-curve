@@ -1210,15 +1210,15 @@ query {
 
 **PerpsFeesAndRevenue fields:**
 
-| Field            | Type          | Description                                                  |
-| ---------------- | ------------- | ------------------------------------------------------------ |
-| `from`           | `String!`     | Lower bound echoed back as ISO 8601                          |
-| `to`             | `String!`     | Upper bound echoed back as ISO 8601                          |
-| `feeEventsCount` | `Int!`        | Number of `FeeDistributed` events aggregated in the window   |
-| `protocolFee`    | `BigDecimal!` | Protocol fee accrued (USD)                                   |
-| `vaultFee`       | `BigDecimal!` | Vault fee accrued (USD), already net of referral commissions |
-| `refereeRebate`  | `BigDecimal!` | Referral commissions paid back to referees (USD)             |
-| `referrerPayout` | `BigDecimal!` | Referral commissions paid out to referrers (USD)             |
+| Field            | Type          | Description                                                     |
+| ---------------- | ------------- | --------------------------------------------------------------- |
+| `from`           | `String!`     | Lower bound echoed back as ISO 8601                             |
+| `to`             | `String!`     | Upper bound echoed back as ISO 8601                             |
+| `feeEventsCount` | `Int!`        | Number of `FeeDistributed` events aggregated in the window      |
+| `protocolFee`    | `BigDecimal!` | Protocol fee accrued (USD)                                      |
+| `vaultFee`       | `BigDecimal!` | Vault fee accrued (USD), already net of referral commissions    |
+| `refereeRebate`  | `BigDecimal!` | Referral commissions paid back to referees (USD)                |
+| `referrerPayout` | `BigDecimal!` | Referral commissions paid out to referrers (USD)                |
 | `volumeUsd`      | `BigDecimal!` | USD notional volume from `OrderFilled` and `Deleveraged` events |
 
 Total protocol revenue over the window is `protocolFee + vaultFee`. The total fee paid by users is `protocolFee + vaultFee + refereeRebate + referrerPayout`; `refereeRebate` and `referrerPayout` are informational totals of referral commissions distributed.
