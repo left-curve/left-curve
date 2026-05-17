@@ -1,0 +1,34 @@
+# PairParams
+
+Parameters of a single spot trading pair.
+
+## Definition
+
+```ts
+type PairParams = {
+  lpDenom: Denom
+  curveInvariant: "xyk"
+  swapFeeRate: string
+  bucketSizes: string[]
+  minOrderSizeBase: string
+  minOrderSizeQuote: string
+}
+```
+
+## Fields
+
+**`lpDenom`** — `Denom`. Denomination of the pair's LP token.
+
+**`curveInvariant`** — `"xyk"`. The passive pool curve (only `xyk` currently).
+
+**`swapFeeRate`** — `string`. Fee on instant swaps.
+
+**`bucketSizes`** — `string[]`. Price bucket widths for the depth chart.
+
+**`minOrderSizeBase`**, **`minOrderSizeQuote`** — minimum order sizes denominated in base and quote.
+
+## See also
+
+- [`PairId`](./PairId)
+- [`PairUpdate`](./PairUpdate)
+- [`getPair`](../actions/dex/getPair)

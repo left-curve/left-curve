@@ -1,0 +1,41 @@
+# getContractsInfo
+
+List contract metadata across the chain, paginated.
+
+## Signature
+
+```ts
+function getContractsInfo(
+  client: Client,
+  parameters?: {
+    startAfter?: Address
+    limit?: number
+    height?: number
+  },
+): Promise<ContractsResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const contracts = await client.getContractsInfo({ limit: 100 })
+```
+
+## Parameters
+
+**`startAfter`** — `Address`, optional. Address to start after (exclusive).
+
+**`limit`** — `number`, optional. Maximum entries to return.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`ContractsResponse`** — `Record<Address, ContractInfo>`.
+
+## See also
+
+- [`getContractInfo`](./getContractInfo) — single-address variant

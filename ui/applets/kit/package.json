@@ -1,6 +1,6 @@
 {
   "name": "@left-curve/applets-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "ci": "pnpm lint",
@@ -21,7 +21,6 @@
     "build",
     "src",
     "!**/*.spec.ts",
-    "!typedoc.json",
     "!tsup.config.ts"
   ],
   "exports": {

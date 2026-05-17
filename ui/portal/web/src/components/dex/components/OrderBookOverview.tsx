@@ -16,6 +16,8 @@ import {
   TradePairStore,
   liveSpotTradesStore,
   usePerpsLiquidityDepth,
+  useOrdersByUser,
+  perpsOrdersByUserStore,
 } from "@left-curve/store";
 import {
   bucketSizeToFractionDigits,
@@ -150,11 +152,23 @@ type OrderBookRowProps = {
   priceFractionDigits: number;
   onSelectPrice: (price: string) => void;
   flashKey?: number;
+  userOrderPrices: Set<string>;
 };
 
 const OrderRow: React.FC<OrderBookRowProps> = (props) => {
-  const { price, size, total, type, max, priceFractionDigits, onSelectPrice, flashKey } = props;
+  const {
+    price,
+    size,
+    total,
+    type,
+    max,
+    priceFractionDigits,
+    onSelectPrice,
+    flashKey,
+    userOrderPrices,
+  } = props;
   const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed();
+  const hasUserOrder = userOrderPrices.has(Decimal(price).toFixed(priceFractionDigits));
 
   const depthBarClass =
     type === "bid"
@@ -185,6 +199,15 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
         )}
         onClick={() => onSelectPrice(price)}
       >
+        {hasUserOrder && (
+          <span
+            aria-hidden
+            className={twMerge(
+              "absolute left-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full z-10",
+              type === "bid" ? "bg-utility-success-500" : "bg-utility-error-500",
+            )}
+          />
+        )}
         <FormattedNumber
           number={price}
           formatOptions={{ fractionDigits: priceFractionDigits }}
@@ -499,6 +522,38 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   const spotDepth = liquidityDepthStore();
   const perpsDepthData = perpsLiquidityDepthStore((s) => s.liquidityDepth);
 
+  const { data: spotOrdersData } = useOrdersByUser({
+    enabled: mode === "spot",
+    initialData: [],
+  });
+  const perpsOrdersData = perpsOrdersByUserStore((s) => s.orders);
+  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+
+  const userOrderPrices = useMemo(() => {
+    const prices = new Set<string>();
+    if (mode === "spot") {
+      for (const o of spotOrdersData ?? []) {
+        if (o.baseDenom !== pairId.baseDenom || o.quoteDenom !== pairId.quoteDenom) continue;
+        prices.add(Decimal(o.price).toFixed(priceFractionDigits));
+      }
+    } else if (perpsOrdersData) {
+      const currentPerpsPair = getPerpsPairId();
+      for (const o of Object.values(perpsOrdersData)) {
+        if (o.pairId !== currentPerpsPair) continue;
+        prices.add(Decimal(o.limitPrice).toFixed(priceFractionDigits));
+      }
+    }
+    return prices;
+  }, [
+    mode,
+    spotOrdersData,
+    perpsOrdersData,
+    pairId.baseDenom,
+    pairId.quoteDenom,
+    priceFractionDigits,
+    getPerpsPairId,
+  ]);
+
   const liquidityDepth = useMemo(() => {
     if (mode === "spot") return spotDepth.liquidityDepth;
     if (!perpsDepthData) return null;
@@ -550,6 +605,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
             flashKey={flashKeys.get(ask.price)}
+            userOrderPrices={userOrderPrices}
           />
         ))}
       </div>
@@ -566,6 +622,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
             priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
             flashKey={flashKeys.get(bid.price)}
+            userOrderPrices={userOrderPrices}
           />
         ))}
       </div>

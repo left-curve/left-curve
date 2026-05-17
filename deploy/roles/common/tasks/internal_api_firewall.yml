@@ -1,0 +1,46 @@
+---
+# Configures public NIC → tailscale-IP DNAT so UFW's INPUT chain (with the
+# per-partner allowlist) can filter Docker-published 80/443 traffic.
+
+- name: Ensure net.ipv4.ip_forward is persistently enabled
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-dango-internal-api.conf
+    reload: yes
+
+- name: Render UFW *nat block for internal-API DNAT
+  ansible.builtin.blockinfile:
+    path: /etc/ufw/before.rules
+    insertbefore: "^\\*filter"
+    marker: "# {mark} ANSIBLE MANAGED: internal-api DNAT"
+    block: |
+      *nat
+      :PREROUTING ACCEPT [0:0]
+
+      -A PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80
+      -A PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443
+      -A POSTROUTING -o wg0 -j MASQUERADE
+
+      COMMIT
+  notify: reload ufw
+
+- name: Apply UFW reload now so iptables-ordering check sees fresh state
+  meta: flush_handlers
+
+- name: Capture current PREROUTING chain
+  ansible.builtin.command: iptables -t nat -L PREROUTING -n --line-numbers
+  register: prerouting_dump
+  changed_when: false
+
+- name: Move DNAT rules above DOCKER chain when not already on top
+  ansible.builtin.shell: |
+    set -e
+    while iptables -t nat -D PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80 2>/dev/null; do :; done
+    while iptables -t nat -D PREROUTING -i {{ internal_api_public_iface }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443 2>/dev/null; do :; done
+    iptables -t nat -I PREROUTING 1 -i {{ internal_api_public_iface }} -p tcp --dport 80  -j DNAT --to-destination {{ tailscale_ip }}:80
+    iptables -t nat -I PREROUTING 2 -i {{ internal_api_public_iface }} -p tcp --dport 443 -j DNAT --to-destination {{ tailscale_ip }}:443
+  when: prerouting_dump.stdout_lines[2] is not search('DNAT.*' + tailscale_ip +
+    ':80')
+  changed_when: true

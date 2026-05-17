@@ -1,0 +1,39 @@
+# broadcast_tx_sync
+
+Submit a signed `Tx`. Returns the BroadcastTxOutcome envelope.
+
+## Signature
+
+```python
+def broadcast_tx_sync(self, tx: Tx) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+signed = exchange.signer.sign_tx(messages, exchange._chain_id, gas_limit)
+outcome = info.broadcast_tx_sync(signed)
+```
+
+## Parameters
+
+**`tx`** — `Tx`. A TypedDict with `sender`, `gas_limit`, `msgs`, `data`, and `credential`. Build via [`SingleSigner.sign_tx`](../../classes/SingleSigner#sign_tx).
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope. Inspect `check_tx.code`, `result.err`, etc. to detect failure modes.
+
+## Notes
+
+- This is a GraphQL **mutation**, not a query. The SDK routes it through `API.query()` because the underlying HTTP transport is the same; the GraphQL operation keyword lives in the document string.
+- The SDK does not auto-raise on `err` results — inspect the returned dict.
+
+## See also
+
+- [`simulate`](./simulate) — dry-run before broadcasting
+- [Concepts: Transactions](../../../concepts/transactions) — the full pipeline

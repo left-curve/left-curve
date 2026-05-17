@@ -1,0 +1,32 @@
+# PositionExtended
+
+A position plus computed unrealized PnL / funding / liquidation price.
+
+## Definition
+
+```python
+class PositionExtended(TypedDict):
+    size: Quantity
+    entry_price: UsdPrice
+    entry_funding_per_unit: FundingPerUnit
+    conditional_order_above: ConditionalOrder | None
+    conditional_order_below: ConditionalOrder | None
+    unrealized_pnl: UsdValue | None
+    unrealized_funding: UsdValue | None
+    liquidation_price: UsdPrice | None
+```
+
+## Fields
+
+Inherits [`Position`](./Position) plus:
+
+**`unrealized_pnl`** — `UsdValue | None`. Mark-vs-entry PnL. `None` when not requested.
+
+**`unrealized_funding`** — `UsdValue | None`. Funding accrued since entry.
+
+**`liquidation_price`** — `UsdPrice | None`. Price at which the position would be liquidated; only present when `include_liquidation_price=True`.
+
+## See also
+
+- [`Position`](./Position) — base shape
+- [`UserStateExtended`](./UserStateExtended) — container

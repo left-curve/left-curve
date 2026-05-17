@@ -1,0 +1,45 @@
+# getFeeRateOverride
+
+Read a per-user fee rate override.
+
+When present, the override replaces the volume-tiered fee schedule for the
+user on every fill. Overrides are set by the chain owner.
+
+## Signature
+
+```ts
+function getFeeRateOverride(
+  client: Client,
+  parameters: {
+    user: Address
+    height?: number
+  },
+): Promise<FeeRateOverride | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const user: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const override = await client.getFeeRateOverride({ user })
+```
+
+## Parameters
+
+**`user`** — `Address`. The trader.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`FeeRateOverride | null`** — `{ makerFeeRate, takerFeeRate }`, or `null` if no override is set. The contract returns a tuple `[string, string]`; the action reshapes it into the object form.
+
+## See also
+
+- [`getPerpsParam`](./getPerpsParam) — default fee schedules
+- [`setFeeShareRatio`](./setFeeShareRatio)

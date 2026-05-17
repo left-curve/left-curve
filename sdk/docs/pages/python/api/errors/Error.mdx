@@ -1,0 +1,23 @@
+# Error
+
+Base class for all SDK-raised exceptions.
+
+## Definition
+
+```python
+class Error(Exception):
+    """Base class for all SDK-raised exceptions."""
+```
+
+## Notes
+
+- `from dango.utils.error import Error` is the safe outer `except` for any operation that touches the SDK.
+- Caller-bug exceptions (`TypeError`, `ValueError`, `RuntimeError`) are NOT `Error` subclasses — they indicate a bug at the call site, not a runtime SDK failure.
+
+## See also
+
+- [`ClientError`](./ClientError) — 4xx HTTP
+- [`ServerError`](./ServerError) — 5xx HTTP / network
+- [`GraphQLError`](./GraphQLError) — GraphQL `errors` array
+- [`TxFailed`](./TxFailed) — `broadcastTxSync` returned `err`
+- [Concepts: Error handling](../../concepts/error-handling)

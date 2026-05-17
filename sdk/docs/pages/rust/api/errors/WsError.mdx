@@ -1,0 +1,72 @@
+# WsError
+
+The only public typed error in `dango-sdk`. Returned inside subscription stream items.
+
+## Definition
+
+```rust
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum WsError {
+    #[error("WebSocket connection closed: {0}")]
+    Closed(String),
+
+    #[error("WebSocket transport error: {0}")]
+    Transport(String),
+
+    #[error("subscription returned error: {0}")]
+    Subscription(serde_json::Value),
+
+    #[error("failed to decode message: {0}")]
+    Decode(String),
+}
+```
+
+## Variants
+
+**`Closed(reason)`** — the server (or the network) closed the WebSocket. `reason` is the close-frame body if present, or `"stream ended"` for unexpected EOF. Terminal: the stream emits this once, then `None`.
+
+**`Transport(message)`** — `tokio_tungstenite` reported an I/O or protocol failure. Terminal at the connection level — every subscription on the same connection fails together.
+
+**`Subscription(payload)`** — the server sent a GraphQL `error` frame for this subscription id. The payload is the raw `serde_json::Value`. Terminal for *this* stream only; sibling subscriptions on the same [`Session`](../clients/Session) keep running.
+
+**`Decode(message)`** — the SDK could not parse a server message into the expected type. Includes `Response<T>` decoding failures (the schema and the client disagree).
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscribeBlock, WsClient, WsError, subscribe_block},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let ws = WsClient::new("wss://api-mainnet.dango.zone/graphql")?;
+    let mut stream = ws
+        .subscribe::<SubscribeBlock>(subscribe_block::Variables {})
+        .await?;
+
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(resp) => println!("ok: {resp:?}"),
+            Err(WsError::Closed(reason))         => { eprintln!("closed: {reason}"); break; }
+            Err(WsError::Transport(msg))         => { eprintln!("transport: {msg}"); break; }
+            Err(WsError::Subscription(payload))  =>  eprintln!("server: {payload}"),
+            Err(WsError::Decode(msg))            =>  eprintln!("decode: {msg}"),
+        }
+    }
+    Ok(())
+}
+```
+
+## Notes
+
+- Implements `thiserror::Error`. `Display` formats each variant per the `#[error]` attribute above.
+- `Clone + Debug`. The driver task may broadcast the same error to multiple subscription channels when a connection dies.
+- Outside subscriptions, the SDK uses `anyhow::Error`. There is no equivalent typed enum for HTTP errors.
+
+## See also
+
+- [`SubscriptionStream`](../subscriptions/SubscriptionStream) — where this appears.
+- [Concepts: Error handling](../../concepts/error-handling) — recovery patterns.

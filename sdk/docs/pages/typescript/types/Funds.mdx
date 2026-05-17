@@ -1,0 +1,29 @@
+# Funds
+
+Coins attached to a contract call (e.g. inside an `execute` or `transferRemote` message).
+
+## Definition
+
+```ts
+type Funds = Record<Denom, string>
+```
+
+## Construction
+
+```ts
+import type { Funds } from "@left-curve/sdk"
+
+const funds: Funds = {
+  "bridge/usdc": "1000000",
+}
+```
+
+## Notes
+
+- Same shape as [`Coins`](./Coins); the distinct alias signals intent in action signatures.
+- The SDK builds the EIP-712 typed data for `funds` automatically. See [`execute`](../actions/app/execute).
+
+## See also
+
+- [`Coins`](./Coins)
+- [`execute`](../actions/app/execute)

@@ -1,0 +1,34 @@
+# PerpsUserStateExtended
+
+Extended perps user state with optional PnL, equity, margin, and liquidation fields.
+
+## Definition
+
+```ts
+type PerpsUserStateExtended = {
+  margin: string
+  vaultShares: string
+  unlocks: PerpsUnlock[]
+  reservedMargin: string
+  openOrderCount: number
+  equity: string | null
+  availableMargin: string | null
+  maintenanceMargin: string | null
+  positions: Record<string, PerpsPositionExtended>
+}
+
+type PerpsPositionExtended = PerpsPosition & {
+  unrealizedPnl: string | null
+  unrealizedFunding: string | null
+  liquidationPrice: string | null
+}
+```
+
+## Notes
+
+- Each `* | null` field is populated only when the matching `include*` flag was set in the query. See [`getPerpsUserStateExtended`](../actions/perps/getPerpsUserStateExtended).
+
+## See also
+
+- [`PerpsUserState`](./PerpsUserState) — non-extended
+- [`getPerpsUserStateExtended`](../actions/perps/getPerpsUserStateExtended)

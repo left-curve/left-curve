@@ -1,0 +1,37 @@
+# Signature
+
+A discriminated signature carried by a credential. One of three families: secp256k1, WebAuthn passkey, or EIP-712.
+
+## Definition
+
+```ts
+type Signature =
+  | { secp256k1: Base64 }
+  | { passkey: PasskeySignature }
+  | { eip712: Eip712Signature }
+
+type Secp256k1Signature = Base64
+
+type PasskeySignature = {
+  sig: Base64
+  client_data: Base64
+  authenticator_data: Base64
+}
+
+type Eip712Signature = {
+  sig: Base64
+  typed_data: Base64
+}
+```
+
+## Notes
+
+- Narrow with `in`:
+  ```ts
+  if ("secp256k1" in sig) { /* ... */ }
+  ```
+
+## See also
+
+- [`Credential`](./Credential)
+- [`Signer`](./Signer)

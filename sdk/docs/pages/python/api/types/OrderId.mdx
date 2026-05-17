@@ -1,0 +1,27 @@
+# OrderId
+
+A chain-assigned order id. `NewType("OrderId", str)` — at runtime it is a plain `str` (encoding a `Uint64`).
+
+## Definition
+
+```python
+OrderId = NewType("OrderId", str)
+```
+
+## Construction
+
+```python
+from dango.utils.types import OrderId
+
+oid = OrderId("12345")
+```
+
+## Notes
+
+- The on-chain representation is a 64-bit unsigned integer; the wire form is the integer's base-10 string.
+- For client-assigned order ids, see [`ClientOrderId`](./ClientOrderId) and [`ClientOrderIdRef`](./ClientOrderIdRef).
+
+## See also
+
+- [`cancel_order`](../methods/exchange/cancel_order) — cancel by `OrderId`
+- [`ClientOrderIdRef`](./ClientOrderIdRef) — disambiguates from `OrderId` at runtime

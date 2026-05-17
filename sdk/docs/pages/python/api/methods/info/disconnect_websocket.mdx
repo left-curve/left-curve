@@ -1,0 +1,33 @@
+# disconnect_websocket
+
+Close the WebSocket connection and clean up the manager thread.
+
+## Signature
+
+```python
+def disconnect_websocket(self) -> None
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL)
+
+# ... subscribe and process events ...
+
+info.disconnect_websocket()
+```
+
+## Notes
+
+- Signals the manager to stop, calls `ws.close()`, and joins the thread with a 5-second timeout.
+- After disconnect, a subsequent `subscribe_*` call rebuilds a fresh `WebsocketManager` and re-opens the socket.
+- Safe to call when no manager was ever constructed (e.g. if you only used HTTP queries).
+
+## See also
+
+- [`unsubscribe`](./unsubscribe) — drop a single subscription
+- [`WebsocketManager`](../../classes/WebsocketManager) — the underlying transport

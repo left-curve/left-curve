@@ -1,0 +1,42 @@
+# getPrices
+
+Read oracle prices, paginated.
+
+## Signature
+
+```ts
+function getPrices(
+  client: Client,
+  parameters?: {
+    startAfter?: Denom
+    limit?: number
+    height?: number
+  },
+): Promise<Record<Denom, Price>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const prices = await client.getPrices({ limit: 100 })
+console.log(prices["bridge/usdc"]?.humanizedPrice)
+```
+
+## Parameters
+
+**`startAfter`** — `Denom`, optional. Denom to start after.
+
+**`limit`** — `number`, optional. Maximum entries.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`Record<Denom, Price>`** — each `Price` is `{ humanizedPrice, humanizedEma, precision, timestamp }`.
+
+## See also
+
+- [`Price`](../../types/Price)

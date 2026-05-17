@@ -1,0 +1,31 @@
+# queryStatus
+
+Read the chain id and the latest finalized block.
+
+## Signature
+
+```ts
+function queryStatus(client: Client): Promise<{
+  chainId: string
+  block: BlockInfo
+}>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const status = await client.queryStatus()
+console.log(status.chainId, status.block.height)
+```
+
+## Returns
+
+**`{ chainId: string; block: BlockInfo }`** — `BlockInfo` is `{ height: string; timestamp: string; hash: string }`.
+
+## See also
+
+- [`queryBlock`](../indexer/queryBlock) — block details with transactions
+- [`queryApp`](./queryApp)

@@ -1,0 +1,28 @@
+# State
+
+Global perps runtime state.
+
+## Definition
+
+```python
+class State(TypedDict):
+    last_funding_time: Timestamp
+    vault_share_supply: Uint128
+    insurance_fund: UsdValue
+    treasury: UsdValue
+```
+
+## Fields
+
+**`last_funding_time`** — `Timestamp`. ns-precision integer string of the last funding rate update.
+
+**`vault_share_supply`** — `Uint128`. Total counterparty-vault LP shares minted.
+
+**`insurance_fund`** — `UsdValue`. USD reserves for bad-debt coverage.
+
+**`treasury`** — `UsdValue`. Protocol fee accumulator.
+
+## See also
+
+- [`perps_state`](../methods/info/perps_state) — fetcher
+- [`Param`](./Param) — global parameters counterpart

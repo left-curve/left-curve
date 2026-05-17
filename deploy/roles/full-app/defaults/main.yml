@@ -31,9 +31,9 @@ perp_liquidator_config:
     frontend_url: "https://test.dango.exchange"
     reinit_interval_blocks: 7200
     instances:
-      - name: "testnet-1"
+      - name: "hetzner2-T1"
         liquidation_delay_blocks: 0
-      - name: "testnet-2"
+      - name: "hetzner4-T2"
         liquidation_delay_blocks: 5
   mainnet:
     http_url: "http://dango:8080"
@@ -47,13 +47,13 @@ perp_liquidator_config:
     reinit_interval_blocks: 3600
     block_fetch_alert_threshold: 20
     instances:
-      - name: "mainnet-1"
+      - name: "hetzner5-M1"
         liquidation_delay_blocks: 0
-      - name: "mainnet-2"
+      - name: "intern2-M2"
         liquidation_delay_blocks: 2
-      - name: "mainnet-3"
+      - name: "hetzner1-M3"
         liquidation_delay_blocks: 5
-      - name: "mainnet-4"
+      - name: "hetzner3-M4"
         liquidation_delay_blocks: 10
 
 perp_liquidator_http_port: 9310

@@ -1,0 +1,36 @@
+# Block
+
+A block payload from the `subscribe_block` stream. Keys are camelCase (indexer wire shape).
+
+## Definition
+
+```python
+class Block(TypedDict):
+    blockHeight: int
+    hash: str
+    appHash: str
+    createdAt: str
+    cronsOutcomes: list[str]
+    transactions: list[BlockTransaction]
+    flattenEvents: list[BlockEvent]
+```
+
+## Fields
+
+**`blockHeight`** — `int`.
+
+**`hash`** — `str`. Block hash.
+
+**`appHash`** — `str`. Application state root after this block.
+
+**`createdAt`** — `str`. ISO-8601 datetime.
+
+**`cronsOutcomes`** — `list[str]`. Outcomes of cron jobs that ran in this block.
+
+**`transactions`** — `list[BlockTransaction]`. Every transaction included in the block.
+
+**`flattenEvents`** — `list[BlockEvent]`. The indexer's already-flattened event stream (cron events + message events + ...).
+
+## See also
+
+- [`subscribe_block`](../methods/info/subscribe_block) — consumer

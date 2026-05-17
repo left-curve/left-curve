@@ -1,0 +1,45 @@
+# getPerpsPairParam
+
+Read the parameters of a single perps pair: tick size, margin ratios, max OI, funding rate cap.
+
+These per-pair governance knobs drive every pre-trade check: `tickSize` for
+price alignment, `minOrderSize` for dust rejection, `maxAbsOi` for the
+per-side OI cap, `initialMarginRatio` and `maintenanceMarginRatio` for IM/MM,
+`maxAbsFundingRate` for the funding clamp, and `bucketSizes` for liquidity
+depth queries. See protocol book: `perps/7-risk` for calibration guidance.
+
+## Signature
+
+```ts
+function getPerpsPairParam(
+  client: Client,
+  parameters: {
+    pairId: string
+    height?: number
+  },
+): Promise<PerpsPairParam | null>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const params = await client.getPerpsPairParam({ pairId: "BTC-PERP" })
+```
+
+## Parameters
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`PerpsPairParam | null`** — params including `tickSize`, `minOrderSize`, `maxAbsOi`, `maxAbsFundingRate`, `initialMarginRatio`, `maintenanceMarginRatio`, vault weights, and `bucketSizes`.
+
+## See also
+
+- [`getPerpsPairParams`](./getPerpsPairParams)
+- [`getPerpsParam`](./getPerpsParam)

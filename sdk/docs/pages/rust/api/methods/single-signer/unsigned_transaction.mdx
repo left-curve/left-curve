@@ -1,0 +1,58 @@
+# SingleSigner::unsigned_transaction
+
+Build the `UnsignedTx` for a set of messages without producing a signature.
+
+## Signature
+
+```rust
+impl<S: Secret> Signer for SingleSigner<S> {
+    fn unsigned_transaction(
+        &self,
+        msgs: NonEmpty<Vec<Message>>,
+        chain_id: &str,
+    ) -> grug::StdResult<grug::UnsignedTx>;
+}
+```
+
+From `impl Signer` (requires `Defined<UserIndex> + Defined<Nonce>`).
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, SingleSigner},
+    grug::{Coins, Message, NonEmpty, QueryClient, Signer},
+};
+
+async fn estimate(
+    http: &HttpClient,
+    signer: &SingleSigner<impl dango_sdk::Secret>,
+) -> Result<u64> {
+    let messages = NonEmpty::new(vec![
+        Message::transfer(grug::Addr::mock(0), Coins::one("bridge/usdc", 1_u128)?)?,
+    ])?;
+    let unsigned = signer.unsigned_transaction(messages, "dango-1")?;
+    Ok(http.simulate(unsigned).await?.gas_used as u64)
+}
+```
+
+## Parameters
+
+**`msgs`** — `NonEmpty<Vec<Message>>`. The messages to include in the transaction.
+
+**`chain_id`** — `&str`. The target chain id (e.g. `"dango-1"`).
+
+## Returns
+
+**`UnsignedTx`** — `sender`, `msgs`, and a JSON-encoded `Metadata { chain_id, user_index, nonce, expiry: None }`.
+
+## Notes
+
+- The metadata uses the signer's current `user_index` and `nonce` — values that `sign_transaction` would consume.
+- Pair with `QueryClient::simulate` for gas estimation; the simulation runs without nonce consumption.
+
+## See also
+
+- [`sign_transaction`](./sign_transaction) — produce a signed `Tx`.
+- [`HttpClient::simulate`](../http-client/simulate).

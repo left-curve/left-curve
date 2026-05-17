@@ -1,0 +1,54 @@
+# queryWasmSmart
+
+Send a typed JSON query to a smart contract and receive the decoded response.
+
+## Signature
+
+```ts
+function queryWasmSmart<value extends JsonValue = JsonValue>(
+  client: Client,
+  parameters: {
+    contract: Address
+    msg: Json
+    height?: number
+  },
+): Promise<WasmSmartResponse<value>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const contract: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+type Config = { owner: Address; fee: string }
+const config = await client.queryWasmSmart<Config>({
+  contract,
+  msg: { config: {} },
+})
+```
+
+## Parameters
+
+**`contract`** — `Address`. The contract to query.
+
+**`msg`** — `Json`. The query message. Always camelCase — the SDK converts to snake_case on the wire.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`WasmSmartResponse<T>`** — alias for the decoded `T`. The response is camelCase (converted from the contract's snake_case).
+
+## Notes
+
+- The generic type parameter is unchecked at runtime. Validate the response with a runtime schema (e.g. Zod) when the source is untrusted.
+- Throws if the response does not contain a `wasmSmart` field.
+
+## See also
+
+- [`queryWasmRaw`](./queryWasmRaw) — raw storage values
+- [`queryApp`](./queryApp) — the generic query primitive

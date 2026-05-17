@@ -1,0 +1,30 @@
+# Exchange.set_referrer (HL-compat)
+
+Bind the signer as a referee of `code` (HL username form).
+
+## Signature
+
+```python
+def set_referrer(self, code: str) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+ex.set_referrer("alice")
+```
+
+## Parameters
+
+**`code`** — `str`. The referrer's username. Forwarded verbatim to the native `set_referral` — username resolution happens chain-side via the account-factory contract.
+
+## Returns
+
+**`dict[str, Any]`** — HL status envelope with `response.type="setReferrer"`. Empty `statuses` list on success; err envelope on chain-level failure.
+
+## See also
+
+- [Native `set_referral`](../../../api/methods/exchange/set_referral) — accepts `int | str`

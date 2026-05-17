@@ -1,0 +1,77 @@
+# Rate Limits & Quotas
+
+**What this teaches:** the two server-side limits the indexer enforces, and how to stay under them without auto-throttling.
+
+## The limits
+
+- **HTTP:** 167 requests per 10 seconds per IP.
+- **WebSocket:** 30 concurrent subscriptions per connection.
+
+The SDK does not auto-handle either limit. Hitting them surfaces as failed requests (HTTP 429 for HTTP, subscription rejection for WS). Plan capacity in your application layer.
+
+## Back off on HTTP failures
+
+Use `withRetry` from `@left-curve/utils` to retry transient HTTP failures with exponential backoff:
+
+```ts
+import { withRetry } from "@left-curve/utils"
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+
+const balance = await withRetry(
+  async () => client.getBalance({ address, denom: "dango" }),
+  { retryCount: 5, delay: 500 },
+)
+```
+
+`withRetry` doubles the delay on each attempt. Combine with a budget — bail out if total wait exceeds your latency budget.
+
+## Shard subscriptions across clients
+
+The 30-sub cap is per WebSocket connection, not per process. To run more than 30, instantiate multiple clients:
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+function newClient() {
+  return createPublicClient({ chain: testnet, transport: createTransport() })
+}
+
+const clients = [newClient(), newClient(), newClient()]
+
+// Distribute subscriptions round-robin
+const pairs = [/* 75 pairs */]
+const unsubs = pairs.map((pair, i) =>
+  clients[i % clients.length].candlesSubscription({
+    baseDenom: pair.base,
+    quoteDenom: pair.quote,
+    interval: "ONE_MINUTE",
+    next: (data) => handle(data),
+  }),
+)
+```
+
+Each client opens its own WS. Three clients gives you 90 subscriptions.
+
+## Batching HTTP
+
+Pass `batch: true` to `createTransport` to coalesce concurrent HTTP requests into a single GraphQL batch (hardcoded to 20 ops per batch, 20 ms window). This trades latency for throughput when issuing many parallel queries:
+
+```ts
+import { createTransport } from "@left-curve/sdk"
+
+const transport = createTransport(undefined, { batch: true })
+```
+
+## What the SDK does NOT do
+
+- No automatic rate-limit backoff. Retries are opt-in via `withRetry`.
+- No subscription sharding across connections. You orchestrate that.
+- No per-method throttling. Concurrent calls hit the server immediately.
+
+Plan accordingly for production workloads.
+
+## Next
+
+- Back to [Concepts: Packages](./packages) for the package overview, or browse the [API Reference](../clients/createPublicClient).

@@ -1,0 +1,42 @@
+import { HomePage } from 'vocs/components'
+
+# Installation
+
+Install `@left-curve/sdk` from your package manager. Node 20 or later is required.
+
+## Install
+
+<HomePage.InstallPackage name="@left-curve/sdk" />
+
+## Sub-packages
+
+`@left-curve/sdk` re-exports the most-used pieces of its sibling packages. Install a sub-package directly only when you want a smaller bundle or you need a symbol that the main entry does not re-export.
+
+```bash
+pnpm add @left-curve/crypto
+pnpm add @left-curve/encoding
+pnpm add @left-curve/types
+pnpm add @left-curve/utils
+```
+
+See [Concepts: Packages](../concepts/packages) for the full split.
+
+## TypeScript
+
+Strict mode must be on:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  }
+}
+```
+
+## Next
+
+- [First Call](./first-call) — call `queryStatus` against testnet
+- [Project Setup](./project-setup) — wire up signers and chain configs

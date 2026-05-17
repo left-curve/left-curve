@@ -1,0 +1,57 @@
+# Exchange.market_open (HL-compat)
+
+Place a market order with a slippage cap. **`px` is silently ignored.**
+
+## Signature
+
+```python
+def market_open(
+    self,
+    name: str,
+    is_buy: bool,
+    sz: float,
+    *,
+    px: float | None = None,
+    slippage: float = DEFAULT_SLIPPAGE,
+    cloid: Cloid | None = None,
+    builder: Any = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+ex.market_open("ETH", is_buy=True, sz=0.5, slippage=0.01)
+```
+
+## Parameters
+
+**`name`** — `str`. HL coin name.
+
+**`is_buy`** — `bool`.
+
+**`sz`** — `float`. Always positive on the HL side.
+
+**`px`** — `float | None`, optional. **Accepted-and-ignored.** Dango computes its own slippage band against the contract's mark price.
+
+**`slippage`** — `float`, optional. Default: `DEFAULT_SLIPPAGE = 0.05` (matches HL).
+
+**`cloid`** — `Cloid | None`, optional. **Raises `NotImplementedError` if non-None** — Dango's `submit_market_order` does not accept a `client_order_id`. Use a limit order with `tif="Ioc"` if you need cloid binding for a market-equivalent.
+
+**`builder`** — `Any`, optional. Non-`None` raises `NotImplementedError`.
+
+## Returns
+
+**`dict[str, Any]`** — HL status envelope with `response.type="order"`.
+
+## Notes
+
+- This is the most common surprise during migration. See [Migration](../../hyperliquid#2-market_open-market_close-silently-ignore-px) for the rationale.
+
+## See also
+
+- [`market_close`](./market_close) — reduce-only counterpart
+- [Native `submit_market_order`](../../../api/methods/exchange/submit_market_order)

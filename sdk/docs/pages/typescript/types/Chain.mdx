@@ -1,0 +1,47 @@
+# Chain
+
+The chain configuration consumed by `createTransport` and the client factories.
+
+## Definition
+
+```ts
+type Chain = {
+  id: ChainId               // string
+  name: string
+  url: string
+  nativeCoin: Denom
+  blockExplorer: {
+    name: string
+    txPage: string
+    contractPage: string
+    accountPage: string
+  }
+}
+```
+
+## Fields
+
+**`id`** — `string`. Chain id (e.g. `"dango-1"`, `"dango-testnet-1"`).
+
+**`name`** — `string`. Human-readable name.
+
+**`url`** — `string`. GraphQL endpoint URL.
+
+**`nativeCoin`** — `Denom`. The chain's native gas token.
+
+**`blockExplorer`** — explorer URL templates with `${txHash}` / `${address}` placeholders.
+
+## Construction
+
+The SDK ships four ready-made chain configs:
+
+```ts
+import { local, devnet, testnet, mainnet } from "@left-curve/sdk"
+```
+
+To define a custom chain, use the internal `defineChain` helper or build the object literally.
+
+## See also
+
+- [Getting Started: Project Setup](../getting-started/project-setup)
+- [`createPublicClient`](../clients/createPublicClient)

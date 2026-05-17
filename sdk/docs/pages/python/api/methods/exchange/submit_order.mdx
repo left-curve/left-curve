@@ -1,0 +1,74 @@
+# submit_order
+
+Place a single perps order. Size is signed: positive = buy, negative = sell.
+
+Orders are decomposed into closing and opening portions against the user's
+existing position, then matched in price-time priority. Each fill settles
+funding, PnL, and the volume-tiered fee in-place on USD margin. See protocol
+book: `perps/2-order-matching`.
+
+## Signature
+
+```python
+def submit_order(
+    self,
+    pair_id: PairId,
+    size: float | int | str | Decimal,
+    kind: OrderKind,
+    *,
+    reduce_only: bool = False,
+    tp: ChildOrder | None = None,
+    sl: ChildOrder | None = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from typing import cast
+
+from dango.exchange import Exchange
+from dango.utils.types import Addr, OrderKind, PairId
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# A buy-side GTC limit order.
+kind = cast(
+    OrderKind,
+    {"limit": {"limit_price": "1500.000000", "time_in_force": "GTC", "client_order_id": None}},
+)
+exchange.submit_order(PairId("perp/ethusd"), size="0.5", kind=kind)
+```
+
+In practice, prefer the higher-level helpers [`submit_limit_order`](./submit_limit_order) and [`submit_market_order`](./submit_market_order) — they construct the `OrderKind` for you.
+
+## Parameters
+
+**`pair_id`** — `PairId`. E.g. `PairId("perp/ethusd")`.
+
+**`size`** — `float | int | str | Decimal`. Signed quantity. Positive = buy, negative = sell. Zero is rejected (`ValueError`). Routed through [`dango_decimal`](../../helpers/dango_decimal) — precision capped at 6 places.
+
+**`kind`** — `OrderKind`. The externally-tagged wire shape: `{"market": {"max_slippage": "<dec>"}}` or `{"limit": {"limit_price": "<dec>", "time_in_force": "GTC"|"IOC"|"POST", "client_order_id": "<int>"|None}}`.
+
+**`reduce_only`** — `bool`, optional. Default: `False`. When `True`, the order can only reduce an existing position.
+
+**`tp`** — `ChildOrder | None`, optional. Take-profit child order. Default: `None`.
+
+**`sl`** — `ChildOrder | None`, optional. Stop-loss child order. Default: `None`.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope. Fills surface via indexer events; query [`orders_by_user`](../info/orders_by_user) or subscribe to user events to confirm.
+
+## Notes
+
+- Zero-sized orders are rejected client-side. The chain would also reject them — failing early surfaces a friendlier error.
+- All decimal inputs collapse to `"0.000000"` if equivalent to zero, so the zero check is unambiguous across `0`, `0.0`, `"0"`, `Decimal("0")`.
+- The chain rejects orders that fail pre-match checks: per-pair tick-size alignment, OI cap, slippage cap, limit-price band relative to oracle, and pre-match margin (worst-case 100 % fill IM + projected fee + reserved margin must be covered by equity). See `perps/2-order-matching` §3a, §3b, §5, §11.
+- Market and IOC limit orders revert with "no liquidity at acceptable price" if nothing fills; GTC remainders rest on the book and reserve `|opening_size| × limit_price × imr` until cancelled or filled.
+
+## See also
+
+- [`submit_limit_order`](./submit_limit_order) — convenience helper for limit orders
+- [`submit_market_order`](./submit_market_order) — convenience helper for market orders
+- [`batch_update_orders`](./batch_update_orders) — atomic multi-order submission

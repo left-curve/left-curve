@@ -86,9 +86,6 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      - name: Doc Build Check
-        run: pnpm doc
-
       - name: Build Portal
         run: pnpm build:portal-web
         env:

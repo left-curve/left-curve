@@ -1,0 +1,50 @@
+# query_block_outcome
+
+Fetch a block's execution outcome. Hits the REST endpoint `GET /block/result[/{height}]`.
+
+## Signature
+
+```rust
+async fn query_block_outcome(
+    &self,
+    height: Option<u64>,
+) -> Result<grug::BlockOutcome, anyhow::Error>;
+```
+
+From `impl BlockClient for HttpClient`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::HttpClient,
+    grug::BlockClient,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client  = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let outcome = client.query_block_outcome(None).await?;
+    println!("tx outcomes: {}", outcome.tx_outcomes.len());
+    Ok(())
+}
+```
+
+## Parameters
+
+**`height`** — `Option<u64>`. Block height, or `None` for the latest.
+
+## Returns
+
+**`BlockOutcome`** — per-transaction outcomes plus block-level metadata.
+
+## Notes
+
+- REST, not GraphQL.
+- The outcome is consensus-finalized; pending transactions are not reflected.
+
+## See also
+
+- [`query_block`](./query_block) — the block itself.
+- [`search_tx`](./search_tx) — single-transaction outcome by hash.

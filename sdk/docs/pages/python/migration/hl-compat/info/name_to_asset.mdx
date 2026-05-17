@@ -1,0 +1,35 @@
+# Info.name_to_asset (HL-compat)
+
+HL signature — coin name to integer asset index.
+
+## Signature
+
+```python
+def name_to_asset(self, name: str) -> int
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+asset_index = info.name_to_asset("ETH")
+```
+
+## Parameters
+
+**`name`** — `str`. HL coin name.
+
+## Returns
+
+**`int`** — the integer asset index used in HL wire shapes.
+
+## Notes
+
+- Indexes are assigned in `pair_params` iteration order (which the indexer returns sorted by pair_id).
+- Raises `KeyError` on unknown coins.
+
+## See also
+
+- [`name_to_pair`](./name_to_pair) — coin → Dango pair_id

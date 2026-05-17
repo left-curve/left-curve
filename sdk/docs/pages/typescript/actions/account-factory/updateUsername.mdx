@@ -1,0 +1,51 @@
+# updateUsername
+
+Change the username on the calling account's user record.
+
+Usernames live in a chain-wide unique index on the user record; the chain
+rejects collisions and reserves names. Note that the protocol book describes
+the original `name` field as immutable once set on `RegisterUser` — this
+action surfaces a chain-side rename path that is only available where the
+contract permits it.
+
+## Signature
+
+```ts
+function updateUsername(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    username: Username
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.updateUsername({ sender, username: "new-alice" })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The calling account.
+
+**`username`** — `Username`. New username. Must be unique chain-wide.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`getUser`](./getUser)

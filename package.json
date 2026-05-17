@@ -7,7 +7,6 @@
   },
   "scripts": {
     "turbo": "turbo",
-    "doc": "typedoc",
     "clean": "turbo clean && rm -rf node_modules",
     "clean:build": "turbo clean:build",
     "lint": "turbo lint",
@@ -20,11 +19,13 @@
     "machine-translate": "pnpm -F ui-config machine-translate",
     "dev:portal-web": "pnpm -F @left-curve/portal-web dev",
     "dev:portal-app": "turbo dev -F @left-curve/foundation -F @left-curve/portal-app",
+    "dev:docs": "pnpm -F @left-curve/docs dev",
     "build:sdk": "turbo build -F=./sdk/typescript/**",
     "build:graph": "turbo build --graph=build-graph.png",
     "build:portal-web": "turbo build -F @left-curve/portal-web",
     "build:kit": "turbo build -F @left-curve/applets-kit",
     "build:portal-app": "pnpm portal-app build:ios",
+    "build:docs": "turbo build -F @left-curve/docs",
     "storybook": "pnpm -F applets-kit sb:dev",
     "portal-web": "pnpm -F portal-web",
     "portal-app": "pnpm -F portal-app",
@@ -44,7 +45,6 @@
     "@types/node": "catalog:",
     "tsup": "^8.3.0",
     "turbo": "^2.0.11",
-    "typedoc": "^0.28.16",
     "typescript": "catalog:"
   },
   "pnpm": {

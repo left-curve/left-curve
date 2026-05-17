@@ -1,0 +1,50 @@
+# queryTrades
+
+Read historical trades, optionally filtered by address. Paginated cursor-style.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function queryTrades(
+  client: Client,
+  parameters: {
+    after?: string
+    first?: number
+    address?: Address
+  },
+): Promise<GraphqlQueryResult<Trade>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const user: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const page = await client.queryTrades({ address: user, first: 50 })
+```
+
+## Parameters
+
+**`after`** — `string`, optional. Cursor for the next page.
+
+**`first`** — `number`, optional. Page size.
+
+**`address`** — `Address`, optional. Filter by trader.
+
+## Returns
+
+**`GraphqlQueryResult<Trade>`** — `{ pageInfo, nodes }`. Each `Trade` has `addr`, denoms, direction, clearing price, and fees.
+
+## See also
+
+- [`tradesSubscription`](../indexer/tradesSubscription) — live updates
+- [`queryCandles`](./queryCandles)

@@ -1,0 +1,45 @@
+# withdraw_margin
+
+Withdraw USDC from the perps margin sub-account. Amount is in **USD** (6-decimal `UsdValue`).
+
+Specifies a USD amount to release; the contract converts to settlement-currency
+base units (floor-rounded) at the fixed \$1 rate. Rejected if the requested
+amount exceeds `available_margin = max(0, equity − used_margin − reserved_margin)`.
+See protocol book: `perps/1-margin` §3, §8.
+
+## Signature
+
+```python
+def withdraw_margin(self, amount: float | str | Decimal) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from decimal import Decimal
+
+from dango.exchange import Exchange
+from dango.utils.types import Addr
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+outcome = exchange.withdraw_margin(Decimal("1.5"))   # 1.50 USDC
+```
+
+## Parameters
+
+**`amount`** — `float | str | Decimal`. USDC in USD (NOT base units). Passes through `dango_decimal()` which canonicalises to a 6-decimal fixed-point string. Raises `ValueError` if precision exceeds 6 places.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- Asymmetric with [`deposit_margin`](./deposit_margin): deposit takes base units (Uint128), withdraw takes USD (UsdValue). The asymmetry mirrors the on-chain contract — the SDK does not paper over it.
+- The contract converts USD to settlement-currency base units at a fixed **$1 per unit** rate (floor-rounded to base units). See protocol book: `perps/1-margin` §3.
+
+## See also
+
+- [`deposit_margin`](./deposit_margin) — counterpart that takes base units
+- [`dango_decimal`](../../helpers/dango_decimal) — the decimal-canonicalisation helper

@@ -1,0 +1,80 @@
+# Clients
+
+**What this teaches:** which of the three Python SDK classes to construct for each kind of work, and how they share state.
+
+## The three roles
+
+| Class | Role | When to use |
+|-------|------|-------------|
+| [`Info`](../api/classes/Info) | Read-side: queries + subscriptions | Public chain state, user state, market data, real-time streams |
+| [`Exchange`](../api/classes/Exchange) | Write-side: simulate + sign + broadcast | Place orders, deposit margin, manage referrals, liquidate |
+| [`WebsocketManager`](../api/classes/WebsocketManager) | Subscription transport | Almost never construct directly — `Info` builds one lazily |
+
+All three live under `dango.*`. The package root re-exports nothing — always import from the submodule.
+
+```python
+from dango.info import Info
+from dango.exchange import Exchange
+from dango.websocket_manager import WebsocketManager  # rare
+```
+
+## The mental model
+
+`Info` is a sync GraphQL client. Every read query is one POST to `/graphql`; every subscription is one WebSocket frame on a managed connection. It is the only class you need for read-only workflows (dashboards, analytics, market makers' read path).
+
+`Exchange` subclasses `Info`'s base ([`API`](../api/classes/API)) and adds a signing pipeline. To build, sign, and broadcast a transaction it does three things:
+
+1. Build an [`UnsignedTx`](../api/types/UnsignedTx) from your message list and the signer's current nonce.
+2. Run `Info.simulate(unsigned_tx)` to learn the gas cost, then add `DEFAULT_GAS_OVERHEAD` to cover signature verification.
+3. Sign the resulting `SignDoc`, wrap it into a `Tx`, and call `Info.broadcast_tx_sync(tx)`.
+
+The `Exchange` constructor takes an optional `info=` parameter so you can share one `Info` between read and write. When omitted, the `Exchange` builds its own internal `Info` over the same `base_url`.
+
+```python
+from dango.exchange import Exchange
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL)
+exchange = Exchange(
+    wallet,
+    MAINNET_API_URL,
+    account_address=Addr("0x..."),
+    info=info,
+)
+```
+
+## Lifecycle
+
+`Info` is thread-safe for read queries — `requests.Session` handles connection pooling. For subscriptions, the first `subscribe_*` call lazily constructs a `WebsocketManager` (a daemon thread) and starts it. Call `info.disconnect_websocket()` to close cleanly:
+
+```python
+info.disconnect_websocket()
+```
+
+If you want to keep the read path but never subscribe, pass `skip_ws=True` to the `Info` constructor. Calling `subscribe_*` after that raises `RuntimeError`.
+
+`Exchange` holds a [`SingleSigner`](../api/classes/SingleSigner) which tracks the next nonce. The signer increments optimistically on every `sign_tx` call — including on failed broadcasts — because the chain rejects duplicate nonces. If you broadcast outside the SDK (or your process crashes between simulate and broadcast), reset the nonce via `exchange.signer.next_nonce = N`.
+
+## Read-only via `API`
+
+The base [`API`](../api/classes/API) class is the minimal GraphQL POST client. Both `Info` and `Exchange` subclass it. You rarely need it directly, but it is the right entry point for posting raw GraphQL documents the SDK does not wrap:
+
+```python
+from dango.api import API
+
+api = API("https://api-mainnet.dango.zone")
+data = api.query("query { queryStatus { chainId } }")
+```
+
+## Picking the right one
+
+- Reading? `Info`.
+- Writing? `Exchange`.
+- Streaming? `Info`.
+- Custom GraphQL? `API`.
+
+## Next
+
+- [Signers & Authentication](./signers) — keys, the `Wallet` protocol, and `SingleSigner`

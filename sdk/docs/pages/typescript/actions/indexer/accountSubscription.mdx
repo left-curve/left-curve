@@ -1,0 +1,48 @@
+# accountSubscription
+
+Subscribe to account creation events for a single user index. WebSocket only.
+
+## Signature
+
+```ts
+function accountSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    accounts: IndexedAccountEvent[]
+  }> & {
+    userIndex: number
+    sinceBlockHeight?: number
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const unsubscribe = client.accountSubscription({
+  userIndex: 42,
+  next: ({ accounts }) => console.log("new accounts", accounts),
+})
+```
+
+## Parameters
+
+**`userIndex`** — `number`. The user whose new accounts to watch.
+
+**`sinceBlockHeight`** — `number`, optional. Replay events from this height before going live.
+
+**`next`** — `(data) => void`. Called with new account events.
+
+**`error`**, **`complete`** — optional callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## See also
+
+- [`registerAccount`](../account-factory/registerAccount)
+- [`registerUser`](../account-factory/registerUser)

@@ -1,0 +1,47 @@
+# query_app
+
+Generic `queryApp` wrapper. Returns the raw kind-keyed envelope.
+
+## Signature
+
+```python
+def query_app(
+    self,
+    request: dict[str, Any],
+    *,
+    height: int | None = None,
+) -> Any
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+result = info.query_app({"wasm_smart": {"contract": Addr("0x..."), "msg": {"my_query": {}}}})
+# result is `{"wasm_smart": <contract response>}` — the kind-keyed envelope.
+```
+
+## Parameters
+
+**`request`** — `dict[str, Any]`. The query request shape: `{"wasm_smart": {...}}`, `{"multi": [...]}`, `{"config": ...}`, etc. The chain accepts one variant per call.
+
+**`height`** — `int | None`, optional. Query at a specific block height. Default: `None` (latest).
+
+## Returns
+
+**Raw kind-keyed envelope** — e.g. `{"wasm_smart": <inner>}` or `{"multi": [...]}`. Most callers want the unwrapping helpers below.
+
+## Notes
+
+- For single-contract smart queries, prefer [`query_app_smart`](./query_app_smart), which unwraps the envelope.
+- For multi-query batches, prefer [`query_app_multi`](./query_app_multi).
+
+## See also
+
+- [`query_app_smart`](./query_app_smart) — unwraps `{wasm_smart: ...}` automatically
+- [`query_app_multi`](./query_app_multi) — atomic batched queries

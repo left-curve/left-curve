@@ -1,0 +1,105 @@
+# Missing methods
+
+**What this teaches:** which Hyperliquid-shaped methods exist in the compatibility layer but raise `NotImplementedError`, so you know what to migrate to native equivalents.
+
+## Why these are stubs
+
+The HL-compat layer ships method signatures for every public method on `hyperliquid.exchange.Exchange` and `hyperliquid.info.Info` to preserve drop-in API shape, but only a subset is wired through to Dango primitives in v1. The rest raise `NotImplementedError` rather than silently no-op.
+
+## Exchange — not yet implemented
+
+The following methods on `dango.hyperliquid_compatibility.exchange.Exchange` currently raise `NotImplementedError`. Native alternatives, when applicable, live on `dango.exchange.Exchange`.
+
+| Method | Notes |
+|---|---|
+| `update_leverage` | HL-specific isolated/cross leverage toggle — no Dango analog |
+| `update_isolated_margin` | HL isolated-margin model not used by Dango |
+| `schedule_cancel` | HL dead-man-switch behavior |
+| `usd_class_transfer` | HL perp/spot account classes don't exist on Dango |
+| `send_asset` | HL multi-asset transfer |
+| `vault_usd_transfer` | HL vault USD transfer |
+| `sub_account_transfer` | HL sub-accounts not modeled in Dango |
+| `sub_account_spot_transfer` | HL sub-accounts not modeled in Dango |
+| `approve_builder_fee` | Dango has no builder-fee marketplace |
+| `convert_to_multi_sig_user` | HL multi-sig accounts |
+| `multi_sig` | HL multi-sig signing path |
+| `create_sub_account` | HL sub-accounts not modeled in Dango |
+| `usd_transfer` | HL USD-only transfer; use native `transfer` |
+| `withdraw_from_bridge` | HL bridge withdrawals |
+| `spot_transfer` | HL spot-class transfer |
+| `approve_agent` | HL agent system; closest analog is sessions |
+| `agent_enable_dex_abstraction` | HL agent abstraction modes |
+| `agent_set_abstraction` | HL agent abstraction modes |
+| `user_dex_abstraction` | HL user abstraction state |
+| `user_set_abstraction` | HL user abstraction state |
+| `token_delegate` | HL staking |
+| `use_big_blocks` | HL block-sizing toggle |
+| `c_signer_unjail_self` | HL consensus signer ops |
+| `c_signer_jail_self` | HL consensus signer ops |
+| `c_validator_register` | HL validator ops |
+| `c_validator_change_profile` | HL validator ops |
+| `c_validator_unregister` | HL validator ops |
+| `noop` | HL no-op tx |
+| `gossip_priority_bid` | HL priority gossip auction |
+| `spot_deploy_register_token` | HL spot token deployment |
+| `spot_deploy_user_genesis` | HL spot deployment |
+| `spot_deploy_enable_freeze_privilege` | HL spot deployment |
+| `spot_deploy_freeze_user` | HL spot deployment |
+| `spot_deploy_revoke_freeze_privilege` | HL spot deployment |
+| `spot_deploy_enable_quote_token` | HL spot deployment |
+| `spot_deploy_token_action_inner` | HL spot deployment |
+| `spot_deploy_genesis` | HL spot deployment |
+| `spot_deploy_register_spot` | HL spot deployment |
+| `spot_deploy_register_hyperliquidity` | HL spot deployment |
+| `spot_deploy_set_deployer_trading_fee_share` | HL spot deployment |
+| `perp_deploy_register_asset` | HL perp deployment |
+| `perp_deploy_set_oracle` | HL perp deployment |
+
+## Info — not yet implemented
+
+The following methods on `dango.hyperliquid_compatibility.info.Info` currently raise `NotImplementedError`. Native alternatives, when applicable, live on `dango.info.Info`.
+
+| Method | Notes |
+|---|---|
+| `spot_user_state` | Dango is perps-only |
+| `spot_meta` | Dango is perps-only |
+| `spot_meta_and_asset_ctxs` | Dango is perps-only |
+| `query_spot_deploy_auction_status` | HL spot auction state |
+| `user_staking_summary` | HL staking |
+| `user_staking_delegations` | HL staking |
+| `user_staking_rewards` | HL staking |
+| `delegator_history` | HL staking |
+| `query_user_to_multi_sig_signers` | HL multi-sig accounts |
+| `query_perp_deploy_auction_status` | HL perp auction state |
+| `query_user_dex_abstraction_state` | HL agent abstraction state |
+| `query_user_abstraction_state` | HL agent abstraction state |
+| `user_twap_slice_fills` | HL TWAP orders not modeled in Dango |
+| `portfolio` | HL portfolio aggregation |
+| `user_role` | HL role enum |
+| `user_rate_limit` | HL per-user rate-limit endpoint |
+| `extra_agents` | HL extra-agent listing |
+| `funding_history` | Use native indexer pagination instead |
+| `user_funding_history` | Use native indexer pagination instead |
+| `user_non_funding_ledger_updates` | HL ledger update feed |
+| `query_referral_state` | HL referral state |
+| `query_sub_accounts` | HL sub-accounts not modeled in Dango |
+| `frontend_open_orders` | Use [`orders_by_user`](../api/methods/info/orders_by_user) |
+| `user_fees` | HL fee schedule endpoint |
+| `query_order_by_cloid` | Cloid asymmetry — see [`hyperliquid`](./hyperliquid) |
+| `user_vault_equities` | HL vault accounting |
+
+## Migration path
+
+For each stubbed method:
+
+1. Identify what you were doing (spot vs perps, account info, staking, etc.).
+2. Find the closest native equivalent on `dango.exchange.Exchange` or `dango.info.Info`.
+3. Adapt to Dango's argument shape — see [Hyperliquid SDK migration](./hyperliquid) for the type-mapping cheatsheet and the Cloid asymmetry.
+
+If no Dango equivalent exists today, the feature is genuinely out of scope.
+
+## Next
+
+- [Hyperliquid SDK migration](./hyperliquid) — the migration guide proper.
+- [Exchange methods](../api/classes/Exchange) — native trading API.
+- [Info methods](../api/classes/Info) — native read API.
