@@ -1220,6 +1220,13 @@ pub struct FeeBreakdown {
     pub vault_fee: UsdValue,
 }
 
+impl FeeBreakdown {
+    pub const ZERO: Self = Self {
+        protocol_fee: UsdValue::ZERO,
+        vault_fee: UsdValue::ZERO,
+    };
+}
+
 /// Per-fill settlement outcome: the protocol/vault split attributable to
 /// each party. Either side is `None` if that party owed no fee on this fill
 /// (e.g. the vault when it is the maker — vaults are fee-exempt).
@@ -1239,10 +1246,7 @@ pub fn merge_fee_breakdown(
     addr: Addr,
     bd: FeeBreakdown,
 ) -> MathResult<()> {
-    let entry = map.entry(addr).or_insert(FeeBreakdown {
-        protocol_fee: UsdValue::ZERO,
-        vault_fee: UsdValue::ZERO,
-    });
+    let entry = map.entry(addr).or_insert(FeeBreakdown::ZERO);
 
     entry.protocol_fee.checked_add_assign(bd.protocol_fee)?;
     entry.vault_fee.checked_add_assign(bd.vault_fee)
@@ -1342,10 +1346,6 @@ pub fn settle_pnls(
     // one side has a positive contribution, that side takes the full pool
     // directly — no weight-multiply runs, so no rounding can drift onto the
     // rebater.
-    let zero = FeeBreakdown {
-        protocol_fee: UsdValue::ZERO,
-        vault_fee: UsdValue::ZERO,
-    };
     let (taker_breakdown, maker_breakdown) =
         match (taker_fee.is_positive(), maker_fee.is_positive()) {
             (true, true) => {
@@ -1365,13 +1365,13 @@ pub fn settle_pnls(
                     protocol_fee,
                     vault_fee,
                 },
-                zero,
+                FeeBreakdown::ZERO,
             ),
-            (false, true) => (zero, FeeBreakdown {
+            (false, true) => (FeeBreakdown::ZERO, FeeBreakdown {
                 protocol_fee,
                 vault_fee,
             }),
-            (false, false) => (zero, zero),
+            (false, false) => (FeeBreakdown::ZERO, FeeBreakdown::ZERO),
         };
 
     Ok(FillFeeBreakdowns {
