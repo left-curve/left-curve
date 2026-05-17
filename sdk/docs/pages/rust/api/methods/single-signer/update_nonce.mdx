@@ -1,0 +1,53 @@
+# SingleSigner::update_nonce
+
+Refresh `self.nonce` from the chain. Trait method of `SequencedSigner`.
+
+## Signature
+
+```rust
+#[async_trait]
+impl<S> SequencedSigner for SingleSigner<S, Defined<Nonce>>
+where
+    S: Secret + Send + Sync,
+{
+    async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, SingleSigner},
+    dango_types::signer::SequencedSigner,
+};
+
+async fn resync(
+    http: &HttpClient,
+    signer: &mut SingleSigner<impl dango_sdk::Secret + Send + Sync>,
+) -> Result<()> {
+    signer.update_nonce(http).await
+}
+```
+
+## Parameters
+
+**`client`** — `&C` implementing `QueryClient`.
+
+## Returns
+
+**`()`** — on success, `self.nonce` is set to the value returned by [`query_next_nonce`](./query_next_nonce).
+
+## Notes
+
+- Use after a broadcast failure to bring the in-memory nonce back in sync with the chain (`sign_transaction` increments unconditionally).
+- Use after a process restart that resumed signing with a stale nonce.
+
+## See also
+
+- [`query_nonce`](./query_nonce) — read-only counterpart.
+- [`sign_transaction`](./sign_transaction) — the mutation that this resyncs.

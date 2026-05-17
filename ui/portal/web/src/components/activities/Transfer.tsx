@@ -2,7 +2,7 @@ import { useConfig } from "@left-curve/store";
 import { useRouter } from "@tanstack/react-router";
 import { forwardRef, useImperativeHandle } from "react";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {

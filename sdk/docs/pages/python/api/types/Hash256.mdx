@@ -1,0 +1,26 @@
+# Hash256
+
+A 256-bit hash, uppercase hex. `NewType("Hash256", str)` — at runtime it is a plain `str`.
+
+## Definition
+
+```python
+Hash256 = NewType("Hash256", str)
+```
+
+## Construction
+
+```python
+from dango.utils.types import Hash256
+
+h = Hash256("AABBCCDD" * 8)   # 64 hex chars, uppercase
+```
+
+## Notes
+
+- The on-chain identifier for a wallet's public key. `Secp256k1Wallet.key_hash` produces an `Hash256` from the SHA-256 of the compressed pubkey.
+- Wire form is uppercase hex.
+
+## See also
+
+- [`Secp256k1Wallet`](../classes/Secp256k1Wallet) — exposes `key_hash`

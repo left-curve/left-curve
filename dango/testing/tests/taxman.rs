@@ -10,8 +10,8 @@ use {
 const OLD_FEE_RATE: Udec128 = Udec128::new_percent(1); // 0.01 uusdc per gas unit
 const NEW_FEE_RATE: Udec128 = Udec128::new_percent(2); // 0.02 uusdc per gas unit
 
-#[test]
-fn fee_rate_update_works() {
+#[tokio::test]
+async fn fee_rate_update_works() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // --------------------------------- tx 1 ----------------------------------
@@ -32,6 +32,7 @@ fn fee_rate_update_works() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // This transaction was run when fee rate was zero.
@@ -57,6 +58,7 @@ fn fee_rate_update_works() {
             },
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Owner should have been charged a gas fee, but at the old rate.
@@ -75,6 +77,7 @@ fn fee_rate_update_works() {
     // Someone else sends a transaction.
     let success = suite
         .transfer(&mut accounts.user1, accounts.owner.address(), Coins::new())
+        .await
         .should_succeed();
 
     // Gas fee should be calculated using the new rate.

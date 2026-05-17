@@ -1,7 +1,7 @@
 import { useConnectors } from "@left-curve/store";
 import { Button, type ButtonProps } from "./Button";
 import { Modals, useApp } from "@left-curve/foundation";
-import { withResolvers } from "@left-curve/dango/utils";
+import { withResolvers } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 

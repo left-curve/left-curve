@@ -1,0 +1,37 @@
+# Info.query_order_by_oid (HL-compat)
+
+HL `orderStatus` — fetch one order by id. **`user` is accepted-and-ignored.**
+
+## Signature
+
+```python
+def query_order_by_oid(self, user: str, oid: int | str) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+result = info.query_order_by_oid("0x...", 12345)
+if result["status"] == "order":
+    print(result["order"])
+else:
+    print(result["status"])     # "unknownOid"
+```
+
+## Parameters
+
+**`user`** — `str`. **Accepted-and-ignored.** Dango orders are keyed by oid alone; the wrapper does NOT forward this to the contract.
+
+**`oid`** — `int | str`. The chain order id.
+
+## Returns
+
+**`dict[str, Any]`** — `{"status": "order", "order": <reshaped order>}` on hit, `{"status": "unknownOid"}` on miss.
+
+## See also
+
+- [Migration: `user` is ignored](../../hyperliquid#4-infoquery_order_by_oid-ignores-user)
+- [Native `order`](../../../api/methods/info/order)

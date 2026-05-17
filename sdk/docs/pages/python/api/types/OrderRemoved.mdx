@@ -1,0 +1,44 @@
+# OrderRemoved
+
+Event payload for `eventType == "order_removed"`.
+
+## Definition
+
+```python
+class OrderRemoved(TypedDict):
+    order_id: OrderId
+    pair_id: PairId
+    user: Addr
+    reason: ReasonForOrderRemoval
+    client_order_id: ClientOrderId | None
+```
+
+## Fields
+
+**`order_id`** — `OrderId`.
+
+**`pair_id`** — `PairId`.
+
+**`user`** — `Addr`.
+
+**`reason`** — `ReasonForOrderRemoval`. Why the order left the book: `filled`, `canceled`, `liquidated`, etc.
+
+**`client_order_id`** — `ClientOrderId | None`. The client id this order was submitted with, if any.
+
+## Construction
+
+```python
+from typing import cast
+
+from dango.utils.types import OrderRemoved, PerpsEvent
+
+event: PerpsEvent = ...
+if event["eventType"] == "order_removed":
+    payload = cast(OrderRemoved, event["data"])
+    print(payload["reason"], payload["order_id"])
+```
+
+## See also
+
+- [`PerpsEvent`](./PerpsEvent) — container with `data`
+- [`ReasonForOrderRemoval`](./ReasonForOrderRemoval) — enum

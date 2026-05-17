@@ -1,0 +1,35 @@
+# TimeInForce
+
+Limit-order time-in-force enum.
+
+## Definition
+
+```python
+class TimeInForce(StrEnum):
+    GTC = "GTC"
+    IOC = "IOC"
+    POST = "POST"
+```
+
+## Fields
+
+- `GTC` — good-till-cancelled. Resting order.
+- `IOC` — immediate-or-cancel. Fills what it can; cancels the rest.
+- `POST` — post-only. Rejected if it would cross at submission.
+
+## Construction
+
+```python
+from dango.utils.types import TimeInForce
+
+tif = TimeInForce.GTC
+print(tif.value)   # "GTC"
+```
+
+## Notes
+
+- `StrEnum` subclass — `tif.value` is the wire form, but the enum compares equal to its string value too (`tif == "GTC"` works).
+
+## See also
+
+- [`submit_limit_order`](../methods/exchange/submit_limit_order) — takes a `TimeInForce`

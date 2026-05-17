@@ -1,73 +1,49 @@
-import { createTransport } from "@left-curve/sdk";
-import {
-  HttpRequestError,
-  UrlRequiredError,
-  createBatchScheduler,
-  wait,
-} from "@left-curve/sdk/utils";
-import { createClient } from "graphql-ws";
-import { graphqlClient } from "../http/graphqlClient.js";
-import { EventEmitter } from "eventemitter3";
-
 import type {
-  CometBftRpcSchema,
-  HttpClientOptions,
+  GraphQLClientResponse,
+  GraphqlOperation,
   RequestFn,
   SubscribeFn,
   Transport,
-} from "@left-curve/sdk/types";
-import type { GraphQLClientResponse, GraphqlOperation } from "../types/graphql.js";
+} from "@left-curve/types";
+import { createBatchScheduler, wait } from "@left-curve/utils";
+import { EventEmitter } from "eventemitter3";
+import { createClient } from "graphql-ws";
+import { HttpRequestError } from "#errors/request.js";
+import { UrlRequiredError } from "#errors/transports.js";
+import { graphqlClient } from "#http/graphqlClient.js";
 
 export type WsRetryConfig = {
-  /** Maximum number of reconnection attempts before giving up. Default: 10 */
   maxRetries?: number;
-  /** Initial delay in ms before first retry (doubles each attempt). Default: 1000 */
   baseDelay?: number;
-  /** Maximum delay in ms between retries. Default: 30000 */
   maxDelay?: number;
 };
 
 export type GraphqlTransportConfig = {
-  /**
-   * Request configuration to pass to `fetch`.
-   * @link https://developer.mozilla.org/en-US/docs/Web/API/fetch
-   */
-  fetchOptions?: HttpClientOptions["fetchOptions"];
-  /** A callback to handle the response from `fetch`. */
-  onFetchRequest?: HttpClientOptions["onRequest"];
-  /** A callback to handle the response from `fetch`. */
-  onFetchResponse?: HttpClientOptions["onResponse"];
-  /** The batch configuration. */
+  fetchOptions?: Omit<RequestInit, "body">;
+  onFetchRequest?: (
+    request: Request,
+    init: RequestInit,
+  ) =>
+    | Promise<void | undefined | (RequestInit & { url?: string | undefined })>
+    | void
+    | undefined
+    | (RequestInit & { url?: string | undefined });
+  onFetchResponse?: (response: Response) => Promise<void> | void;
   batch?: boolean;
-  /** The name of the transport. */
   name?: string;
-  /** The key of the transport. */
   key?: string;
-  /** The timeout (in ms) for the HTTP request. Default: 10_000 */
   timeout?: number;
-  /** Whether to create the WebSocket client in lazy mode. Default: true */
   lazy?: boolean;
-  /** Disable WebSocket subscriptions entirely, forcing HTTP polling fallback. */
   disableWs?: boolean;
-  /** When false, disables HTTP polling fallback for subscriptions. Default: true. */
   polling?: boolean;
-  /** WebSocket retry configuration. */
   wsRetry?: WsRetryConfig;
 };
 
-export type GraphqlTransport = Transport<"http-graphql", CometBftRpcSchema>; /**
- * Creates a HTTP transport that connects to GraphQL API.
- * @param url The URL of the GraphQL API.
- * @param config {GraphqlTransportConfig} The configuration of the transport.
- * @returns The HTTP transport.
- */
-export function graphql(
+export function createTransport(
   _url_?: string | undefined,
   config: GraphqlTransportConfig = {},
-): GraphqlTransport {
+): Transport {
   const {
-    key = "HTTP-Graphql",
-    name = "HTTP Graphql",
     batch: _batch_,
     timeout: _timeout_,
     fetchOptions,
@@ -82,9 +58,6 @@ export function graphql(
     maxDelay: wsMaxDelay = 30_000,
   } = config.wsRetry ?? {};
 
-  // Shared WebSocket state across all transport factory invocations.
-  // This ensures only one WS connection is created regardless of how many
-  // clients (public, signer, etc.) use this transport.
   const wsClientStatus = { isConnected: false };
   const wsStatusEmitter = new EventEmitter();
   const wsRef: { current: ReturnType<typeof createClient> | null } = { current: null };
@@ -141,8 +114,8 @@ export function graphql(
     }
   };
 
-  return ({ chain } = {}) => {
-    const url = _url_ || chain?.urls.indexer;
+  return (chain) => {
+    const url = _url_ || chain.url;
     if (!url) throw new UrlRequiredError();
 
     const batchOptions = typeof _batch_ === "object" ? _batch_ : { maxSize: 20, maxWait: 20 };
@@ -160,8 +133,8 @@ export function graphql(
       timeout,
     });
 
-    const request = (async ({ method, params }) => {
-      const body = { query: method, variables: params || {} };
+    const request = (async ({ request: query, params }) => {
+      const body = { query, variables: params || {} };
 
       const { schedule } = createBatchScheduler({
         id: url,
@@ -175,9 +148,7 @@ export function graphql(
       const fn = async (body: GraphqlOperation) =>
         batch ? schedule(body) : [await client.request({ body })];
 
-      const [{ data, errors }] = (await fn(body as any)) as GraphQLClientResponse<
-        CometBftRpcSchema[number]["ReturnType"]
-      >[];
+      const [{ data, errors }] = (await fn(body as any)) as GraphQLClientResponse[];
 
       if (errors?.length) {
         throw new HttpRequestError({
@@ -188,7 +159,7 @@ export function graphql(
       }
 
       return data;
-    }) as RequestFn<CometBftRpcSchema>;
+    }) as RequestFn;
 
     const noOp = () => {};
 
@@ -212,14 +183,9 @@ export function graphql(
     subscribe.getClientStatus = () => (config.disableWs ? { isConnected: false } : wsClientStatus);
     subscribe.emitter = wsStatusEmitter;
 
-    return createTransport<"http-graphql">({
-      type: "http-graphql",
-      name,
-      key,
-      batch: !!_batch_,
-      polling: config.polling ?? true,
+    return {
       request,
       subscribe,
-    });
+    };
   };
 }

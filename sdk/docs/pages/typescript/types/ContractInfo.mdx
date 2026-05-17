@@ -1,0 +1,26 @@
+# ContractInfo
+
+Contract metadata returned by [`getContractInfo`](../actions/app/getContractInfo).
+
+## Definition
+
+```ts
+type ContractInfo = {
+  codeHash: Hex
+  label?: string
+  admin?: Address
+}
+```
+
+## Fields
+
+**`codeHash`** — `Hex`. SHA-256 of the contract's current Wasm.
+
+**`label`** — `string`, optional. Human-readable label set at instantiation.
+
+**`admin`** — `Address`, optional. Account allowed to call [`migrate`](../actions/app/migrate).
+
+## See also
+
+- [`getContractInfo`](../actions/app/getContractInfo)
+- [`getContractsInfo`](../actions/app/getContractsInfo)

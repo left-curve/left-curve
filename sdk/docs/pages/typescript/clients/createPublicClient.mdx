@@ -1,0 +1,160 @@
+# createPublicClient
+
+Factory that builds a read-only client extended with every query action.
+
+## Setup
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+```
+
+`createPublicClient` returns a `PublicClient = Client<undefined, PublicActions>`. The `signer` slot is `undefined`, so the type system forbids calling any signing action.
+
+## Configuration
+
+**`chain`** — `Chain`. Chain config (id, name, URL, native coin). Use `local`, `devnet`, `testnet`, or `mainnet` from `@left-curve/sdk`.
+
+**`transport`** — `Transport`. GraphQL transport instance from `createTransport(url?, config?)`.
+
+**`name`** — `string`, optional, default: `"Public Client"`. Free-form label for debugging.
+
+## Methods
+
+### App
+
+| Method                                                     | Description                          |
+|------------------------------------------------------------|--------------------------------------|
+| [`getAppConfig`](../actions/app/getAppConfig)              | App-level config (cached)            |
+| [`getBalance`](../actions/app/getBalance)                  | Balance of one denom for an address  |
+| [`getBalances`](../actions/app/getBalances)                | Paginated `Coins` map for an address |
+| [`getSupply`](../actions/app/getSupply)                    | Total supply of a single token       |
+| [`getSupplies`](../actions/app/getSupplies)                | Paginated map of token supplies      |
+| [`getCode`](../actions/app/getCode)                        | Fetch a stored Wasm code by hash     |
+| [`getCodes`](../actions/app/getCodes)                      | Paginated list of stored codes       |
+| [`getContractInfo`](../actions/app/getContractInfo)        | Contract metadata by address         |
+| [`getContractsInfo`](../actions/app/getContractsInfo)      | Paginated contract metadata          |
+| [`queryWasmRaw`](../actions/app/queryWasmRaw)              | Raw base64 storage value             |
+| [`queryWasmSmart`](../actions/app/queryWasmSmart)          | Typed JSON query against a contract  |
+| [`queryApp`](../actions/app/queryApp)                      | Generic typed query against the app  |
+| [`queryStatus`](../actions/app/queryStatus)                | Chain id and latest block info       |
+| [`queryTx`](../actions/app/queryTx)                        | Indexed transaction by hash          |
+| [`simulate`](../actions/app/simulate)                      | Gas-simulate an unsigned tx          |
+
+### Account Factory
+
+| Method                                                                  | Description                              |
+|-------------------------------------------------------------------------|------------------------------------------|
+| [`forgotUsername`](../actions/account-factory/forgotUsername)           | Users associated with a key hash         |
+| [`getAccountInfo`](../actions/account-factory/getAccountInfo)           | Account details for an address           |
+| [`getAccountSeenNonces`](../actions/account-factory/getAccountSeenNonces) | Most-recent nonces consumed by account |
+| [`getAccountStatus`](../actions/account-factory/getAccountStatus)       | Current `UserStatus` for an address      |
+| [`getAllAccountInfo`](../actions/account-factory/getAllAccountInfo)     | Paginated map of all accounts            |
+| [`getCodeHash`](../actions/account-factory/getCodeHash)                 | Current account contract code hash       |
+| [`getNextAccountIndex`](../actions/account-factory/getNextAccountIndex) | Next account index for a username        |
+| [`getUser`](../actions/account-factory/getUser)                         | `User` by index or name                  |
+| [`getUserKeys`](../actions/account-factory/getUserKeys)                 | Indexer-backed list of `PublicKey`       |
+
+### DEX
+
+| Method                                                                         | Description                                  |
+|--------------------------------------------------------------------------------|----------------------------------------------|
+| [`dexStatus`](../actions/dex/dexStatus)                                        | Whether the DEX is paused                    |
+| [`getOrder`](../actions/dex/getOrder)                                          | Details of a single active order             |
+| [`getPair`](../actions/dex/getPair)                                            | Parameters of a single base/quote pair       |
+| [`getPairs`](../actions/dex/getPairs)                                          | Paginated list of trading pairs              |
+| [`getPairStats`](../actions/dex/getPairStats)                                  | 24h stats for one pair                       |
+| [`getAllPairStats`](../actions/dex/getAllPairStats)                            | 24h stats for every pair                     |
+| [`ordersByUser`](../actions/dex/ordersByUser)                                  | Active orders for a user                     |
+| [`queryCandles`](../actions/dex/queryCandles)                                  | Paginated candles                            |
+| [`queryTrades`](../actions/dex/queryTrades)                                    | Paginated trades                             |
+| [`simulateSwapExactAmountIn`](../actions/dex/simulateSwapExactAmountIn)        | Quote output for an exact-input swap         |
+| [`simulateSwapExactAmountOut`](../actions/dex/simulateSwapExactAmountOut)      | Quote input for an exact-output swap         |
+| [`simulateWithdrawLiquidity`](../actions/dex/simulateWithdrawLiquidity)        | Coins returned for burning LP                |
+
+### Perps
+
+| Method                                                                     | Description                                    |
+|----------------------------------------------------------------------------|------------------------------------------------|
+| [`getPerpsUserState`](../actions/perps/getPerpsUserState)                  | `PerpsUserState` for a user                    |
+| [`getPerpsUserStateExtended`](../actions/perps/getPerpsUserStateExtended)  | Extended state with PnL/equity/liq flags       |
+| [`getPerpsOrdersByUser`](../actions/perps/getPerpsOrdersByUser)            | Active perps orders for a user                 |
+| [`getPerpsLiquidityDepth`](../actions/perps/getPerpsLiquidityDepth)        | Bid/ask depth buckets for a pair               |
+| [`getPerpsPairParam`](../actions/perps/getPerpsPairParam)                  | `PerpsPairParam` for one pair                  |
+| [`getPerpsPairParams`](../actions/perps/getPerpsPairParams)                | Map of params across pairs                     |
+| [`getPerpsParam`](../actions/perps/getPerpsParam)                          | Global perps parameters                        |
+| [`getPerpsPairStats`](../actions/perps/getPerpsPairStats)                  | Indexer 24h stats for a perps pair             |
+| [`getAllPerpsPairStats`](../actions/perps/getAllPerpsPairStats)            | Indexer 24h stats for every perps pair         |
+| [`getPerpsPairState`](../actions/perps/getPerpsPairState)                  | `PerpsPairState` (OI, funding) for a pair      |
+| [`getPerpsState`](../actions/perps/getPerpsState)                          | Global runtime state                           |
+| [`getPerpsVaultState`](../actions/perps/getPerpsVaultState)                | Perps vault state                              |
+| [`getVaultSnapshots`](../actions/perps/getVaultSnapshots)                  | Historical vault snapshots                     |
+| [`getFeeRateOverride`](../actions/perps/getFeeRateOverride)                | Per-user fee rate override                     |
+| [`queryPerpsCandles`](../actions/perps/queryPerpsCandles)                  | Paginated perps candles                        |
+| [`queryPerpsEvents`](../actions/perps/queryPerpsEvents)                    | Paginated perps events                         |
+
+### Oracle
+
+| Method                                              | Description                                    |
+|-----------------------------------------------------|------------------------------------------------|
+| [`getPrices`](../actions/oracle/getPrices)          | Paginated `Record<Denom, Price>` from oracle   |
+
+### Indexer
+
+| Method                                                                              | Description                                     |
+|-------------------------------------------------------------------------------------|-------------------------------------------------|
+| [`queryBlock`](../actions/indexer/queryBlock)                                       | Block (by height or latest)                     |
+| [`searchTxs`](../actions/indexer/searchTxs)                                         | Paginated transaction search                    |
+| [`accountSubscription`](../actions/indexer/accountSubscription)                     | Account creation events                         |
+| [`blockSubscription`](../actions/indexer/blockSubscription)                         | New finalized blocks                            |
+| [`candlesSubscription`](../actions/indexer/candlesSubscription)                     | Live candles for a pair                         |
+| [`eventsSubscription`](../actions/indexer/eventsSubscription)                       | Filtered live events                            |
+| [`eventsByAddressesSubscription`](../actions/indexer/eventsByAddressesSubscription) | Live events for a set of addresses              |
+| [`transferSubscription`](../actions/indexer/transferSubscription)                   | Live transfer events for a username             |
+| [`tradesSubscription`](../actions/indexer/tradesSubscription)                       | Live spot trades for a pair                     |
+| [`perpsCandlesSubscription`](../actions/indexer/perpsCandlesSubscription)           | Live perps candles                              |
+| [`perpsTradesSubscription`](../actions/indexer/perpsTradesSubscription)             | Live perps trades                               |
+| [`queryAppSubscription`](../actions/indexer/queryAppSubscription)                   | Live result of a `queryApp` request             |
+| [`allPairStatsSubscription`](../actions/indexer/allPairStatsSubscription)           | Live 24h stats for all spot pairs               |
+| [`allPerpsPairStatsSubscription`](../actions/indexer/allPerpsPairStatsSubscription) | Live 24h stats for all perps pairs              |
+
+## End-to-end example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+
+const status = await client.queryStatus()
+
+const address: Address = "0x1234567890abcdef1234567890abcdef12345678"
+const balances = await client.getBalances({ address })
+
+const pairs = await client.getPairs({ limit: 10 })
+
+const unsubscribe = client.blockSubscription({
+  next: ({ block }) => console.log("block", block.blockHeight),
+})
+
+// later
+unsubscribe()
+```
+
+## Notes
+
+- The client is a plain object, not a class. Method calls are just property reads followed by function calls.
+- For tree-shakable usage, import each action and pass the client positionally: `getBalance(client, {...})`.
+
+## See also
+
+- [createSignerClient](./createSignerClient) — when you also need to broadcast
+- [createBaseClient](./createBaseClient) — for custom action extension
+- [Concepts: Clients](../concepts/clients)

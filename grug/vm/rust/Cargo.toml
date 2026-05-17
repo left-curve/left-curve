@@ -13,7 +13,6 @@ version       = { workspace = true }
 elsa            = { workspace = true }
 error-backtrace = { workspace = true }
 grug-app        = { workspace = true }
-grug-crypto     = { workspace = true }
 grug-types      = { workspace = true }
 serde           = { workspace = true }
 thiserror       = { workspace = true }
@@ -22,3 +21,4 @@ thiserror       = { workspace = true }
 grug-math    = { workspace = true }
 grug-testing = { workspace = true }
 test-case    = { workspace = true }
+tokio        = { workspace = true }

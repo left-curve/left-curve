@@ -1,8 +1,7 @@
-import { encodeEndian32 } from "../encoding.js";
+import { encodeEndian32 } from "@left-curve/encoding";
 
-import type { Encoder } from "@left-curve/sdk/types";
+import type { Domain, Encoder } from "@left-curve/types";
 import type { Addr32 } from "./addr32.js";
-import type { Domain } from "../types/hyperlane.js";
 
 export const MAILBOX_VERSION = 3;
 export const HYPERLANE_DOMAIN_KEY = "HYPERLANE";

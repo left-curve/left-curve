@@ -1,0 +1,39 @@
+# UrlRequiredError
+
+Thrown by `createTransport` when no URL is supplied and the chain config also lacks one.
+
+## Definition
+
+```ts
+class UrlRequiredError extends BaseError {
+  constructor()
+}
+```
+
+## Fields
+
+Inherits `shortMessage` (`"No URL was provided to the Transport. Please provide a valid RPC URL to the Transport."`), `name` from [`BaseError`](./BaseError).
+
+## Construction
+
+The transport throws this during client creation:
+
+```ts
+import { createBaseClient, createTransport } from "@left-curve/sdk"
+
+// No URL on transport, no URL on chain → UrlRequiredError
+const transport = createTransport()
+createBaseClient({
+  chain: { id: "x", name: "x", url: "", nativeCoin: "x", blockExplorer: {} as any },
+  transport,
+})
+```
+
+## Notes
+
+- Pass a URL to `createTransport(url)` or set `chain.url` to fix.
+
+## See also
+
+- [`BaseError`](./BaseError)
+- [Getting Started: Project Setup](../getting-started/project-setup)

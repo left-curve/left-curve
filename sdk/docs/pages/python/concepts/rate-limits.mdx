@@ -1,0 +1,104 @@
+# Rate limits & quotas
+
+**What this teaches:** the two server-side caps that affect Python SDK users, and how to stay under them.
+
+## The two limits
+
+| Limit | Surface | What it caps |
+|-------|---------|--------------|
+| **167 requests / 10 s** | HTTP `/graphql` | All POST queries and mutations from one IP |
+| **30 subscriptions / connection** | WebSocket `/graphql` | Simultaneous `subscribe` frames on one socket |
+
+Both limits are enforced server-side. Hitting the HTTP limit returns 429 with a `ClientError`; hitting the WebSocket limit returns an `error` frame on the subscription, which surfaces as `{"_error": ...}` in your callback.
+
+## HTTP: 167 / 10 s
+
+Bursting is fine within the window; sustained traffic above 167 req / 10 s gets throttled. Common ways to blow the limit:
+
+- Calling `pair_param(pair_id)` in a tight loop across 50 pairs instead of `pair_params()` once.
+- Using `query_app_multi` is the right answer for atomic batched reads.
+- `paginate_all` over a high-cardinality user's events without a `page_size` ceiling.
+
+```python
+# Wasteful: 50 round trips
+for pair_id in pairs:
+    info.pair_param(pair_id)
+
+# Efficient: one round trip
+all_params = info.pair_params()
+```
+
+## The SDK does not retry
+
+There is no built-in retry, no jittered backoff, no circuit breaker. The choice is intentional — callers know their own throughput and tolerance better than a library default would. Wrap calls yourself:
+
+```python
+import time
+from dango.utils.error import ClientError, ServerError
+
+def with_backoff(call, max_retries=5):
+    for attempt in range(max_retries):
+        try:
+            return call()
+        except ServerError:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(2 ** attempt)
+        except ClientError as exc:
+            if "429" not in str(exc) or attempt == max_retries - 1:
+                raise
+            time.sleep(2 ** attempt)
+
+balances = with_backoff(lambda: info.user_state(addr))
+```
+
+## WebSocket: 30 / connection
+
+The server caps each WebSocket connection at 30 simultaneous subscriptions. If you need more, shard them across multiple `Info` instances — each one lazy-builds its own `WebsocketManager`, and each manager owns one connection.
+
+```python
+from dango.info import Info
+from dango.utils.types import PairId
+
+URL = "https://api-mainnet.dango.zone"
+pairs = [PairId(f"perp/{coin}usd") for coin in ("eth", "btc", "sol", ...)]
+
+shards = [Info(URL) for _ in range((len(pairs) + 29) // 30)]
+for idx, pair in enumerate(pairs):
+    shards[idx // 30].subscribe_perps_trades(pair, on_trade)
+```
+
+Remember to call `info.disconnect_websocket()` on each shard at shutdown.
+
+## Detecting a 429
+
+Rate-limit responses arrive as HTTP 429. The SDK wraps any 4xx in `ClientError` with the response body truncated to 500 chars. Parse the message:
+
+```python
+from dango.utils.error import ClientError
+
+try:
+    info.query_status()
+except ClientError as exc:
+    if "429" in str(exc):
+        # back off
+        ...
+```
+
+## Detecting a subscription rate-limit error
+
+Subscription rate-limit violations surface through the callback, not as an exception. Watch for the `_error` envelope:
+
+```python
+def on_event(event):
+    if isinstance(event, dict) and "_error" in event:
+        # server dropped the subscription; reconnect or shard
+        ...
+```
+
+Once a subscription receives an error, the manager has already removed its callback. Re-subscribe with a fresh id (and consider whether you have crossed the 30-per-connection cap).
+
+## Next
+
+- [Subscriptions](./subscriptions) — the WebSocket model in detail
+- [Error handling](./error-handling) — the exception hierarchy

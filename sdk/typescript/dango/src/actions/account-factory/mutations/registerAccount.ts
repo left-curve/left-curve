@@ -1,9 +1,14 @@
-import { getAppConfig } from "@left-curve/sdk";
-import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
+import { type ExecuteReturnType, execute } from "#actions/app/mutations/execute.js";
 
-import { getAction } from "@left-curve/sdk/actions";
-import type { Address, Funds, Transport, TxParameters } from "@left-curve/sdk/types";
-import type { AppConfig, DangoClient, Signer, TypedDataParameter } from "../../../types/index.js";
+import type {
+  Address,
+  Client,
+  Funds,
+  Signer,
+  TxParameters,
+  TypedDataParameter,
+} from "@left-curve/types";
 
 export type RegisterAccountParameters = {
   sender: Address;
@@ -12,8 +17,8 @@ export type RegisterAccountParameters = {
 
 export type RegisterAccountReturnType = ExecuteReturnType;
 
-export async function registerAccount<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function registerAccount(
+  client: Client<Signer>,
   parameters: RegisterAccountParameters,
   txParameters: TxParameters = {},
 ): RegisterAccountReturnType {
@@ -21,9 +26,7 @@ export async function registerAccount<transport extends Transport>(
   const { gasLimit } = txParameters;
   const msg = { registerAccount: {} };
 
-  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
-
-  const { addresses } = await getAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   const typedData: TypedDataParameter = {
     type: [{ name: "register_account", type: "RegisterAccount" }],

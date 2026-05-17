@@ -4,7 +4,7 @@ import { useBalances } from "./useBalances.js";
 import { useAccount } from "./useAccount.js";
 import { perpsUserStateStore, perpsMarginAsset } from "./usePerpsUserState.js";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/utils";
 
 import type { AnyCoin, WithAmount } from "../types/coin.js";
 import { TradePairStore } from "../stores/tradePairStore.js";

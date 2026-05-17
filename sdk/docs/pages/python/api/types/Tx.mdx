@@ -1,0 +1,32 @@
+# Tx
+
+A signed transaction ready for `Info.broadcast_tx_sync`.
+
+## Definition
+
+```python
+class Tx(TypedDict):
+    sender: Addr
+    gas_limit: int
+    msgs: list[Message]
+    data: Metadata
+    credential: Credential
+```
+
+## Fields
+
+**`sender`** — `Addr`. The signing account address.
+
+**`gas_limit`** — `int`. Gas budget (typically `simulate.gas_used + DEFAULT_GAS_OVERHEAD`).
+
+**`msgs`** — `list[Message]`.
+
+**`data`** — `Metadata`.
+
+**`credential`** — `Credential`. The wrapped signature envelope (`{"standard": {key_hash, signature}}` for secp256k1).
+
+## See also
+
+- [`UnsignedTx`](./UnsignedTx) — unsigned counterpart
+- [`SignDoc`](./SignDoc) — what gets signed
+- [`SingleSigner.sign_tx`](../classes/SingleSigner#sign_tx) — builder

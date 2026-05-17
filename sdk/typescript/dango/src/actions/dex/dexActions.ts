@@ -1,6 +1,4 @@
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { DangoClient } from "../../types/clients.js";
-import type { Signer } from "../../types/signer.js";
+import type { Client, Signer } from "@left-curve/types";
 
 import { type GetPairsParameters, type GetPairsReturnType, getPairs } from "./queries/getPairs.js";
 
@@ -108,9 +106,7 @@ export type DexQueryActions = {
   ) => SimulateSwapExactAmountInReturnType;
 };
 
-export function dexQueryActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): DexQueryActions {
+export function dexQueryActions(client: Client): DexQueryActions {
   return {
     dexStatus: (args) => dexStatus(client, args),
     getOrder: (args) => getOrder(client, args),
@@ -135,9 +131,7 @@ export type DexMutationActions = {
   withdrawLiquidity: (args: WithdrawLiquidityParameters) => WithdrawLiquidityReturnType;
 };
 
-export function dexMutationActions<transport extends Transport = Transport>(
-  client: DangoClient<transport, Signer>,
-): DexMutationActions {
+export function dexMutationActions(client: Client<Signer>): DexMutationActions {
   return {
     batchUpdateOrders: (args) => batchUpdateOrders(client, args),
     swapExactAmountIn: (args) => swapExactAmountIn(client, args),

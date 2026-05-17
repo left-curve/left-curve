@@ -1,5 +1,4 @@
-import { type GrugActions, grugActions } from "@left-curve/sdk";
-import type { Client, Transport } from "@left-curve/sdk/types";
+import type { Client } from "@left-curve/types";
 
 import {
   type AccountFactoryQueryActions,
@@ -11,19 +10,15 @@ import { type IndexerActions, indexerActions } from "./indexer/indexerActions.js
 import { type OracleQueryActions, oracleQueryActions } from "./oracle/oracleActions.js";
 import { type PerpsQueryActions, perpsQueryActions } from "./perps/perpsActions.js";
 
-export type PublicActions = Omit<GrugActions, "queryStatus" | "getAppConfig"> &
-  AppQueryActions &
+export type PublicActions = AppQueryActions &
   AccountFactoryQueryActions &
   IndexerActions &
   OracleQueryActions &
   DexQueryActions &
   PerpsQueryActions;
 
-export function publicActions<transport extends Transport = Transport>(
-  client: Client<transport>,
-): PublicActions {
+export function publicActions(client: Client): PublicActions {
   return {
-    ...grugActions(client),
     ...appQueryActions(client),
     ...indexerActions(client),
     ...oracleQueryActions(client),

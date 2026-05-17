@@ -10,14 +10,14 @@ use {
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{
-        App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment,
+        AbciService, App, Db, HaltReason, Indexer, NaiveProposalPreparer, NullIndexer,
+        SimpleCommitment,
     },
     grug_db_disk::DiskDb,
-    grug_httpd::context::Context as HttpdContext,
     grug_types::{GIT_COMMIT, HttpdConfig},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
-    indexer_httpd::TendermintRpcClient,
+    indexer_httpd::{TendermintRpcClient, context::MinimalContext as HttpdContext},
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::{Arc, atomic::AtomicBool},
     tokio::{
@@ -98,7 +98,7 @@ impl StartCmd {
 
         let app = Arc::new(app);
 
-        let (hooked_indexer, _, dango_httpd_context) = self
+        let (hooked_indexer, dango_httpd_context) = self
             .setup_indexer_stack(app_dir, &cfg, app.clone(), &cfg.tendermint.rpc_addr)
             .await?;
 
@@ -272,13 +272,7 @@ impl StartCmd {
         cfg: &Config,
         app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
-    ) -> anyhow::Result<(
-        HookedIndexer,
-        indexer_httpd::context::Context,
-        dango_httpd::context::Context,
-    )> {
-        let mut hooked_indexer = HookedIndexer::new();
-
+    ) -> anyhow::Result<(HookedIndexer, indexer_httpd::context::FullContext)> {
         let sql_indexer = indexer_sql::IndexerBuilder::default()
             .with_database_url(&cfg.indexer.database.url)
             .with_database_max_connections(cfg.indexer.database.max_connections)
@@ -286,49 +280,29 @@ impl StartCmd {
             .build()
             .await
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
-        let indexer_context = sql_indexer.context.clone();
+        let sql_context = sql_indexer.context.clone();
 
-        // Create a separate context for dango indexer (shares DB but has independent pubsub)
-        let dango_context: dango_indexer_sql::context::Context = sql_indexer
-            .context
-            .with_separate_pubsub()
-            .await
-            .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
-            .into();
-
-        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(dango_context.clone());
-
-        let clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        let clickhouse_context = indexer_clickhouse::context::Context::new(
             cfg.indexer.clickhouse.url.clone(),
             cfg.indexer.clickhouse.database.clone(),
             cfg.indexer.clickhouse.user.clone(),
             cfg.indexer.clickhouse.password.clone(),
         );
 
-        let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(clickhouse_context.clone());
+        let clickhouse_indexer = indexer_clickhouse::Indexer::new(clickhouse_context.clone());
 
-        // Create cache indexer (RuntimeHandler no longer needed)
         let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
-        // Pass S3 config to the cache indexer context
         indexer_cache.context.s3 = cfg.indexer.s3.clone();
         let indexer_cache_context = indexer_cache.context.clone();
 
-        hooked_indexer.add_indexer(indexer_cache).await?;
-        hooked_indexer.add_indexer(sql_indexer).await?;
-        hooked_indexer.add_indexer(dango_indexer).await?;
-        hooked_indexer.add_indexer(clickhouse_indexer).await?;
+        let mut hooked_indexer = HookedIndexer::new(indexer_cache, sql_indexer, clickhouse_indexer);
 
-        let indexer_httpd_context = indexer_httpd::context::Context::new(
+        let dango_httpd_context = indexer_httpd::context::FullContext::new(
             indexer_cache_context,
-            indexer_context,
+            sql_context,
+            clickhouse_context,
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
-        );
-
-        let dango_httpd_context = dango_httpd::context::Context::new(
-            indexer_httpd_context.clone(),
-            clickhouse_context.clone(),
-            dango_context,
             cfg.httpd.static_files_path.clone(),
         );
 
@@ -341,7 +315,7 @@ impl StartCmd {
             .await
             .map_err(|e| anyhow!("Failed to start indexer: {e}"))?;
 
-        Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
+        Ok((hooked_indexer, dango_httpd_context))
     }
 
     /// Run the minimal HTTP server (without indexer features)
@@ -351,18 +325,12 @@ impl StartCmd {
         context: HttpdContext,
         shutdown_flag: Arc<AtomicBool>,
     ) -> anyhow::Result<()> {
-        grug_httpd::server::run_server(
-            cfg,
-            context,
-            grug_httpd::server::config_app,
-            grug_httpd::graphql::build_schema,
-            shutdown_flag,
-        )
-        .await
-        .map_err(|err| {
-            tracing::error!("Failed to run minimal HTTP server: {err:?}");
-            anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
-        })
+        indexer_httpd::server::run_minimal_server(cfg, context, shutdown_flag)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run minimal HTTP server: {err:?}");
+                anyhow::anyhow!("Failed to run minimal HTTP server: {err:?}")
+            })
     }
 
     /// Run the full-featured HTTP server (with indexer features)
@@ -377,7 +345,7 @@ impl StartCmd {
     /// during warm-up see the same state as a freshly indexed node.
     async fn run_dango_httpd_server(
         cfg: &HttpdConfig,
-        dango_httpd_context: dango_httpd::context::Context,
+        dango_httpd_context: indexer_httpd::context::FullContext,
         shutdown_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> anyhow::Result<()> {
         tracing::info!(
@@ -400,7 +368,7 @@ impl StartCmd {
             // The two preloads hit different databases (ClickHouse and
             // Postgres), so run them concurrently to halve wall-time.
             let (clickhouse_result, perps_trade_result) = tokio::join!(
-                warmup_ctx.indexer_clickhouse_context.start_cache(),
+                warmup_ctx.clickhouse_context.start_cache(),
                 warmup_ctx.start_perps_trade_cache(),
             );
 
@@ -428,7 +396,7 @@ impl StartCmd {
             );
         });
 
-        dango_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
+        indexer_httpd::server::run_server(cfg, dango_httpd_context, shutdown_flag, None)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run full-featured HTTP server: {err:?}");
@@ -441,7 +409,7 @@ impl StartCmd {
         cfg: &MetricsHttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
-        indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
+        indexer_metrics::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run metrics HTTP server: {err:?}");
@@ -466,7 +434,7 @@ impl StartCmd {
         httpd_shutdown_flags: Vec<Arc<AtomicBool>>,
     ) -> anyhow::Result<()>
     where
-        ID: Indexer + Send + 'static,
+        ID: Indexer + Send + Sync + 'static,
     {
         // Channel used by the app to request a graceful shutdown from inside
         // `finalize_block` (see `grug_app::HaltReason`). Initial value is
@@ -474,18 +442,24 @@ impl StartCmd {
         let (halt_tx, mut halt_rx) = watch::channel::<Option<HaltReason>>(None);
         let halt_tx = Arc::new(halt_tx);
 
-        let app = App::new(
-            db,
-            vm,
-            ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
-            indexer,
-            grug_cfg.query_gas_limit,
-            Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
-            env!("CARGO_PKG_VERSION"),
-        )
-        .with_shutdown_trigger(halt_tx);
+        // `AbciService` wraps the `App` in an `Arc` internally so each
+        // per-request future captures a cheap `Arc::clone` instead of
+        // cloning the `App` (which would clone `PythHandler` to a "dud"
+        // copy and trigger `HookedIndexer::Drop` on every request).
+        let service = AbciService::new(
+            App::new(
+                db,
+                vm,
+                ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
+                indexer,
+                grug_cfg.query_gas_limit,
+                Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
+                env!("CARGO_PKG_VERSION"),
+            )
+            .with_shutdown_trigger(halt_tx),
+        );
 
-        let (consensus, mempool, snapshot, info) = split::service(app, 1);
+        let (consensus, mempool, snapshot, info) = split::service(service, 1);
 
         let abci_server = Server::builder()
             .consensus(consensus)

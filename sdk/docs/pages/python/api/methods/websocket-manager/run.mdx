@@ -1,0 +1,30 @@
+# run
+
+`threading.Thread` entry point. Blocks in `run_forever()` until `stop()`.
+
+## Signature
+
+```python
+def run(self) -> None
+```
+
+## Example
+
+```python
+from dango.websocket_manager import WebsocketManager
+
+manager = WebsocketManager("https://api-mainnet.dango.zone")
+manager.start()    # spawns a daemon thread that calls `run()`
+```
+
+Call `manager.start()`, not `manager.run()`. `start()` (inherited from `threading.Thread`) launches `run()` on a fresh thread; calling `run()` directly blocks the caller.
+
+## Notes
+
+- The thread is daemon (`daemon=True`), so it exits with the main process.
+- `ping_interval=0` disables `websocket-client`'s frame-level ping scheduler — the manager drives keepalive at the GraphQL protocol layer instead.
+
+## See also
+
+- [`stop`](./stop) — signal shutdown
+- [`WebsocketManager`](../../classes/WebsocketManager) — overview

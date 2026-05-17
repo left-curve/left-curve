@@ -1,0 +1,100 @@
+# Error handling
+
+**What this teaches:** what each SDK exception means, where it is raised, and how to recover.
+
+## The hierarchy
+
+Every SDK exception derives from [`Error`](../api/errors/Error):
+
+```text
+Error
+├── ClientError      4xx HTTP response from /graphql
+├── ServerError      5xx HTTP, network failure, non-JSON body
+├── GraphQLError     `errors` array on the GraphQL envelope
+└── TxFailed         broadcastTxSync returned an `err` result
+```
+
+A blanket `except Error` is the safe outer catch; the SDK never raises anything else from public methods (except for value-error / type-error cases that surface caller bugs).
+
+## When each fires
+
+[`ClientError`](../api/errors/ClientError) — HTTP 4xx. The most common causes are malformed requests, expired sessions, or rate-limit responses (429). The message body is truncated to the first 500 chars of the response text.
+
+```python
+from dango.utils.error import ClientError
+
+try:
+    info.query_app({"bad": "shape"})
+except ClientError as exc:
+    if "429" in str(exc):
+        # rate limited — back off and retry
+        ...
+    raise
+```
+
+[`ServerError`](../api/errors/ServerError) — HTTP 5xx, plus every network-level failure: DNS, connection refused, timeout, SSL, non-JSON body. Wrap retries around this:
+
+```python
+import time
+from dango.utils.error import ServerError
+
+for attempt in range(3):
+    try:
+        return info.query_status()
+    except ServerError:
+        if attempt == 2:
+            raise
+        time.sleep(2 ** attempt)
+```
+
+[`GraphQLError`](../api/errors/GraphQLError) — the HTTP layer succeeded with 2xx but the GraphQL envelope carried an `errors` array, or it was missing both `data` and `errors`. The message concatenates every error's `message` with its `path`:
+
+```text
+GraphQLError: invalid pair_id 'perp/xyzusd' (path=['queryApp', 'wasm_smart'])
+```
+
+Treat this as a logical error: the request reached the server but the query failed validation or execution.
+
+[`TxFailed`](../api/errors/TxFailed) — `broadcast_tx_sync` succeeded at the HTTP/GraphQL layer but the transaction was rejected by the chain. The BroadcastTxOutcome carries an `err` result.
+
+:::note
+as of this writing, the SDK returns the BroadcastTxOutcome envelope unchanged from `Exchange._send_action`. `TxFailed` is defined for callers and downstream tooling to raise; the SDK does not raise it automatically. Inspect the returned dict's `check_tx.code` and `result.err` fields to detect failures.
+:::
+
+## Subscription errors do not raise
+
+WebSocket subscription errors arrive through the callback as `{"_error": ...}`, not as exceptions. After an error event the subscription is terminal — the manager already dropped your callback from its dispatch table. See [Subscriptions](./subscriptions) for the full contract.
+
+## Caller bugs: TypeError / ValueError
+
+The SDK raises plain `TypeError` / `ValueError` for clearly-invalid caller input. These are not subclasses of `Error`; they signal a bug, not a runtime failure:
+
+- `dango_decimal(NaN)` → `ValueError`
+- `dango_decimal({"complex": "object"})` → `TypeError`
+- `Exchange.deposit_margin(-100)` → `ValueError`
+- `Exchange.deposit_margin(True)` → `TypeError` (bool is not int)
+- `Exchange.submit_order(pair, 0, kind)` → `ValueError` ("order size must be non-zero")
+
+A `RuntimeError` from `SingleSigner.build_unsigned_tx` / `sign_tx` means the signer is in an incomplete state — call `query_user_index()` / `query_next_nonce()` (or use `auto_resolve`) first.
+
+## Reading rate-limit responses
+
+The server emits 429 with a JSON body describing the limit. Read it via `ClientError`:
+
+```python
+from dango.utils.error import ClientError
+
+try:
+    info.query_status()
+except ClientError as exc:
+    msg = str(exc)
+    if "429" in msg:
+        # parse retry-after if needed
+        ...
+```
+
+The Python SDK has no built-in retry. Caller is responsible.
+
+## Next
+
+- [Rate limits & quotas](./rate-limits) — what the limits are and how to back off

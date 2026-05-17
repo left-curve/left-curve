@@ -15,7 +15,7 @@ import { useProTrade } from "./ProTrade";
 import { AnimatePresence, motion } from "framer-motion";
 import { OpenInterestDisplay } from "./OpenInterestDisplay";
 import { FundingCountdown } from "./FundingCountdown";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 

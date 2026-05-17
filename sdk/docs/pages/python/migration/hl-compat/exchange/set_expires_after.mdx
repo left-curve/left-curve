@@ -1,0 +1,36 @@
+# Exchange.set_expires_after (HL-compat)
+
+Record an HL `expiresAfter` ms hint. **Currently a no-op with state storage.**
+
+## Signature
+
+```python
+def set_expires_after(self, expires_after: int | None) -> None
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+ex.set_expires_after(1700000000000)
+```
+
+## Parameters
+
+**`expires_after`** — `int | None`. HL's `expiresAfter` millisecond hint. Stored on `self.expires_after`.
+
+## Returns
+
+`None`.
+
+## Known gap
+
+The Python wrapper stores the value but does NOT currently thread it into the signed `Metadata`. HL's `expiresAfter` enforcement does not apply — txs do not auto-expire.
+
+See [Migration: set_expires_after is a no-op](../../hyperliquid#3-set_expires_after-is-a-no-op).
+
+## See also
+
+- [Native `Exchange`](../../../api/classes/Exchange) — the native class has no equivalent yet

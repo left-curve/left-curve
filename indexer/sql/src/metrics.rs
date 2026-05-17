@@ -38,4 +38,14 @@ pub fn init_indexer_metrics() {
     );
 
     active_model::init_metrics();
+
+    describe_histogram!("indexer.dango.hooks.duration", "Hook duration in seconds");
+    describe_histogram!(
+        "indexer.dango.start.duration",
+        "Dango start duration in seconds"
+    );
+
+    crate::write::transfers::init_metrics();
+    crate::write::accounts::init_metrics();
+    crate::write::perps_events::init_metrics();
 }

@@ -15,17 +15,27 @@ import {
   useInputs,
 } from "@left-curve/applets-kit";
 import { perpsMarginAsset, useAccount, useVaultLiquidityState } from "@left-curve/store";
-import { formatNumber } from "@left-curve/dango/utils";
-import { APY_WINDOW_DAYS } from "~/constants";
+import { formatNumber } from "@left-curve/utils";
+
+import type { VaultPerformancePeriod } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 import { UserWithdrawals } from "./UserWithdrawals";
 import { VaultPerformanceChart } from "./VaultPerformanceChart";
 
+const PERIOD_DAYS: Record<VaultPerformancePeriod, number> = {
+  "7D": 7,
+  "14D": 14,
+  "30D": 30,
+  "90D": 90,
+};
+
 const [VaultLiquidityProvider, useVaultLiquidity] = createContext<{
   state: ReturnType<typeof useVaultLiquidityState>;
   controllers: ReturnType<typeof useInputs>;
+  period: VaultPerformancePeriod;
+  setPeriod: (period: VaultPerformancePeriod) => void;
 }>({
   name: "VaultLiquidityContext",
 });
@@ -40,18 +50,19 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   action,
   onChangeAction,
 }) => {
+  const [period, setPeriod] = useState<VaultPerformancePeriod>("14D");
   const controllers = useInputs({ strategy: "onChange" });
   const state = useVaultLiquidityState({
     action,
     onChangeAction,
-    apyWindowDays: APY_WINDOW_DAYS,
+    apyWindowDays: PERIOD_DAYS[period],
     controllers,
   });
   const { account } = useAccount();
   const isLoggedIn = !!account;
 
   return (
-    <VaultLiquidityProvider value={{ state, controllers }}>
+    <VaultLiquidityProvider value={{ state, controllers, period, setPeriod }}>
       <div
         className={twMerge(
           "w-full mx-auto flex flex-col pt-6 mb-16 gap-4 lg:gap-12 px-4 md:px-0",
@@ -65,7 +76,7 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
 
           <div className="flex flex-col gap-4 w-full md:w-[55%]">
             {isLoggedIn && <UserPosition />}
-            <VaultPerformanceChart />
+            <VaultPerformanceChart period={period} onPeriodChange={setPeriod} />
           </div>
 
           <div className="hidden md:flex flex-col gap-4 w-full md:w-[45%]">{children}</div>
@@ -75,8 +86,20 @@ const VaultLiquidityContainer: React.FC<PropsWithChildren<VaultLiquidityProps>> 
   );
 };
 
+const ApyTooltipContent: React.FC = () => (
+  <div className="flex flex-col gap-2">
+    <p>{m["vaultLiquidity.apyTooltip"]()}</p>
+    <ul className="list-disc pl-5 flex flex-col gap-0.5">
+      <li>{m["vaultLiquidity.apyTooltip7D"]()}</li>
+      <li>{m["vaultLiquidity.apyTooltip14D"]()}</li>
+      <li>{m["vaultLiquidity.apyTooltip30D"]()}</li>
+      <li>{m["vaultLiquidity.apyTooltip90D"]()}</li>
+    </ul>
+  </div>
+);
+
 const VaultLiquidityHeader: React.FC = () => {
-  const { state } = useVaultLiquidity();
+  const { state, period } = useVaultLiquidity();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { isPaused, isTvlCapReached, vaultState, isLoading, vaultApy } = state;
@@ -91,27 +114,27 @@ const VaultLiquidityHeader: React.FC = () => {
           </p>
         </div>
       )}
-      <div className="flex flex-col gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
         <div className="flex gap-2 items-center">
           <img src="/images/coins/usd.svg" alt="vault" className="w-8 h-8 rounded-full" />
           <p className="text-ink-secondary-700 h4-bold">{m["vaultLiquidity.title"]()}</p>
         </div>
-        <div className="flex flex-row justify-between items-end">
-          <div className="flex flex-col gap-0.5">
-            <Tooltip title={m["vaultLiquidity.apyTooltip"]()}>
+        <div className="flex flex-row items-center gap-4">
+          <div className="flex items-center gap-1">
+            <Tooltip title={<ApyTooltipContent />}>
               <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
-                {m["vaultLiquidity.apy"]()}
+                {`APY (${period})`}
               </p>
             </Tooltip>
             {isLoading ? (
               <Skeleton className="w-12 h-5" />
             ) : (
-              <p className="text-ink-secondary-700 diatype-sm-bold min-w-[3rem]">
+              <p className="text-ink-secondary-700 diatype-sm-bold">
                 {vaultApy != null ? `${vaultApy}%` : "-"}
               </p>
             )}
           </div>
-          <div className="flex flex-col gap-0.5 items-end">
+          <div className="flex items-center gap-1">
             <Tooltip title={m["vaultLiquidity.tvlTooltip"]()}>
               <p className="text-ink-tertiary-500 diatype-xs-medium cursor-help underline decoration-dashed underline-offset-[4px] decoration-current">
                 {m["vaultLiquidity.tvl"]()}
@@ -120,7 +143,7 @@ const VaultLiquidityHeader: React.FC = () => {
             {isLoading ? (
               <Skeleton className="w-16 h-5" />
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <p className="text-ink-secondary-700 diatype-sm-bold">
                   {formatNumber(equity, { ...formatNumberOptions, currency: "USD" })}
                 </p>
@@ -412,7 +435,7 @@ const UserPosition: React.FC = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 p-4 rounded-xl bg-surface-secondary-rice shadow-account-card">
-        <p className="exposure-sm-italic text-ink-tertiary-500">
+        <p className="exposure-sm-italic text-ink-secondary-700">
           {m["vaultLiquidity.liquidity"]()}
         </p>
         <div className="flex items-center justify-between">

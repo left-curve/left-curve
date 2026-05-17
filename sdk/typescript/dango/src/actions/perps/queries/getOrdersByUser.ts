@@ -1,10 +1,12 @@
-import { queryWasmSmart } from "@left-curve/sdk";
-import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
+import { queryWasmSmart } from "#actions/app/queries/queryWasmSmart.js";
+import type {
+  Client,
+  GetPerpsQueryMsg,
+  PerpsOrdersByUserResponse,
+  Prettify,
+} from "@left-curve/types";
 
-import { getAction, getAppConfig } from "@left-curve/sdk/actions";
-import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "../../../types/app.js";
-import type { GetPerpsQueryMsg, PerpsOrdersByUserResponse } from "../../../types/perps.js";
+import { getAppConfig } from "#actions/app/queries/getAppConfig.js";
 
 type ActionMsg = GetPerpsQueryMsg<"ordersByUser">;
 
@@ -14,16 +16,11 @@ export type GetPerpsOrdersByUserParameters = Prettify<
 
 export type GetPerpsOrdersByUserReturnType = Promise<PerpsOrdersByUserResponse>;
 
-export async function getPerpsOrdersByUser<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function getPerpsOrdersByUser(
+  client: Client,
   parameters: GetPerpsOrdersByUserParameters,
 ): GetPerpsOrdersByUserReturnType {
   const { height = 0, ...queryMsg } = parameters;
-
-  const action = getAction(client, getAppConfig, "getAppConfig");
 
   const msg: ActionMsg = {
     ordersByUser: {
@@ -31,7 +28,7 @@ export async function getPerpsOrdersByUser<
     },
   };
 
-  const { addresses } = await action<AppConfig>({});
+  const { addresses } = await getAppConfig(client);
 
   return await queryWasmSmart(client, { contract: addresses.perps, msg, height });
 }

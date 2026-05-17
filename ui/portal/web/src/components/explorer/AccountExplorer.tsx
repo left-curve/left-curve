@@ -12,12 +12,12 @@ import { createContext, useContext } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Badge, Cell, FormattedNumber, Table, TextCopy } from "@left-curve/applets-kit";
-import { Decimal, sharesToUsd } from "@left-curve/dango/utils";
+import { Decimal, sharesToUsd } from "@left-curve/utils";
 import { AccountCard } from "../foundation/AccountCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 
-import type { Address, PerpsOrderByUserItem, PerpsPositionExtended } from "@left-curve/dango/types";
+import type { Address, PerpsOrderByUserItem, PerpsPositionExtended } from "@left-curve/types";
 import type { TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
 import type { PropsWithChildren } from "react";

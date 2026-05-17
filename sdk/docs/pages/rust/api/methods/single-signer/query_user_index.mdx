@@ -1,0 +1,56 @@
+# SingleSigner::query_user_index
+
+Fetch this signer's `UserIndex` from the account factory.
+
+## Signature
+
+```rust
+pub async fn query_user_index<C>(&self, client: &C) -> anyhow::Result<UserIndex>
+where
+    C: QueryClient,
+    anyhow::Error: From<C::Error>;
+```
+
+Available on every state of `SingleSigner`.
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, SingleSigner},
+    grug::Addr,
+    std::str::FromStr,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let http   = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let signer = SingleSigner::new(
+        Addr::from_str("0x0000000000000000000000000000000000000000")?,
+        Secp256k1::new_random(),
+    );
+
+    let idx = signer.query_user_index(&http).await?;
+    println!("user index: {idx:?}");
+    Ok(())
+}
+```
+
+## Parameters
+
+**`client`** — `&C` implementing `QueryClient`.
+
+## Returns
+
+**`UserIndex`** — the index returned by `QueryAccountRequest` for this signer's address.
+
+## Notes
+
+- Resolves the account factory via `query_app_config::<AppConfig>()`, then `query_wasm_smart` for `QueryAccountRequest`.
+- Borrowing variant; does not consume `self`. To flip the typestate, use [`with_query_user_index`](./with_query_user_index).
+
+## See also
+
+- [`with_query_user_index`](./with_query_user_index).
+- [`query_next_nonce`](./query_next_nonce).

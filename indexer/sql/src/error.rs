@@ -20,9 +20,6 @@ pub enum IndexerError {
     #[error("mutex poison error: {error}")]
     Poison { error: String },
 
-    #[error("runtime error: {error}")]
-    Runtime { error: String },
-
     #[error(transparent)]
     #[backtrace(new)]
     TryFromInt(std::num::TryFromIntError),
@@ -42,10 +39,10 @@ pub enum IndexerError {
     Persist(tempfile::PersistError),
 
     #[error(transparent)]
-    Persistence(indexer_disk_saver::error::Error),
+    Persistence(disk_saver::error::Error),
 
-    #[error("hooks error: {error}")]
-    Hooks { error: String },
+    #[error("wrong event type")]
+    WrongEventType,
 
     #[error(transparent)]
     #[backtrace(new)]
@@ -86,7 +83,6 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::Join(e) => parse_error!(Generic, e),
             IndexerError::Indexing { error, backtrace } => parse_error!(Generic, error, backtrace),
             IndexerError::Poison { error, backtrace } => parse_error!(Generic, error, backtrace),
-            IndexerError::Runtime { error, backtrace } => parse_error!(Generic, error, backtrace),
             IndexerError::TryFromInt(e) => parse_error!(Generic, e),
             IndexerError::App(be) => {
                 // For App errors, just wrap as generic since it's already processed
@@ -99,7 +95,10 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::Io(e) => parse_error!(Io, e),
             IndexerError::Persist(e) => parse_error!(Io, e),
             IndexerError::Persistence(e) => parse_error!(Storage, e),
-            IndexerError::Hooks { error, backtrace } => parse_error!(Hook, error, backtrace),
+            IndexerError::WrongEventType(backtrace) => grug_app::IndexerError::Hook {
+                error: "wrong event type".to_string(),
+                backtrace,
+            },
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
             IndexerError::Sqlx(e) => parse_error!(Database, e),

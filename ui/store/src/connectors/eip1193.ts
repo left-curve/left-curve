@@ -1,12 +1,12 @@
-import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
-import { getUser } from "@left-curve/dango/actions";
-import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
-import { composeArbitraryTypedData } from "@left-curve/dango/utils";
+import { createKeyHash, createSignerClient, toAccount } from "@left-curve/sdk";
+import { getUser } from "@left-curve/sdk/actions";
+import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/encoding";
+import { composeArbitraryTypedData } from "@left-curve/utils";
 
 import { createConnector } from "./createConnector.js";
 
-import type { Eip712Signature } from "@left-curve/dango/types";
-import type { Address } from "@left-curve/dango/types";
+import type { Eip712Signature } from "@left-curve/types";
+import type { Address } from "@left-curve/types";
 
 import type { ConnectorId } from "../types/connector.js";
 import type { EIP1193Provider } from "../types/eip1193.js";
@@ -38,6 +38,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         const client = createSignerClient({
           signer: this,
           type: "eip1193",
+          chain,
           transport,
         });
 

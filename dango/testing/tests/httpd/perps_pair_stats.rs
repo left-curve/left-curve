@@ -1,9 +1,5 @@
 use {
     crate::call_graphql_query,
-    dango_sdk::{
-        AllPerpsPairStats, PerpsPairStats, PerpsPairStatsPartial, all_perps_pair_stats,
-        perps_pair_stats, perps_pair_stats_partial,
-    },
     dango_testing::{
         TestOption,
         perps::{create_perps_fill, pair_id, setup_perps_env},
@@ -11,6 +7,10 @@ use {
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
+    indexer_graphql_types::{
+        AllPerpsPairStats, PerpsPairStats, PerpsPairStatsPartial, all_perps_pair_stats,
+        perps_pair_stats, perps_pair_stats_partial,
+    },
 };
 
 #[tokio::test(flavor = "multi_thread")]
@@ -19,8 +19,8 @@ async fn query_perps_pair_stats() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
 
     let pair = pair_id();
-    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -113,8 +113,8 @@ async fn query_all_perps_pair_stats() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
 
     let pair = pair_id();
-    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -164,8 +164,8 @@ async fn query_perps_pair_stats_partial_fields() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
 
     let pair = pair_id();
-    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000);
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5);
+    setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 

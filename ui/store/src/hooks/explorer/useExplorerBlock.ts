@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "../usePublicClient.js";
 
-import type { IndexedBlock } from "@left-curve/dango/types";
+import type { IndexedBlock } from "@left-curve/types";
 
 export type ExplorerBlockState = {
   searchBlock: IndexedBlock | null;

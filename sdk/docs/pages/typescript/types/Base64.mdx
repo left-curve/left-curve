@@ -1,0 +1,19 @@
+# Base64
+
+A base64-encoded string.
+
+## Definition
+
+```ts
+type Base64 = string
+```
+
+## Notes
+
+- Used for Wasm code (in `storeCode`), raw storage keys/values, signatures, and serialized data.
+- Convert with `encodeBase64` / `decodeBase64` from `@left-curve/encoding`. URL-safe variants exist as `encodeBase64Url` / `decodeBase64Url`.
+
+## See also
+
+- [`Hex`](./Hex)
+- [Concepts: Encoding & Types](../concepts/encoding-and-types)

@@ -58,3 +58,4 @@ export { forwardRefPolymorphic } from "./utils/polymorph.js";
 export { numberMask, ethAddressMask } from "./utils/masks.js";
 export { ensureErrorMessage } from "./utils/error.js";
 export { isChunkLoadError, reloadOnChunkError, lazyWithRetry } from "./utils/chunkError.js";
+export { saveCardAsImage } from "./utils/dom.js";

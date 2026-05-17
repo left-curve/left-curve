@@ -1,4 +1,5 @@
 {
+  "db": "/app/hyperlane_db",
   "validator": {
     "type": "aws",
     "region": "eu-north-1"

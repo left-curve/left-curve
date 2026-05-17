@@ -17,9 +17,6 @@ const FALLBACK_CAMPAIGN_MAP: Record<number, OATType> = {
 /** Points boost percentage per OAT */
 const OAT_POINTS_BOOST = 100;
 
-/** OAT validity duration in seconds (4 weeks, aligned with backend oat_window) */
-const OAT_VALIDITY_DURATION_SECONDS = 28 * 24 * 60 * 60;
-
 const campaignNameToOatType = (name: string): OATType | null => {
   const lower = name.toLowerCase();
   if (lower.includes("supporter")) return "supporter";
@@ -70,9 +67,9 @@ export function useOats(parameters: UseOatsParameters) {
   }, [campaigns]);
 
   const registeredOatsByCampaign = useMemo(() => {
-    const map = new Map<number, { registeredAt: number }>();
+    const map = new Map<number, { expiredAt: number }>();
     for (const oat of registeredOats) {
-      map.set(oat.collection_id, { registeredAt: Number.parseFloat(String(oat.registered_at)) });
+      map.set(oat.collection_id, { expiredAt: Number.parseFloat(String(oat.expired_at)) });
     }
     return map;
   }, [registeredOats]);
@@ -83,7 +80,7 @@ export function useOats(parameters: UseOatsParameters) {
       return {
         type: oatType,
         isLocked: !registered,
-        expiresAt: registered ? registered.registeredAt + OAT_VALIDITY_DURATION_SECONDS : undefined,
+        expiresAt: registered?.expiredAt,
         pointsBoost: OAT_POINTS_BOOST,
       };
     });

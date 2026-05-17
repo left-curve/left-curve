@@ -1,6 +1,6 @@
 use {
     dango_types::account::InstantiateMsg,
-    grug::{AuthCtx, AuthResponse, MutableCtx, Response, Tx},
+    grug::{AuthCtx, MutableCtx, Response, Tx},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -11,10 +11,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     dango_auth::authenticate_tx(ctx, tx, None)?;
 
-    Ok(AuthResponse::new().request_backrun(false))
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]

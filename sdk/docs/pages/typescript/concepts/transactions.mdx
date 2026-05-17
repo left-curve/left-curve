@@ -1,0 +1,83 @@
+import { Step, Steps } from 'vocs/components'
+
+# Transactions
+
+**What this teaches:** the sign → broadcast → poll loop, and where `signAndBroadcastTx` fits.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+## The lifecycle
+
+<Steps>
+  <Step title="Build messages">
+    A transaction is a list of `Message` variants (`transfer`, `execute`, `instantiate`, etc.).
+  </Step>
+  <Step title="Sign">
+    The signer produces an EIP-712 typed-data signature over the messages plus metadata (chain id, nonce, sender).
+  </Step>
+  <Step title="Broadcast">
+    The signed transaction is sent via the indexer's `broadcastTxSync` mutation.
+  </Step>
+  <Step title="Poll">
+    The SDK polls `queryTx` until the indexer reports the transaction landed (or fails).
+  </Step>
+</Steps>
+
+[`signAndBroadcastTx`](../actions/app/signAndBroadcastTx) wraps all four steps. Higher-level actions like [`transfer`](../actions/app/transfer), [`execute`](../actions/app/execute), and [`swapExactAmountIn`](../actions/dex/swapExactAmountIn) build their messages then call `signAndBroadcastTx`.
+
+## Worked example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+
+const result = await client.signAndBroadcastTx({
+  sender: "0x1234567890abcdef1234567890abcdef12345678",
+  messages: [
+    {
+      transfer: {
+        "0xabcdef1234567890abcdef1234567890abcdef12": { dango: "1000000" },
+      },
+    },
+  ],
+})
+
+console.log(result.hash)
+```
+
+Behind the scenes:
+
+- The client queries `queryStatus` for the chain id (if not on the chain config), `getAccountSeenNonces` for the next nonce, and `getAccountInfo` for the user index.
+- It calls [`simulate`](../actions/app/simulate) to estimate gas (multiplier `1.3`) unless `gasLimit` is set.
+- The signer signs the EIP-712 typed data, the SDK calls `broadcastTxSync`, then polls `queryTx` up to 30 times at 500ms intervals.
+
+## Gas
+
+`simulate` returns `gasUsed * 1.3`. To override, pass `gasLimit` explicitly:
+
+```ts
+await client.signAndBroadcastTx({
+  sender,
+  messages: [...],
+  gasLimit: 500_000,
+})
+```
+
+## Failure modes
+
+- The simulated transaction fails — `simulate` throws with the contract error.
+- The transaction enters the mempool but fails on commit — `queryTx` returns a non-zero code; the SDK throws.
+- The transaction never lands — the poll loop exhausts retries; the SDK throws "Transaction not found".
+
+See [Error Handling](./error-handling) for narrowing these.
+
+## Next
+
+- [Subscriptions](./subscriptions) — listen for events instead of polling

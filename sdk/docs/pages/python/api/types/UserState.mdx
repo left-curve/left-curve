@@ -1,0 +1,45 @@
+# UserState
+
+A user's deposited margin, vault shares, open positions, and pending unlocks.
+
+## Definition
+
+```python
+class UserState(TypedDict):
+    margin: UsdValue
+    vault_shares: Uint128
+    positions: dict[PairId, Position]
+    unlocks: list[Unlock]
+    reserved_margin: UsdValue
+    open_order_count: int
+```
+
+## Fields
+
+**`margin`** — `UsdValue`. Total deposited margin in USD (6-decimal string).
+
+**`vault_shares`** — `Uint128`. LP shares held by this user.
+
+**`positions`** — `dict[PairId, Position]`. Open positions, keyed by pair.
+
+**`unlocks`** — `list[Unlock]`. Pending vault withdrawals awaiting cooldown.
+
+**`reserved_margin`** — `UsdValue`. Margin locked behind open orders.
+
+**`open_order_count`** — `int`. Number of resting limit orders.
+
+## Construction
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+state: dict | None = info.user_state(Addr("0x..."))
+```
+
+## See also
+
+- [`UserStateExtended`](./UserStateExtended) — same plus computed equity / PnL fields
+- [`user_state`](../methods/info/user_state) — fetcher

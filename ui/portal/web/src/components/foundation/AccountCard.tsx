@@ -2,7 +2,7 @@ import { useBalances, usePrices } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import type { Account } from "@left-curve/dango/types";
+import type { Account } from "@left-curve/types";
 
 import { AnimatePresence, motion } from "framer-motion";
 

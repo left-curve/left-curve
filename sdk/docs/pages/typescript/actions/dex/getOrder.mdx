@@ -1,0 +1,44 @@
+# getOrder
+
+Read the details of a single active limit order by id.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function getOrder(
+  client: Client,
+  parameters: {
+    orderId: OrderId
+    height?: number
+  },
+): Promise<OrderResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const order = await client.getOrder({ orderId: "12345" })
+```
+
+## Parameters
+
+**`orderId`** — `OrderId`. The order id.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`OrderResponse`** — `{ user, baseDenom, quoteDenom, direction, price, amount, remaining }`.
+
+## See also
+
+- [`ordersByUser`](./ordersByUser)
+- [`batchUpdateOrders`](./batchUpdateOrders)

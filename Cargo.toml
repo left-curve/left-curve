@@ -8,11 +8,6 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
-  "dango/hyperlane-deployment",
-  "dango/indexer/clickhouse",
-  "dango/indexer/httpd",
-  "dango/indexer/sql",
-  "dango/indexer/sql-migration",
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
@@ -29,7 +24,6 @@ members = [
   "grug/db/disk",
   "grug/db/memory",
   "grug/ffi",
-  "grug/httpd",
   "grug/jellyfish-merkle",
   "grug/macros",
   "grug/math",
@@ -41,24 +35,28 @@ members = [
   "grug/tester",
   "grug/testing",
   "grug/types",
+  "grug/vm/hybrid",
   "grug/vm/rust",
   "grug/vm/wasm",
   "hyperlane/isms/multisig",
   "hyperlane/mailbox",
   "hyperlane/testing",
+  "hyperlane/types",
   "hyperlane/va",
   "indexer/cache",
-  "indexer/disk-saver",
+  "indexer/clickhouse",
+  "indexer/graphql-types",
   "indexer/hooked",
   "indexer/httpd",
+  "indexer/metrics",
   "indexer/sql",
-  "indexer/sql-migration",
   "indexer/testing",
   "pyth/client",
   "pyth/types",
   "sdk/rust",
   "sdk/rust/cli",
   "utils/config-parser",
+  "utils/disk-saver",
   "utils/dyn-event",
   "utils/error-backtrace",
   "utils/error-backtrace/derive",
@@ -81,7 +79,6 @@ rust-version  = "1.89" # clickhouse-rs 0.14 requires rust 1.89+
 version       = "0.0.0"
 
 [workspace.dependencies]
-actix                       = "0.13"
 actix-codec                 = "0.5"
 actix-cors                  = "0.7"
 actix-files                 = "0"
@@ -97,7 +94,6 @@ assert-json-diff            = "2"
 assertor                    = "0.0.4"
 async-graphql               = { version = "7.0", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] }
 async-graphql-actix-web     = "7.0"
-async-std                   = { version = "1", features = ["attributes", "tokio1"] }
 async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
@@ -105,7 +101,6 @@ aws-config                  = "1"
 aws-credential-types        = "1"
 aws-sdk-s3                  = "1"
 axum                        = { version = "0.8", features = ["ws"] }
-backtrace                   = "0.3"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
@@ -134,7 +129,6 @@ graphql_client              = "0.14"
 hex                         = "0.4"
 hex-literal                 = "1"
 home                        = "0.5"
-http                        = "1"
 humantime                   = "2"
 ics23                       = "0.12"
 itertools                   = "0.14"
@@ -143,7 +137,6 @@ libc                        = "0.2"
 lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.18"
-num-format                  = "0.4"
 num_cpus                    = "1"
 opentelemetry               = "0.31"
 opentelemetry-otlp          = { version = "0.31", features = ["grpc-tonic", "trace"] }
@@ -153,8 +146,6 @@ p256                        = "0.13"
 parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
-proc-macro2                 = "1"
-prometheus                  = "0.14"
 proptest                    = "1"
 prost                       = "0.14"
 pyth-lazer-client           = "22.0.0"
@@ -172,7 +163,6 @@ sentry-actix                = "0.47"
 serde                       = "1"
 serde_json                  = "1"
 serde_with                  = "3"
-serial_test                 = "3"
 sha2                        = "0.10"
 sha3                        = "0.10"
 signature                   = "2"
@@ -188,11 +178,9 @@ thiserror                   = "2"
 tokio                       = { version = "1", features = ["full"] }
 tokio-stream                = { version = "0.1", features = ["sync"] }
 tokio-tungstenite           = { version = "0.28", features = ["native-tls"] }
-toml                        = "0.9"
 tower                       = "0.5"
 tower-abci                  = "0.19"
 tracing                     = { version = "0.1" }
-tracing-attributes          = { version = "0.1" }
 tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 typenum                     = "1"
@@ -202,69 +190,63 @@ wasmer                      = "7"
 wasmer-middlewares          = "7"
 
 # Left curve packages
-dango-account               = { path = "dango/account" }
-dango-account-factory       = { path = "dango/account-factory" }
-dango-amm                   = { path = "dango/amm" }
-dango-auth                  = { path = "dango/auth" }
-dango-bank                  = { path = "dango/bank" }
-dango-dex                   = { path = "dango/dex" }
-dango-gateway               = { path = "dango/gateway" }
-dango-genesis               = { path = "dango/genesis" }
-dango-httpd                 = { path = "dango/indexer/httpd" }
-dango-hyperlane-deployment  = { path = "dango/hyperlane-deployment" }
-dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
-dango-indexer-sql           = { path = "dango/indexer/sql" }
-dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
-dango-mock-httpd            = { path = "dango/mocks/httpd" }
-dango-oracle                = { path = "dango/oracle" }
-dango-order-book            = { path = "dango/order-book" }
-dango-perps                 = { path = "dango/perps" }
-dango-proposal-preparer     = { path = "dango/proposal-preparer" }
-dango-sdk                   = { path = "sdk/rust" }
-dango-taxman                = { path = "dango/taxman" }
-dango-testing               = { path = "dango/testing" }
-dango-types                 = { path = "dango/types" }
-dango-upgrade               = { path = "dango/upgrade" }
-dango-vesting               = { path = "dango/vesting" }
-dango-warp                  = { path = "dango/warp" }
-grug                        = { path = "grug/std" }
-grug-app                    = { path = "grug/app" }
-grug-auth                   = { path = "grug/auth" }
-grug-crypto                 = { path = "grug/crypto" }
-grug-db-disk                = { path = "grug/db/disk" }
-grug-db-memory              = { path = "grug/db/memory" }
-grug-ffi                    = { path = "grug/ffi" }
-grug-httpd                  = { path = "grug/httpd" }
-grug-jmt                    = { path = "grug/jellyfish-merkle" }
-grug-macros                 = { path = "grug/macros" }
-grug-math                   = { path = "grug/math" }
-grug-mock-account           = { path = "grug/mocks/account" }
-grug-mock-bank              = { path = "grug/mocks/bank" }
-grug-mock-taxman            = { path = "grug/mocks/taxman" }
-grug-storage                = { path = "grug/storage" }
-grug-tester                 = { path = "grug/tester" }
-grug-testing                = { path = "grug/testing" }
-grug-types                  = { path = "grug/types" }
-grug-vm-hybrid              = { path = "grug/vm/hybrid" }
-grug-vm-rust                = { path = "grug/vm/rust" }
-grug-vm-wasm                = { path = "grug/vm/wasm" }
-hyperlane-ism               = { path = "hyperlane/isms/multisig" }
-hyperlane-mailbox           = { path = "hyperlane/mailbox" }
-hyperlane-testing           = { path = "hyperlane/testing" }
-hyperlane-types             = { path = "hyperlane/types" }
-hyperlane-va                = { path = "hyperlane/va" }
-indexer-cache               = { path = "indexer/cache" }
-indexer-disk-saver          = { path = "indexer/disk-saver" }
-indexer-hooked              = { path = "indexer/hooked" }
-indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
-indexer-sql                 = { path = "indexer/sql" }
-indexer-sql-migration       = { path = "indexer/sql-migration" }
-indexer-testing             = { path = "indexer/testing" }
-pyth-client                 = { path = "pyth/client" }
-pyth-types                  = { path = "pyth/types" }
+dango-account           = { path = "dango/account" }
+dango-account-factory   = { path = "dango/account-factory" }
+dango-auth              = { path = "dango/auth" }
+dango-bank              = { path = "dango/bank" }
+dango-dex               = { path = "dango/dex" }
+dango-gateway           = { path = "dango/gateway" }
+dango-genesis           = { path = "dango/genesis" }
+dango-mock-httpd        = { path = "dango/mocks/httpd" }
+dango-oracle            = { path = "dango/oracle" }
+dango-order-book        = { path = "dango/order-book" }
+dango-perps             = { path = "dango/perps" }
+dango-proposal-preparer = { path = "dango/proposal-preparer" }
+dango-sdk               = { path = "sdk/rust" }
+dango-taxman            = { path = "dango/taxman" }
+dango-testing           = { path = "dango/testing" }
+dango-types             = { path = "dango/types" }
+dango-upgrade           = { path = "dango/upgrade" }
+dango-vesting           = { path = "dango/vesting" }
+dango-warp              = { path = "dango/warp" }
+grug                    = { path = "grug/std" }
+grug-app                = { path = "grug/app" }
+grug-crypto             = { path = "grug/crypto" }
+grug-db-disk            = { path = "grug/db/disk" }
+grug-db-memory          = { path = "grug/db/memory" }
+grug-ffi                = { path = "grug/ffi" }
+grug-jmt                = { path = "grug/jellyfish-merkle" }
+grug-macros             = { path = "grug/macros" }
+grug-math               = { path = "grug/math" }
+grug-mock-account       = { path = "grug/mocks/account" }
+grug-mock-bank          = { path = "grug/mocks/bank" }
+grug-mock-taxman        = { path = "grug/mocks/taxman" }
+grug-storage            = { path = "grug/storage" }
+grug-tester             = { path = "grug/tester" }
+grug-testing            = { path = "grug/testing" }
+grug-types              = { path = "grug/types" }
+grug-vm-hybrid          = { path = "grug/vm/hybrid" }
+grug-vm-rust            = { path = "grug/vm/rust" }
+grug-vm-wasm            = { path = "grug/vm/wasm" }
+hyperlane-ism           = { path = "hyperlane/isms/multisig" }
+hyperlane-mailbox       = { path = "hyperlane/mailbox" }
+hyperlane-testing       = { path = "hyperlane/testing" }
+hyperlane-types         = { path = "hyperlane/types" }
+hyperlane-va            = { path = "hyperlane/va" }
+indexer-cache           = { path = "indexer/cache" }
+indexer-clickhouse      = { path = "indexer/clickhouse" }
+indexer-graphql-types   = { path = "indexer/graphql-types" }
+indexer-hooked          = { path = "indexer/hooked" }
+indexer-httpd           = { path = "indexer/httpd", features = ["tracing"] }
+indexer-metrics         = { path = "indexer/metrics" }
+indexer-sql             = { path = "indexer/sql" }
+indexer-testing         = { path = "indexer/testing" }
+pyth-client             = { path = "pyth/client" }
+pyth-types              = { path = "pyth/types" }
 
 # Utilities
 config-parser   = { path = "utils/config-parser" }
+disk-saver      = { path = "utils/disk-saver" }
 dyn-event       = { path = "utils/dyn-event" }
 error-backtrace = { path = "utils/error-backtrace" }
 eth-utils       = { path = "utils/eth" }

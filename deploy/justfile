@@ -7,6 +7,17 @@ set shell := ["bash", "-uo", "pipefail", "-c"]
 # Always load deploy/ansible.cfg, regardless of cwd or a stray ~/.ansible.cfg.
 export ANSIBLE_CONFIG := justfile_directory() + "/ansible.cfg"
 
+# Tailscale IPs for each host. Names match deploy/inventory.
+ovh1     := "100.96.253.40"
+ovh2     := "100.107.248.71"
+ovh3     := "100.122.37.57"
+hetzner1 := "100.126.8.2"
+hetzner2 := "100.90.163.19"
+hetzner3 := "100.76.197.30"
+hetzner4 := "100.109.200.70"
+hetzner5 := "100.72.62.100"
+hetzner6 := "100.66.152.68"
+
 # List available recipes
 default:
   @just --list
@@ -54,6 +65,9 @@ edit-points-bot-secrets:
 edit-perps-bot-secrets:
   uv run ansible-vault edit group_vars/perps-bot/vault.yml
 
+edit-dango-assistant-secrets:
+  uv run ansible-vault edit group_vars/dango-assistant/vault.yml
+
 edit-root-key:
   uv run ansible-vault edit vaults/debian/debian_key.vault --vault-id debian@debian-password.sh --encrypt-vault-id debian
 
@@ -80,7 +94,7 @@ deploy-devnet:
     && uv run ansible-playbook full-app.yml \
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}' \
       -e frontend_enabled_features='points' \
-      --limit 100.96.253.40,100.107.248.71 \
+      --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-devnet.log
 
 reset-and-deploy-devnet:
@@ -89,28 +103,28 @@ reset-and-deploy-devnet:
     && uv run ansible-playbook full-app.yml \
       -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true, "reset_data": true}' \
       -e frontend_enabled_features='points' \
-      --limit 100.96.253.40,100.107.248.71 \
+      --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-reset-and-deploy-devnet.log
 
 stop-devnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook stop-services.yml \
       -e dango_network=devnet \
-      --limit 100.96.253.40,100.107.248.71 \
+      --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-devnet.log
 
 restart-devnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook restart-services.yml \
       -e dango_network=devnet \
-      --limit 100.96.253.40,100.107.248.71 \
+      --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-devnet.log
 
 remove-deploy-lock-devnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook remove-deploy-locks.yml \
       -e dango_network=devnet \
-      --limit 100.96.253.40,100.107.248.71 \
+      --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-devnet.log
 
 # ---------------------------------- Points ------------------------------------
@@ -171,6 +185,19 @@ stop-perps-bot:
     && uv run ansible-playbook stop-perps-bot.yml \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-perps-bot.log
 
+# ----------------------------- Dango Assistant --------------------------------
+
+deploy-dango-assistant tag="latest":
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook dango-assistant.yml \
+      -e dango_assistant_tag={{tag}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-dango-assistant.log
+
+stop-dango-assistant:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook stop-dango-assistant.yml \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-dango-assistant.log
+
 # ------------------------------ Perp Liquidator -------------------------------
 
 # Redeploy only the perp-liquidator container (pull new image, recreate)
@@ -186,12 +213,12 @@ deploy-perp-liquidator network tag="latest":
 
 # ---------------------------------- Testnet -----------------------------------
 
-deploy-testnet:
+deploy-testnet git_sha:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-testnet-1", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{git_sha}}", "frontend_image_tag": "latest"}' \
       -e frontend_enabled_features='points' \
-      --limit 100.90.163.19,100.109.200.70 \
+      --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-testnet.log
 
 # Note: the `reset-and-deploy-testnet` command has been deleted.
@@ -202,21 +229,21 @@ stop-testnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook stop-services.yml \
       -e dango_network=testnet \
-      --limit 100.90.163.19,100.109.200.70 \
+      --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-testnet.log
 
 restart-testnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook restart-services.yml \
       -e dango_network=testnet \
-      --limit 100.90.163.19,100.109.200.70 \
+      --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-testnet.log
 
 remove-deploy-lock-testnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook remove-deploy-locks.yml \
       -e dango_network=testnet \
-      --limit 100.90.163.19,100.109.200.70 \
+      --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-testnet.log
 
 # ---------------------------------- Mainnet -----------------------------------
@@ -224,32 +251,32 @@ remove-deploy-lock-testnet:
 # Note: the `reset-and-deploy-mainnet` command has been deleted.
 # We don't ever want to reset mainnet. Deleting the command so we don't do it by mistake.
 
-deploy-mainnet:
+deploy-mainnet git_sha:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}' \
-      --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "{{git_sha}}", "frontend_image_tag": "latest"}' \
+      --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet.log
 
 stop-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook stop-services.yml \
       -e dango_network=mainnet \
-      --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
+      --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-mainnet.log
 
 restart-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook restart-services.yml \
       -e dango_network=mainnet \
-      --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
+      --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-mainnet.log
 
 remove-deploy-lock-mainnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook remove-deploy-locks.yml \
       -e dango_network=mainnet \
-      --limit 100.89.7.33,100.66.234.16,100.126.8.2,100.76.197.30 \
+      --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-mainnet.log
 
 # ---------------------------------- Preview -----------------------------------
@@ -263,7 +290,7 @@ deploy-preview-latest:
       -e dango_network=previewnet \
       -e frontend_image_tag=latest \
       -e chain_id=preview \
-      --limit 100.96.253.40,100.107.248.71,100.122.37.57 \
+      --limit {{ovh1}},{{ovh2}},{{ovh3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-preview-latest.log
 
 delete-pr number:
@@ -291,19 +318,19 @@ deploy-hyperlane network agent limit index="":
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-hyperlane.log
 
 deploy-hyperlane-mainnet:
-  just deploy-hyperlane mainnet validator 100.89.7.33 1
-  just deploy-hyperlane mainnet validator 100.66.234.16 2
-  just deploy-hyperlane mainnet validator 100.126.8.2 3
-  just deploy-hyperlane mainnet validator 100.76.197.30 4
-  just deploy-hyperlane mainnet relayer 100.76.197.30
+  just deploy-hyperlane mainnet validator {{hetzner5}} 1
+  just deploy-hyperlane mainnet validator {{hetzner6}} 2
+  just deploy-hyperlane mainnet validator {{hetzner1}} 3
+  just deploy-hyperlane mainnet validator {{hetzner3}} 4
+  just deploy-hyperlane mainnet relayer {{hetzner3}}
 
 deploy-hyperlane-testnet:
-  just deploy-hyperlane testnet validator 100.90.163.19 1
-  just deploy-hyperlane testnet validator 100.109.200.70 2
-  just deploy-hyperlane testnet relayer 100.109.200.70
+  just deploy-hyperlane testnet validator {{hetzner2}} 1
+  just deploy-hyperlane testnet validator {{hetzner4}} 2
+  just deploy-hyperlane testnet relayer {{hetzner4}}
 
 # Stop a single Hyperlane instance
-# Usage: just stop-hyperlane mainnet validator 100.89.7.33 1
+# Usage: just stop-hyperlane mainnet validator 100.72.62.100 1
 #        just stop-hyperlane testnet relayer 100.109.200.70
 stop-hyperlane network agent limit index="":
   mkdir -p {{justfile_directory()}}/logs \
@@ -315,18 +342,18 @@ stop-hyperlane network agent limit index="":
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-hyperlane.log
 
 stop-hyperlane-mainnet-validators:
-  just stop-hyperlane mainnet validator 100.89.7.33 1
-  just stop-hyperlane mainnet validator 100.66.234.16 2
-  just stop-hyperlane mainnet validator 100.126.8.2 3
-  just stop-hyperlane mainnet validator 100.76.197.30 4
+  just stop-hyperlane mainnet validator {{hetzner5}} 1
+  just stop-hyperlane mainnet validator {{hetzner6}} 2
+  just stop-hyperlane mainnet validator {{hetzner1}} 3
+  just stop-hyperlane mainnet validator {{hetzner3}} 4
 
 stop-hyperlane-testnet-validators:
-  just stop-hyperlane testnet validator 100.90.163.19 1
-  just stop-hyperlane testnet validator 100.109.200.70 2
+  just stop-hyperlane testnet validator {{hetzner2}} 1
+  just stop-hyperlane testnet validator {{hetzner4}} 2
 
 # Start only the dango container (httpd + indexer) without CometBFT.
 # Useful for querying blocks/state when the chain can't run.
-# Usage: just start-dango-httpd mainnet 100.89.7.33
+# Usage: just start-dango-httpd mainnet <IP>
 start-dango-httpd network limit:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook start-dango-httpd.yml \
@@ -395,7 +422,7 @@ deploy-clickhouse:
 b2-list-buckets:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit 100.96.253.40 \
+      --limit {{ovh1}} \
       --tags list \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-list-buckets.log
 
@@ -403,7 +430,7 @@ b2-list-buckets:
 b2-cleanup-buckets:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit 100.96.253.40 \
+      --limit {{ovh1}} \
       --tags cleanup \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-cleanup-buckets.log
 
@@ -411,7 +438,7 @@ b2-cleanup-buckets:
 b2-delete-bucket name:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit 100.96.253.40 \
+      --limit {{ovh1}} \
       --tags delete-bucket \
       -e b2_bucket={{name}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-delete-bucket.log
@@ -420,7 +447,7 @@ b2-delete-bucket name:
 b2-mark-bucket-deletable name:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook cleanup-b2-buckets.yml \
-      --limit 100.96.253.40 \
+      --limit {{ovh1}} \
       --tags mark-bucket-deletable \
       -e b2_bucket={{name}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-b2-mark-bucket-deletable.log

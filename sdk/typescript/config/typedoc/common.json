@@ -1,7 +1,0 @@
-{
-  "$schema": "https://typedoc.org/schema.json",
-  "includeVersion": true,
-  "exclude": ["**/*.spec.ts"],
-  "excludeExternals": true,
-  "excludePrivate": true
-}

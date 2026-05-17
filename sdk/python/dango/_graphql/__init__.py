@@ -1,1 +1,1 @@
-"""Vendored GraphQL documents from sdk/rust/src/schemas/."""
+"""Vendored GraphQL documents from indexer/graphql-types/src/schemas/."""

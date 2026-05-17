@@ -1,10 +1,10 @@
-import { useApp, twMerge } from "@left-curve/foundation";
+import { twMerge } from "@left-curve/foundation";
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { FormattedNumber } from "./FormattedNumber";
 
 import type React from "react";
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { FormatNumberOptions } from "@left-curve/utils";
 
 export type PairStatKind = "priceChange24h" | "volume24h";
 export type PairStatTone = "neutral" | "positive" | "negative";

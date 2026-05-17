@@ -2,7 +2,7 @@ import { forwardRef, useMemo } from "react";
 
 import { Cell, IconButton, IconClose, Table, useApp } from "@left-curve/applets-kit";
 import type { TableColumn } from "@left-curve/applets-kit";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAppConfig, useFeeRateOverride } from "@left-curve/store";
 

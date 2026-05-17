@@ -15,7 +15,7 @@ function RouteComponent() {
   const navigate = Route.useNavigate();
 
   const handleTabChange = (newTab: "profile" | "rewards" | "leaderboard") => {
-    navigate({ search: { tab: newTab }, replace: true });
+    navigate({ search: { tab: newTab }, replace: true, resetScroll: false });
   };
 
   return (

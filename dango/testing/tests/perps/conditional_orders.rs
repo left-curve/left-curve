@@ -18,11 +18,11 @@ use {
 
 /// Full lifecycle: deposit → open position → place TP → oracle rises →
 /// cron triggers TP → position closed.
-#[test]
-fn conditional_order_tp_triggers_on_price_rise() {
+#[tokio::test]
+async fn conditional_order_tp_triggers_on_price_rise() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -34,6 +34,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Step 2: Maker places ask: 10 ETH @ $2,000.
@@ -44,6 +45,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -64,6 +66,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 3: Trader market buys 10 ETH. Fee = 10 * $2,000 * 0.1% = $20.
@@ -83,6 +86,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let state: UserState = suite
@@ -112,6 +116,7 @@ fn conditional_order_tp_triggers_on_price_rise() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 5: Verify conditional order exists on the position.
@@ -149,13 +154,14 @@ fn conditional_order_tp_triggers_on_price_rise() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 7: Oracle updated to $2,500.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
 
     // Step 8: Advance time so perps cron fires (interval = 1 min).
-    suite.increase_time(Duration::from_minutes(2));
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     // Step 9: Verify trader state — position closed.
     let state: UserState = suite
@@ -188,11 +194,11 @@ fn conditional_order_tp_triggers_on_price_rise() {
 
 /// SL triggers on price drop: deposit → buy → place SL → oracle drops →
 /// cron triggers SL → position closed with loss.
-#[test]
-fn conditional_order_sl_triggers_on_price_drop() {
+#[tokio::test]
+async fn conditional_order_sl_triggers_on_price_drop() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -204,6 +210,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Maker deposits and places ask.
@@ -214,6 +221,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -234,6 +242,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -252,6 +261,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 2: Trader submits SL: sell 5 @ trigger $1,800 Below, 2% slippage.
@@ -268,6 +278,7 @@ fn conditional_order_sl_triggers_on_price_drop() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 3: Bidder places bid: 5 ETH @ $1,800.
@@ -289,11 +300,12 @@ fn conditional_order_sl_triggers_on_price_drop() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Step 4: Oracle drops to $1,800, advance time so perps cron fires.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
-    suite.increase_time(Duration::from_minutes(2));
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     // Step 5: Verify trader state — position closed, PnL = 5*($1,800-$2,000) = -$1,000.
     let state: UserState = suite
@@ -333,11 +345,11 @@ fn conditional_order_sl_triggers_on_price_drop() {
 /// $1,800 and the cron fires, the $1,900 SL (closer to market) must execute
 /// first and consume the better $1,790 bid, leaving the $1,770 bid for the
 /// $1,800 SL.
-#[test]
-fn conditional_orders_follow_price_time_priority() {
+#[tokio::test]
+async fn conditional_orders_follow_price_time_priority() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -352,6 +364,7 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -361,6 +374,7 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -370,6 +384,7 @@ fn conditional_orders_follow_price_time_priority() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -394,6 +409,7 @@ fn conditional_orders_follow_price_time_priority() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -416,6 +432,7 @@ fn conditional_orders_follow_price_time_priority() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -438,6 +455,7 @@ fn conditional_orders_follow_price_time_priority() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -457,6 +475,7 @@ fn conditional_orders_follow_price_time_priority() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -476,6 +495,7 @@ fn conditional_orders_follow_price_time_priority() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -502,6 +522,7 @@ fn conditional_orders_follow_price_time_priority() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -522,6 +543,7 @@ fn conditional_orders_follow_price_time_priority() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -536,8 +558,8 @@ fn conditional_orders_follow_price_time_priority() {
     // Both $1,790 and $1,770 are above $1,764 → within tolerance.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
-    suite.increase_time(Duration::from_minutes(2));
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     // -------------------------------------------------------------------------
     // Assertions: Both positions closed, both conditional orders consumed.
@@ -601,11 +623,11 @@ fn conditional_orders_follow_price_time_priority() {
 /// This test places two BELOW conditional orders: one sell (no bids on book →
 /// will fail) and one buy (ask available → will succeed). It verifies that
 /// the first order's failure does not prevent the second from executing.
-#[test]
-fn conditional_order_failure_does_not_block_others() {
+#[tokio::test]
+async fn conditional_order_failure_does_not_block_others() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -620,6 +642,7 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -629,6 +652,7 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -638,6 +662,7 @@ fn conditional_order_failure_does_not_block_others() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -662,6 +687,7 @@ fn conditional_order_failure_does_not_block_others() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -680,6 +706,7 @@ fn conditional_order_failure_does_not_block_others() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -704,6 +731,7 @@ fn conditional_order_failure_does_not_block_others() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -722,6 +750,7 @@ fn conditional_order_failure_does_not_block_others() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify positions: User1 = 5 long, User3 = 5 short.
@@ -767,6 +796,7 @@ fn conditional_order_failure_does_not_block_others() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -787,6 +817,7 @@ fn conditional_order_failure_does_not_block_others() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -812,6 +843,7 @@ fn conditional_order_failure_does_not_block_others() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // -------------------------------------------------------------------------
@@ -824,8 +856,8 @@ fn conditional_order_failure_does_not_block_others() {
     //      → succeeds.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
-    suite.increase_time(Duration::from_minutes(2));
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     // -------------------------------------------------------------------------
     // Assertions
@@ -896,11 +928,11 @@ fn conditional_order_failure_does_not_block_others() {
 ///  6. With the fix: the pre-call snapshot of `user_state` is restored, so
 ///     `open_order_count == 1` and the resting bid is still in the book.
 ///  7. A subsequent market sell from User3 fills User1's bid without panicking.
-#[test]
-fn conditional_order_self_trade_failure_preserves_user_state() {
+#[tokio::test]
+async fn conditional_order_self_trade_failure_preserves_user_state() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -917,6 +949,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(amount)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -939,6 +972,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User1 market-buys 5 ETH → long 5 @ $2,000.
@@ -958,6 +992,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // User1 places a resting bid at $1,950 (would add to long if filled).
@@ -980,6 +1015,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Snapshot User1's state: should have 1 resting bid, reserved_margin > 0.
@@ -1015,6 +1051,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Oracle drops to $1,960 → SL triggers. No other bids in range ($1,862+) —
@@ -1022,8 +1059,8 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
     // memory, `match_order` has no more liquidity, `ensure!` fails, and
     // `process_triggered_order` gracefully cancels the conditional order via
     // `SlippageExceeded`.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_960);
-    suite.increase_time(Duration::from_minutes(2));
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_960).await;
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     // --- Post-trigger assertions ---
 
@@ -1094,6 +1131,7 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // After the fill, User1's resting bid should be gone and
@@ -1114,13 +1152,13 @@ fn conditional_order_self_trade_failure_preserves_user_state() {
 
 /// Market buy with TP child order → position has conditional_order_above →
 /// oracle rises → cron triggers TP → position closed with profit.
-#[test]
-fn child_order_market_with_tp_triggers() {
+#[tokio::test]
+async fn child_order_market_with_tp_triggers() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // Deposit for user1 (trader) and user2 (maker).
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -1131,6 +1169,7 @@ fn child_order_market_with_tp_triggers() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1153,6 +1192,7 @@ fn child_order_market_with_tp_triggers() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trader market buys 10 ETH with TP @ $2,500.
@@ -1176,6 +1216,7 @@ fn child_order_market_with_tp_triggers() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify TP is on the position.
@@ -1191,7 +1232,7 @@ fn child_order_market_with_tp_triggers() {
     assert!(pos.conditional_order_below.is_none(), "no SL");
 
     // Oracle rises to $2,500 → trigger TP.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
 
     // Maker places bid to fill the TP market sell.
     suite
@@ -1212,10 +1253,11 @@ fn child_order_market_with_tp_triggers() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Advance time to trigger cron.
-    suite.increase_time(Duration::from_minutes(2));
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     // Verify position is closed.
     let state: UserState = suite
@@ -1235,13 +1277,13 @@ fn child_order_market_with_tp_triggers() {
 }
 
 /// Market buy with SL child order → oracle drops → SL triggers → closed with loss.
-#[test]
-fn child_order_market_with_sl_triggers() {
+#[tokio::test]
+async fn child_order_market_with_sl_triggers() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -1251,6 +1293,7 @@ fn child_order_market_with_sl_triggers() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1273,6 +1316,7 @@ fn child_order_market_with_sl_triggers() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trader market buys 5 ETH with SL @ $1,800.
@@ -1296,6 +1340,7 @@ fn child_order_market_with_sl_triggers() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify SL is on the position.
@@ -1311,7 +1356,7 @@ fn child_order_market_with_sl_triggers() {
     assert!(pos.conditional_order_above.is_none(), "no TP");
 
     // Oracle drops to $1,800 → trigger SL.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
 
     // Maker places bid to fill SL.
     suite
@@ -1332,9 +1377,10 @@ fn child_order_market_with_sl_triggers() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
-    suite.increase_time(Duration::from_minutes(2));
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     let state: UserState = suite
         .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
@@ -1352,13 +1398,13 @@ fn child_order_market_with_sl_triggers() {
 
 /// Market sell that closes existing long position, with TP/SL child order →
 /// no conditional orders remain.
-#[test]
-fn child_order_ignored_when_position_closed() {
+#[tokio::test]
+async fn child_order_ignored_when_position_closed() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -1368,6 +1414,7 @@ fn child_order_ignored_when_position_closed() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1390,6 +1437,7 @@ fn child_order_ignored_when_position_closed() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1408,6 +1456,7 @@ fn child_order_ignored_when_position_closed() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Now maker places bid, trader sells to close with TP/SL attached.
@@ -1429,6 +1478,7 @@ fn child_order_ignored_when_position_closed() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1455,6 +1505,7 @@ fn child_order_ignored_when_position_closed() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Position should be closed, no conditional orders.
@@ -1470,13 +1521,13 @@ fn child_order_ignored_when_position_closed() {
 
 /// Position has existing TP/SL. New market order with different child orders fills
 /// → old TP/SL replaced.
-#[test]
-fn child_order_overwrites_existing() {
+#[tokio::test]
+async fn child_order_overwrites_existing() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -1486,6 +1537,7 @@ fn child_order_overwrites_existing() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -1508,6 +1560,7 @@ fn child_order_overwrites_existing() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1526,6 +1579,7 @@ fn child_order_overwrites_existing() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Set existing TP/SL via SubmitConditionalOrder.
@@ -1542,6 +1596,7 @@ fn child_order_overwrites_existing() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Buy more with different TP/SL child orders → overwrites.
@@ -1569,6 +1624,7 @@ fn child_order_overwrites_existing() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let state: UserState = suite
@@ -1590,13 +1646,13 @@ fn child_order_overwrites_existing() {
 }
 
 /// SubmitConditionalOrder twice with same direction → second overwrites first.
-#[test]
-fn conditional_order_overwrite_same_direction() {
+#[tokio::test]
+async fn conditional_order_overwrite_same_direction() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -1605,6 +1661,7 @@ fn conditional_order_overwrite_same_direction() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1614,6 +1671,7 @@ fn conditional_order_overwrite_same_direction() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Establish long position.
@@ -1635,6 +1693,7 @@ fn conditional_order_overwrite_same_direction() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1653,6 +1712,7 @@ fn conditional_order_overwrite_same_direction() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // First TP.
@@ -1669,6 +1729,7 @@ fn conditional_order_overwrite_same_direction() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Second TP (same direction) → should overwrite, not error.
@@ -1685,6 +1746,7 @@ fn conditional_order_overwrite_same_direction() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let state: UserState = suite
@@ -1704,13 +1766,13 @@ fn conditional_order_overwrite_same_direction() {
 }
 
 /// SubmitConditionalOrder with size > position → now allowed (previously errored).
-#[test]
-fn conditional_order_size_exceeds_position_allowed() {
+#[tokio::test]
+async fn conditional_order_size_exceeds_position_allowed() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -1719,6 +1781,7 @@ fn conditional_order_size_exceeds_position_allowed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1728,6 +1791,7 @@ fn conditional_order_size_exceeds_position_allowed() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Establish small long.
@@ -1749,6 +1813,7 @@ fn conditional_order_size_exceeds_position_allowed() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1767,6 +1832,7 @@ fn conditional_order_size_exceeds_position_allowed() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Submit TP with size > position (was -5 but position is only 3).
@@ -1783,6 +1849,7 @@ fn conditional_order_size_exceeds_position_allowed() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Verify it was placed.
@@ -1804,11 +1871,11 @@ fn conditional_order_size_exceeds_position_allowed() {
 /// `SlippageCapTightened` — distinct from `SlippageExceeded` which
 /// signals a book-liquidity shortfall. The position stays open; no
 /// market order is attempted.
-#[test]
-fn conditional_order_cancelled_when_slippage_cap_tightened() {
+#[tokio::test]
+async fn conditional_order_cancelled_when_slippage_cap_tightened() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1829,6 +1896,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trader deposits and opens a long via a market fill against a
@@ -1840,6 +1908,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1849,6 +1918,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1869,6 +1939,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -1887,6 +1958,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Trader places TP with 10% slippage — legal against the 50% cap.
@@ -1903,6 +1975,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Governance tightens the cap to 5% — the stored 10% TP slippage
@@ -1922,6 +1995,7 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Provide a bid the TP could legally fill at, so the only reason
@@ -1944,13 +2018,14 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Oracle rises to the TP trigger.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
 
     // Advance time so the perps cron fires.
-    suite.increase_time(Duration::from_minutes(2));
+    suite.increase_time(Duration::from_minutes(2)).await;
 
     // Position is still open (TP was not executed; order was cancelled
     // for cap tightening).
@@ -1977,11 +2052,11 @@ fn conditional_order_cancelled_when_slippage_cap_tightened() {
 /// match. Verifies the cron path of `compute_submit_order_outcome` → `match_order` →
 /// `settle_fill` correctly threads `next_fill_id` the same way the
 /// user-submitted path does.
-#[test]
-fn conditional_order_trigger_fills_carry_fill_id() {
+#[tokio::test]
+async fn conditional_order_trigger_fills_carry_fill_id() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1993,6 +2068,7 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -2002,6 +2078,7 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(50_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -2022,6 +2099,7 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -2040,6 +2118,7 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -2055,6 +2134,7 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Resting bid that the TP will cross when triggered.
@@ -2076,16 +2156,17 @@ fn conditional_order_trigger_fills_carry_fill_id() {
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Move oracle above the TP trigger and advance time to fire cron.
     // `increase_time` discards the block outcome, so inline its body to
     // keep access to the cron-emitted events.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
 
     let old_block_time = suite.block_time;
     suite.block_time = Duration::from_minutes(2);
-    let outcome = suite.make_empty_block();
+    let outcome = suite.make_empty_block().await;
     suite.block_time = old_block_time;
 
     let fills = outcome
@@ -2131,11 +2212,11 @@ fn conditional_order_trigger_fills_carry_fill_id() {
 /// after the first triggered order saves its advanced `NEXT_FILL_ID`,
 /// the second triggered order must load the updated value rather than
 /// the pre-cron one.
-#[test]
-fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
+#[tokio::test]
+async fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let pair = pair_id();
 
@@ -2148,6 +2229,7 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -2160,6 +2242,7 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Two opening asks, one per trader.
@@ -2184,6 +2267,7 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                 )),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -2206,6 +2290,7 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                 )),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -2227,6 +2312,7 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                 }),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -2252,15 +2338,16 @@ fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
                 )),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
     // Move the oracle so both TPs trigger, then fire cron.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
 
     let old_block_time = suite.block_time;
     suite.block_time = Duration::from_minutes(2);
-    let outcome = suite.make_empty_block();
+    let outcome = suite.make_empty_block().await;
     suite.block_time = old_block_time;
 
     let fills = outcome

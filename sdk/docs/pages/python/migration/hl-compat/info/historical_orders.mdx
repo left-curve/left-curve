@@ -1,0 +1,37 @@
+# Info.historical_orders (HL-compat)
+
+HL `historicalOrders` — reconstruct order lifecycle from persisted + removed events.
+
+## Signature
+
+```python
+def historical_orders(self, user: str) -> list[dict[str, Any]]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+rows = info.historical_orders("0x...")
+for row in rows:
+    print(row["order"]["coin"], row["status"], row["statusTimestamp"])
+```
+
+## Parameters
+
+**`user`** — `str`. The user's account address.
+
+## Returns
+
+**`list[dict[str, Any]]`** — one row per persisted order with `{order, status, statusTimestamp}`. `status` is `"open"` if the order is still active, else the reason from the matching `order_removed` event (`"filled"`, `"canceled"`, `"liquidated"`, etc.).
+
+## Notes
+
+- Dango does not fold the lifecycle on the server. The wrapper collects every `order_persisted` event and joins by `order_id` against `order_removed` events.
+
+## See also
+
+- [Native `perps_events_all`](../../../api/methods/info/perps_events_all)
+- [`ReasonForOrderRemoval`](../../../api/types/ReasonForOrderRemoval)

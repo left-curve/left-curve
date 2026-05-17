@@ -1179,6 +1179,52 @@ query {
 | `minBlockHeight` | `Int`        | First block in this candle    |
 | `maxBlockHeight` | `Int`        | Last block in this candle     |
 
+### 4.8 Fees and revenue
+
+```graphql
+query {
+  perpsFeesAndRevenue(
+    from: "2026-01-01T00:00:00Z",
+    to: "2026-02-01T00:00:00Z"
+  ) {
+    from
+    to
+    feeEventsCount
+    protocolFee
+    vaultFee
+    refereeRebate
+    referrerPayout
+    volumeUsd
+  }
+}
+```
+
+| Parameter | Type        | Description                    |
+| --------- | ----------- | ------------------------------ |
+| `from`    | `DateTime!` | Window lower bound (inclusive) |
+| `to`      | `DateTime!` | Window upper bound (inclusive) |
+
+`from` must be less than or equal to `to`.
+
+**Resolution.** Windows shorter than 3 days are served from per-block rows with microsecond-precise bounds. Windows of 3 days or more are served from the `perps_fees_hourly` materialized view; bounds are snapped to the enclosing hours, so a request that overlaps partial hours at either end includes those hours' full aggregates.
+
+**PerpsFeesAndRevenue fields:**
+
+| Field            | Type          | Description                                                     |
+| ---------------- | ------------- | --------------------------------------------------------------- |
+| `from`           | `String!`     | Lower bound echoed back as ISO 8601                             |
+| `to`             | `String!`     | Upper bound echoed back as ISO 8601                             |
+| `feeEventsCount` | `Int!`        | Number of `FeeDistributed` events aggregated in the window      |
+| `protocolFee`    | `BigDecimal!` | Protocol fee accrued (USD)                                      |
+| `vaultFee`       | `BigDecimal!` | Vault fee accrued (USD), already net of referral commissions    |
+| `refereeRebate`  | `BigDecimal!` | Referral commissions paid back to referees (USD)                |
+| `referrerPayout` | `BigDecimal!` | Referral commissions paid out to referrers (USD)                |
+| `volumeUsd`      | `BigDecimal!` | USD notional volume from `OrderFilled` and `Deleveraged` events |
+
+Total protocol revenue over the window is `protocolFee + vaultFee`. The total fee paid by users is `protocolFee + vaultFee + refereeRebate + referrerPayout`; `refereeRebate` and `referrerPayout` are informational totals of referral commissions distributed.
+
+This query backs the Dango entry on DefiLlama: <https://defillama.com/protocol/dango>.
+
 ## 5. User state and orders
 
 ### 5.1 User state

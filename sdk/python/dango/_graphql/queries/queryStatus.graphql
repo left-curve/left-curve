@@ -1,1 +1,1 @@
-../../../../../sdk/rust/src/schemas/queries/queryStatus.graphql
+../../../../../indexer/graphql-types/src/schemas/queries/queryStatus.graphql

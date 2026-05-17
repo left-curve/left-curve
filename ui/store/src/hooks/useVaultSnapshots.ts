@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { usePublicClient } from "./usePublicClient.js";
 
-import type { VaultSnapshot } from "@left-curve/dango/types";
+import type { VaultSnapshot } from "@left-curve/types";
 
 export type VaultPerformancePoint = {
   date: string;
@@ -12,10 +12,11 @@ export type VaultPerformancePoint = {
   dailyChange: number;
 };
 
-export type VaultPerformancePeriod = "7D" | "30D" | "90D";
+export type VaultPerformancePeriod = "7D" | "14D" | "30D" | "90D";
 
 const PERIOD_DAYS: Record<VaultPerformancePeriod, number> = {
   "7D": 7,
+  "14D": 14,
   "30D": 30,
   "90D": 90,
 };
@@ -51,7 +52,7 @@ export type UseVaultSnapshotsParameters = {
 };
 
 export function useVaultSnapshots(parameters: UseVaultSnapshotsParameters = {}) {
-  const { period = "30D", enabled = true } = parameters;
+  const { period = "14D", enabled = true } = parameters;
   const client = usePublicClient();
 
   const days = PERIOD_DAYS[period];

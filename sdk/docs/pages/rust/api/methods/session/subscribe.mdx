@@ -1,0 +1,74 @@
+# Session::subscribe
+
+Multiplex a new GraphQL subscription onto an existing WebSocket session.
+
+## Signature
+
+```rust
+pub async fn subscribe<Q>(
+    &self,
+    variables: Q::Variables,
+) -> Result<SubscriptionStream<Q::ResponseData>, anyhow::Error>
+where
+    Q:               GraphQLQuery + Unpin + Send + Sync + 'static,
+    Q::Variables:    Unpin + Send + Sync + 'static,
+    Q::ResponseData: DeserializeOwned + Unpin + Send + Sync + 'static;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{SubscribeBlock, SubscribeTrades, WsClient, subscribe_block, subscribe_trades},
+    futures::StreamExt,
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let session = WsClient::new("wss://api-mainnet.dango.zone/graphql")?
+        .connect()
+        .await?;
+
+    let mut blocks = session
+        .subscribe::<SubscribeBlock>(subscribe_block::Variables {})
+        .await?;
+    let mut trades = session
+        .subscribe::<SubscribeTrades>(subscribe_trades::Variables {
+            base_denom:  "dango".into(),
+            quote_denom: "bridge/usdc".into(),
+        })
+        .await?;
+
+    loop {
+        tokio::select! {
+            Some(item) = blocks.next() => println!("block: {item:?}"),
+            Some(item) = trades.next() => println!("trade: {item:?}"),
+            else => break,
+        }
+    }
+    Ok(())
+}
+```
+
+## Parameters
+
+**`variables`** — `Q::Variables`. Typed variables for the subscription.
+
+**Type parameter `Q`** — the `GraphQLQuery` marker struct (e.g. `SubscribeBlock`, `SubscribeTrades`).
+
+## Returns
+
+**`SubscriptionStream<Q::ResponseData>`** — a boxed `Stream` of `Result<Response<T>, WsError>`. Dropping the stream sends a `complete` to the server and frees the slot in the 30-per-connection limit.
+
+## Notes
+
+- The subscription id is allocated from the session's internal `AtomicU64`. Ids are local to the session.
+- Returns `Err(anyhow!("session is closed"))` if the underlying background task has exited.
+- Multiple subscriptions on the same session run concurrently. There is no ordering guarantee across subscription ids.
+
+## See also
+
+- [`Session`](../../clients/Session) — lifecycle and `Drop` semantics.
+- [`WsClient::subscribe`](../ws-client/subscribe) — dedicated-connection alternative.
+- [Concepts: Subscriptions](../../../concepts/subscriptions) — when to multiplex.

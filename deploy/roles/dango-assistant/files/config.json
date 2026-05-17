@@ -1,0 +1,35 @@
+{
+  "discord": {
+    "guild_id": 1246466309080879207,
+    "mod_role_ids": [
+      1354402031586115665,
+      1260994713583095808
+    ],
+    "channel_id": 1497894090547921017,
+    "category_id": 1497893929834778675
+  },
+  "chain": {
+    "env": "mainnet"
+  },
+  "agent": {
+    "cli": "claude-code",
+    "claude_binary": "claude",
+    "claude_effort": "max",
+    "mcp_config_path": "/etc/assist-dango/mcp.json",
+    "workspace": "./agent-workspace",
+    "timeout": "180s",
+    "init_timeout": "30s"
+  },
+  "session": {
+    "ttl": "24h",
+    "max_concurrent": 8,
+    "reaper_poll_interval": "5m"
+  },
+  "ui": {
+    "show_tool_calls": false,
+    "requests_ephemeral_dismiss": "5s",
+    "live_turn_retention": "60s",
+    "live_thinking_poll": "500ms"
+  },
+  "log_level": "info"
+}

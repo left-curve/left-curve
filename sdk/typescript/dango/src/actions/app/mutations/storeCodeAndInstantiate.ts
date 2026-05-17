@@ -1,17 +1,18 @@
-import { encodeBase64 } from "@left-curve/sdk/encoding";
-
-import { computeAddress } from "../../../account/address.js";
-import { getCoinsTypedData } from "../../../utils/typedData.js";
-import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
-
-import type { Address, Base64, Funds, Hex, Json, Transport } from "@left-curve/sdk/types";
-
+import { encodeBase64 } from "@left-curve/encoding";
 import type {
-  DangoClient,
+  Address,
+  Base64,
+  Client,
+  Funds,
+  Hex,
+  Json,
   Signer,
   TxMessageType,
   TypedDataParameter,
-} from "../../../types/index.js";
+} from "@left-curve/types";
+import { getCoinsTypedData } from "@left-curve/utils";
+import { computeAddress } from "#account/address.js";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type StoreCodeAndInstantiateParameters = {
   sender: Address;
@@ -28,8 +29,8 @@ export type StoreCodeAndInstantiateReturnType = Promise<
   [string, Awaited<SignAndBroadcastTxReturnType>]
 >;
 
-export async function storeCodeAndInstantiate<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+export async function storeCodeAndInstantiate(
+  client: Client<Signer>,
   parameters: StoreCodeAndInstantiateParameters,
 ): StoreCodeAndInstantiateReturnType {
   const { sender, msg, codeHash, funds = {}, salt, code, admin } = parameters;

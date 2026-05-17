@@ -37,8 +37,8 @@ mod query_maker {
     }
 }
 
-#[test]
-fn query_super_smart() {
+#[tokio::test]
+async fn query_super_smart() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", Coins::one("uusdc", 123).unwrap())
         .set_chain_id("kebab")
@@ -59,6 +59,7 @@ fn query_super_smart() {
             None,
             Coins::new(),
         )
+        .await
         .should_succeed()
         .address;
 

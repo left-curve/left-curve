@@ -1,0 +1,48 @@
+# Metadata
+
+Encode multisig ISM (Interchain Security Module) metadata: origin merkle tree address, merkle root, index, and validator signatures.
+
+## Signature
+
+```ts
+class Metadata implements Encoder {
+  originMerkleTree: Addr32
+  merkleRoot: Uint8Array
+  merkleIndex: number
+  signatures: Uint8Array[]
+
+  static from(params: Omit<Metadata, "encode">): Metadata
+  encode(): Uint8Array
+}
+```
+
+## Example
+
+```ts
+import { Addr32, Metadata } from "@left-curve/sdk/hyperlane"
+
+const meta = Metadata.from({
+  originMerkleTree: Addr32.from("0x1234567890abcdef1234567890abcdef12345678"),
+  merkleRoot: new Uint8Array(32),
+  merkleIndex: 0,
+  signatures: [new Uint8Array(65)],
+})
+
+const wire: Uint8Array = meta.encode()
+```
+
+## Encoding layout
+
+`encode()` produces a buffer of `68 + 65 * signatures.length` bytes:
+
+| Offset | Length        | Field              |
+|--------|---------------|--------------------|
+| 0      | 32            | `originMerkleTree` |
+| 32     | 32            | `merkleRoot`       |
+| 64     | 4             | `merkleIndex` (BE) |
+| 68     | 65 each       | `signatures[i]` (65 bytes per ECDSA signature) |
+
+## See also
+
+- [`Message`](./Message)
+- [`IncrementalMerkleTree`](./IncrementalMerkleTree)

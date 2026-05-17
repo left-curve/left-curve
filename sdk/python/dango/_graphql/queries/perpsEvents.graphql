@@ -1,1 +1,1 @@
-../../../../../sdk/rust/src/schemas/queries/perpsEvents.graphql
+../../../../../indexer/graphql-types/src/schemas/queries/perpsEvents.graphql

@@ -12,8 +12,8 @@ const FEE_RATE: Udec128 = Udec128::new_percent(10);
 
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
-#[test]
-fn transfers() {
+#[tokio::test]
+async fn transfers() {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(DENOM.clone(), 300_000).unwrap())
@@ -35,16 +35,18 @@ fn transfers() {
         .should_succeed_and_equal(Uint128::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
-    let outcome = suite.send_messages_with_gas(
-        &mut accounts["sender"],
-        2_500_000,
-        NonEmpty::new_unchecked(vec![
-            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
-        ]),
-    );
+    let outcome = suite
+        .send_messages_with_gas(
+            &mut accounts["sender"],
+            2_500_000,
+            NonEmpty::new_unchecked(vec![
+                Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
+            ]),
+        )
+        .await;
 
     outcome.clone().should_succeed();
 
@@ -79,8 +81,8 @@ fn transfers() {
         ]));
 }
 
-#[test]
-fn transfers_with_insufficient_gas_limit() {
+#[tokio::test]
+async fn transfers_with_insufficient_gas_limit() {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(DENOM.clone(), 200_000).unwrap())
@@ -95,11 +97,13 @@ fn transfers_with_insufficient_gas_limit() {
     // For this test to work, the tx should request enough gas to pass `withhold_fee`,
     // but not enough to cover the actual transfer.
     // In experience, 200k gas works.
-    let outcome = suite.send_message_with_gas(
-        &mut accounts["sender"],
-        200_000,
-        Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-    );
+    let outcome = suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            200_000,
+            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+        )
+        .await;
 
     outcome.clone().should_fail();
 

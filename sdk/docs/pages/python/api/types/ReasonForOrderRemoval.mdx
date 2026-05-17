@@ -1,0 +1,34 @@
+# ReasonForOrderRemoval
+
+Reason carried on `OrderRemoved` / `ConditionalOrderRemoved` events.
+
+## Definition
+
+```python
+class ReasonForOrderRemoval(StrEnum):
+    FILLED = "filled"
+    CANCELED = "canceled"
+    POSITION_CLOSED = "position_closed"
+    SELF_TRADE_PREVENTION = "self_trade_prevention"
+    LIQUIDATED = "liquidated"
+    DELEVERAGED = "deleveraged"
+    SLIPPAGE_EXCEEDED = "slippage_exceeded"
+    PRICE_BAND_VIOLATION = "price_band_violation"
+    SLIPPAGE_CAP_TIGHTENED = "slippage_cap_tightened"
+```
+
+## Construction
+
+```python
+from dango.utils.types import ReasonForOrderRemoval
+
+reason = ReasonForOrderRemoval.FILLED
+```
+
+## Notes
+
+- Wire form is lowercase snake_case (Rust serde convention).
+
+## See also
+
+- [`OrderRemoved`](./OrderRemoved) — event that carries this enum

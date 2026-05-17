@@ -1,0 +1,37 @@
+# ServerError
+
+Raised on a 5xx HTTP response, network-level failure, or non-JSON body from the GraphQL endpoint.
+
+## Definition
+
+```python
+class ServerError(Error):
+    """Raised on a 5xx HTTP response from the GraphQL endpoint."""
+```
+
+## When it fires
+
+- 5xx HTTP status
+- DNS failure, connection refused, timeout, SSL error (every `requests.RequestException` is wrapped)
+- Response body that fails to parse as JSON
+- GraphQL envelope that is not a JSON object (array or scalar)
+
+## Example
+
+```python
+import time
+from dango.utils.error import ServerError
+
+for attempt in range(3):
+    try:
+        return info.query_status()
+    except ServerError:
+        if attempt == 2:
+            raise
+        time.sleep(2 ** attempt)
+```
+
+## See also
+
+- [`Error`](./Error) — base class
+- [Concepts: Error handling](../../concepts/error-handling)

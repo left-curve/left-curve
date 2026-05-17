@@ -1,4 +1,4 @@
-import { formatNumber } from "@left-curve/dango/utils";
+import { formatNumber } from "@left-curve/utils";
 import { twMerge, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount } from "@left-curve/store";
@@ -22,6 +22,7 @@ type ProgressBarState = {
 
 const MILESTONE_STEP = 25_000;
 const LOOKAHEAD_STEPS = 24; // milestones rendered ahead of the user (>20 as requested)
+const LOOKBEHIND_STEPS = 1; // milestones rendered behind, so the just-passed milestone stays visible
 
 const TIER_LABELS: Record<TierKey, () => string> = {
   bronze: () => m["points.rewards.boxes.tiers.bronze"](),
@@ -60,10 +61,14 @@ const formatThresholdLabel = (value: number): string => {
 
 const calculateSteps = (currentVolume: number): Step[] => {
   const currentMs = Math.floor(Math.max(currentVolume, 0) / MILESTONE_STEP);
+  const startMs = Math.max(0, currentMs - LOOKBEHIND_STEPS);
   const endMs = currentMs + LOOKAHEAD_STEPS;
 
-  const steps: Step[] = [{ kind: "start", threshold: 0, tierKey: "bronze" }];
-  for (let n = 1; n <= endMs; n++) {
+  const steps: Step[] = [];
+  if (startMs === 0) {
+    steps.push({ kind: "start", threshold: 0, tierKey: "bronze" });
+  }
+  for (let n = Math.max(1, startMs); n <= endMs; n++) {
     const threshold = n * MILESTONE_STEP;
     steps.push({
       kind: "milestone",
@@ -84,9 +89,15 @@ const useProgressBarState = (currentVolume: number): ProgressBarState => {
   return useMemo(() => {
     const safeVolume = Math.max(currentVolume, 0);
     const steps = calculateSteps(safeVolume);
+    // Crashes (because `steps` would be empty) when `currentVolume` is NaN
+    // or Infinity — which would happen if the API returned volume as "NaN",
+    // "Infinity", or a non-numeric string. In practice this can't happen —
+    // the Rust server-side enforces volume as a numeric string.
+    const firstThreshold = steps[0].threshold;
     const lastThreshold = steps[steps.length - 1].threshold;
+    const span = lastThreshold - firstThreshold;
     const progress =
-      lastThreshold > 0 ? Math.min(Math.max((safeVolume / lastThreshold) * 100, 0), 100) : 0;
+      span > 0 ? Math.min(Math.max(((safeVolume - firstThreshold) / span) * 100, 0), 100) : 0;
     const { tier: nextTier, target } = getNextMilestone(safeVolume);
     const remaining = Math.max(target - safeVolume, 0);
 

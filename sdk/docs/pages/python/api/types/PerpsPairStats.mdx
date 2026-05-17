@@ -1,0 +1,31 @@
+# PerpsPairStats
+
+24-hour price and volume stats for one pair. Keys are camelCase (indexer wire shape).
+
+## Definition
+
+```python
+class PerpsPairStats(TypedDict):
+    pairId: str
+    currentPrice: str | None
+    price24HAgo: str | None
+    volume24H: str
+    priceChange24H: str | None
+```
+
+## Fields
+
+**`pairId`** — `str`.
+
+**`currentPrice`** — `str | None`. Last trade price. `None` if no trades in the lookback window.
+
+**`price24HAgo`** — `str | None`. Price 24h ago. `None` on insufficient history.
+
+**`volume24H`** — `str`. 24-hour USD volume. Defaults to `"0"` on no trades.
+
+**`priceChange24H`** — `str | None`. Absolute price change over 24h.
+
+## See also
+
+- [`perps_pair_stats`](../methods/info/perps_pair_stats) — single-pair fetcher
+- [`all_perps_pair_stats`](../methods/info/all_perps_pair_stats) — every pair in one call

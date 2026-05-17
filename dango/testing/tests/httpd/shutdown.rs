@@ -1,6 +1,6 @@
 use {
     actix_web::{App, HttpResponse, Responder, test, web},
-    grug_httpd::middlewares::shutdown::ShutdownMiddleware,
+    indexer_httpd::middlewares::shutdown::ShutdownMiddleware,
     std::sync::{
         Arc,
         atomic::{AtomicBool, Ordering},

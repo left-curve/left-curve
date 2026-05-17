@@ -1,0 +1,76 @@
+# storeCodeAndInstantiate
+
+Upload a Wasm code blob and instantiate it in a single transaction. Returns the derived contract address.
+
+## Signature
+
+```ts
+function storeCodeAndInstantiate(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    codeHash: Hex
+    msg: Json
+    salt: Uint8Array
+    funds?: Funds
+    code: Base64
+    admin?: Address
+    typedData?: TypedDataParameter
+  },
+): Promise<[string, { hash: Uint8Array } & TxData]>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import { encodeBase64 } from "@left-curve/encoding"
+import { readFileSync } from "node:fs"
+import { sha256 } from "@left-curve/crypto"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const wasm = readFileSync("./contract.wasm")
+const codeHash = `0x${Buffer.from(sha256(wasm)).toString("hex")}` as `0x${string}`
+
+const [address, receipt] = await client.storeCodeAndInstantiate({
+  sender,
+  code: encodeBase64(wasm),
+  codeHash,
+  msg: { initialValue: "0" },
+  salt: new TextEncoder().encode("counter-v1"),
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The deployer.
+
+**`codeHash`** — `Hex`. SHA-256 of the Wasm. Must match the hash of the bytes you upload.
+
+**`msg`** — `Json`. Init message.
+
+**`salt`** — `Uint8Array`. Deterministic salt.
+
+**`funds`** — `Funds`, optional. Coins to send into the new contract.
+
+**`code`** — `Base64`. Base64-encoded Wasm bytecode.
+
+**`admin`** — `Address`, optional. Migration admin.
+
+**`typedData`** — `TypedDataParameter`, optional.
+
+## Returns
+
+**`[address, receipt]`** — the derived contract address and the broadcast receipt.
+
+## See also
+
+- [`storeCode`](./storeCode) — upload-only
+- [`instantiate`](./instantiate) — instantiate-only

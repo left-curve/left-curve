@@ -1,0 +1,98 @@
+# Signers & Authentication
+
+**What this teaches:** how Dango separates keys from accounts, how the `Wallet` protocol abstracts signing, and what `SingleSigner` does on top.
+
+## Three layers
+
+The signing stack has three concerns, each owned by a different object:
+
+1. **Key material** — `Secp256k1Wallet` holds the 32-byte secret and produces signatures.
+2. **Account state** — `SingleSigner` knows the on-chain `user_index` and current `next_nonce`.
+3. **Transaction pipeline** — `Exchange` orchestrates simulate, sign, broadcast.
+
+The `Wallet` protocol is the interface that `Exchange` depends on. Any object with `address`, `key`, `key_hash`, and `sign(SignDoc) -> Signature` satisfies it. Today, only `Secp256k1Wallet` ships in tree; future Passkey and Session implementations will plug in without changes to `Exchange` or `SingleSigner`.
+
+## Key vs account
+
+Dango decouples the signing key from the on-chain account. The same secp256k1 key can control multiple Dango accounts; an account always has a fixed `user_index` (its position in the account-factory's USERS map). Every `SingleSigner` is bound to one specific `address`:
+
+```python
+from dango.utils.signing import Secp256k1Wallet, SingleSigner
+from dango.utils.types import Addr
+
+wallet = Secp256k1Wallet.from_mnemonic("test test test ...", Addr("0xaccount"))
+signer = SingleSigner(wallet, Addr("0xaccount"))
+```
+
+The `wallet.address` is advisory — it is the address you handed to the wallet constructor. The authoritative binding lives on the `SingleSigner.address`.
+
+## Constructing a wallet
+
+`Secp256k1Wallet` exposes four constructors:
+
+```python
+from dango.utils.signing import Secp256k1Wallet
+from dango.utils.types import Addr
+
+addr = Addr("0x...")
+
+w1 = Secp256k1Wallet(bytes.fromhex("aa" * 32), addr)               # raw secret
+w2 = Secp256k1Wallet.random(addr)                                  # CSPRNG
+w3 = Secp256k1Wallet.from_bytes(bytes.fromhex("aa" * 32), addr)    # explicit factory
+w4 = Secp256k1Wallet.from_mnemonic("test test test ...", addr)     # BIP-39 mnemonic
+```
+
+The mnemonic path uses BIP-44 with coin type 60 (Ethereum's). Pass `coin_type=N` to derive at `m/44'/N'/0'/0/0` instead. The library uses `eth-account`'s unaudited HD wallet path, matching the Rust SDK's BIP-32 derivation.
+
+If you already hold an `eth_account.LocalAccount`, the `Exchange` constructor will wrap it for you:
+
+```python
+from eth_account import Account
+
+from dango.exchange import Exchange
+from dango.utils.types import Addr
+
+account = Account.from_key("0x...")
+exchange = Exchange(account, base_url, account_address=Addr("0x..."))
+```
+
+Internally this calls `Secp256k1Wallet.from_eth_account(account, addr)`, which signs with `KeyType=Secp256k1` (raw secp256k1 over SHA-256), NOT with EIP-712. The Dango account address you pass is independent from the wallet's derived EVM address — they will not match.
+
+## Nonces and SingleSigner
+
+Every signed transaction carries a `nonce`. The chain stores a sliding window of seen nonces per account and rejects duplicates. `SingleSigner` keeps a local `next_nonce` and increments it optimistically on every `sign_tx` call — even when broadcasting fails. Reusing a nonce after a failed broadcast is dangerous; the chain may have already accepted your tx.
+
+When `Exchange` constructs a signer, it auto-resolves both `user_index` and `next_nonce` by querying the chain:
+
+```python
+from dango.info import Info
+from dango.utils.signing import Secp256k1Wallet, SingleSigner
+from dango.utils.types import Addr
+
+info = Info("https://api-mainnet.dango.zone")
+wallet = Secp256k1Wallet.from_mnemonic("...", Addr("0x..."))
+signer = SingleSigner.auto_resolve(wallet, Addr("0x..."), info)
+
+print(signer.user_index, signer.next_nonce)
+```
+
+For deterministic tests or recovery from a stale state, construct directly with `user_index=` and `next_nonce=` set, then bypass the auto-resolve:
+
+```python
+signer = SingleSigner(wallet, addr, user_index=42, next_nonce=7)
+```
+
+## What gets signed
+
+`sign_tx` builds a [`SignDoc`](../api/types/SignDoc), encodes it as canonical JSON (sorted keys, no whitespace, drops `None` from `data`), and hashes with SHA-256. The 32-byte digest is what the secp256k1 signature covers. The functions are exposed for tests and integration verification:
+
+```python
+from dango.utils.signing import sign_doc_canonical_json, sign_doc_sha256
+
+raw = sign_doc_canonical_json(sign_doc)
+digest = sign_doc_sha256(sign_doc)
+```
+
+## Next
+
+- [Transactions](./transactions) — the full simulate/sign/broadcast pipeline

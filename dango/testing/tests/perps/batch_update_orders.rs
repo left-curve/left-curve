@@ -52,10 +52,10 @@ fn limit_ask(price: i128, size: i128, cid: Option<u64>) -> SubmitOrderRequest {
 
 /// Happy path: batch of [PostOnly bid, PostOnly ask, Cancel(One(bid))].
 /// Assert exactly one resting order remains (the ask).
-#[test]
-fn batch_submit_then_cancel() {
+#[tokio::test]
+async fn batch_submit_then_cancel() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -64,6 +64,7 @@ fn batch_submit_then_cancel() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Submit bid first to learn its OrderId, then run the batch.
@@ -85,6 +86,7 @@ fn batch_submit_then_cancel() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -100,10 +102,10 @@ fn batch_submit_then_cancel() {
 /// Atomic replacement: user rests 3 orders, then issues a batch that
 /// cancels all and re-submits 3 new ones. Assert the new orders are on
 /// the book and the old ones are gone.
-#[test]
-fn batch_atomic_replace() {
+#[tokio::test]
+async fn batch_atomic_replace() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -112,6 +114,7 @@ fn batch_atomic_replace() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Rest 3 bids at descending prices.
@@ -123,6 +126,7 @@ fn batch_atomic_replace() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(limit_bid(price, 1, None))),
                 Coins::new(),
             )
+            .await
             .should_succeed();
     }
 
@@ -150,6 +154,7 @@ fn batch_atomic_replace() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let new_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -170,10 +175,10 @@ fn batch_atomic_replace() {
 /// client id so a subsequent `Submit` carrying the same client id
 /// succeeds — the two actions see each other's writes via grug's
 /// in-call `Buffer`.
-#[test]
-fn batch_reuse_client_order_id() {
+#[tokio::test]
+async fn batch_reuse_client_order_id() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     let cid = 42u64;
 
@@ -184,6 +189,7 @@ fn batch_reuse_client_order_id() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     // Resting bid with client_order_id = 42.
@@ -198,6 +204,7 @@ fn batch_reuse_client_order_id() {
             ))),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Batch: cancel by cid, then submit a new order carrying the same cid.
@@ -216,6 +223,7 @@ fn batch_reuse_client_order_id() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -231,10 +239,10 @@ fn batch_reuse_client_order_id() {
 /// A duplicate `client_order_id` within a batch fails the second submit
 /// and rolls back the first. Snapshot `UserState` and `orders` before
 /// the batch; assert they're byte-identical after the failure.
-#[test]
-fn batch_atomicity_on_submit_failure() {
+#[tokio::test]
+async fn batch_atomicity_on_submit_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -243,6 +251,7 @@ fn batch_atomicity_on_submit_failure() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     let state_before: perps::UserState = suite
@@ -273,6 +282,7 @@ fn batch_atomicity_on_submit_failure() {
             )),
             Coins::new(),
         )
+        .await
         .should_fail();
 
     let state_after: perps::UserState = suite
@@ -294,10 +304,10 @@ fn batch_atomicity_on_submit_failure() {
 /// A bogus `Cancel(One(...))` mid-batch rolls back an earlier successful
 /// submit. Same snapshot-and-compare assertion as the submit-failure
 /// case above.
-#[test]
-fn batch_atomicity_on_cancel_failure() {
+#[tokio::test]
+async fn batch_atomicity_on_cancel_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -306,6 +316,7 @@ fn batch_atomicity_on_cancel_failure() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     let state_before: perps::UserState = suite
@@ -335,6 +346,7 @@ fn batch_atomicity_on_cancel_failure() {
             )),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("order not found");
 
     let state_after: perps::UserState = suite
@@ -363,10 +375,10 @@ fn batch_atomicity_on_cancel_failure() {
 /// cid fails the second action. After the revert, user1's resting ask
 /// is still on the book and user1's UserState (margin, position) is
 /// byte-identical to before the batch.
-#[test]
-fn batch_fill_reverts_on_later_failure() {
+#[tokio::test]
+async fn batch_fill_reverts_on_later_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // Both users deposit margin.
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -377,6 +389,7 @@ fn batch_fill_reverts_on_later_failure() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -388,6 +401,7 @@ fn batch_fill_reverts_on_later_failure() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(limit_ask(2_000, 1, None))),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Snapshot maker (user1) and taker (user2) state plus their order books
@@ -443,6 +457,7 @@ fn batch_fill_reverts_on_later_failure() {
             )),
             Coins::new(),
         )
+        .await
         .should_fail();
 
     // Both maker and taker state must be byte-identical — the fill against
@@ -494,10 +509,10 @@ fn batch_fill_reverts_on_later_failure() {
 
 /// Sanity: a single-action batch produces observable state equivalent
 /// to the corresponding direct `SubmitOrder` message.
-#[test]
-fn batch_single_action() {
+#[tokio::test]
+async fn batch_single_action() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -506,6 +521,7 @@ fn batch_single_action() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -520,6 +536,7 @@ fn batch_single_action() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
@@ -533,10 +550,10 @@ fn batch_single_action() {
 /// `Param::max_action_batch_size` is enforced. Lower the cap to 3 via
 /// `Configure`; a 4-action batch is rejected without touching any
 /// storage.
-#[test]
-fn batch_size_cap_enforced() {
+#[tokio::test]
+async fn batch_size_cap_enforced() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // Lower the cap to 3.
     suite
@@ -554,6 +571,7 @@ fn batch_size_cap_enforced() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -563,6 +581,7 @@ fn batch_size_cap_enforced() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     let state_before: perps::UserState = suite
@@ -588,6 +607,7 @@ fn batch_size_cap_enforced() {
             )),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("`max_action_batch_size` (3), found: 4");
 
     let state_after: perps::UserState = suite
@@ -613,6 +633,7 @@ fn batch_size_cap_enforced() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }
 
@@ -622,8 +643,8 @@ fn batch_size_cap_enforced() {
 /// succeeds if the cid-index write from the first action is visible
 /// through the in-call `Buffer`, which proves cross-pair reads
 /// inside a batch see earlier in-batch writes.
-#[test]
-fn batch_across_two_pairs() {
+#[tokio::test]
+async fn batch_across_two_pairs() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     let eth_pair = pair_id();
@@ -653,6 +674,7 @@ fn batch_across_two_pairs() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Add the BTC pair (the ETH pair is already configured at genesis;
@@ -670,6 +692,7 @@ fn batch_across_two_pairs() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -679,6 +702,7 @@ fn batch_across_two_pairs() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     let eth_cid = 1u64;
@@ -721,6 +745,7 @@ fn batch_across_two_pairs() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Only the BTC bid remains; the ETH bid was cancelled by its
@@ -742,10 +767,10 @@ fn batch_across_two_pairs() {
 /// cancelled order emits an `OrderRemoved` event with reason
 /// `SelfTradePrevention` carrying the original `client_order_id`.
 /// The taker's remaining GTC ask rests since no other makers exist.
-#[test]
-fn batch_stp_fires_for_self_match() {
+#[tokio::test]
+async fn batch_stp_fires_for_self_match() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
         .execute(
@@ -754,6 +779,7 @@ fn batch_stp_fires_for_self_match() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
             Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
         )
+        .await
         .should_succeed();
 
     let bid_cid = 42u64;
@@ -787,6 +813,7 @@ fn batch_stp_fires_for_self_match() {
             )),
             Coins::new(),
         )
+        .await
         .should_succeed()
         .events;
 
@@ -825,10 +852,10 @@ fn batch_stp_fires_for_self_match() {
 /// so the cancel's cid-index lookup returns "order not found".
 /// Both maker and taker state must be byte-identical to the
 /// pre-batch snapshot.
-#[test]
-fn batch_cancel_fails_for_filled_order() {
+#[tokio::test]
+async fn batch_cancel_fails_for_filled_order() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -838,6 +865,7 @@ fn batch_cancel_fails_for_filled_order() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -849,6 +877,7 @@ fn batch_cancel_fails_for_filled_order() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(limit_ask(2_000, 1, None))),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let user1_state_before: perps::UserState = suite
@@ -901,6 +930,7 @@ fn batch_cancel_fails_for_filled_order() {
             )),
             Coins::new(),
         )
+        .await
         .should_fail_with_error("order not found");
 
     // Full rollback: maker's resting ask and both users' states are
@@ -938,10 +968,10 @@ fn batch_cancel_fails_for_filled_order() {
 /// The third action collides on the cid and fails → batch reverts.
 /// `USER_REFERRAL_DATA` for both referrer and referee must be
 /// unchanged.
-#[test]
-fn batch_referral_commissions_rollback() {
+#[tokio::test]
+async fn batch_referral_commissions_rollback() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000);
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // user1 activates their referrer slot by setting a fee share
     // ratio; user2 then points to user1 as their referrer.
@@ -954,6 +984,7 @@ fn batch_referral_commissions_rollback() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
     suite
         .execute(
@@ -965,6 +996,7 @@ fn batch_referral_commissions_rollback() {
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // user2 (taker/payer) and user3 (maker/counterparty) deposit.
@@ -976,6 +1008,7 @@ fn batch_referral_commissions_rollback() {
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
             )
+            .await
             .should_succeed();
     }
 
@@ -986,6 +1019,7 @@ fn batch_referral_commissions_rollback() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(limit_ask(2_000, 1, None))),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     // Snapshot cumulative referral data for both referrer and referee
@@ -1033,6 +1067,7 @@ fn batch_referral_commissions_rollback() {
             )),
             Coins::new(),
         )
+        .await
         .should_fail();
 
     let user1_data_after: UserReferralData = suite

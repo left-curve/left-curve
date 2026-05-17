@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "left-curve/left-curve" }
+  ],
+  "commit": false,
+  "fixed": [
+    [
+      "@left-curve/sdk",
+      "@left-curve/types",
+      "@left-curve/encoding",
+      "@left-curve/utils",
+      "@left-curve/crypto",
+      "@left-curve/config"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}

@@ -11,7 +11,7 @@
  * This matches how Binance / Bybit / Hyperliquid / dYdX display TP/SL ROI.
  */
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 
 // --- TP/SL ROI helpers ---
 

@@ -1,6 +1,6 @@
 import type React from "react";
 import { useMemo } from "react";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { FormattedNumber, IconToastInfo, Tooltip, twMerge } from "@left-curve/applets-kit";
 import {
   useCurrentPrice,

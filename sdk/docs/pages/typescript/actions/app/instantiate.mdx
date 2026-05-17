@@ -1,0 +1,70 @@
+# instantiate
+
+Instantiate a contract from an already-uploaded code hash. Returns the derived address and the broadcast receipt.
+
+## Signature
+
+```ts
+function instantiate(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    codeHash: Hex
+    msg: Json
+    salt: Uint8Array | string
+    funds?: Funds
+    admin?: Address
+    gasLimit?: number
+    typedData?: TypedDataParameter
+  },
+): Promise<[string, { hash: Uint8Array } & TxData]>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+const [address, receipt] = await client.instantiate({
+  sender,
+  codeHash: "0xabc...123",
+  msg: { initialValue: "0" },
+  salt: "counter-v1",
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The deployer.
+
+**`codeHash`** — `Hex`. SHA-256 hash of the Wasm code (already stored via [`storeCode`](./storeCode)).
+
+**`msg`** — `Json`. Init message (camelCase).
+
+**`salt`** — `Uint8Array | string`. Deterministic salt; strings are UTF-8 encoded. The contract address is derived from `(sender, codeHash, salt)`.
+
+**`funds`** — `Funds`, optional. Coins to send into the new contract.
+
+**`admin`** — `Address`, optional. Account allowed to migrate the contract.
+
+**`gasLimit`** — `number`, optional. Override simulation.
+
+**`typedData`** — `TypedDataParameter`, optional. Override the EIP-712 message body schema.
+
+## Returns
+
+**`[address, receipt]`** — the derived contract address (from [`computeAddress`](../../concepts/encoding-and-types)) and the broadcast receipt.
+
+## See also
+
+- [`storeCode`](./storeCode) — upload before instantiating
+- [`storeCodeAndInstantiate`](./storeCodeAndInstantiate) — single-tx variant
+- [`migrate`](./migrate)

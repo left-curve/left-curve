@@ -11,8 +11,8 @@ use {
     std::{thread::sleep, time::Duration},
 };
 
-#[test]
-fn handler() {
+#[tokio::test]
+async fn handler() {
     let (mut suite, mut accounts, codes, contracts, _) = setup_test(Default::default());
 
     // Oracle from the setup_test has some PythIds already uploaded.
@@ -33,6 +33,7 @@ fn handler() {
             None,
             Coins::new(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -51,6 +52,7 @@ fn handler() {
             &ExecuteMsg::RegisterPriceSources(price_source),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     let querier = QuerierWrapper::new(&suite);

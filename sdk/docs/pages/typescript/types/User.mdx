@@ -1,0 +1,31 @@
+# User
+
+A user record — index, name, registered keys, and owned accounts.
+
+## Definition
+
+```ts
+type User = {
+  index: number
+  name: Username
+  keys: Record<KeyHash, Key>
+  accounts: Record<AccountIndex, Address>
+}
+```
+
+## Fields
+
+**`index`** — `number`. Chain-unique user index (monotonically assigned).
+
+**`name`** — `Username` (`string`). Human-readable username.
+
+**`keys`** — `Record<KeyHash, Key>`. All authorized keys, keyed by their hash.
+
+**`accounts`** — `Record<AccountIndex, Address>`. All owned accounts.
+
+## See also
+
+- [`Account`](./Account)
+- [`Key`](./Key)
+- [`PublicKey`](./PublicKey)
+- [`getUser`](../actions/account-factory/getUser)

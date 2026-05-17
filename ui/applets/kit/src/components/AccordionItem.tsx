@@ -1,6 +1,6 @@
 import { useControlledState } from "@left-curve/foundation";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import { twMerge } from "@left-curve/foundation";

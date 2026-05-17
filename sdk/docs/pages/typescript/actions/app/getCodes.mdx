@@ -1,0 +1,42 @@
+# getCodes
+
+List stored Wasm codes, paginated.
+
+## Signature
+
+```ts
+function getCodes(
+  client: Client,
+  parameters?: {
+    startAfter?: string
+    limit?: number
+    height?: number
+  },
+): Promise<CodesResponse>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const codes = await client.getCodes({ limit: 50 })
+```
+
+## Parameters
+
+**`startAfter`** — `string`, optional. Hash to start after (exclusive).
+
+**`limit`** — `number`, optional. Maximum entries to return.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`CodesResponse`** — `Record<Hex, Code>` keyed by hash.
+
+## See also
+
+- [`getCode`](./getCode) — single-hash variant
+- [`storeCode`](./storeCode)

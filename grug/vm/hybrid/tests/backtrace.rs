@@ -28,7 +28,7 @@ fn read_wasm_file(filename: &str) -> Binary {
 
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
-pub fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Addr) {
+pub async fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Addr) {
     let rust_tester: Binary = ContractBuilder::new(Box::new(grug_tester::instantiate))
         .with_query(Box::new(grug_tester::query))
         .build()
@@ -55,6 +55,7 @@ pub fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Addr) {
             None,
             Coins::new(),
         )
+        .await
         .should_succeed()
         .address;
 
@@ -69,15 +70,16 @@ pub fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Addr) {
             None,
             Coins::new(),
         )
+        .await
         .should_succeed()
         .address;
 
     (suite, accounts, wasm_tester, rust_tester)
 }
 
-#[test]
-fn backtrace() {
-    let (suite, _, wasm_tester, rust_tester) = setup_test();
+#[tokio::test]
+async fn backtrace() {
+    let (suite, _, wasm_tester, rust_tester) = setup_test().await;
 
     let res = suite
         .query_wasm_smart(wasm_tester, QueryBacktraceRequest {

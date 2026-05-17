@@ -1,0 +1,33 @@
+pub use sea_orm_migration::prelude::*;
+mod idens;
+
+mod m20250115_000001_create_table;
+mod m20250328_111712_accounts_table;
+mod m20250609_154519_transfers_transactions_hash;
+mod m20250812_110356_accounts_indexes;
+mod m20250908_212847_accounts_tx_hash;
+mod m20260310_000001_drop_account_type;
+mod m20260317_000001_create_perps_events_table;
+mod m20260511_000001_perps_events_created_at_brin_index;
+
+pub struct Migrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for Migrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            Box::new(m20250115_000001_create_table::Migration),
+            Box::new(m20250328_111712_accounts_table::Migration),
+            Box::new(m20250609_154519_transfers_transactions_hash::Migration),
+            Box::new(m20250812_110356_accounts_indexes::Migration),
+            Box::new(m20250908_212847_accounts_tx_hash::Migration),
+            Box::new(m20260310_000001_drop_account_type::Migration),
+            Box::new(m20260317_000001_create_perps_events_table::Migration),
+            Box::new(m20260511_000001_perps_events_created_at_brin_index::Migration),
+        ]
+    }
+
+    fn migration_table_name() -> sea_orm::DynIden {
+        Alias::new("dango_seaql_migrations").into_iden()
+    }
+}

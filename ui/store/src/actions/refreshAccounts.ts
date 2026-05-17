@@ -1,10 +1,10 @@
 import { getConnector } from "./getConnector.js";
 import { getConnectorClient } from "./getConnectorClient.js";
 
-import type { Address, UID } from "@left-curve/dango/types";
+import type { Address, UID } from "@left-curve/types";
 
 import type { Config } from "../types/store.js";
-import { toAccount } from "@left-curve/dango";
+import { toAccount } from "@left-curve/sdk";
 
 export type RefreshAccountsParameters = {
   userIndex: number;

@@ -1,0 +1,47 @@
+# perpsCandlesSubscription
+
+Subscribe to live perps candles for a pair and interval. WebSocket only.
+
+## Signature
+
+```ts
+function perpsCandlesSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    perpsCandles: PerpsCandle[]
+  }> & {
+    pairId: string
+    interval: CandleIntervals
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const unsubscribe = client.perpsCandlesSubscription({
+  pairId: "BTC-PERP",
+  interval: "ONE_MINUTE",
+  next: ({ perpsCandles }) => updateChart(perpsCandles),
+})
+```
+
+## Parameters
+
+**`pairId`** — `string`. Perps pair identifier.
+
+**`interval`** — `CandleIntervals`. Candle interval.
+
+**`next`**, **`error`**, **`complete`** — callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## See also
+
+- [`queryPerpsCandles`](../perps/queryPerpsCandles)
+- [`candlesSubscription`](./candlesSubscription)

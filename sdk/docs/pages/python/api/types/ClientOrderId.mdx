@@ -1,0 +1,27 @@
+# ClientOrderId
+
+A client-assigned order id. `NewType("ClientOrderId", str)` — at runtime it is a plain `str` (encoding a `Uint64`).
+
+## Definition
+
+```python
+ClientOrderId = NewType("ClientOrderId", str)
+```
+
+## Construction
+
+```python
+from dango.utils.types import ClientOrderId
+
+cid = ClientOrderId("7")
+```
+
+## Notes
+
+- Submit a limit order with `client_order_id=N` to bind a client-side id. Later cancel via `cancel_order(ClientOrderIdRef(value=N))`.
+- The wire form is the integer's base-10 string. For Python-side construction at call sites, use [`ClientOrderIdRef`](./ClientOrderIdRef) — it carries an `int` and the wrapper makes the cancel intent unambiguous.
+
+## See also
+
+- [`ClientOrderIdRef`](./ClientOrderIdRef) — user-facing wrapper
+- [`submit_limit_order`](../methods/exchange/submit_limit_order) — accepts a `client_order_id`

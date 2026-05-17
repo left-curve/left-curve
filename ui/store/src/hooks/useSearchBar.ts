@@ -3,8 +3,8 @@ import { useMemo, useReducer, useState } from "react";
 import { usePublicClient } from "./usePublicClient.js";
 import { useAppConfig } from "./useAppConfig.js";
 
-import { wait } from "@left-curve/dango/utils";
-import { isValidAddress } from "@left-curve/dango";
+import { wait } from "@left-curve/utils";
+import { isValidAddress } from "@left-curve/sdk";
 import fuzzysort from "fuzzysort";
 
 import type { AppletMetadata } from "../types/applets.js";
@@ -15,7 +15,7 @@ import type {
   IndexedBlock,
   IndexedTransaction,
   User,
-} from "@left-curve/dango/types";
+} from "@left-curve/types";
 
 export type UseSearchBarParameters = {
   debounceMs?: number;

@@ -7,7 +7,7 @@ import {
   twMerge,
 } from "@left-curve/applets-kit";
 import { allPerpsPairStatsStore, useAllPerpsPairStats } from "@left-curve/store";
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
 import { StatusBadge } from "./StatusBadge";

@@ -2,7 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { usePublicClient } from "../usePublicClient.js";
 
-import type { Address, IndexedTransaction } from "@left-curve/dango/types";
+import type { Address, IndexedTransaction } from "@left-curve/types";
 
 const PAGE_SIZE = 10;
 

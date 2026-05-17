@@ -1,0 +1,133 @@
+# createSignerClient
+
+Factory that builds a client with every query action and every signing action.
+
+## Setup
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!)
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer,
+})
+```
+
+`createSignerClient` returns `SignerClient = Client<Signer, PublicActions & SignerActions>`. It is a strict superset of [`createPublicClient`](./createPublicClient): every method on the public client is also on the signer client.
+
+## Configuration
+
+**`chain`** — `Chain`. Chain config. Use `local`, `devnet`, `testnet`, or `mainnet` from `@left-curve/sdk`.
+
+**`transport`** — `Transport`. GraphQL transport from `createTransport(url?, config?)`.
+
+**`signer`** — `Signer`. Implementation of the `Signer` interface. Use `PrivateKeySigner` for server-side keys or `createSessionSigner` for session-key flows.
+
+**`name`** — `string`, optional, default: `"Signer Client"`. Free-form label.
+
+**`type`** — `string`, optional, default: `"dango"`. Type marker.
+
+## Methods
+
+A signer client exposes every method on [`createPublicClient`](./createPublicClient) plus the following mutations.
+
+### App mutations
+
+| Method                                                                      | Description                                         |
+|-----------------------------------------------------------------------------|-----------------------------------------------------|
+| [`broadcastTxSync`](../actions/app/broadcastTxSync)                         | Broadcast a signed tx via the indexer               |
+| [`signAndBroadcastTx`](../actions/app/signAndBroadcastTx)                   | Sign messages with the client signer and broadcast  |
+| [`transfer`](../actions/app/transfer)                                       | Send a record of `Address -> Coins`                 |
+| [`execute`](../actions/app/execute)                                         | Execute one or more contract messages               |
+| [`instantiate`](../actions/app/instantiate)                                 | Instantiate a contract from a code hash             |
+| [`migrate`](../actions/app/migrate)                                         | Migrate a contract to a new code hash               |
+| [`storeCode`](../actions/app/storeCode)                                     | Upload a Wasm code blob                             |
+| [`storeCodeAndInstantiate`](../actions/app/storeCodeAndInstantiate)         | Upload and instantiate in one tx                    |
+
+### Account Factory mutations
+
+| Method                                                                       | Description                                    |
+|------------------------------------------------------------------------------|------------------------------------------------|
+| [`registerUser`](../actions/account-factory/registerUser)                    | Create a new user and first account            |
+| [`registerAccount`](../actions/account-factory/registerAccount)              | Register an additional account                 |
+| [`updateKey`](../actions/account-factory/updateKey)                          | Insert or delete a key on the account          |
+| [`updateUsername`](../actions/account-factory/updateUsername)                | Change the username                            |
+| [`createSession`](../actions/account-factory/createSession)                  | Sign `SigningSessionInfo` and return session   |
+
+### DEX mutations
+
+| Method                                                              | Description                                       |
+|---------------------------------------------------------------------|---------------------------------------------------|
+| [`batchUpdateOrders`](../actions/dex/batchUpdateOrders)             | Create and/or cancel multiple limit orders        |
+| [`swapExactAmountIn`](../actions/dex/swapExactAmountIn)             | Instant swap with exact input                     |
+| [`swapExactAmountOut`](../actions/dex/swapExactAmountOut)           | Instant swap with exact output                    |
+| [`provideLiquidity`](../actions/dex/provideLiquidity)               | Add liquidity to a pair                           |
+| [`withdrawLiquidity`](../actions/dex/withdrawLiquidity)             | Withdraw liquidity from a pair                    |
+
+### Perps mutations
+
+| Method                                                                          | Description                                            |
+|---------------------------------------------------------------------------------|--------------------------------------------------------|
+| [`depositMargin`](../actions/perps/depositMargin)                               | Deposit collateral into the perps account              |
+| [`withdrawMargin`](../actions/perps/withdrawMargin)                             | Withdraw collateral                                    |
+| [`submitPerpsOrder`](../actions/perps/submitPerpsOrder)                         | Submit a market or limit perps order                   |
+| [`cancelPerpsOrder`](../actions/perps/cancelPerpsOrder)                         | Cancel one or all perps orders                         |
+| [`submitConditionalOrder`](../actions/perps/submitConditionalOrder)             | Submit one trigger-based conditional order             |
+| [`submitConditionalOrders`](../actions/perps/submitConditionalOrders)           | Submit a batch of conditional orders                   |
+| [`cancelConditionalOrder`](../actions/perps/cancelConditionalOrder)             | Cancel conditional order(s)                            |
+| [`setReferral`](../actions/perps/setReferral)                                   | Set a referrer/referee mapping                         |
+| [`setFeeShareRatio`](../actions/perps/setFeeShareRatio)                         | Set the referrer fee share ratio                       |
+| [`vaultAddLiquidity`](../actions/perps/vaultAddLiquidity)                       | Deposit into the perps vault                           |
+| [`vaultRemoveLiquidity`](../actions/perps/vaultRemoveLiquidity)                 | Burn vault shares for a withdrawal                     |
+
+## End-to-end example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!)
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer,
+})
+
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+// Move funds
+const receipt = await client.transfer({
+  sender,
+  transfer: {
+    "0xabcdef1234567890abcdef1234567890abcdef12": { dango: "1000000" },
+  },
+})
+
+// Place a limit order
+await client.batchUpdateOrders({
+  sender,
+  creates: [
+    {
+      baseDenom: "dango",
+      quoteDenom: "bridge/usdc",
+      amount: { bid: { quote: "10000000" } },
+      price: { limit: "0.5" },
+      timeInForce: "GTC",
+    },
+  ],
+})
+```
+
+## Notes
+
+- The signer is held by reference. Mutating its key after client creation is undefined behavior — build a new client instead.
+- Mutations call `simulate` internally to estimate gas. To skip simulation, pass `gasLimit` explicitly.
+
+## See also
+
+- [createPublicClient](./createPublicClient) — when you only need queries
+- [Concepts: Transactions](../concepts/transactions) — the sign/broadcast loop
+- [Concepts: Signers & Authentication](../concepts/signers-and-authentication)

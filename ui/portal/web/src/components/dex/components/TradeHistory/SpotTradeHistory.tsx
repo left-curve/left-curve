@@ -1,4 +1,4 @@
-import { Cell, FormattedNumber, useApp } from "@left-curve/applets-kit";
+import { Cell, FormattedNumber } from "@left-curve/applets-kit";
 import {
   useConfig,
   usePublicClient,
@@ -6,21 +6,19 @@ import {
   useQueryWithPagination,
   useTradeCoins,
 } from "@left-curve/store";
-import { calculateTradeSize, Decimal } from "@left-curve/dango/utils";
+import { calculateTradeSize, Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { TimeInForceOption, type Trade } from "@left-curve/dango/types";
+import { TimeInForceOption, type Trade } from "@left-curve/types";
 import { TradeHistoryTable } from "./TradeHistoryTable";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 
 export const SpotTradeHistory: React.FC = () => {
-  const { settings } = useApp();
   const { coins } = useConfig();
   const { account } = useAccount();
   const publicClient = usePublicClient();
 
   const { baseCoin } = useTradeCoins();
-  const { formatNumberOptions } = settings;
 
   const { data, pagination, isLoading } = useQueryWithPagination({
     enabled: !!account,
@@ -76,7 +74,7 @@ export const SpotTradeHistory: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={formatNumberOptions}
+          formatOptions={{ maxFractionDigits: 6 }}
           value={calculateTradeSize(
             row.original,
             coins.byDenom[row.original.baseDenom].decimals,
@@ -98,6 +96,7 @@ export const SpotTradeHistory: React.FC = () => {
                   ),
                 )
                 .toFixed()}
+              formatOptions={{ maxFractionDigits: 6 }}
               as="span"
             />
           }
@@ -110,11 +109,5 @@ export const SpotTradeHistory: React.FC = () => {
     },
   ];
 
-  return (
-    <TradeHistoryTable
-      data={data}
-      columns={columns}
-      isLoading={isLoading}
-    />
-  );
+  return <TradeHistoryTable data={data} columns={columns} isLoading={isLoading} />;
 };

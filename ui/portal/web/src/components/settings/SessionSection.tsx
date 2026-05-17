@@ -168,7 +168,16 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.endpoint"]()}
             </p>
             <p className="break-all whitespace-normal">
-              {chain.urls.indexer.replace(/\/graphql$/, "")}
+              {chain.url.replace(/\/graphql$/, "")}
+            </p>
+          </div>
+
+          <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
+            <p className="md:min-w-[10rem] text-ink-tertiary-500">
+              {m["settings.session.network.frontendVersion"]()}
+            </p>
+            <p className="break-all whitespace-normal">
+              {import.meta.env.GIT_COMMIT}
             </p>
           </div>
         </div>

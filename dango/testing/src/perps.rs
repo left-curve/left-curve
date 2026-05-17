@@ -15,7 +15,7 @@ pub fn pair_id() -> Denom {
 }
 
 /// Common setup: register oracle prices + deposit margin for user1 and user2.
-pub fn setup_perps_env(
+pub async fn setup_perps_env(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
@@ -40,6 +40,7 @@ pub fn setup_perps_env(
             }),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     for account in [&mut accounts.user1, &mut accounts.user2] {
@@ -51,13 +52,14 @@ pub fn setup_perps_env(
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
                 Coins::one(usdc::DENOM.clone(), amount).unwrap(),
             )
+            .await
             .should_succeed();
     }
 }
 
 /// Place a limit ask (user2) then a market buy (user1) to produce an
 /// `OrderFilled` at the given price and size.
-pub fn create_perps_fill(
+pub async fn create_perps_fill(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
@@ -83,6 +85,7 @@ pub fn create_perps_fill(
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 
     suite
@@ -101,5 +104,6 @@ pub fn create_perps_fill(
             })),
             Coins::new(),
         )
+        .await
         .should_succeed();
 }

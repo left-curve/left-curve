@@ -1,10 +1,10 @@
 #[cfg(feature = "metrics")]
-use grug_httpd::metrics::GaugeGuard;
+use crate::metrics::GaugeGuard;
 use {
     super::MAX_PAST_BLOCKS,
+    crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
-    grug_httpd::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     grug_types::Addr,
     indexer_sql::entity,
     itertools::Itertools,
@@ -207,7 +207,7 @@ impl EventSubscription {
         query: sea_orm::Select<entity::events::Entity>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let latest_block_height = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)
@@ -289,7 +289,7 @@ impl EventSubscription {
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
         let sub_guard = acquire_subscription(ctx)?;
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::FullContext>()?;
 
         let latest_block_height = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)

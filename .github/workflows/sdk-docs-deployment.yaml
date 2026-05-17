@@ -1,4 +1,4 @@
-name: Sdk Documentation Generation
+name: SDK Docs Deployment
 
 permissions: {}
 
@@ -9,6 +9,19 @@ on:
       - "main"
     paths:
       - "sdk/typescript/**"
+      - "sdk/python/**"
+      - "sdk/rust/**"
+      - "sdk/docs/**"
+      - ".github/workflows/sdk-docs-deployment.yaml"
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - "sdk/typescript/**"
+      - "sdk/python/**"
+      - "sdk/rust/**"
+      - "sdk/docs/**"
+      - ".github/workflows/sdk-docs-deployment.yaml"
 
 jobs:
   deploy:
@@ -40,15 +53,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Packages
-        run: pnpm build:sdk
-
-      - name: Build Doc
-        run: |
-          pnpm doc
-          # Cloudflare issue: https://github.com/cloudflare/workers-sdk/issues/2240
-          curl -O https://gist.githubusercontent.com/j0nl1/7f9b5210c9e6ecbabe322baa16dcb5db/raw/760de77327bf83671cfb6bd4e64181299ba26113/typedoc-fix-cf.mjs
-          node typedoc-fix-cf.mjs sdk/typescript/docs
+      - name: Build Docs
+        run: pnpm build:docs
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@f0a1cd58cd66095dee69bfa18fa5efd1dde93bca # v1
@@ -57,6 +63,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: grug-sdk
-          directory: ./sdk/typescript/docs
+          directory: ./sdk/docs/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${GITHUB_REF##*/}
+          branch: ${{ github.head_ref || github.ref_name }}

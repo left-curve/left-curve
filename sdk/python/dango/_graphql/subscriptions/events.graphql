@@ -1,1 +1,1 @@
-../../../../../sdk/rust/src/schemas/subscriptions/events.graphql
+../../../../../indexer/graphql-types/src/schemas/subscriptions/events.graphql

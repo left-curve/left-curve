@@ -12,10 +12,10 @@ import { useConfig, usePrices } from "@left-curve/store";
 
 import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits } from "@left-curve/utils";
 
 import type { useNavigate } from "@tanstack/react-router";
-import type { Address, Coins } from "@left-curve/dango/types";
+import type { Address, Coins } from "@left-curve/types";
 
 type ActivityTransferModalProps = {
   action?: "received" | "sent";

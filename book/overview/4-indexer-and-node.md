@@ -15,12 +15,14 @@ commitment.
 ```rust
 // grug/app/src/traits/indexer.rs
 #[async_trait]
-pub trait Indexer {
+pub trait Indexer: Send + Sync {
     async fn start(&mut self, storage: &dyn Storage) -> IndexerResult<()>;
-    async fn pre_indexing(&self, block_height: u64, ctx: &mut IndexerContext) -> IndexerResult<()>;
-    async fn index_block(&self, block: ..., outcome: ..., ctx: &mut IndexerContext) -> IndexerResult<()>;
-    async fn post_indexing(&self, block_height: u64, ..., ctx: &mut IndexerContext) -> IndexerResult<()>;
-    async fn shutdown(&self) -> IndexerResult<()>;
+    async fn shutdown(&mut self) -> IndexerResult<()>;
+    async fn pre_indexing(&self, block_height: u64) -> IndexerResult<()>;
+    async fn index_block(&self, block: &Block, outcome: &BlockOutcome) -> IndexerResult<()>;
+    async fn post_indexing(&self, block_height: u64, cfg: Config, app_cfg: Json) -> IndexerResult<()>;
+    async fn wait_for_finish(&self) -> IndexerResult<()>;
+    async fn last_indexed_block_height(&self) -> IndexerResult<Option<u64>>;
 }
 ```
 
@@ -46,17 +48,20 @@ pub trait Indexer {
 
 ### HookedIndexer (composition)
 
-`indexer/hooked/` provides a composite pattern for chaining multiple indexers:
+`indexer/hooked/` is the single `Indexer` impl that the chain wires into `App`. It owns the three production indexer components by value and orchestrates their per-block work:
 
 ```rust
 pub struct HookedIndexer {
-    indexers: Arc<RwLock<Vec<Box<dyn Indexer + Send + Sync>>>>,
+    pub file:       indexer_cache::Cache,
+    pub sql:        indexer_sql::Indexer,
+    pub clickhouse: indexer_clickhouse::Indexer,
+    // …plus an `is_running` flag and a per-block `post_indexing` task map.
 }
 ```
 
-Indexers are added in order and each receives a shared `IndexerContext` (type-safe
-key-value store using `http::Extensions`). Earlier indexers can produce data consumed
-by later ones.
+The data flow is expressed through typed method arguments: `Cache::post_indexing` returns a `BlockAndBlockOutcomeWithHttpDetails` payload, which `HookedIndexer` then hands to `SqlIndexer::post_indexing` and `ClickhouseIndexer::post_indexing` in sequence. Each block's `post_indexing` runs on its own tokio task so SQL and Clickhouse writes do not block consensus; `wait_for_finish` drains the task map before shutdown.
+
+The "Hooked" name is historical — earlier revisions held a dynamic `Arc<RwLock<Vec<Box<dyn Indexer>>>>` and passed data between entries through an opaque `http::Extensions`-based context. The current shape is the three concrete fields above, but the crate and struct name are kept so deploy scripts and imports do not need to churn.
 
 ## 2. SQL Indexer (`indexer/sql/`)
 
@@ -107,18 +112,20 @@ Persists complete block + outcome data to disk for recovery:
 
 Optional S3 sync with bitmap tracking of uploaded blocks.
 
-## 4. Dango-Specific Indexer (`dango/indexer/`)
+## 4. Dango-Specific Writes (`indexer/sql/src/write/`)
 
-Extends the base SQL indexer with domain-specific data extraction:
+The SQL indexer crate also performs Dango-specific data extraction in the same `post_indexing` pass, after the generic block/tx/message/event rows have been written:
 
 ```rust
-// Runs in post_indexing (async, non-blocking)
+// Runs in SqlIndexer::post_indexing (async, non-blocking)
 let (transfers, accounts, perps) = tokio::join!(
-    transfers::save_transfers(&ctx, block_height),
-    accounts::save_accounts(&ctx, block, app_cfg),
-    perps_events::save_perps_events(&ctx, block, app_cfg),
+    crate::write::transfers::save_transfers(&self.context, block_height),
+    crate::write::accounts::save_accounts(&self.context, block, app_cfg.clone()),
+    crate::write::perps_events::save_perps_events(&self.context, block, app_cfg),
 );
 ```
+
+Two sea-orm migration tables are kept side by side in the same database (`grug_seaql_migrations` and `dango_seaql_migrations`) so existing prod data does not need to be migrated.
 
 Extracts:
 
@@ -175,11 +182,10 @@ The `dango start` command initializes and runs the full node:
 4.  Open DiskDb (RocksDB)
 5.  Create RustVm
 6.  Create base App
-7.  Setup indexer stack:
-    ├── CacheIndexer (disk persistence)
-    ├── SqlIndexer (PostgreSQL)
-    ├── DangoIndexer (domain-specific extraction)
-    └── ClickHouseIndexer (analytics)
+7.  Setup indexer stack (HookedIndexer with three components):
+    ├── Cache (disk persistence + optional S3 sync)
+    ├── SqlIndexer (PostgreSQL — generic + Dango-specific tables)
+    └── ClickhouseIndexer (analytics)
 8.  Run DB migrations + catch-up reindexing
 9.  Spawn:
     ├── Dango HTTP server (GraphQL)
@@ -218,10 +224,9 @@ The app is split into four ABCI service components:
                     │ Block + Outcome
 ┌───────────────────┴────────────────────────────────────┐
 │ Non-Consensus (Indexer Stack)                          │
-│  CacheIndexer → disk                                   │
-│  SqlIndexer → PostgreSQL                               │
-│  DangoIndexer → domain tables                          │
-│  ClickHouseIndexer → analytics DB                      │
+│  Cache → disk (+ optional S3 sync)                     │
+│  SqlIndexer → PostgreSQL (generic + Dango tables)      │
+│  ClickhouseIndexer → analytics DB                      │
 └────────────────── ▼ ───────────────────────────────────┘
                     │
 ┌───────────────────┴────────────────────────────────────┐

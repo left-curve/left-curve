@@ -1,0 +1,47 @@
+# Addr32
+
+Encode and decode 32-byte Hyperlane addresses. The Hyperlane wire format pads 20-byte EVM addresses to 32 bytes by left-padding with zeros.
+
+## Signature
+
+```ts
+class Addr32 implements Encoder {
+  static from(address: Address): Addr32
+  static decode(buf: Uint8Array): Addr32
+  get address(): string
+  encode(): Uint8Array
+}
+
+function toAddr32(address: `0x${string}`): Address
+```
+
+## Example
+
+```ts
+import { Addr32, toAddr32 } from "@left-curve/sdk/hyperlane"
+
+// 20-byte EVM address → 32-byte hex string
+const padded = toAddr32("0x1234567890abcdef1234567890abcdef12345678")
+
+// Class form for wire encoding
+const addr = Addr32.from("0x1234567890abcdef1234567890abcdef12345678")
+const bytes: Uint8Array = addr.encode() // 32 bytes
+const roundTrip = Addr32.decode(bytes)
+```
+
+## API
+
+**`Addr32.from(address)`** — construct from a 20-byte `Address` (left-padded to 32 bytes).
+
+**`Addr32.decode(buf)`** — wrap a raw 32-byte buffer.
+
+**`addr.address`** — hex string of the 32 bytes (no `0x` prefix).
+
+**`addr.encode()`** — return the raw 32-byte `Uint8Array`.
+
+**`toAddr32(address)`** — utility that returns the 32-byte hex string directly (no class wrapper).
+
+## See also
+
+- [`Message`](./Message) — uses `Addr32` for sender and recipient
+- [`TokenMessage`](./TokenMessage)

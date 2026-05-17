@@ -1,0 +1,67 @@
+# queryCandles
+
+Read historical candles for a pair at a given interval. Paginated cursor-style.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function queryCandles(
+  client: Client,
+  parameters: {
+    baseDenom: string
+    quoteDenom: string
+    interval: CandleIntervals
+    after?: string
+    first?: number
+    earlierThan?: DateTime
+    laterThan?: DateTime
+  },
+): Promise<GraphqlQueryResult<Candle>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const page = await client.queryCandles({
+  baseDenom: "dango",
+  quoteDenom: "bridge/usdc",
+  interval: "ONE_MINUTE",
+  first: 100,
+})
+for (const candle of page.nodes) {
+  console.log(candle.timeStart, candle.close)
+}
+```
+
+## Parameters
+
+**`baseDenom`** — `string`. Base asset.
+
+**`quoteDenom`** — `string`. Quote asset.
+
+**`interval`** — `CandleIntervals`. One of `ONE_SECOND`, `ONE_MINUTE`, `FIVE_MINUTES`, `FIFTEEN_MINUTES`, `ONE_HOUR`, `FOUR_HOURS`, `ONE_DAY`, `ONE_WEEK`.
+
+**`after`** — `string`, optional. Cursor for the next page.
+
+**`first`** — `number`, optional. Page size.
+
+**`earlierThan`** — `DateTime`, optional. ISO 8601 upper bound.
+
+**`laterThan`** — `DateTime`, optional. ISO 8601 lower bound.
+
+## Returns
+
+**`GraphqlQueryResult<Candle>`** — `{ pageInfo, nodes }`. Each `Candle` has OHLC, volumes, and time fields.
+
+## See also
+
+- [`candlesSubscription`](../indexer/candlesSubscription) — live updates
+- [`queryPerpsCandles`](../perps/queryPerpsCandles) — perps equivalent

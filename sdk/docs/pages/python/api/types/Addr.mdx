@@ -1,0 +1,26 @@
+# Addr
+
+A Dango account or contract address. `NewType("Addr", str)` — at runtime it is a plain `str`.
+
+## Definition
+
+```python
+Addr = NewType("Addr", str)
+```
+
+## Construction
+
+```python
+from dango.utils.types import Addr
+
+addr = Addr("0x90bc84df68d1aa59a857e04ed529e9a26edbea4f")
+```
+
+## Notes
+
+- The `NewType` exists for type-checker enforcement. At runtime there is no class — `isinstance(addr, Addr)` does NOT work; use `isinstance(addr, str)`.
+- Always wrap raw strings in `Addr(...)` at call sites to keep the type checker happy.
+
+## See also
+
+- [`PairId`](./PairId), [`OrderId`](./OrderId), [`Hash256`](./Hash256) — sibling identifier aliases

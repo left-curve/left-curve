@@ -1,0 +1,31 @@
+# Coins
+
+A record mapping denoms to base-unit amount strings. The canonical multi-coin payload across the SDK.
+
+## Definition
+
+```ts
+type Coins = Record<Denom, string>
+```
+
+## Construction
+
+```ts
+import type { Coins } from "@left-curve/sdk"
+
+const wallet: Coins = {
+  dango: "1500000000",
+  "bridge/usdc": "1000000",
+}
+```
+
+## Notes
+
+- Order-independent; keys are denoms, values are base-unit amounts.
+- Identical shape to [`Funds`](./Funds) — the SDK distinguishes them by intent only (`Coins` is a balance/snapshot, `Funds` is "coins attached to a call").
+
+## See also
+
+- [`Coin`](./Coin) — single denom variant
+- [`Funds`](./Funds)
+- [`getBalances`](../actions/app/getBalances)

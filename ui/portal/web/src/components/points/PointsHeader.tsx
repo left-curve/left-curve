@@ -1,8 +1,11 @@
 import {
+  Button,
   FormattedNumber,
   IconFriendshipGroup,
+  IconShare,
   IconSprout,
   IconSwapMoney,
+  Modals,
   Tooltip,
 } from "@left-curve/applets-kit";
 import { useApp, useCountdown } from "@left-curve/foundation";
@@ -146,6 +149,7 @@ export const PointsHeader: React.FC = () => {
   const { points, volume, rank, tradingPoints, lpPoints, referralPoints } = useUserPoints();
   const pointsUrl = window.dango.urls.pointsUrl;
   const { isStarted, currentEpoch, endDate, startsAt, refetch } = useCurrentEpoch({ pointsUrl });
+  const { showModal } = useApp();
   const { predictedPoints } = usePredictPoints({ pointsUrl, userIndex, enabled: isStarted && !!userIndex });
 
   const predicted = useMemo(() => {
@@ -232,6 +236,22 @@ export const PointsHeader: React.FC = () => {
           )}
           {!isStarted && startsAt && <EpochStartsIn startsAt={startsAt} onRefetch={refetch} />}
         </div>
+      </div>
+      <div className="w-full flex justify-end">
+        <Button
+          variant="secondary"
+          size="xs"
+          isDisabled={!isConnected || !isStarted}
+          onClick={() =>
+            showModal(Modals.PointsShare, {
+              points,
+              weekNumber: currentEpoch ?? 0,
+            })
+          }
+        >
+          {m["points.header.share"]()}
+          <IconShare className="w-3.5 h-3.5" />
+        </Button>
       </div>
       <div className="flex flex-col lg:flex-row gap-4">
         <PointsBreakdownRow

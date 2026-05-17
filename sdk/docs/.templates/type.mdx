@@ -1,0 +1,59 @@
+---
+# Type page template — copy this file when drafting a Type page.
+# Replace ALL CAPS placeholders. Delete this comment block when done.
+#
+# A Type page documents ONE exported data type.
+# Examples: Coin, Order, TxStatus, Address.
+---
+
+# TYPE_NAME
+
+ONE-SENTENCE DESCRIPTION OF WHAT THIS REPRESENTS.
+
+## Definition
+
+```LANG
+// Paste the actual type/struct/class definition from source.
+// For TS:
+type TYPE_NAME = {
+  FIELD: FIELD_TYPE
+  ...
+}
+// For Python (dataclass / TypedDict / class):
+class TYPE_NAME:
+    FIELD: FIELD_TYPE
+// For Rust:
+pub struct TYPE_NAME {
+    pub FIELD: FIELD_TYPE,
+}
+```
+
+## Fields
+
+**`FIELD_1`** — `FIELD_TYPE`. WHAT IT MEANS. CONSTRAINTS.
+
+**`FIELD_2`** — `FIELD_TYPE`. WHAT IT MEANS.
+
+<!-- Repeat per field. Use definition list. -->
+
+## Construction
+
+```LANG
+// Show the canonical way to construct an instance.
+// If the SDK exposes a factory, use it. If users construct literally, show that.
+const value: TYPE_NAME = {
+  FIELD_1: REALISTIC_VALUE,
+  FIELD_2: REALISTIC_VALUE,
+}
+```
+
+## Notes
+
+<!-- OPTIONAL. Invariants, units, brand semantics, serialization quirks. -->
+
+- POINT 1
+
+## See also
+
+- [CONSUMING_ACTION](../actions/...) — actions that accept or return this type
+- [RELATED_TYPE](./RELATED_TYPE)
