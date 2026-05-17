@@ -1,0 +1,46 @@
+# getAppConfig
+
+Fetch the app-level configuration: contract addresses, fee rates, liquidation parameters, and minimum deposit per denom.
+
+## Signature
+
+```ts
+function getAppConfig(
+  client: Client,
+  parameters?: { height?: number },
+): Promise<AppConfig>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const config = await client.getAppConfig()
+console.log(config.addresses.accountFactory)
+```
+
+## Parameters
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`AppConfig`** — the full app config. Notable fields:
+
+- `addresses` — addresses of every system contract (account factory, dex, perps, gateway, oracle, taxman, warp, hyperlane).
+- `makerFeeRate`, `takerFeeRate` — fee strings.
+- `maxLiquidationBonus`, `minLiquidationBonus`, `targetUtilizationRate`.
+- `minimumDeposit` — `Record<Denom, string>`.
+
+## Notes
+
+:::warning
+`getAppConfig` memoizes the result in a module-level cache. The first successful call wins; subsequent calls ignore the `height` argument and return the cached config. If you need to read the config at multiple heights, use [`queryApp`](./queryApp) directly.
+:::
+
+## See also
+
+- [`queryApp`](./queryApp) — the underlying generic query
+- [Concepts: Transactions](../../concepts/transactions) — how `signAndBroadcastTx` consumes the addresses

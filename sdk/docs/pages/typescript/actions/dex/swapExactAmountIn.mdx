@@ -1,0 +1,62 @@
+# swapExactAmountIn
+
+Submit an instant swap with an exact input amount and an optional minimum output for slippage control.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function swapExactAmountIn(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    route: SwapRoute
+    input: Coin
+    minimumOutput?: string
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.swapExactAmountIn({
+  sender,
+  input: { denom: "dango", amount: "1000000000" },
+  route: [{ baseDenom: "dango", quoteDenom: "bridge/usdc" }],
+  minimumOutput: "490000000",
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The trader.
+
+**`route`** — `SwapRoute`. Array of `PairId` hops.
+
+**`input`** — `Coin`. Exact input `{ denom, amount }` in base units. The denom must be the base or quote of the first pair.
+
+**`minimumOutput`** — `string`, optional. Minimum output amount in base units. The swap reverts if the realized output is below this.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## See also
+
+- [`simulateSwapExactAmountIn`](./simulateSwapExactAmountIn) — quote first
+- [`swapExactAmountOut`](./swapExactAmountOut)

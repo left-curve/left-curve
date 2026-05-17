@@ -1,0 +1,43 @@
+# getUser
+
+Fetch a user record by index or by name.
+
+## Signature
+
+```ts
+function getUser(
+  client: Client,
+  parameters: {
+    userIndexOrName: UserIndexOrName
+    height?: number
+  },
+): Promise<User>
+
+type UserIndexOrName = { index: number } | { name: string }
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+
+const byIndex = await client.getUser({ userIndexOrName: { index: 42 } })
+const byName = await client.getUser({ userIndexOrName: { name: "alice" } })
+```
+
+## Parameters
+
+**`userIndexOrName`** — `{ index: number } | { name: string }`. Discriminate by which key is present.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`User`** — `{ index, name, keys, accounts }`. `keys` maps `KeyHash` to `Key`; `accounts` maps `AccountIndex` to `Address`.
+
+## See also
+
+- [`getUserKeys`](./getUserKeys) — indexer-backed key list
+- [`forgotUsername`](./forgotUsername)

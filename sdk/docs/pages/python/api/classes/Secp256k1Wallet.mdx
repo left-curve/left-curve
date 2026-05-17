@@ -1,0 +1,86 @@
+# Secp256k1Wallet
+
+Holds a 32-byte secp256k1 secret plus the Dango account address it controls. The only `Wallet`-protocol implementation that ships in tree.
+
+## Setup
+
+```python
+from dango.utils.signing import Secp256k1Wallet
+from dango.utils.types import Addr
+
+wallet = Secp256k1Wallet.random(Addr("0x..."))
+```
+
+## Constructor
+
+```python
+Secp256k1Wallet(secret: bytes, address: Addr) -> None
+```
+
+**`secret`** — `bytes`. Must be exactly 32 bytes with value in `[1, n-1]` for the secp256k1 curve order `n`. Raises `ValueError` on zero, on values >= `n`, or on wrong length.
+
+**`address`** — `Addr`. The Dango account address this wallet signs for. Decoupled from the key — the same secret can sign for multiple Dango accounts.
+
+## Class methods
+
+| Method | Description |
+|--------|-------------|
+| `random(address) -> Secp256k1Wallet` | Generate a CSPRNG-sourced wallet |
+| `from_bytes(secret, address) -> Secp256k1Wallet` | Wrap an explicit 32-byte secret |
+| `from_mnemonic(mnemonic, address, *, coin_type=60) -> Secp256k1Wallet` | BIP-39 mnemonic + BIP-44 path `m/44'/{coin_type}'/0'/0/0` |
+| `from_eth_account(account, address) -> Secp256k1Wallet` | Re-use a `LocalAccount`'s secret (key_tag=Secp256k1, NOT EIP-712) |
+
+```python
+from eth_account import Account
+
+from dango.utils.signing import Secp256k1Wallet
+from dango.utils.types import Addr
+
+addr = Addr("0x...")
+
+w1 = Secp256k1Wallet.random(addr)
+w2 = Secp256k1Wallet.from_bytes(bytes.fromhex("aa" * 32), addr)
+w3 = Secp256k1Wallet.from_mnemonic("test test test test test test test test test test test junk", addr)
+w4 = Secp256k1Wallet.from_eth_account(Account.from_key("0x..."), addr)
+```
+
+## Properties
+
+**`address -> Addr`** — the Dango account address supplied at construction.
+
+**`secret_bytes -> bytes`** — the raw 32-byte secret. Sensitive — never log or persist in plaintext.
+
+**`public_key_compressed -> bytes`** — 33-byte compressed pubkey (1-byte parity + 32-byte x).
+
+**`key -> Key`** — wire-shape `{"secp256k1": "<base64 of compressed pubkey>"}`.
+
+**`key_hash -> Hash256`** — `SHA-256(compressed_pubkey)` as uppercase hex. The on-chain identifier the contract uses to look up the pubkey.
+
+## Methods
+
+### sign
+
+```python
+def sign(self, sign_doc: SignDoc) -> Signature
+```
+
+Produces a secp256k1 signature over `SHA-256(canonical_json(sign_doc))`. Returns the 64-byte r||s in the `{"secp256k1": "<base64>"}` envelope. The trailing recovery byte from `eth_keys` is stripped — Dango verifies via the pubkey resolved from `key_hash`.
+
+```python
+from dango.utils.signing import Secp256k1Wallet
+from dango.utils.types import Addr, SignDoc
+
+wallet = Secp256k1Wallet.random(Addr("0x..."))
+sig = wallet.sign(SignDoc(sender=Addr("0x..."), gas_limit=1_000_000, messages=[], data={...}))
+```
+
+## Notes
+
+- BIP-39 mnemonics use coin type 60 (Ethereum) by default — pass `coin_type=` to derive at a different path. The library uses `eth-account`'s unaudited HD wallet path, matching the Rust SDK's BIP-32 derivation.
+- `from_eth_account` signs with `KeyType=Secp256k1`. The Dango account address you pass is independent from the wallet's derived EVM address and is the user's responsibility to provide.
+- The wallet satisfies the `@runtime_checkable` `Wallet` protocol — `isinstance(wallet, Wallet)` returns `True`.
+
+## See also
+
+- [`SingleSigner`](./SingleSigner) — the stateful per-account signer that owns nonce sequencing
+- [Concepts: Signers & Authentication](../../concepts/signers) — the layered signing model

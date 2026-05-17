@@ -1,0 +1,53 @@
+# eventsByAddressesSubscription
+
+Subscribe to all events touching a set of addresses. WebSocket only.
+
+## Signature
+
+```ts
+function eventsByAddressesSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    eventByAddresses: IndexedEvent[]
+  }> & {
+    addresses: Address[]
+    sinceBlockHeight?: number
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+
+const addresses: Address[] = [
+  "0x1234567890abcdef1234567890abcdef12345678",
+  "0xabcdef1234567890abcdef1234567890abcdef12",
+]
+
+const unsubscribe = client.eventsByAddressesSubscription({
+  addresses,
+  next: ({ eventByAddresses }) =>
+    eventByAddresses.forEach((e) => console.log(e.transaction.hash, e.type)),
+})
+```
+
+## Parameters
+
+**`addresses`** — `Address[]`. Addresses to watch.
+
+**`sinceBlockHeight`** — `number`, optional. Replay from this height.
+
+**`next`**, **`error`**, **`complete`** — callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## See also
+
+- [`eventsSubscription`](./eventsSubscription) — type/data filters

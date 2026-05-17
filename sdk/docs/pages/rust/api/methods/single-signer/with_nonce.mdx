@@ -1,0 +1,49 @@
+# SingleSigner::with_nonce
+
+Consume `self` and return a `SingleSigner` with `nonce` defined.
+
+## Signature
+
+```rust
+impl<S: Secret, I: MaybeDefined<UserIndex>> SingleSigner<S, I, Undefined<Nonce>> {
+    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<S, I, Defined<Nonce>>;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Secp256k1, SingleSigner},
+    grug::Addr,
+    std::str::FromStr,
+};
+
+fn build() -> Result<SingleSigner<Secp256k1, _, _>> {
+    let signer = SingleSigner::new(
+        Addr::from_str("0x0000000000000000000000000000000000000000")?,
+        Secp256k1::new_random(),
+    )
+    .with_nonce(0);
+    Ok(signer)
+}
+```
+
+## Parameters
+
+**`nonce`** — `Nonce`. The next unused nonce for this account.
+
+## Returns
+
+**`SingleSigner<S, I, Defined<Nonce>>`** — the same signer with `nonce` defined.
+
+## Notes
+
+- Use `0` for a brand-new account that has never signed a transaction. Otherwise call [`with_query_nonce`](./with_query_nonce) (or [`query_next_nonce`](./query_next_nonce) directly).
+- A signer with `Defined<UserIndex> + Defined<Nonce>` implements `Signer`.
+
+## See also
+
+- [`with_query_nonce`](./with_query_nonce) — fetch the next nonce from the chain.
+- [`query_next_nonce`](./query_next_nonce).

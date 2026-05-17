@@ -1,0 +1,55 @@
+# cancel_order
+
+Cancel an open order by chain `OrderId`, by `ClientOrderIdRef`, or `"all"` to cancel every open order.
+
+Cancellation releases the order's reserved margin back to the user's available
+margin and decrements `open_order_count`. See protocol book:
+`perps/2-order-matching` §12.
+
+## Signature
+
+```python
+def cancel_order(
+    self,
+    spec: OrderId | ClientOrderIdRef | Literal["all"],
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.exchange import Exchange
+from dango.utils.types import Addr, ClientOrderIdRef, OrderId
+
+exchange = Exchange(wallet, base_url, account_address=Addr("0x..."))
+
+# By chain order id
+exchange.cancel_order(OrderId("12345"))
+
+# By client-assigned order id
+exchange.cancel_order(ClientOrderIdRef(value=7))
+
+# All open orders
+exchange.cancel_order("all")
+```
+
+## Parameters
+
+**`spec`** — `OrderId | ClientOrderIdRef | Literal["all"]`. The cancel target.
+
+- `OrderId("12345")` cancels by the chain-assigned id.
+- `ClientOrderIdRef(value=7)` cancels by the client-assigned id passed at submission. The wrapper disambiguates from a string-typed `OrderId`.
+- `"all"` cancels every open order for this account.
+
+## Returns
+
+**`dict[str, Any]`** — the BroadcastTxOutcome envelope.
+
+## Notes
+
+- The literal `"all"` is checked first, then the dataclass wrapper, then the `OrderId` path. This branch order matters because `OrderId` is `NewType("OrderId", str)` — at runtime it is a plain `str` and would otherwise match `"all"`.
+
+## See also
+
+- [`batch_update_orders`](./batch_update_orders) — cancel many orders atomically
+- [`submit_limit_order`](./submit_limit_order) — submit with a `client_order_id` for later cancel-by-cloid

@@ -19,6 +19,9 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "build/**"]
+    },
+    "@left-curve/docs#build": {
+      "outputs": ["dist/**"]
     }
   },
   "globalEnv": [

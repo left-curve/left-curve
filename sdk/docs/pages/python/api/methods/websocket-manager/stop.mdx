@@ -1,0 +1,33 @@
+# stop
+
+Signal shutdown and close the underlying WebSocket.
+
+## Signature
+
+```python
+def stop(self) -> None
+```
+
+## Example
+
+```python
+from dango.websocket_manager import WebsocketManager
+
+manager = WebsocketManager("https://api-mainnet.dango.zone")
+manager.start()
+
+# ... do work ...
+
+manager.stop()
+manager.join(timeout=5.0)
+```
+
+## Notes
+
+- Sets an internal stop event, then calls `ws.close()`. The keepalive thread wakes up on the event and exits; `run_forever()` returns shortly after.
+- Does NOT wait for the thread to fully exit — call `manager.join(timeout=...)` after `stop()` if you need to block.
+
+## See also
+
+- [`run`](./run) — the thread entry point
+- [`Info.disconnect_websocket`](../info/disconnect_websocket) — the high-level wrapper that does stop + join

@@ -1,0 +1,65 @@
+# vaultAddLiquidity
+
+Move USD margin from the caller's trading account into the perps counterparty
+vault and mint LP shares in return.
+
+The vault is the perps exchange's passive market maker; LPs share its
+inventory-skew-aware quoting PnL. Shares are minted via the ERC-4626 virtual
+shares pattern, floor-rounded — see protocol book: `perps/5-vault` §2. Top up
+trading margin first via [`depositMargin`](./depositMargin) if needed.
+
+## Signature
+
+```ts
+function vaultAddLiquidity(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    amount: string
+    minSharesToMint?: string
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+// Deposit 1,000 USD of trading margin into the vault
+await client.vaultAddLiquidity({
+  sender,
+  amount: "1000.000000",
+  minSharesToMint: "950000",
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The depositor.
+
+**`amount`** — `string`. USD value debited from the caller's trading margin (6-decimal `UsdValue` wire form). NOT base units — no funds are attached at the wallet boundary.
+
+**`minSharesToMint`** — `string`, optional. Slippage guard: revert if fewer than this many shares would be minted.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- The USD amount is debited from the caller's existing trading margin — NOT attached as funds on the execute message.
+- Deposits revert if the vault's `effectiveEquity` is non-positive (catastrophic loss; see `perps/5-vault` §4).
+
+## See also
+
+- [`vaultRemoveLiquidity`](./vaultRemoveLiquidity)
+- [`getPerpsVaultState`](./getPerpsVaultState)

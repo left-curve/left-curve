@@ -1,0 +1,50 @@
+# tradesSubscription
+
+Subscribe to live spot trades for a pair. Uses WebSocket when available; falls back to HTTP polling.
+
+## Signature
+
+```ts
+function tradesSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    trades: Trade
+  }> & {
+    baseDenom: Denom
+    quoteDenom: Denom
+    httpInterval?: number
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const unsubscribe = client.tradesSubscription({
+  baseDenom: "dango",
+  quoteDenom: "bridge/usdc",
+  next: ({ trades }) => console.log(trades.clearingPrice, trades.filledBase),
+})
+```
+
+## Parameters
+
+**`baseDenom`** — `Denom`. Base asset.
+
+**`quoteDenom`** — `Denom`. Quote asset.
+
+**`httpInterval`** — `number`, optional, default `3000`. Poll interval (ms) used when WS is unavailable.
+
+**`next`**, **`error`**, **`complete`** — callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## See also
+
+- [`queryTrades`](../dex/queryTrades) — historical fetch
+- [`perpsTradesSubscription`](./perpsTradesSubscription)

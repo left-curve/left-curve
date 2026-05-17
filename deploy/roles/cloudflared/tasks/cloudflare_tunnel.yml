@@ -6,7 +6,8 @@
 # find
 - name: Fetch existing tunnels
   uri:
-    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ tunnel_name }}&is_deleted=false"
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id
+      }}/cfd_tunnel?name={{ tunnel_name }}&is_deleted=false"
     method: GET
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: list_resp
@@ -16,7 +17,8 @@
 # create if missing
 - name: Create tunnel if missing
   uri:
-    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id
+      }}/cfd_tunnel"
     method: POST
     headers:
       Authorization: "Bearer {{ cloudflare_api_token }}"
@@ -43,7 +45,8 @@
 # fetch token
 - name: Fetch tunnel token
   uri:
-    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ tunnel_id }}/token"
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id
+      }}/cfd_tunnel/{{ tunnel_id }}/token"
     method: GET
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: token_resp
@@ -68,7 +71,7 @@
   file:
     path: "{{ cloudflared_dir }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Copy cloudflared templates
   template:
@@ -117,7 +120,7 @@
   template:
     src: cloudflared-compose.service.j2
     dest: /etc/systemd/system/cloudflared-compose.service
-    mode: '0644'
+    mode: "0644"
   notify: Reload systemd
 
 - name: Enable and start cloudflared-compose service
@@ -199,5 +202,26 @@
     state: present
     api_token: "{{ cloudflare_api_token }}"
   loop: "{{ dango_networks | product(['graphiql']) | list }}"
+  retries: 3
+  delay: 5
+
+# Internal API: direct A record to the host's public IP (no Cloudflare proxy)
+- name: Fetch server public IP (for internal API A record)
+  shell: curl -s https://api.ipify.org
+  register: server_public_ip_resp
+  changed_when: false
+  when: internal_api_enabled | default(false)
+
+- name: Ensure direct A record for internal API
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "api-{{ item }}-internal-{{ hostname }}"
+    type: A
+    value: "{{ server_public_ip_resp.stdout }}"
+    proxied: false
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
+  loop: "{{ dango_networks }}"
+  when: internal_api_enabled | default(false)
   retries: 3
   delay: 5

@@ -1,0 +1,75 @@
+# Project Setup
+
+Wire up signers, chains, and environment variables for a real project.
+
+## Pick a chain
+
+The SDK ships four chain configs:
+
+```ts
+import { local, devnet, testnet, mainnet } from "@left-curve/sdk"
+```
+
+| Chain   | `id`              | URL                                  |
+|---------|-------------------|--------------------------------------|
+| local   | `localdango-1`    | `http://localhost:8080`              |
+| devnet  | `dev-9`           | `https://api-devnet.dango.zone`      |
+| testnet | `dango-testnet-1` | `https://api-testnet.dango.zone`     |
+| mainnet | `dango-1`         | `https://api-mainnet.dango.zone`     |
+
+Override the URL by passing it to `createTransport(url)`.
+
+## Add a signer
+
+`createSignerClient` requires a `Signer`. The SDK ships `PrivateKeySigner` for server-side and CLI usage.
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!)
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer,
+})
+```
+
+Other signer paths:
+
+- `PrivateKeySigner.fromPrivateKey(bytes)` — bring your own bytes
+- `PrivateKeySigner.fromRandomKey()` — generate a fresh ephemeral key
+- `createSessionSigner(session)` — sign with a session credential
+
+See [Concepts: Signers & Authentication](../concepts/signers-and-authentication) for the full breakdown.
+
+## Environment variables
+
+Treat the mnemonic like a private key. Use `.env` and never commit it.
+
+```bash
+DANGO_MNEMONIC="your twelve or twenty four word seed phrase here"
+DANGO_RPC_URL="https://api-testnet.dango.zone"
+```
+
+```ts
+import "dotenv/config"
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!)
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(process.env.DANGO_RPC_URL),
+  signer,
+})
+```
+
+## Browser caveats
+
+`PrivateKeySigner` works in the browser but exposes the mnemonic in memory. For wallets, use passkeys ([`createWebAuthnCredential`](../concepts/signers-and-authentication)) or session keys backed by a stored authorization.
+
+## Next
+
+- [Concepts: Clients](../concepts/clients) — the public/signer split
+- [Concepts: Transactions](../concepts/transactions) — sign and broadcast

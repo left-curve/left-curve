@@ -1,0 +1,28 @@
+# Price
+
+An oracle price entry — current price, EMA, precision, and timestamp.
+
+## Definition
+
+```ts
+type Price = {
+  humanizedPrice: string
+  humanizedEma: string
+  precision: number
+  timestamp: number
+}
+```
+
+## Fields
+
+**`humanizedPrice`** — `string`. Price of one human-unit of the token (e.g. price of 1 ATOM, not 1 uatom).
+
+**`humanizedEma`** — `string`. Exponential moving average of the humanized price.
+
+**`precision`** — `number`. Decimal places of the token (e.g. 6 for `bridge/usdc`).
+
+**`timestamp`** — `number`. Unix timestamp (seconds) of the price.
+
+## See also
+
+- [`getPrices`](../actions/oracle/getPrices)

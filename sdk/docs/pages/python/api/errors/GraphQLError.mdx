@@ -1,0 +1,36 @@
+# GraphQLError
+
+Raised when a GraphQL response carries a non-empty `errors` array, or is missing both `data` and `errors`.
+
+## Definition
+
+```python
+class GraphQLError(Error):
+    """Raised when a GraphQL response carries a non-empty `errors` array."""
+```
+
+## When it fires
+
+The HTTP layer succeeded (2xx, valid JSON object envelope) but the query failed at the GraphQL layer. The message concatenates every error's `message` with its `path`:
+
+```text
+GraphQLError: invalid pair_id 'perp/xyzusd' (path=['queryApp', 'wasm_smart'])
+```
+
+Also raised when the envelope is missing both `data` and `errors` — a server-side malformation.
+
+## Example
+
+```python
+from dango.utils.error import GraphQLError
+
+try:
+    info.query_app({"wasm_smart": {"contract": "0xdead", "msg": {}}})
+except GraphQLError as exc:
+    print("query failed:", exc)
+```
+
+## See also
+
+- [`Error`](./Error) — base class
+- [Concepts: Error handling](../../concepts/error-handling)

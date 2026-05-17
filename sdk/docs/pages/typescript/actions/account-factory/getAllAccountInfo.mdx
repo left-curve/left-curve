@@ -1,0 +1,41 @@
+# getAllAccountInfo
+
+List every account in the factory, paginated.
+
+## Signature
+
+```ts
+function getAllAccountInfo(
+  client: Client,
+  parameters: {
+    startAfter?: Address
+    limit?: number
+    height?: number
+  },
+): Promise<Record<Address, AccountInfo>>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const accounts = await client.getAllAccountInfo({ limit: 100 })
+```
+
+## Parameters
+
+**`startAfter`** — `Address`, optional. Address to start after (exclusive).
+
+**`limit`** — `number`, optional. Maximum entries to return.
+
+**`height`** — `number`, optional. Block height. Default `0` (latest).
+
+## Returns
+
+**`Record<Address, AccountInfo>`** — map of address to `{ index, owner }`.
+
+## See also
+
+- [`getAccountInfo`](./getAccountInfo) — fetch one by address (also resolves username)

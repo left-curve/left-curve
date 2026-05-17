@@ -131,7 +131,8 @@ export const PerpsTradeHistory: React.FC = () => {
           <Cell.Text
             text={
               <>
-                <FormattedNumber number={abs} as="span" /> {baseSymbol}
+                <FormattedNumber number={abs} formatOptions={{ maxFractionDigits: 6 }} as="span" />{" "}
+                {baseSymbol}
               </>
             }
           />
@@ -148,7 +149,11 @@ export const PerpsTradeHistory: React.FC = () => {
         return (
           <Cell.Text
             text={
-              <FormattedNumber number={orderValue} formatOptions={{ currency: "USD" }} as="span" />
+              <FormattedNumber
+                number={orderValue}
+                formatOptions={{ currency: "USD", maxFractionDigits: 6 }}
+                as="span"
+              />
             }
           />
         );
@@ -161,7 +166,13 @@ export const PerpsTradeHistory: React.FC = () => {
         if (!price) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         return (
           <Cell.Text
-            text={<FormattedNumber number={price} formatOptions={{ currency: "USD" }} as="span" />}
+            text={
+              <FormattedNumber
+                number={price}
+                formatOptions={{ currency: "USD", maxFractionDigits: 6 }}
+                as="span"
+              />
+            }
           />
         );
       },
@@ -177,7 +188,7 @@ export const PerpsTradeHistory: React.FC = () => {
             text={
               <>
                 {isPositive ? "+" : ""}
-                <FormattedNumber number={pnl} as="span" />
+                <FormattedNumber number={pnl} formatOptions={{ maxFractionDigits: 6 }} as="span" />
               </>
             }
             className={isPositive ? "text-green-500" : "text-red-500"}
@@ -207,7 +218,11 @@ export const PerpsTradeHistory: React.FC = () => {
             text={
               <>
                 {isPositive ? "+" : ""}
-                <FormattedNumber number={funding} as="span" />
+                <FormattedNumber
+                  number={funding}
+                  formatOptions={{ maxFractionDigits: 6 }}
+                  as="span"
+                />
               </>
             }
             className={isPositive ? "text-red-500" : "text-green-500"}
@@ -222,7 +237,13 @@ export const PerpsTradeHistory: React.FC = () => {
         if (!fee || fee === "0") return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         return (
           <Cell.Text
-            text={<FormattedNumber number={fee} formatOptions={{ currency: "USD" }} as="span" />}
+            text={
+              <FormattedNumber
+                number={fee}
+                formatOptions={{ currency: "USD", maxFractionDigits: 6 }}
+                as="span"
+              />
+            }
           />
         );
       },

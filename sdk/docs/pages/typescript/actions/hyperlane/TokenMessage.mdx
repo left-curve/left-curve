@@ -1,0 +1,45 @@
+# TokenMessage
+
+Encode a Hyperlane warp-route token message — recipient, amount, and metadata.
+
+## Signature
+
+```ts
+class TokenMessage implements Encoder {
+  recipient: Addr32
+  amount: string
+  metadata: Uint8Array
+
+  static from(params: Omit<TokenMessage, "encode">): TokenMessage
+  encode(): Uint8Array
+}
+```
+
+## Example
+
+```ts
+import { Addr32, TokenMessage } from "@left-curve/sdk/hyperlane"
+
+const tm = TokenMessage.from({
+  recipient: Addr32.from("0xabcdef1234567890abcdef1234567890abcdef12"),
+  amount: "1000000000",
+  metadata: new Uint8Array(),
+})
+
+const wire: Uint8Array = tm.encode() // 64 + metadata bytes
+```
+
+## Encoding layout
+
+`encode()` produces a buffer of `64 + metadata.byteLength` bytes:
+
+| Offset | Length | Field       |
+|--------|--------|-------------|
+| 0      | 32     | `recipient` |
+| 32     | 32     | `amount` (uint256, BE) |
+| 64     | N      | `metadata`  |
+
+## See also
+
+- [`Addr32`](./Addr32)
+- [`Message`](./Message) — wraps `TokenMessage` as `body`

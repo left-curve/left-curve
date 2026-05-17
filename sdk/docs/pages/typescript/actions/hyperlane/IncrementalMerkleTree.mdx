@@ -1,0 +1,50 @@
+# IncrementalMerkleTree
+
+Hyperlane outbox-style incremental Merkle tree of depth 32 with Keccak-256 hashing.
+
+## Signature
+
+```ts
+class IncrementalMerkleTree {
+  static create(): IncrementalMerkleTree
+  static from(params: { branch: Uint8Array[]; count: bigint; root: Uint8Array }): IncrementalMerkleTree
+
+  insert(node: Uint8Array): void
+  root(): Uint8Array
+  count(): bigint
+  save(): { branch: Uint8Array[]; count: bigint; root: Uint8Array }
+}
+```
+
+## Example
+
+```ts
+import { IncrementalMerkleTree } from "@left-curve/sdk/hyperlane"
+import { keccak256 } from "@left-curve/crypto"
+
+const tree = IncrementalMerkleTree.create()
+tree.insert(keccak256(new Uint8Array([1, 2, 3])))
+tree.insert(keccak256(new Uint8Array([4, 5, 6])))
+
+const root: Uint8Array = tree.root()
+const snapshot = tree.save()
+```
+
+## API
+
+**`create()`** — fresh empty tree.
+
+**`from(params)`** — rehydrate from a snapshot (`save()` output).
+
+**`insert(node)`** — append a leaf (must be 32 bytes). Throws if the tree is full (2^32 − 1 leaves).
+
+**`root()`** — current root.
+
+**`count()`** — number of leaves inserted (`bigint`).
+
+**`save()`** — snapshot for persistence.
+
+## See also
+
+- [`Message`](./Message)
+- [`Metadata`](./Metadata)

@@ -1,0 +1,21 @@
+# TxFailed
+
+Raised when `broadcastTxSync` returns an `err` result.
+
+## Definition
+
+```python
+class TxFailed(Error):
+    """Raised when broadcastTxSync returns an `err` result."""
+```
+
+## Notes
+
+- Defined for callers and downstream tooling to raise. The SDK does NOT automatically raise it — `Exchange._send_action` returns the BroadcastTxOutcome envelope unchanged.
+- Inspect the returned dict's `check_tx.code`, `result.err`, and similar fields to detect chain-level rejection; raise `TxFailed(...)` yourself if your application prefers exception flow.
+
+## See also
+
+- [`Error`](./Error) — base class
+- [`broadcast_tx_sync`](../methods/info/broadcast_tx_sync) — the source
+- [Concepts: Error handling](../../concepts/error-handling)

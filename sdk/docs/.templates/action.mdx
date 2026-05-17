@@ -1,0 +1,70 @@
+---
+# Action page template — copy this file when drafting an Action page.
+# Replace ALL CAPS placeholders. Delete this comment block when done.
+#
+# An Action page documents ONE exported function/method.
+# Examples: getBalance, transfer, submitOrder, createPublicClient (no — that's a Client).
+---
+
+# FUNCTION_NAME
+
+ONE-SENTENCE DESCRIPTION OF WHAT THIS DOES. PLAIN ENGLISH. NO MARKETING.
+
+## Signature
+
+```LANG
+// Paste the actual function signature, copied from source.
+// For TS, include the full parameter object shape inline.
+// For Python, include type hints if present in source.
+// For Rust, include async / Result wrappers.
+function FUNCTION_NAME(
+  client: Client,
+  parameters: { PARAM: TYPE; ... }
+): Promise<RETURN_TYPE>
+```
+
+## Example
+
+```LANG
+// Minimal runnable example.
+// Include imports. Use realistic values. One purpose.
+import { createPublicClient, http, FUNCTION_NAME } from "@left-curve/sdk"
+
+const client = createPublicClient({ transport: http("https://...") })
+const result = await FUNCTION_NAME(client, {
+  PARAM: "REALISTIC_VALUE",
+})
+```
+
+## Parameters
+
+**`PARAM_1`** — `TYPE`. WHAT IT MEANS. CONSTRAINTS / UNITS / VALIDATION.
+
+**`PARAM_2`** — `TYPE`, optional, default: `VALUE`. WHAT IT MEANS.
+
+<!-- Repeat per parameter. Use definition list (not table). -->
+<!-- If parameters is a nested object, document as `parameters.fieldName`. -->
+<!-- If function takes no params beyond the client, omit this section. -->
+
+## Returns
+
+**`RETURN_TYPE`** — WHAT COMES BACK. UNITS. EDGE CASES (e.g., "base units, not display units").
+
+## Notes
+
+<!-- OPTIONAL. Use only when there's something genuinely non-obvious. -->
+<!-- Examples of what belongs here:                                     -->
+<!--   - Units (base vs human)                                          -->
+<!--   - Race conditions / ordering guarantees                          -->
+<!--   - Rate-limit interactions                                        -->
+<!--   - Behavior on missing data vs error                              -->
+<!-- Delete this section entirely if there's nothing to say.            -->
+
+- POINT 1
+- POINT 2
+
+## See also
+
+- [RELATED_ACTION](./RELATED_ACTION) — ONE-LINE WHY THIS IS RELATED
+- [RELATED_TYPE](../types/RELATED_TYPE)
+- [RELATED_CONCEPT](../../concepts/RELATED_CONCEPT)

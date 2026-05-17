@@ -1,0 +1,99 @@
+# createBaseClient
+
+Factory that builds the bare client object — transport, chain, optional signer, and `extend()`. Used internally by `createPublicClient` and `createSignerClient`; reach for it directly only to compose custom action sets.
+
+## Setup
+
+```ts
+import { createBaseClient, createTransport, testnet } from "@left-curve/sdk"
+
+const base = createBaseClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+```
+
+Without extension, `base` exposes only the wiring (`request`, `subscribe`, `chain`, `transport`, `uid`, `name`, `type`, and `extend`).
+
+## Configuration
+
+**`chain`** — `Chain`. Chain config.
+
+**`transport`** — `Transport`. GraphQL transport from `createTransport(url?, config?)`.
+
+**`signer`** — `Signer | undefined`, optional. When set, the client type includes the signer slot. Required to attach mutation actions.
+
+**`name`** — `string`, optional, default: `"Base Client"`. Free-form label.
+
+**`type`** — `string`, optional, default: `"base"`. Type marker.
+
+## Extending
+
+`extend()` is the primitive that builds richer clients. Pass a function that takes the current client and returns new properties:
+
+```ts
+import { createBaseClient, createTransport, testnet } from "@left-curve/sdk"
+import { publicActions } from "@left-curve/sdk"
+
+const base = createBaseClient({
+  chain: testnet,
+  transport: createTransport(),
+})
+
+const client = base.extend(publicActions)
+
+const status = await client.queryStatus()
+```
+
+`createPublicClient` is exactly this: a base client extended with `publicActions`. `createSignerClient` chains two extends — `publicActions` then `signerActions`.
+
+## Custom extensions
+
+Add your own actions in the same shape:
+
+```ts
+import { createBaseClient, createTransport, testnet } from "@left-curve/sdk"
+import { publicActions } from "@left-curve/sdk"
+import type { Client } from "@left-curve/sdk"
+
+function customActions(client: Client) {
+  return {
+    getDangoBalance: (address: `0x${string}`) =>
+      client.getBalance({ address, denom: "dango" }),
+  }
+}
+
+const client = createBaseClient({ chain: testnet, transport: createTransport() })
+  .extend(publicActions)
+  .extend(customActions)
+
+const balance = await client.getDangoBalance("0x1234567890abcdef1234567890abcdef12345678")
+```
+
+## End-to-end example
+
+```ts
+import { createBaseClient, createTransport, testnet, publicActions, signerActions, PrivateKeySigner } from "@left-curve/sdk"
+
+const signer = PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!)
+
+const client = createBaseClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer,
+})
+  .extend(publicActions)
+  .extend(signerActions)
+
+// Equivalent to createSignerClient({ chain, transport, signer }).
+```
+
+## Notes
+
+- `extend` returns a new client; it does not mutate the original.
+- Reserved keys (`signer`, `chain`, `name`, `type`, `request`, `subscribe`, `uid`, `extend`) are filtered out of extension return values.
+
+## See also
+
+- [createPublicClient](./createPublicClient) — the standard read-only assembly
+- [createSignerClient](./createSignerClient) — the standard signing assembly

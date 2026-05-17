@@ -1,0 +1,55 @@
+# setFeeShareRatio
+
+Opt in as a referrer and set the share ratio rebated to referees.
+
+Calling this is how a user becomes referrable: it gates which fraction of the
+level-1 commission the referrer rebates to each referee on every fill. The
+ratio is capped at 50 % on-chain and can only increase once set. Eligibility
+also requires `lifetimeVolume ≥ minReferrerVolume` (bypassed for users with a
+commission-rate override). See protocol book: `perps/6-referral` §3a.
+
+## Signature
+
+```ts
+function setFeeShareRatio(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    shareRatio: string
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.setFeeShareRatio({ sender, shareRatio: "0.25" })
+```
+
+## Parameters
+
+**`sender`** — `Address`. The referrer.
+
+**`shareRatio`** — `string`. Decimal ratio (e.g. `"0.25"` for 25 %). On-chain cap is 50 %; can only be raised once set.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- The input is normalized with `truncateDec` from `@left-curve/utils` before forming the message.
+
+## See also
+
+- [`setReferral`](./setReferral)

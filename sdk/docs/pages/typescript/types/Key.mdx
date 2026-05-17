@@ -1,0 +1,42 @@
+# Key
+
+A public key that can be associated with a Dango account. Discriminated by key family.
+
+## Definition
+
+```ts
+type Key =
+  | { secp256k1: Base64 }    // compressed pubkey
+  | { ethereum: Address }    // EOA address
+  | { secp256r1: Base64 }    // compressed pubkey
+
+const KeyTag = {
+  secp256r1: 0,
+  secp256k1: 1,
+  ethereum: 2,
+} as const
+```
+
+## Construction
+
+```ts
+import type { Key } from "@left-curve/sdk"
+
+const k1: Key = { secp256k1: "Ahw5..." }
+const eth: Key = { ethereum: "0x1234567890abcdef1234567890abcdef12345678" }
+const r1: Key = { secp256r1: "BJw5..." }
+```
+
+## Notes
+
+- Use the `in` operator or check the present field to narrow:
+  ```ts
+  if ("secp256k1" in key) { /* ... */ }
+  ```
+- `KeyTag` is the discriminant value the chain uses when packing a key into a salt — see [`createAccountSalt`](../concepts/encoding-and-types).
+
+## See also
+
+- [`KeyHash`](./KeyHash)
+- [`PublicKey`](./PublicKey)
+- [`updateKey`](../actions/account-factory/updateKey)

@@ -1,0 +1,37 @@
+# QueryOrderResponse
+
+A resting limit order. The shape returned by [`Info.order`](../methods/info/order).
+
+## Definition
+
+```python
+class QueryOrderResponse(TypedDict):
+    user: Addr
+    pair_id: PairId
+    size: Quantity
+    limit_price: UsdPrice
+    reduce_only: bool
+    reserved_margin: UsdValue
+    created_at: Timestamp
+```
+
+## Fields
+
+**`user`** — `Addr`. The order owner.
+
+**`pair_id`** — `PairId`.
+
+**`size`** — `Quantity`. Signed remaining size.
+
+**`limit_price`** — `UsdPrice`.
+
+**`reduce_only`** — `bool`.
+
+**`reserved_margin`** — `UsdValue`. Margin locked behind this order.
+
+**`created_at`** — `Timestamp`. ns-precision integer string.
+
+## See also
+
+- [`order`](../methods/info/order) — fetcher
+- [`QueryOrdersByUserResponseItem`](./QueryOrdersByUserResponseItem) — same fields minus `user`

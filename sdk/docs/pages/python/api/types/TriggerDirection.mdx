@@ -1,0 +1,32 @@
+# TriggerDirection
+
+Conditional-order trigger direction.
+
+## Definition
+
+```python
+class TriggerDirection(StrEnum):
+    ABOVE = "above"
+    BELOW = "below"
+```
+
+## Fields
+
+- `ABOVE` — trigger when `price >= trigger_price`.
+- `BELOW` — trigger when `price <= trigger_price`.
+
+## Construction
+
+```python
+from dango.utils.types import TriggerDirection
+
+direction = TriggerDirection.ABOVE
+```
+
+## Notes
+
+- Wire values are lowercase, not uppercase.
+
+## See also
+
+- [`submit_conditional_order`](../methods/exchange/submit_conditional_order) — takes a `TriggerDirection`

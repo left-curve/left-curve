@@ -1,0 +1,36 @@
+# Coin
+
+A `{ denom, amount }` pair representing some quantity of one token.
+
+## Definition
+
+```ts
+type Coin = {
+  readonly denom: Denom
+  readonly amount: string
+}
+```
+
+## Fields
+
+**`denom`** — `Denom`. Token denomination (e.g. `"dango"`, `"bridge/usdc"`).
+
+**`amount`** — `string`. Amount in base units. String form preserves arbitrary precision.
+
+## Construction
+
+```ts
+import type { Coin } from "@left-curve/sdk"
+
+const oneDango: Coin = { denom: "dango", amount: "1000000" }
+```
+
+## Notes
+
+- Always base units (atomic, indivisible). Use [`formatUnits`](../concepts/encoding-and-types) to display.
+
+## See also
+
+- [`Coins`](./Coins) — record of denom → amount
+- [`Denom`](./Denom)
+- [`Funds`](./Funds)

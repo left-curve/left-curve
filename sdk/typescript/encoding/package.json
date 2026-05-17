@@ -1,7 +1,11 @@
 {
   "name": "@left-curve/encoding",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "sideEffects": false,
   "main": "./build/index.cjs",
   "module": "./build/index.js",
@@ -33,5 +37,13 @@
   "license": "TBD",
   "homepage": "https://dango.exchange",
   "repository": "left-curve/left-curve",
-  "keywords": ["grug", "dango", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
+  "keywords": [
+    "grug",
+    "dango",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
 }

@@ -1,0 +1,38 @@
+# Exchange.cancel_by_cloid (HL-compat)
+
+Cancel one open order by `cloid`. Hashes the 16-byte HL cloid to Uint64.
+
+## Signature
+
+```python
+def cancel_by_cloid(self, name: str, cloid: Cloid) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+from dango.hyperliquid_compatibility.types import Cloid
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+ex.cancel_by_cloid("ETH", Cloid("0x12345678901234567890123456789012"))
+```
+
+## Parameters
+
+**`name`** — `str`. HL coin name (verified).
+
+**`cloid`** — `Cloid`. The HL 16-byte cloid. `Cloid.to_uint64()` produces the Uint64 the chain actually sees.
+
+## Returns
+
+**`dict[str, Any]`** — HL status envelope with `response.type="cancelByCloid"`.
+
+:::warning
+the Uint64 derived from the cloid is the only thing the chain sees. If two different 16-byte cloids hash to the same Uint64 (probability ~2**-32 over ~4 billion cloids), the cancel applies to whichever order claimed that Uint64 first.
+:::
+
+## See also
+
+- [`bulk_cancel_by_cloid`](./bulk_cancel_by_cloid) — multi-cancel counterpart
+- [Migration overview](../../hyperliquid#1-cloid-is-hashed-lossily-the-cloid-in-responses-is-not-the-cloid-you-sent) — the Cloid asymmetry

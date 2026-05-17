@@ -1,0 +1,65 @@
+# SingleSigner::new_first_address_available
+
+Construct a `SingleSigner` by discovering the first account associated with a `Secret`'s `key_hash` via the account factory.
+
+## Signature
+
+```rust
+impl<S: Secret> SingleSigner<S, Defined<UserIndex>, Undefined<Nonce>> {
+    pub async fn new_first_address_available<C>(
+        client: &C,
+        secret: S,
+        cfg: Option<&AppConfig>,
+    ) -> anyhow::Result<Self>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>;
+}
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+    let secret = Secp256k1::from_bytes([0u8; 32])?;
+
+    let signer = SingleSigner::new_first_address_available(&client, secret, None)
+        .await?
+        .with_query_nonce(&client)
+        .await?;
+
+    println!("address: {}", signer.address);
+    Ok(())
+}
+```
+
+## Parameters
+
+**`client`** — `&C` implementing `QueryClient`. The query client used to read the account factory.
+
+**`secret`** — `S: Secret`. The private key. Only `secret.key_hash()` is read.
+
+**`cfg`** — `Option<&AppConfig>`. Optional cached app config. When `None`, fetches it via `query_app_config`.
+
+## Returns
+
+**`SingleSigner<S, Defined<UserIndex>, Undefined<Nonce>>`** — fill in the nonce via [`with_nonce`](./with_nonce) or [`with_query_nonce`](./with_query_nonce) before signing.
+
+## Notes
+
+- Calls `QueryForgotUsernameRequest { key_hash, start_after: None, limit: Some(1) }` against the account factory; takes the first match regardless of forgotten-username state.
+- Errors with `"no user index found for key hash …"` when no account references the key.
+- Resolves the master account via `QueryUserRequest(UserIndexOrName::Index(...))`.
+- Pass `cfg = Some(&cached)` to skip the `query_app_config` round-trip when reusing the same node across multiple calls.
+
+## See also
+
+- [`new`](./new) — when the address is already known.
+- [`SingleSigner`](../../clients/SingleSigner) — typestate overview.

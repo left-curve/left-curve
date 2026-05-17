@@ -1,0 +1,40 @@
+# ClientError
+
+Raised on a 4xx HTTP response from the GraphQL endpoint.
+
+## Definition
+
+```python
+class ClientError(Error):
+    """Raised on a 4xx HTTP response from the GraphQL endpoint."""
+```
+
+## When it fires
+
+Any 4xx status from `<base_url>/graphql`. The most common causes:
+
+- 400 — malformed request
+- 401 / 403 — auth / authz failure
+- 429 — rate limit
+
+The exception message wraps the first 500 characters of the response body. Inspect via `str(exc)`.
+
+## Example
+
+```python
+from dango.utils.error import ClientError
+
+try:
+    info.query_status()
+except ClientError as exc:
+    if "429" in str(exc):
+        # back off and retry
+        ...
+    else:
+        raise
+```
+
+## See also
+
+- [`Error`](./Error) — base class
+- [Concepts: Rate limits & quotas](../../concepts/rate-limits) — handling 429

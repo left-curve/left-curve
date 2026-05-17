@@ -1,0 +1,53 @@
+# query_app_multi
+
+Atomically run multiple queries at one block height. Each result is wrapped as `{"Ok": <value>}` or `{"Err": "<msg>"}` so partial failures do not abort the batch.
+
+## Signature
+
+```python
+def query_app_multi(
+    self,
+    queries: list[dict[str, Any]],
+    *,
+    height: int | None = None,
+) -> list[dict[str, Any]]
+```
+
+## Example
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL, PERPS_CONTRACT_MAINNET
+from dango.utils.types import Addr
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+
+results = info.query_app_multi([
+    {"wasm_smart": {"contract": Addr(PERPS_CONTRACT_MAINNET), "msg": {"param": {}}}},
+    {"wasm_smart": {"contract": Addr(PERPS_CONTRACT_MAINNET), "msg": {"state": {}}}},
+])
+
+for r in results:
+    if "Ok" in r:
+        print(r["Ok"])
+    else:
+        print("failed:", r["Err"])
+```
+
+## Parameters
+
+**`queries`** — `list[dict[str, Any]]`. A list of query request shapes; same per-element shape as [`query_app`](./query_app) accepts.
+
+**`height`** — `int | None`, optional. Pin every query in the batch to one block height. Default: `None` (latest).
+
+## Returns
+
+**`list[dict[str, Any]]`** — one `{"Ok": <value>}` or `{"Err": "<msg>"}` per input query, in order. Inspect per element — the SDK does NOT auto-unwrap because partial failure is by design.
+
+## Notes
+
+- All queries in the batch execute at the same block height. Useful for atomic snapshots across multiple contracts.
+
+## See also
+
+- [`query_app_smart`](./query_app_smart) — single-query helper with auto-unwrap

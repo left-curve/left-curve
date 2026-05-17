@@ -1,0 +1,59 @@
+# transfer
+
+Send a record of `Address -> Coins` from the sender's account.
+
+## Signature
+
+```ts
+function transfer(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    transfer: Record<Address, Coins>
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.transfer({
+  sender,
+  transfer: {
+    "0xabcdef1234567890abcdef1234567890abcdef12": {
+      dango: "1000000",
+      "bridge/usdc": "5000000",
+    },
+  },
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The funding account.
+
+**`transfer`** — `Record<Address, Coins>`. Map of recipient address to a `Coins` payload (`Record<Denom, string>` of base-unit amounts).
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](./broadcastTxSync).
+
+## Notes
+
+- A single call can send to multiple recipients; each recipient may receive multiple denoms.
+- Amounts are base units, always strings.
+
+## See also
+
+- [`signAndBroadcastTx`](./signAndBroadcastTx) — the underlying primitive
+- [`getBalances`](./getBalances)

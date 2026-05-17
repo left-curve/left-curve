@@ -226,3 +226,10 @@
 - name: Validate sshd config before reload
   command: sshd -t
   changed_when: false
+
+- name: Configure internal-API firewall (DNAT public:80/443 → tailscale_ip)
+  include_tasks: internal_api_firewall.yml
+  when: internal_api_enabled | default(false)
+  tags: internal-api
+  vars:
+    internal_api_public_iface: "{{ internal_api_public_iface | default(ansible_default_ipv4.interface) }}"

@@ -1,0 +1,73 @@
+# execute
+
+Execute one or more contract messages in a single transaction, with optional funds attached and EIP-712 typed-data overrides.
+
+## Signature
+
+```ts
+function execute(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    execute: ExecuteMsg | ExecuteMsg[]
+    gasLimit?: number
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+
+type ExecuteMsg = {
+  contract: Address
+  msg: Json
+  funds?: Funds
+  typedData?: TypedDataParameter
+}
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+const contract: Address = "0xabcdef1234567890abcdef1234567890abcdef12"
+
+await client.execute({
+  sender,
+  execute: {
+    contract,
+    msg: { increment: {} },
+  },
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The sender account.
+
+**`execute`** — `ExecuteMsg | ExecuteMsg[]`. One or more `{ contract, msg, funds?, typedData? }` entries.
+
+**`gasLimit`** — `number`, optional. Skip simulation and use this limit.
+
+### `ExecuteMsg` fields
+
+**`contract`** — `Address`. The target contract.
+
+**`msg`** — `Json`. The execute message (camelCase, converted to snake_case on the wire).
+
+**`funds`** — `Funds`, optional. Coins attached to the call.
+
+**`typedData`** — `TypedDataParameter`, optional. EIP-712 typed-data spec for the message body. Required when the message has non-trivial nested structure.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](./broadcastTxSync).
+
+## See also
+
+- [`instantiate`](./instantiate) — execute is for already-deployed contracts
+- [`signAndBroadcastTx`](./signAndBroadcastTx)

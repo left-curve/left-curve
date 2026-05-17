@@ -7,7 +7,7 @@ export type GetBalanceParameters = {
   height?: number;
 };
 
-export type GetBalanceReturnType = Promise<number>;
+export type GetBalanceReturnType = Promise<string>;
 
 /**
  * Get the balance of an account.
@@ -15,7 +15,7 @@ export type GetBalanceReturnType = Promise<number>;
  * @param parameters.address The address to get the balance of.
  * @param parameters.denom The denomination of the token.
  * @param parameters.height The height at which to query the balance.
- * @returns The balance of the account.
+ * @returns The balance of the account as a base-unit string.
  */
 export async function getBalance(
   client: Client,
@@ -31,5 +31,5 @@ export async function getBalance(
     throw new Error(`expecting balance response, got ${JSON.stringify(res)}`);
   }
 
-  return Number.parseInt(res.balance.amount);
+  return res.balance.amount;
 }

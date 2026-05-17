@@ -1,0 +1,48 @@
+# Keystore::from_file
+
+Read and decrypt a keystore file, returning the raw 32-byte private key.
+
+## Signature
+
+```rust
+pub fn from_file<F, P>(filename: F, password: P) -> anyhow::Result<[u8; 32]>
+where
+    F: AsRef<Path>,
+    P: AsRef<[u8]>;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{Keystore, Secp256k1, Secret},
+};
+
+fn load() -> Result<Secp256k1> {
+    let bytes = Keystore::from_file("./key.json", "hunter2")?;
+    Secp256k1::from_bytes(bytes)
+}
+```
+
+## Parameters
+
+**`filename`** — `AsRef<Path>`. Path to the JSON keystore file.
+
+**`password`** — `AsRef<[u8]>`. Decryption password. Bytes, not necessarily UTF-8.
+
+## Returns
+
+**`[u8; 32]`** — the raw private key bytes. Wrap with [`Secp256k1::from_bytes`](../../traits/Secret) or [`Eip712::from_bytes`](../../traits/Secret).
+
+## Notes
+
+- The file is JSON: `{ pk, salt, nonce, ciphertext }`. PBKDF2-HMAC-SHA256 with 600 000 iterations derives the AES-256-GCM key from `password + salt`.
+- Wrong password produces an AES-GCM authentication-tag error; the message does not distinguish "wrong password" from "corrupted ciphertext".
+- File I/O errors (missing file, permission denied) propagate as `anyhow::Error`.
+
+## See also
+
+- [`write_to_file`](./write_to_file) — counterpart.
+- [`Keystore`](../../clients/Keystore) — file format.
+- [`Secret`](../../traits/Secret) — what to wrap the bytes in.

@@ -1,0 +1,51 @@
+# eventsSubscription
+
+Subscribe to a filtered live event stream. WebSocket only.
+
+## Signature
+
+```ts
+function eventsSubscription(
+  client: Client,
+  parameters: SubscriptionCallbacks<{
+    events: SubscriptionEvent[]
+  }> & {
+    sinceBlockHeight?: number
+    filter?: EventFilter[]
+  },
+): () => void
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const unsubscribe = client.eventsSubscription({
+  filter: [
+    {
+      type: "transfer",
+      data: [{ path: ["sender"], checkMode: "EQUAL", value: ["0xabc..."] }],
+    },
+  ],
+  next: ({ events }) => events.forEach((e) => console.log(e.type, e.data)),
+})
+```
+
+## Parameters
+
+**`sinceBlockHeight`** — `number`, optional. Replay from this height.
+
+**`filter`** — `EventFilter[]`, optional. Each filter specifies an event type and one or more path-value matches.
+
+**`next`**, **`error`**, **`complete`** — callbacks.
+
+## Returns
+
+**`() => void`** — unsubscribe.
+
+## See also
+
+- [`eventsByAddressesSubscription`](./eventsByAddressesSubscription)
+- [`transferSubscription`](./transferSubscription)

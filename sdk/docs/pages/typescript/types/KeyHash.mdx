@@ -1,0 +1,24 @@
+# KeyHash
+
+Uppercase hex SHA-256 of a public key or credential id. Used to identify keys on chain.
+
+## Definition
+
+```ts
+type KeyHash = Hex
+```
+
+## Construction
+
+```ts
+import { createKeyHash } from "@left-curve/sdk"
+
+const hash = createKeyHash(publicKeyBytes) // "ABCDEF0123456789..."
+```
+
+The helper sha256-hashes the input and upper-cases the hex output.
+
+## See also
+
+- [`Key`](./Key)
+- [`createKeyHash`](../concepts/encoding-and-types)

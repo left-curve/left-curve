@@ -1,0 +1,129 @@
+# Info
+
+Low-level GraphQL query primitives over HTTP plus subscription transport over WebSocket. Subclass of [`API`](./API).
+
+## Setup
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+
+info = Info(MAINNET_API_URL)
+```
+
+## Constructor
+
+```python
+Info(
+    base_url: str,
+    *,
+    skip_ws: bool = False,
+    timeout: float | None = None,
+    perps_contract: Addr | None = None,
+) -> None
+```
+
+## Configuration
+
+**`base_url`** — `str`. GraphQL endpoint URL.
+
+**`skip_ws`** — `bool`, optional. When `True`, the lazy `WebsocketManager` construction is suppressed and any `subscribe_*` call raises `RuntimeError`. Default: `False`.
+
+**`timeout`** — `float | None`, optional. HTTP timeout in seconds. Default: no timeout.
+
+**`perps_contract`** — `Addr | None`, optional. Override the perps contract address. Default: `PERPS_CONTRACT_MAINNET`.
+
+## Methods
+
+### Chain queries
+
+| Method | Description |
+|--------|-------------|
+| [`query_status`](../methods/info/query_status) | Chain ID and latest block info |
+| [`query_app`](../methods/info/query_app) | Generic `queryApp` wrapper (raw envelope) |
+| [`query_app_smart`](../methods/info/query_app_smart) | Convenience for `{wasm_smart: ...}` queries |
+| [`query_app_multi`](../methods/info/query_app_multi) | Atomically run multiple queries at one height |
+| [`simulate`](../methods/info/simulate) | Dry-run an `UnsignedTx` |
+| [`broadcast_tx_sync`](../methods/info/broadcast_tx_sync) | Submit a signed `Tx` |
+
+### Perps contract queries
+
+| Method | Description |
+|--------|-------------|
+| [`perps_param`](../methods/info/perps_param) | Global perps parameters |
+| [`perps_state`](../methods/info/perps_state) | Global perps runtime state |
+| [`pair_param`](../methods/info/pair_param) | One pair's parameters |
+| [`pair_params`](../methods/info/pair_params) | Enumerate per-pair parameters |
+| [`pair_state`](../methods/info/pair_state) | One pair's runtime state |
+| [`pair_states`](../methods/info/pair_states) | Enumerate per-pair states |
+| [`liquidity_depth`](../methods/info/liquidity_depth) | Aggregated bid/ask depth |
+| [`user_state`](../methods/info/user_state) | User margin, positions, vault shares |
+| [`user_state_extended`](../methods/info/user_state_extended) | `user_state` plus computed equity/margin/PnL |
+| [`orders_by_user`](../methods/info/orders_by_user) | All resting orders for a user |
+| [`order`](../methods/info/order) | One resting order by id |
+| [`volume`](../methods/info/volume) | User's cumulative trading volume |
+
+### Indexer queries
+
+| Method | Description |
+|--------|-------------|
+| [`perps_candles`](../methods/info/perps_candles) | OHLCV candles (cursor-paginated) |
+| [`perps_events`](../methods/info/perps_events) | Event stream (cursor-paginated) |
+| [`perps_pair_stats`](../methods/info/perps_pair_stats) | 24h stats for one pair |
+| [`all_perps_pair_stats`](../methods/info/all_perps_pair_stats) | 24h stats for every active pair |
+| [`perps_events_all`](../methods/info/perps_events_all) | Iterate every matching event |
+
+### Subscriptions
+
+| Method | Description |
+|--------|-------------|
+| [`subscribe_perps_trades`](../methods/info/subscribe_perps_trades) | Live trade fills for one pair |
+| [`subscribe_perps_candles`](../methods/info/subscribe_perps_candles) | OHLCV candle stream |
+| [`subscribe_query_app`](../methods/info/subscribe_query_app) | Re-run a `queryApp` every N blocks |
+| [`subscribe_user_events`](../methods/info/subscribe_user_events) | Per-user event stream |
+| [`subscribe_block`](../methods/info/subscribe_block) | Every newly-finalized block |
+| [`unsubscribe`](../methods/info/unsubscribe) | Drop a subscription |
+| [`disconnect_websocket`](../methods/info/disconnect_websocket) | Close the WebSocket cleanly |
+
+## End-to-end example
+
+```python
+import time
+
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import Addr, CandleInterval, PairId
+
+info = Info(MAINNET_API_URL)
+
+# Public state
+status = info.query_status()
+pairs = info.pair_params()
+stats = info.all_perps_pair_stats()
+
+# Per-user state
+user = Addr("0x...")
+state = info.user_state(user)
+orders = info.orders_by_user(user)
+
+# Indexer
+candles = info.perps_candles(PairId("perp/ethusd"), CandleInterval.ONE_MINUTE, first=10)
+
+# Subscribe and drain for 30s
+sid = info.subscribe_perps_trades(PairId("perp/ethusd"), print)
+time.sleep(30)
+info.unsubscribe(sid)
+info.disconnect_websocket()
+```
+
+## Notes
+
+- HTTP queries use a `requests.Session` — thread-safe for concurrent reads.
+- The `WebsocketManager` is created on the first `subscribe_*` call. Pass `skip_ws=True` if you never intend to subscribe.
+- The lazy manager is a daemon thread; call `disconnect_websocket()` on shutdown to close it cleanly.
+
+## See also
+
+- [`Exchange`](./Exchange) — the write-side counterpart
+- [`WebsocketManager`](./WebsocketManager) — the underlying subscription transport
+- [Concepts: Subscriptions](../../concepts/subscriptions) — the WebSocket model

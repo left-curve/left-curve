@@ -1,0 +1,55 @@
+# Exchange.market_close (HL-compat)
+
+Reduce-only market order to close the position in `coin`. **`px` is silently ignored.**
+
+## Signature
+
+```python
+def market_close(
+    self,
+    coin: str,
+    *,
+    sz: float | None = None,
+    px: float | None = None,
+    slippage: float = DEFAULT_SLIPPAGE,
+    cloid: Cloid | None = None,
+    builder: Any = None,
+) -> dict[str, Any]
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.exchange import Exchange
+
+ex = Exchange(wallet, base_url="...", account_address="0x...")
+ex.market_close("ETH")    # close the full ETH position
+```
+
+## Parameters
+
+**`coin`** — `str`. HL coin name.
+
+**`sz`** — `float | None`, optional. Size to close. `None` (default) closes the full position size (read via `info.user_state`).
+
+**`px`** — `float | None`, optional. **Accepted-and-ignored.**
+
+**`slippage`** — `float`, optional. Default: `DEFAULT_SLIPPAGE = 0.05`.
+
+**`cloid`** — `Cloid | None`, optional. Non-`None` raises `NotImplementedError`.
+
+**`builder`** — `Any`, optional. Non-`None` raises `NotImplementedError`.
+
+## Returns
+
+**`dict[str, Any]`** — HL status envelope with `response.type="order"`. Returns an err envelope if there is no open position in `coin`, or if the position size is zero.
+
+## Notes
+
+- Reads `assetPositions` from `info.user_state(self.account_address)` to determine which direction reduces the position.
+- The `szi` field (HL's signed size) drives the sign — closing a long sells (`-sz`), closing a short buys (`+sz`).
+
+## See also
+
+- [`market_open`](./market_open) — opening counterpart
+- [Native `submit_market_order`](../../../api/methods/exchange/submit_market_order)

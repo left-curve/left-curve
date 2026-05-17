@@ -1,0 +1,36 @@
+# sign_doc_sha256
+
+SHA-256 digest of a `SignDoc`'s canonical JSON. The 32-byte payload that gets signed.
+
+## Signature
+
+```python
+def sign_doc_sha256(sign_doc: SignDoc) -> bytes
+```
+
+## Example
+
+```python
+from dango.utils.signing import sign_doc_sha256
+from dango.utils.types import SignDoc
+
+digest = sign_doc_sha256(sign_doc)
+assert len(digest) == 32
+```
+
+## Parameters
+
+**`sign_doc`** — `SignDoc`. The TypedDict with `sender`, `gas_limit`, `messages`, `data`.
+
+## Returns
+
+**`bytes`** — exactly 32 bytes (the SHA-256 digest of `sign_doc_canonical_json(sign_doc)`).
+
+## Notes
+
+- Exposed for test and integration code that needs to verify the digest without re-deriving the canonical-JSON contract.
+
+## See also
+
+- [`sign_doc_canonical_json`](./sign_doc_canonical_json) — the underlying canonical encoding
+- [`Secp256k1Wallet.sign`](../classes/Secp256k1Wallet#sign) — the secp256k1 signature over this digest

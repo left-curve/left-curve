@@ -1,0 +1,74 @@
+# batchUpdateOrders
+
+Create and/or cancel multiple limit orders in a single transaction.
+
+:::warning[DEX currently disabled]
+The Dango DEX is currently disabled. Calls described on this page will not execute on the live network until the DEX is enabled.
+:::
+
+
+## Signature
+
+```ts
+function batchUpdateOrders(
+  client: Client<Signer>,
+  parameters: {
+    sender: Address
+    funds?: Coins
+    creates?: CreateOrderRequest[]
+    cancels?: CancelOrderRequest
+  },
+): Promise<{ hash: Uint8Array } & TxData>
+```
+
+## Example
+
+```ts
+import { createSignerClient, createTransport, testnet, PrivateKeySigner } from "@left-curve/sdk"
+import type { Address } from "@left-curve/sdk"
+
+const client = createSignerClient({
+  chain: testnet,
+  transport: createTransport(),
+  signer: PrivateKeySigner.fromMnemonic(process.env.DANGO_MNEMONIC!),
+})
+const sender: Address = "0x1234567890abcdef1234567890abcdef12345678"
+
+await client.batchUpdateOrders({
+  sender,
+  funds: { "bridge/usdc": "100000000" },
+  creates: [
+    {
+      baseDenom: "dango",
+      quoteDenom: "bridge/usdc",
+      amount: { bid: { quote: "100000000" } },
+      price: { limit: "0.5" },
+      timeInForce: "GTC",
+    },
+  ],
+  cancels: { some: ["123", "456"] },
+})
+```
+
+## Parameters
+
+**`sender`** — `Address`. The trader.
+
+**`funds`** — `Coins`, optional. Coins to attach for new bids/asks.
+
+**`creates`** — `CreateOrderRequest[]`, optional. New orders. Each entry has `baseDenom`, `quoteDenom`, `amount` (`{ bid }` or `{ ask }`), `price` (`{ limit }` or `{ market }`), and `timeInForce` (`"GTC"` or `"IOC"`).
+
+**`cancels`** — `CancelOrderRequest`, optional. `"all"` or `{ some: OrderId[] }`.
+
+## Returns
+
+**`{ hash: Uint8Array } & TxData`** — see [`broadcastTxSync`](../app/broadcastTxSync).
+
+## Notes
+
+- The EIP-712 typed-data structure is built dynamically based on whether the first create order is a bid/ask and limit/market. Mixed-side or mixed-style batches may need a custom `typedData` passed at the [`execute`](../app/execute) layer.
+
+## See also
+
+- [`ordersByUser`](./ordersByUser) — list active orders
+- [`getOrder`](./getOrder)

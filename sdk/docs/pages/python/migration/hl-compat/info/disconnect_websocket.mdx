@@ -1,0 +1,28 @@
+# Info.disconnect_websocket (HL-compat)
+
+Close the underlying WebSocket connection.
+
+## Signature
+
+```python
+def disconnect_websocket(self) -> None
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+# ... subscribe and process ...
+info.disconnect_websocket()
+```
+
+## Notes
+
+- Forwards directly to the native [`disconnect_websocket`](../../../api/methods/info/disconnect_websocket). Same behavior: stop the manager, close the socket, join the daemon thread (5s timeout).
+- Safe to call when no subscription was ever opened.
+
+## See also
+
+- [`unsubscribe`](./unsubscribe) — drop a single subscription

@@ -1,0 +1,36 @@
+# PerpsCandle
+
+An OHLC candle for a perps pair.
+
+## Definition
+
+```ts
+type PerpsCandle = {
+  pairId: string
+  interval: CandleIntervals
+  minBlockHeight: number
+  maxBlockHeight: number
+  open: string
+  high: string
+  low: string
+  close: string
+  volume: string
+  volumeUsd: string
+  timeStart: string
+  timeStartUnix: number
+  timeEnd: string
+  timeEndUnix: number
+}
+```
+
+## Fields
+
+OHLC values are decimal strings. `volume` is in base asset; `volumeUsd` is the USD equivalent.
+
+`minBlockHeight` and `maxBlockHeight` bracket the candle's block range.
+
+## See also
+
+- [`queryPerpsCandles`](../actions/perps/queryPerpsCandles)
+- [`perpsCandlesSubscription`](../actions/indexer/perpsCandlesSubscription)
+- [`Candle`](./Candle)

@@ -1,0 +1,49 @@
+# paginate_events
+
+Fetch every record in the indexer's `events` connection, paginating forward.
+
+## Signature
+
+```rust
+pub async fn paginate_events(
+    &self,
+    page_size: i64,
+    variables: events::Variables,
+) -> Result<Vec<events::EventsEventsNodes>, anyhow::Error>;
+```
+
+## Example
+
+```rust
+use {
+    anyhow::Result,
+    dango_sdk::{HttpClient, events},
+};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = HttpClient::new("https://api-mainnet.dango.zone")?;
+
+    let evs = client
+        .paginate_events(100, events::Variables::default())
+        .await?;
+
+    println!("{} events", evs.len());
+    Ok(())
+}
+```
+
+## Parameters
+
+**`page_size`** — `i64`. Items per request. Indexer caps `first` at 100.
+
+**`variables`** — `events::Variables`. Only pagination + `sort_by` fields are exposed by the indexer schema today; filter client-side on the returned `nodes` (e.g. `node.r#type`). Pagination cursors are overwritten by the helper.
+
+## Returns
+
+**`Vec<events::EventsEventsNodes>`** — every event matching the filter.
+
+## See also
+
+- [`paginate_all`](./paginate_all) — generic, supports backward pagination.
+- [`paginate_messages`](./paginate_messages) — sibling for messages.

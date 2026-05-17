@@ -1,0 +1,40 @@
+# Info.l2_snapshot (HL-compat)
+
+HL `l2Book` — bid/ask depth at the finest bucket.
+
+## Signature
+
+```python
+def l2_snapshot(self, name: str) -> L2BookData
+```
+
+## Example
+
+```python
+from dango.hyperliquid_compatibility.info import Info
+
+info = Info(base_url="https://...")
+book = info.l2_snapshot("ETH")
+bids, asks = book["levels"]
+print(bids[:5], asks[:5])
+```
+
+## Parameters
+
+**`name`** — `str`. HL coin name.
+
+## Returns
+
+**`L2BookData`** — `{coin, levels: ([bids], [asks]), time}`. Each level is `{px, sz, n}`.
+
+## Divergences from upstream
+
+- HL doesn't take a `bucket_size`; the wrapper picks the smallest entry from `pair_param.bucket_sizes`.
+- `n=1` always (Dango doesn't expose per-bucket order count).
+- `time=0` always (no server timestamp on depth queries).
+- Raises `RuntimeError` if the pair has no configured `bucket_sizes`.
+
+## See also
+
+- [Native `liquidity_depth`](../../../api/methods/info/liquidity_depth)
+- [Native `pair_param`](../../../api/methods/info/pair_param)

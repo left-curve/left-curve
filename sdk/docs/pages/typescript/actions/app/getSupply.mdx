@@ -1,0 +1,40 @@
+# getSupply
+
+Read the total supply of a single token.
+
+## Signature
+
+```ts
+function getSupply(
+  client: Client,
+  parameters: {
+    denom: Denom
+    height?: number
+  },
+): Promise<Coin>
+```
+
+## Example
+
+```ts
+import { createPublicClient, createTransport, testnet } from "@left-curve/sdk"
+
+const client = createPublicClient({ chain: testnet, transport: createTransport() })
+const supply = await client.getSupply({ denom: "dango" })
+console.log(supply.amount)
+```
+
+## Parameters
+
+**`denom`** — `Denom`. The token denomination.
+
+**`height`** — `number`, optional. Block height to query at. Default `0` (latest).
+
+## Returns
+
+**`Coin`** — `{ denom: Denom, amount: string }`.
+
+## See also
+
+- [`getSupplies`](./getSupplies) — paginated supplies across denoms
+- [`getBalance`](./getBalance)

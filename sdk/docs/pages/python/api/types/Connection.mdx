@@ -1,0 +1,40 @@
+# Connection
+
+A page of results plus its `PageInfo` cursors. Generic over the node type.
+
+## Definition
+
+```python
+@dataclass(frozen=True)
+class Connection[T]:
+    nodes: list[T]
+    page_info: PageInfo
+```
+
+## Fields
+
+**`nodes`** — `list[T]`. The page's items, in cursor order.
+
+**`page_info`** — `PageInfo`. Cursors and `has_next_page` / `has_previous_page` flags.
+
+## Construction
+
+```python
+from dango.info import Info
+from dango.utils.constants import MAINNET_API_URL
+from dango.utils.types import CandleInterval, PairId
+
+info = Info(MAINNET_API_URL, skip_ws=True)
+page = info.perps_candles(PairId("perp/ethusd"), CandleInterval.ONE_MINUTE, first=10)
+print(len(page.nodes), page.page_info.has_next_page)
+```
+
+## Notes
+
+- PEP 695 generic syntax — `Connection[PerpsCandle]`, `Connection[PerpsEvent]`, etc.
+- Frozen dataclass: hashable and immutable.
+
+## See also
+
+- [`PageInfo`](./PageInfo) — the cursor metadata
+- [`paginate_all`](../helpers/paginate_all) — walk every page

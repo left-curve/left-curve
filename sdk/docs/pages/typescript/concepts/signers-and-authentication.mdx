@@ -1,0 +1,67 @@
+# Signers & Authentication
+
+**What this teaches:** the `Signer` interface, the two built-in implementations, and how session keys delegate authority.
+
+## The interface
+
+A signer implements three methods:
+
+```ts
+type Signer = {
+  getKeyHash(): Promise<KeyHash>
+  signTx(signDoc: SignDoc): Promise<SignatureOutcome>
+  signArbitrary<T>(payload: ArbitraryDoc<T>): Promise<ArbitrarySignatureOutcome>
+}
+```
+
+`signTx` signs an EIP-712-typed transaction document. `signArbitrary` signs an arbitrary message, used for session creation and off-chain proofs. `getKeyHash` identifies which on-chain key the signer represents.
+
+## PrivateKeySigner
+
+Backed by a local secp256k1 key. Three construction paths:
+
+```ts
+import { PrivateKeySigner } from "@left-curve/sdk"
+
+const a = PrivateKeySigner.fromMnemonic("your twelve word mnemonic here ...")
+const b = PrivateKeySigner.fromPrivateKey(new Uint8Array(32))
+const c = PrivateKeySigner.fromRandomKey()
+```
+
+`fromMnemonic` uses BIP-39 + BIP-32 to derive the key. `fromRandomKey` generates an ephemeral keypair — useful for one-shot scripts.
+
+For `signArbitrary`, this signer signs `payload.message` (SHA-256 over the canonical-serialized message). The returned `signed:` field is the raw signature.
+
+## Session signer
+
+A session signer signs with an ephemeral session key plus a stored authorization from the user's primary key. The user authorizes the session once; the session signs many transactions until it expires.
+
+```ts
+import { createSessionSigner } from "@left-curve/sdk"
+import type { SigningSession } from "@left-curve/sdk"
+
+const session: SigningSession = await loadSessionFromStorage()
+const signer = createSessionSigner(session)
+```
+
+Both signers hash `payload.message` the same way. The divergence is in what gets returned: `createSessionSigner` returns a `SessionCredential` (the session + the signed-message envelope) as `signed:`, so the verifier can re-derive the message from chain state.
+
+Use [`createSession`](../actions/account-factory/createSession) on a signer client to mint a `SigningSession`. Persist it to storage and rehydrate on next load.
+
+## Passkeys (WebAuthn)
+
+For browser wallets, the SDK exposes WebAuthn helpers via `@left-curve/crypto`:
+
+```ts
+import {
+  createWebAuthnCredential,
+  requestWebAuthnSignature,
+  verifyWebAuthnSignature,
+} from "@left-curve/crypto"
+```
+
+These return raw P-256 signatures. Wire them into a custom `Signer` implementation that wraps the user's passkey for `signTx`. The SDK does not ship a built-in passkey signer — the wallet layer owns that.
+
+## Next
+
+- [Transactions](./transactions) — sign, broadcast, and poll a transfer
