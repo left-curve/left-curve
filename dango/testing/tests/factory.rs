@@ -756,7 +756,7 @@ async fn owner_can_reset_username() {
         .execute(
             &mut accounts.owner,
             contracts.account_factory,
-            &account_factory::ExecuteMsg::ResetUsername { user_index },
+            &account_factory::ExecuteMsg::ForceResetUsername { user_index },
             Coins::new(),
         )
         .await
@@ -800,7 +800,7 @@ async fn non_owner_cannot_reset_username() {
         .execute(
             &mut accounts.user2,
             contracts.account_factory,
-            &account_factory::ExecuteMsg::ResetUsername { user_index },
+            &account_factory::ExecuteMsg::ForceResetUsername { user_index },
             Coins::new(),
         )
         .await

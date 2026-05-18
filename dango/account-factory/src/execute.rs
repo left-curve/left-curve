@@ -120,7 +120,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterAccount {} => register_account(ctx),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
-        ExecuteMsg::ResetUsername { user_index } => reset_username(ctx, user_index),
+        ExecuteMsg::ForceResetUsername { user_index } => force_reset_username(ctx, user_index),
     }
 }
 
@@ -379,7 +379,7 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
     })?)
 }
 
-fn reset_username(ctx: MutableCtx, user_index: UserIndex) -> anyhow::Result<Response> {
+fn force_reset_username(ctx: MutableCtx, user_index: UserIndex) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"

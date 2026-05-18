@@ -112,7 +112,7 @@ pub enum ExecuteMsg {
     ///
     /// Only callable by the chain owner. After reset, the user can call
     /// `UpdateUsername` again to set a new custom username.
-    ResetUsername { user_index: UserIndex },
+    ForceResetUsername { user_index: UserIndex },
 }
 
 #[grug::derive(Serde, QueryRequest)]
