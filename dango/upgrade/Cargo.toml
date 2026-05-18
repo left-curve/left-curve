@@ -9,6 +9,7 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 
 [dependencies]
+dango-bank    = { workspace = true, features = ["library"] }
 dango-gateway = { workspace = true, features = ["library"] }
 dango-types   = { workspace = true }
 grug          = { workspace = true }

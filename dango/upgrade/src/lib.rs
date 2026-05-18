@@ -1,42 +1,20 @@
 use {
-    dango_gateway::{RATE_LIMITS, SUPPLY_SNAPSHOTS},
     dango_types::config::AppConfig,
-    grug::{Addr, BlockInfo, Denom, JsonDeExt, Map, StdResult, Storage, Uint128, addr},
+    grug::{Addr, BlockInfo, JsonDeExt, StdResult, Storage, addr},
     grug_app::{APP_CONFIG, AppResult, CHAIN_ID, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
 };
 
-const MAINNET_CHAIN_ID: &str = "dango-1";
-const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbea4f");
+mod legacy_gateway {
+    use grug::{Denom, Map, Uint128};
 
-const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
-const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
-
-/// Storage key the rate-limit-hardening release used for the per-denom
-/// draining outbound cap. The rolling-window release replaces it with
-/// `SUPPLY_SNAPSHOTS`, so the migration drops every entry behind this
-/// prefix.
-const OLD_OUTBOUND_QUOTAS: Map<&Denom, Uint128> = Map::new("outbound_quota");
-
-/// Mirror of the bank contract's supply storage so the migration can read
-/// the current supply per denom without going through the bank's query
-/// path (which isn't available from the migration context).
-const BANK_SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
+    /// Storage key the rate-limit-hardening release used for the per-denom
+    /// draining outbound cap. The rolling-window release replaces it with
+    /// `dango_gateway::SUPPLY_SNAPSHOTS`, so the migration drops every entry
+    /// behind this prefix.
+    pub const OUTBOUND_QUOTAS: Map<&Denom, Uint128> = Map::new("outbound_quota");
+}
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
-    // Find the address of the perps contract corresponding to the current chain.
-    let perps_address = {
-        let chain_id = CHAIN_ID.load(&storage)?;
-        match chain_id.as_str() {
-            MAINNET_CHAIN_ID => MAINNET_PERPS_ADDRESS,
-            TESTNET_CHAIN_ID => TESTNET_PERPS_ADDRESS,
-            _ => panic!("unknown chain id: {chain_id}"),
-        }
-    };
-
-    // Create the prefixed storage for the perps contract.
-    let _perps_storage =
-        StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &perps_address]);
-
     // Look up the bank and gateway addresses for the gateway rolling-window
     // migration. Reading from on-chain config keeps the migration portable
     // across mainnet, testnet, and devnet without a per-chain address table.
@@ -67,16 +45,40 @@ fn do_gateway_rolling_window_seed(
 ) -> StdResult<()> {
     // Wipe every `OUTBOUND_QUOTAS` entry. The rolling-window contract
     // doesn't read this prefix; leaving it behind would just be dead state.
-    OLD_OUTBOUND_QUOTAS.clear(gateway_storage, None, None);
+    legacy_gateway::OUTBOUND_QUOTAS.clear(gateway_storage, None, None);
 
-    let mut seeded = 0usize;
-    for denom in RATE_LIMITS.load(gateway_storage)?.keys() {
-        let supply = BANK_SUPPLIES.load(bank_storage, denom)?;
-        SUPPLY_SNAPSHOTS.save(gateway_storage, denom, &supply)?;
-        seeded += 1;
+    for denom in dango_gateway::RATE_LIMITS.load(gateway_storage)?.keys() {
+        let supply = dango_bank::SUPPLIES.load(bank_storage, denom)?;
+        dango_gateway::SUPPLY_SNAPSHOTS.save(gateway_storage, denom, &supply)?;
+
+        tracing::info!(%denom, %supply, "Seeded gateway supply snapshots");
     }
 
-    tracing::info!("Seeded gateway supply snapshots for {seeded} denom(s)");
+    Ok(())
+}
+
+// Unused in the current upgrade.
+fn _do_perps_upgrades(storage: Box<dyn Storage>) -> AppResult<()> {
+    const MAINNET_CHAIN_ID: &str = "dango-1";
+    const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbea4f");
+
+    const TESTNET_CHAIN_ID: &str = "dango-testnet-1";
+    const TESTNET_PERPS_ADDRESS: Addr = addr!("f6344c5e2792e8f9202c58a2d88fbbde4cd3142f");
+
+    // Find the address of the perps contract corresponding to the current chain.
+    let perps_address = {
+        let chain_id = CHAIN_ID.load(&storage)?;
+        match chain_id.as_str() {
+            MAINNET_CHAIN_ID => MAINNET_PERPS_ADDRESS,
+            TESTNET_CHAIN_ID => TESTNET_PERPS_ADDRESS,
+            _ => panic!("unknown chain id: {chain_id}"),
+        }
+    };
+
+    // Create the prefixed storage for the perps contract.
+    let _perps_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
+
+    // TODO: add actual upgrade logic here.
 
     Ok(())
 }
@@ -87,7 +89,8 @@ fn do_gateway_rolling_window_seed(
 mod tests {
     mod gateway_rolling_window {
         use {
-            super::super::{BANK_SUPPLIES, OLD_OUTBOUND_QUOTAS, do_gateway_rolling_window_seed},
+            super::super::{do_gateway_rolling_window_seed, legacy_gateway::OUTBOUND_QUOTAS},
+            dango_bank::SUPPLIES,
             dango_gateway::{RATE_LIMITS, SUPPLY_SNAPSHOTS},
             dango_types::gateway::RateLimit,
             grug::{Denom, MockStorage, Udec128, Uint128, btree_map},
@@ -115,18 +118,18 @@ mod tests {
                 })
                 .unwrap();
 
-            OLD_OUTBOUND_QUOTAS
+            OUTBOUND_QUOTAS
                 .save(&mut gateway, &usdc, &Uint128::new(123))
                 .unwrap();
-            OLD_OUTBOUND_QUOTAS
+            OUTBOUND_QUOTAS
                 .save(&mut gateway, &eth, &Uint128::new(456))
                 .unwrap();
 
             // Bank state mirrored from the bank contract's `supply` map.
-            BANK_SUPPLIES
+            SUPPLIES
                 .save(&mut bank, &usdc, &Uint128::new(100_000_000))
                 .unwrap();
-            BANK_SUPPLIES
+            SUPPLIES
                 .save(&mut bank, &eth, &Uint128::new(50_000_000))
                 .unwrap();
 
@@ -144,18 +147,8 @@ mod tests {
             );
 
             // The legacy OUTBOUND_QUOTAS map is empty.
-            assert!(
-                OLD_OUTBOUND_QUOTAS
-                    .may_load(&gateway, &usdc)
-                    .unwrap()
-                    .is_none()
-            );
-            assert!(
-                OLD_OUTBOUND_QUOTAS
-                    .may_load(&gateway, &eth)
-                    .unwrap()
-                    .is_none()
-            );
+            assert!(OUTBOUND_QUOTAS.may_load(&gateway, &usdc).unwrap().is_none());
+            assert!(OUTBOUND_QUOTAS.may_load(&gateway, &eth).unwrap().is_none());
         }
 
         /// A chain with no rate limits at all is a no-op: nothing reads,
