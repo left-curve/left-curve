@@ -72,6 +72,7 @@ impl SignData for RegisterUserData {
 pub struct InstantiateMsg {
     /// Code hash to be associated with the Dango account contract.
     pub account_code_hash: Hash256,
+
     /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A single-signature account will be created for each genesis user.
@@ -94,15 +95,19 @@ pub enum ExecuteMsg {
         /// will be registered in the perps contract.
         referrer: Option<UserIndex>,
     },
+
     /// Register a new account for an existing user.
     RegisterAccount {},
+
     /// Associate a new or disassociate an existing key with a username.
     UpdateKey { key_hash: Hash256, key: Op<Key> },
+
     /// Update the username.
     ///
     /// For now, we only support setting the username once when it's unset.
     /// We don't support changing the username when it's already set.
     UpdateUsername(Username),
+
     /// Reset a user's username back to the default `user_{index}` value.
     ///
     /// Only callable by the chain owner. After reset, the user can call
@@ -115,30 +120,37 @@ pub enum QueryMsg {
     /// Query the code hash associated with the Dango account contract.
     #[returns(Hash256)]
     CodeHash {},
+
     /// Query the next user index.
     #[returns(UserIndex)]
     NextUserIndex {},
+
     /// Query the next account index.
     #[returns(AccountIndex)]
     NextAccountIndex {},
+
     /// Query a single user by index or username.
     #[returns(User)]
     User(UserIndexOrName),
+
     /// Enumerate all users by indexes. Enumeration by usernames is not supported.
     #[returns(BTreeMap<UserIndex, User>)]
     Users {
         start_after: Option<UserIndex>,
         limit: Option<u32>,
     },
+
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account { address: Addr },
+
     /// Enumerate all accounts and addresses.
     #[returns(BTreeMap<Addr, Account>)]
     Accounts {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
+
     /// Query users associated with a given key hash.
     /// Useful if user forgot their username but still have access to the key.
     #[returns(Vec<User>)]
