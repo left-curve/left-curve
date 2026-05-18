@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
 import { AppRouter, router } from "./app.router";
+import { AppUpdater } from "./app.updater";
 import { AppProvider } from "@left-curve/foundation";
 import { Toaster, toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
       <DangoStoreProvider config={config}>
         <AppProvider toast={toast} navigate={(to, options) => router.navigate({ to, ...options })}>
           <AppRouter />
+          <AppUpdater />
           <RootModal />
           <Toaster />
         </AppProvider>
