@@ -138,10 +138,6 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 
-    /// Query the withdraw rate limits.
-    #[returns(BTreeMap<Denom, RateLimit>)]
-    RateLimits {},
-
     /// Given a `(bridge, remote)` tuple, find the reserve amount.
     #[returns(Uint128)]
     Reserve { bridge: Addr, remote: Remote },
@@ -174,6 +170,10 @@ pub enum QueryMsg {
         start_after: Option<(Addr, Denom)>,
         limit: Option<u32>,
     },
+
+    /// Query the withdraw rate limits.
+    #[returns(BTreeMap<Denom, RateLimit>)]
+    RateLimits {},
 
     /// Look up the rate-limit status for a denom: the supply snapshot, the
     /// derived cap, and the trailing-24h withdraw volume. Returns `None` if

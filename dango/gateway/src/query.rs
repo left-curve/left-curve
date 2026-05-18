@@ -25,10 +25,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_routes(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::RateLimits {} => {
-            let res = rate_limit::query_rate_limits(ctx)?;
-            res.to_json_value()
-        },
         QueryMsg::Reserve { bridge, remote } => {
             let res = query_reserve(ctx, bridge, remote)?;
             res.to_json_value()
@@ -51,6 +47,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::PersonalQuotas { start_after, limit } => {
             let res = query_personal_quotas(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::RateLimits {} => {
+            let res = rate_limit::query_rate_limits(ctx)?;
             res.to_json_value()
         },
         QueryMsg::RateLimitStatus { denom } => {
