@@ -301,6 +301,7 @@ fn record_withdraw(
 /// history to serve baseline lookups for the next 24h of withdraws.
 fn prune_old_volumes(storage: &mut dyn Storage, denom: &Denom, now: Timestamp) {
     let cutoff = now.saturating_sub(PRUNE_HORIZON);
+
     WITHDRAW_VOLUMES
         .prefix(denom)
         .clear(storage, None, Some(Bound::Exclusive(cutoff)));
