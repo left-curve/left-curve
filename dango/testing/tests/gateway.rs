@@ -2627,10 +2627,10 @@ async fn query_rate_limit_status() {
         })
         .should_succeed();
     assert_eq!(page.len(), 1);
-    assert_eq!(page[0].denom, usdc_denom);
-    assert_eq!(page[0].status.supply_snapshot, Uint128::new(100_000_000));
-    assert_eq!(page[0].status.cap, Uint128::new(10_000_000));
-    assert_eq!(page[0].status.used_in_last_24h, Uint128::new(3_000_000));
+    let status = page.get(&usdc_denom).expect("usdc rate-limited");
+    assert_eq!(status.supply_snapshot, Uint128::new(100_000_000));
+    assert_eq!(status.cap, Uint128::new(10_000_000));
+    assert_eq!(status.used_in_last_24h, Uint128::new(3_000_000));
 
     // After 24h + cron, the rolling sum drops back to zero.
     advance_to_next_day(&mut suite).await;

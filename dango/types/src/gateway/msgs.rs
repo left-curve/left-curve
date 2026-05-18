@@ -182,7 +182,7 @@ pub enum QueryMsg {
     RateLimitStatus { denom: Denom },
 
     /// Enumerate the rate-limit status for every rate-limited denom.
-    #[returns(Vec<RateLimitStatusItem>)]
+    #[returns(BTreeMap<Denom, RateLimitStatus>)]
     RateLimitStatuses {
         start_after: Option<Denom>,
         limit: Option<u32>,
@@ -226,10 +226,4 @@ pub struct RateLimitStatus {
     pub supply_snapshot: Uint128,
     pub cap: Uint128,
     pub used_in_last_24h: Uint128,
-}
-
-#[grug::derive(Serde)]
-pub struct RateLimitStatusItem {
-    pub denom: Denom,
-    pub status: RateLimitStatus,
 }

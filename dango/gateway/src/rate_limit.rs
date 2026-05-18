@@ -1,6 +1,6 @@
 use {
     anyhow::{anyhow, ensure},
-    dango_types::gateway::{RateLimit, RateLimitStatus, RateLimitStatusItem},
+    dango_types::gateway::{RateLimit, RateLimitStatus},
     grug::{
         Bound, DEFAULT_PAGE_LIMIT, Denom, Duration, ImmutableCtx, Inner, IsZero, Item, Map,
         MultiplyFraction, Number, NumberConst, Order, QuerierExt, QuerierWrapper, StdError,
@@ -200,7 +200,7 @@ pub fn query_rate_limit_statuses(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> StdResult<Vec<RateLimitStatusItem>> {
+) -> StdResult<BTreeMap<Denom, RateLimitStatus>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let page = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     let rate_limits = RATE_LIMITS.load(ctx.storage)?;
@@ -221,14 +221,11 @@ pub fn query_rate_limit_statuses(
 
             let used_in_last_24h = rolling_window_sum(ctx.storage, &denom, ctx.block.timestamp)?;
 
-            Ok(RateLimitStatusItem {
-                denom,
-                status: RateLimitStatus {
-                    supply_snapshot: supply,
-                    cap,
-                    used_in_last_24h,
-                },
-            })
+            Ok((denom, RateLimitStatus {
+                supply_snapshot: supply,
+                cap,
+                used_in_last_24h,
+            }))
         })
         .collect()
 }
