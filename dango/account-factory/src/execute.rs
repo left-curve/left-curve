@@ -14,7 +14,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, Coins, Hash256, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
-        Op, Response, StdResult, Storage, Tx, btree_map,
+        Op, QuerierExt, Response, StdResult, Storage, Tx, btree_map,
     },
 };
 
@@ -120,6 +120,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterAccount {} => register_account(ctx),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateUsername(username) => update_username(ctx, username),
+        ExecuteMsg::ForceResetUsername { user_index } => force_reset_username(ctx, user_index),
     }
 }
 
@@ -368,6 +369,24 @@ fn update_username(ctx: MutableCtx, username: Username) -> anyhow::Result<Respon
         "the username `{username}` is already associated with a user index"
     );
 
+    user.name = username.clone();
+
+    USERS.save(ctx.storage, user_index, &user)?;
+
+    Ok(Response::new().add_event(UsernameUpdated {
+        user_index,
+        username,
+    })?)
+}
+
+fn force_reset_username(ctx: MutableCtx, user_index: UserIndex) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    let mut user = USERS.load(ctx.storage, user_index)?;
+    let username = Username::default_for_index(user_index);
     user.name = username.clone();
 
     USERS.save(ctx.storage, user_index, &user)?;
