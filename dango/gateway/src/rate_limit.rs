@@ -250,16 +250,15 @@ fn refresh_supply_snapshots(storage: &mut dyn Storage, querier: QuerierWrapper) 
 fn rolling_window_sum(storage: &dyn Storage, denom: &Denom, now: Timestamp) -> StdResult<Uint128> {
     let latest = WITHDRAW_VOLUMES
         .prefix(denom)
-        .range(storage, None, None, Order::Descending)
+        .values(storage, None, None, Order::Descending)
         .next()
         .transpose()?
-        .map(|(_, v)| v)
         .unwrap_or(Uint128::ZERO);
 
     let baseline_ts = now.saturating_sub(ROLLING_WINDOW);
     let baseline = WITHDRAW_VOLUMES
         .prefix(denom)
-        .range(
+        .values(
             storage,
             None,
             Some(Bound::Inclusive(baseline_ts)),
@@ -267,7 +266,6 @@ fn rolling_window_sum(storage: &dyn Storage, denom: &Denom, now: Timestamp) -> S
         )
         .next()
         .transpose()?
-        .map(|(_, v)| v)
         .unwrap_or(Uint128::ZERO);
 
     Ok(latest.checked_sub(baseline)?)
@@ -287,10 +285,9 @@ fn record_withdraw(
 
     let latest = WITHDRAW_VOLUMES
         .prefix(denom)
-        .range(storage, None, None, Order::Descending)
+        .values(storage, None, None, Order::Descending)
         .next()
         .transpose()?
-        .map(|(_, v)| v)
         .unwrap_or_default();
 
     WITHDRAW_VOLUMES.save(
