@@ -1,18 +1,13 @@
 use {
-    crate::{
-        PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLY_SNAPSHOTS,
-        WITHDRAWAL_FEES, withdraw_volume,
-    },
+    crate::{PERSONAL_QUOTAS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES, rate_limit},
     dango_types::gateway::{
         PersonalQuota, QueryMsg, QueryPersonalQuotasResponseItem, QueryReservesResponseItem,
-        QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, RateLimit, RateLimitStatus,
-        RateLimitStatusItem, Remote,
+        QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, Remote,
     },
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
-        MultiplyFraction, Order, StdError, StdResult, Uint128,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
+        Uint128,
     },
-    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -31,7 +26,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
         QueryMsg::RateLimits {} => {
-            let res = query_rate_limits(ctx)?;
+            let res = rate_limit::query_rate_limits(ctx)?;
             res.to_json_value()
         },
         QueryMsg::Reserve { bridge, remote } => {
@@ -59,11 +54,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
         QueryMsg::RateLimitStatus { denom } => {
-            let res = query_rate_limit_status(ctx, denom)?;
+            let res = rate_limit::query_rate_limit_status(ctx, denom)?;
             res.to_json_value()
         },
         QueryMsg::RateLimitStatuses { start_after, limit } => {
-            let res = query_rate_limit_statuses(ctx, start_after, limit)?;
+            let res = rate_limit::query_rate_limit_statuses(ctx, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -97,10 +92,6 @@ fn query_routes(
         })
         .take(limit)
         .collect()
-}
-
-fn query_rate_limits(ctx: ImmutableCtx) -> StdResult<BTreeMap<Denom, RateLimit>> {
-    RATE_LIMITS.load(ctx.storage)
 }
 
 fn query_reserve(ctx: ImmutableCtx, bridge: Addr, remote: Remote) -> StdResult<Uint128> {
@@ -178,65 +169,5 @@ fn query_personal_quotas(
             Ok(QueryPersonalQuotasResponseItem { user, denom, quota })
         })
         .take(limit)
-        .collect()
-}
-
-fn query_rate_limit_status(ctx: ImmutableCtx, denom: Denom) -> StdResult<Option<RateLimitStatus>> {
-    let Some(supply) = SUPPLY_SNAPSHOTS.may_load(ctx.storage, &denom)? else {
-        return Ok(None);
-    };
-
-    let limit =
-        RATE_LIMITS
-            .load(ctx.storage)?
-            .get(&denom)
-            .copied()
-            .ok_or(StdError::data_not_found::<RateLimit>(
-                format!("rate_limit::{denom}").as_bytes(),
-            ))?;
-    let cap = supply.checked_mul_dec_floor(limit.into_inner())?;
-
-    let used_in_last_24h =
-        withdraw_volume::rolling_window_sum(ctx.storage, &denom, ctx.block.timestamp)?;
-
-    Ok(Some(RateLimitStatus {
-        supply_snapshot: supply,
-        cap,
-        used_in_last_24h,
-    }))
-}
-
-fn query_rate_limit_statuses(
-    ctx: ImmutableCtx,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<Vec<RateLimitStatusItem>> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let page = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-    let rate_limits = RATE_LIMITS.load(ctx.storage)?;
-
-    SUPPLY_SNAPSHOTS
-        .range(ctx.storage, start, None, Order::Ascending)
-        .take(page)
-        .map(|res| {
-            let (denom, supply) = res?;
-            let limit = rate_limits
-                .get(&denom)
-                .copied()
-                .ok_or(StdError::data_not_found::<RateLimit>(
-                    format!("rate_limit::{denom}").as_bytes(),
-                ))?;
-            let cap = supply.checked_mul_dec_floor(limit.into_inner())?;
-            let used_in_last_24h =
-                withdraw_volume::rolling_window_sum(ctx.storage, &denom, ctx.block.timestamp)?;
-            Ok(RateLimitStatusItem {
-                denom,
-                status: RateLimitStatus {
-                    supply_snapshot: supply,
-                    cap,
-                    used_in_last_24h,
-                },
-            })
-        })
         .collect()
 }

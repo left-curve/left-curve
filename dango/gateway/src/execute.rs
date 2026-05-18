@@ -1,8 +1,5 @@
 use {
-    crate::{
-        PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, SUPPLY_SNAPSHOTS,
-        WITHDRAWAL_FEES, withdraw_volume,
-    },
+    crate::{PERSONAL_QUOTAS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES, rate_limit},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
@@ -14,9 +11,8 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Denom, Inner, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        NumberConst, Op, Order, QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage,
-        SudoCtx, Uint128, btree_map, coins,
+        Addr, Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, NumberConst, Op, Order,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -24,7 +20,7 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     _set_routes(ctx.storage, msg.routes)?;
-    _set_rate_limits(ctx.storage, msg.rate_limits)?;
+    rate_limit::init(ctx.storage, msg.rate_limits)?;
     _set_withdrawal_fees(ctx.storage, msg.withdrawal_fees)?;
 
     Ok(Response::new())
@@ -97,30 +93,15 @@ fn set_rate_limits(
         "only the owner can set rate limits"
     );
 
-    let old_rate_limits = RATE_LIMITS.load(ctx.storage)?;
-
-    // Drop snapshot + rolling history for any denom the admin removed from the
-    // map. For denoms still rate-limited, seed a supply snapshot only when one
-    // is missing — existing snapshots are left untouched so a configured-limit
-    // change doesn't refresh the supply mid-window; the cron tick is the sole
-    // path that updates an existing snapshot.
-    for denom in old_rate_limits.keys() {
-        if !rate_limits.contains_key(denom) {
-            SUPPLY_SNAPSHOTS.remove(ctx.storage, denom);
-            withdraw_volume::clear_volumes(ctx.storage, denom)?;
-        }
-    }
-
-    for denom in rate_limits.keys() {
-        if !SUPPLY_SNAPSHOTS.has(ctx.storage, denom) {
-            let supply = ctx.querier.query_supply(denom.clone())?;
-            SUPPLY_SNAPSHOTS.save(ctx.storage, denom, &supply)?;
-        }
-    }
-
     // A 0% rate limit is a hard freeze: the global cap is zero, so it must
     // also revoke any personal quota that would otherwise let a user bypass
     // the freeze through their per-account allowance.
+    //
+    // Compute the frozen-denom set from the incoming map and run the
+    // revocation pass before delegating to `rate_limit::apply_admin_update`.
+    // Personal quotas are not rate-limit machinery and live outside the
+    // `rate_limit` module; keeping the revocation here means that module
+    // doesn't have to know about `PERSONAL_QUOTAS`.
     let frozen_denoms: BTreeSet<&Denom> = rate_limits
         .iter()
         .filter(|(_, limit)| limit.into_inner().is_zero())
@@ -139,31 +120,9 @@ fn set_rate_limits(
         }
     }
 
-    _set_rate_limits(ctx.storage, rate_limits)?;
+    rate_limit::apply_admin_update(ctx.storage, ctx.querier, rate_limits)?;
 
     Ok(Response::new())
-}
-
-fn _set_rate_limits(
-    storage: &mut dyn Storage,
-    rate_limits: BTreeMap<Denom, RateLimit>,
-) -> StdResult<()> {
-    RATE_LIMITS.save(storage, &rate_limits)?;
-
-    Ok(())
-}
-
-/// Refresh each rate-limited denom's supply snapshot from the bank's current
-/// supply. Called by the cron handler. The effective cap on the next withdraw
-/// is `supply_snapshot × current_limit`, so deposits between cron ticks cannot
-/// enlarge the cap.
-fn refresh_supply_snapshots(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResult<()> {
-    for denom in RATE_LIMITS.load(storage)?.keys() {
-        let supply = querier.query_supply(denom.clone())?;
-        SUPPLY_SNAPSHOTS.save(storage, denom, &supply)?;
-    }
-
-    Ok(())
 }
 
 fn set_withdrawal_fees(
@@ -339,38 +298,16 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     }
 
     // Check the trailing-24h rolling window against the cap and record the
-    // residue. A missing `SUPPLY_SNAPSHOTS` entry means the denom is not
-    // rate-limited at all and the rolling-window state is untouched. The cap
-    // is derived from the supply snapshot (frozen at last cron tick) times the
-    // currently-configured limit.
-    if !remaining.is_zero()
-        && let Some(supply) = SUPPLY_SNAPSHOTS.may_load(ctx.storage, &coin.denom)?
-    {
-        let limit = RATE_LIMITS
-            .load(ctx.storage)?
-            .get(&coin.denom)
-            .copied()
-            .ok_or_else(|| {
-                anyhow!(
-                    "supply snapshot present without matching rate limit for denom: {}",
-                    coin.denom
-                )
-            })?;
-        let cap = supply.checked_mul_dec_floor(limit.into_inner())?;
-        let used =
-            withdraw_volume::rolling_window_sum(ctx.storage, &coin.denom, ctx.block.timestamp)?;
-        let after = used.checked_add(remaining)?;
-        ensure!(
-            after <= cap,
-            "insufficient outbound quota! denom: {}, requested: {}, residue after personal quota: {}, rolling sum: {}, cap: {}",
-            coin.denom,
-            coin.amount,
-            remaining,
-            used,
-            cap,
-        );
-        withdraw_volume::record_withdraw(ctx.storage, &coin.denom, ctx.block.timestamp, remaining)?;
-    }
+    // residue. `enforce` short-circuits when the denom is not rate-limited
+    // (no `SUPPLY_SNAPSHOTS` entry) or when the residue is zero (the
+    // withdraw was fully covered by personal quota).
+    rate_limit::enforce(
+        ctx.storage,
+        &coin.denom,
+        ctx.block.timestamp,
+        coin.amount,
+        remaining,
+    )?;
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
 
@@ -417,11 +354,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    refresh_supply_snapshots(ctx.storage, ctx.querier)?;
-
-    for denom in RATE_LIMITS.load(ctx.storage)?.keys() {
-        withdraw_volume::prune_old_volumes(ctx.storage, denom, ctx.block.timestamp)?;
-    }
+    rate_limit::tick(ctx.storage, ctx.querier, ctx.block.timestamp)?;
 
     Ok(Response::new())
 }
