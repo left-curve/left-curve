@@ -77,7 +77,7 @@ pub fn apply_admin_update(
     for denom in old_limits.keys() {
         if !new_limits.contains_key(denom) {
             SUPPLY_SNAPSHOTS.remove(storage, denom);
-            clear_volumes(storage, denom)?;
+            clear_volumes(storage, denom);
         }
     }
 
@@ -157,7 +157,7 @@ pub fn tick(storage: &mut dyn Storage, querier: QuerierWrapper, now: Timestamp) 
     refresh_supply_snapshots(storage, querier)?;
 
     for denom in RATE_LIMITS.load(storage)?.keys() {
-        prune_old_volumes(storage, denom, now)?;
+        prune_old_volumes(storage, denom, now);
     }
 
     Ok(())
@@ -299,39 +299,15 @@ fn record_withdraw(
 
 /// Drop entries for `denom` strictly older than `now − 48h`. Keeps enough
 /// history to serve baseline lookups for the next 24h of withdraws.
-fn prune_old_volumes(storage: &mut dyn Storage, denom: &Denom, now: Timestamp) -> StdResult<()> {
+fn prune_old_volumes(storage: &mut dyn Storage, denom: &Denom, now: Timestamp) {
     let cutoff = now.saturating_sub(PRUNE_HORIZON);
-
-    let stale: Vec<Timestamp> = WITHDRAW_VOLUMES
+    WITHDRAW_VOLUMES
         .prefix(denom)
-        .range(
-            storage,
-            None,
-            Some(Bound::Exclusive(cutoff)),
-            Order::Ascending,
-        )
-        .map(|res| res.map(|(ts, _)| ts))
-        .collect::<StdResult<_>>()?;
-
-    for ts in stale {
-        WITHDRAW_VOLUMES.remove(storage, (denom, ts));
-    }
-
-    Ok(())
+        .clear(storage, None, Some(Bound::Exclusive(cutoff)));
 }
 
 /// Drop every entry for `denom`. Used when admin removes a denom from the
 /// rate-limit map so re-adding it later starts with a clean rolling window.
-fn clear_volumes(storage: &mut dyn Storage, denom: &Denom) -> StdResult<()> {
-    let keys: Vec<Timestamp> = WITHDRAW_VOLUMES
-        .prefix(denom)
-        .range(storage, None, None, Order::Ascending)
-        .map(|res| res.map(|(ts, _)| ts))
-        .collect::<StdResult<_>>()?;
-
-    for ts in keys {
-        WITHDRAW_VOLUMES.remove(storage, (denom, ts));
-    }
-
-    Ok(())
+fn clear_volumes(storage: &mut dyn Storage, denom: &Denom) {
+    WITHDRAW_VOLUMES.prefix(denom).clear(storage, None, None);
 }
