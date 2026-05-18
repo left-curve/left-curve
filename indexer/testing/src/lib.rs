@@ -16,8 +16,8 @@ use {
     core::str,
     futures_util::{sink::SinkExt, stream::StreamExt},
     indexer_httpd::{
-        context::FullContext, graphql::build_full_schema, server::config_app,
-        subscription_limiter::SubscriptionLimiter,
+        context::FullContext, graphql::build_full_schema, routes::graphql::GraphqlRequestTimeout,
+        server::config_app, subscription_limiter::SubscriptionLimiter,
     },
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
@@ -728,6 +728,9 @@ where
 {
     let app = App::new()
         .app_data(web::Data::new(SubscriptionLimiter::new(10, 5000)))
+        .app_data(web::Data::new(GraphqlRequestTimeout(Duration::from_secs(
+            30,
+        ))))
         .wrap(Logger::default())
         .wrap(Compress::default());
 
