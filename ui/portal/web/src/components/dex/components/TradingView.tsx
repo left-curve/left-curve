@@ -85,7 +85,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
       interval: "5" as TV.ResolutionString,
       locale: "en",
       library_path: tvLibraryPath,
-      custom_css_url: "/styles/tv-overrides.css",
+      custom_css_url: `${window.location.origin}/styles/tv-overrides.css`,
       theme,
       auto_save_delay: 1,
       datafeed,
