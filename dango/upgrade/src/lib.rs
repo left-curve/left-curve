@@ -1,11 +1,8 @@
 use {
-    dango_order_book::{Dimensionless, UsdValue},
+    dango_order_book::UsdValue,
     dango_perps::state::PARAM,
-    dango_types::{
-        config::AppConfig,
-        perps::{Param, RateSchedule},
-    },
-    grug::{Addr, BlockInfo, Duration, Item, JsonDeExt, StdResult, Storage, addr},
+    dango_types::{config::AppConfig, perps::Param},
+    grug::{Addr, BlockInfo, JsonDeExt, StdResult, Storage, addr},
     grug_app::{APP_CONFIG, AppResult, CHAIN_ID, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
 };
 
@@ -25,7 +22,9 @@ mod legacy_gateway {
 /// types of these structs.
 mod legacy_perps {
     use {
-        super::{Dimensionless, Duration, Item, RateSchedule, UsdValue},
+        dango_order_book::{Dimensionless, UsdValue},
+        dango_types::perps::RateSchedule,
+        grug::{Duration, Item},
         std::option::Option,
     };
 
@@ -58,6 +57,13 @@ mod legacy_perps {
 const MIGRATED_MIN_LIQUIDATION_VALUE: UsdValue = UsdValue::new_int(10);
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
+    do_gateway_upgrades(storage.clone())?;
+    do_perps_upgrades(storage)?;
+
+    Ok(())
+}
+
+fn do_gateway_upgrades(storage: Box<dyn Storage>) -> StdResult<()> {
     // Look up the bank and gateway addresses for the gateway rolling-window
     // migration. Reading from on-chain config keeps the migration portable
     // across mainnet, testnet, and devnet without a per-chain address table.
@@ -73,11 +79,7 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
         StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &gateway_address]);
     let bank_storage = StorageProvider::new(storage.clone(), &[CONTRACT_NAMESPACE, &bank_address]);
 
-    do_gateway_rolling_window_seed(&mut gateway_storage, &bank_storage)?;
-
-    do_perps_upgrades(storage)?;
-
-    Ok(())
+    do_gateway_rolling_window_seed(&mut gateway_storage, &bank_storage)
 }
 
 /// Drop the old draining-quota state and seed a supply snapshot for every
@@ -103,7 +105,7 @@ fn do_gateway_rolling_window_seed(
 }
 
 // Unused in the current upgrade.
-fn do_perps_upgrades(storage: Box<dyn Storage>) -> AppResult<()> {
+fn do_perps_upgrades(storage: Box<dyn Storage>) -> StdResult<()> {
     const MAINNET_CHAIN_ID: &str = "dango-1";
     const MAINNET_PERPS_ADDRESS: Addr = addr!("90bc84df68d1aa59a857e04ed529e9a26edbea4f");
 
@@ -123,9 +125,7 @@ fn do_perps_upgrades(storage: Box<dyn Storage>) -> AppResult<()> {
     // Create the prefixed storage for the perps contract.
     let mut perps_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &perps_address]);
 
-    do_min_liquidation_value_backfill(&mut perps_storage)?;
-
-    Ok(())
+    do_perps_min_liquidation_value_backfill(&mut perps_storage)
 }
 
 /// Read the legacy `Param` (without `min_liquidation_value`) and re-save it
@@ -137,7 +137,7 @@ fn do_perps_upgrades(storage: Box<dyn Storage>) -> AppResult<()> {
 /// legacy bytes fail to decode as the new `Param` (missing trailing field),
 /// and new bytes fail to decode as `LegacyParam` (trailing bytes). So
 /// `PARAM.load(...).is_ok()` is a reliable "already migrated" signal.
-fn do_min_liquidation_value_backfill(storage: &mut dyn Storage) -> StdResult<()> {
+fn do_perps_min_liquidation_value_backfill(storage: &mut dyn Storage) -> StdResult<()> {
     if PARAM.load(storage).is_ok() {
         tracing::info!("`Param` already in new schema; skipping min_liquidation_value backfill");
         return Ok(());
@@ -177,10 +177,95 @@ fn do_min_liquidation_value_backfill(storage: &mut dyn Storage) -> StdResult<()>
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
+mod gateway_upgrades {
+    use {
+        super::{do_gateway_rolling_window_seed, legacy_gateway::OUTBOUND_QUOTAS},
+        dango_bank::SUPPLIES,
+        dango_gateway::{RATE_LIMITS, SUPPLY_SNAPSHOTS},
+        dango_types::gateway::RateLimit,
+        grug::{Denom, MockStorage, Udec128, Uint128, btree_map},
+        std::str::FromStr,
+    };
+
+    fn denom(s: &str) -> Denom {
+        Denom::from_str(s).unwrap()
+    }
+
+    #[test]
+    fn seeds_snapshots_and_wipes_old_quotas() {
+        let mut gateway = MockStorage::new();
+        let mut bank = MockStorage::new();
+
+        let usdc = denom("bridge/usdc");
+        let eth = denom("bridge/eth");
+
+        // Pre-upgrade state: configured rate limits plus drained
+        // OUTBOUND_QUOTAS that the rolling-window release shouldn't read.
+        RATE_LIMITS
+            .save(&mut gateway, &btree_map! {
+                usdc.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+                eth.clone()  => RateLimit::new_unchecked(Udec128::new_percent(20)),
+            })
+            .unwrap();
+
+        OUTBOUND_QUOTAS
+            .save(&mut gateway, &usdc, &Uint128::new(123))
+            .unwrap();
+        OUTBOUND_QUOTAS
+            .save(&mut gateway, &eth, &Uint128::new(456))
+            .unwrap();
+
+        // Bank state mirrored from the bank contract's `supply` map.
+        SUPPLIES
+            .save(&mut bank, &usdc, &Uint128::new(100_000_000))
+            .unwrap();
+        SUPPLIES
+            .save(&mut bank, &eth, &Uint128::new(50_000_000))
+            .unwrap();
+
+        do_gateway_rolling_window_seed(&mut gateway, &bank).unwrap();
+
+        // Snapshots match the bank's current supply for every
+        // rate-limited denom.
+        assert_eq!(
+            SUPPLY_SNAPSHOTS.load(&gateway, &usdc).unwrap(),
+            Uint128::new(100_000_000),
+        );
+        assert_eq!(
+            SUPPLY_SNAPSHOTS.load(&gateway, &eth).unwrap(),
+            Uint128::new(50_000_000),
+        );
+
+        // The legacy OUTBOUND_QUOTAS map is empty.
+        assert!(OUTBOUND_QUOTAS.may_load(&gateway, &usdc).unwrap().is_none());
+        assert!(OUTBOUND_QUOTAS.may_load(&gateway, &eth).unwrap().is_none());
+    }
+
+    /// A chain with no rate limits at all is a no-op: nothing reads,
+    /// nothing writes, and OUTBOUND_QUOTAS stays empty.
+    #[test]
+    fn empty_rate_limits_is_noop() {
+        let mut gateway = MockStorage::new();
+        let bank = MockStorage::new();
+
+        RATE_LIMITS.save(&mut gateway, &btree_map! {}).unwrap();
+
+        do_gateway_rolling_window_seed(&mut gateway, &bank).unwrap();
+
+        assert_eq!(
+            SUPPLY_SNAPSHOTS
+                .range(&gateway, None, None, grug::Order::Ascending)
+                .count(),
+            0,
+        );
+    }
+}
+
+#[cfg(test)]
+mod perps_upgrades {
     use {
         super::{
-            MIGRATED_MIN_LIQUIDATION_VALUE, do_min_liquidation_value_backfill,
+            MIGRATED_MIN_LIQUIDATION_VALUE, do_perps_min_liquidation_value_backfill,
             legacy_perps::{LEGACY_PARAM, LegacyParam},
         },
         dango_order_book::{Dimensionless, UsdValue},
@@ -229,7 +314,7 @@ mod tests {
         let legacy = populated_legacy_param();
         LEGACY_PARAM.save(&mut storage, &legacy).unwrap();
 
-        do_min_liquidation_value_backfill(&mut storage).unwrap();
+        do_perps_min_liquidation_value_backfill(&mut storage).unwrap();
 
         let migrated = PARAM.load(&storage).unwrap();
         assert_eq!(
@@ -271,100 +356,16 @@ mod tests {
             .save(&mut storage, &populated_legacy_param())
             .unwrap();
 
-        do_min_liquidation_value_backfill(&mut storage).unwrap();
+        do_perps_min_liquidation_value_backfill(&mut storage).unwrap();
 
         // Operator hand-tunes the floor after the migration.
         let mut tuned = PARAM.load(&storage).unwrap();
         tuned.min_liquidation_value = UsdValue::new_int(42);
         PARAM.save(&mut storage, &tuned).unwrap();
 
-        do_min_liquidation_value_backfill(&mut storage).unwrap();
+        do_perps_min_liquidation_value_backfill(&mut storage).unwrap();
 
         let after = PARAM.load(&storage).unwrap();
         assert_eq!(after.min_liquidation_value, UsdValue::new_int(42));
-    }
-
-    mod gateway_rolling_window {
-        use {
-            super::super::{do_gateway_rolling_window_seed, legacy_gateway::OUTBOUND_QUOTAS},
-            dango_bank::SUPPLIES,
-            dango_gateway::{RATE_LIMITS, SUPPLY_SNAPSHOTS},
-            dango_types::gateway::RateLimit,
-            grug::{Denom, MockStorage, Udec128, Uint128, btree_map},
-            std::str::FromStr,
-        };
-
-        fn denom(s: &str) -> Denom {
-            Denom::from_str(s).unwrap()
-        }
-
-        #[test]
-        fn seeds_snapshots_and_wipes_old_quotas() {
-            let mut gateway = MockStorage::new();
-            let mut bank = MockStorage::new();
-
-            let usdc = denom("bridge/usdc");
-            let eth = denom("bridge/eth");
-
-            // Pre-upgrade state: configured rate limits plus drained
-            // OUTBOUND_QUOTAS that the rolling-window release shouldn't read.
-            RATE_LIMITS
-                .save(&mut gateway, &btree_map! {
-                    usdc.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
-                    eth.clone()  => RateLimit::new_unchecked(Udec128::new_percent(20)),
-                })
-                .unwrap();
-
-            OUTBOUND_QUOTAS
-                .save(&mut gateway, &usdc, &Uint128::new(123))
-                .unwrap();
-            OUTBOUND_QUOTAS
-                .save(&mut gateway, &eth, &Uint128::new(456))
-                .unwrap();
-
-            // Bank state mirrored from the bank contract's `supply` map.
-            SUPPLIES
-                .save(&mut bank, &usdc, &Uint128::new(100_000_000))
-                .unwrap();
-            SUPPLIES
-                .save(&mut bank, &eth, &Uint128::new(50_000_000))
-                .unwrap();
-
-            do_gateway_rolling_window_seed(&mut gateway, &bank).unwrap();
-
-            // Snapshots match the bank's current supply for every
-            // rate-limited denom.
-            assert_eq!(
-                SUPPLY_SNAPSHOTS.load(&gateway, &usdc).unwrap(),
-                Uint128::new(100_000_000),
-            );
-            assert_eq!(
-                SUPPLY_SNAPSHOTS.load(&gateway, &eth).unwrap(),
-                Uint128::new(50_000_000),
-            );
-
-            // The legacy OUTBOUND_QUOTAS map is empty.
-            assert!(OUTBOUND_QUOTAS.may_load(&gateway, &usdc).unwrap().is_none());
-            assert!(OUTBOUND_QUOTAS.may_load(&gateway, &eth).unwrap().is_none());
-        }
-
-        /// A chain with no rate limits at all is a no-op: nothing reads,
-        /// nothing writes, and OUTBOUND_QUOTAS stays empty.
-        #[test]
-        fn empty_rate_limits_is_noop() {
-            let mut gateway = MockStorage::new();
-            let bank = MockStorage::new();
-
-            RATE_LIMITS.save(&mut gateway, &btree_map! {}).unwrap();
-
-            do_gateway_rolling_window_seed(&mut gateway, &bank).unwrap();
-
-            assert_eq!(
-                SUPPLY_SNAPSHOTS
-                    .range(&gateway, None, None, grug::Order::Ascending)
-                    .count(),
-                0,
-            );
-        }
     }
 }
