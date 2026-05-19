@@ -1,21 +1,12 @@
-import { Direction } from "@left-curve/types";
 import { Decimal } from "./index.js";
 
-import type { RateSchedule, Trade, WithAmount, WithDecimals, WithPrice } from "@left-curve/types";
+import type { RateSchedule, WithAmount, WithDecimals, WithPrice } from "@left-curve/types";
 import { formatNumber, type FormatNumberOptions, formatUnits, parseUnits } from "./formatters.js";
 
 export function formatOrderId(id: string) {
   return Decimal(id).gte("9223372036854775807")
     ? Decimal("18446744073709551615").minus(id).toString()
     : id;
-}
-
-export function calculateTradeSize(trade: Trade, decimals: number) {
-  if (trade.direction === Direction.Buy) {
-    return Decimal(trade.filledBase).div(Decimal(10).pow(decimals));
-  }
-
-  return Decimal(trade.filledQuote).div(trade.clearingPrice).div(Decimal(10).pow(decimals));
 }
 
 export function calculateFees(

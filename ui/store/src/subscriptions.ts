@@ -159,22 +159,6 @@ const accountSubscriptionExecutor: SubscriptionExecutor<"account"> = ({
   });
 };
 
-const candlesSubscriptionExecutor: SubscriptionExecutor<"candles"> = ({
-  client,
-  params,
-  getListeners,
-  onError,
-}) => {
-  return client.candlesSubscription({
-    ...params,
-    next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
-    },
-    error: onError,
-  });
-};
-
 const perpsCandlesSubscriptionExecutor: SubscriptionExecutor<"perpsCandles"> = ({
   client,
   params,
@@ -182,22 +166,6 @@ const perpsCandlesSubscriptionExecutor: SubscriptionExecutor<"perpsCandles"> = (
   onError,
 }) => {
   return client.perpsCandlesSubscription({
-    ...params,
-    next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
-    },
-    error: onError,
-  });
-};
-
-const tradesSubscriptionExecutor: SubscriptionExecutor<"trades"> = ({
-  client,
-  params,
-  getListeners,
-  onError,
-}) => {
-  return client.tradesSubscription({
     ...params,
     next: (event) => {
       const currentListeners = getListeners();
@@ -244,21 +212,6 @@ const queryAppSubscriptionExecutor: SubscriptionExecutor<"queryApp"> = ({
   });
 };
 
-const allPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPairStats"> = ({
-  client,
-  getListeners,
-  onError,
-}) => {
-  return client.allPairStatsSubscription({
-    httpInterval: 5_000,
-    next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
-    },
-    error: onError,
-  });
-};
-
 const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairStats"> = ({
   client,
   getListeners,
@@ -277,15 +230,12 @@ const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairS
 const SubscriptionExecutors = {
   account: accountSubscriptionExecutor,
   block: blockSubscriptionExecutor,
-  candles: candlesSubscriptionExecutor,
   events: eventsSubscriptionExecutor,
   eventsByAddresses: eventsByAddressesSubscriptionExecutor,
   perpsCandles: perpsCandlesSubscriptionExecutor,
   perpsTrades: perpsTradesSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
-  trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
   queryApp: queryAppSubscriptionExecutor,
-  allPairStats: allPairStatsSubscriptionExecutor,
   allPerpsPairStats: allPerpsPairStatsSubscriptionExecutor,
 };
