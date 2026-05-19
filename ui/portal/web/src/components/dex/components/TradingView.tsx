@@ -94,7 +94,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
         foregroundColor: "#F9A9B2",
       },
       time_frames: [],
-      enabled_features: ["seconds_resolution", "iframe_loading_same_origin"],
+      enabled_features: ["seconds_resolution"],
       disabled_features: [
         "legend_inplace_edit",
         "display_market_status",

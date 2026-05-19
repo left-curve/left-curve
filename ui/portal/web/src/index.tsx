@@ -41,14 +41,24 @@ if (!window.location.origin.includes("localhost") && "serviceWorker" in navigato
   });
 
   navigator.serviceWorker.register("/service-worker.js").then((registration) => {
-    if (registration.waiting) notifyUpdate(registration);
+    const handleInstalledWorker = (worker: ServiceWorker) => {
+      void getWorkerCommit(worker).then((swCommit) => {
+        if (swCommit && swCommit === import.meta.env.GIT_COMMIT) {
+          worker.postMessage({ type: "SKIP_WAITING" });
+        } else {
+          notifyUpdate(registration);
+        }
+      });
+    };
+
+    if (registration.waiting) handleInstalledWorker(registration.waiting);
 
     registration.addEventListener("updatefound", () => {
       const newWorker = registration.installing;
       if (!newWorker) return;
       newWorker.addEventListener("statechange", () => {
         if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-          notifyUpdate(registration);
+          handleInstalledWorker(newWorker);
         }
       });
     });
@@ -63,6 +73,18 @@ if (!window.location.origin.includes("localhost") && "serviceWorker" in navigato
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     });
+  });
+}
+
+function getWorkerCommit(worker: ServiceWorker): Promise<string | null> {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = window.setTimeout(() => resolve(null), 1000);
+    channel.port1.onmessage = (event) => {
+      window.clearTimeout(timer);
+      resolve(typeof event.data?.commit === "string" ? event.data.commit : null);
+    };
+    worker.postMessage({ type: "GET_COMMIT" }, [channel.port2]);
   });
 }
 

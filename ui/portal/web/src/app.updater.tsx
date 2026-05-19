@@ -1,54 +1,65 @@
-import { Button, IconTools } from "@left-curve/applets-kit";
-import { useState, useSyncExternalStore } from "react";
+import { Button } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
+import { useEffect, useSyncExternalStore } from "react";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-type Listener = () => void;
+type UpdateState = { registration: ServiceWorkerRegistration; version: number };
 
-let registration: ServiceWorkerRegistration | null = null;
-const listeners = new Set<Listener>();
+let current: UpdateState | null = null;
+const listeners = new Set<() => void>();
 
-export function notifyUpdate(next: ServiceWorkerRegistration): void {
-  registration = next;
+export function notifyUpdate(registration: ServiceWorkerRegistration): void {
+  current = { registration, version: (current?.version ?? 0) + 1 };
   for (const listener of listeners) listener();
 }
 
-function subscribe(listener: Listener): () => void {
+function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-function getSnapshot(): ServiceWorkerRegistration | null {
-  return registration;
+function getSnapshot(): UpdateState | null {
+  return current;
 }
 
+const TOAST_ID = "app-update";
+
 export const AppUpdater: React.FC = () => {
-  const reg = useSyncExternalStore(subscribe, getSnapshot, () => null);
-  const [isLoading, setIsLoading] = useState(false);
+  const update = useSyncExternalStore(subscribe, getSnapshot, () => null);
+  const { toast } = useApp();
 
-  if (!reg) return null;
+  useEffect(() => {
+    if (!update) return;
+    const sw = update.registration.waiting;
+    if (!sw) return;
+    toast.dismiss(TOAST_ID);
+    toast.warning(
+      {
+        title: m["appUpdate.title"](),
+        description: ({ id }) => (
+          <div className="text-tertiary-500 diatype-xs-medium">
+            <span>{m["appUpdate.description"]()}</span>
+            <Button
+              as="span"
+              variant="link"
+              size="xs"
+              className="min-w-20"
+              onClick={() => {
+                sw.postMessage({ type: "SKIP_WAITING" });
+                toast.dismiss(id);
+              }}
+            >
+              {m["appUpdate.updateButton"]()}
+            </Button>
+          </div>
+        ),
+      },
+      { id: TOAST_ID, duration: Number.POSITIVE_INFINITY },
+    );
+  }, [update, toast]);
 
-  const updateApp = () => {
-    setIsLoading(true);
-    reg.waiting?.postMessage({ type: "SKIP_WAITING" });
-  };
-
-  return (
-    <div className="fixed bottom-5 right-5 flex flex-col bg-surface-primary-rice rounded-xl z-50">
-      <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-red-bean-100 flex items-center justify-center text-red-bean-600">
-          <IconTools />
-        </div>
-        <div className="flex flex-col gap-2 max-w-md">
-          <h3 className="h4-bold text-primary-900">{m["appUpdate.title"]()}</h3>
-          <p className="text-tertiary-500 diatype-m-regular">{m["appUpdate.description"]()}</p>
-        </div>
-      </div>
-      <Button className="min-w-32" onClick={updateApp} isLoading={isLoading}>
-        {m["appUpdate.updateButton"]()}
-      </Button>
-    </div>
-  );
+  return null;
 };
