@@ -10,12 +10,9 @@ use {
     std::time::Instant,
 };
 
-pub mod candles;
-pub mod pair_stats;
 pub mod perps_candles;
 pub mod perps_fees;
 pub mod perps_pair_stats;
-pub mod trades;
 
 #[derive(Clone)]
 pub struct Indexer {
@@ -59,6 +56,8 @@ impl Indexer {
             .chain(crate::migrations::perps_fees::migrations().iter())
             .chain(crate::migrations::trade::Migration::migrations().iter())
         {
+            // Spot DEX migrations (candle_builder, trade) are still applied to
+            // preserve the production ClickHouse schema with historical data.
             clickhouse_client
                 .query(migration)
                 .execute()
@@ -88,13 +87,6 @@ impl Indexer {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
             return Ok(());
-        }
-
-        let candle_generator = candles::generator::CandleGenerator::new(self.context.clone());
-
-        if let Err(_err) = candle_generator.save_all_candles().await {
-            #[cfg(feature = "tracing")]
-            tracing::error!(err = %_err, "Failed to save candles");
         }
 
         let perps_candle_generator =
@@ -165,38 +157,20 @@ impl Indexer {
             .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
         try_join!(
-            Self::store_candles(&app_cfg.addresses.dex, block, &context),
-            Self::store_trades(&app_cfg.addresses.dex, block, &context),
             Self::store_perps_candles(&app_cfg.addresses.perps, block, &context),
             Self::store_perps_fees(&app_cfg.addresses.perps, block, &context)
         )
         .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
 
-        // Refresh pair-stats caches so subscription consumers read from memory.
+        // Refresh perps pair-stats cache so subscription consumers read from memory.
         let clickhouse_client = context.clickhouse_client();
-        let (pair_res, perps_res) = tokio::join!(
-            async {
-                context
-                    .pair_stats_cache
-                    .write()
-                    .await
-                    .refresh(clickhouse_client)
-                    .await
-            },
-            async {
-                context
-                    .perps_pair_stats_cache
-                    .write()
-                    .await
-                    .refresh(clickhouse_client)
-                    .await
-            },
-        );
+        let perps_res = context
+            .perps_pair_stats_cache
+            .write()
+            .await
+            .refresh(clickhouse_client)
+            .await;
 
-        if let Err(_err) = pair_res {
-            #[cfg(feature = "tracing")]
-            tracing::error!(err = %_err, block_height, "Failed to refresh pair stats cache");
-        }
         if let Err(_err) = perps_res {
             #[cfg(feature = "tracing")]
             tracing::error!(err = %_err, block_height, "Failed to refresh perps pair stats cache");

@@ -43,9 +43,6 @@ enum SubCmd {
     /// Start the metrics HTTP server
     MetricsHttpd,
 
-    /// Verify integrity of candle data in ClickHouse
-    CheckCandles,
-
     /// Sync the indexer block cache to S3
     S3Sync {
         /// Wallclock ceiling for the whole sync, in seconds.
@@ -154,20 +151,6 @@ impl IndexerCmd {
                     metrics_handler,
                 )
                 .await?;
-            },
-            SubCmd::CheckCandles => {
-                let cfg: Config = parse_config(app_dir.config_file())?;
-
-                let clickhouse_context = indexer_clickhouse::context::Context::new(
-                    cfg.indexer.clickhouse.url,
-                    cfg.indexer.clickhouse.database,
-                    cfg.indexer.clickhouse.user,
-                    cfg.indexer.clickhouse.password,
-                );
-
-                let clickhouse_indexer = indexer_clickhouse::Indexer::new(clickhouse_context);
-
-                clickhouse_indexer.check_all().await?;
             },
             SubCmd::S3Sync { timeout_secs } => {
                 let cfg: Config = parse_config(app_dir.config_file())?;

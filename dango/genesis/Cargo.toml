@@ -10,14 +10,13 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dango-dex/metrics", "dango-oracle/metrics", "dango-perps/metrics", "dango-taxman/metrics"]
+metrics = ["dango-oracle/metrics", "dango-perps/metrics", "dango-taxman/metrics"]
 
 [dependencies]
 anyhow                = { workspace = true }
 dango-account         = { workspace = true, features = ["library"] }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-bank            = { workspace = true, features = ["library"] }
-dango-dex             = { workspace = true, features = ["library", "tracing"] }
 dango-gateway         = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-order-book      = { workspace = true }

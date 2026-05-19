@@ -19,19 +19,19 @@ pub struct PerpsPairPrice {
     #[cfg_attr(feature = "async-graphql", graphql(name = "pairId"))]
     pub pair_id: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "crate::entities::pair_price::dec")]
+    #[serde(with = "dec")]
     pub high: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "crate::entities::pair_price::dec")]
+    #[serde(with = "dec")]
     pub low: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "crate::entities::pair_price::dec")]
+    #[serde(with = "dec")]
     pub close: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "crate::entities::pair_price::dec")]
+    #[serde(with = "dec")]
     pub volume: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "crate::entities::pair_price::dec")]
+    #[serde(with = "dec")]
     pub volume_usd: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
@@ -108,5 +108,39 @@ impl PerpsPairPrice {
             .bind(since.timestamp_micros())
             .fetch_all()
             .await?)
+    }
+}
+
+pub mod dec {
+    use {
+        grug::Inner,
+        serde::{
+            de::{self, Deserializer},
+            ser::{Serialize, Serializer},
+        },
+    };
+
+    pub fn serialize<S, U, const D: u32>(
+        dec: &grug::Dec<U, D>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        U: Serialize,
+    {
+        dec.inner().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, U, const S: u32>(
+        deserializer: D,
+    ) -> Result<grug::Dec<U, S>, D::Error>
+    where
+        D: Deserializer<'de>,
+        U: de::Deserialize<'de>,
+    {
+        let inner: U = <_ as de::Deserialize<'de>>::deserialize(deserializer)?;
+        let uint = grug::Int::new(inner);
+        let dec = grug::Dec::raw(uint);
+        Ok(dec)
     }
 }

@@ -11,7 +11,7 @@
 
 ---
 
-# Perp DEX
+# Perpetual Futures
 
 - [Margin](perps/1-margin.md)
 - [Order matching](perps/2-order-matching.md)

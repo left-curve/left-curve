@@ -523,9 +523,7 @@ impl SubscriptionVariables for indexer_graphql_types::subscribe_transactions::Va
 impl SubscriptionVariables for indexer_graphql_types::subscribe_messages::Variables {}
 impl SubscriptionVariables for indexer_graphql_types::subscribe_events::Variables {}
 impl SubscriptionVariables for indexer_graphql_types::subscribe_event_by_addresses::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_candles::Variables {}
 impl SubscriptionVariables for indexer_graphql_types::subscribe_perps_candles::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_trades::Variables {}
 impl SubscriptionVariables for indexer_graphql_types::subscribe_perps_trades::Variables {}
 impl SubscriptionVariables for indexer_graphql_types::subscribe_query_app::Variables {}
 impl SubscriptionVariables for indexer_graphql_types::subscribe_query_store::Variables {}

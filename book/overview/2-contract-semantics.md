@@ -230,7 +230,7 @@ fn checked_div<Q1, U1, D1>(self, rhs: Number<Q1, U1, D1>)
     -> MathResult<Number<Q - Q1, U - U1, D - D1>>;
 ```
 
-Key type aliases used throughout the perps and DEX contracts:
+Key type aliases used throughout the perps contracts:
 
 | Alias            | Dimensions (Q, U, D) | Meaning                        |
 | ---------------- | -------------------- | ------------------------------ |
@@ -498,7 +498,7 @@ storage and execution paths as production.
 ### Dango-specific test suite
 
 `dango/testing/` extends the base suite with helpers for deploying the full Dango
-contract system (bank, taxman, accounts, oracle, DEX, perps) in a single genesis
+contract system (bank, taxman, accounts, oracle, perps) in a single genesis
 block. This enables end-to-end tests that exercise inter-contract interactions.
 
 ## 10. Procedural Macros
