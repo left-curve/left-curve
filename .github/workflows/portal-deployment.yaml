@@ -152,15 +152,14 @@ jobs:
         run: rm -rf ./ui/portal/web/build/static
 
       - name: Uploading to Cloudflare Pages
-        uses: cloudflare/pages-action@f0a1cd58cd66095dee69bfa18fa5efd1dde93bca # v1
+        uses: cloudflare/wrangler-action@v3
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
         with:
-          wranglerVersion: "3"
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
-          projectName: dango-portal
-          directory: ./ui/portal/web/build
+          command: pages deploy ./ui/portal/web/build --project-name=dango-portal --branch="${BRANCH_NAME##*/}"
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${GITHUB_REF##*/}
 
       - name: Save pnpm cache
         if: github.event_name == 'push'
