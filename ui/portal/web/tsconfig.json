@@ -11,7 +11,7 @@
     "noEmit": true
   },
   "include": ["**/*.ts", "**/*.tsx", "env.d.ts", "../../foundation/tailwind/config.ts"],
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "functions", "build"],
   "references": [
     {
       "path": "../../applets/kit"

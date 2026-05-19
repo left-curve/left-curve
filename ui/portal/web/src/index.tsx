@@ -32,9 +32,14 @@ if (SENTRY_DSN && SENTRY_ENV) {
 
 if (!window.location.origin.includes("localhost") && "serviceWorker" in navigator) {
   const initiallyControlled = !!navigator.serviceWorker.controller;
+  let silentActivation = false;
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (!initiallyControlled) return;
+    if (silentActivation) {
+      silentActivation = false;
+      return;
+    }
     if (refreshing) return;
     refreshing = true;
     window.location.reload();
@@ -44,6 +49,7 @@ if (!window.location.origin.includes("localhost") && "serviceWorker" in navigato
     const handleInstalledWorker = (worker: ServiceWorker) => {
       void getWorkerCommit(worker).then((swCommit) => {
         if (swCommit && swCommit === import.meta.env.GIT_COMMIT) {
+          silentActivation = true;
           worker.postMessage({ type: "SKIP_WAITING" });
         } else {
           notifyUpdate(registration);
