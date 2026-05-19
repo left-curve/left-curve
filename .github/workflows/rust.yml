@@ -1487,7 +1487,7 @@ jobs:
           echo "Dango /status chain_id:"
           curl -sSf "http://localhost:$DANGO_PORT/status" | jq -r '.result.node_info.network'
           echo "Frontend config.js chain id snippet:"
-          curl -sSf "$FRONTEND_URL/static/js/config.js" | grep -o '"id":"[^"]*"' | head -n1 || true
+          curl -sSf "$FRONTEND_URL/config.js" | grep -o '"id":"[^"]*"' | head -n1 || true
           echo "Frontend /up status code:"
           curl -sS -o /dev/null -w "%{http_code}\n" "$FRONTEND_URL/up"
           cd ..
