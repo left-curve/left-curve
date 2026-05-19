@@ -152,7 +152,7 @@ jobs:
         run: rm -rf ./ui/portal/web/build/static
 
       - name: Uploading to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         env:
           BRANCH_NAME: ${{ github.ref_name }}
         with:
