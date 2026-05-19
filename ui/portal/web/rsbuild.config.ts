@@ -352,6 +352,7 @@ export default defineConfig({
       );
 
       config.devtool = "source-map";
+
       return config;
     },
   },
