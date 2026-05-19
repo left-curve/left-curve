@@ -3,7 +3,11 @@ use {
     crate::{
         context::FullContext,
         middlewares::shutdown::ShutdownMiddleware,
-        routes::{self, graphql::graphql_route, index::index},
+        routes::{
+            self,
+            graphql::{GraphqlRequestTimeout, graphql_route},
+            index::index,
+        },
         subscription_limiter::SubscriptionLimiter,
     },
     actix_cors::Cors,
@@ -16,7 +20,10 @@ use {
     async_graphql::{EmptyMutation, EmptySubscription},
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
-    std::sync::{Arc, atomic::AtomicBool, mpsc},
+    std::{
+        sync::{Arc, atomic::AtomicBool, mpsc},
+        time::Duration,
+    },
 };
 #[cfg(feature = "metrics")]
 use {crate::middlewares::metrics::init_httpd_metrics, actix_web_metrics::ActixWebMetricsBuilder};
@@ -94,6 +101,10 @@ pub async fn run_server(
         httpd_config.max_subscriptions_global,
     );
 
+    let graphql_request_timeout = GraphqlRequestTimeout(Duration::from_secs(
+        httpd_config.graphql_request_timeout_secs,
+    ));
+
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     let shutdown_flag_clone = shutdown_flag.clone();
     let server = HttpServer::new(move || {
@@ -127,6 +138,7 @@ pub async fn run_server(
         let app = app.wrap(metrics.clone());
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
+            .app_data(web::Data::new(graphql_request_timeout))
             .configure(config_app(context.clone(), graphql_schema.clone()))
     })
     .workers(httpd_config.workers)
@@ -189,6 +201,10 @@ pub async fn run_minimal_server(
         httpd_config.max_subscriptions_global,
     );
 
+    let graphql_request_timeout = GraphqlRequestTimeout(Duration::from_secs(
+        httpd_config.graphql_request_timeout_secs,
+    ));
+
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     let shutdown_flag_clone = shutdown_flag.clone();
     HttpServer::new(move || {
@@ -222,6 +238,7 @@ pub async fn run_minimal_server(
         let app = app.wrap(metrics.clone());
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
+            .app_data(web::Data::new(graphql_request_timeout))
             .service(crate::routes::index::index)
             .service(crate::routes::index::minimal_up)
             .service(crate::routes::index::requester_ip)

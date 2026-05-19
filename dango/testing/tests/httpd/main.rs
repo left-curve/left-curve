@@ -6,9 +6,11 @@ use {
         web,
     },
     indexer_httpd::{
-        graphql::build_full_schema, server::config_app, subscription_limiter::SubscriptionLimiter,
+        graphql::build_full_schema, routes::graphql::GraphqlRequestTimeout, server::config_app,
+        subscription_limiter::SubscriptionLimiter,
     },
     serde::{Serialize, de::DeserializeOwned},
+    std::time::Duration,
 };
 
 // Re-export PaginationDirection from indexer_testing
@@ -48,6 +50,9 @@ pub fn build_actix_app(
 
     App::new()
         .app_data(web::Data::new(SubscriptionLimiter::new(10, 5000)))
+        .app_data(web::Data::new(GraphqlRequestTimeout(Duration::from_secs(
+            30,
+        ))))
         .app_data(web::Data::new(dango_httpd_context.clone()))
         .app_data(web::Data::new(dango_httpd_context.clone()))
         .app_data(web::Data::new(graphql_schema.clone()))
