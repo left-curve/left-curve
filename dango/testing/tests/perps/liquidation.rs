@@ -337,6 +337,255 @@ async fn liquidation_on_order_book() {
     );
 }
 
+/// Covers: dust-snap during liquidation — when the deficit-driven close
+/// would leave a remainder smaller than `pair_param.min_order_size`, the
+/// whole position is closed instead.
+///
+/// Same fixture as `liquidation_on_order_book` plus:
+/// - Pair param configured with `min_order_size = $5,000`.
+/// - Bidder posts a 5 ETH bid (enough to absorb the full close, not just
+///   the deficit-driven partial).
+///
+/// Without the snap, deficit-only close would be ~1.689656 ETH, leaving
+/// ~3.310344 ETH @ $1,450 ≈ $4,800 of dust position. $4,800 < $5,000
+/// triggers the snap → full close of 5 ETH.
+#[tokio::test]
+async fn liquidation_snaps_to_full_close_when_remainder_would_be_dust() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+
+    let pair = pair_id();
+
+    // Configure the pair with a $5,000 `min_order_size` floor. Everything
+    // else mirrors the default.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: crate::default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        min_order_size: UsdValue::new_int(5_000),
+                        ..crate::default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // LP funds the vault; trader (user1) deposits $3,000.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user4,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(100_000_000_000)).unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user4,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::AddLiquidity {
+                amount: UsdValue::new_int(100_000),
+                min_shares_to_mint: None,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(3_000_000_000)).unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Maker (user2) places ask: 5 ETH @ $2,000 ($10,000 notional > $5,000 min).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-5),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_000),
+                    time_in_force: TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Trader market buys 5 ETH. fee = $10; margin = $2,990; long 5 @ $2,000.
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Oracle drops to $1,450 → trader liquidatable (same math as the parent
+    // test: equity $240, MM $362.50, deficit $122.50).
+    // -------------------------------------------------------------------------
+
+    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
+
+    // -------------------------------------------------------------------------
+    // Bidder (user3) posts a 5 ETH bid @ $1,450 ($7,250 notional > $5,000 min).
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(5),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_450),
+                    time_in_force: TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // -------------------------------------------------------------------------
+    // Liquidate. The snap forces full close instead of the ~1.69 ETH partial.
+    //
+    // Realized PnL = 5 × ($1,450 - $2,000) = -$2,750
+    // Closed notional = 5 × $1,450 = $7,250
+    // Liq fee = $7,250 × 1% = $72.50
+    // Trader margin after = $2,990 - $2,750 - $72.50 = $167.50
+    // -------------------------------------------------------------------------
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
+                user: accounts.user1.address(),
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // Trader position fully closed (snap fired). USER_STATES entry may
+    // survive with remaining margin, but the pair must not appear.
+    let trader_state: Option<UserState> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user1.address(),
+        })
+        .should_succeed();
+    let state = trader_state.expect("trader user state should still exist with remaining margin");
+    assert!(
+        !state.positions.contains_key(&pair),
+        "trader position should be fully closed by snap, found {:?}",
+        state.positions.get(&pair)
+    );
+    assert_eq!(
+        state.margin,
+        UsdValue::new_raw(167_500_000),
+        "trader margin should be $167.50 after full liquidation"
+    );
+
+    // Insurance fund received the full-close liquidation fee, $72.50,
+    // strictly larger than the $24.50 the deficit-only close would have
+    // produced — exactly the "more fee for the same overhead" knob the
+    // dust snap unlocks.
+    let global_state = suite
+        .query_wasm_smart(contracts.perps, perps::QueryStateRequest {})
+        .should_succeed();
+    assert_eq!(
+        global_state.insurance_fund,
+        UsdValue::new_raw(72_500_000),
+        "insurance fund should receive $72.50 liquidation fee (full close)"
+    );
+
+    // Bidder filled the full 5 ETH, not the ~1.69 ETH partial.
+    let bidder_state = suite
+        .query_wasm_smart(contracts.perps, perps::QueryUserStateRequest {
+            user: accounts.user3.address(),
+        })
+        .should_succeed()
+        .unwrap();
+    let bidder_pos = bidder_state
+        .positions
+        .get(&pair)
+        .expect("bidder should have ETH position");
+    assert_eq!(
+        bidder_pos.size,
+        Quantity::new_int(5),
+        "bidder should have full 5 ETH long after dust-snap full close"
+    );
+    assert_eq!(bidder_pos.entry_price, UsdPrice::new_int(1_450));
+}
+
 /// Covers: liquidation with ADL and insurance fund.
 ///
 /// | Step | Action                                    | Assert                                              |

@@ -32,9 +32,21 @@ pub fn is_liquidatable(
 /// We start from the position that contributes the most to maintenance margin
 /// and go down, until the maintenance margin deficit is covered.
 ///
-/// Returns:
+/// ## Returns
 ///
 /// - A vector of (pair_id, close_size) tuples.
+///
+/// ## Notes
+///
+/// **Dust snapping.** Within each per-pair step, after the deficit-driven
+/// `close_amount` is, if the *remaining* position notional after the close
+/// would fall below the pair's `min_order_size`, we bump `close_amount` up
+/// to the full position size.
+///
+/// This prevents liquidations from leaving behind sub-economic positions that
+/// the liquidator bot would otherwise have to keep tracking and re-liquidating.
+/// When `min_order_size == 0` (the default for tests and any pair without a
+/// configured floor) the snap is a no-op.
 pub fn compute_close_schedule(
     user_state: &UserState,
     pair_params: &BTreeMap<PairId, PairParam>,
@@ -81,12 +93,40 @@ pub fn compute_close_schedule(
         // deficit collapses `close_amount` to zero, leaves the schedule
         // empty, and causes `liquidate` to silently exit with no events.
         // Ceil guarantees at least 1 ULP of progress whenever `deficit > 0`.
-        let close_amount = {
+        let mut close_amount = {
             let denominator = oracle_price.checked_mul(pair_param.maintenance_margin_ratio)?;
             deficit.checked_div_ceil(denominator)?.min(abs_size)
         };
 
-        // close_size = -sign(size) × close_amount (opposite direction to close)
+        // Dust snap: if the post-close remaining notional would fall below
+        // the pair's `min_order_size`, close the entire position.
+        //
+        // Without this, partial liquidations near a position's tail can
+        // leave behind a sub-economic remainder (e.g. 0.000001 BTC after a
+        // 99.999999 BTC close). The user has no incentive to close it, but
+        // the liquidator bot must keep tracking it for re-liquidation. By
+        // snapping up here we ensure every position that survives a
+        // liquidation has notional >= `min_order_size`.
+        //
+        // Strict `<` so a remainder exactly at the threshold is kept. When
+        // `min_order_size == 0` the comparison is always false and the
+        // snap is a no-op — the deficit-only behavior is preserved for
+        // pairs that haven't opted in to a dust floor.
+        //
+        // The increased `close_amount` flows into the deficit decrement
+        // below, so an over-snap naturally trips the `deficit <= 0` break
+        // on subsequent iterations and we don't touch later pairs
+        // unnecessarily.
+        let remaining_amount = abs_size.checked_sub(close_amount)?;
+        let remaining_notional = remaining_amount.checked_mul(oracle_price)?;
+        if remaining_notional < pair_param.min_order_size {
+            close_amount = abs_size;
+        }
+
+        // close_size = -sign(size) × close_amount
+        //
+        // Adjust the sign of `close_amount`. It should have the opposite sign
+        // of the current position.
         let close_size = if position.size.is_positive() {
             close_amount.checked_neg()?
         } else {
@@ -618,6 +658,417 @@ mod tests {
         assert_eq!(schedule.len(), 1);
         assert_eq!(schedule[0].0, pair_btc());
         assert_eq!(schedule[0].1, Quantity::new_raw(-1));
+    }
+
+    // -------------------------- dust-snap tests ------------------------------
+
+    /// The deficit-only close would leave a sub-`min_order_size` remainder,
+    /// so the snap fires and the entire position is closed.
+    ///
+    /// Setup: long 100 BTC @ $1, mmr 5%, `min_order_size = $5`. Deficit
+    /// $4.85 → deficit-only `close_amount = ceil(4.85/0.05) = 97`,
+    /// remainder = 3, notional $3 < $5 → snap to 100.
+    #[test]
+    fn dust_snap_triggers_full_close() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::new_int(5),
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(1) };
+
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_raw(4_850_000),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_int(-100));
+    }
+
+    /// Same shape as `dust_snap_triggers_full_close` but with
+    /// `min_order_size = 0`. The snap stays inactive and the deficit-only
+    /// close (97 BTC) is preserved. Verifies the change is opt-in per pair.
+    #[test]
+    fn dust_snap_inactive_when_min_order_size_zero() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::ZERO,
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(1) };
+
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_raw(4_850_000),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].1, Quantity::new_int(-97));
+    }
+
+    /// The remainder after a deficit-only close is comfortably above the
+    /// floor, so no snap. Position survives partial liquidation as
+    /// expected.
+    ///
+    /// Setup: long 100 BTC @ $1, mmr 5%, `min_order_size = $5`. Deficit
+    /// $1 → `close_amount = 20`, remainder = 80 BTC @ $1 = $80 ≫ $5.
+    #[test]
+    fn dust_snap_inactive_when_remaining_above_threshold() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::new_int(5),
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(1) };
+
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(1),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].1, Quantity::new_int(-20));
+    }
+
+    /// Remainder notional exactly equals `min_order_size`. The comparison
+    /// is strict (`<`), so no snap.
+    ///
+    /// Setup: long 100 BTC @ $1, mmr 5%, `min_order_size = $5`. Deficit
+    /// $4.75 → `close_amount = ceil(4.75/0.05) = 95`, remainder = 5 BTC =
+    /// $5 = min_order_size → boundary, no snap.
+    #[test]
+    fn dust_snap_boundary_not_strict() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::new_int(5),
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(1) };
+
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_raw(4_750_000),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].1, Quantity::new_int(-95));
+    }
+
+    /// The position is already smaller than `min_order_size` at
+    /// liquidation entry. Any non-zero `close_amount` leaves a smaller-
+    /// still remainder, so the snap fires and the whole position closes.
+    ///
+    /// Setup: long 5 BTC @ $1, mmr 5%, `min_order_size = $10`. Total
+    /// notional = $5 < $10. Deficit $0.10 → deficit-only close = 2,
+    /// remainder = 3 BTC @ $1 = $3 < $10 → snap to 5.
+    #[test]
+    fn dust_snap_position_already_dust() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(5),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::new_int(10),
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_btc() => UsdPrice::new_int(1) };
+
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_raw(100_000),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].1, Quantity::new_int(-5));
+    }
+
+    /// Snap on a short position. `close_size` is positive (covering the
+    /// short) and its magnitude equals `abs(size)`, confirming the sign
+    /// is computed against `position.size`, not the snapped magnitude.
+    ///
+    /// Setup: short -10 ETH @ $1, mmr 5%, `min_order_size = $9`. Deficit
+    /// $0.45 → close_amount = 9, remainder = 1 ETH = $1 < $9 → snap to
+    /// 10. close_size = +10.
+    #[test]
+    fn dust_snap_short_position() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_eth() => Position {
+                    size: Quantity::new_int(-10),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_eth() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::new_int(9),
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! { pair_eth() => UsdPrice::new_int(1) };
+
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_raw(450_000),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_eth());
+        assert_eq!(schedule[0].1, Quantity::new_int(10));
+    }
+
+    /// Multi-pair: the first pair's snap clears the entire deficit, so
+    /// the schedule never spills into the second pair. Demonstrates that
+    /// the natural `deficit <= 0` break handles over-snapping without
+    /// special multi-pair plumbing.
+    ///
+    /// Setup:
+    /// - BTC: 100 @ $2, MM = $10, `min_order_size = $190`
+    /// - ETH: 100 @ $1, MM = $5,  `min_order_size = 0`
+    /// - deficit = $1 (would close 10 BTC under deficit-only logic)
+    ///
+    /// BTC step: close=10, remainder 90 @ $2 = $180 < $190 → snap to 100,
+    /// mm_removed = $10, deficit cleared. ETH step breaks immediately.
+    #[test]
+    fn dust_snap_first_pair_clears_deficit() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(2),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+                pair_eth() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::new_int(190),
+                ..Default::default()
+            },
+            pair_eth() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::ZERO,
+                ..Default::default()
+            },
+        };
+        let oracle_prices = btree_map! {
+            pair_btc() => UsdPrice::new_int(2),
+            pair_eth() => UsdPrice::new_int(1),
+        };
+
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(1),
+        )
+        .unwrap();
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_int(-100));
+    }
+
+    /// Multi-pair: the snap fires on the second (lower-MM) pair after
+    /// the first is fully closed. Compared against the same fixture with
+    /// `min_order_size = 0` on ETH so the difference is explicit.
+    ///
+    /// Setup:
+    /// - BTC: 100 @ $2, MM = $10, `min_order_size = 0`
+    /// - ETH: 100 @ $1, MM = $5
+    /// - deficit = $11
+    ///
+    /// BTC always closes fully ($10 MM removed, deficit → $1). ETH then:
+    /// - With `min_order_size = 0`: close 20, remainder 80, schedule = [BTC -100, ETH -20]
+    /// - With `min_order_size = $90`: remainder 80 @ $1 = $80 < $90 → snap to 100
+    #[test]
+    fn dust_snap_second_pair_snaps_to_full() {
+        let user_state = UserState {
+            positions: btree_map! {
+                pair_btc() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(2),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+                pair_eth() => Position {
+                    size: Quantity::new_int(100),
+                    entry_price: UsdPrice::new_int(1),
+                    entry_funding_per_unit: FundingPerUnit::ZERO,
+                    conditional_order_above: None,
+                    conditional_order_below: None,
+                },
+            },
+            ..Default::default()
+        };
+
+        let oracle_prices = btree_map! {
+            pair_btc() => UsdPrice::new_int(2),
+            pair_eth() => UsdPrice::new_int(1),
+        };
+
+        // No floor on ETH → deficit-only partial close.
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::ZERO,
+                ..Default::default()
+            },
+            pair_eth() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::ZERO,
+                ..Default::default()
+            },
+        };
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(11),
+        )
+        .unwrap();
+        assert_eq!(schedule.len(), 2);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_int(-100));
+        assert_eq!(schedule[1].0, pair_eth());
+        assert_eq!(schedule[1].1, Quantity::new_int(-20));
+
+        // With $90 floor on ETH → ETH snap to full close.
+        let pair_params = btree_map! {
+            pair_btc() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::ZERO,
+                ..Default::default()
+            },
+            pair_eth() => PairParam {
+                maintenance_margin_ratio: Dimensionless::new_permille(50),
+                min_order_size: UsdValue::new_int(90),
+                ..Default::default()
+            },
+        };
+        let schedule = compute_close_schedule(
+            &user_state,
+            &pair_params,
+            &oracle_prices,
+            UsdValue::new_int(11),
+        )
+        .unwrap();
+        assert_eq!(schedule.len(), 2);
+        assert_eq!(schedule[0].0, pair_btc());
+        assert_eq!(schedule[0].1, Quantity::new_int(-100));
+        assert_eq!(schedule[1].0, pair_eth());
+        assert_eq!(schedule[1].1, Quantity::new_int(-100));
     }
 
     // ==================== `compute_bankruptcy_price` tests ====================
