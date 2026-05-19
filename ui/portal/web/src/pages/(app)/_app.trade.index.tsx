@@ -8,7 +8,6 @@ export const Route = createFileRoute("/(app)/_app/trade/")({
     throw redirect({
       to: "/trade/$pairSymbols",
       params: { pairSymbols: isDevnet ? "ETH-USD" : "BTC-USD" },
-      search: { type: "perps" },
     });
   },
 });

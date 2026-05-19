@@ -11,7 +11,7 @@ export type TradePairState = {
 };
 
 export const TradePairStore = create<TradePairState>((set, get) => ({
-  mode: "spot",
+  mode: "perps",
   pairId: { baseDenom: "", quoteDenom: "" },
   setPair: (pairId, mode) => {
     const current = get();
