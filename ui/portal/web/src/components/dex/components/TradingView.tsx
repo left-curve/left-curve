@@ -2,7 +2,6 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 import { useApp, useTheme } from "@left-curve/applets-kit";
 import {
-  useConfig,
   usePublicClient,
   perpsUserStateExtendedStore,
   perpsOrdersByUserStore,
@@ -10,29 +9,18 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
-import { createTradingViewDataFeed, createPerpsDataFeed } from "~/datafeed";
-import {
-  buildPositionLines,
-  buildPerpsOrderLines,
-  buildSpotOrderLines,
-  drawLines,
-} from "../helpers/chartLines";
+import { createPerpsDataFeed } from "~/datafeed";
+import { buildPositionLines, buildPerpsOrderLines, drawLines } from "../helpers/chartLines";
 
 import type { AnyCoin } from "@left-curve/store/types";
-import type { OrdersByUserResponse, WithId } from "@left-curve/types";
 
 type TradingViewProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
-  orders: WithId<OrdersByUserResponse>[];
-  mode?: "spot" | "perps";
 };
 
-export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = "spot" }) => {
-  const isPerps = mode === "perps";
-  const pairSymbol = isPerps
-    ? `${coins.base.symbol}-USD`
-    : `${coins.base.symbol}-${coins.quote.symbol}`;
-  const perpsPairId = isPerps ? `perp/${coins.base.symbol.toLowerCase()}usd` : "";
+export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
+  const pairSymbol = `${coins.base.symbol}-USD`;
+  const perpsPairId = `perp/${coins.base.symbol.toLowerCase()}usd`;
 
   const positions = perpsUserStateExtendedStore((s) => s.positions);
   const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
@@ -41,11 +29,9 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
   const { subscriptions, settings } = useApp();
-  const { coins: allCoins } = useConfig();
-  const { base, quote } = coins;
   const { timeFormat, timeZone } = settings;
 
-  const storageKey = `tv_v4.${pairSymbol}_${mode}`;
+  const storageKey = `tv_v4.${pairSymbol}_perps`;
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
 
@@ -60,18 +46,11 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
     const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
     const textColor = theme === "dark" ? "#FFFCF6" : "#2E2521";
 
-    const datafeed = isPerps
-      ? createPerpsDataFeed({
-          client: publicClient,
-          queryClient,
-          subscriptions,
-        })
-      : createTradingViewDataFeed({
-          client: publicClient,
-          queryClient,
-          subscriptions,
-          coins: allCoins.bySymbol,
-        });
+    const datafeed = createPerpsDataFeed({
+      client: publicClient,
+      queryClient,
+      subscriptions,
+    });
 
     const widget = new TV.widget({
       container: "tv-container",
@@ -194,7 +173,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
       widgetRef.current?.remove();
       widgetRef.current = null;
     };
-  }, [theme, mode]);
+  }, [theme]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
@@ -209,15 +188,13 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
     const chart = widgetRef.current.chart();
 
     const position = positions[perpsPairId];
-    const lines = isPerps
-      ? [
-          ...(position ? buildPositionLines(position) : []),
-          ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, perpsPairId) : []),
-        ]
-      : buildSpotOrderLines(orders, base, quote);
+    const lines = [
+      ...(position ? buildPositionLines(position) : []),
+      ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, perpsPairId) : []),
+    ];
 
     drawLines(chart, lines);
-  }, [orders, positions, perpsOrders, perpsPairId, isPerps]);
+  }, [positions, perpsOrders, perpsPairId]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

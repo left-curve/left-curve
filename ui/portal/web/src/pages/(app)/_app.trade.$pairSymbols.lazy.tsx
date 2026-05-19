@@ -17,7 +17,7 @@ function ProTradeApplet() {
   const { action = "buy", order_type = "market" } = Route.useSearch();
   const headerHeight = useHeaderHeight();
 
-  const onChangePairId = (pairSymbols: string, _type: "spot" | "perps") => {
+  const onChangePairId = (pairSymbols: string) => {
     navigate({
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
