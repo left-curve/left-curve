@@ -89,32 +89,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
-  [Modals.ProTradeCloseAll]: {
-    component: lazyWithRetry(() =>
-      import("./ProTradeCloseAll").then(({ ProTradeCloseAll }) => ({ default: ProTradeCloseAll })),
-    ),
-  },
-  [Modals.ProTradeCloseOrder]: {
-    component: lazyWithRetry(() =>
-      import("./ProTradeCloseOrder").then(({ ProTradeCloseOrder }) => ({
-        default: ProTradeCloseOrder,
-      })),
-    ),
-  },
-  [Modals.ProTradeLimitClose]: {
-    component: lazyWithRetry(() =>
-      import("./ProTradeLimitClose").then(({ ProTradeLimitClose }) => ({
-        default: ProTradeLimitClose,
-      })),
-    ),
-  },
-  [Modals.ProSwapMarketClose]: {
-    component: lazyWithRetry(() =>
-      import("./ProSwapMarketClose").then(({ ProSwapMarketClose }) => ({
-        default: ProSwapMarketClose,
-      })),
-    ),
-  },
   [Modals.ProSwapEditTPSL]: {
     component: lazyWithRetry(() =>
       import("./ProSwapEditTPSL").then(({ ProSwapEditTPSL }) => ({
@@ -154,13 +128,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazyWithRetry(() =>
       import("./activities/ActivityConvertModal").then(({ ActivityConvertModal }) => ({
         default: ActivityConvertModal,
-      })),
-    ),
-  },
-  [Modals.ActivitySpotOrder]: {
-    component: lazyWithRetry(() =>
-      import("./activities/ActivitySpotOrderModal").then(({ ActivitySpotOrderModal }) => ({
-        default: ActivitySpotOrderModal,
       })),
     ),
   },

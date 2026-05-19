@@ -161,16 +161,9 @@ export {
   useSubmitTx,
 } from "./hooks/useSubmitTx.js";
 
-export {
-  type UseConvertStateParameters,
-  useConvertState,
-} from "./hooks/useConvertState.js";
-
 export { useTradeCoins } from "./hooks/useTradeCoins.js";
 export { useCurrentPrice } from "./hooks/useCurrentPrice.js";
-export { useSpotSubmission } from "./hooks/useSpotSubmission.js";
 export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
-export { useSpotMaxSize } from "./hooks/useSpotMaxSize.js";
 export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
 
 export {
@@ -190,15 +183,6 @@ export {
   type VaultPerformancePeriod,
   useVaultSnapshots,
 } from "./hooks/useVaultSnapshots.js";
-
-export {
-  type UsePairStatsParameters,
-  type UseAllPairStatsParameters,
-  type NormalizedPairStats,
-  usePairStats,
-  useAllPairStats,
-  allPairStatsStore,
-} from "./hooks/usePairStats.js";
 
 export {
   type UsePerpsPairStatsParameters,
@@ -275,9 +259,6 @@ export {
   perpsUserStateExtendedStore,
 } from "./hooks/usePerpsUserStateExtended.js";
 export { computeLiquidationPrice } from "./hooks/computeLiquidationPrice.js";
-export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
-export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
-export { useLiveSpotTradesState, liveSpotTradesStore } from "./hooks/useLiveSpotTradesState.js";
 export { useLivePerpsTradesState, livePerpsTradesStore } from "./hooks/useLivePerpsTradesState.js";
 export {
   usePerpsLiquidityDepth,
