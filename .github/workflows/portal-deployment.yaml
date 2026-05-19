@@ -77,6 +77,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Restore turbo cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       - name: Linter checks
         run: pnpm lint
 
@@ -85,6 +93,19 @@ jobs:
 
       - name: Unit tests
         run: pnpm test
+
+      - name: Set R2 assets prefix
+        id: r2_prefix
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "ui/testnet" || "$BRANCH_NAME" == "ui/release" ]]; then
+            printf 'prefix=https://assets.dango.exchange/portal/%s/\n' "$GIT_COMMIT" >> "$GITHUB_OUTPUT"
+            printf 'upload=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'prefix=/\n' >> "$GITHUB_OUTPUT"
+            printf 'upload=false\n' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build Portal
         run: pnpm build:portal-web
@@ -100,6 +121,35 @@ jobs:
           PUBLIC_PRIVY_APP_ID: ${{ github.ref_name == 'ui/release' && vars.PRIVY_APP_ID_PROD || vars.PRIVY_APP_ID_DEV }}
           PUBLIC_PRIVY_CLIENT_ID: ${{ github.ref_name == 'ui/release' && vars.PRIVY_CLIENT_ID_PROD || vars.PRIVY_CLIENT_ID_DEV }}
           ENABLED_FEATURES: ${{ (github.ref_name == 'main' || github.ref_name == 'ui/testnet') && 'points,referral' || '' }}
+          R2_ASSETS_PREFIX: ${{ steps.r2_prefix.outputs.prefix }}
+
+      - name: Upload assets to R2
+        if: steps.r2_prefix.outputs.upload == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://9f30716e11f27c296dfbadb7b7571ae6.r2.cloudflarestorage.com
+          R2_BUCKET: dango-portal
+        run: |
+          aws s3 sync ./ui/portal/web/build/static \
+            "s3://${R2_BUCKET}/portal/${GIT_COMMIT}/static" \
+            --endpoint-url "${R2_ENDPOINT}" \
+            --size-only \
+            --cache-control "public, max-age=31536000, immutable"
+
+          TV_VERSION=$(jq -r .version node_modules/@left-curve/tradingview/package.json)
+          if ! aws s3 ls "s3://${R2_BUCKET}/vendor/tradingview/${TV_VERSION}/" \
+               --endpoint-url "${R2_ENDPOINT}" > /dev/null 2>&1; then
+            aws s3 sync ./node_modules/@left-curve/tradingview/charting_library \
+              "s3://${R2_BUCKET}/vendor/tradingview/${TV_VERSION}/charting_library" \
+              --endpoint-url "${R2_ENDPOINT}" \
+              --cache-control "public, max-age=31536000, immutable"
+          fi
+
+      - name: Strip static assets moved to R2
+        if: steps.r2_prefix.outputs.upload == 'true'
+        run: rm -rf ./ui/portal/web/build/static
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@f0a1cd58cd66095dee69bfa18fa5efd1dde93bca # v1
@@ -118,6 +168,13 @@ jobs:
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Save turbo cache
+        if: github.event_name == 'push'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
 
   docker-build:
     needs: [zizmor]
