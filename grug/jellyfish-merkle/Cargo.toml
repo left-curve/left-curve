@@ -10,16 +10,11 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[features]
-# Include a method to generate ICS-23 compatible proofs.
-ibc = ["ics23"]
-
 [dependencies]
 borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
 grug-app     = { workspace = true }
 grug-storage = { workspace = true }
 grug-types   = { workspace = true }
-ics23        = { workspace = true, optional = true }
 thiserror    = { workspace = true }
 
 [dev-dependencies]

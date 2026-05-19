@@ -1,5 +1,3 @@
-#[cfg(feature = "ibc")]
-use crate::{CF_NAME_PREIMAGES, cf_preimages};
 use {
     crate::{
         CF_NAME_DEFAULT, CF_NAME_STATE_COMMITMENT, CF_NAME_STATE_STORAGE, CF_NAME_WASM_STORAGE,
@@ -117,8 +115,6 @@ impl StatisticsWorker {
                     (CF_NAME_STATE_STORAGE, cf_state_storage(&guard.db)),
                     (CF_NAME_STATE_COMMITMENT, cf_state_commitment(&guard.db)),
                     (CF_NAME_WASM_STORAGE, cf_wasm_storage(&guard.db)),
-                    #[cfg(feature = "ibc")]
-                    (CF_NAME_PREIMAGES, cf_preimages(&guard.db)),
                 ] {
                     // ======== PROPERTIES (inner.db) ========
 

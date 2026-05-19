@@ -20,11 +20,6 @@ use {
 /// is the latest version.
 pub const CF_NAME_DEFAULT: &str = "default";
 
-/// The preimage column family maps key hashes to raw keys. This is necessary
-/// for generating ICS-23 compatible Merkle proofs.
-#[cfg(feature = "ibc")]
-pub const CF_NAME_PREIMAGES: &str = "preimages";
-
 /// The state commitment (SC) family stores Merkle tree nodes, which hold hashed
 /// key-value pair data. We use this CF for deriving the Merkle root hash for the
 /// state (used in consensus) and generating Merkle proofs (used in light clients).
@@ -75,7 +70,7 @@ const CONTRACT_NAMESPACE_PLUS_ONE: &[u8] = b"wasn";
 /// stores _hashed_ KV pairs in a Merkle tree data structure. SS is used for
 /// normal read/write access to the state, while SC is used for deriving Merkle
 /// root hashes for the state (used by nodes to reach consensus) and generate
-/// Merkle proofs for data in the state (used by light clients, such as in iBC).
+/// Merkle proofs for data in the state (used by light clients).
 ///
 /// The separation of SS and SC was first conceived by the Cosmos SDK core team
 /// in ADR-040:
@@ -154,8 +149,6 @@ impl<T> DiskDb<T> {
         let storage_cf_opts = new_storage_cf_options(cf_opts.clone());
         let db = DB::open_cf_with_opts(&opts, data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
-            #[cfg(feature = "ibc")]
-            (CF_NAME_PREIMAGES, Options::default()),
             (CF_NAME_STATE_STORAGE, storage_cf_opts),
             (CF_NAME_STATE_COMMITMENT, cf_opts),
             (CF_NAME_WASM_STORAGE, wasm_cf_opts),
@@ -432,22 +425,6 @@ where
                 batch.put_cf(&cf, key, value);
             } else {
                 batch.delete_cf(&cf, key);
-            }
-        }
-
-        // Writes in preimages (note: don't forget to delete key hashes that
-        // are deleted in state storage - see Zellic audit).
-        // This is only necessary if the `ibc` feature is enabled.
-        #[cfg(feature = "ibc")]
-        {
-            let cf = cf_preimages(&data.db);
-            for (key, op) in &pending.state_storage {
-                let key_hash = key.hash256();
-                if let Op::Insert(_) = op {
-                    batch.put_cf(&cf, key_hash, key);
-                } else {
-                    batch.delete_cf(&cf, key_hash);
-                }
             }
         }
 
@@ -1257,13 +1234,6 @@ pub fn new_storage_read_options(
 
 pub fn cf_default(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
-        panic!("failed to find default column family");
-    })
-}
-
-#[cfg(feature = "ibc")]
-pub fn cf_preimages(db: &DB) -> &ColumnFamily {
-    db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }

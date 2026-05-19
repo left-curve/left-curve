@@ -18,13 +18,12 @@ pattern:
 Both stores are backed by a single RocksDB instance using separate column families
 (`grug/db/disk/src/db.rs`):
 
-| Column Family             | Purpose                                       |
-| ------------------------- | --------------------------------------------- |
-| `default`                 | Metadata (latest committed version)           |
-| `state_commitment`        | JMT nodes (hashed key-value pairs)            |
-| `state_storage`           | Chain-level state (non-contract keys)         |
-| `wasm_storage`            | Contract internal storage (see below)         |
-| `preimages` (IBC feature) | Key-hash to raw-key mapping for ICS-23 proofs |
+| Column Family      | Purpose                               |
+| ------------------ | ------------------------------------- |
+| `default`          | Metadata (latest committed version)   |
+| `state_commitment` | JMT nodes (hashed key-value pairs)    |
+| `state_storage`    | Chain-level state (non-contract keys) |
+| `wasm_storage`     | Contract internal storage (see below) |
 
 `state_storage` and `wasm_storage` together form the logical "state storage" layer.
 They share the same `Batch` of pending writes; the DB routes each key to the correct
