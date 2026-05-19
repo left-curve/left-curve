@@ -66,6 +66,5 @@ Run those in different terminals, in order:
 
 1. `just start-without-dango`
 2. `just start-dango` (needs to be restarted when you modify code)
-3. Once the 2 other commands finished: `just start-dex-bot` (it needs dango to be already up)
 
 You can now visit http://localhost:5081/ to view frontend.

@@ -474,7 +474,7 @@ Run the full-app play scoped to target only, with `-e cometbft_peers=<the 3 heal
 
    ```bash
    mkdir -p logs && uv run ansible-playbook full-app.yml \
-     -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": false, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "verify_signatures": false, "pull_images": false, "cosign_verified_images": {}, "skip_cometbft_sync": true}' \
+     -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dango-1", "dango_network": "mainnet", "system_wide_directories": true, "deploy_env": "production", "verify_signatures": false, "pull_images": false, "cosign_verified_images": {}, "skip_cometbft_sync": true}' \
      -e dango_image_tag=latest \
      -e frontend_image_tag=latest \
      -e cometbft_peers=100.126.8.2,100.66.234.16,100.76.197.30 \

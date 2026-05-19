@@ -34,7 +34,6 @@ exposed to the public internet through Cloudflare tunnels.
 | dango-frontend | Web UI                                                          |                       |
 | graphiql       | GraphQL IDE                                                     |                       |
 | faucet-bot     | Token faucet                                                    | _testnet/devnet only_ |
-| dex-bot        | DEX market maker                                                | _testnet/devnet only_ |
 | points-bot     | Points/achievements tracking                                    | runs on ovh2          |
 
 #### Infrastructure services (per server)
@@ -88,7 +87,6 @@ flowchart TD
         Frontend[dango-frontend]
         GraphiQL[graphiql]
         FaucetBot[faucet-bot]
-        DexBot[dex-bot]
         PointsBot[points-bot]
         Postgres[(postgres)]
         ClickHouse[(clickhouse)]
@@ -116,7 +114,6 @@ flowchart TD
     Dango <--> CometBFT
     Dango --> Postgres
     Dango --> ClickHouse
-    DexBot --> Dango
     PointsBot --> Dango
 
     %% P2P consensus
@@ -142,7 +139,7 @@ flowchart TD
     classDef monitoring fill:#ede9fe,stroke:#7c3aed
     classDef external fill:#f3f4f6,stroke:#6b7280
 
-    class FaucetBot,DexBot testnetOnly
+    class FaucetBot testnetOnly
     class Dango,CometBFT,Frontend,GraphiQL,PointsBot app
     class Traefik,cloudflared,Postgres,ClickHouse,Promtail,NodeExp infra
     class Grafana,Prometheus,Loki,Tempo,Alertmanager monitoring
