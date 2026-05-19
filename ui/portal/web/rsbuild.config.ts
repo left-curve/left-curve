@@ -12,7 +12,6 @@ import { pluginSvgr } from "@rsbuild/plugin-svgr";
 import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
-import { GenerateSW } from "workbox-webpack-plugin";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
@@ -46,6 +45,9 @@ const gitCommit = (() => {
   }
 })();
 
+const r2AssetsPrefix = process.env.R2_ASSETS_PREFIX || "/";
+const useR2Assets = r2AssetsPrefix !== "/";
+
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
 const tradingViewPath = path.resolve(
@@ -53,6 +55,12 @@ const tradingViewPath = path.resolve(
   "node_modules",
   "@left-curve/tradingview/charting_library",
 );
+
+const tvVersion = fs.existsSync(tradingViewPath)
+  ? (fs.readJsonSync(
+      path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/package.json"),
+    ).version as string)
+  : "unknown";
 
 fs.copySync(
   path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
@@ -132,7 +140,7 @@ const envConfig = `window.dango = ${JSON.stringify(
     chain: isLocal
       ? {
           ...chain,
-          url:  `http://localhost:${PORT}`
+          url: `http://localhost:${PORT}`,
         }
       : chain,
     urls: isLocal
@@ -152,9 +160,19 @@ const envConfig = `window.dango = ${JSON.stringify(
 
 const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
 
+const swContent = `const COMMIT = ${JSON.stringify(gitCommit)};
+self.addEventListener("install", () => {});
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+`;
+
 const copyPattern = [];
 
-if (fs.existsSync(tradingViewPath)) {
+if (!useR2Assets && fs.existsSync(tradingViewPath)) {
   copyPattern.push({
     from: path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/charting_library"),
     to: "./static/charting_library",
@@ -183,6 +201,8 @@ export default defineConfig({
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
       "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
       "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
+      "import.meta.env.TV_VERSION": `"${tvVersion}"`,
+      "import.meta.env.R2_ASSETS_PREFIX": JSON.stringify(r2AssetsPrefix),
       "process.env": {},
       "import.meta.env": {},
     },
@@ -222,7 +242,12 @@ export default defineConfig({
     template: "public/index.html",
     title: "",
     tags: [
-      { tag: "script", attrs: { src: `/static/js/config.js?v=${configHash}` }, append: false },
+      {
+        tag: "script",
+        attrs: { src: `/config.js?v=${configHash}` },
+        append: false,
+        publicPath: false,
+      },
       ...(environment === "test" || environment === "dev"
         ? [
             {
@@ -245,6 +270,7 @@ export default defineConfig({
     },
   },
   output: {
+    assetPrefix: r2AssetsPrefix,
     distPath: {
       root: "build",
     },
@@ -302,26 +328,28 @@ export default defineConfig({
                   stage: rspack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
                 },
                 (assets) => {
-                  assets["static/js/config.js"] = new rspack.sources.RawSource(envConfig);
+                  assets["config.js"] = new rspack.sources.RawSource(envConfig);
+                },
+              );
+            });
+          },
+        },
+        {
+          apply(compiler: Rspack.Compiler) {
+            compiler.hooks.thisCompilation.tap("GenerateServiceWorkerPlugin", (compilation) => {
+              compilation.hooks.processAssets.tap(
+                {
+                  name: "GenerateServiceWorkerPlugin",
+                  stage: rspack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
+                },
+                (assets) => {
+                  assets["service-worker.js"] = new rspack.sources.RawSource(swContent);
                 },
               );
             });
           },
         },
       );
-
-      if (process.env.NODE_ENV === "production") {
-        config.plugins.push(
-          new GenerateSW({
-            cacheId: "leftcurve-portal",
-            clientsClaim: true,
-            skipWaiting: true,
-            cleanupOutdatedCaches: true,
-            navigationPreload: false,
-            importScripts: ["/sw-disable-nav-preload.js"],
-          }),
-        );
-      }
 
       config.devtool = "source-map";
       return config;

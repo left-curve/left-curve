@@ -22,7 +22,7 @@ csv_to_json_array() {
 
 enabled_features_json="$(csv_to_json_array "${FRONTEND_ENABLED_FEATURES:-}")"
 
-CONFIG_FILE=/usr/share/nginx/html/static/js/config.js
+CONFIG_FILE=/usr/share/nginx/html/config.js
 HTML_FILE=/usr/share/nginx/html/index.html
 
 cat > "$CONFIG_FILE" <<EOF
