@@ -176,10 +176,10 @@ impl Commitment for MerkleTree {
 
         // In our proof format, the sibling hashes are from bottom up (from leaf
         // to the root), so we have to reverse it.
-        // We can either reverse it during proving, or during verification.
-        // we do it here since proving is usually done off-chain (e.g. an IBC
-        // relayer querying the node) while verification is usally done on-chain
-        // (e.g. inside an IBC light client).
+        // We can either reverse it during proving, or during verification. We
+        // do it here since proving is usually done off-chain (e.g. a client
+        // querying the node) while verification is usually done on-chain
+        // (e.g. inside a light client).
         sibling_hashes.reverse();
 
         if let Some(node) = proof_node {

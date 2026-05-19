@@ -5288,7 +5288,6 @@ dependencies = [
  "error-backtrace",
  "grug-storage",
  "grug-types",
- "ics23",
  "metrics",
  "prost 0.14.3",
  "sha2 0.10.9",
@@ -5333,7 +5332,6 @@ dependencies = [
  "grug-types",
  "hex",
  "hex-literal",
- "ics23",
  "itertools 0.14.0",
  "metrics",
  "num_cpus",
@@ -5378,7 +5376,6 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "hex-literal",
- "ics23",
  "proptest",
  "test-case",
  "thiserror 2.0.18",
@@ -6129,25 +6126,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ics23"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73b17f1a5bd7d12ad30a21445cfa5f52fd7651cb3243ba866f9916b1ec112f12"
-dependencies = [
- "anyhow",
- "blake2",
- "blake3",
- "bytes",
- "hex",
- "informalsystems-pbjson",
- "prost 0.13.5",
- "ripemd",
- "serde",
- "sha2 0.10.9",
- "sha3",
-]
-
-[[package]]
 name = "icu_collections"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6521,16 +6499,6 @@ dependencies = [
  "hashbrown 0.16.1",
  "serde",
  "serde_core",
-]
-
-[[package]]
-name = "informalsystems-pbjson"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9aa4a0980c8379295100d70854354e78df2ee1c6ca0f96ffe89afeb3140e3a3d"
-dependencies = [
- "base64 0.21.7",
- "serde",
 ]
 
 [[package]]

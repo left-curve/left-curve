@@ -11,7 +11,6 @@ version       = { workspace = true }
 
 [features]
 abci    = ["data-encoding", "tendermint", "tower", "tower-abci"]
-ibc     = ["ics23"]
 metrics = ["dep:metrics", "grug-types/metrics"]
 testing = []
 tracing = ["dep:tracing", "grug-types/chrono"]
@@ -24,7 +23,6 @@ dyn-event       = { workspace = true }
 error-backtrace = { workspace = true }
 grug-storage    = { workspace = true }
 grug-types      = { workspace = true }
-ics23           = { workspace = true, optional = true }
 metrics         = { workspace = true, optional = true }
 prost           = { workspace = true }
 sha2            = { workspace = true }
