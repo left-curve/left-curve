@@ -102,66 +102,6 @@ enum BlockSortBy {
 	BLOCK_HEIGHT_DESC
 }
 
-type Candle {
-	quoteDenom: String!
-	baseDenom: String!
-	interval: CandleInterval!
-	minBlockHeight: Int!
-	maxBlockHeight: Int!
-	blockHeight: Int! @deprecated(reason: "Use `maxBlockHeight` instead")
-	open: BigDecimal!
-	high: BigDecimal!
-	low: BigDecimal!
-	close: BigDecimal!
-	volumeBase: BigDecimal!
-	volumeQuote: BigDecimal!
-	"""
-	Return time_start in ISO 8601 format with time zone.
-	"""
-	timeStart: String!
-	"""
-	Return time_start as a unix timestamp
-	"""
-	timeStartUnix: Int!
-	"""
-	Return time_end in ISO 8601 format with time zone.
-	"""
-	timeEnd: String!
-	"""
-	Return time_end as a unix timestamp
-	"""
-	timeEndUnix: Int!
-}
-
-type CandleConnection {
-	"""
-	Information to aid in pagination.
-	"""
-	pageInfo: PageInfo!
-	"""
-	A list of edges.
-	"""
-	edges: [CandleEdge!]!
-	"""
-	A list of nodes.
-	"""
-	nodes: [Candle!]!
-}
-
-"""
-An edge in a connection.
-"""
-type CandleEdge {
-	"""
-	The item at the end of the edge
-	"""
-	node: Candle!
-	"""
-	A cursor for use in pagination
-	"""
-	cursor: String!
-}
-
 enum CandleInterval {
 	ONE_SECOND
 	ONE_MINUTE
@@ -184,20 +124,6 @@ Implement the DateTime<Utc> scalar
 The input/output is a string in RFC3339 format.
 """
 scalar DateTime
-
-"""
-The direction of a trade: buy or sell.
-"""
-enum Direction {
-	"""
-	Give away the quote asset, get the base asset; a.k.a. a BUY order.
-	"""
-	bid
-	"""
-	Give away the base asset, get the quote asset; a.k.a. a SELL order.
-	"""
-	ask
-}
 
 type Event {
 	type: String!
@@ -378,35 +304,6 @@ type PageInfo {
 	When paginating forwards, the cursor to continue.
 	"""
 	endCursor: String
-}
-
-"""
-Represents 24h statistics for a trading pair.
-
-Fields are fetched lazily when requested via GraphQL **unless** the struct
-was created with [`PairStats::resolved`], in which case the pre-computed
-values are returned directly (used by the subscription cache).
-"""
-type PairStats {
-	quoteDenom: String!
-	baseDenom: String!
-	"""
-	Current price as a BigDecimal with 24 decimal places.
-	"""
-	currentPrice: BigDecimal
-	"""
-	Price from 24 hours ago as a BigDecimal with 24 decimal places.
-	"""
-	price24HAgo: BigDecimal
-	"""
-	24h volume in quote asset as a BigDecimal with 6 decimal places.
-	"""
-	volume24H: BigDecimal!
-	"""
-	24h price change as a percentage (e.g., 5.25 means +5.25%).
-	Calculated as: (current_price - price_24h_ago) / price_24h_ago * 100
-	"""
-	priceChange24H: BigDecimal
 }
 
 type PerpsCandle {
@@ -733,75 +630,6 @@ type Query {
 		tx: UnsignedTx!
 	): JSON!
 	"""
-	Get paginated candles
-	"""
-	candles(
-		"""
-		Cursor based pagination
-		"""
-		after: String,
-		"""
-		Cursor based pagination
-		"""
-		first: Int,
-		"""
-		Base denom
-		"""
-		baseDenom: String!,
-		"""
-		Quote denom
-		"""
-		quoteDenom: String!,
-		"""
-		Interval
-		"""
-		interval: CandleInterval!,		earlierThan: DateTime,		laterThan: DateTime
-	): CandleConnection!
-	"""
-	Get paginated trades
-	"""
-	trades(
-		"""
-		Cursor based pagination
-		"""
-		after: String,
-		"""
-		Cursor based pagination
-		"""
-		first: Int,
-		"""
-		Account Address
-		"""
-		addr: String,
-		"""
-		Filter trades created at or before this date
-		"""
-		earlierThan: DateTime,
-		"""
-		Filter trades created at or after this date
-		"""
-		laterThan: DateTime
-	): TradeConnection!
-	"""
-	Get 24h statistics for a specific trading pair.
-	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume.
-	"""
-	pairStats(
-		"""
-		Base denom (e.g., 'BTC')
-		"""
-		baseDenom: String!,
-		"""
-		Quote denom (e.g., 'USDC')
-		"""
-		quoteDenom: String!
-	): PairStats
-	"""
-	Get 24h statistics for all trading pairs.
-	Returns current price, price from 24h ago, 24h price change percentage, and 24h volume for each pair.
-	"""
-	allPairStats: [PairStats!]!
-	"""
 	Get paginated perps candles
 	"""
 	perpsCandles(
@@ -1021,24 +849,9 @@ type Subscription {
 		blockInterval: Int! = 10
 	): Status!
 	"""
-	Get candles for a given base and quote denom, interval
-	"""
-	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [Candle!]!
-	"""
-	Get all trades, this will not include past trades but only new ones since you subscribed.
-	"""
-	trades(baseDenom: String!, quoteDenom: String!): Trade!
-	"""
 	Get perps candles for a given pair_id and interval
 	"""
 	perpsCandles(pairId: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [PerpsCandle!]!
-	"""
-	Stream real-time 24h statistics for all trading pairs.
-	
-	Returns the current cached snapshot immediately, then emits an updated
-	snapshot each time a new block is indexed.
-	"""
-	allPairStats: [PairStats!]!
 	"""
 	Stream real-time 24h statistics for all perps trading pairs.
 	
@@ -1053,71 +866,6 @@ type Subscription {
 	Returns cached recent trades first, then streams new trades as they occur.
 	"""
 	perpsTrades(pairId: String!): PerpsTrade!
-}
-
-enum TimeInForce {
-	"""
-	Good-Til-Canceled (GTC): indicates that if the order is not fully filled
-	in the first auction, its remaining portion is to be persisted in the
-	order book, and made available for future auctions, where it becomes a
-	maker order (an order is a taker in its first auction).
-	"""
-	GTC
-	"""
-	Immediate-Or-Cancel (IOC): indicates that if the order is not fully
-	filled in the first auction, it is to be canceled, and the remaining
-	portion refunded to the user.
-	"""
-	IOC
-}
-
-type Trade {
-	addr: String!
-	quoteDenom: String!
-	baseDenom: String!
-	direction: Direction!
-	timeInForce: TimeInForce!
-	blockHeight: Int!
-	"""
-	Returns the block timestamp in ISO 8601 format with time zone.
-	"""
-	createdAt: String!
-	filledBase: BigDecimal!
-	filledQuote: BigDecimal!
-	refundBase: BigDecimal!
-	refundQuote: BigDecimal!
-	feeBase: BigDecimal!
-	feeQuote: BigDecimal!
-	clearingPrice: BigDecimal!
-}
-
-type TradeConnection {
-	"""
-	Information to aid in pagination.
-	"""
-	pageInfo: PageInfo!
-	"""
-	A list of edges.
-	"""
-	edges: [TradeEdge!]!
-	"""
-	A list of nodes.
-	"""
-	nodes: [Trade!]!
-}
-
-"""
-An edge in a connection.
-"""
-type TradeEdge {
-	"""
-	The item at the end of the edge
-	"""
-	node: Trade!
-	"""
-	A cursor for use in pagination
-	"""
-	cursor: String!
 }
 
 type Transaction {

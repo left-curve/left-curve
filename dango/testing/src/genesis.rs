@@ -8,8 +8,8 @@ use {
         },
     },
     dango_genesis::{
-        AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
-        GrugOption, HyperlaneOption, OracleOption, PerpsOption, VestingOption,
+        AccountOption, BankOption, GatewayOption, GenesisOption, GenesisUser, GrugOption,
+        HyperlaneOption, OracleOption, PerpsOption, VestingOption,
     },
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_types::{
@@ -17,10 +17,8 @@ use {
         auth::Key,
         bank::Metadata,
         constants::{
-            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, btc_usdc, dango, doge, eth, eth_usdc, ltc,
-            sol, sol_usdc, usdc, xrp,
+            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
         },
-        dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Origin, Remote, WithdrawalFee},
         perps::{self, PairParam},
         taxman,
@@ -35,7 +33,7 @@ use {
     },
     hyperlane_types::isms::multisig::ValidatorSet,
     pyth_types::constants::LAZER_TRUSTED_SIGNER,
-    std::{collections::BTreeSet, str::FromStr},
+    std::str::FromStr,
 };
 
 /// Describing a data that has a preset value for testing purposes.
@@ -174,7 +172,6 @@ impl Preset for GenesisOption {
             grug: Preset::preset_test(),
             account: Preset::preset_test(),
             bank: Preset::preset_test(),
-            dex: Preset::preset_test(),
             gateway: Preset::preset_test(),
             hyperlane: Preset::preset_test(),
             oracle: Preset::preset_test(),
@@ -358,98 +355,6 @@ impl Preset for BankOption {
                     description: None,
                 },
             },
-        }
-    }
-}
-
-impl Preset for DexOption {
-    fn preset_test() -> Self {
-        DexOption {
-            pairs: vec![
-                PairUpdate {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk(Xyk {
-                            spacing: Udec128::ONE,
-                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                            limit: 30,
-                        }),
-                        bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
-                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::new(50), /* TODO: for mainnet, a minimum of $10 is sensible */
-                        min_order_size_base: Uint128::new(2),
-                    },
-                },
-                PairUpdate {
-                    base_denom: btc::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk(Xyk {
-                            spacing: Udec128::ONE,
-                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                            limit: 30,
-                        }),
-                        bucket_sizes: btree_set! {
-                            btc_usdc::ONE_HUNDREDTH,
-                            btc_usdc::ONE_TENTH,
-                            btc_usdc::ONE,
-                            btc_usdc::TEN,
-                            btc_usdc::FIFTY,
-                            btc_usdc::ONE_HUNDRED,
-                        },
-                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::ZERO,
-                        min_order_size_base: Uint128::ZERO,
-                    },
-                },
-                PairUpdate {
-                    base_denom: eth::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk(Xyk {
-                            spacing: Udec128::ONE,
-                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                            limit: 30,
-                        }),
-                        bucket_sizes: btree_set! {
-                            eth_usdc::ONE_HUNDREDTH,
-                            eth_usdc::ONE_TENTH,
-                            eth_usdc::ONE,
-                            eth_usdc::TEN,
-                            eth_usdc::FIFTY,
-                            eth_usdc::ONE_HUNDRED,
-                        },
-                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::ZERO,
-                        min_order_size_base: Uint128::ZERO,
-                    },
-                },
-                PairUpdate {
-                    base_denom: sol::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk(Xyk {
-                            spacing: Udec128::ONE,
-                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                            limit: 30,
-                        }),
-                        bucket_sizes: btree_set! {
-                            sol_usdc::ONE_HUNDREDTH,
-                            sol_usdc::ONE_TENTH,
-                            sol_usdc::ONE,
-                            sol_usdc::TEN,
-                        },
-                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::ZERO,
-                        min_order_size_base: Uint128::ZERO,
-                    },
-                },
-            ],
         }
     }
 }

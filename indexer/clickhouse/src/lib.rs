@@ -1,4 +1,3 @@
-pub mod checker;
 pub mod context;
 pub mod entities;
 pub mod error;

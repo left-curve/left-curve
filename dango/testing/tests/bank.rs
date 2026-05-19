@@ -432,28 +432,16 @@ fn query_namespace_owners_works() {
             limit: None,
         })
         .should_succeed_and_equal(btree_map! {
-            Part::new_unchecked("dex") => contracts.dex,
             Part::new_unchecked("bridge") => contracts.gateway,
-        });
-
-    // Query namespace owners with start_after. Should succeed.
-    suite
-        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
-            start_after: Some(Part::new_unchecked("bridge")),
-            limit: None,
-        })
-        .should_succeed_and_equal(btree_map! {
-            Part::new_unchecked("dex") => contracts.dex,
         });
 
     // Query namespace owners with limit. Should succeed.
     suite
         .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
             start_after: None,
-            limit: Some(2),
+            limit: Some(1),
         })
         .should_succeed_and_equal(btree_map! {
-            Part::new_unchecked("dex") => contracts.dex,
             Part::new_unchecked("bridge") => contracts.gateway,
         });
 }

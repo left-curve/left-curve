@@ -42,12 +42,11 @@ impl GenesisCodes for RustVm {
             .with_bank_query(Box::new(dango_bank::bank_query))
             .build();
 
-        let dex = ContractBuilder::new(Box::new(dango_dex::instantiate))
-            .with_execute(Box::new(dango_dex::execute))
-            .with_cron_execute(Box::new(dango_dex::cron_execute))
-            .with_query(Box::new(dango_dex::query))
-            .with_reply(Box::new(dango_dex::reply))
-            .build();
+        // Previously this was the DEX (spot exchange) code hash, now removed.
+        let _dex = ContractBuilder::new(Box::new(|_, _: Empty| -> StdResult<_> {
+            unreachable!("the dex contract has been deleted");
+        }))
+        .build();
 
         let gateway = ContractBuilder::new(Box::new(dango_gateway::instantiate))
             .with_execute(Box::new(dango_gateway::execute))
@@ -102,7 +101,6 @@ impl GenesisCodes for RustVm {
 
         #[cfg(feature = "metrics")]
         {
-            dango_dex::metrics::init_metrics();
             dango_oracle::metrics::init_metrics();
             dango_perps::metrics::init_metrics();
             dango_taxman::metrics::init_metrics();
@@ -113,7 +111,6 @@ impl GenesisCodes for RustVm {
             account,
             account_factory,
             bank,
-            dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,

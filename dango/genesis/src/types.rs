@@ -4,7 +4,6 @@ use {
         account_factory::{NewUserSalt, UserIndex},
         bank,
         config::Hyperlane,
-        dex::PairUpdate,
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         oracle::PriceSource,
         perps::{self, PairParam},
@@ -19,7 +18,6 @@ use {
 pub struct Contracts {
     pub account_factory: Addr,
     pub bank: Addr,
-    pub dex: Addr,
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub oracle: Addr,
@@ -34,7 +32,6 @@ pub struct Codes<T> {
     pub account: T,
     pub account_factory: T,
     pub bank: T,
-    pub dex: T,
     pub gateway: T,
     pub hyperlane: Hyperlane<T>,
     pub oracle: T,
@@ -53,7 +50,6 @@ pub struct GenesisOption {
     pub grug: GrugOption,
     pub account: AccountOption,
     pub bank: BankOption,
-    pub dex: DexOption,
     pub gateway: GatewayOption,
     pub hyperlane: HyperlaneOption,
     pub oracle: OracleOption,
@@ -84,11 +80,6 @@ pub struct AccountOption {
 pub struct BankOption {
     /// Metadata of tokens.
     pub metadatas: BTreeMap<Denom, bank::Metadata>,
-}
-
-pub struct DexOption {
-    /// Initial Dango DEX trading pairs.
-    pub pairs: Vec<PairUpdate>,
 }
 
 pub struct GatewayOption {

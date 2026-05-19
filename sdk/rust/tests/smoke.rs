@@ -13,15 +13,13 @@ use {
     dango_genesis::GenesisOption,
     dango_mock_httpd::{BlockCreation, TestOption, run_with_port_sender, wait_for_server_ready},
     dango_sdk::{
-        QueryApp, QueryStore, Simulate, SubscribeAccounts, SubscribeBlock, SubscribeCandles,
+        QueryApp, QueryStore, Simulate, SubscribeAccounts, SubscribeBlock,
         SubscribeEventByAddresses, SubscribeEvents, SubscribeMessages, SubscribePerpsCandles,
         SubscribePerpsTrades, SubscribeQueryApp, SubscribeQueryStatus, SubscribeQueryStore,
-        SubscribeTrades, SubscribeTransactions, SubscribeTransfers, WsClient, query_app,
-        query_store, simulate, subscribe_accounts, subscribe_block, subscribe_candles,
-        subscribe_event_by_addresses, subscribe_events, subscribe_messages,
-        subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
-        subscribe_query_status, subscribe_query_store, subscribe_trades, subscribe_transactions,
-        subscribe_transfers,
+        SubscribeTransactions, SubscribeTransfers, WsClient, query_app, query_store, simulate,
+        subscribe_accounts, subscribe_block, subscribe_event_by_addresses, subscribe_events,
+        subscribe_messages, subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
+        subscribe_query_status, subscribe_query_store, subscribe_transactions, subscribe_transfers,
     },
     dango_testing::Preset,
     futures::StreamExt,
@@ -249,19 +247,6 @@ subscription_smoke_test!(
 );
 
 subscription_smoke_test!(
-    test_subscribe_candles,
-    SubscribeCandles,
-    subscribe_candles::Variables {
-        base_denom: "dango".to_string(),
-        quote_denom: "bridge/usdc".to_string(),
-        interval: subscribe_candles::CandleInterval::ONE_MINUTE,
-        later_than: None,
-    },
-    |_data: subscribe_candles::ResponseData| { true },
-    false
-);
-
-subscription_smoke_test!(
     test_subscribe_perps_candles,
     SubscribePerpsCandles,
     subscribe_perps_candles::Variables {
@@ -270,19 +255,6 @@ subscription_smoke_test!(
         later_than: None,
     },
     |_data: subscribe_perps_candles::ResponseData| { true },
-    false
-);
-
-subscription_smoke_test!(
-    test_subscribe_trades,
-    SubscribeTrades,
-    subscribe_trades::Variables {
-        base_denom: "dango".to_string(),
-        quote_denom: "bridge/usdc".to_string(),
-    },
-    |data: subscribe_trades::ResponseData| {
-        data.trades.base_denom == "dango" && data.trades.quote_denom == "bridge/usdc"
-    },
     false
 );
 

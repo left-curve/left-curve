@@ -4,7 +4,7 @@ use {
         account_factory, bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
-        dex, gateway, oracle, perps, taxman, vesting, warp,
+        gateway, oracle, perps, taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
@@ -29,7 +29,6 @@ where
     let account_code_hash = upload(&mut msgs, codes.account);
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
     let bank_code_hash = upload(&mut msgs, codes.bank);
-    let dex_code_hash = upload(&mut msgs, codes.dex);
     let gateway_code_hash = upload(&mut msgs, codes.gateway);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
@@ -142,18 +141,6 @@ where
         owner,
     )?;
 
-    // Instantiate the DEX contract.
-    let dex = instantiate(
-        &mut msgs,
-        dex_code_hash,
-        &dex::InstantiateMsg {
-            pairs: opt.dex.pairs,
-        },
-        "dango/dex",
-        "dango/dex",
-        owner,
-    )?;
-
     // Instantiate the gateway contract.
     let gateway = instantiate(
         &mut msgs,
@@ -197,7 +184,6 @@ where
         &bank::InstantiateMsg {
             balances,
             namespaces: btree_map! {
-                dex::NAMESPACE.clone()     => dex,
                 gateway::NAMESPACE.clone() => gateway,
             },
             metadatas: opt.bank.metadatas,
@@ -261,7 +247,6 @@ where
     let contracts = Contracts {
         account_factory,
         bank,
-        dex,
         gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         oracle,
@@ -276,7 +261,6 @@ where
         bank,
         taxman,
         cronjobs: btree_map! {
-            dex => Duration::ZERO, // Important: DEX cronjob is to be invoked at end of every block.
             gateway => opt.gateway.rate_limit_refresh_period,
             perps => Duration::from_minutes(1),
         },
@@ -290,7 +274,7 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
-            dex,
+            dex: Addr::ZERO,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,

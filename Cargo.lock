@@ -3734,19 +3734,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-dex"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-oracle",
- "dango-types",
- "grug",
- "metrics",
- "test-case",
- "tracing",
-]
-
-[[package]]
 name = "dango-gateway"
 version = "0.0.0"
 dependencies = [
@@ -3763,7 +3750,6 @@ dependencies = [
  "dango-account",
  "dango-account-factory",
  "dango-bank",
- "dango-dex",
  "dango-gateway",
  "dango-oracle",
  "dango-order-book",
@@ -3952,7 +3938,6 @@ dependencies = [
  "dango-account-factory",
  "dango-auth",
  "dango-bank",
- "dango-dex",
  "dango-gateway",
  "dango-genesis",
  "dango-mock-httpd",
