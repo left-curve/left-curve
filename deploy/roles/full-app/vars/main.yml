@@ -6,7 +6,6 @@ frontend_image_tag: "{{ github_sha }}"
 dango_image_digest: ""
 frontend_image_digest: ""
 faucet_bot_tag: "latest"
-dex_bot_tag: "latest"
 perps_bot_tag: "latest"
 perp_liquidator_tag: "latest"
 cometbft_node_key: ""
@@ -23,7 +22,6 @@ dango_network: "devnet"
 # When traefik is enabled it will be used for routing, keeping the same port
 traefik_enabled: false
 expose_ports: false
-dex_bot_enabled: false
 perps_bot_enabled: false
 github_deployments_enabled: false
 deploy_includes_postgres: true

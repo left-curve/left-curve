@@ -1,5 +1,4 @@
 ---
-dex_bot_host: "{{ ansible_play_hosts_all | first }}"
 perps_bot_host: "{{ ansible_play_hosts_all | first }}"
 
 # Per-network non-secret configuration for perp-liquidator.
