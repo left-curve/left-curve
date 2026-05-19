@@ -161,11 +161,6 @@ export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
 export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
 
 export {
-  type UsePoolLiquidityStateParameters,
-  usePoolLiquidityState,
-} from "./hooks/usePoolLiquidityState.js";
-
-export {
   type UseVaultLiquidityStateParameters,
   useVaultLiquidityState,
 } from "./hooks/useVaultLiquidityState.js";

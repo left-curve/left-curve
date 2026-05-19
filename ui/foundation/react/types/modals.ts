@@ -10,8 +10,6 @@ export const Modals = {
   RenewSession: "renew-session",
   ProSwapEditTPSL: "pro-edit-tpsl",
   ProSwapEditedSL: "pro-edited-sl",
-  PoolAddLiquidity: "pool-add-liquidity",
-  PoolWithdrawLiquidity: "pool-withdraw-liquidity",
   ActivityTransfer: "activity-transfer",
   ActivityConvert: "activity-convert",
   SignupReminder: "signup-reminder",

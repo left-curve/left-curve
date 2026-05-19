@@ -103,20 +103,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
-  [Modals.PoolAddLiquidity]: {
-    component: lazyWithRetry(() =>
-      import("./PoolAddLiquidity").then(({ PoolAddLiquidity }) => ({
-        default: PoolAddLiquidity,
-      })),
-    ),
-  },
-  [Modals.PoolWithdrawLiquidity]: {
-    component: lazyWithRetry(() =>
-      import("./PoolWithdrawLiquidity").then(({ PoolWithdrawLiquidity }) => ({
-        default: PoolWithdrawLiquidity,
-      })),
-    ),
-  },
   [Modals.ActivityTransfer]: {
     component: lazyWithRetry(() =>
       import("./activities/ActivityTransferModal").then(({ ActivityTransferModal }) => ({

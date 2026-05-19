@@ -6,7 +6,6 @@ import { numberMask } from "@left-curve/foundation";
 
 import { FormattedNumber } from "./FormattedNumber";
 import { Input } from "./Input";
-import { PairAssetSelector } from "./PairAssetSelector";
 import { RangeWithButtons } from "./RangeWithButtons";
 import { Skeleton } from "./Skeleton";
 
@@ -110,15 +109,11 @@ export const AssetInputWithRange: React.FC<AssetInputWithRangeProps> = (props) =
       startText="right"
       startContent={
         showCoinSelector ? (
-          renderSelector ? (
-            renderSelector({
-              value: selectorValue,
-              onChange: handleSelectorChange,
-              isDisabled,
-            })
-          ) : (
-            <PairAssetSelector value={selectorValue} onChange={handleSelectorChange} />
-          )
+          (renderSelector?.({
+            value: selectorValue,
+            onChange: handleSelectorChange,
+            isDisabled,
+          }) ?? null)
         ) : (
           <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
             <div className="flex gap-2 items-center font-semibold">

@@ -52,12 +52,6 @@ export function useServiceStatus(parameters?: UseServiceStatusParameters) {
     refetchInterval: 10_000,
   });
 
-  const { data: isDexPaused, isFetched: isDexChecked } = useQuery({
-    queryKey: ["dex_status"],
-    queryFn: async () => await publicClient.dexStatus(),
-    refetchInterval: 30_000,
-  });
-
   const transportMode = useSyncExternalStore<TransportMode>(
     (callback) => {
       const emitter = publicClient.subscribe?.emitter;
@@ -79,7 +73,6 @@ export function useServiceStatus(parameters?: UseServiceStatusParameters) {
       ? "warning"
       : "error";
   const chainStatus: ServiceStatus = isChainPaused ? "error" : "success";
-  const dexStatus: ServiceStatus = isChainPaused || isDexPaused ? "error" : "success";
 
   const globalStatus = useMemo<ServiceStatus>(() => {
     if (chainStatus === "error") return "error";
@@ -90,10 +83,9 @@ export function useServiceStatus(parameters?: UseServiceStatusParameters) {
   return {
     wsStatus,
     chainStatus,
-    dexStatus,
     globalStatus,
     transportMode,
     isChainPaused,
-    isReady: isWsChecked && isChainChecked && isDexChecked,
+    isReady: isWsChecked && isChainChecked,
   };
 }
