@@ -4020,6 +4020,8 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
+ "dango-bank",
+ "dango-gateway",
  "dango-order-book",
  "dango-perps",
  "dango-types",

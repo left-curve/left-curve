@@ -7,7 +7,7 @@
     "liquidity_sleep": "5s",
     "mint": {
       "margin_threshold": 1000,
-      "faucet_url": "http://faucet-bot:8082"
+      "faucet_url": "https://faucet-devnet-ovh2.dango.zone"
     },
     "vault": {
       "amount": 5000

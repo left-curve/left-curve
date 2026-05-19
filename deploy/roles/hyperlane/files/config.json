@@ -2,7 +2,7 @@
   "chains": {
     "dango": {
       "chain_id": "dango-1",
-      "httpd_urls": ["https://api-mainnet.dango.zone"],
+      "httpd_urls": ["http://dango:8080", "https://api-mainnet.dango.zone"],
       "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
       "interchainGasPaymaster": "0x0000000000000000000000000000000000000000",
       "validatorAnnounce": "0x75f38c6fcfc2fb8333e5c3ef89d13b7036abe3ff",
@@ -17,7 +17,7 @@
     },
     "dangotestnet": {
       "chain_id": "dango-testnet-1",
-      "httpd_urls": ["https://api-testnet.dango.zone"],
+      "httpd_urls": ["http://dango:8080", "https://api-testnet.dango.zone"],
       "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
       "interchainGasPaymaster": "0x0000000000000000000000000000000000000000",
       "validatorAnnounce": "0x75f38c6fcfc2fb8333e5c3ef89d13b7036abe3ff",

@@ -13,6 +13,8 @@ services:
       environment: "production"
     ports:
       - "127.0.0.1:9000:9000"
+      - "${TAILSCALE_IP}:8123:8123"
+      - "${WIREGUARD_IP}:8123:8123"
       - "${TAILSCALE_IP}:9126:9126"
       - "${WIREGUARD_IP}:9126:9126"
     volumes:

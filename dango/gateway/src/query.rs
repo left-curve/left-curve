@@ -1,14 +1,13 @@
 use {
-    crate::{PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
+    crate::{PERSONAL_QUOTAS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES, rate_limit},
     dango_types::gateway::{
         PersonalQuota, QueryMsg, QueryPersonalQuotasResponseItem, QueryReservesResponseItem,
-        QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, RateLimit, Remote,
+        QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, Remote,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Uint128,
     },
-    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -24,10 +23,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::Routes { start_after, limit } => {
             let res = query_routes(ctx, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::RateLimits {} => {
-            let res = query_rate_limits(ctx)?;
             res.to_json_value()
         },
         QueryMsg::Reserve { bridge, remote } => {
@@ -52,6 +47,18 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::PersonalQuotas { start_after, limit } => {
             let res = query_personal_quotas(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::RateLimits {} => {
+            let res = rate_limit::query_rate_limits(ctx)?;
+            res.to_json_value()
+        },
+        QueryMsg::RateLimitStatus { denom } => {
+            let res = rate_limit::query_rate_limit_status(ctx, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::RateLimitStatuses { start_after, limit } => {
+            let res = rate_limit::query_rate_limit_statuses(ctx, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -85,10 +92,6 @@ fn query_routes(
         })
         .take(limit)
         .collect()
-}
-
-fn query_rate_limits(ctx: ImmutableCtx) -> StdResult<BTreeMap<Denom, RateLimit>> {
-    RATE_LIMITS.load(ctx.storage)
 }
 
 fn query_reserve(ctx: ImmutableCtx, bridge: Addr, remote: Remote) -> StdResult<Uint128> {

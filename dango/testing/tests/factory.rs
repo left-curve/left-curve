@@ -723,3 +723,86 @@ fn forgot_username_returns_users_with_index() {
     assert_eq!(users[0].index, user_index);
     assert_eq!(users[0].name, Username::default_for_index(user_index));
 }
+
+/// The chain owner can reset a user's custom username back to the default,
+/// after which the user can set a new custom username.
+#[tokio::test]
+async fn owner_can_reset_username() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+    let custom_name = Username::from_str("alice").unwrap();
+
+    // User sets a custom username.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(custom_name.clone()),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
+        )
+        .should_succeed_and(|res| res.name == custom_name);
+
+    // Owner resets it back to the default.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::ForceResetUsername { user_index },
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
+        )
+        .should_succeed_and(|res| res.name == Username::default_for_index(user_index));
+
+    // The user can now claim a new custom username.
+    let new_name = Username::from_str("alice2").unwrap();
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateUsername(new_name.clone()),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryUserRequest(UserIndexOrName::Index(user_index)),
+        )
+        .should_succeed_and(|res| res.name == new_name);
+}
+
+/// A non-owner cannot reset a user's username.
+#[tokio::test]
+async fn non_owner_cannot_reset_username() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let user_index = accounts.user1.user_index();
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::ForceResetUsername { user_index },
+            Coins::new(),
+        )
+        .await
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+}

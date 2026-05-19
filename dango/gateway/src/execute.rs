@@ -1,8 +1,5 @@
 use {
-    crate::{
-        OUTBOUND_QUOTAS, PERSONAL_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES,
-        WITHDRAWAL_FEES,
-    },
+    crate::{PERSONAL_QUOTAS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES, rate_limit},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
@@ -14,9 +11,8 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Denom, Inner, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        NumberConst, Op, QuerierExt, QuerierWrapper, Response, StdError, StdResult, Storage,
-        SudoCtx, Uint128, btree_map, coins,
+        Addr, Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, NumberConst, Op, Order,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -24,7 +20,7 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     _set_routes(ctx.storage, msg.routes)?;
-    _set_rate_limits(ctx.storage, msg.rate_limits)?;
+    rate_limit::init(ctx.storage, msg.rate_limits)?;
     _set_withdrawal_fees(ctx.storage, msg.withdrawal_fees)?;
 
     Ok(Response::new())
@@ -97,73 +93,36 @@ fn set_rate_limits(
         "only the owner can set rate limits"
     );
 
-    let old_rate_limits = RATE_LIMITS.load(ctx.storage)?;
+    // A 0% rate limit is a hard freeze: the global cap is zero, so it must
+    // also revoke any personal quota that would otherwise let a user bypass
+    // the freeze through their per-account allowance.
+    //
+    // Compute the frozen-denom set from the incoming map and run the
+    // revocation pass before delegating to `rate_limit::apply_admin_update`.
+    // Personal quotas are not rate-limit machinery and live outside the
+    // `rate_limit` module; keeping the revocation here means that module
+    // doesn't have to know about `PERSONAL_QUOTAS`.
+    let frozen_denoms: BTreeSet<&Denom> = rate_limits
+        .iter()
+        .filter(|(_, limit)| limit.into_inner().is_zero())
+        .map(|(denom, _)| denom)
+        .collect();
 
-    _set_rate_limits(ctx.storage, rate_limits.clone())?;
-    tighten_quotas(ctx.storage, ctx.querier, &old_rate_limits, &rate_limits)?;
+    if !frozen_denoms.is_empty() {
+        let personal_quotas = PERSONAL_QUOTAS
+            .range(ctx.storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(Response::new())
-}
-
-fn _set_rate_limits(
-    storage: &mut dyn Storage,
-    rate_limits: BTreeMap<Denom, RateLimit>,
-) -> StdResult<()> {
-    RATE_LIMITS.save(storage, &rate_limits)?;
-
-    Ok(())
-}
-
-/// Clear all outbound quotas and reseed them from each rate-limited denom's
-/// current supply times its configured percentage. Called by the cron job at
-/// the start of each 24-hour window.
-fn reseed_quotas(storage: &mut dyn Storage, querier: QuerierWrapper) -> StdResult<()> {
-    OUTBOUND_QUOTAS.clear(storage, None, None);
-
-    for (denom, limit) in RATE_LIMITS.load(storage)? {
-        let supply = querier.query_supply(denom.clone())?;
-        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
-
-        OUTBOUND_QUOTAS.save(storage, &denom, &quota)?;
-    }
-
-    Ok(())
-}
-
-/// Called by `set_rate_limits` to reconcile outstanding quotas with the new
-/// rate-limits map. `SetRateLimits` only ever lowers outstanding quotas;
-/// raises wait for the next cron tick. This prevents an admin from refilling
-/// a drained quota mid-window (intentionally or accidentally) and letting the
-/// same user withdraw a second full window back-to-back.
-///
-/// - Newly added denoms are seeded at `supply × limit`.
-/// - Existing denoms take the smaller of the current quota and `supply × new_limit`.
-/// - Denoms removed from the map have their quota entry dropped (become
-///   unrestricted immediately).
-fn tighten_quotas(
-    storage: &mut dyn Storage,
-    querier: QuerierWrapper,
-    old_rate_limits: &BTreeMap<Denom, RateLimit>,
-    new_rate_limits: &BTreeMap<Denom, RateLimit>,
-) -> StdResult<()> {
-    for denom in old_rate_limits.keys() {
-        if !new_rate_limits.contains_key(denom) {
-            OUTBOUND_QUOTAS.remove(storage, denom);
+        for ((user, denom), _) in personal_quotas {
+            if frozen_denoms.contains(&denom) {
+                PERSONAL_QUOTAS.remove(ctx.storage, (user, &denom));
+            }
         }
     }
 
-    for (denom, limit) in new_rate_limits {
-        let supply = querier.query_supply(denom.clone())?;
-        let fresh_quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+    rate_limit::apply_admin_update(ctx.storage, ctx.querier, rate_limits)?;
 
-        let tightened = OUTBOUND_QUOTAS
-            .may_load(storage, denom)?
-            .map_or(fresh_quota, |current| current.min(fresh_quota));
-
-        OUTBOUND_QUOTAS.save(storage, denom, &tightened)?;
-    }
-
-    Ok(())
+    Ok(Response::new())
 }
 
 fn set_withdrawal_fees(
@@ -338,25 +297,17 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         }
     }
 
-    // Reduce the global outbound quota by whatever the personal quota did not
-    // cover. A missing entry means the denom is not rate-limited at all.
-    if !remaining.is_zero() {
-        OUTBOUND_QUOTAS.may_modify(ctx.storage, &coin.denom, |maybe_quota| {
-            let Some(quota) = maybe_quota else {
-                return Ok(None);
-            };
-
-            Some(quota.checked_sub(remaining).map_err(|_| {
-                anyhow!(
-                    "insufficient outbound quota! denom: {}, requested: {}, remaining after personal quota: {}",
-                    coin.denom,
-                    coin.amount,
-                    remaining
-                )
-            }))
-            .transpose()
-        })?;
-    }
+    // Check the trailing-24h rolling window against the cap and record the
+    // residue. `enforce` short-circuits when the denom is not rate-limited
+    // (no `SUPPLY_SNAPSHOTS` entry) or when the residue is zero (the
+    // withdraw was fully covered by personal quota).
+    rate_limit::enforce(
+        ctx.storage,
+        &coin.denom,
+        ctx.block.timestamp,
+        coin.amount,
+        remaining,
+    )?;
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
 
@@ -403,7 +354,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    reseed_quotas(ctx.storage, ctx.querier)?;
+    rate_limit::tick(ctx.storage, ctx.querier, ctx.block.timestamp)?;
 
     Ok(Response::new())
 }
