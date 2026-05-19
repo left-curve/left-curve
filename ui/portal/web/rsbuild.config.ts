@@ -45,7 +45,8 @@ const gitCommit = (() => {
   }
 })();
 
-const r2AssetsPrefix = process.env.R2_ASSETS_PREFIX;
+const r2AssetsPrefix = process.env.R2_ASSETS_PREFIX || "/";
+const useR2Assets = r2AssetsPrefix !== "/";
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
@@ -171,7 +172,7 @@ self.addEventListener("message", (event) => {
 
 const copyPattern = [];
 
-if (!r2AssetsPrefix && fs.existsSync(tradingViewPath)) {
+if (!useR2Assets && fs.existsSync(tradingViewPath)) {
   copyPattern.push({
     from: path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/charting_library"),
     to: "./static/charting_library",
@@ -201,6 +202,7 @@ export default defineConfig({
       "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
       "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "import.meta.env.TV_VERSION": `"${tvVersion}"`,
+      "import.meta.env.R2_ASSETS_PREFIX": JSON.stringify(r2AssetsPrefix),
       "process.env": {},
       "import.meta.env": {},
     },
@@ -268,7 +270,7 @@ export default defineConfig({
     },
   },
   output: {
-    assetPrefix: r2AssetsPrefix || "/",
+    assetPrefix: r2AssetsPrefix,
     distPath: {
       root: "build",
     },

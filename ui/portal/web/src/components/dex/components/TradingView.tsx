@@ -48,9 +48,9 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders, mode = 
   const storageKey = `tv_v4.${pairSymbol}_${mode}`;
 
   const tvLibraryPath =
-    process.env.NODE_ENV === "production"
-      ? `https://assets.dango.exchange/vendor/tradingview/${import.meta.env.TV_VERSION}/charting_library/`
-      : "/static/charting_library/";
+    import.meta.env.R2_ASSETS_PREFIX === "/"
+      ? "/static/charting_library/"
+      : `https://assets.dango.exchange/vendor/tradingview/${import.meta.env.TV_VERSION}/charting_library/`;
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
 
