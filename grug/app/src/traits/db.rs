@@ -1,5 +1,3 @@
-#[cfg(feature = "ibc")]
-use ics23::CommitmentProof;
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Batch, Hash256, Storage},
@@ -116,26 +114,4 @@ pub trait Db {
     /// That is, `up_to_version` will be thd oldest version available in the
     /// database post pruning.
     fn prune(&self, up_to_version: u64) -> Result<(), Self::Error>;
-}
-
-/// Represents a database that is capable of generating IBC compatible storage
-/// proofs.
-#[cfg(feature = "ibc")]
-pub trait IbcDb: Db {
-    /// Generate ICS-23 compatible Merkle proof of the given key at the given
-    /// version.
-    ///
-    /// If version is unspecified, use the latest version.
-    ///
-    /// ## Note
-    ///
-    /// This needs to be implemented at the `Db` level, instead of in grug-jmt,
-    /// because ICS-23 requires proofs to contain the prehash key and value,
-    /// while grug-jmt only store hashed keys and values. Therefore we need the
-    /// state storage.
-    fn ics23_prove(
-        &self,
-        key: Vec<u8>,
-        version: Option<u64>,
-    ) -> Result<CommitmentProof, Self::Error>;
 }
