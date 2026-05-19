@@ -8,11 +8,15 @@ use {
         web::{self, ServiceConfig},
     },
     grug_httpd::{
-        routes::{graphql::graphql_route, index::index},
+        routes::{
+            graphql::{GraphqlRequestTimeout, graphql_route},
+            index::index,
+        },
         subscription_limiter::SubscriptionLimiter,
     },
     grug_types::HttpdConfig,
     sentry_actix::Sentry,
+    std::time::Duration,
 };
 #[cfg(feature = "metrics")]
 use {
@@ -53,6 +57,10 @@ where
         httpd_config.max_subscriptions_global,
     );
 
+    let graphql_request_timeout = GraphqlRequestTimeout(Duration::from_secs(
+        httpd_config.graphql_request_timeout_secs,
+    ));
+
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -84,6 +92,7 @@ where
         let app = app.wrap(metrics.clone());
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
+            .app_data(web::Data::new(graphql_request_timeout))
             .configure(config_app(context.clone(), graphql_schema.clone()))
     })
     .workers(httpd_config.workers)
