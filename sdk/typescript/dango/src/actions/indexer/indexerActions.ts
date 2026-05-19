@@ -16,22 +16,10 @@ import {
 } from "./subscriptions/account.js";
 
 import {
-  type CandlesSubscriptionParameters,
-  type CandlesSubscriptionReturnType,
-  candlesSubscription,
-} from "./subscriptions/candles.js";
-
-import {
   type TransferSubscriptionParameters,
   type TransferSubscriptionReturnType,
   transferSubscription,
 } from "./subscriptions/transfer.js";
-
-import {
-  tradesSubscription,
-  type TradesSubscriptionParameters,
-  type TradesSubscriptionReturnType,
-} from "./subscriptions/trades.js";
 
 import {
   queryAppSubscription,
@@ -64,12 +52,6 @@ import {
 } from "./subscriptions/perpsTrades.js";
 
 import {
-  allPairStatsSubscription,
-  type AllPairStatsSubscriptionParameters,
-  type AllPairStatsSubscriptionReturnType,
-} from "./subscriptions/allPairStats.js";
-
-import {
   allPerpsPairStatsSubscription,
   type AllPerpsPairStatsSubscriptionParameters,
   type AllPerpsPairStatsSubscriptionReturnType,
@@ -78,7 +60,6 @@ import {
 export type IndexerActions = {
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
-  candlesSubscription: (args: CandlesSubscriptionParameters) => CandlesSubscriptionReturnType;
   eventsSubscription: (args: EventsSubscriptionParameters) => EventsSubscriptionReturnType;
   eventsByAddressesSubscription: (
     args: EventsByAddressesSubscriptionParameters,
@@ -89,14 +70,10 @@ export type IndexerActions = {
   perpsTradesSubscription: (
     args: PerpsTradesSubscriptionParameters,
   ) => PerpsTradesSubscriptionReturnType;
-  allPairStatsSubscription: (
-    args: AllPairStatsSubscriptionParameters,
-  ) => AllPairStatsSubscriptionReturnType;
   allPerpsPairStatsSubscription: (
     args: AllPerpsPairStatsSubscriptionParameters,
   ) => AllPerpsPairStatsSubscriptionReturnType;
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
-  tradesSubscription: (args: TradesSubscriptionParameters) => TradesSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
   queryAppSubscription: (args: QueryAppSubscriptionParameters) => QueryAppSubscriptionReturnType;
   queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
@@ -106,15 +83,12 @@ export function indexerActions(client: Client): IndexerActions {
   return {
     blockSubscription: (args) => blockSubscription(client, args),
     accountSubscription: (args) => accountSubscription(client, args),
-    candlesSubscription: (args) => candlesSubscription(client, args),
     eventsSubscription: (args) => eventsSubscription(client, args),
     eventsByAddressesSubscription: (args) => eventsByAddressesSubscription(client, args),
     perpsCandlesSubscription: (args) => perpsCandlesSubscription(client, args),
     perpsTradesSubscription: (args) => perpsTradesSubscription(client, args),
-    allPairStatsSubscription: (args) => allPairStatsSubscription(client, args),
     allPerpsPairStatsSubscription: (args) => allPerpsPairStatsSubscription(client, args),
     searchTxs: (args) => searchTxs(client, args),
-    tradesSubscription: (args) => tradesSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),
     queryAppSubscription: (args) => queryAppSubscription(client, args),
     queryBlock: (args) => queryBlock(client, args),

@@ -9,9 +9,6 @@ import { Pressable, View, Text, type GestureResponderEvent } from "react-native"
 import type { Activities, ActivityRecord } from "@left-curve/store";
 import { ActivityTransfer } from "./Transfer";
 import { ActivityNewAccount } from "./NewAccount";
-import { ActivityOrderCreated } from "./OrderCreated";
-import { ActivityOrderFilled } from "./OrderFilled";
-import { ActivityOrderCanceled } from "./OrderCanceled";
 import { IconClose } from "../icons/IconClose";
 
 import type React from "react";
@@ -29,9 +26,6 @@ type CardFC = ForwardRefExoticComponent<
 const activities: Partial<Record<keyof Activities, LazyExoticComponent<CardFC>>> = {
   transfer: lazy(() => Promise.resolve({ default: ActivityTransfer as CardFC })),
   account: lazy(() => Promise.resolve({ default: ActivityNewAccount as CardFC })),
-  orderCreated: lazy(() => Promise.resolve({ default: ActivityOrderCreated as CardFC })),
-  orderFilled: lazy(() => Promise.resolve({ default: ActivityOrderFilled as CardFC })),
-  orderCanceled: lazy(() => Promise.resolve({ default: ActivityOrderCanceled as CardFC })),
 };
 
 export type ActivityProps = {

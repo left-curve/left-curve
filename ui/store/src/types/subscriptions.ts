@@ -1,21 +1,17 @@
 import type {
   Address,
-  Candle,
   CandleIntervals,
-  Denom,
   EventFilter,
   IndexedAccountEvent,
   IndexedBlock,
   IndexedEvent,
   IndexedTransferEvent,
-  PairStats,
   PerpsCandle,
   PerpsPairStats,
   PerpsTrade,
   QueryRequest,
   QueryResponse,
   SubscriptionEvent as DangoSubscriptionEvent,
-  Trade,
   Username,
 } from "@left-curve/types";
 import type { PublicClient } from "@left-curve/sdk";
@@ -47,31 +43,12 @@ export type SubscriptionSchema = [
     listener: (events: IndexedEvent[]) => void;
   },
   {
-    key: "candles";
-    params: {
-      baseDenom: Denom;
-      quoteDenom: Denom;
-      interval: CandleIntervals;
-      laterThan?: Date;
-      limit?: number;
-    };
-    listener: (event: { candles: Candle[] }) => void;
-  },
-  {
     key: "perpsCandles";
     params: {
       pairId: string;
       interval: CandleIntervals;
     };
     listener: (event: { perpsCandles: PerpsCandle[] }) => void;
-  },
-  {
-    key: "trades";
-    params: {
-      baseDenom: Denom;
-      quoteDenom: Denom;
-    };
-    listener: (event: { trades: Trade }) => void;
   },
   {
     key: "perpsTrades";
@@ -98,11 +75,6 @@ export type SubscriptionSchema = [
       httpInterval?: number;
     };
     listener: (event: { response: QueryResponse; blockHeight: number }) => void;
-  },
-  {
-    key: "allPairStats";
-    params?: undefined;
-    listener: (event: { allPairStats: PairStats[] }) => void;
   },
   {
     key: "allPerpsPairStats";

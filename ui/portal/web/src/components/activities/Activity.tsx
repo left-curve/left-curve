@@ -37,27 +37,6 @@ const activities: Record<
       }>,
     })),
   ),
-  orderCreated: lazy(() =>
-    import("./OrderCreated").then(({ ActivityOrderCreated }) => ({
-      default: ActivityOrderCreated as ForwardRefExoticComponent<{
-        activity: ActivityRecord<keyof Activities>;
-      }>,
-    })),
-  ),
-  orderFilled: lazy(() =>
-    import("./OrderFilled").then(({ ActivityOrderFilled }) => ({
-      default: ActivityOrderFilled as ForwardRefExoticComponent<{
-        activity: ActivityRecord<keyof Activities>;
-      }>,
-    })),
-  ),
-  orderCanceled: lazy(() =>
-    import("./OrderCanceled").then(({ ActivityOrderCanceled }) => ({
-      default: ActivityOrderCanceled as ForwardRefExoticComponent<{
-        activity: ActivityRecord<keyof Activities>;
-      }>,
-    })),
-  ),
   perpOrderFilled: lazy(() =>
     import("./PerpOrderFilled").then(({ ActivityPerpOrderFilled }) => ({
       default: ActivityPerpOrderFilled as ForwardRefExoticComponent<{

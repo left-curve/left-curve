@@ -14,14 +14,13 @@ function ProTradeApplet() {
   const navigate = useNavigate();
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
-  const { action = "buy", order_type = "market", type = "perps" } = Route.useSearch();
+  const { action = "buy", order_type = "market" } = Route.useSearch();
   const headerHeight = useHeaderHeight();
 
-  const onChangePairId = (pairSymbols: string, type: "spot" | "perps") => {
+  const onChangePairId = (pairSymbols: string) => {
     navigate({
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
-      search: { type },
       replace: true,
     });
   };
@@ -31,7 +30,7 @@ function ProTradeApplet() {
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
       replace: true,
-      search: { order_type, action, type },
+      search: { order_type, action },
     });
   };
 
@@ -40,7 +39,7 @@ function ProTradeApplet() {
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
       replace: true,
-      search: { order_type, action, type },
+      search: { order_type, action },
     });
   };
 
@@ -65,7 +64,6 @@ function ProTradeApplet() {
         onChangeAction={onChangeAction}
         orderType={order_type}
         onChangeOrderType={onChangeOrderType}
-        type={type}
       >
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">
