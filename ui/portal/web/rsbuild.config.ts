@@ -17,7 +17,7 @@ import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
 import { devnet, local, testnet, mainnet } from "@left-curve/sdk";
 
-import type { Chain } from "@left-curve/sdk/types";
+import type { Chain } from "@left-curve/types";
 import type { Rspack } from "@rsbuild/core";
 
 const isLocal = process.env.NODE_ENV === "development";
@@ -56,11 +56,13 @@ const tradingViewPath = path.resolve(
   "@left-curve/tradingview/charting_library",
 );
 
-const tvVersion = fs.existsSync(tradingViewPath)
-  ? (fs.readJsonSync(
-      path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/package.json"),
-    ).version as string)
-  : "unknown";
+const tvVersion = (
+  fs.existsSync(tradingViewPath)
+    ? (fs.readJsonSync(
+        path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/package.json"),
+      ).version as string)
+    : "unknown"
+).replace(/\./g, "_");
 
 fs.copySync(
   path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
@@ -173,12 +175,17 @@ self.addEventListener("message", (event) => {
 });
 `;
 
-const copyPattern = [];
+const copyPattern: { from: string; to: string }[] = [
+  {
+    from: path.resolve(__dirname, "functions"),
+    to: "./functions",
+  },
+];
 
 if (!useR2Assets && fs.existsSync(tradingViewPath)) {
   copyPattern.push({
     from: path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/charting_library"),
-    to: "./static/charting_library",
+    to: `./charting_library/${tvVersion}`,
   });
 }
 

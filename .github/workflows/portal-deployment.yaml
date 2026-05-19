@@ -138,7 +138,7 @@ jobs:
             --size-only \
             --cache-control "public, max-age=31536000, immutable"
 
-          TV_VERSION=$(jq -r .version node_modules/@left-curve/tradingview/package.json)
+          TV_VERSION=$(jq -r .version node_modules/@left-curve/tradingview/package.json | tr . _)
           if ! aws s3 ls "s3://${R2_BUCKET}/vendor/tradingview/${TV_VERSION}/" \
                --endpoint-url "${R2_ENDPOINT}" > /dev/null 2>&1; then
             aws s3 sync ./node_modules/@left-curve/tradingview/charting_library \
