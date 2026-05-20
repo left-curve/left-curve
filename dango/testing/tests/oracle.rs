@@ -1,11 +1,12 @@
 use {
+    dango_order_book::UsdPrice,
     dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         constants::{btc, eth},
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryTrustedSignersRequest},
     },
     grug::{
-        Addr, Binary, ByteArray, Coins, NonEmpty, QuerierExt, ResultExt, Timestamp, Udec128,
+        Addr, Binary, ByteArray, Coins, Dec128_6, NonEmpty, QuerierExt, ResultExt, Timestamp,
         btree_map,
     },
     grug_app::NaiveProposalPreparer,
@@ -45,8 +46,8 @@ async fn pyth_lazer() {
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc::DENOM.clone() => PriceSource { id: 1, precision: 8, channel: Channel::RealTime },
-                eth::DENOM.clone() => PriceSource { id: 2, precision: 18, channel: Channel::RealTime },
+                btc::DENOM.clone() => PriceSource { id: 1, channel: Channel::RealTime },
+                eth::DENOM.clone() => PriceSource { id: 2, channel: Channel::RealTime },
             }),
             Coins::default(),
         )
@@ -157,7 +158,7 @@ async fn pyth_lazer() {
 
     assert_eq!(
         price.humanized_price,
-        Udec128::from_str("112985.05901374").unwrap()
+        UsdPrice::new(Dec128_6::from_str("112985.059013").unwrap())
     );
     assert_eq!(price.timestamp, Timestamp::from_micros(1758539671000000));
 
@@ -170,7 +171,7 @@ async fn pyth_lazer() {
 
     assert_eq!(
         price.humanized_price,
-        Udec128::from_str("4185.88044686").unwrap()
+        UsdPrice::new(Dec128_6::from_str("4185.880446").unwrap())
     );
     assert_eq!(price.timestamp, Timestamp::from_micros(1758539671000000));
 }

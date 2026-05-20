@@ -1,6 +1,6 @@
 use {
     crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_TRUSTED_SIGNERS},
-    dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
+    dango_types::oracle::{Price, PriceSource, QueryMsg},
     grug::{
         Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Timestamp,
@@ -52,7 +52,7 @@ fn query_trusted_signers(
         .collect()
 }
 
-fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
+fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<Price> {
     let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage);
     oracle_querier.query_price(&denom, None)
 }
@@ -61,7 +61,7 @@ fn query_prices(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> anyhow::Result<BTreeMap<Denom, PrecisionedPrice>> {
+) -> anyhow::Result<BTreeMap<Denom, Price>> {
     let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage);
 
     let start = start_after.as_ref().map(Bound::Exclusive);

@@ -5,12 +5,11 @@ use {
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_types::{
         constants::usdc,
-        oracle::{self, Precision, PrecisionlessPrice, PriceSource},
+        oracle::{self, Price, PriceSource},
         perps,
     },
     grug::{
-        Addr, BorshSerExt, Coins, Denom, NumberConst, ResultExt, Storage, Timestamp, Udec128,
-        Uint128, btree_map, concat,
+        Addr, BorshSerExt, Coins, Denom, ResultExt, Storage, Timestamp, Uint128, btree_map, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, PythId},
@@ -28,13 +27,12 @@ pub fn pair_id() -> Denom {
 /// entries within the same test environment.
 pub struct OracleTestEntry {
     pub pyth_id: PythId,
-    pub precision: Precision,
-    pub humanized_price: Udec128,
+    pub humanized_price: UsdPrice,
     pub timestamp: Timestamp,
 }
 
-/// Write a `PrecisionlessPrice` directly into the oracle contract's
-/// `PYTH_PRICES` storage map.
+/// Write a `Price` directly into the oracle contract's `PYTH_PRICES` storage
+/// map.
 ///
 /// This bypasses `ExecuteMsg::FeedPrices`, which would otherwise require a
 /// valid Pyth Lazer ECDSA signature — impractical to satisfy in tests, since
@@ -43,7 +41,7 @@ pub fn write_pyth_price_raw(
     storage: &mut dyn Storage,
     oracle: Addr,
     pyth_id: PythId,
-    price: &PrecisionlessPrice,
+    price: &Price,
 ) {
     let map_key = PYTH_PRICES.path(pyth_id).storage_key().to_vec();
     let contract_prefix = concat(CONTRACT_NAMESPACE, oracle.as_ref());
@@ -63,14 +61,12 @@ pub async fn setup_perps_env(
     let entries = btree_map! {
         usdc::DENOM.clone() => OracleTestEntry {
             pyth_id: 1,
-            precision: usdc::DECIMAL as Precision,
-            humanized_price: Udec128::ONE,
+            humanized_price: UsdPrice::new_int(1),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
         pair_id() => OracleTestEntry {
             pyth_id: 2,
-            precision: 0,
-            humanized_price: Udec128::new(eth_price),
+            humanized_price: UsdPrice::new_int(eth_price as i128),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
     };
@@ -81,7 +77,6 @@ pub async fn setup_perps_env(
             (denom.clone(), PriceSource {
                 id: e.pyth_id,
                 channel: Channel::RealTime,
-                precision: e.precision,
             })
         })
         .collect();
@@ -98,7 +93,7 @@ pub async fn setup_perps_env(
 
     suite.app.db.with_state_storage_mut(|storage| {
         for entry in entries.values() {
-            let price = PrecisionlessPrice::new(entry.humanized_price, entry.timestamp);
+            let price = Price::new(entry.humanized_price, entry.timestamp);
             write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
         }
     });

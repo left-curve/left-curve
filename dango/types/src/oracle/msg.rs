@@ -1,5 +1,5 @@
 use {
-    crate::oracle::{PrecisionedPrice, PriceSource},
+    crate::oracle::{Price, PriceSource},
     grug::{Binary, Denom, Timestamp},
     pyth_types::PriceUpdate,
     std::collections::BTreeMap,
@@ -41,10 +41,10 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Query the price of the given denom.
-    #[returns(PrecisionedPrice)]
+    #[returns(Price)]
     Price { denom: Denom },
     /// Enumerate the prices of all supported denoms.
-    #[returns(BTreeMap<Denom, PrecisionedPrice>)]
+    #[returns(BTreeMap<Denom, Price>)]
     Prices {
         start_after: Option<Denom>,
         limit: Option<u32>,

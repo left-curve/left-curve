@@ -2,17 +2,14 @@ use {
     crate::{PRICE_SOURCES, PYTH_PRICES},
     anyhow::{anyhow, ensure},
     dango_order_book::UsdPrice,
-    dango_types::oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
-    grug::{
-        Addr, Cache, Dec128_6, Denom, Inner, QuerierWrapper, StdResult, Storage, StorageQuerier,
-        Timestamp, Unsigned,
-    },
+    dango_types::oracle::{Price, PriceSource},
+    grug::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp},
     pyth_types::PythId,
     std::collections::HashMap,
 };
 
 pub struct OracleQuerier<'a> {
-    cache: Cache<'a, Denom, PrecisionedPrice, anyhow::Error, PriceSource>,
+    cache: Cache<'a, Denom, Price, anyhow::Error, PriceSource>,
     no_older_than: Option<Timestamp>,
 }
 
@@ -32,7 +29,7 @@ impl<'a> OracleQuerier<'a> {
 
     /// Create a new `OracleQuerier` that returns predefined prices in a hash map.
     /// For using in tests.
-    pub fn new_mock(prices: HashMap<Denom, PrecisionedPrice>) -> Self {
+    pub fn new_mock(prices: HashMap<Denom, Price>) -> Self {
         Self {
             cache: Cache::new(move |denom, _| {
                 prices.get(denom).cloned().ok_or_else(|| {
@@ -55,7 +52,7 @@ impl<'a> OracleQuerier<'a> {
         &mut self,
         denom: &Denom,
         price_source: Option<PriceSource>,
-    ) -> anyhow::Result<PrecisionedPrice> {
+    ) -> anyhow::Result<Price> {
         self.cache
             .get_or_fetch(denom, price_source)
             .and_then(|price| {
@@ -75,25 +72,11 @@ impl<'a> OracleQuerier<'a> {
             .cloned()
     }
 
-    /// Similar to `self.query_price` but converts the price to the format
-    /// expected by the perps contract.
-    // Oracle contract stores prices in Udec128_18. We need to convert it to Dec128_6.
-    // TODO: we should store prices in oracle contract as Dec128_6 as well.
+    /// Similar to `self.query_price` but returns just the humanized price,
+    /// matching the type used by the perps contract.
     pub fn query_price_for_perps(&mut self, denom: &Denom) -> anyhow::Result<UsdPrice> {
-        self.query_price(denom, None).and_then(|price| {
-            let price = price.humanized_price.checked_into_signed()?;
-            let inner = Dec128_6::checked_from_atomics(price.into_inner(), 18)?;
-            Ok(UsdPrice::new(inner))
-        })
-    }
-
-    /// Query the price for a given denom, optionally specifying the price source.
-    pub fn query_price_ignore_staleness(
-        &mut self,
-        denom: &Denom,
-        price_source: Option<PriceSource>,
-    ) -> anyhow::Result<PrecisionedPrice> {
-        self.cache.get_or_fetch(denom, price_source).cloned()
+        self.query_price(denom, None)
+            .map(|price| price.humanized_price)
     }
 }
 
@@ -116,12 +99,11 @@ impl<'a> OracleQuerierNoCache<'a> {
         &self,
         denom: &Denom,
         price_source: Option<PriceSource>,
-    ) -> anyhow::Result<PrecisionedPrice> {
+    ) -> anyhow::Result<Price> {
         // Query the denom's price source, if not provided.
         let price_source = price_source.map_or_else(|| self.ctx.get_price_source(denom), Ok)?;
 
-        let price = self.ctx.get_price(price_source.id)?;
-        Ok(price.with_precision(price_source.precision))
+        Ok(self.ctx.get_price(price_source.id)?)
     }
 }
 
@@ -137,7 +119,7 @@ enum OracleContext<'a> {
 
 #[rustfmt::skip]
 impl OracleContext<'_> {
-    fn get_price(&self, pyth_id: PythId) -> StdResult<PrecisionlessPrice> {
+    fn get_price(&self, pyth_id: PythId) -> StdResult<Price> {
         match self {
             OracleContext::Local { storage } => {
                 PYTH_PRICES.load(*storage, pyth_id)
@@ -167,36 +149,33 @@ mod tests {
     use {
         super::*,
         dango_types::constants::{eth, usdc},
-        grug::{ResultExt, Timestamp, Udec128, hash_map},
+        grug::{ResultExt, Timestamp, hash_map},
         test_case::test_case,
     };
 
     #[test_case(
         hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(2000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_int(2_000),
                 Timestamp::from_seconds(1730802926),
-                6,
             ),
         };
         "mock with one price"
     )]
     #[test_case(
         hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(2000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_int(2_000),
                 Timestamp::from_seconds(1730802926),
-                6,
             ),
-            usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(1000),
+            usdc::DENOM.clone() => Price::new(
+                UsdPrice::new_int(1),
                 Timestamp::from_seconds(1730802926),
-                6,
             ),
         };
         "mock with two prices"
     )]
-    fn mock(prices: HashMap<Denom, PrecisionedPrice>) {
+    fn mock(prices: HashMap<Denom, Price>) {
         let mut oracle_querier = OracleQuerier::new_mock(prices.clone());
 
         for (denom, expected_price) in prices {
@@ -239,10 +218,9 @@ mod tests {
         no_older_than: Option<Timestamp>,
     ) -> bool {
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(2000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_int(2_000),
                 publish_time,
-                6,
             ),
         });
 

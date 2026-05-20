@@ -11,12 +11,12 @@ use {
     },
     dango_types::{
         constants::usdc,
-        oracle::{self, Precision, PrecisionlessPrice, PriceSource},
+        oracle::{self, Price, PriceSource},
         perps::{self, PairParam, RateSchedule},
     },
     grug::{
-        BlockInfo, Coins, Denom, Duration, Hash256, NumberConst, ResultExt, Timestamp, Udec128,
-        Udec128_6, btree_map,
+        BlockInfo, Coins, Denom, Duration, Hash256, NumberConst, ResultExt, Timestamp, Udec128_6,
+        btree_map,
     },
     grug_app::Indexer,
     indexer_clickhouse::{
@@ -596,20 +596,17 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
     let entries = btree_map! {
         usdc::DENOM.clone() => OracleTestEntry {
             pyth_id: 1,
-            precision: usdc::DECIMAL as Precision,
-            humanized_price: Udec128::ONE,
+            humanized_price: UsdPrice::new_int(1),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
         eth_pair.clone() => OracleTestEntry {
             pyth_id: 2,
-            precision: 0,
-            humanized_price: Udec128::new(2_000),
+            humanized_price: UsdPrice::new_int(2_000),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
         btc_pair.clone() => OracleTestEntry {
             pyth_id: 3,
-            precision: 0,
-            humanized_price: Udec128::new(60_000),
+            humanized_price: UsdPrice::new_int(60_000),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
     };
@@ -620,7 +617,6 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
             (denom.clone(), PriceSource {
                 id: e.pyth_id,
                 channel: Channel::RealTime,
-                precision: e.precision,
             })
         })
         .collect();
@@ -637,7 +633,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
 
     suite.app.db.with_state_storage_mut(|storage| {
         for entry in entries.values() {
-            let price = PrecisionlessPrice::new(entry.humanized_price, entry.timestamp);
+            let price = Price::new(entry.humanized_price, entry.timestamp);
             write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
         }
     });

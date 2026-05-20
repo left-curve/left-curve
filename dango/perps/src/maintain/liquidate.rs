@@ -1071,15 +1071,14 @@ mod tests {
     }
 
     fn mock_oracle_querier(pairs: Vec<(PairId, i128)>) -> OracleQuerier<'static> {
-        use {dango_types::oracle::PrecisionedPrice, grug::Udec128};
+        use dango_types::oracle::Price;
         let mut map = std::collections::HashMap::new();
         for (pair_id, price) in pairs {
             map.insert(
                 pair_id,
-                PrecisionedPrice::new(
-                    Udec128::new_percent(price as u128 * 100),
+                Price::new(
+                    UsdPrice::new_percent((price as u128 * 100) as i128),
                     Timestamp::from_seconds(0),
-                    8,
                 ),
             );
         }

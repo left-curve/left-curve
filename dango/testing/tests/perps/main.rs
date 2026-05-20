@@ -4,10 +4,10 @@ use {
     dango_testing::perps::{OracleTestEntry, pair_id, write_pyth_price_raw},
     dango_types::{
         constants::usdc,
-        oracle::{self, Precision, PrecisionlessPrice, PriceSource},
+        oracle::{self, Price, PriceSource},
         perps::{PairParam, Param, RateSchedule},
     },
-    grug::{Coins, Duration, NumberConst, ResultExt, Timestamp, Udec128, btree_map},
+    grug::{Coins, Duration, ResultExt, Timestamp, btree_map},
     pyth_types::Channel,
     std::collections::BTreeMap,
 };
@@ -67,14 +67,12 @@ pub async fn register_oracle_prices(
     let entries = btree_map! {
         usdc::DENOM.clone() => OracleTestEntry {
             pyth_id: 1,
-            precision: usdc::DECIMAL as Precision,
-            humanized_price: Udec128::ONE,
+            humanized_price: UsdPrice::new_int(1),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
         pair_id() => OracleTestEntry {
             pyth_id: 2,
-            precision: 0,
-            humanized_price: Udec128::new(eth_price),
+            humanized_price: UsdPrice::new_int(eth_price as i128),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
     };
@@ -85,7 +83,6 @@ pub async fn register_oracle_prices(
             (denom.clone(), PriceSource {
                 id: e.pyth_id,
                 channel: Channel::RealTime,
-                precision: e.precision,
             })
         })
         .collect();
@@ -102,7 +99,7 @@ pub async fn register_oracle_prices(
 
     suite.app.db.with_state_storage_mut(|storage| {
         for entry in entries.values() {
-            let price = PrecisionlessPrice::new(entry.humanized_price, entry.timestamp);
+            let price = Price::new(entry.humanized_price, entry.timestamp);
             write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
         }
     });

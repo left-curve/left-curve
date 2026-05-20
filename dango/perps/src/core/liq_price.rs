@@ -103,22 +103,18 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
             constants::{btc, eth},
-            oracle::PrecisionedPrice,
+            oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug::{Timestamp, Udec128, btree_map, hash_map},
+        grug::{Timestamp, btree_map, hash_map},
         std::collections::HashMap,
     };
 
     /// Helper: build an oracle price entry for the mock querier.
     ///
     /// `price` is the integer dollar price (e.g. 2000 for $2,000).
-    fn oracle_entry(price: u128) -> PrecisionedPrice {
-        PrecisionedPrice::new(
-            Udec128::new_percent(price * 100),
-            Timestamp::from_seconds(0),
-            18,
-        )
+    fn oracle_entry(price: u128) -> Price {
+        Price::new(UsdPrice::new_int(price as i128), Timestamp::from_seconds(0))
     }
 
     fn pair_param_with_mmr(mmr_permille: i128) -> PairParam {

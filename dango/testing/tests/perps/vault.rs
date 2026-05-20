@@ -12,7 +12,7 @@ use {
     },
     grug::{
         Addressable, Binary, ByteArray, Coins, Duration, NonEmpty, NumberConst, QuerierExt,
-        ResultExt, Timestamp, Udec128, Uint128, btree_map, concat,
+        ResultExt, Timestamp, Uint128, btree_map, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
@@ -413,12 +413,10 @@ async fn oracle_triggers_on_oracle_update() {
                 usdc::DENOM.clone() => PriceSource {
                     id: 1,
                     channel: Channel::RealTime,
-                    precision: usdc::DECIMAL as u8,
                 },
                 pair.clone() => PriceSource {
                     id: 2,
                     channel: Channel::RealTime,
-                    precision: 18,
                 },
             }),
             Coins::new(),
@@ -429,10 +427,8 @@ async fn oracle_triggers_on_oracle_update() {
     // Seed USDC's PYTH_PRICES entry directly. The perp pair's price is fed via
     // signed Pyth Lazer messages later in the test.
     suite.app.db.with_state_storage_mut(|storage| {
-        let price = dango_types::oracle::PrecisionlessPrice::new(
-            Udec128::ONE,
-            Timestamp::from_nanos(u128::MAX),
-        );
+        let price =
+            dango_types::oracle::Price::new(UsdPrice::new_int(1), Timestamp::from_nanos(u128::MAX));
         dango_testing::perps::write_pyth_price_raw(storage, contracts.oracle, 1, &price);
     });
 
@@ -537,7 +533,7 @@ async fn oracle_triggers_on_oracle_update() {
         .unwrap();
 
     assert!(
-        price1.humanized_price > Udec128::ZERO,
+        price1.humanized_price > UsdPrice::ZERO,
         "oracle price should be set after feeding"
     );
 

@@ -40,7 +40,6 @@ async fn handler() {
     let price_source = btree_map!(
         btc::DENOM.clone() => PriceSource {
             id: 1,
-            precision: 8,
             channel: Channel::RealTime,
         },
     );

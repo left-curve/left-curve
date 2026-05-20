@@ -1646,13 +1646,10 @@ mod tests {
         crate::USER_STATES,
         dango_order_book::{Dimensionless, FundingPerUnit},
         dango_types::{
-            oracle::PrecisionedPrice,
+            oracle::Price,
             perps::{Position, RateSchedule},
         },
-        grug::{
-            Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, Udec128, Uint64,
-            hash_map,
-        },
+        grug::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, Uint64, hash_map},
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -1665,10 +1662,9 @@ mod tests {
 
     fn test_oracle_querier() -> OracleQuerier<'static> {
         OracleQuerier::new_mock(hash_map! {
-            pair_id() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
+            pair_id() => Price::new(
+                UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         })
     }
@@ -6523,10 +6519,9 @@ mod tests {
 
         // Oracle at $48k (matches the fill price).
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id() => PrecisionedPrice::new(
-                Udec128::new_percent(4_800_000), // $48,000
+            pair_id() => Price::new(
+                UsdPrice::new_percent(4_800_000), // $48,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 
