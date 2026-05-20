@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SearchToken } from "./SearchToken";
 import {
+  Badge,
   FormattedNumber,
   IconChevronDownFill,
   IconChevronLeft,
@@ -52,6 +53,9 @@ export const TradeHeader: React.FC = () => {
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-1">
           <SearchToken pairId={pairId} onChangePairId={handleChangePair} />
+          <div className="lg:pl-8">
+            <Badge text="Perp" color="green" size="s" />
+          </div>
         </div>
         <div className="flex gap-2 items-center lg:hidden">
           <div
