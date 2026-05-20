@@ -62,7 +62,7 @@ jobs:
           wranglerVersion: "3"
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
-          projectName: grug-sdk
+          projectName: dango-sdk
           directory: ./sdk/docs/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.head_ref || github.ref_name }}

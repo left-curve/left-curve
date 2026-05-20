@@ -138,7 +138,7 @@ jobs:
             --size-only \
             --cache-control "public, max-age=31536000, immutable"
 
-          TV_VERSION=$(jq -r .version node_modules/@left-curve/tradingview/package.json)
+          TV_VERSION=$(jq -r .version node_modules/@left-curve/tradingview/package.json | tr . _)
           if ! aws s3 ls "s3://${R2_BUCKET}/vendor/tradingview/${TV_VERSION}/" \
                --endpoint-url "${R2_ENDPOINT}" > /dev/null 2>&1; then
             aws s3 sync ./node_modules/@left-curve/tradingview/charting_library \
@@ -152,15 +152,13 @@ jobs:
         run: rm -rf ./ui/portal/web/build/static
 
       - name: Uploading to Cloudflare Pages
-        uses: cloudflare/pages-action@f0a1cd58cd66095dee69bfa18fa5efd1dde93bca # v1
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
-          wranglerVersion: "3"
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
-          projectName: dango-portal
-          directory: ./ui/portal/web/build
+          workingDirectory: ui/portal/web
+          command: pages deploy ./build --project-name=dango-portal --branch=${{ github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${GITHUB_REF##*/}
 
       - name: Save pnpm cache
         if: github.event_name == 'push'

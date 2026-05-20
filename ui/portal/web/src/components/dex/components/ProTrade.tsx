@@ -172,7 +172,7 @@ const ProTradeChart: React.FC = () => {
   const mobileContainer = usePortalTarget("#chart-container-mobile");
 
   const Chart = (
-    <Suspense fallback={<Spinner color="pink" size="md" />}>
+    <Suspense fallback={<Spinner color="pink" size="md" fullContainer />}>
       <div className="flex w-full lg:min-h-[32.875rem] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
           <TradingView coins={{ base: baseCoin, quote: quoteCoin }} />

@@ -1,2 +1,3 @@
-/static/*  /404  404
-/*         /index.html  200
+/static/js/config.js  /config.js   200
+/static/*             /404         404
+/*                    /index.html  200

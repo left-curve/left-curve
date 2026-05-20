@@ -17,7 +17,7 @@ import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
 import { devnet, local, testnet, mainnet } from "@left-curve/sdk";
 
-import type { Chain } from "@left-curve/sdk/types";
+import type { Chain } from "@left-curve/types";
 import type { Rspack } from "@rsbuild/core";
 
 const isLocal = process.env.NODE_ENV === "development";
@@ -56,11 +56,13 @@ const tradingViewPath = path.resolve(
   "@left-curve/tradingview/charting_library",
 );
 
-const tvVersion = fs.existsSync(tradingViewPath)
-  ? (fs.readJsonSync(
-      path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/package.json"),
-    ).version as string)
-  : "unknown";
+const tvVersion = (
+  fs.existsSync(tradingViewPath)
+    ? (fs.readJsonSync(
+        path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/package.json"),
+      ).version as string)
+    : "unknown"
+).replace(/\./g, "_");
 
 fs.copySync(
   path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
@@ -161,7 +163,24 @@ const envConfig = `window.dango = ${JSON.stringify(
 const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
 
 const swContent = `const COMMIT = ${JSON.stringify(gitCommit)};
-self.addEventListener("install", () => {});
+self.addEventListener("install", (event) => {
+  event.waitUntil((async () => {
+    const oldSw = self.registration.active;
+    if (!oldSw) return;
+    const isOurSw = await new Promise((resolve) => {
+      const channel = new MessageChannel();
+      const timer = setTimeout(() => resolve(false), 1500);
+      channel.port1.onmessage = () => { clearTimeout(timer); resolve(true); };
+      try {
+        oldSw.postMessage({ type: "GET_COMMIT" }, [channel.port2]);
+      } catch (_) {
+        clearTimeout(timer);
+        resolve(false);
+      }
+    });
+    if (!isOurSw) await self.skipWaiting();
+  })());
+});
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
@@ -173,12 +192,12 @@ self.addEventListener("message", (event) => {
 });
 `;
 
-const copyPattern = [];
+const copyPattern: { from: string; to: string }[] = [];
 
 if (!useR2Assets && fs.existsSync(tradingViewPath)) {
   copyPattern.push({
     from: path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/charting_library"),
-    to: "./static/charting_library",
+    to: `./charting_library/${tvVersion}`,
   });
 }
 
