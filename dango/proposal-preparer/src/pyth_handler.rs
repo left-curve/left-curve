@@ -403,11 +403,7 @@ fn pyth_ids_lazer(
             limit: Some(u32::MAX),
         })?
         .into_values()
-        .map(|price_source| PythLazerSubscriptionDetails {
-            id: price_source.id,
-            channel: price_source.channel,
-        })
-        .collect::<Vec<_>>();
+        .collect();
 
     Ok(new_ids)
 }
