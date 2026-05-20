@@ -22,7 +22,6 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useCurrentPrice,
   oraclePricesStore,
-  allPairStatsStore,
   allPerpsPairStatsStore,
   TradePairStore,
 } from "@left-curve/store";
@@ -33,26 +32,20 @@ export const TradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
 
-  const mode = TradePairStore((s) => s.mode);
   const pairId = TradePairStore((s) => s.pairId);
   const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
   const { onChangePairId } = useProTrade();
 
-  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
   const statsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
-
-  const pairStatsData =
-    mode === "perps"
-      ? statsByPairId[getPerpsPairId()]
-      : statsByPair[`${pairId.baseDenom}:${pairId.quoteDenom}`];
+  const pairStatsData = statsByPairId[getPerpsPairId()];
 
   useEffect(() => {
     setIsExpanded(isLg);
   }, [isLg]);
 
   const handleChangePair = (row: SearchTokenRow) => {
-    onChangePairId(`${row.baseCoin.symbol}-${row.quoteCoin.symbol}`, row.mode);
+    onChangePairId(`${row.baseCoin.symbol}-${row.quoteCoin.symbol}`);
   };
 
   return (
@@ -61,11 +54,7 @@ export const TradeHeader: React.FC = () => {
         <div className="flex lg:flex-col gap-1">
           <SearchToken pairId={pairId} onChangePairId={handleChangePair} />
           <div className="lg:pl-8">
-            {mode === "perps" ? (
-              <Badge text="Perp" color="green" size="s" />
-            ) : (
-              <Badge text="Spot" color="blue" size="s" />
-            )}
+            <Badge text="Perp" color="green" size="s" />
           </div>
         </div>
         <div className="flex gap-2 items-center lg:hidden">
@@ -93,7 +82,6 @@ export const TradeHeader: React.FC = () => {
             className="lg:flex-1 lg:min-w-0 flex items-center"
           >
             <HeaderMetricsScroller
-              mode={mode}
               pairStatsData={pairStatsData}
               getPerpsPairId={getPerpsPairId}
             />
@@ -105,13 +93,11 @@ export const TradeHeader: React.FC = () => {
 };
 
 type HeaderMetricsScrollerProps = {
-  mode: "spot" | "perps";
   pairStatsData: any;
   getPerpsPairId: () => string;
 };
 
 const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
-  mode,
   pairStatsData,
   getPerpsPairId,
 }) => {
@@ -166,7 +152,7 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
       >
         <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
         <HeaderPrice />
-        {mode === "perps" && <HeaderOraclePrice denom={getPerpsPairId()} />}
+        <HeaderOraclePrice denom={getPerpsPairId()} />
         <Header24hChange
           currentPrice={pairStatsData?.currentPrice}
           price24HAgo={pairStatsData?.price24HAgo}
@@ -182,12 +168,8 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
             className="diatype-xxs-medium lg:diatype-xs-medium text-center"
           />
         </div>
-        {mode === "perps" && (
-          <>
-            <OpenInterestDisplay />
-            <FundingCountdown />
-          </>
-        )}
+        <OpenInterestDisplay />
+        <FundingCountdown />
       </div>
     </div>
   );

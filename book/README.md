@@ -6,15 +6,15 @@ This is **the Dango Book**, all you need to know about the one app for everythin
 
 ## What is Dango?
 
-Dango is a **DeFi-native Layer-1 blockchain** built from the ground up for trading. Where most blockchains are general-purpose platforms that happen to host DeFi apps, Dango inverts this: the chain is purpose-built around a DEX, with every infrastructure decision made to serve traders.
+Dango is a **DeFi-native Layer-1 blockchain** built from the ground up for trading. Where most blockchains are general-purpose platforms that happen to host DeFi apps, Dango inverts this: the chain is purpose-built around a perpetual futures exchange, with every infrastructure decision made to serve traders.
 
-Dango describes itself as _"the one app for everything DeFi"_ — combining spot trading, perpetual futures, vaults, and lending within a single interface and a single unified margin account.
+Dango describes itself as _"the one app for everything DeFi"_ — combining perpetual futures, vaults, and lending within a single interface and a single unified margin account.
 
 ## Problems Dango Solves
 
 1. **Capital Inefficiency**
 
-   On today's platforms, collateral is siloed. A trader on Aave must deposit separately from their dYdX position, their Uniswap LP, and so on. Dango's **Unified Margin Account** lets a single pool of collateral back spot trades, perpetual positions, and lending simultaneously.
+   On today's platforms, collateral is siloed. A trader on Aave must deposit separately from their dYdX position, their Uniswap LP, and so on. Dango's **Unified Margin Account** lets a single pool of collateral back perpetual positions and lending simultaneously.
 
 2. **Execution Quality & MEV**
 

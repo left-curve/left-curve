@@ -144,18 +144,3 @@ const ChainStatusSection: React.FC<ChainStatusSectionProps> = ({ chainStatus }) 
   );
 };
 
-type DexStatusSectionProps = {
-  dexStatus: "error" | "success" | "warning";
-};
-
-const DexStatusSection: React.FC<DexStatusSectionProps> = ({ dexStatus }) => {
-  return (
-    <div className="p-4 bg-surface-tertiary-rice min-w-[22rem] flex items-center justify-between rounded-md">
-      <p className="text-ink-secondary-700 diatype-m-medium">{m["statusBadge.dex"]()}</p>
-      <div className={twMerge(textColor[dexStatus], "diatype-xs-medium flex items-center gap-1")}>
-        {m["statusBadge.statusText"]({ status: dexStatus })}
-        <Dot color={dexStatus} />
-      </div>
-    </div>
-  );
-};

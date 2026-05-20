@@ -1,9 +1,4 @@
-import {
-  allPairStatsStore,
-  allPerpsPairStatsStore,
-  useFavPairs,
-  TradePairStore,
-} from "@left-curve/store";
+import { allPerpsPairStatsStore, useFavPairs, TradePairStore } from "@left-curve/store";
 import {
   Badge,
   Cell,
@@ -58,13 +53,10 @@ const PerpsPairNameWithFav: React.FC<{
 });
 
 function useRowPairStats(row: SearchTokenRow) {
-  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
   const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
   const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
-  return row.mode === "perps"
-    ? perpStatsByPairId[getPerpsPairId(row.pairId)]
-    : statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+  return perpStatsByPairId[getPerpsPairId(row.pairId)];
 }
 
 const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
@@ -127,17 +119,13 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
 }) => {
   const { favPairs } = useFavPairs();
 
-  const statsByPair = allPairStatsStore((s) => s.pairStatsByKey);
   const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
-
   const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
   const data = useMemo(() => [...rows], [rows, favPairs]);
 
   const getPairStats = (row: SearchTokenRow) => {
-    return row.mode === "perps"
-      ? perpStatsByPairId[getPerpsPairId(row.pairId)]
-      : statsByPair[`${row.pairId.baseDenom}:${row.pairId.quoteDenom}`];
+    return perpStatsByPairId[getPerpsPairId(row.pairId)];
   };
 
   const columns: TableColumn<SearchTokenRow> = [
@@ -154,18 +142,13 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
           toggleSort={ctx.column.toggleSorting}
         />
       ),
-      cell: ({ row }) => {
-        if (row.original.mode === "perps") {
-          return (
-            <PerpsPairNameWithFav
-              baseCoin={row.original.baseCoin}
-              quoteCoin={row.original.quoteCoin}
-              pairKey={row.original.pairKey}
-            />
-          );
-        }
-        return <Cell.PairNameWithFav type="Spot" pairId={row.original.pairId} />;
-      },
+      cell: ({ row }) => (
+        <PerpsPairNameWithFav
+          baseCoin={row.original.baseCoin}
+          quoteCoin={row.original.quoteCoin}
+          pairKey={row.original.pairKey}
+        />
+      ),
       filterFn: (row, _, value) => {
         const v = String(value ?? "").toUpperCase();
         return (

@@ -82,13 +82,6 @@ export {
 } from "./app/appActions.js";
 
 export {
-  type DexMutationActions,
-  dexMutationActions,
-  type DexQueryActions,
-  dexQueryActions,
-} from "./dex/dexActions.js";
-
-export {
   type AccountFactoryMutationActions,
   accountFactoryMutationActions,
   type AccountFactoryQueryActions,
@@ -232,111 +225,6 @@ export {
   type SearchTxsReturnType,
   searchTxs,
 } from "./indexer/searchTxs.js";
-
-/* -------------------------------------------------------------------------- */
-/*                                 Dex Actions                                */
-/* -------------------------------------------------------------------------- */
-
-export {
-  type GetPairsParameters,
-  type GetPairsReturnType,
-  getPairs,
-} from "./dex/queries/getPairs.js";
-
-export {
-  type GetPairParameters,
-  type GetPairReturnType,
-  getPair,
-} from "./dex/queries/getPair.js";
-
-export {
-  type GetPairStatsParameters,
-  type GetPairStatsReturnType,
-  getPairStats,
-} from "./dex/queries/getPairStats.js";
-
-export {
-  type GetAllPairStatsReturnType,
-  getAllPairStats,
-} from "./dex/queries/getAllPairStats.js";
-
-export {
-  type SimulateSwapExactAmountOutParameters,
-  type SimulateSwapExactAmountOutReturnType,
-  simulateSwapExactAmountOut,
-} from "./dex/queries/simulateSwapExactAmountOut.js";
-
-export {
-  type SimulateSwapExactAmountInParameters,
-  type SimulateSwapExactAmountInReturnType,
-  simulateSwapExactAmountIn,
-} from "./dex/queries/simulateSwapExactAmountIn.js";
-
-export {
-  type SimulateWithdrawLiquidityParameters,
-  type SimulateWithdrawLiquidityReturnType,
-  simulateWithdrawLiquidity,
-} from "./dex/queries/simulateWithdrawLiquidity.js";
-
-export {
-  type GetOrderParameters,
-  type GetOrderReturnType,
-  getOrder,
-} from "./dex/queries/getOrder.js";
-
-export {
-  type DexStatusParameters,
-  type DexStatusReturnType,
-  dexStatus,
-} from "./dex/queries/dexStatus.js";
-
-export {
-  type OrdersByUserParameters,
-  type OrdersByUserReturnType,
-  ordersByUser,
-} from "./dex/queries/ordersByUser.js";
-
-export {
-  type QueryCandlesParameters,
-  type QueryCandlesReturnType,
-  queryCandles,
-} from "./dex/queries/candles.js";
-
-export {
-  type QueryTradesParameters,
-  type QueryTradesReturnType,
-  queryTrades,
-} from "./dex/queries/trades.js";
-
-export {
-  type ProvideLiquidityParameters,
-  type ProvideLiquidityReturnType,
-  provideLiquidity,
-} from "./dex/mutations/provideLiquidity.js";
-
-export {
-  type WithdrawLiquidityParameters,
-  type WithdrawLiquidityReturnType,
-  withdrawLiquidity,
-} from "./dex/mutations/withdrawLiquidity.js";
-
-export {
-  type SwapExactAmountOutParameters,
-  type SwapExactAmountOutReturnType,
-  swapExactAmountOut,
-} from "./dex/mutations/swapExactAmountOut.js";
-
-export {
-  type SwapExactAmountInParameters,
-  type SwapExactAmountInReturnType,
-  swapExactAmountIn,
-} from "./dex/mutations/swapExactAmountIn.js";
-
-export {
-  type BatchUpdateOrdersParameters,
-  type BatchUpdateOrdersReturnType,
-  batchUpdateOrders,
-} from "./dex/mutations/batchUpdateOrders.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                Perps Actions                               */

@@ -77,7 +77,6 @@ export {
 } from "./formatters.js";
 
 export {
-  calculateTradeSize,
   calculateFees,
   calculatePrice,
   formatOrderId,

@@ -46,7 +46,7 @@ impl Default for AppAddresses {
     fn default() -> Self {
         AppAddresses {
             account_factory: Addr::mock(0),
-            dex: Addr::mock(0),
+            dex: Addr::ZERO,
             gateway: Addr::mock(0),
             hyperlane: Hyperlane::default(),
             oracle: Addr::mock(0),

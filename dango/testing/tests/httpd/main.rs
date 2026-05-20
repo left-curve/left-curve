@@ -24,14 +24,11 @@ pub use indexer_graphql_types::{
 };
 
 mod accounts;
-mod candles;
 mod metrics;
-mod pair_stats;
 mod perps_candles;
 mod perps_events;
 mod perps_pair_stats;
 mod shutdown;
-mod trades;
 mod transfers;
 mod users;
 

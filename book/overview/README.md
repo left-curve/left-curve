@@ -9,7 +9,7 @@ blockchain and DeFi experience. It covers:
 2. **[Smart Contract Semantics](2-contract-semantics.md)** -- Entry points, context types,
    message passing, storage abstractions, authentication model, and the testing framework.
 3. **[Dango Contract System](3-dango-contracts.md)** -- Each smart contract (bank, accounts,
-   oracle, DEX, perps, taxman, gateway, etc.), their state layout, access control, and
+   oracle, perps, taxman, gateway, etc.), their state layout, access control, and
    inter-contract interactions.
 4. **[Indexer & Node](4-indexer-and-node.md)** -- The indexer pipeline, SQL schema,
    GraphQL API, and the CLI that wires everything together.
@@ -19,7 +19,7 @@ blockchain and DeFi experience. It covers:
 | Directory  | Contents                                                                                                                                                        |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `grug/`    | State machine: `app`, `db/disk`, `db/memory`, `vm/rust`, `vm/wasm`, `types`, `storage`, `jellyfish-merkle`, `ffi`, `macros`, `crypto`, `math`, `std`, `testing` |
-| `dango/`   | Smart contracts: `bank`, `account`, `account-factory`, `auth`, `oracle`, `dex`, `perps`, `taxman`, `gateway`, `vesting`, `warp`, `upgrade`, `types`, `cli`      |
+| `dango/`   | Smart contracts: `bank`, `account`, `account-factory`, `auth`, `oracle`, `perps`, `taxman`, `gateway`, `vesting`, `warp`, `upgrade`, `types`, `cli`             |
 | `indexer/` | Indexing: `hooked`, `sql`, `sql-migration`, `cache`, `httpd`, `client`                                                                                          |
 | `ui/`      | TypeScript frontend (out of scope for this guide)                                                                                                               |
 | `deploy/`  | Ansible playbooks (out of scope)                                                                                                                                |

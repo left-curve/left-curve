@@ -105,32 +105,12 @@ generate_types! {
         path: "src/schemas/queries/users.graphql",
     },
     {
-        name: Candles,
-        path: "src/schemas/queries/candles.graphql",
-    },
-    {
         name: PerpsCandles,
         path: "src/schemas/queries/perpsCandles.graphql",
     },
     {
         name: PerpsEvents,
         path: "src/schemas/queries/perpsEvents.graphql",
-    },
-    {
-        name: Trades,
-        path: "src/schemas/queries/trades.graphql",
-    },
-    {
-        name: PairStats,
-        path: "src/schemas/queries/pairStats.graphql",
-    },
-    {
-        name: PairStatsPartial,
-        path: "src/schemas/queries/pairStatsPartial.graphql",
-    },
-    {
-        name: AllPairStats,
-        path: "src/schemas/queries/allPairStats.graphql",
     },
     {
         name: PerpsPairStats,
@@ -203,16 +183,8 @@ generate_subscription_types! {
         path: "src/schemas/subscriptions/eventByAddresses.graphql",
     },
     {
-        name: SubscribeCandles,
-        path: "src/schemas/subscriptions/candles.graphql",
-    },
-    {
         name: SubscribePerpsCandles,
         path: "src/schemas/subscriptions/perpsCandles.graphql",
-    },
-    {
-        name: SubscribeTrades,
-        path: "src/schemas/subscriptions/trades.graphql",
     },
     {
         name: SubscribePerpsTrades,
@@ -235,28 +207,15 @@ generate_subscription_types! {
 // Re-export subscription modules
 pub mod subscriptions {
     pub use super::{
-        subscribe_accounts, subscribe_block, subscribe_candles, subscribe_event_by_addresses,
-        subscribe_events, subscribe_messages, subscribe_perps_candles, subscribe_perps_trades,
-        subscribe_query_app, subscribe_query_status, subscribe_query_store, subscribe_trades,
-        subscribe_transactions, subscribe_transfers,
+        subscribe_accounts, subscribe_block, subscribe_event_by_addresses, subscribe_events,
+        subscribe_messages, subscribe_perps_candles, subscribe_perps_trades, subscribe_query_app,
+        subscribe_query_status, subscribe_query_store, subscribe_transactions, subscribe_transfers,
     };
 }
 
 // --------------------- Implement Default for enum types ----------------------
 
-impl Default for candles::CandleInterval {
-    fn default() -> Self {
-        Self::ONE_MINUTE
-    }
-}
-
 impl Default for perps_candles::CandleInterval {
-    fn default() -> Self {
-        Self::ONE_MINUTE
-    }
-}
-
-impl Default for subscribe_candles::CandleInterval {
     fn default() -> Self {
         Self::ONE_MINUTE
     }

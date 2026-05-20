@@ -2,7 +2,6 @@ import {
   useAccount,
   useActivities,
   useBalances,
-  useOrdersByUser,
   usePerpsUserState,
   perpsUserStateStore,
   usePerpsUserStateExtended,
@@ -46,8 +45,6 @@ import { CountBadge } from "./CountBadge";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
 import { Activities } from "../activities/Activities";
 
-import { Direction } from "@left-curve/types";
-
 import type React from "react";
 import type { Coins } from "@left-curve/types";
 import { Decimal, formatNumber } from "@left-curve/utils";
@@ -71,32 +68,8 @@ const Container: React.FC = () => {
 
   const { data: balances = {} } = useBalances({ address: account?.address });
 
-  const { data: orders = [] } = useOrdersByUser();
-
-  const allBalances = useMemo(() => {
-    if (!orders.length) return balances;
-    return orders.reduce(
-      (acc, order) => {
-        const { baseDenom, quoteDenom, price, direction, remaining } = order;
-        if (direction === Direction.Buy) {
-          // remaining is in base units; convert to quote units using the order's price
-          const quoteAmount = Decimal(remaining).mul(price).toFixed();
-          acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
-            .plus(quoteAmount)
-            .toFixed();
-        } else {
-          acc[baseDenom] = Decimal(acc[baseDenom] || "0")
-            .plus(remaining)
-            .toFixed();
-        }
-        return acc;
-      },
-      { ...balances },
-    );
-  }, [balances, orders]);
-
   const totalBalance = useMemo(() => {
-    const spotValue = calculateBalance(allBalances, { format: false });
+    const spotValue = calculateBalance(balances, { format: false });
     const totalValue = Decimal(spotValue)
       .plus(perpsEquity || "0")
       .plus(userSharesValue || "0")
@@ -105,10 +78,10 @@ const Container: React.FC = () => {
       ...formatNumberOptions,
       currency: "USD",
     });
-  }, [allBalances, perpsEquity, userSharesValue]);
+  }, [balances, perpsEquity, userSharesValue]);
 
   return (
-    <AccountMenuProvider value={{ balances: allBalances, totalBalance }}>
+    <AccountMenuProvider value={{ balances, totalBalance }}>
       <AnimatePresence>{isLg ? <Desktop /> : <Mobile />}</AnimatePresence>
     </AccountMenuProvider>
   );

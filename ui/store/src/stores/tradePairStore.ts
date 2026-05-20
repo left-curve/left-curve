@@ -4,25 +4,22 @@ import { CoinStore } from "./coinStore.js";
 import type { PairId } from "@left-curve/types";
 
 export type TradePairState = {
-  mode: "spot" | "perps";
   pairId: PairId;
-  setPair: (pairId: PairId, mode: "spot" | "perps") => void;
+  setPair: (pairId: PairId) => void;
   getPerpsPairId: (pairId?: PairId) => string;
 };
 
 export const TradePairStore = create<TradePairState>((set, get) => ({
-  mode: "spot",
   pairId: { baseDenom: "", quoteDenom: "" },
-  setPair: (pairId, mode) => {
+  setPair: (pairId) => {
     const current = get();
     if (
       current.pairId.baseDenom === pairId.baseDenom &&
-      current.pairId.quoteDenom === pairId.quoteDenom &&
-      current.mode === mode
+      current.pairId.quoteDenom === pairId.quoteDenom
     ) {
       return;
     }
-    set({ pairId, mode });
+    set({ pairId });
   },
   getPerpsPairId: (_pairId_) => {
     const pairId = _pairId_ ?? get().pairId;

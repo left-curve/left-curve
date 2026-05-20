@@ -89,32 +89,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
-  [Modals.ProTradeCloseAll]: {
-    component: lazyWithRetry(() =>
-      import("./ProTradeCloseAll").then(({ ProTradeCloseAll }) => ({ default: ProTradeCloseAll })),
-    ),
-  },
-  [Modals.ProTradeCloseOrder]: {
-    component: lazyWithRetry(() =>
-      import("./ProTradeCloseOrder").then(({ ProTradeCloseOrder }) => ({
-        default: ProTradeCloseOrder,
-      })),
-    ),
-  },
-  [Modals.ProTradeLimitClose]: {
-    component: lazyWithRetry(() =>
-      import("./ProTradeLimitClose").then(({ ProTradeLimitClose }) => ({
-        default: ProTradeLimitClose,
-      })),
-    ),
-  },
-  [Modals.ProSwapMarketClose]: {
-    component: lazyWithRetry(() =>
-      import("./ProSwapMarketClose").then(({ ProSwapMarketClose }) => ({
-        default: ProSwapMarketClose,
-      })),
-    ),
-  },
   [Modals.ProSwapEditTPSL]: {
     component: lazyWithRetry(() =>
       import("./ProSwapEditTPSL").then(({ ProSwapEditTPSL }) => ({
@@ -129,20 +103,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
-  [Modals.PoolAddLiquidity]: {
-    component: lazyWithRetry(() =>
-      import("./PoolAddLiquidity").then(({ PoolAddLiquidity }) => ({
-        default: PoolAddLiquidity,
-      })),
-    ),
-  },
-  [Modals.PoolWithdrawLiquidity]: {
-    component: lazyWithRetry(() =>
-      import("./PoolWithdrawLiquidity").then(({ PoolWithdrawLiquidity }) => ({
-        default: PoolWithdrawLiquidity,
-      })),
-    ),
-  },
   [Modals.ActivityTransfer]: {
     component: lazyWithRetry(() =>
       import("./activities/ActivityTransferModal").then(({ ActivityTransferModal }) => ({
@@ -154,13 +114,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazyWithRetry(() =>
       import("./activities/ActivityConvertModal").then(({ ActivityConvertModal }) => ({
         default: ActivityConvertModal,
-      })),
-    ),
-  },
-  [Modals.ActivitySpotOrder]: {
-    component: lazyWithRetry(() =>
-      import("./activities/ActivitySpotOrderModal").then(({ ActivitySpotOrderModal }) => ({
-        default: ActivitySpotOrderModal,
       })),
     ),
   },

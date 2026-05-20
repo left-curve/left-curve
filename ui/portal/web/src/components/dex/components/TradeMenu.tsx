@@ -11,9 +11,7 @@ import {
   TradePairStore,
   tradeInfoStore,
   useTradeCoins,
-  useSpotMaxSize,
   usePerpsMaxSize,
-  useSpotSubmission,
   usePerpsSubmission,
   perpsUserStateStore,
   perpsUserStateExtendedStore,
@@ -39,8 +37,8 @@ import {
   Input,
   InputSizeWithMax,
   Modals,
-  Range,
   Select,
+  Range,
   Tabs,
   Tooltip,
   IconToastInfo,
@@ -52,11 +50,10 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Decimal, formatNumber, parseUnits, resolveRateSchedule } from "@left-curve/utils";
+import { Decimal, formatNumber, resolveRateSchedule } from "@left-curve/utils";
 import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import type { PerpsTimeInForce } from "@left-curve/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { orderBookStore } from "@left-curve/store";
 import { useGeoblock } from "~/components/foundation/hooks/useGeoblock";
 import { computeOtherPairsUsedMargin } from "../helpers/math";
 import { useTPSLPriceSync } from "../hooks/useTPSLPriceSync";
@@ -124,211 +121,6 @@ type TradeMenuProps = {
 export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
   const { isLg } = useMediaQuery();
   return <>{isLg ? <Menu {...props} /> : <MenuMobile {...props} />}</>;
-};
-
-const SpotTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const { isConnected } = useAccount();
-  const isGeoblocked = useGeoblock();
-  const { data: appConfig } = useAppConfig();
-  const { getPrice, isFetched } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const queryClient = useQueryClient();
-  const { account, username } = useAccount();
-
-  const pairId = TradePairStore((s) => s.pairId);
-  const action = tradeInfoStore((s) => s.action);
-  const operation = tradeInfoStore((s) => s.operation);
-
-  const { baseCoin, quoteCoin } = useTradeCoins();
-
-  const [sizeCoinDenom, setSizeCoinDenom] = useState(pairId.quoteDenom);
-
-  useEffect(() => {
-    setSizeCoinDenom(pairId.quoteDenom);
-  }, [pairId.quoteDenom]);
-
-  useEffect(() => {
-    setSizeCoinDenom(action === "buy" ? pairId.quoteDenom : pairId.baseDenom);
-  }, [action]);
-
-  const sizeCoin = sizeCoinDenom === baseCoin.denom ? baseCoin : quoteCoin;
-  const availableCoin = action === "buy" ? quoteCoin : baseCoin;
-
-  const { register, setValue, inputs, errors } = controllers;
-  const size = inputs.size?.value || "0";
-  const priceValue = inputs.price?.value || "0";
-  const hasErrors = Object.keys(errors).length > 0;
-
-  const maxSizeAmount = useSpotMaxSize({
-    availableCoin,
-    sizeCoin,
-    action,
-    operation,
-    priceValue,
-  });
-
-  const amount = useMemo(() => {
-    if (size === "0") return { base: "0", quote: "0" };
-
-    const price = (() => {
-      if (operation === "market") {
-        const { orderBook } = orderBookStore.getState();
-        if (!orderBook?.midPrice) return null;
-        return parseUnits(orderBook.midPrice, baseCoin.decimals - quoteCoin.decimals, true);
-      }
-      if (priceValue === "0") return null;
-      return priceValue;
-    })();
-
-    if (!price) return { base: "0", quote: "0" };
-
-    const isBaseSize = sizeCoin.denom === baseCoin.denom;
-    const isQuoteSize = !isBaseSize;
-
-    return {
-      base: isBaseSize ? size : Decimal(size).divFloor(price).toFixed(),
-      quote: isQuoteSize ? size : Decimal(size).mulCeil(price).toFixed(),
-    };
-  }, [operation, sizeCoin, baseCoin, quoteCoin, size, priceValue]);
-
-  useEffect(() => {
-    setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
-  }, [isFetched, pairId]);
-
-  const submission = useSpotSubmission({
-    pairId,
-    baseCoin,
-    quoteCoin,
-    availableCoin,
-    sizeCoin,
-    action,
-    operation,
-    amount,
-    priceValue,
-    controllers,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
-      queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
-      queryClient.invalidateQueries({ queryKey: ["quests", username] });
-      setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
-    },
-  });
-
-  const changeSizeCoin = useCallback((denom: string) => {
-    setSizeCoinDenom(denom);
-    setValue("size", "");
-  }, []);
-
-  const rangeValue = useMemo(() => {
-    if (maxSizeAmount === 0) return 0;
-    return Math.min(100, (+size / maxSizeAmount) * 100);
-  }, [maxSizeAmount, size]);
-
-  return (
-    <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
-      <div className="w-full flex flex-col gap-4 px-4">
-        <InfoRow
-          label={m["dex.protrade.spot.availableToTrade"]()}
-          value={
-            <>
-              <FormattedNumber number={availableCoin.amount} as="span" /> {availableCoin.symbol}
-            </>
-          }
-        />
-        {operation === "limit" ? (
-          <Input
-            placeholder="0"
-            isDisabled={!isConnected || submission.isPending}
-            label={m["dex.protrade.spot.price"]()}
-            {...register("price", { mask: numberMask })}
-            startText="right"
-            endContent={quoteCoin.symbol}
-          />
-        ) : null}
-        <InputSizeWithMax
-          isDisabled={!isConnected || submission.isPending}
-          maxSizeAmount={maxSizeAmount}
-          availableAmount={availableCoin.amount}
-          register={register}
-          setValue={setValue}
-          validationMessage={m["errors.validations.insufficientFunds"]()}
-          startContent={
-            <CoinSelector
-              classNames={{ trigger: "text-ink-tertiary-500" }}
-              onChange={changeSizeCoin}
-              value={sizeCoin.denom}
-              coins={[baseCoin, quoteCoin]}
-            />
-          }
-        />
-        <Range
-          isDisabled={!isConnected || submission.isPending}
-          minValue={0}
-          maxValue={100}
-          defaultValue={0}
-          withInput
-          inputEndContent="%"
-          value={rangeValue}
-          onChange={(v) => {
-            const newValue = Math.min(100, v);
-            const sizeVal = Decimal(maxSizeAmount).mul(Decimal(newValue).div(100));
-            const length = sizeVal.toFixed().split(".")[1]?.length || 0;
-            setValue("size", sizeVal.toFixed(length < 19 ? length : 18));
-          }}
-        />
-      </div>
-      <div className="flex flex-col gap-4 pb-4 lg:pb-6">
-        <TradeSubmitButton
-          action={action}
-          label={`${m["dex.protrade.spot.triggerAction"]({ action })} ${baseCoin.symbol}`}
-          isDisabled={
-            Decimal(size).lte(0) ||
-            (operation === "limit" && Decimal(priceValue).lte(0)) ||
-            hasErrors
-          }
-          isPending={submission.isPending}
-          isRestricted={isGeoblocked}
-          onSubmit={() => submission.mutateAsync()}
-        />
-        <div className="flex flex-col gap-1 px-4">
-          <InfoRow
-            label={m["dex.protrade.spot.orderValue"]()}
-            value={
-              <FormattedNumber
-                number={getPrice(size, sizeCoin.denom)}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
-            }
-          />
-          <InfoRow
-            label={m["dex.protrade.spot.orderSize"]()}
-            value={
-              <>
-                <FormattedNumber number={amount.quote} as="span" /> {quoteCoin.symbol}
-              </>
-            }
-          />
-          <InfoRow
-            label=""
-            value={
-              <>
-                <FormattedNumber number={amount.base} as="span" /> {baseCoin.symbol}
-              </>
-            }
-          />
-          {operation === "market" ? (
-            <InfoRow label={m["dex.protrade.spot.slippage"]()} value="-" />
-          ) : null}
-          <InfoRow
-            label={m["dex.protrade.spot.fees"]()}
-            value={`${Decimal(appConfig.takerFeeRate).mul(100).toFixed()}% / ${Decimal(appConfig.makerFeeRate).mul(100).toFixed()}%`}
-          />
-        </div>
-      </div>
-    </div>
-  );
 };
 
 const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
@@ -999,7 +791,6 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
 
-  const mode = TradePairStore((s) => s.mode);
   const action = tradeInfoStore((s) => s.action);
   const operation = tradeInfoStore((s) => s.operation);
   const setAction = tradeInfoStore((s) => s.setAction);
@@ -1007,7 +798,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
-      {mode === "perps" ? <PerpsTopPills /> : null}
+      <PerpsTopPills />
       <div className="w-full flex items-center justify-between px-4 gap-2">
         <Tabs
           layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
@@ -1048,8 +839,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
           <IconUser className="h-6 w-6" />
         </IconButton>
       </div>
-      {mode === "spot" ? <SpotTradeMenu controllers={controllers} /> : null}
-      {mode === "perps" ? <PerpsTradeMenu controllers={controllers} /> : null}
+      <PerpsTradeMenu controllers={controllers} />
     </div>
   );
 };

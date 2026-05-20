@@ -4,7 +4,6 @@ pub mod auth;
 pub mod bank;
 pub mod config;
 pub mod constants;
-pub mod dex;
 pub mod gateway;
 pub mod oracle;
 pub mod perps;

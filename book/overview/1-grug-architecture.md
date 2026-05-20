@@ -388,7 +388,7 @@ pub struct RustVm;
 
 Executes contracts compiled directly into the node binary. No sandboxing, no gas
 metering overhead. Used for all first-party system contracts (bank, taxman, accounts,
-perps, DEX, oracle, etc.).
+perps, oracle, etc.).
 
 **Security implication:** Code running in `RustVm` has the same trust level as the
 node binary itself. A bug in a system contract is indistinguishable from a bug in

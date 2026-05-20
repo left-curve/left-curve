@@ -1,14 +1,7 @@
 import type * as TV from "@left-curve/tradingview";
-import { Direction } from "@left-curve/types";
-import { Decimal, adjustPrice } from "@left-curve/utils";
+import { Decimal } from "@left-curve/utils";
 
-import type { AnyCoin } from "@left-curve/store/types";
-import type {
-  OrdersByUserResponse,
-  PerpsPositionExtended,
-  PerpsOrdersByUserResponse,
-  WithId,
-} from "@left-curve/types";
+import type { PerpsPositionExtended, PerpsOrdersByUserResponse } from "@left-curve/types";
 
 type ChartLine = {
   price: number;
@@ -77,22 +70,6 @@ export function buildPerpsOrderLines(
         linestyle: 2,
       };
     });
-}
-
-export function buildSpotOrderLines(
-  orders: WithId<OrdersByUserResponse>[],
-  base: AnyCoin,
-  quote: AnyCoin,
-): ChartLine[] {
-  return orders.map((order) => ({
-    price: +adjustPrice(
-      +Decimal(order.price)
-        .times(Decimal(10).pow(base.decimals - quote.decimals))
-        .toFixed(),
-    ),
-    color: order.direction === Direction.Buy ? COLORS.buy : COLORS.sell,
-    linestyle: 2,
-  }));
 }
 
 export const drawLines = (() => {
