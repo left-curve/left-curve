@@ -3885,7 +3885,7 @@ dependencies = [
  "dango-types",
  "error-backtrace",
  "eth-utils",
- "futures",
+ "graphql-ws-client",
  "graphql_client",
  "grug",
  "identity",
@@ -3897,9 +3897,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "thiserror 2.0.18",
  "tokio",
- "tokio-tungstenite 0.28.0",
  "tracing",
  "url",
 ]
@@ -5204,6 +5202,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphql-ws-client"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "graphql_client",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.28.0",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "graphql_client"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6334,10 +6348,74 @@ dependencies = [
 name = "indexer-graphql-types"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "graphql-ws-client",
  "graphql_client",
  "paste",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "indexer-historical-app"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "indexer-historical-block-source",
+ "indexer-historical-projection",
+ "indexer-historical-types",
+ "metrics",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "indexer-historical-block-source"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "futures",
+ "graphql-ws-client",
+ "indexer-cache",
+ "indexer-graphql-types",
+ "indexer-historical-types",
+ "metrics",
+ "reqwest 0.13.2",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "indexer-historical-cli"
+version = "0.0.0"
+dependencies = [
+ "indexer-historical-app",
+]
+
+[[package]]
+name = "indexer-historical-projection"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "indexer-historical-types",
+ "metrics",
+ "tracing",
+]
+
+[[package]]
+name = "indexer-historical-types"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "graphql_client",
+ "grug-types",
+ "indexer-graphql-types",
+ "reqwest 0.13.2",
+ "serde",
+ "url",
 ]
 
 [[package]]

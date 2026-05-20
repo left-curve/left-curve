@@ -4,15 +4,14 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "indexer-graphql-types"
+name          = "indexer-historical-cli"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[[bin]]
+name = "indexer-historical"
+path = "src/main.rs"
+
 [dependencies]
-anyhow            = { workspace = true }
-graphql_client    = { workspace = true }
-graphql-ws-client = { workspace = true }
-paste             = { workspace = true }
-serde             = { workspace = true, features = ["derive"] }
-serde_json        = { workspace = true }
+indexer-historical-app = { workspace = true }

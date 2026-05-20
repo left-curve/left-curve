@@ -1,0 +1,22 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "indexer-historical-types"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+anyhow                = { workspace = true }
+graphql_client        = { workspace = true }
+grug-types            = { workspace = true }
+indexer-graphql-types = { workspace = true }
+reqwest               = { workspace = true, features = ["json"] }
+serde                 = { workspace = true }
+url                   = { workspace = true }

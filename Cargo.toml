@@ -43,6 +43,11 @@ members = [
   "hyperlane/testing",
   "hyperlane/types",
   "hyperlane/va",
+  "indexer-historical/app",
+  "indexer-historical/block-source",
+  "indexer-historical/cli",
+  "indexer-historical/projection",
+  "indexer-historical/types",
   "indexer/cache",
   "indexer/clickhouse",
   "indexer/graphql-types",
@@ -61,6 +66,7 @@ members = [
   "utils/error-backtrace",
   "utils/error-backtrace/derive",
   "utils/eth",
+  "utils/graphql-ws-client",
   "utils/identity",
   "utils/temp-rocksdb",
 ]
@@ -232,25 +238,30 @@ hyperlane-mailbox       = { path = "hyperlane/mailbox" }
 hyperlane-testing       = { path = "hyperlane/testing" }
 hyperlane-types         = { path = "hyperlane/types" }
 hyperlane-va            = { path = "hyperlane/va" }
-indexer-cache           = { path = "indexer/cache" }
-indexer-clickhouse      = { path = "indexer/clickhouse" }
-indexer-graphql-types   = { path = "indexer/graphql-types" }
-indexer-hooked          = { path = "indexer/hooked" }
-indexer-httpd           = { path = "indexer/httpd", features = ["tracing"] }
-indexer-metrics         = { path = "indexer/metrics" }
-indexer-sql             = { path = "indexer/sql" }
-indexer-testing         = { path = "indexer/testing" }
+indexer-cache                   = { path = "indexer/cache" }
+indexer-clickhouse              = { path = "indexer/clickhouse" }
+indexer-graphql-types           = { path = "indexer/graphql-types" }
+indexer-historical-app          = { path = "indexer-historical/app" }
+indexer-historical-block-source = { path = "indexer-historical/block-source" }
+indexer-historical-projection   = { path = "indexer-historical/projection" }
+indexer-historical-types        = { path = "indexer-historical/types" }
+indexer-hooked                  = { path = "indexer/hooked" }
+indexer-httpd                   = { path = "indexer/httpd", features = ["tracing"] }
+indexer-metrics                 = { path = "indexer/metrics" }
+indexer-sql                     = { path = "indexer/sql" }
+indexer-testing                 = { path = "indexer/testing" }
 pyth-client             = { path = "pyth/client" }
 pyth-types              = { path = "pyth/types" }
 
 # Utilities
-config-parser   = { path = "utils/config-parser" }
-disk-saver      = { path = "utils/disk-saver" }
-dyn-event       = { path = "utils/dyn-event" }
-error-backtrace = { path = "utils/error-backtrace" }
-eth-utils       = { path = "utils/eth" }
-identity        = { path = "utils/identity" }
-temp-rocksdb    = { path = "utils/temp-rocksdb" }
+config-parser     = { path = "utils/config-parser" }
+disk-saver        = { path = "utils/disk-saver" }
+dyn-event         = { path = "utils/dyn-event" }
+error-backtrace   = { path = "utils/error-backtrace" }
+eth-utils         = { path = "utils/eth" }
+graphql-ws-client = { path = "utils/graphql-ws-client" }
+identity          = { path = "utils/identity" }
+temp-rocksdb      = { path = "utils/temp-rocksdb" }
 
 [profile.release]
 codegen-units    = 1
