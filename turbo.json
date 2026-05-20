@@ -22,20 +22,24 @@
     },
     "@left-curve/docs#build": {
       "outputs": ["dist/**"]
+    },
+    "@left-curve/portal-web#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["build/**"],
+      "env": [
+        "CONFIG_ENVIRONMENT",
+        "PUBLIC_FP",
+        "PUBLIC_WS_URI",
+        "PUBLIC_SENTRY_DSN",
+        "PUBLIC_SENTRY_ENVIRONMENT",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT",
+        "PUBLIC_PRIVY_APP_ID",
+        "PUBLIC_PRIVY_CLIENT_ID",
+        "ENABLED_FEATURES"
+      ]
     }
   },
-  "globalEnv": [
-    "CONFIG_ENVIRONMENT",
-    "PUBLIC_FP",
-    "PUBLIC_WS_URI",
-    "PUBLIC_SENTRY_DSN",
-    "PUBLIC_SENTRY_ENVIRONMENT",
-    "SENTRY_ORG",
-    "SENTRY_PROJECT",
-    "PUBLIC_PRIVY_APP_ID",
-    "PUBLIC_PRIVY_CLIENT_ID",
-    "ENABLED_FEATURES"
-  ],
   "globalPassThroughEnv": [
     "GIT_COMMIT",
     "R2_ASSETS_PREFIX",
