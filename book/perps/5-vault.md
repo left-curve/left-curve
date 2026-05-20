@@ -133,7 +133,7 @@ $$
 
 **Book-crossing prevention:** if $\mathtt{bidPrice} \geq \mathtt{bestAsk}$, clamp to $\mathtt{bestAsk} - \mathtt{tickSize}$.
 
-Skip if $\mathtt{bidPrice} \leq 0$ or notional is below the minimum order size.
+Skip if $\mathtt{bidPrice} \leq 0$ or notional is below the minimum order value.
 
 When the vault is long, the bid spread widens (less likely to accumulate more).
 
@@ -154,7 +154,7 @@ $$
 
 **Book-crossing prevention:** if $\mathtt{askPrice} \leq \mathtt{bestBid}$, clamp to $\mathtt{bestBid} + \mathtt{tickSize}$.
 
-Skip if notional is below the minimum order size.
+Skip if notional is below the minimum order value.
 
 When the vault is long, the ask spread tightens (more attractive to takers who buy from the vault).
 
@@ -174,7 +174,8 @@ The mirror applies when short.
 | Parameter                  | Role                                         |
 | -------------------------- | -------------------------------------------- |
 | `initial_margin_ratio`     | Used to compute margin-constrained size      |
-| `min_order_size`           | Minimum notional to place an order           |
+| `lot_size`                 | Quantity precision; zero disables            |
+| `min_order_value`          | Minimum notional to place an order           |
 | `tick_size`                | Price granularity for snapping               |
 | `vault_half_spread`        | Base half bid-ask spread around oracle price |
 | `vault_liquidity_weight`   | Weight for margin allocation across pairs    |
