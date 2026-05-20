@@ -245,7 +245,11 @@ const TransferSend: React.FC = () => {
           className="mt-5"
           isLoading={isPending}
           isDisabled={
-            !isConnected || !!inputs.amount?.error || !isValid20HexAddress || !!showAddressWarning
+            !isConnected ||
+            !!inputs.amount?.error ||
+            !isValid20HexAddress ||
+            isLoading ||
+            !doesUserExist
           }
         >
           {m["common.send"]()}
