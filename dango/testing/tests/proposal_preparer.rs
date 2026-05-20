@@ -44,10 +44,6 @@ async fn proposal_pyth() {
             })
             .should_succeed()
             .into_values()
-            .map(|price_source| PythLazerSubscriptionDetails {
-                id: price_source.id,
-                channel: price_source.channel,
-            })
             .collect::<Vec<_>>();
 
         // Create cache for ids if not present.
