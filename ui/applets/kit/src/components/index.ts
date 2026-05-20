@@ -134,6 +134,7 @@ export { IconWorld } from "./icons/IconWorld";
 export { IconTime } from "./icons/IconTime";
 export { IconTelegram } from "./icons/IconTelegram";
 export { IconShare } from "./icons/IconShare";
+export { IconShareNodes } from "./icons/IconShareNodes";
 export { IconDisconnect } from "./icons/IconDisconnect";
 export { IconDango } from "./icons/IconDango";
 export { IconEdit } from "./icons/IconEdit";

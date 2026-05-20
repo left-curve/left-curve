@@ -33,7 +33,14 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
 import { Decimal, formatNumber } from "@left-curve/utils";
 
-import { Cell, FormattedNumber, IconLink, Table, Tabs } from "@left-curve/applets-kit";
+import {
+  Button,
+  Cell,
+  FormattedNumber,
+  IconShareNodes,
+  Table,
+  Tabs,
+} from "@left-curve/applets-kit";
 import { CountBadge } from "../../foundation/CountBadge";
 import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
 import { OrderBookOverview } from "./OrderBookOverview";
@@ -406,9 +413,10 @@ const PerpsPositionsTable: React.FC = () => {
                       as="span"
                     />
                   </span>
-                  <button
-                    type="button"
-                    className="text-ink-tertiary-500 hover:text-ink-secondary-700 cursor-pointer"
+                  <Button
+                    variant="link"
+                    size="xs"
+                    className="p-0 h-fit m-0 overflow-visible"
                     onClick={(e) => {
                       e.stopPropagation();
                       showModal(Modals.PnlShare, {
@@ -422,8 +430,8 @@ const PerpsPositionsTable: React.FC = () => {
                       });
                     }}
                   >
-                    <IconLink className="w-4 h-4" />
-                  </button>
+                    <IconShareNodes className="w-4 h-4" />
+                  </Button>
                 </span>
               }
               className={`text-right ${isPositive ? "text-utility-success-600" : "text-utility-error-600"}`}
