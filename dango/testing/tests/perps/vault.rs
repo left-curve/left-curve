@@ -4,10 +4,14 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{
+        TestOption,
+        perps::{pair_id, write_pyth_price_raw},
+        setup_test_naive,
+    },
     dango_types::{
         constants::usdc,
-        oracle::{self, PriceSource, QueryPriceRequest},
+        oracle::{self, Price, PriceSource, QueryPriceRequest},
         perps::{self, PairParam, Param},
     },
     grug::{
@@ -427,9 +431,8 @@ async fn oracle_triggers_on_oracle_update() {
     // Seed USDC's PYTH_PRICES entry directly. The perp pair's price is fed via
     // signed Pyth Lazer messages later in the test.
     suite.app.db.with_state_storage_mut(|storage| {
-        let price =
-            dango_types::oracle::Price::new(UsdPrice::new_int(1), Timestamp::from_nanos(u128::MAX));
-        dango_testing::perps::write_pyth_price_raw(storage, contracts.oracle, 1, &price);
+        let price = Price::new(UsdPrice::new_int(1), Timestamp::from_nanos(u128::MAX));
+        write_pyth_price_raw(storage, contracts.oracle, 1, &price);
     });
 
     // -------------------------------------------------------------------------
