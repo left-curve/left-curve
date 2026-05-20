@@ -175,12 +175,7 @@ self.addEventListener("message", (event) => {
 });
 `;
 
-const copyPattern: { from: string; to: string }[] = [
-  {
-    from: path.resolve(__dirname, "functions"),
-    to: "./functions",
-  },
-];
+const copyPattern: { from: string; to: string }[] = [];
 
 if (!useR2Assets && fs.existsSync(tradingViewPath)) {
   copyPattern.push({
