@@ -48,8 +48,8 @@ perp_liquidator_config:
     instances:
       - name: "hetzner5-M1"
         liquidation_delay_blocks: 0
-      - name: "intern2-M2"
-        liquidation_delay_blocks: 2
+      - name: "hetzner6-M2"
+        liquidation_delay_blocks: 3
       - name: "hetzner1-M3"
         liquidation_delay_blocks: 5
       - name: "hetzner3-M4"
