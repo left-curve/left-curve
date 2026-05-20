@@ -44,11 +44,9 @@ async fn proposal_pyth() {
             })
             .should_succeed()
             .into_values()
-            .filter_map(|price_source| match price_source {
-                PriceSource::Pyth { id, channel, .. } => {
-                    Some(PythLazerSubscriptionDetails { id, channel })
-                },
-                _ => None,
+            .map(|price_source| PythLazerSubscriptionDetails {
+                id: price_source.id,
+                channel: price_source.channel,
             })
             .collect::<Vec<_>>();
 
@@ -68,7 +66,7 @@ async fn proposal_pyth() {
     let oracle = contracts.oracle;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::Pyth { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel, precision: 8 }
+        btc::DENOM.clone() => PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel, precision: 8 }
     );
 
     let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
@@ -148,18 +146,15 @@ async fn proposal_pyth() {
             .should_succeed()
             .values()
             .map(|price_source| {
-                if let PriceSource::Pyth { id, .. } = price_source {
-                    assert_ne!(id, &NOT_USED_ID_LAZER.id);
-                }
+                assert_ne!(price_source.id, NOT_USED_ID_LAZER.id);
             });
 
         // Push NOT_USED_ID to the oracle.
-        let msg =
-            ExecuteMsg::RegisterPriceSources(btree_map!( test_denom.clone() => PriceSource::Pyth {
-                id: NOT_USED_ID_LAZER.id,
-                precision: 6,
-                channel: NOT_USED_ID_LAZER.channel,
-            }));
+        let msg = ExecuteMsg::RegisterPriceSources(btree_map!( test_denom.clone() => PriceSource {
+            id: NOT_USED_ID_LAZER.id,
+            precision: 6,
+            channel: NOT_USED_ID_LAZER.channel,
+        }));
 
         suite
             .execute(&mut accounts.owner, contracts.oracle, &msg, Coins::new())

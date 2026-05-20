@@ -1,13 +1,15 @@
 use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
-    dango_testing::perps::pair_id,
+    dango_testing::perps::{OracleTestEntry, pair_id, write_pyth_price_raw},
     dango_types::{
         constants::usdc,
-        oracle::{self, PriceSource},
+        oracle::{self, Precision, PrecisionlessPrice, PriceSource},
         perps::{PairParam, Param, RateSchedule},
     },
     grug::{Coins, Duration, NumberConst, ResultExt, Timestamp, Udec128, btree_map},
+    pyth_types::Channel,
+    std::collections::BTreeMap,
 };
 
 mod adl_bug_reproduction;
@@ -52,30 +54,56 @@ pub fn default_pair_param() -> PairParam {
 }
 
 /// Register fixed oracle prices for the perps pair and settlement currency.
+///
+/// Registers Pyth price sources via ExecuteMsg, then writes the prices
+/// directly into `PYTH_PRICES` storage to bypass the Pyth Lazer signature
+/// verification path.
 pub async fn register_oracle_prices(
     suite: &mut dango_testing::TestSuite<grug_app::NaiveProposalPreparer>,
     accounts: &mut dango_testing::TestAccounts,
     contracts: &Contracts,
     eth_price: u128,
 ) {
+    let entries = btree_map! {
+        usdc::DENOM.clone() => OracleTestEntry {
+            pyth_id: 1,
+            precision: usdc::DECIMAL as Precision,
+            humanized_price: Udec128::ONE,
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+        pair_id() => OracleTestEntry {
+            pyth_id: 2,
+            precision: 0,
+            humanized_price: Udec128::new(eth_price),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+    };
+
+    let price_sources: BTreeMap<_, PriceSource> = entries
+        .iter()
+        .map(|(denom, e)| {
+            (denom.clone(), PriceSource {
+                id: e.pyth_id,
+                channel: Channel::RealTime,
+                precision: e.precision,
+            })
+        })
+        .collect();
+
     suite
         .execute(
             &mut accounts.owner,
             contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                pair_id() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(eth_price),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
+            &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
             Coins::new(),
         )
         .await
         .should_succeed();
+
+    suite.app.db.with_state_storage_mut(|storage| {
+        for entry in entries.values() {
+            let price = PrecisionlessPrice::new(entry.humanized_price, entry.timestamp);
+            write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
+        }
+    });
 }

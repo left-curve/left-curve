@@ -410,21 +410,31 @@ async fn oracle_triggers_on_oracle_update() {
             &mut accounts.owner,
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                pair.clone() => PriceSource::Pyth {
-                    id: 2,
-                    precision: 18,
+                usdc::DENOM.clone() => PriceSource {
+                    id: 1,
                     channel: Channel::RealTime,
+                    precision: usdc::DECIMAL as u8,
+                },
+                pair.clone() => PriceSource {
+                    id: 2,
+                    channel: Channel::RealTime,
+                    precision: 18,
                 },
             }),
             Coins::new(),
         )
         .await
         .should_succeed();
+
+    // Seed USDC's PYTH_PRICES entry directly. The perp pair's price is fed via
+    // signed Pyth Lazer messages later in the test.
+    suite.app.db.with_state_storage_mut(|storage| {
+        let price = dango_types::oracle::PrecisionlessPrice::new(
+            Udec128::ONE,
+            Timestamp::from_nanos(u128::MAX),
+        );
+        dango_testing::perps::write_pyth_price_raw(storage, contracts.oracle, 1, &price);
+    });
 
     // -------------------------------------------------------------------------
     // Setup: Deposit USDC and add vault liquidity (follows vault_lp_lifecycle).

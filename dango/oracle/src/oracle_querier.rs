@@ -120,21 +120,8 @@ impl<'a> OracleQuerierNoCache<'a> {
         // Query the denom's price source, if not provided.
         let price_source = price_source.map_or_else(|| self.ctx.get_price_source(denom), Ok)?;
 
-        // Compute the price based on the price source.
-        match price_source {
-            PriceSource::Fixed {
-                humanized_price,
-                precision,
-                timestamp,
-            } => {
-                let price = PrecisionlessPrice::new(humanized_price, timestamp);
-                Ok(price.with_precision(precision))
-            },
-            PriceSource::Pyth { id, precision, .. } => {
-                let price = self.ctx.get_price(id)?;
-                Ok(price.with_precision(precision))
-            },
-        }
+        let price = self.ctx.get_price(price_source.id)?;
+        Ok(price.with_precision(price_source.precision))
     }
 }
 

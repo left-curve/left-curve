@@ -1,7 +1,7 @@
 use {
     dango_types::{
         config::AppConfig,
-        oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
+        oracle::{ExecuteMsg, QueryPriceSourcesRequest},
     },
     grug::{
         Addr, Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper,
@@ -403,12 +403,9 @@ fn pyth_ids_lazer(
             limit: Some(u32::MAX),
         })?
         .into_values()
-        .filter_map(|price_source| {
-            if let PriceSource::Pyth { id, channel, .. } = price_source {
-                Some(PythLazerSubscriptionDetails { id, channel })
-            } else {
-                None
-            }
+        .map(|price_source| PythLazerSubscriptionDetails {
+            id: price_source.id,
+            channel: price_source.channel,
         })
         .collect::<Vec<_>>();
 

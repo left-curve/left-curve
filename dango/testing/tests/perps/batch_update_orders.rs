@@ -4,10 +4,14 @@ use {
         Dimensionless, OrderId, OrderKind, OrderRemoved, Quantity, QueryOrdersByUserResponseItem,
         ReasonForOrderRemoval, TimeInForce, UsdPrice,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{
+        TestOption,
+        perps::{OracleTestEntry, pair_id, write_pyth_price_raw},
+        setup_test_naive,
+    },
     dango_types::{
         constants::usdc,
-        oracle::{self, PriceSource},
+        oracle::{self, Precision, PrecisionlessPrice, PriceSource},
         perps::{
             self, CancelOrderRequest, Param, SubmitOrCancelOrderRequest, SubmitOrderRequest,
             UserReferralData,
@@ -17,6 +21,7 @@ use {
         Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, NumberConst,
         QuerierExt, ResultExt, SearchEvent, Timestamp, Udec128, Uint64, Uint128, btree_map,
     },
+    pyth_types::Channel,
     std::collections::BTreeMap,
 };
 
@@ -651,31 +656,54 @@ async fn batch_across_two_pairs() {
     let btc_pair: Denom = "perp/btcusd".parse().unwrap();
 
     // Register oracle prices for both pairs (plus USDC for settlement).
+    let entries = btree_map! {
+        usdc::DENOM.clone() => OracleTestEntry {
+            pyth_id: 1,
+            precision: usdc::DECIMAL as Precision,
+            humanized_price: Udec128::ONE,
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+        eth_pair.clone() => OracleTestEntry {
+            pyth_id: 2,
+            precision: 0,
+            humanized_price: Udec128::new(2_000),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+        btc_pair.clone() => OracleTestEntry {
+            pyth_id: 3,
+            precision: 0,
+            humanized_price: Udec128::new(60_000),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+    };
+
+    let price_sources: BTreeMap<_, PriceSource> = entries
+        .iter()
+        .map(|(denom, e)| {
+            (denom.clone(), PriceSource {
+                id: e.pyth_id,
+                channel: Channel::RealTime,
+                precision: e.precision,
+            })
+        })
+        .collect();
+
     suite
         .execute(
             &mut accounts.owner,
             contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                eth_pair.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(2_000),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                btc_pair.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(60_000),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
+            &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
             Coins::new(),
         )
         .await
         .should_succeed();
+
+    suite.app.db.with_state_storage_mut(|storage| {
+        for entry in entries.values() {
+            let price = PrecisionlessPrice::new(entry.humanized_price, entry.timestamp);
+            write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
+        }
+    });
 
     // Add the BTC pair (the ETH pair is already configured at genesis;
     // re-specifying it keeps it unchanged).
