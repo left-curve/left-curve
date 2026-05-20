@@ -664,81 +664,48 @@
           "msg": {
             "price_sources": {
               "bridge/atom": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 44,
-                  "precision": 6
-                }
+                "channel": "fixed_rate@200ms",
+                "id": 44
               },
               "bridge/bch": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 24,
-                  "precision": 8
-                }
+                "channel": "fixed_rate@200ms",
+                "id": 24
               },
               "bridge/bnb": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 15,
-                  "precision": 18
-                }
+                "channel": "fixed_rate@200ms",
+                "id": 15
               },
               "bridge/btc": {
-                "pyth": {
-                  "channel": "real_time",
-                  "id": 1,
-                  "precision": 8
-                }
+                "channel": "real_time",
+                "id": 1
               },
               "bridge/doge": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 13,
-                  "precision": 8
-                }
+                "channel": "fixed_rate@200ms",
+                "id": 13
               },
               "bridge/eth": {
-                "pyth": {
-                  "channel": "real_time",
-                  "id": 2,
-                  "precision": 18
-                }
+                "channel": "real_time",
+                "id": 2
               },
               "bridge/ltc": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 26,
-                  "precision": 8
-                }
+                "channel": "fixed_rate@200ms",
+                "id": 26
               },
               "bridge/sol": {
-                "pyth": {
-                  "channel": "real_time",
-                  "id": 6,
-                  "precision": 9
-                }
+                "channel": "real_time",
+                "id": 6
               },
               "bridge/usdc": {
-                "pyth": {
-                  "channel": "real_time",
-                  "id": 7,
-                  "precision": 6
-                }
+                "channel": "real_time",
+                "id": 7
               },
               "bridge/xrp": {
-                "pyth": {
-                  "channel": "fixed_rate@200ms",
-                  "id": 14,
-                  "precision": 6
-                }
+                "channel": "fixed_rate@200ms",
+                "id": 14
               },
               "perp/ethusd": {
-                "pyth": {
-                  "channel": "real_time",
-                  "id": 2,
-                  "precision": 18
-                }
+                "channel": "real_time",
+                "id": 2
               }
             },
             "trusted_signers": {
