@@ -350,9 +350,7 @@ export default defineConfig({
                   stage: rspack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
                 },
                 (assets) => {
-                  const source = new rspack.sources.RawSource(envConfig);
-                  assets["config.js"] = source;
-                  assets["static/js/config.js"] = source;
+                  assets["config.js"] = new rspack.sources.RawSource(envConfig);
                 },
               );
             });
