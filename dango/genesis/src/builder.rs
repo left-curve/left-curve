@@ -274,7 +274,6 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
-            dex: Addr::ZERO,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             oracle,
@@ -283,7 +282,6 @@ where
             warp,
         },
         minimum_deposit: opt.account.minimum_deposit,
-        ..Default::default()
     };
 
     let genesis_state = GenesisState {

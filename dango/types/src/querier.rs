@@ -13,11 +13,6 @@ pub trait DangoQuerier {
             .map(|app_cfg| app_cfg.addresses.account_factory)
     }
 
-    fn query_dex(&self) -> StdResult<Addr> {
-        self.query_dango_config()
-            .map(|app_cfg| app_cfg.addresses.dex)
-    }
-
     fn query_gateway(&self) -> StdResult<Addr> {
         self.query_dango_config()
             .map(|app_cfg| app_cfg.addresses.gateway)

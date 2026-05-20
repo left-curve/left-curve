@@ -1,6 +1,6 @@
 use {
     crate::constants::usdc,
-    grug::{Addr, Bounded, Coins, Udec128, ZeroInclusiveOneExclusive, coins},
+    grug::{Addr, Coins, coins},
 };
 
 /// Application-specific configurations of the Dango chain.
@@ -10,10 +10,6 @@ pub struct AppConfig {
     pub addresses: AppAddresses,
     /// The minimum deposit required to onboard a user.
     pub minimum_deposit: Coins,
-    /// The maker fee for the DEX.
-    pub maker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-    /// The taker fee for the DEX.
-    pub taker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
 }
 
 impl Default for AppConfig {
@@ -21,8 +17,6 @@ impl Default for AppConfig {
         AppConfig {
             addresses: Default::default(),
             minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 }, // 10 USDC
-            maker_fee_rate: Bounded::new(Udec128::new_bps(25)).unwrap(),
-            taker_fee_rate: Bounded::new(Udec128::new_bps(40)).unwrap(),
         }
     }
 }
@@ -31,7 +25,6 @@ impl Default for AppConfig {
 #[grug::derive(Serde)]
 pub struct AppAddresses {
     pub account_factory: Addr,
-    pub dex: Addr,
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub oracle: Addr,
@@ -46,7 +39,6 @@ impl Default for AppAddresses {
     fn default() -> Self {
         AppAddresses {
             account_factory: Addr::mock(0),
-            dex: Addr::ZERO,
             gateway: Addr::mock(0),
             hyperlane: Hyperlane::default(),
             oracle: Addr::mock(0),

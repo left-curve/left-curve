@@ -70,10 +70,8 @@ impl StartCmd {
             // cfg.grug.wasm_cache_capacity,
             // [
             //     codes.account_factory.to_bytes().hash256(),
-            //     codes.account_multi.to_bytes().hash256(),
             //     codes.account_single.to_bytes().hash256(),
             //     codes.bank.to_bytes().hash256(),
-            //     codes.dex.to_bytes().hash256(),
             //     codes.gateway.to_bytes().hash256(),
             //     codes.hyperlane.ism.to_bytes().hash256(),
             //     codes.hyperlane.mailbox.to_bytes().hash256(),
