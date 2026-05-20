@@ -146,13 +146,16 @@ async fn proposal_pyth() {
             });
 
         // Push NOT_USED_ID to the oracle.
-        let msg = ExecuteMsg::RegisterPriceSources(btree_map!( test_denom.clone() => PriceSource {
-            id: NOT_USED_ID_LAZER.id,
-            channel: NOT_USED_ID_LAZER.channel,
-        }));
-
         suite
-            .execute(&mut accounts.owner, contracts.oracle, &msg, Coins::new())
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &ExecuteMsg::RegisterPriceSources(btree_map!( test_denom.clone() => PriceSource {
+                    id: NOT_USED_ID_LAZER.id,
+                    channel: NOT_USED_ID_LAZER.channel,
+                })),
+                Coins::new(),
+            )
             .await
             .should_succeed();
 
