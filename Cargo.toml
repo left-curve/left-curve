@@ -35,6 +35,11 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/types",
   "hyperlane/va",
+  "indexer-historical/app",
+  "indexer-historical/block-source",
+  "indexer-historical/cli",
+  "indexer-historical/projection",
+  "indexer-historical/types",
   "indexer/cache",
   "indexer/clickhouse",
   "indexer/graphql-types",
@@ -52,6 +57,7 @@ members = [
   "utils/error-backtrace",
   "utils/error-backtrace/derive",
   "utils/eth",
+  "utils/graphql-ws-client",
   "utils/identity",
   "utils/temp-rocksdb",
 ]
@@ -180,59 +186,64 @@ wasmer                      = "7"
 wasmer-middlewares          = "7"
 
 # Left curve packages
-dango-account           = { path = "dango/account" }
-dango-account-factory   = { path = "dango/account-factory" }
-dango-auth              = { path = "dango/auth" }
-dango-bank              = { path = "dango/bank" }
-dango-gateway           = { path = "dango/gateway" }
-dango-genesis           = { path = "dango/genesis" }
-dango-oracle            = { path = "dango/oracle" }
-dango-order-book        = { path = "dango/order-book" }
-dango-perps             = { path = "dango/perps" }
-dango-proposal-preparer = { path = "dango/proposal-preparer" }
-dango-sdk               = { path = "sdk/rust" }
-dango-taxman            = { path = "dango/taxman" }
-dango-testing           = { path = "dango/testing" }
-dango-types             = { path = "dango/types" }
-dango-upgrade           = { path = "dango/upgrade" }
-dango-vesting           = { path = "dango/vesting" }
-dango-warp              = { path = "dango/warp" }
-grug-app                = { path = "grug/app" }
-grug-crypto             = { path = "grug/crypto" }
-grug-db-disk            = { path = "grug/db/disk" }
-grug-db-memory          = { path = "grug/db/memory" }
-grug-ffi                = { path = "grug/ffi" }
-grug-jmt                = { path = "grug/jellyfish-merkle" }
-grug-macros             = { path = "grug/macros" }
-grug-math               = { path = "grug/math" }
-grug-storage            = { path = "grug/storage" }
-grug-tester             = { path = "grug/tester" }
-grug-types              = { path = "grug/types" }
-grug-vm-hybrid          = { path = "grug/vm/hybrid" }
-grug-vm-rust            = { path = "grug/vm/rust" }
-grug-vm-wasm            = { path = "grug/vm/wasm" }
-hyperlane-ism           = { path = "hyperlane/isms/multisig" }
-hyperlane-mailbox       = { path = "hyperlane/mailbox" }
-hyperlane-types         = { path = "hyperlane/types" }
-hyperlane-va            = { path = "hyperlane/va" }
-indexer-cache           = { path = "indexer/cache" }
-indexer-clickhouse      = { path = "indexer/clickhouse" }
-indexer-graphql-types   = { path = "indexer/graphql-types" }
-indexer-hooked          = { path = "indexer/hooked" }
-indexer-httpd           = { path = "indexer/httpd", features = ["tracing"] }
-indexer-metrics         = { path = "indexer/metrics" }
-indexer-sql             = { path = "indexer/sql" }
-pyth-client             = { path = "pyth/client" }
-pyth-types              = { path = "pyth/types" }
+dango-account                   = { path = "dango/account" }
+dango-account-factory           = { path = "dango/account-factory" }
+dango-auth                      = { path = "dango/auth" }
+dango-bank                      = { path = "dango/bank" }
+dango-gateway                   = { path = "dango/gateway" }
+dango-genesis                   = { path = "dango/genesis" }
+dango-oracle                    = { path = "dango/oracle" }
+dango-order-book                = { path = "dango/order-book" }
+dango-perps                     = { path = "dango/perps" }
+dango-proposal-preparer         = { path = "dango/proposal-preparer" }
+dango-sdk                       = { path = "sdk/rust" }
+dango-taxman                    = { path = "dango/taxman" }
+dango-testing                   = { path = "dango/testing" }
+dango-types                     = { path = "dango/types" }
+dango-upgrade                   = { path = "dango/upgrade" }
+dango-vesting                   = { path = "dango/vesting" }
+dango-warp                      = { path = "dango/warp" }
+grug-app                        = { path = "grug/app" }
+grug-crypto                     = { path = "grug/crypto" }
+grug-db-disk                    = { path = "grug/db/disk" }
+grug-db-memory                  = { path = "grug/db/memory" }
+grug-ffi                        = { path = "grug/ffi" }
+grug-jmt                        = { path = "grug/jellyfish-merkle" }
+grug-macros                     = { path = "grug/macros" }
+grug-math                       = { path = "grug/math" }
+grug-storage                    = { path = "grug/storage" }
+grug-tester                     = { path = "grug/tester" }
+grug-types                      = { path = "grug/types" }
+grug-vm-hybrid                  = { path = "grug/vm/hybrid" }
+grug-vm-rust                    = { path = "grug/vm/rust" }
+grug-vm-wasm                    = { path = "grug/vm/wasm" }
+hyperlane-ism                   = { path = "hyperlane/isms/multisig" }
+hyperlane-mailbox               = { path = "hyperlane/mailbox" }
+hyperlane-types                 = { path = "hyperlane/types" }
+hyperlane-va                    = { path = "hyperlane/va" }
+indexer-cache                   = { path = "indexer/cache" }
+indexer-clickhouse              = { path = "indexer/clickhouse" }
+indexer-graphql-types           = { path = "indexer/graphql-types" }
+indexer-historical-app          = { path = "indexer-historical/app" }
+indexer-historical-block-source = { path = "indexer-historical/block-source" }
+indexer-historical-projection   = { path = "indexer-historical/projection" }
+indexer-historical-types        = { path = "indexer-historical/types" }
+indexer-hooked                  = { path = "indexer/hooked" }
+indexer-httpd                   = { path = "indexer/httpd", features = ["tracing"] }
+indexer-metrics                 = { path = "indexer/metrics" }
+indexer-sql                     = { path = "indexer/sql" }
+pyth-client                     = { path = "pyth/client" }
+pyth-types                      = { path = "pyth/types" }
 
 # Utilities
-config-parser   = { path = "utils/config-parser" }
-disk-saver      = { path = "utils/disk-saver" }
-dyn-event       = { path = "utils/dyn-event" }
-error-backtrace = { path = "utils/error-backtrace" }
-eth-utils       = { path = "utils/eth" }
-identity        = { path = "utils/identity" }
-temp-rocksdb    = { path = "utils/temp-rocksdb" }
+config-parser     = { path = "utils/config-parser" }
+disk-saver        = { path = "utils/disk-saver" }
+dyn-event         = { path = "utils/dyn-event" }
+error-backtrace   = { path = "utils/error-backtrace" }
+eth-utils         = { path = "utils/eth" }
+graphql-ws-client = { path = "utils/graphql-ws-client" }
+identity          = { path = "utils/identity" }
+temp-rocksdb      = { path = "utils/temp-rocksdb" }
 
 [profile.release]
 codegen-units    = 1

@@ -1,3 +1,10 @@
+//! WebSocket client for GraphQL subscriptions over the `graphql-transport-ws`
+//! protocol.
+//!
+//! Generic over any query/variables built with [`graphql_client`]. Used by:
+//! - `dango-sdk` (re-exports everything here)
+//! - `indexer-historical-block-source` (drives the live block tail)
+
 use {
     anyhow::bail,
     futures::{
@@ -6,7 +13,6 @@ use {
         stream::{SplitSink, SplitStream},
     },
     graphql_client::{GraphQLQuery, Response},
-    indexer_graphql_types::Variables,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     std::{
         collections::HashMap,
@@ -243,33 +249,6 @@ impl WsClient {
     ///
     /// Use [`WsClient::connect`] directly if you want to multiplex multiple
     /// subscriptions over a single WebSocket.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use futures::StreamExt;
-    /// use dango_sdk::{WsClient, SubscribeTrades, subscribe_trades};
-    ///
-    /// let client = WsClient::new("ws://localhost:8080/graphql")?;
-    ///
-    /// let variables = subscribe_trades::Variables {
-    ///     base_denom: "dango".to_string(),
-    ///     quote_denom: "bridge/usdc".to_string(),
-    /// };
-    ///
-    /// let mut stream = client.subscribe::<SubscribeTrades>(variables).await?;
-    ///
-    /// while let Some(response) = stream.next().await {
-    ///     match response {
-    ///         Ok(resp) => {
-    ///             if let Some(data) = resp.data {
-    ///                 println!("{:?}", data);
-    ///             }
-    ///         }
-    ///         Err(e) => eprintln!("Error: {e}"),
-    ///     }
-    /// }
-    /// ```
     pub async fn subscribe<Q>(
         &self,
         variables: Q::Variables,
@@ -492,39 +471,3 @@ async fn run_session(
     drop(senders);
     let _ = sink.close().await;
 }
-
-/// Helper trait for subscription variables with an associated subscription type.
-pub trait SubscriptionVariables: Variables {
-    /// Subscribe using these variables.
-    fn subscribe(
-        self,
-        client: &WsClient,
-    ) -> impl std::future::Future<
-        Output = Result<
-            SubscriptionStream<<<Self as Variables>::Query as GraphQLQuery>::ResponseData>,
-            anyhow::Error,
-        >,
-    > + Send
-    where
-        Self: Sized + Unpin + Send + Sync + 'static,
-        <Self as Variables>::Query: Unpin + Send + Sync + 'static,
-        <<Self as Variables>::Query as GraphQLQuery>::ResponseData:
-            DeserializeOwned + Unpin + Send + Sync + 'static,
-    {
-        client.subscribe::<Self::Query>(self)
-    }
-}
-
-// Implement SubscriptionVariables for all subscription variable types
-impl SubscriptionVariables for indexer_graphql_types::subscribe_block::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_accounts::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_transfers::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_transactions::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_messages::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_events::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_event_by_addresses::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_perps_candles::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_perps_trades::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_query_app::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_query_store::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_query_status::Variables {}
