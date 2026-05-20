@@ -1,15 +1,12 @@
 use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
-    dango_testing::perps::{OracleTestEntry, pair_id, write_pyth_price_raw},
+    dango_testing::perps::{OracleTestEntry, pair_id, seed_oracle_prices},
     dango_types::{
         constants::usdc,
-        oracle::{self, Price, PriceSource},
         perps::{PairParam, Param, RateSchedule},
     },
-    grug::{Coins, Duration, ResultExt, Timestamp, btree_map},
-    pyth_types::Channel,
-    std::collections::BTreeMap,
+    grug::{Duration, Timestamp, btree_map},
 };
 
 mod adl_bug_reproduction;
@@ -54,17 +51,13 @@ pub fn default_pair_param() -> PairParam {
 }
 
 /// Register fixed oracle prices for the perps pair and settlement currency.
-///
-/// Registers Pyth price sources via ExecuteMsg, then writes the prices
-/// directly into `PYTH_PRICES` storage to bypass the Pyth Lazer signature
-/// verification path.
 pub async fn register_oracle_prices(
     suite: &mut dango_testing::TestSuite<grug_app::NaiveProposalPreparer>,
     accounts: &mut dango_testing::TestAccounts,
     contracts: &Contracts,
     eth_price: u128,
 ) {
-    let entries = btree_map! {
+    seed_oracle_prices(suite, &mut accounts.owner, contracts.oracle, btree_map! {
         usdc::DENOM.clone() => OracleTestEntry {
             pyth_id: 1,
             humanized_price: UsdPrice::new_int(1),
@@ -75,32 +68,6 @@ pub async fn register_oracle_prices(
             humanized_price: UsdPrice::new_int(eth_price as i128),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
-    };
-
-    let price_sources: BTreeMap<_, PriceSource> = entries
-        .iter()
-        .map(|(denom, e)| {
-            (denom.clone(), PriceSource {
-                id: e.pyth_id,
-                channel: Channel::RealTime,
-            })
-        })
-        .collect();
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-
-    suite.app.db.with_state_storage_mut(|storage| {
-        for entry in entries.values() {
-            let price = Price::new(entry.humanized_price, entry.timestamp);
-            write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
-        }
-    });
+    })
+    .await;
 }

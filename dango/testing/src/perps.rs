@@ -9,9 +9,12 @@ use {
         perps,
     },
     grug::{
-        Addr, BorshSerExt, Coins, Denom, ResultExt, Storage, Timestamp, Uint128, btree_map, concat,
+        Addr, BorshSerExt, Coins, Denom, ResultExt, Signer, Storage, TestSuite, Timestamp, Uint128,
+        btree_map, concat,
     },
-    grug_app::CONTRACT_NAMESPACE,
+    grug_app::{AppError, CONTRACT_NAMESPACE, Indexer, ProposalPreparer},
+    grug_db_memory::MemDb,
+    grug_vm_rust::RustVm,
     pyth_types::{Channel, PythId},
     std::collections::BTreeMap,
 };
@@ -50,27 +53,24 @@ pub fn write_pyth_price_raw(
     storage.write(&full_key, &value_bytes);
 }
 
-/// Common setup: register oracle prices + deposit margin for user1 and user2.
-pub async fn setup_perps_env(
-    suite: &mut TestSuiteWithIndexer,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-    eth_price: u128,
-    margin_per_user: u128,
-) {
-    let entries = btree_map! {
-        usdc::DENOM.clone() => OracleTestEntry {
-            pyth_id: 1,
-            humanized_price: UsdPrice::new_int(1),
-            timestamp: Timestamp::from_nanos(u128::MAX),
-        },
-        pair_id() => OracleTestEntry {
-            pyth_id: 2,
-            humanized_price: UsdPrice::new_int(eth_price as i128),
-            timestamp: Timestamp::from_nanos(u128::MAX),
-        },
-    };
-
+/// Register a set of Pyth price sources and seed their humanized prices
+/// directly into `PYTH_PRICES`.
+///
+/// Each entry registers a `PriceSource { id, channel: RealTime }` via
+/// `oracle::ExecuteMsg::RegisterPriceSources` so the on-chain `PRICE_SOURCES`
+/// map sees them, then writes the corresponding `Price` to `PYTH_PRICES`
+/// storage via [`write_pyth_price_raw`] — bypassing the Pyth Lazer signature
+/// verification path that tests can't satisfy.
+pub async fn seed_oracle_prices<PP, ID>(
+    suite: &mut TestSuite<MemDb, RustVm, PP, ID>,
+    owner: &mut (dyn Signer + Send + Sync),
+    oracle: Addr,
+    entries: BTreeMap<Denom, OracleTestEntry>,
+) where
+    PP: ProposalPreparer,
+    ID: Indexer,
+    AppError: From<<PP as ProposalPreparer>::Error>,
+{
     let price_sources: BTreeMap<Denom, PriceSource> = entries
         .iter()
         .map(|(denom, e)| {
@@ -83,8 +83,8 @@ pub async fn setup_perps_env(
 
     suite
         .execute(
-            &mut accounts.owner,
-            contracts.oracle,
+            owner,
+            oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
             Coins::new(),
         )
@@ -94,9 +94,32 @@ pub async fn setup_perps_env(
     suite.app.db.with_state_storage_mut(|storage| {
         for entry in entries.values() {
             let price = Price::new(entry.humanized_price, entry.timestamp);
-            write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
+            write_pyth_price_raw(storage, oracle, entry.pyth_id, &price);
         }
     });
+}
+
+/// Common setup: register oracle prices + deposit margin for user1 and user2.
+pub async fn setup_perps_env(
+    suite: &mut TestSuiteWithIndexer,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+    eth_price: u128,
+    margin_per_user: u128,
+) {
+    seed_oracle_prices(suite, &mut accounts.owner, contracts.oracle, btree_map! {
+        usdc::DENOM.clone() => OracleTestEntry {
+            pyth_id: 1,
+            humanized_price: UsdPrice::new_int(1),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+        pair_id() => OracleTestEntry {
+            pyth_id: 2,
+            humanized_price: UsdPrice::new_int(eth_price as i128),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+    })
+    .await;
 
     for account in [&mut accounts.user1, &mut accounts.user2] {
         let amount = Uint128::new(margin_per_user * 1_000_000);

@@ -3,13 +3,12 @@ use {
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
     dango_testing::{
         Factory, Preset, TestAccount, TestOption,
-        perps::{OracleTestEntry, pair_id, write_pyth_price_raw},
+        perps::{OracleTestEntry, pair_id, seed_oracle_prices},
         setup_test_naive,
     },
     dango_types::{
         account_factory::{self, RegisterUserData},
         constants::usdc,
-        oracle::{self, Price, PriceSource},
         perps::{
             self, CommissionRate, FeeDistributed, FeeShareRatio, QueryParamRequest, RateSchedule,
             Referee, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
@@ -22,8 +21,6 @@ use {
         Uint128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
-    pyth_types::Channel,
-    std::collections::BTreeMap,
 };
 
 // ---------------------------------------------------------------------------
@@ -2711,7 +2708,7 @@ async fn register_oracle_prices(
     contracts: &dango_genesis::Contracts,
     eth_price: u128,
 ) {
-    let entries = btree_map! {
+    seed_oracle_prices(suite, &mut accounts.owner, contracts.oracle, btree_map! {
         usdc::DENOM.clone() => OracleTestEntry {
             pyth_id: 1,
             humanized_price: UsdPrice::new_int(1),
@@ -2722,34 +2719,8 @@ async fn register_oracle_prices(
             humanized_price: UsdPrice::new_int(eth_price as i128),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
-    };
-
-    let price_sources: BTreeMap<_, PriceSource> = entries
-        .iter()
-        .map(|(denom, e)| {
-            (denom.clone(), PriceSource {
-                id: e.pyth_id,
-                channel: Channel::RealTime,
-            })
-        })
-        .collect();
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-
-    suite.app.db.with_state_storage_mut(|storage| {
-        for entry in entries.values() {
-            let price = Price::new(entry.humanized_price, entry.timestamp);
-            write_pyth_price_raw(storage, contracts.oracle, entry.pyth_id, &price);
-        }
-    });
+    })
+    .await;
 }
 
 async fn deposit_margin(
