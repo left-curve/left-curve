@@ -153,13 +153,11 @@ jobs:
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
-        env:
-          REF_NAME: ${{ github.ref_name }}
         with:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           workingDirectory: ui/portal/web
-          command: pages deploy ./build --project-name=dango-portal --branch=$REF_NAME
+          command: pages deploy ./build --project-name=dango-portal --branch=${{ github.ref_name }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Save pnpm cache
