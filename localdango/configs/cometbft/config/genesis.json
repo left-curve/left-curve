@@ -4,7 +4,6 @@
     "app_config": {
       "addresses": {
         "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-        "dex": "0x0000000000000000000000000000000000000000",
         "gateway": "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1",
         "hyperlane": {
           "ism": "0xdc68d6c82f5e4386294e7fda27317ab6ae8ff54c",
@@ -16,9 +15,7 @@
         "taxman": "0xda70a9c1417aee00f960fe896add9d571f9c365b",
         "warp": "0x981e6817442143ce5128992c7ab4a317321f00e9"
       },
-      "maker_fee_rate": "0.0025",
-      "minimum_deposit": {},
-      "taker_fee_rate": "0.004"
+      "minimum_deposit": {}
     },
     "config": {
       "bank": "0xe0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7",

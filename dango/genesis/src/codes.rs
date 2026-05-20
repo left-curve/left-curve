@@ -103,7 +103,6 @@ impl GenesisCodes for RustVm {
         {
             dango_oracle::metrics::init_metrics();
             dango_perps::metrics::init_metrics();
-            dango_taxman::metrics::init_metrics();
             // TODO: add other contracts that emit metrics
         }
 

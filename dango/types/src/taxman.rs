@@ -1,6 +1,5 @@
 use {
-    crate::account_factory::UserIndex,
-    grug::{Addr, Coins, Denom, Timestamp, Udec128, Udec128_6},
+    grug::{Addr, Coins, Denom, Udec128},
     std::collections::BTreeMap,
 };
 
@@ -16,10 +15,7 @@ pub struct Config {
 pub enum FeeType {
     /// Gas Fee.
     Gas,
-    /// Protocol fee for trading in Dango DEX.
-    ///
-    /// Not to be confused with liquidity fee, which is paid to liquidity
-    /// providers when using Dango DEX's instant swap feature.
+    /// Protocol fee for trading.
     Trade,
     /// Fee for bridging assets out of Dango chain.
     Withdraw,
@@ -51,9 +47,6 @@ pub enum ExecuteMsg {
         ty: FeeType,
         payments: BTreeMap<Addr, Coins>,
     },
-    /// Report trading volumes of users.
-    /// Can only be called by the spot and perp DEX contracts.
-    ReportVolumes(BTreeMap<Addr, Udec128_6>),
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -61,15 +54,6 @@ pub enum QueryMsg {
     /// Query the fee configurations.
     #[returns(Config)]
     Config {},
-    /// Returns the trading volume of a user since the specified timestamp.
-    #[returns(Udec128)]
-    VolumeByUser {
-        /// The user to query trading volume for.
-        user: UserIndex,
-        /// The start timestamp to query trading volume for. If not provided,
-        /// user's total trading volume since genesis will be returned.
-        since: Option<Timestamp>,
-    },
 }
 
 #[grug::derive(Serde)]
