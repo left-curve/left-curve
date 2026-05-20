@@ -1,9 +1,3 @@
-use pyth_types::{Channel, PythId};
-
-#[grug::derive(Serde)]
-pub struct PriceSource {
-    /// The Pyth Lazer ID of the price feed.
-    pub id: PythId,
-    /// The channel of the Pyth Lazer price feed.
-    pub channel: Channel,
-}
+/// The oracle's price source record. Identical in shape to a Pyth Lazer
+/// subscription, so we alias the upstream type directly.
+pub type PriceSource = pyth_types::PythLazerSubscriptionDetails;
