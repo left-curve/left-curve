@@ -163,7 +163,24 @@ const envConfig = `window.dango = ${JSON.stringify(
 const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
 
 const swContent = `const COMMIT = ${JSON.stringify(gitCommit)};
-self.addEventListener("install", () => {});
+self.addEventListener("install", (event) => {
+  event.waitUntil((async () => {
+    const oldSw = self.registration.active;
+    if (!oldSw) return;
+    const isOurSw = await new Promise((resolve) => {
+      const channel = new MessageChannel();
+      const timer = setTimeout(() => resolve(false), 1500);
+      channel.port1.onmessage = () => { clearTimeout(timer); resolve(true); };
+      try {
+        oldSw.postMessage({ type: "GET_COMMIT" }, [channel.port2]);
+      } catch (_) {
+        clearTimeout(timer);
+        resolve(false);
+      }
+    });
+    if (!isOurSw) await self.skipWaiting();
+  })());
+});
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
