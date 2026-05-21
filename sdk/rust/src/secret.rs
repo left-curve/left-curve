@@ -167,9 +167,29 @@ impl Secret for Eip712 {
     }
 
     fn sign_transaction(&self, sign_doc: SignDoc) -> anyhow::Result<Signature> {
-        // EIP-712 hash used in the signature.
+        let mut metadata_fields = vec![
+            json!({ "name": "user_index", "type": "uint32" }),
+            json!({ "name": "chain_id",   "type": "string" }),
+            json!({ "name": "nonce",      "type": "uint32" }),
+        ];
+        if sign_doc.data.expiry.is_some() {
+            metadata_fields.push(json!({ "name": "expiry", "type": "string" }));
+        }
+
+        let resolver = json!({
+            "Message": [
+                { "name": "sender",    "type": "address"     },
+                { "name": "data",      "type": "Metadata"    },
+                { "name": "gas_limit", "type": "uint32"      },
+                { "name": "messages",  "type": "TxMessage[]" },
+            ],
+            "Metadata": metadata_fields,
+            "TxMessage": [],
+        })
+        .deserialize_json()?;
+
         let data = TypedData {
-            resolver: json!({"Message":[]}).deserialize_json()?,
+            resolver,
             domain: Eip712Domain {
                 name: Some("dango".into()),
                 chain_id: Some(EIP155_CHAIN_ID),
