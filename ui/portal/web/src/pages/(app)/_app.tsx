@@ -3,6 +3,8 @@ import { useAccount, useBalances, useConfig } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
+import { ChunkErrorFallback } from "~/components/foundation/ChunkErrorFallback";
 import { Footer } from "~/components/foundation/Footer";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
@@ -111,7 +113,12 @@ function LayoutApp() {
   const effectiveIsScrolled = isSidebarVisible ? lockedY > headerThreshold : isScrolled;
 
   return (
-    <main className={twMerge("flex flex-col w-full min-h-[100svh] relative pb-[3rem] max-w-screen bg-surface-primary-rice text-ink-secondary-700", isProSwap ? "lg:pb-0" : "lg:pb-10")}>
+    <main
+      className={twMerge(
+        "flex flex-col w-full min-h-[100svh] relative pb-[3rem] max-w-screen bg-surface-primary-rice text-ink-secondary-700",
+        isProSwap ? "lg:pb-0" : "lg:pb-10",
+      )}
+    >
       <img
         src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"
@@ -122,7 +129,13 @@ function LayoutApp() {
       {!isLg ? <TestnetBanner /> : null}
       <Header isScrolled={effectiveIsScrolled} />
       <div className="flex flex-1 items-center justify-start w-full h-full relative flex-col z-30">
-        <Outlet />
+        <ErrorBoundary
+          FallbackComponent={ChunkErrorFallback}
+          onReset={() => router.invalidate()}
+          onError={(error) => captureException(error)}
+        >
+          <Outlet />
+        </ErrorBoundary>
       </div>
       <Footer />
     </main>

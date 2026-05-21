@@ -32,8 +32,16 @@ export function useCountdown(parameters: UseCountdownParameters) {
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft);
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    if (!date) return;
+    if (+new Date(date) - Date.now() <= 0) {
       setTimeLeft(calculateTimeLeft());
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const difference = +new Date(date) - Date.now();
+      setTimeLeft(calculateTimeLeft());
+      if (difference <= 0) clearInterval(timer);
     }, 1000);
 
     return () => clearInterval(timer);

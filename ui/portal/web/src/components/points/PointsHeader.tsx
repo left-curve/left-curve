@@ -162,7 +162,8 @@ export const PointsHeader: React.FC = () => {
 
   const hasPredicted = isStarted && predicted.total > 0;
 
-  const countdown = useCountdown({ date: endDate ?? undefined });
+  const endTs = useMemo(() => (endDate ? +new Date(endDate) : undefined), [endDate]);
+  const countdown = useCountdown({ date: endTs });
   const hasRefetchedRef = useRef(false);
 
   useEffect(() => {
@@ -170,18 +171,25 @@ export const PointsHeader: React.FC = () => {
   }, [currentEpoch]);
 
   useEffect(() => {
-    if (!isStarted || !endDate) return;
+    if (!isStarted || !endTs) return;
 
-    const isZero =
-      countdown.days === "0" &&
-      countdown.hours === "0" &&
-      countdown.minutes === "0" &&
-      countdown.seconds === "0";
-    if (isZero && !hasRefetchedRef.current) {
-      hasRefetchedRef.current = true;
-      refetch();
+    const remaining = endTs - Date.now();
+    if (remaining <= 0) {
+      if (!hasRefetchedRef.current) {
+        hasRefetchedRef.current = true;
+        refetch();
+      }
+      return;
     }
-  }, [isStarted, endDate, countdown, refetch]);
+
+    const timer = setTimeout(() => {
+      if (!hasRefetchedRef.current) {
+        hasRefetchedRef.current = true;
+        refetch();
+      }
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [isStarted, endTs, refetch]);
 
   return (
     <div className="p-4 lg:p-8 lg:pb-[30px] flex flex-col gap-4 rounded-t-xl">
