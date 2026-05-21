@@ -9,7 +9,10 @@ use {
     },
     grug_httpd::{
         middlewares::shutdown::ShutdownMiddleware,
-        routes::{graphql::graphql_route, index::index},
+        routes::{
+            graphql::{GraphqlRequestTimeout, graphql_route},
+            index::index,
+        },
         subscription_limiter::SubscriptionLimiter,
     },
     grug_types::HttpdConfig,
@@ -113,6 +116,10 @@ pub async fn run_server(
         httpd_config.max_subscriptions_global,
     );
 
+    let graphql_request_timeout = GraphqlRequestTimeout(std::time::Duration::from_secs(
+        httpd_config.graphql_request_timeout_secs,
+    ));
+
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
     let shutdown_flag_clone = shutdown_flag.clone();
     let server = HttpServer::new(move || {
@@ -146,6 +153,7 @@ pub async fn run_server(
         let app = app.wrap(metrics.clone());
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
+            .app_data(web::Data::new(graphql_request_timeout))
             .configure(config_app(
                 dango_httpd_context.clone(),
                 graphql_schema.clone(),
