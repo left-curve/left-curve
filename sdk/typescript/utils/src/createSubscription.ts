@@ -127,6 +127,7 @@ export function createSubscription<TData>(
     clearFallbackTimer();
     currentMode = "ws";
     emitter.emit("transport-mode", currentMode);
+    stopWs();
     wsUnsub = wsSubscribe(listener);
   };
 
