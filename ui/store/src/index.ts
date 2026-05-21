@@ -409,6 +409,7 @@ export { eip6963 } from "./connectors/eip6963.js";
 export { session } from "./connectors/session.js";
 export { remote } from "./connectors/remote.js";
 export { privy } from "./connectors/privy.js";
+export { debug } from "./connectors/debug.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

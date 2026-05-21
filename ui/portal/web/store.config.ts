@@ -2,6 +2,7 @@ import {
   createAsyncStorage,
   createConfig,
   createTransport,
+  debug,
   passkey,
   session,
   privy,
@@ -26,6 +27,7 @@ export const config: Config = createConfig({
   connectors: [
     passkey(),
     session(),
+    debug(),
     privy({
       appId: PRIVY_APP_ID as string,
       clientId: PRIVY_CLIENT_ID as string,

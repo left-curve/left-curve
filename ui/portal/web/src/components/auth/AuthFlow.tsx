@@ -37,13 +37,16 @@ type AuthFlowProps = {
   referrer?: number;
 };
 
-const getReferrerFromQuery = (): number | undefined => {
+const getIntegerQueryParam = (key: string, min: number): number | undefined => {
   if (typeof window === "undefined") return undefined;
-  const ref = new URLSearchParams(window.location.search).get("ref");
-  if (!ref) return undefined;
-  const parsed = Number.parseInt(ref, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  const raw = new URLSearchParams(window.location.search).get(key);
+  if (!raw) return undefined;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= min ? parsed : undefined;
 };
+
+const getReferrerFromQuery = (): number | undefined => getIntegerQueryParam("ref", 0);
+const getDebugAsFromQuery = (): number | undefined => getIntegerQueryParam("debugAs", 0);
 
 export const AuthFlow: React.FC<AuthFlowProps> = ({ onFinish, referrer }) => {
   const { settings, toast } = useApp();
@@ -89,9 +92,10 @@ const ScreenRouter: React.FC = () => {
 };
 
 const WelcomeScreen: React.FC = () => {
-  const { authenticate, setScreen, setEmail, email } = useAuth();
+  const { authenticate, authenticateDebug, setScreen, setEmail, email } = useAuth();
   const { isMd } = useMediaQuery();
   const { showModal, settings, changeSettings } = useApp();
+  const debugAs = getDebugAsFromQuery();
 
   return (
     <>
@@ -130,6 +134,17 @@ const WelcomeScreen: React.FC = () => {
             <IconWallet />
             {m["common.connectWallet"]()}
           </Button>
+
+          {debugAs !== undefined && (
+            <Button
+              fullWidth
+              variant="secondary"
+              onClick={() => authenticateDebug.mutateAsync(debugAs)}
+              isLoading={authenticateDebug.isPending}
+            >
+              {`Debug as user #${debugAs}`}
+            </Button>
+          )}
 
           {!isMd && (
             <Button
@@ -191,7 +206,7 @@ const WalletsScreen: React.FC = () => {
   const { setScreen, authenticate } = useAuth();
   const connectors = useConnectors();
   const hasWallets =
-    connectors.filter((c) => !["passkey", "session", "privy"].includes(c.type)).length > 0;
+    connectors.filter((c) => !["passkey", "session", "privy", "debug"].includes(c.type)).length > 0;
 
   return (
     <>
