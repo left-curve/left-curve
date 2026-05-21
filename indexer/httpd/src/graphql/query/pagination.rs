@@ -10,6 +10,27 @@ pub trait Reversible {
     fn rev(&self) -> Self;
 }
 
+/// Identifies an entity that has a "light" projection — the column subset
+/// to fetch for list/pagination queries. Heavy columns (typically large
+/// JSONB) are skipped so each row stays cheap to read; resolvers that need
+/// a heavy column on a single row should fetch it through a separate path
+/// (e.g. a `*-by-id` query or a dataloader on the GraphQL type).
+pub trait LightProjection: EntityTrait {
+    fn light_columns() -> Vec<<Self as EntityTrait>::Column>;
+}
+
+/// Restrict a `Select` to the entity's light-projection column set.
+pub fn project_light<E>(query: Select<E>) -> Select<E>
+where
+    E: LightProjection,
+{
+    let mut q = query.select_only();
+    for col in E::light_columns() {
+        q = q.column(col);
+    }
+    q
+}
+
 /// A trait to allow filtering a query based on a cursor and an sort
 pub trait CursorFilter<S, C> {
     /// Filter the query based on the cursor and sort order.

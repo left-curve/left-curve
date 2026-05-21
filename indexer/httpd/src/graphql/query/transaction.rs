@@ -1,13 +1,13 @@
 use {
     crate::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
+        graphql::query::pagination::{
+            CursorFilter, CursorOrder, LightProjection, Reversible, paginate_models, project_light,
+        },
     },
     async_graphql::{connection::*, *},
     indexer_sql::entity,
-    sea_orm::{
-        ColumnTrait, Condition, Iterable, Order, QueryFilter, QueryOrder, QuerySelect, Select,
-    },
+    sea_orm::{ColumnTrait, Condition, Iterable, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -89,16 +89,7 @@ impl TransactionQuery {
             100,
             |query, _| {
                 Box::pin(async move {
-                    // Skip `http_request_details` (heavy JSONB, hidden from the
-                    // public schema). Loading it forces TOAST page reads for
-                    // every row, hammering the buffer pool under concurrent
-                    // sender-history paginations.
-                    let mut query = query.select_only();
-                    for col in entity::transactions::Column::iter()
-                        .filter(|c| !matches!(c, entity::transactions::Column::HttpRequestDetails))
-                    {
-                        query = query.column(col);
-                    }
+                    let mut query = project_light(query);
 
                     if let Some(block_height) = block_height {
                         query = query.filter(
@@ -120,6 +111,16 @@ impl TransactionQuery {
             },
         )
         .await
+    }
+}
+
+// Skip `http_request_details` (heavy JSONB, hidden from the public schema)
+// to avoid TOAST page reads on every row in paginated list queries.
+impl LightProjection for entity::transactions::Entity {
+    fn light_columns() -> Vec<entity::transactions::Column> {
+        entity::transactions::Column::iter()
+            .filter(|c| !matches!(c, entity::transactions::Column::HttpRequestDetails))
+            .collect()
     }
 }
 
