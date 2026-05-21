@@ -928,10 +928,14 @@ mod tests {
         },
         dango_order_book::{
             ChildOrder, Dimensionless, FundingPerUnit, LimitOrder, OrderKey, Quantity, UsdPrice,
-            UsdValue,
+            UsdValue, may_invert_price,
         },
-        dango_types::perps::{PairParam, PairState, Param, Position, State, UserState},
+        dango_types::{
+            oracle::Price,
+            perps::{PairParam, PairState, Param, Position, State, UserState},
+        },
         grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
+        pyth_types::MarketSession,
         std::collections::BTreeMap,
     };
 
@@ -1030,7 +1034,6 @@ mod tests {
         size: i128,
         price: i128,
     ) {
-        use dango_order_book::may_invert_price;
         let stored_price = may_invert_price(UsdPrice::new_int(price), true);
         let key: OrderKey = (pair_id.clone(), stored_price, Uint64::new(order_id));
         let order = LimitOrder {
@@ -1071,7 +1074,6 @@ mod tests {
     }
 
     fn mock_oracle_querier(pairs: Vec<(PairId, i128)>) -> OracleQuerier<'static> {
-        use {dango_types::oracle::Price, pyth_types::MarketSession};
         let mut map = std::collections::HashMap::new();
         for (pair_id, price) in pairs {
             map.insert(
@@ -2232,7 +2234,6 @@ mod tests {
             .unwrap();
 
         {
-            use dango_order_book::may_invert_price;
             let stored_price = may_invert_price(UsdPrice::new_int(47_500), true);
             let key: OrderKey = (pair_btc(), stored_price, Uint64::new(1));
             let order = LimitOrder {
