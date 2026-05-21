@@ -5,7 +5,9 @@ use {
     },
     async_graphql::{connection::*, *},
     indexer_sql::entity,
-    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
+    sea_orm::{
+        ColumnTrait, Condition, Iterable, Order, QueryFilter, QueryOrder, QuerySelect, Select,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -87,7 +89,16 @@ impl TransactionQuery {
             100,
             |query, _| {
                 Box::pin(async move {
-                    let mut query = query;
+                    // Skip `http_request_details` (heavy JSONB, hidden from the
+                    // public schema). Loading it forces TOAST page reads for
+                    // every row, hammering the buffer pool under concurrent
+                    // sender-history paginations.
+                    let mut query = query.select_only();
+                    for col in entity::transactions::Column::iter()
+                        .filter(|c| !matches!(c, entity::transactions::Column::HttpRequestDetails))
+                    {
+                        query = query.column(col);
+                    }
 
                     if let Some(block_height) = block_height {
                         query = query.filter(
