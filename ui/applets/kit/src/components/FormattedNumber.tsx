@@ -26,8 +26,17 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const parts = formatDisplayNumber(number, { ...formatNumberOptions, ...formatOptions });
   const Component = as;
+
+  if (
+    number === null ||
+    number === undefined ||
+    (typeof number === "number" && !Number.isFinite(number))
+  ) {
+    return <Component className={twMerge(className)}>-</Component>;
+  }
+
+  const parts = formatDisplayNumber(number, { ...formatNumberOptions, ...formatOptions });
 
   return (
     <Component className={twMerge(className)}>

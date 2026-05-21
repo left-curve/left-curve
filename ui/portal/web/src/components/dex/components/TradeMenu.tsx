@@ -47,6 +47,7 @@ import {
   useApp,
   type useInputs,
   useMediaQuery,
+  usePortalTarget,
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
@@ -846,6 +847,9 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
 
 const MenuMobile: React.FC<TradeMenuProps> = (props) => {
   const { isTradeBarVisible, setTradeBarVisibility } = useApp();
+  const portalTarget = usePortalTarget("#root");
+
+  if (!portalTarget) return null;
 
   return (
     <Sheet isOpen={isTradeBarVisible} onClose={() => setTradeBarVisibility(false)} rootId="root">

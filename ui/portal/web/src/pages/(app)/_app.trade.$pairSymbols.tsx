@@ -12,6 +12,13 @@ export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
     const { pairSymbols } = params;
     const [baseSymbol, quoteSymbol] = pairSymbols.split("-");
 
+    if (!baseSymbol || !quoteSymbol) {
+      throw redirect({
+        to: "/trade/$pairSymbols",
+        params: { pairSymbols: "ETH-USD" },
+      });
+    }
+
     const pairId = `perp/${baseSymbol.toLowerCase()}${quoteSymbol.toLowerCase()}`;
     const pair = await client.getPerpsPairParam({ pairId }).catch(() => null);
     if (!pair)
