@@ -160,10 +160,10 @@ mod tests {
         dango_order_book::{FundingPerUnit, UsdPrice},
         dango_types::{
             constants::{btc, eth},
-            oracle::PrecisionedPrice,
+            oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug::{Timestamp, Udec128, btree_map, hash_map},
+        grug::{Timestamp, btree_map, hash_map},
         test_case::test_case,
     };
 
@@ -249,15 +249,13 @@ mod tests {
         // must match the `CURRENT_PRICE` and `OTHER_PRICE` consts above
         // so unrealized pnl stays zero at entry.
         let oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new(2_000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_int(2_000),
                 Timestamp::from_seconds(0),
-                18,
             ),
-            btc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new(50_000),
+            btc::DENOM.clone() => Price::new(
+                UsdPrice::new_int(50_000),
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 

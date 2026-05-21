@@ -195,10 +195,10 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice},
         dango_types::{
             constants::eth,
-            oracle::PrecisionedPrice,
+            oracle::Price,
             perps::{PairParam, PairState, Position, UserState},
         },
-        grug::{MockStorage, NumberConst, Timestamp, Udec128, Uint128, btree_map, hash_map},
+        grug::{MockStorage, NumberConst, Timestamp, Uint128, btree_map, hash_map},
     };
 
     fn default_param() -> Param {
@@ -676,10 +676,9 @@ mod tests {
         // initial margin used = 1 * $1950 * 10% = $195
         // available margin = $200 - $195 = $5
         let oracle_prices = hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(195_000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_percent(195_000),
                 Timestamp::from_seconds(0),
-                18,
             ),
         };
 

@@ -1,13 +1,12 @@
 use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
-    dango_testing::perps::pair_id,
+    dango_testing::perps::{OracleTestEntry, pair_id, seed_oracle_prices},
     dango_types::{
         constants::usdc,
-        oracle::{self, PriceSource},
         perps::{PairParam, Param, RateSchedule},
     },
-    grug::{Coins, Duration, NumberConst, ResultExt, Timestamp, Udec128, btree_map},
+    grug::{Duration, Timestamp, btree_map},
 };
 
 mod adl_bug_reproduction;
@@ -58,24 +57,17 @@ pub async fn register_oracle_prices(
     contracts: &Contracts,
     eth_price: u128,
 ) {
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                pair_id() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(eth_price),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
+    seed_oracle_prices(suite, &mut accounts.owner, contracts.oracle, btree_map! {
+        usdc::DENOM.clone() => OracleTestEntry {
+            pyth_id: 1,
+            humanized_price: UsdPrice::new_int(1),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+        pair_id() => OracleTestEntry {
+            pyth_id: 2,
+            humanized_price: UsdPrice::new_int(eth_price as i128),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+    })
+    .await;
 }

@@ -140,10 +140,10 @@ mod tests {
         super::*,
         dango_order_book::{Dimensionless, FundingPerUnit, FundingRate, UsdPrice},
         dango_types::{
-            oracle::PrecisionedPrice,
+            oracle::Price,
             perps::{PairParam, PairState, Param, Position, State, UserState},
         },
-        grug::{Duration, MockStorage, Udec128, hash_map},
+        grug::{Duration, MockStorage, hash_map},
         std::collections::{BTreeMap, BTreeSet},
     };
 
@@ -236,10 +236,9 @@ mod tests {
         );
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
+            pair_id.clone() => Price::new(
+                UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 
@@ -279,10 +278,9 @@ mod tests {
         set_vault_position(&mut storage, &pair_id, 50);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
+            pair_id.clone() => Price::new(
+                UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 
@@ -321,10 +319,9 @@ mod tests {
         set_vault_position(&mut storage, &pair_id, -50);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
+            pair_id.clone() => Price::new(
+                UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 
@@ -357,10 +354,9 @@ mod tests {
 
         // No vault state stored → position defaults to zero → premium = 0.
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000),
+            pair_id.clone() => Price::new(
+                UsdPrice::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 
@@ -402,10 +398,9 @@ mod tests {
         );
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
+            pair_id.clone() => Price::new(
+                UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 
@@ -479,15 +474,13 @@ mod tests {
             .unwrap();
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            btc.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
+            btc.clone() => Price::new(
+                UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
-                8,
             ),
-            eth.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(300_000), // $3,000
+            eth.clone() => Price::new(
+                UsdPrice::new_percent(300_000), // $3,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 
@@ -535,10 +528,9 @@ mod tests {
         set_vault_position(&mut storage, &pair_id, -50);
 
         let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000),
+            pair_id.clone() => Price::new(
+                UsdPrice::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
-                8,
             ),
         });
 

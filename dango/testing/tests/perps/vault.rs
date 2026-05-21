@@ -4,15 +4,19 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{
+        TestOption,
+        perps::{pair_id, write_pyth_price_raw},
+        setup_test_naive,
+    },
     dango_types::{
         constants::usdc,
-        oracle::{self, PriceSource, QueryPriceRequest},
+        oracle::{self, Price, PriceSource, QueryPriceRequest},
         perps::{self, PairParam, Param},
     },
     grug::{
         Addressable, Binary, ByteArray, Coins, Duration, NonEmpty, NumberConst, QuerierExt,
-        ResultExt, Timestamp, Udec128, Uint128, btree_map, concat,
+        ResultExt, Timestamp, Uint128, btree_map, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
     pyth_types::{Channel, LeEcdsaMessage},
@@ -410,14 +414,12 @@ async fn oracle_triggers_on_oracle_update() {
             &mut accounts.owner,
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
+                usdc::DENOM.clone() => PriceSource {
+                    id: 1,
+                    channel: Channel::RealTime,
                 },
-                pair.clone() => PriceSource::Pyth {
+                pair.clone() => PriceSource {
                     id: 2,
-                    precision: 18,
                     channel: Channel::RealTime,
                 },
             }),
@@ -425,6 +427,13 @@ async fn oracle_triggers_on_oracle_update() {
         )
         .await
         .should_succeed();
+
+    // Seed USDC's PYTH_PRICES entry directly. The perp pair's price is fed via
+    // signed Pyth Lazer messages later in the test.
+    suite.app.db.with_state_storage_mut(|storage| {
+        let price = Price::new(UsdPrice::new_int(1), Timestamp::from_nanos(u128::MAX));
+        write_pyth_price_raw(storage, contracts.oracle, 1, &price);
+    });
 
     // -------------------------------------------------------------------------
     // Setup: Deposit USDC and add vault liquidity (follows vault_lp_lifecycle).
@@ -527,7 +536,7 @@ async fn oracle_triggers_on_oracle_update() {
         .unwrap();
 
     assert!(
-        price1.humanized_price > Udec128::ZERO,
+        price1.humanized_price > UsdPrice::ZERO,
         "oracle price should be set after feeding"
     );
 

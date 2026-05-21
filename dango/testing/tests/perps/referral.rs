@@ -1,11 +1,14 @@
 use {
     crate::{default_pair_param, default_param},
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
-    dango_testing::{Factory, Preset, TestAccount, TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{
+        Factory, Preset, TestAccount, TestOption,
+        perps::{OracleTestEntry, pair_id, seed_oracle_prices},
+        setup_test_naive,
+    },
     dango_types::{
         account_factory::{self, RegisterUserData},
         constants::usdc,
-        oracle::{self, PriceSource},
         perps::{
             self, CommissionRate, FeeDistributed, FeeShareRatio, QueryParamRequest, RateSchedule,
             Referee, ReferrerSettings, ReferrerStatsOrderBy, ReferrerStatsOrderIndex,
@@ -13,9 +16,9 @@ use {
         },
     },
     grug::{
-        Addr, Addressable, CheckedContractEvent, Coins, HashExt, JsonDeExt, NumberConst, Op,
+        Addr, Addressable, CheckedContractEvent, Coins, HashExt, JsonDeExt, Op,
         Order as IterationOrder, QuerierExt, ResultExt, SearchEvent, Signer, Timestamp, TxOutcome,
-        Udec128, Uint128, btree_map,
+        Uint128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -2705,26 +2708,19 @@ async fn register_oracle_prices(
     contracts: &dango_genesis::Contracts,
     eth_price: u128,
 ) {
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                dango_testing::perps::pair_id() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(eth_price),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
+    seed_oracle_prices(suite, &mut accounts.owner, contracts.oracle, btree_map! {
+        usdc::DENOM.clone() => OracleTestEntry {
+            pyth_id: 1,
+            humanized_price: UsdPrice::new_int(1),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+        dango_testing::perps::pair_id() => OracleTestEntry {
+            pyth_id: 2,
+            humanized_price: UsdPrice::new_int(eth_price as i128),
+            timestamp: Timestamp::from_nanos(u128::MAX),
+        },
+    })
+    .await;
 }
 
 async fn deposit_margin(

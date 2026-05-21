@@ -3,10 +3,7 @@ use {
     anyhow::{bail, ensure},
     dango_types::{
         DangoQuerier,
-        oracle::{
-            ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource, ReplyMsg,
-            VaultRefreshFailed,
-        },
+        oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource, ReplyMsg, VaultRefreshFailed},
         perps,
     },
     grug::{
@@ -153,7 +150,7 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
         // Store the prices from each feed.
         for feed in payload.feeds {
             let id = feed.feed_id.0;
-            let price = PrecisionlessPrice::try_from((feed, timestamp))?;
+            let price = Price::try_from((feed, timestamp))?;
 
             PYTH_PRICES.may_update(ctx.storage, id, |current| -> anyhow::Result<_> {
                 match current {
@@ -302,7 +299,7 @@ mod tests {
         let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
 
         for feed in payload.feeds {
-            let price = PrecisionlessPrice::try_from((feed, timestamp)).unwrap();
+            let price = Price::try_from((feed, timestamp)).unwrap();
             let _price_f64: f64 = price.humanized_price.to_string().parse().unwrap();
         }
     }

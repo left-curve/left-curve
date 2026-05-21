@@ -220,10 +220,10 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
             constants::eth,
-            oracle::PrecisionedPrice,
+            oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug::{Timestamp, Udec128, btree_map, hash_map},
+        grug::{Timestamp, btree_map, hash_map},
         std::collections::HashMap,
     };
 
@@ -301,10 +301,9 @@ mod tests {
             },
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(250_000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
-                18,
             ),
         });
 
@@ -349,10 +348,9 @@ mod tests {
             },
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(200_000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
-                18,
             ),
         });
 
@@ -397,10 +395,9 @@ mod tests {
             },
         );
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(150_000),
+            eth::DENOM.clone() => Price::new(
+                UsdPrice::new_percent(150_000),
                 Timestamp::from_seconds(0),
-                18,
             ),
         });
 
@@ -453,10 +450,9 @@ mod tests {
                 },
             );
             let oracle_querier = OracleQuerier::new_mock(hash_map! {
-                eth::DENOM.clone() => PrecisionedPrice::new(
-                    Udec128::new_percent(200_000),
+                eth::DENOM.clone() => Price::new(
+                    UsdPrice::new_percent(200_000),
                     Timestamp::from_seconds(0),
-                    18,
                 ),
             });
             (user_state, perp_querier, oracle_querier)

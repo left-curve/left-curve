@@ -4,18 +4,21 @@ use {
         Dimensionless, OrderId, OrderKind, OrderRemoved, Quantity, QueryOrdersByUserResponseItem,
         ReasonForOrderRemoval, TimeInForce, UsdPrice,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{
+        TestOption,
+        perps::{OracleTestEntry, pair_id, seed_oracle_prices},
+        setup_test_naive,
+    },
     dango_types::{
         constants::usdc,
-        oracle::{self, PriceSource},
         perps::{
             self, CancelOrderRequest, Param, SubmitOrCancelOrderRequest, SubmitOrderRequest,
             UserReferralData,
         },
     },
     grug::{
-        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, NumberConst,
-        QuerierExt, ResultExt, SearchEvent, Timestamp, Udec128, Uint64, Uint128, btree_map,
+        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, QuerierExt,
+        ResultExt, SearchEvent, Timestamp, Uint64, Uint128, btree_map,
     },
     std::collections::BTreeMap,
 };
@@ -651,31 +654,29 @@ async fn batch_across_two_pairs() {
     let btc_pair: Denom = "perp/btcusd".parse().unwrap();
 
     // Register oracle prices for both pairs (plus USDC for settlement).
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: usdc::DECIMAL as u8,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                eth_pair.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(2_000),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-                btc_pair.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::new(60_000),
-                    precision: 0,
-                    timestamp: Timestamp::from_nanos(u128::MAX),
-                },
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
+    seed_oracle_prices(
+        &mut suite,
+        &mut accounts.owner,
+        contracts.oracle,
+        btree_map! {
+            usdc::DENOM.clone() => OracleTestEntry {
+                pyth_id: 1,
+                humanized_price: UsdPrice::new_int(1),
+                timestamp: Timestamp::from_nanos(u128::MAX),
+            },
+            eth_pair.clone() => OracleTestEntry {
+                pyth_id: 2,
+                humanized_price: UsdPrice::new_int(2_000),
+                timestamp: Timestamp::from_nanos(u128::MAX),
+            },
+            btc_pair.clone() => OracleTestEntry {
+                pyth_id: 3,
+                humanized_price: UsdPrice::new_int(60_000),
+                timestamp: Timestamp::from_nanos(u128::MAX),
+            },
+        },
+    )
+    .await;
 
     // Add the BTC pair (the ETH pair is already configured at genesis;
     // re-specifying it keeps it unchanged).

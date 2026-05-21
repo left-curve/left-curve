@@ -4006,9 +4006,12 @@ version = "0.0.0"
 dependencies = [
  "dango-bank",
  "dango-gateway",
+ "dango-oracle",
+ "dango-order-book",
  "dango-types",
  "grug",
  "grug-app",
+ "pyth-types",
  "tracing",
 ]
 

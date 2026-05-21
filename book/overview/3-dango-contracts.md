@@ -155,15 +155,14 @@ Price feed aggregation for derivatives trading.
 | ---------------------- | --------------- | -------------------- |
 | `PRICE_SOURCES`        | `Denom`         | `PriceSource`        |
 | `PYTH_TRUSTED_SIGNERS` | `[u8]` (pubkey) | `Timestamp` (expiry) |
-| `PYTH_PRICES`          | `PythId`        | `PrecisionlessPrice` |
+| `PYTH_PRICES`          | `PythId`        | `Price`              |
 
 ### Price structure
 
 ```rust
-pub struct PrecisionlessPrice {
-    pub humanized_price: Udec128,  // e.g., 50000.0 for $50k BTC
-    pub timestamp: Timestamp,       // Feed age
-    pub precision: u8,              // Decimal places
+pub struct Price {
+    pub humanized_price: UsdPrice, // e.g., 50000.0 for $50k BTC
+    pub timestamp: Timestamp,      // Feed age
 }
 ```
 

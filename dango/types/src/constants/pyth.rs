@@ -15,60 +15,49 @@ use {
 
 pub static PYTH_PRICE_SOURCES: LazyLock<BTreeMap<Denom, PriceSource>> = LazyLock::new(|| {
     btree_map! {
-        atom::DENOM.clone() => PriceSource::Pyth {
+        atom::DENOM.clone() => PriceSource {
             id: ATOM_USD_ID.id,
             channel: ATOM_USD_ID.channel,
-            precision: 6,
         },
-        bch::DENOM.clone() => PriceSource::Pyth {
+        bch::DENOM.clone() => PriceSource {
             id: BCH_USD_ID.id,
             channel: BCH_USD_ID.channel,
-            precision: 8,
         },
-        bnb::DENOM.clone() => PriceSource::Pyth {
+        bnb::DENOM.clone() => PriceSource {
             id: BNB_USD_ID.id,
             channel: BNB_USD_ID.channel,
-            precision: 18,
         },
-        btc::DENOM.clone() => PriceSource::Pyth {
+        btc::DENOM.clone() => PriceSource {
             id: BTC_USD_ID.id,
             channel: BTC_USD_ID.channel,
-            precision: 8,
         },
-        doge::DENOM.clone() => PriceSource::Pyth {
+        doge::DENOM.clone() => PriceSource {
             id: DOGE_USD_ID.id,
             channel: DOGE_USD_ID.channel,
-            precision: 8,
         },
-        eth::DENOM.clone() => PriceSource::Pyth {
+        eth::DENOM.clone() => PriceSource {
             id: ETH_USD_ID.id,
             channel: ETH_USD_ID.channel,
-            precision: 18,
         },
-        ltc::DENOM.clone() => PriceSource::Pyth {
+        ltc::DENOM.clone() => PriceSource {
             id: LTC_USD_ID.id,
             channel: LTC_USD_ID.channel,
-            precision: 8,
         },
-        sol::DENOM.clone() => PriceSource::Pyth {
+        sol::DENOM.clone() => PriceSource {
             id: SOL_USD_ID.id,
             channel: SOL_USD_ID.channel,
-            precision: 9,
         },
-        usdc::DENOM.clone() => PriceSource::Pyth {
+        usdc::DENOM.clone() => PriceSource {
             id: USDC_USD_ID.id,
             channel: USDC_USD_ID.channel,
-            precision: 6,
         },
-        xrp::DENOM.clone() => PriceSource::Pyth {
+        xrp::DENOM.clone() => PriceSource {
             id: XRP_USD_ID.id,
             channel: XRP_USD_ID.channel,
-            precision: 6,
         },
-        perp_eth::DENOM.clone() => PriceSource::Pyth {
+        perp_eth::DENOM.clone() => PriceSource {
             id: ETH_USD_ID.id,
             channel: ETH_USD_ID.channel,
-            precision: 18,
         },
     }
 });

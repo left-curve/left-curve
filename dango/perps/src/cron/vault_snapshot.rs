@@ -67,10 +67,10 @@ mod tests {
         crate::state::PAIR_STATES,
         dango_order_book::{FundingPerUnit, PairId, Quantity, UsdPrice},
         dango_types::{
-            oracle::PrecisionedPrice,
+            oracle::Price,
             perps::{PairState, Position, State, UserState},
         },
-        grug::{MockStorage, Order, Udec128, Uint128, hash_map},
+        grug::{MockStorage, Order, Uint128, hash_map},
         std::collections::BTreeMap,
     };
 
@@ -117,10 +117,9 @@ mod tests {
 
     fn mock_oracle_for_btc() -> OracleQuerier<'static> {
         OracleQuerier::new_mock(hash_map! {
-            btc_pair_id() => PrecisionedPrice::new(
-                Udec128::new_percent(5_000_000), // $50,000
+            btc_pair_id() => Price::new(
+                UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
-                8,
             ),
         })
     }
