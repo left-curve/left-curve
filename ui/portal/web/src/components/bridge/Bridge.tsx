@@ -85,9 +85,12 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 
 const BridgeDeposit: React.FC = () => {
   const { state } = useBridge();
-  const { action, network } = state;
+  const { action, network, coin, config } = state;
 
   if (action !== "deposit") return null;
+
+  const isEvmNetwork = !!network && !["bitcoin", "solana"].includes(network);
+  const showUnsupportedFallback = isEvmNetwork && !!coin && !config?.router;
 
   return (
     <>
@@ -95,7 +98,11 @@ const BridgeDeposit: React.FC = () => {
 
       {network === "bitcoin" && <BitcoinDeposit />}
 
-      {network && !["bitcoin", "solana"].includes(network) && <EvmDeposit />}
+      {isEvmNetwork && config?.router && <EvmDeposit />}
+
+      {showUnsupportedFallback && (
+        <WarningContainer description="This network does not support this asset." />
+      )}
 
       <WarningContainer description={m["bridge.rateLimitWarning"]()} />
     </>
