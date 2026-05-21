@@ -19,6 +19,7 @@ on:
     branches:
       - "main"
       - "develop"
+      - "v0.18"
       # - "ui/testnet"
       # - "ui/release"
     paths:
