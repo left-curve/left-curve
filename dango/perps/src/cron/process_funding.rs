@@ -144,6 +144,7 @@ mod tests {
             perps::{PairParam, PairState, Param, Position, State, UserState},
         },
         grug::{Duration, MockStorage, hash_map},
+        pyth_types::MarketSession,
         std::collections::{BTreeMap, BTreeSet},
     };
 
@@ -239,6 +240,7 @@ mod tests {
             pair_id.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -281,6 +283,7 @@ mod tests {
             pair_id.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -322,6 +325,7 @@ mod tests {
             pair_id.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -357,6 +361,7 @@ mod tests {
             pair_id.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -401,6 +406,7 @@ mod tests {
             pair_id.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -477,10 +483,12 @@ mod tests {
             btc.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
             eth.clone() => Price::new(
                 UsdPrice::new_percent(300_000), // $3,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -531,6 +539,7 @@ mod tests {
             pair_id.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 

@@ -234,7 +234,7 @@ mod tests {
     use {
         super::*,
         grug::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
-        pyth_types::{LeEcdsaMessage, constants::LAZER_TRUSTED_SIGNER},
+        pyth_types::{LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
 
@@ -301,6 +301,11 @@ mod tests {
         for feed in payload.feeds {
             let price = Price::try_from((feed, timestamp)).unwrap();
             let _price_f64: f64 = price.humanized_price.to_string().parse().unwrap();
+
+            // This payload was captured before we requested `MarketSession`
+            // in the subscription, so the property is absent and `try_from`
+            // falls back to `Other`.
+            assert_eq!(price.market_session, MarketSession::Other);
         }
     }
 }

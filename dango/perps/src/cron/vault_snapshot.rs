@@ -71,6 +71,7 @@ mod tests {
             perps::{PairState, Position, State, UserState},
         },
         grug::{MockStorage, Order, Uint128, hash_map},
+        pyth_types::MarketSession,
         std::collections::BTreeMap,
     };
 
@@ -120,6 +121,7 @@ mod tests {
             btc_pair_id() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         })
     }

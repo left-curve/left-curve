@@ -27,4 +27,5 @@ metrics               = { workspace = true, optional = true }
 tracing               = { workspace = true, optional = true }
 
 [dev-dependencies]
-test-case = { workspace = true }
+pyth-types = { workspace = true }
+test-case  = { workspace = true }

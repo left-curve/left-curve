@@ -107,6 +107,7 @@ mod tests {
             perps::{PairParam, PairState, Position},
         },
         grug::{Timestamp, btree_map, hash_map},
+        pyth_types::MarketSession,
         std::collections::HashMap,
     };
 
@@ -114,7 +115,11 @@ mod tests {
     ///
     /// `price` is the integer dollar price (e.g. 2000 for $2,000).
     fn oracle_entry(price: u128) -> Price {
-        Price::new(UsdPrice::new_int(price as i128), Timestamp::from_seconds(0))
+        Price::new(
+            UsdPrice::new_int(price as i128),
+            Timestamp::from_seconds(0),
+            MarketSession::Regular,
+        )
     }
 
     fn pair_param_with_mmr(mmr_permille: i128) -> PairParam {

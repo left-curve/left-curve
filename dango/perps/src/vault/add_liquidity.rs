@@ -199,6 +199,7 @@ mod tests {
             perps::{PairParam, PairState, Position, UserState},
         },
         grug::{MockStorage, NumberConst, Timestamp, Uint128, btree_map, hash_map},
+        pyth_types::MarketSession,
     };
 
     fn default_param() -> Param {
@@ -679,6 +680,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(195_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         };
 

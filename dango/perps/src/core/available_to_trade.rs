@@ -164,6 +164,7 @@ mod tests {
             perps::{PairParam, PairState, Position},
         },
         grug::{Timestamp, btree_map, hash_map},
+        pyth_types::MarketSession,
         test_case::test_case,
     };
 
@@ -252,10 +253,12 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_int(2_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
             btc::DENOM.clone() => Price::new(
                 UsdPrice::new_int(50_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 

@@ -1650,6 +1650,7 @@ mod tests {
             perps::{Position, RateSchedule},
         },
         grug::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, Uint64, hash_map},
+        pyth_types::MarketSession,
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -1665,6 +1666,7 @@ mod tests {
             pair_id() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         })
     }
@@ -6522,6 +6524,7 @@ mod tests {
             pair_id() => Price::new(
                 UsdPrice::new_percent(4_800_000), // $48,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 

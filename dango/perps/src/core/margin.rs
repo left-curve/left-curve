@@ -290,6 +290,7 @@ mod tests {
             perps::{PairParam, PairState, Param, Position, RateSchedule},
         },
         grug::{Timestamp, btree_map, hash_map},
+        pyth_types::MarketSession,
         std::collections::HashMap,
         test_case::test_case,
     };
@@ -405,6 +406,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -443,6 +445,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -494,10 +497,12 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
             btc::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(4_800_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -535,6 +540,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(150_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -588,6 +594,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -638,10 +645,12 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
             btc::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -671,6 +680,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -716,6 +726,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -767,10 +778,12 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
             btc::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -804,6 +817,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -862,10 +876,12 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
             btc::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -966,6 +982,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -1011,6 +1028,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -1058,6 +1076,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(150_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -1105,6 +1124,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -1154,6 +1174,7 @@ mod tests {
             pair_id.clone() => Price::new(
                 UsdPrice::new_percent(5_000_000), // $50,000
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 

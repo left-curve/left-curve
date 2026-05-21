@@ -150,6 +150,7 @@ mod tests {
         super::*,
         dango_types::constants::{eth, usdc},
         grug::{ResultExt, Timestamp, hash_map},
+        pyth_types::MarketSession,
         test_case::test_case,
     };
 
@@ -158,6 +159,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_int(2_000),
                 Timestamp::from_seconds(1730802926),
+                MarketSession::Regular,
             ),
         };
         "mock with one price"
@@ -167,10 +169,12 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_int(2_000),
                 Timestamp::from_seconds(1730802926),
+                MarketSession::Regular,
             ),
             usdc::DENOM.clone() => Price::new(
                 UsdPrice::new_int(1),
                 Timestamp::from_seconds(1730802926),
+                MarketSession::Regular,
             ),
         };
         "mock with two prices"
@@ -221,6 +225,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_int(2_000),
                 publish_time,
+                MarketSession::Regular,
             ),
         });
 

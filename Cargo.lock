@@ -3829,6 +3829,7 @@ dependencies = [
  "dango-types",
  "grug",
  "metrics",
+ "pyth-types",
  "test-case",
  "tracing",
 ]
