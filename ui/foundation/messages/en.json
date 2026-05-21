@@ -366,6 +366,7 @@
     },
     "user": {
       "title": "User Profile",
+      "dangoTrader": "Dango Trader",
       "stats": {
         "userIndex": "User Index",
         "totalValue": "Total Value",

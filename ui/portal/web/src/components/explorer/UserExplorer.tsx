@@ -91,8 +91,9 @@ const Header: React.FC = () => {
     <div className="flex flex-col md:flex-row gap-4">
       <div className="flex items-start gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card min-h-[10rem] md:min-w-[21.7rem]">
         <img src="/images/avatar.png" alt="avatar" className="w-16 h-16 rounded-lg object-cover" />
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2 items-start">
           <p className="h4-bold text-ink-primary-900">{userData.user.name}</p>
+          <Badge color="gradient-rice" text={m["explorer.user.dangoTrader"]()} />
         </div>
       </div>
 
@@ -214,7 +215,7 @@ const KeysList: React.FC = () => {
         return (
           <div
             key={key.keyHash}
-            className="flex items-center justify-between rounded-2xl border border-surface-quaternary-rice hover:bg-surface-tertiary-rice transition-all p-4 gap-4"
+            className="flex items-center justify-between rounded-2xl border border-outline-secondary-rice hover:bg-surface-tertiary-rice transition-all p-4 gap-4"
           >
             <div className="min-w-0">
               <div className="text-ink-secondary-700 diatype-m-bold truncate">

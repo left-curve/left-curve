@@ -21,6 +21,8 @@ const badgeVariants = tv(
         red: "bg-surface-secondary-red text-fg-primary-red border-outline-secondary-red",
         green: "bg-surface-tertiary-green text-fg-primary-green border-outline-primary-green",
         rice: "bg-surface-quaternary-rice text-fg-primary-rice border-outline-secondary-rice",
+        "gradient-rice":
+          "bg-account-card-contract text-ink-primary-rice rounded-md border-transparent",
         "light-red": "bg-utility-error-25 text-utility-error-600 border-utility-error-100",
         "light-green": "bg-utility-success-25 text-utility-success-500 border-utility-success-50",
         gray: "bg-utility-gray-100 text-utility-gray-500 border-utility-gray-200",
