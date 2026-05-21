@@ -21,6 +21,7 @@ export const CoinStore = create<CoinStore>((set, get) => ({
     set((s) => ({ ...s, byDenom: coins, bySymbol }));
   },
   getCoinInfo: (denom: Denom) => {
+    if (!denom) throw new Error("getCoinInfo called with undefined denom");
     const { byDenom } = get();
     const coin = byDenom[denom];
     if (coin) return coin;

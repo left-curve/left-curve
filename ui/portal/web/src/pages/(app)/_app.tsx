@@ -95,8 +95,7 @@ function LayoutApp() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollTop =
-        window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const scrollTop = window.scrollY || 0;
       setIsScrolled(scrollTop > headerThreshold);
     };
 
