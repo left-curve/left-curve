@@ -23,6 +23,10 @@
     "@left-curve/docs#build": {
       "outputs": ["dist/**"]
     },
+    "@left-curve/foundation#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["build/**", "paraglide/**"]
+    },
     "@left-curve/portal-web#build": {
       "dependsOn": ["^build"],
       "outputs": ["build/**"],
