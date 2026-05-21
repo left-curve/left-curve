@@ -75,11 +75,13 @@ export function useOats(parameters: UseOatsParameters) {
   }, [registeredOats]);
 
   const oatStatuses = useMemo((): OATStatus[] => {
+    const nowSeconds = Date.now() / 1000;
     const statuses = Object.entries(campaignMap).map(([campaignId, oatType]) => {
       const registered = registeredOatsByCampaign.get(Number(campaignId));
+      const isExpired = registered ? registered.expiredAt <= nowSeconds : false;
       return {
         type: oatType,
-        isLocked: !registered,
+        isLocked: !registered || isExpired,
         expiresAt: registered?.expiredAt,
         pointsBoost: OAT_POINTS_BOOST,
       };

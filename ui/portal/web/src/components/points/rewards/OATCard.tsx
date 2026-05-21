@@ -36,14 +36,14 @@ export const OATCard: React.FC<OATCardProps> = ({
   className,
 }) => {
   const { settings } = useApp();
-  const { dateFormat } = settings;
+  const { dateFormat, timeFormat } = settings;
   const title = OATTitles[type]();
   const imageSrc = OATImages[type];
   const expirationDisplay = (() => {
     if (!expiresAt || !Number.isFinite(expiresAt)) return "--";
     const date = new Date(expiresAt * 1000);
     if (Number.isNaN(date.getTime())) return "--";
-    return formatDate(date, dateFormat);
+    return formatDate(date, `${dateFormat} ${timeFormat}`);
   })();
 
   return (
