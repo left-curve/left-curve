@@ -97,6 +97,8 @@ export const Table = <T,>({
     state: { columnFilters, sorting, columnVisibility },
     enableFilters: true,
     enableSorting: true,
+    autoResetPageIndex: false,
+    autoResetExpanded: false,
     onSortingChange,
     onColumnFiltersChange,
     onColumnVisibilityChange,
