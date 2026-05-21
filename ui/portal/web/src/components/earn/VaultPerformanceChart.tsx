@@ -204,7 +204,13 @@ export function VaultPerformanceChart({ period, onPeriodChange }: VaultPerforman
               cursor={{ stroke: "var(--color-ink-tertiary-500)", strokeDasharray: "4 4" }}
             />
             <ReferenceLine yAxisId="change" y={0} stroke="var(--color-outline-secondary-gray)" />
-            <Bar yAxisId="change" dataKey="dailyChange" radius={[2, 2, 0, 0]} barSize={30}>
+            <Bar
+              yAxisId="change"
+              dataKey="dailyChange"
+              radius={[2, 2, 0, 0]}
+              barSize={30}
+              isAnimationActive={false}
+            >
               {data.map((entry, index) => (
                 <Cell
                   key={`bar-${index}`}
@@ -235,6 +241,7 @@ export function VaultPerformanceChart({ period, onPeriodChange }: VaultPerforman
                 strokeWidth: 2,
                 stroke: "var(--color-surface-primary-rice)",
               }}
+              isAnimationActive={false}
             />
           </ComposedChart>
         </ResponsiveContainer>
