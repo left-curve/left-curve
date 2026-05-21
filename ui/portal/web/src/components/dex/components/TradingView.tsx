@@ -34,6 +34,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
   const storageKey = `tv_v4.${pairSymbol}_perps`;
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
+  const readyRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -139,14 +140,19 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
       });
 
     const invalidateCandles = () => {
-      widget.resetCache();
-      widget.chart().resetData();
+      if (!widgetRef.current || !readyRef.current) return;
+      try {
+        widgetRef.current.resetCache();
+        widgetRef.current.chart().resetData();
+      } catch {
+        // Iframe not yet same-origin or widget torn down — next getBars will refetch.
+      }
     };
-
-    publicClient.subscribe?.emitter?.addListener("connected", invalidateCandles);
 
     widget.onChartReady(() => {
       widgetRef.current = widget;
+      readyRef.current = true;
+      publicClient.subscribe?.emitter?.on("connected", invalidateCandles);
       const chart = widget.chart();
       const allStudies = chart.getAllStudies();
 
@@ -169,8 +175,9 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
       });
     });
     return () => {
-      publicClient.subscribe?.emitter?.removeListener("connected", invalidateCandles);
-      widgetRef.current?.remove();
+      readyRef.current = false;
+      publicClient.subscribe?.emitter?.off("connected", invalidateCandles);
+      widget.remove();
       widgetRef.current = null;
     };
   }, [theme]);
