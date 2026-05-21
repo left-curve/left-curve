@@ -96,10 +96,17 @@ export function createTransport(
 
     wsRef.current = createWsClient(lazy);
 
+    let reconnecting = false;
     const attemptReconnect = () => {
-      if (!wsClientStatus.isConnected) {
-        wsRef.current?.dispose();
-        wsRef.current = createWsClient(false);
+      if (reconnecting) return;
+      reconnecting = true;
+      try {
+        if (!wsClientStatus.isConnected) {
+          wsRef.current?.dispose();
+          wsRef.current = createWsClient(false);
+        }
+      } finally {
+        reconnecting = false;
       }
     };
 
