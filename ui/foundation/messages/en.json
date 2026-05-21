@@ -366,8 +366,10 @@
     },
     "user": {
       "title": "User Profile",
+      "dangoTrader": "Dango Trader",
       "stats": {
-        "totalAssets": "Total Assets",
+        "userIndex": "User Index",
+        "totalValue": "Total Value",
         "totalAccounts": "Total Accounts"
       },
       "accounts": "Accounts",
@@ -376,7 +378,8 @@
       "inactive": "Inactive",
       "tabs": {
         "assets": "Assets",
-        "transactions": "Transactions"
+        "transactions": "Transactions",
+        "keys": "Keys"
       },
       "notFound": {
         "title": "User Not Found",

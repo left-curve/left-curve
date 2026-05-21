@@ -1,4 +1,5 @@
-import { Badge, Tabs, TruncateText, twMerge } from "@left-curve/applets-kit";
+import { Badge, Tabs, TextCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
+import { decodeBase64, encodeHex } from "@left-curve/encoding";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   useExplorerUser,
@@ -90,15 +91,20 @@ const Header: React.FC = () => {
     <div className="flex flex-col md:flex-row gap-4">
       <div className="flex items-start gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card min-h-[10rem] md:min-w-[21.7rem]">
         <img src="/images/avatar.png" alt="avatar" className="w-16 h-16 rounded-lg object-cover" />
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2 items-start">
           <p className="h4-bold text-ink-primary-900">{userData.user.name}</p>
+          <Badge color="gradient-rice" text={m["explorer.user.dangoTrader"]()} />
         </div>
       </div>
 
       <div className="flex-1 flex flex-col justify-between gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card min-h-[10rem]">
         <p className="h3-bold text-ink-primary-900">{userData.totalValue}</p>
         <div className="flex flex-wrap gap-6 justify-between">
-          <StatItem label={m["explorer.user.stats.totalAssets"]()} value={userData.totalValue} />
+          <StatItem
+            label={m["explorer.user.stats.userIndex"]()}
+            value={`#${userData.user.index}`}
+          />
+          <StatItem label={m["explorer.user.stats.totalValue"]()} value={userData.totalValue} />
           <StatItem
             label={m["explorer.user.stats.totalAccounts"]()}
             value={String(userData.totalAccounts)}
@@ -186,10 +192,53 @@ const AccountsStack: React.FC = () => {
   );
 };
 
+const KeyTypeTranslation = {
+  secp256r1: "Passkey",
+  secp256k1: "Wallet",
+  ethereum: "Ethereum Wallet",
+} as const;
+
+const KeysList: React.FC = () => {
+  const { userData } = useUserExplorer();
+  if (!userData) return null;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {userData.keys.map((key) => {
+        const isEthereumKey = key.keyType === "ETHEREUM";
+        const keyRepresentation = isEthereumKey
+          ? key.publicKey
+          : `0x${encodeHex(decodeBase64(key.publicKey))}`;
+        const typeLabel =
+          KeyTypeTranslation[key.keyType.toLowerCase() as keyof typeof KeyTypeTranslation];
+
+        return (
+          <div
+            key={key.keyHash}
+            className="flex items-center justify-between rounded-2xl border border-outline-secondary-rice hover:bg-surface-tertiary-rice transition-all p-4 gap-4"
+          >
+            <div className="min-w-0">
+              <div className="text-ink-secondary-700 diatype-m-bold truncate">
+                {keyRepresentation}
+              </div>
+              <p className="text-ink-tertiary-500 diatype-sm-medium">{typeLabel}</p>
+            </div>
+            <TextCopy
+              className="w-5 h-5 cursor-pointer flex-shrink-0"
+              copyText={keyRepresentation}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const Content: React.FC = () => {
   const { userData, transactions, transactionsPagination, isLoading } = useUserExplorer();
   const tabAssets = m["explorer.user.tabs.assets"]();
   const tabTransactions = m["explorer.user.tabs.transactions"]();
+  const tabKeys = m["explorer.user.tabs.keys"]();
   const [activeTab, setActiveTab] = useState<string>(tabAssets);
 
   if (isLoading || !userData) return null;
@@ -205,7 +254,7 @@ const Content: React.FC = () => {
           layoutId="user-explorer-tabs"
           selectedTab={activeTab}
           onTabChange={(tab) => setActiveTab(tab)}
-          keys={[tabAssets, tabTransactions]}
+          keys={[tabAssets, tabTransactions, tabKeys]}
         />
 
         <div className="max-w-full overflow-x-auto scrollbar-none">
@@ -222,6 +271,7 @@ const Content: React.FC = () => {
               classNames={{ base: "p-0 shadow-none bg-transparent" }}
             />
           )}
+          {activeTab === tabKeys && <KeysList />}
         </div>
       </div>
     </div>
