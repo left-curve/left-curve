@@ -381,16 +381,19 @@ fn ensure_resolver_declares_fields(
     let defs = resolver
         .linearize(type_name)
         .map_err(|err| anyhow!("EIP-712 resolver does not declare type `{type_name}`: {err}"))?;
-    let ty = defs
+    let declared = defs
         .first()
-        .ok_or_else(|| anyhow!("EIP-712 resolver does not declare type `{type_name}`"))?;
-    let declared: BTreeSet<&str> = ty.prop_names().collect();
+        .ok_or_else(|| anyhow!("EIP-712 resolver does not declare type `{type_name}`"))?
+        .prop_names()
+        .collect::<BTreeSet<_>>();
+
     for field in required_fields {
         ensure!(
             declared.contains(field),
             "EIP-712 resolver missing required field `{field}` in type `{type_name}`"
         );
     }
+
     Ok(())
 }
 
@@ -410,17 +413,25 @@ pub fn verify_signature(
             // hash before recreating the EIP-712 data for signing.
             let (verifying_contract, message) = match data {
                 VerifyData::Transaction(sign_doc) => {
+                    const METADATA_FIELDS: [&str; 4] =
+                        ["user_index", "chain_id", "nonce", "expiry"];
+
                     ensure_resolver_declares_fields(&resolver, "Message", &[
                         "sender",
                         "data",
                         "gas_limit",
                         "messages",
                     ])?;
-                    let mut metadata_fields: Vec<&str> = vec!["user_index", "chain_id", "nonce"];
-                    if sign_doc.data.expiry.is_some() {
-                        metadata_fields.push("expiry");
-                    }
-                    ensure_resolver_declares_fields(&resolver, "Metadata", &metadata_fields)?;
+
+                    ensure_resolver_declares_fields(
+                        &resolver,
+                        "Metadata",
+                        match &sign_doc.data.expiry {
+                            Some(_) => &METADATA_FIELDS,
+                            None => &METADATA_FIELDS[..3],
+                        },
+                    )?;
+
                     (
                         Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
                         sign_doc.to_json_value()?,
@@ -436,17 +447,21 @@ pub fn verify_signature(
                         "expire_at",
                         "session_key",
                     ])?;
+
                     (
                         Some(address!("0x0000000000000000000000000000000000000000")),
                         session_info.to_json_value()?,
                     )
                 },
                 VerifyData::Onboard(data) => {
-                    let mut message_fields: Vec<&str> = vec!["chain_id", "key", "key_hash", "seed"];
-                    if data.referrer.is_some() {
-                        message_fields.push("referrer");
-                    }
-                    ensure_resolver_declares_fields(&resolver, "Message", &message_fields)?;
+                    const MESSAGE_FIELDS: [&str; 5] =
+                        ["chain_id", "key", "key_hash", "seed", "referrer"];
+
+                    ensure_resolver_declares_fields(&resolver, "Message", match &data.referrer {
+                        Some(_) => &MESSAGE_FIELDS,
+                        None => &MESSAGE_FIELDS[..4],
+                    })?;
+
                     (
                         Some(address!("0x0000000000000000000000000000000000000000")),
                         data.to_json_value()?,
