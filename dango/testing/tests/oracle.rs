@@ -10,7 +10,7 @@ use {
         btree_map,
     },
     grug_app::NaiveProposalPreparer,
-    pyth_types::{Channel, LeEcdsaMessage, constants::LAZER_TRUSTED_SIGNER},
+    pyth_types::{Channel, LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
     std::str::FromStr,
 };
 
@@ -161,6 +161,9 @@ async fn pyth_lazer() {
         UsdPrice::new(Dec128_6::from_str("112985.059013").unwrap())
     );
     assert_eq!(price.timestamp, Timestamp::from_micros(1758539671000000));
+    // The captured payload predates our subscription to `MarketSession`,
+    // so the property is absent and the parser falls back to `Other`.
+    assert_eq!(price.market_session, MarketSession::Other);
 
     // Query the ETH price
     let price = suite
@@ -174,4 +177,5 @@ async fn pyth_lazer() {
         UsdPrice::new(Dec128_6::from_str("4185.880446").unwrap())
     );
     assert_eq!(price.timestamp, Timestamp::from_micros(1758539671000000));
+    assert_eq!(price.market_session, MarketSession::Other);
 }

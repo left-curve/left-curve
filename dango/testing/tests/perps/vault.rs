@@ -19,7 +19,7 @@ use {
         ResultExt, Timestamp, Uint128, btree_map, concat,
     },
     grug_app::CONTRACT_NAMESPACE,
-    pyth_types::{Channel, LeEcdsaMessage},
+    pyth_types::{Channel, LeEcdsaMessage, MarketSession},
     std::{collections::BTreeMap, str::FromStr},
 };
 
@@ -431,7 +431,11 @@ async fn oracle_triggers_on_oracle_update() {
     // Seed USDC's PYTH_PRICES entry directly. The perp pair's price is fed via
     // signed Pyth Lazer messages later in the test.
     suite.app.db.with_state_storage_mut(|storage| {
-        let price = Price::new(UsdPrice::new_int(1), Timestamp::from_nanos(u128::MAX));
+        let price = Price::new(
+            UsdPrice::new_int(1),
+            Timestamp::from_nanos(u128::MAX),
+            MarketSession::Regular,
+        );
         write_pyth_price_raw(storage, contracts.oracle, 1, &price);
     });
 

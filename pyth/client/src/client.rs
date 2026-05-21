@@ -78,7 +78,11 @@ impl PythClient {
         SubscriptionParams::new(SubscriptionParamsRepr {
             price_feed_ids: Some(price_feed_ids),
             symbols: None,
-            properties: vec![PriceFeedProperty::Price, PriceFeedProperty::Exponent],
+            properties: vec![
+                PriceFeedProperty::Price,
+                PriceFeedProperty::Exponent,
+                PriceFeedProperty::MarketSession,
+            ],
             formats: vec![Format::LeEcdsa],
             delivery_format: DeliveryFormat::Binary,
             json_binary_encoding: JsonBinaryEncoding::Base64,

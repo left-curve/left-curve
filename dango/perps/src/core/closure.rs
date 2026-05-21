@@ -224,6 +224,7 @@ mod tests {
             perps::{PairParam, PairState, Position},
         },
         grug::{Timestamp, btree_map, hash_map},
+        pyth_types::MarketSession,
         std::collections::HashMap,
     };
 
@@ -304,6 +305,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(250_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -351,6 +353,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(200_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -398,6 +401,7 @@ mod tests {
             eth::DENOM.clone() => Price::new(
                 UsdPrice::new_percent(150_000),
                 Timestamp::from_seconds(0),
+                MarketSession::Regular,
             ),
         });
 
@@ -453,6 +457,7 @@ mod tests {
                 eth::DENOM.clone() => Price::new(
                     UsdPrice::new_percent(200_000),
                     Timestamp::from_seconds(0),
+                    MarketSession::Regular,
                 ),
             });
             (user_state, perp_querier, oracle_querier)

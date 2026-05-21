@@ -15,7 +15,7 @@ use {
     grug_app::{AppError, CONTRACT_NAMESPACE, Indexer, ProposalPreparer},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
-    pyth_types::{Channel, PythId},
+    pyth_types::{Channel, MarketSession, PythId},
     std::collections::BTreeMap,
 };
 
@@ -93,7 +93,11 @@ pub async fn seed_oracle_prices<PP, ID>(
 
     suite.app.db.with_state_storage_mut(|storage| {
         for entry in entries.values() {
-            let price = Price::new(entry.humanized_price, entry.timestamp);
+            let price = Price::new(
+                entry.humanized_price,
+                entry.timestamp,
+                MarketSession::Regular,
+            );
             write_pyth_price_raw(storage, oracle, entry.pyth_id, &price);
         }
     });

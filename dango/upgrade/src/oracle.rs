@@ -2,7 +2,7 @@ use {
     dango_order_book::UsdPrice,
     grug::{Addr, Dec128_6, Denom, Inner, Order, StdError, StdResult, Storage, Unsigned, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
-    pyth_types::PythId,
+    pyth_types::{MarketSession, PythId},
 };
 
 /// Address of the Oracle contract. Same on mainnet and testnet (per the public
@@ -112,6 +112,11 @@ fn do_price_sources_migration(storage: &mut dyn Storage) -> AppResult<()> {
 /// internally — and which truncates digits beyond 6 decimal places, exactly
 /// matching the conversion that `query_price_for_perps` used to perform at
 /// every query.
+///
+/// The new layout also carries a `market_session` field. We backfill it with
+/// `Regular` for every existing entry: at the time of this migration, all
+/// price sources point to crypto feeds, which trade 24/7 and are always in
+/// the regular session.
 fn do_pyth_prices_migration(storage: &mut dyn Storage) -> AppResult<()> {
     let legacy_entries: Vec<(PythId, legacy_oracle::PrecisionlessPrice)> =
         legacy_oracle::PYTH_PRICES
@@ -129,6 +134,7 @@ fn do_pyth_prices_migration(storage: &mut dyn Storage) -> AppResult<()> {
         let new_price = dango_types::oracle::Price {
             humanized_price: UsdPrice::new(new_inner),
             timestamp: legacy.timestamp,
+            market_session: MarketSession::Regular,
         };
 
         dango_oracle::PYTH_PRICES.save(storage, id, &new_price)?;
@@ -313,6 +319,7 @@ mod tests {
             UsdPrice::new(Dec128_6::from_str("50000").unwrap()),
         );
         assert_eq!(btc.timestamp, Timestamp::from_seconds(1_700_000_000));
+        assert_eq!(btc.market_session, MarketSession::Regular);
 
         let eth = dango_oracle::PYTH_PRICES
             .load(&storage, ETH_USD_ID.id)
@@ -321,6 +328,7 @@ mod tests {
             eth.humanized_price,
             UsdPrice::new(Dec128_6::from_str("2000.5").unwrap()),
         );
+        assert_eq!(eth.market_session, MarketSession::Regular);
 
         let usdc = dango_oracle::PYTH_PRICES
             .load(&storage, USDC_USD_ID.id)
@@ -329,6 +337,7 @@ mod tests {
             usdc.humanized_price,
             UsdPrice::new(Dec128_6::from_str("1.000000").unwrap()),
         );
+        assert_eq!(usdc.market_session, MarketSession::Regular);
     }
 
     #[test]
