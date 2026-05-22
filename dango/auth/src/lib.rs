@@ -1,6 +1,6 @@
 use {
     alloy::{
-        dyn_abi::{Eip712Domain, TypedData},
+        dyn_abi::{Eip712Domain, Resolver, TypedData},
         primitives::{U160, U256, address, uint},
     },
     anyhow::{anyhow, bail, ensure},
@@ -373,6 +373,30 @@ pub fn verify_nonce_and_signature(
     Ok(())
 }
 
+fn ensure_resolver_declares_fields(
+    resolver: &Resolver,
+    type_name: &str,
+    required_fields: &[&str],
+) -> anyhow::Result<()> {
+    let defs = resolver
+        .linearize(type_name)
+        .map_err(|err| anyhow!("EIP-712 resolver does not declare type `{type_name}`: {err}"))?;
+    let declared = defs
+        .first()
+        .ok_or_else(|| anyhow!("EIP-712 resolver does not declare type `{type_name}`"))?
+        .prop_names()
+        .collect::<BTreeSet<_>>();
+
+    for field in required_fields {
+        ensure!(
+            declared.contains(field),
+            "EIP-712 resolver missing required field `{field}` in type `{type_name}`"
+        );
+    }
+
+    Ok(())
+}
+
 pub fn verify_signature(
     api: &dyn Api,
     key: Key,
@@ -385,26 +409,64 @@ pub fn verify_signature(
                 resolver, domain, ..
             } = cred.typed_data.deserialize_json()?;
 
-            // Recreate the EIP-712 data originally used for signing.
-            // Verify that the critical values in the transaction such as
-            // the message and the verifying contract (sender).
+            // Ensure the resolver binds all critical fields to the signature
+            // hash before recreating the EIP-712 data for signing.
             let (verifying_contract, message) = match data {
-                VerifyData::Transaction(sign_doc) => (
-                    Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
-                    sign_doc.to_json_value()?,
-                ),
+                VerifyData::Transaction(sign_doc) => {
+                    const METADATA_FIELDS: [&str; 4] =
+                        ["user_index", "chain_id", "nonce", "expiry"];
+
+                    ensure_resolver_declares_fields(&resolver, "Message", &[
+                        "sender",
+                        "data",
+                        "gas_limit",
+                        "messages",
+                    ])?;
+
+                    ensure_resolver_declares_fields(
+                        &resolver,
+                        "Metadata",
+                        match &sign_doc.data.expiry {
+                            Some(_) => &METADATA_FIELDS,
+                            None => &METADATA_FIELDS[..3],
+                        },
+                    )?;
+
+                    (
+                        Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
+                        sign_doc.to_json_value()?,
+                    )
+                },
                 // The EIP-712 standard requires the `verifyingContract` field
                 // in the domain. Some wallets enforce this requirement.
                 // We use the zero address (0x00...00) as a placeholder for
                 // these cases, indicating the signature's 'arbitrary' nature.
-                VerifyData::Session(session_info) => (
-                    Some(address!("0x0000000000000000000000000000000000000000")),
-                    session_info.to_json_value()?,
-                ),
-                VerifyData::Onboard(data) => (
-                    Some(address!("0x0000000000000000000000000000000000000000")),
-                    data.to_json_value()?,
-                ),
+                VerifyData::Session(session_info) => {
+                    ensure_resolver_declares_fields(&resolver, "Message", &[
+                        "chain_id",
+                        "expire_at",
+                        "session_key",
+                    ])?;
+
+                    (
+                        Some(address!("0x0000000000000000000000000000000000000000")),
+                        session_info.to_json_value()?,
+                    )
+                },
+                VerifyData::Onboard(data) => {
+                    const MESSAGE_FIELDS: [&str; 5] =
+                        ["chain_id", "key", "key_hash", "seed", "referrer"];
+
+                    ensure_resolver_declares_fields(&resolver, "Message", match &data.referrer {
+                        Some(_) => &MESSAGE_FIELDS,
+                        None => &MESSAGE_FIELDS[..4],
+                    })?;
+
+                    (
+                        Some(address!("0x0000000000000000000000000000000000000000")),
+                        data.to_json_value()?,
+                    )
+                },
             };
 
             // EIP-712 hash used in the signature.
@@ -1094,6 +1156,98 @@ mod tests {
             }),
         )
         .should_succeed();
+    }
+
+    #[test]
+    fn eip712_rejects_resolver_missing_required_field() {
+        use data_encoding::BASE64;
+
+        let user_address = Addr::from_str("0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8").unwrap();
+        let user_index = 123;
+        let user_keyhash =
+            Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
+                .unwrap();
+        let user_key =
+            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
+
+        let mut storage = MockStorage::new();
+
+        account::STATUS
+            .save(&mut storage, &AccountStatus::Active)
+            .unwrap();
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                let user = User {
+                    index: user_index,
+                    name: Username::default_for_index(user_index),
+                    accounts: btree_map! { 0u32 => user_address },
+                    keys: btree_map! { user_keyhash => user_key },
+                };
+                USERS.save(storage, user_index, &user).unwrap();
+            });
+
+        let mut ctx = MockContext::new()
+            .with_storage(storage)
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-6")
+            .with_mode(AuthMode::Finalize);
+
+        // Take the typed_data from `eip712_authentication` and drop the
+        // `messages` entry from the `Message` type so the resolver no longer
+        // binds it to the signature hash.
+        let original_typed_data = "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcl9pbmRleCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJicmlkZ2UvdXNkYyIsInR5cGUiOiJzdHJpbmcifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJkb21haW4iOnsibmFtZSI6ImRhbmdvIiwiY2hhaW5JZCI6MSwidmVyaWZ5aW5nQ29udHJhY3QiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgifSwibWVzc2FnZSI6eyJzZW5kZXIiOiIweDllZTAyNzRhZTMwZDBlMjA5YmVmMmM3ZTZjZTk2NzVhOTJlZjk2YzgiLCJkYXRhIjp7ImNoYWluX2lkIjoiZGV2LTYiLCJ1c2VyX2luZGV4IjoxMjMsIm5vbmNlIjowfSwiZ2FzX2xpbWl0IjoyODM0LCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsiMHgzMzM2MWRlNDI1NzFkNmFhMjBjMzdkYWE2ZGE0YjVhYjY3YmZhYWQ5Ijp7ImJyaWRnZS91c2RjIjoiMTAwMDAwMCJ9fX1dfX0=";
+
+        let decoded = BASE64.decode(original_typed_data.as_bytes()).unwrap();
+        let mut typed_data_json: serde_json::Value = serde_json::from_slice(&decoded).unwrap();
+        let message_props = typed_data_json["types"]["Message"].as_array_mut().unwrap();
+        message_props.retain(|p| p["name"].as_str() != Some("messages"));
+        let tampered_bytes = serde_json::to_vec(&typed_data_json).unwrap();
+        let tampered_typed_data = BASE64.encode(&tampered_bytes);
+
+        let tx = format!(
+            r#"{{
+              "sender": "0x9ee0274ae30d0e209bef2c7e6ce9675a92ef96c8",
+              "credential": {{
+                "standard": {{
+                  "signature": {{
+                    "eip712": {{
+                      "sig": "HVjOsIIx7o8SPbwXhSqpK/+N83V9Cz92+moM7vIIAaUz9YEelg8EesIN14ir5JcSSr/waG2b4gxPFbscaToUcBw=",
+                      "typed_data": "{tampered_typed_data}"
+                    }}
+                  }},
+                  "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165"
+                }}
+              }},
+              "data": {{
+                "chain_id": "dev-6",
+                "user_index": 123,
+                "nonce": 0
+              }},
+              "msgs": [
+                {{
+                  "transfer": {{
+                    "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {{
+                      "bridge/usdc": "1000000"
+                    }}
+                  }}
+                }}
+              ],
+              "gas_limit": 2834
+            }}"#
+        );
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None)
+            .should_fail_with_error("missing required field");
     }
 
     /// Regression test for security audit Finding 16:
