@@ -113,6 +113,20 @@ stop-devnet:
       --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-devnet.log
 
+# Delete the devnet deployment entirely (docker compose down, remove dir, prune).
+# Fetches the current deployment name from ~/deployments/devnet.json on ovh1.
+# Usage: just delete-devnet
+delete-devnet:
+  mkdir -p {{justfile_directory()}}/logs \
+    && TIMESTAMP=$(ssh deploy@{{ovh1}} 'jq -r .current_deployment /home/deploy/deployments/devnet.json') \
+    && test -n "$TIMESTAMP" \
+    && test "$TIMESTAMP" != "null" \
+    && echo "Deleting devnet deployment: $TIMESTAMP" \
+    && uv run ansible-playbook delete-full-app.yml \
+      -e deployment_name="$TIMESTAMP" \
+      --limit {{ovh1}},{{ovh2}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-delete-devnet.log
+
 restart-devnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook restart-services.yml \
