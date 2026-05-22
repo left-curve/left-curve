@@ -22,6 +22,7 @@ export const ConnectorIds = {
   Backpack: "backpack",
   Passkey: "passkey",
   Privy: "privy",
+  Debug: "debug",
 } as const;
 
 export type ConnectorType = (typeof ConnectorTypes)[keyof typeof ConnectorTypes];
@@ -32,6 +33,7 @@ export const ConnectorTypes = {
   Session: "session",
   Remote: "remote",
   Privy: "privy",
+  Debug: "debug",
 } as const;
 
 export type Connection = {

@@ -297,6 +297,17 @@ export function useAuthState(parameters: UseAuthStateParameters) {
     },
   });
 
+  const authenticateDebug = useMutation({
+    onError,
+    mutationFn: async (userIndex: number) => {
+      const connector = connectors.find((c) => c.id === "debug");
+      if (!connector) throw new Error("debug connector not registered");
+      connectorRef.current = connector;
+      await connector.connect({ userIndex, chainId, challenge: "debug" });
+      onSuccess?.();
+    },
+  });
+
   const createNewWithExistingKey = useMutation({
     onError,
     mutationFn: async () => {
@@ -360,6 +371,7 @@ export function useAuthState(parameters: UseAuthStateParameters) {
 
   const isPending =
     authenticate.isPending ||
+    authenticateDebug.isPending ||
     passkeyCreate.isPending ||
     passkeyLogin.isPending ||
     createAccount.isPending ||
@@ -376,6 +388,7 @@ export function useAuthState(parameters: UseAuthStateParameters) {
     users: authData.users,
     identifier: authData.identifier,
     authenticate,
+    authenticateDebug,
     passkeyCreate,
     passkeyLogin,
     createAccount,
