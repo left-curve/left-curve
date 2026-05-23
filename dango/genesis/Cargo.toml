@@ -14,21 +14,21 @@ metrics = ["dango-oracle/metrics", "dango-perps/metrics"]
 
 [dependencies]
 anyhow                = { workspace = true }
-dango-account         = { workspace = true, features = ["library"] }
-dango-account-factory = { workspace = true, features = ["library"] }
-dango-bank            = { workspace = true, features = ["library"] }
-dango-gateway         = { workspace = true, features = ["library"] }
-dango-oracle          = { workspace = true, features = ["library"] }
+dango-account         = { workspace = true }
+dango-account-factory = { workspace = true }
+dango-bank            = { workspace = true }
+dango-gateway         = { workspace = true }
+dango-oracle          = { workspace = true }
 dango-order-book      = { workspace = true }
-dango-perps           = { workspace = true, features = ["library", "tracing"] }
-dango-taxman          = { workspace = true, features = ["library"] }
+dango-perps           = { workspace = true, features = ["tracing"] }
+dango-taxman          = { workspace = true }
 dango-types           = { workspace = true }
-dango-vesting         = { workspace = true, features = ["library"] }
-dango-warp            = { workspace = true, features = ["library"] }
+dango-vesting         = { workspace = true }
+dango-warp            = { workspace = true }
 grug                  = { workspace = true }
 grug-vm-rust          = { workspace = true }
-hyperlane-ism         = { workspace = true, features = ["library"] }
-hyperlane-mailbox     = { workspace = true, features = ["library"] }
+hyperlane-ism         = { workspace = true }
+hyperlane-mailbox     = { workspace = true }
 hyperlane-types       = { workspace = true }
-hyperlane-va          = { workspace = true, features = ["library"] }
+hyperlane-va          = { workspace = true }
 serde                 = { workspace = true }

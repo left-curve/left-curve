@@ -10,16 +10,13 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-# If enabled, Wasm exports won't be created. This allows this contract to be
-# imported into other contracts as a library.
-library = []
 metrics = ["dep:metrics", "grug/metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }
-dango-account-factory = { workspace = true, features = ["library"] }
-dango-oracle          = { workspace = true, features = ["library"] }
+dango-account-factory = { workspace = true }
+dango-oracle          = { workspace = true }
 dango-order-book      = { workspace = true }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }

@@ -17,7 +17,6 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     _set_routes(ctx.storage, msg.routes)?;
     rate_limit::init(ctx.storage, msg.rate_limits)?;
@@ -26,7 +25,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::SetRoutes(mapping) => set_routes(ctx, mapping),
@@ -352,7 +350,6 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         }))
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     rate_limit::tick(ctx.storage, ctx.querier, ctx.block.timestamp)?;
 

@@ -10,9 +10,6 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-# If enabled, Wasm exports won't be created. This allows this contract to be
-# imported into other contracts as a library.
-library = []
 metrics = ["dep:metrics", "grug/metrics"]
 tracing = ["dep:tracing"]
 

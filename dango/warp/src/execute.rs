@@ -14,14 +14,12 @@ use {
     },
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
 
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Recipient(RecipientMsg::Handle {

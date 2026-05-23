@@ -9,7 +9,6 @@ use {
     std::collections::BTreeSet,
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     for (domain, validator_set) in msg.validator_sets {
         ensure!(
@@ -30,7 +29,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::SetValidators {

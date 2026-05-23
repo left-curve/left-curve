@@ -13,7 +13,6 @@ use {
     },
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     CONFIG.save(ctx.storage, &msg.config)?;
     MERKLE_TREE.save(ctx.storage, &IncrementalMerkleTree::default())?;
@@ -21,7 +20,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Dispatch {

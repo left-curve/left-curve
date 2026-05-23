@@ -11,7 +11,6 @@ use {
     std::collections::HashMap,
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     let mut supplies = HashMap::<Denom, Uint128>::new();
 
@@ -45,7 +44,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     Ok(Response::new()) // No need to emit events during genesis.
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     ensure!(ctx.funds.is_empty(), "don't send funds to bank contract");
 
@@ -254,7 +252,6 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
 ///    an "**orphaned transfer**". The tokens will be temporarily held in the bank
 ///    contract. Either the sender or the recipient (once it exists) can claim
 ///    the tokens by calling the `recover_transfer` method.
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> anyhow::Result<Response> {
     let mut events = EventBuilder::with_capacity(msg.transfers.len() * 3);
 

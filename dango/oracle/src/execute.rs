@@ -15,7 +15,6 @@ use {
     std::collections::BTreeMap,
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     for (denom, price_source) in msg.price_sources {
         PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
@@ -37,7 +36,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 /// - This one message is an `Execute`.
 /// - The contract being executed must be the oracle itself.
 /// - the execute message must be `FeedPrices`.
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     // Authenticate can only be called during finalize.
     ensure!(
@@ -65,7 +63,6 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
@@ -80,7 +77,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
     match msg {
         ReplyMsg::AfterOnOracleUpdate {} => {

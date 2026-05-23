@@ -44,7 +44,7 @@ url                   = { workspace = true }
 [dev-dependencies]
 assertor              = { workspace = true }
 csv                   = { workspace = true }
-dango-account-factory = { workspace = true, features = ["library"] }
+dango-account-factory = { workspace = true }
 dango-genesis         = { workspace = true }
 dango-mock-httpd      = { workspace = true }
 dango-testing         = { workspace = true }

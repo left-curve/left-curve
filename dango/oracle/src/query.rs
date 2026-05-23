@@ -8,7 +8,6 @@ use {
     std::collections::BTreeMap,
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::TrustedSigners { start_after, limit } => {

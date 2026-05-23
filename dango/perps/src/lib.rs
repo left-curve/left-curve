@@ -78,7 +78,6 @@ fn account_factory(querier: impl DangoQuerier) -> Addr {
     }
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     STATE.save(ctx.storage, &State {
         last_funding_time: ctx.block.timestamp,
@@ -91,7 +90,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     maintain::configure(ctx, msg.param, msg.pair_params)
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
@@ -137,7 +135,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     Ok(Response::new().add_events(events)?)
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     // Only `Deposit` and `Donate` methods accept attached funds (settlement currency).
     // Every other endpoint must be called without funds — tokens sent here would
@@ -238,7 +235,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::Param {} => {

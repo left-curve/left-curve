@@ -9,13 +9,8 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[features]
-# If enabled, Wasm exports won't be created. This allows this contract to be
-# imported into other contracts as a library.
-library = []
-
 [dependencies]
 anyhow            = { workspace = true }
 grug              = { workspace = true }
-hyperlane-mailbox = { workspace = true, features = ["library"] }
+hyperlane-mailbox = { workspace = true }
 hyperlane-types   = { workspace = true }

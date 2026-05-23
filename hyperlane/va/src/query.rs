@@ -8,7 +8,6 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Mailbox {} => {

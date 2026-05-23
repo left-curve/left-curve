@@ -11,7 +11,6 @@ use {
     std::collections::BTreeMap,
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::NamespaceOwner { namespace } => {
@@ -160,7 +159,6 @@ fn query_orphaned_transfers_by_recipient(
         .collect()
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
         BankQuery::Balance(req) => {

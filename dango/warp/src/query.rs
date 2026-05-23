@@ -5,7 +5,6 @@ use {
     hyperlane_types::recipients::{RecipientQuery, RecipientQueryResponse},
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Mailbox {} => {
