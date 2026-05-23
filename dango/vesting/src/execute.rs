@@ -10,7 +10,6 @@ use {
     },
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     UNLOCKING_SCHEDULE.save(ctx.storage, &Schedule {
         // Unlocking start time is defined as the token generation time.
@@ -24,7 +23,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Create { user, schedule } => create(ctx, user, schedule),

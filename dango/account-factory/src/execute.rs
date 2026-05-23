@@ -18,7 +18,6 @@ use {
     },
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Save the code hashes associated with the Dango account contract.
     CODE_HASH.save(ctx.storage, &msg.account_code_hash)?;
@@ -57,7 +56,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 // then send a transaction with the account factory as sender, that contains
 // exactly one message, to execute the factory itself with `Execute::RegisterUser`.
 // This transaction does not need to include any metadata or credential.
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let mut msgs = tx.msgs.iter();
 
@@ -107,7 +105,6 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     Ok(Response::new().may_add_message(maybe_msg))
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::RegisterUser {

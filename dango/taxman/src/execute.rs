@@ -13,14 +13,12 @@ use {
     std::collections::BTreeMap,
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     CONFIG.save(ctx.storage, &msg.config)?;
 
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
@@ -80,7 +78,6 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
 }
 
 // TODO: exempt the account factory from paying fee.
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let fee_cfg = CONFIG.load(ctx.storage)?;
 
@@ -132,7 +129,6 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     Ok(Response::new().may_add_message(withhold_msg))
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Response> {
     let (fee_cfg, withheld_amount) = WITHHELD_FEE.take(ctx.storage)?;
 
