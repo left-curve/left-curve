@@ -34,9 +34,7 @@ grug-db-disk            = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-math               = { workspace = true }
 grug-types              = { workspace = true, features = ["async-graphql"] }
-grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
-grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-types         = { workspace = true }
 identity                = { workspace = true }
@@ -80,6 +78,7 @@ graphql_client              = { workspace = true }
 grug-crypto                 = { workspace = true }
 grug-storage                = { workspace = true }
 grug-tester                 = { workspace = true, features = ["library"] }
+grug-vm-hybrid              = { workspace = true }
 grug-vm-wasm                = { workspace = true }
 hex                         = { workspace = true }
 itertools                   = { workspace = true }

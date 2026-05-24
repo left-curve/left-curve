@@ -5397,44 +5397,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-mock-account"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug-ffi",
- "grug-storage",
- "grug-types",
- "serde",
- "sha2 0.10.9",
-]
-
-[[package]]
-name = "grug-mock-bank"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug-ffi",
- "grug-math",
- "grug-storage",
- "grug-types",
- "serde",
-]
-
-[[package]]
-name = "grug-mock-taxman"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "borsh",
- "grug-ffi",
- "grug-math",
- "grug-mock-bank",
- "grug-storage",
- "grug-types",
- "serde",
-]
-
-[[package]]
 name = "grug-storage"
 version = "0.0.0"
 dependencies = [
