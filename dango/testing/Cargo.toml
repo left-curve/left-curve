@@ -41,7 +41,7 @@ indexer-cache           = { workspace = true, features = ["http-request-details"
 indexer-clickhouse      = { workspace = true, features = ["metrics", "testing", "tracing"] }
 indexer-graphql-types   = { workspace = true }
 indexer-hooked          = { workspace = true, features = ["tracing"] }
-indexer-httpd           = { workspace = true, features = ["metrics", "tracing"] }
+indexer-httpd           = { workspace = true, features = ["metrics", "testing", "tracing"] }
 indexer-metrics         = { workspace = true }
 indexer-sql             = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }
 k256                    = { workspace = true }
