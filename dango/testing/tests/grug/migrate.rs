@@ -1,7 +1,8 @@
 use {
-    dango_testing::{UploadAndInstantiateOutcomeSuccess, builder::TestBuilder},
-    grug_types::{Coins, Empty, QuerierExt, ResultExt},
-    grug_vm_rust::ContractBuilder,
+    dango_testing::{
+        ContractBuilder, TestOption, UploadAndInstantiateOutcomeSuccess, setup_test_naive,
+    },
+    grug_types::{Addressable, Coins, Empty, QuerierExt, ResultExt},
     tester::{MigrateMsg, QueryV1, QueryV2RequestV1, QueryV2RequestV2},
 };
 
@@ -95,11 +96,7 @@ mod tester {
 
 #[tokio::test]
 async fn migrate() {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption::default());
 
     let v1 = ContractBuilder::new(Box::new(tester::instantiate))
         .with_query(Box::new(tester::query_v1))
@@ -110,10 +107,9 @@ async fn migrate() {
         .with_migrate(Box::new(tester::migrate_v2))
         .build();
 
-    let mut admin = accounts.remove("owner").unwrap();
-    let mut attacker = accounts.remove("sender").unwrap();
-
-    let admin_addr = admin.address;
+    let admin = &mut accounts.owner;
+    let attacker = &mut accounts.user1;
+    let admin_addr = admin.address();
 
     let UploadAndInstantiateOutcomeSuccess {
         address: contract,
@@ -121,7 +117,7 @@ async fn migrate() {
         ..
     } = suite
         .upload_and_instantiate(
-            &mut admin,
+            admin,
             v1,
             &Empty {},
             "salt",
@@ -132,16 +128,12 @@ async fn migrate() {
         .await
         .should_succeed();
 
-    let v2_code_hash = suite
-        .upload(&mut admin, v2)
-        .await
-        .should_succeed()
-        .code_hash;
+    let v2_code_hash = suite.upload(admin, v2).await.should_succeed().code_hash;
 
     // Try migrate from non_owner
     {
         suite
-            .migrate(&mut attacker, contract, v2_code_hash, &MigrateMsg::Fail)
+            .migrate(attacker, contract, v2_code_hash, &MigrateMsg::Fail)
             .await
             .should_fail_with_error("sender does not have permission to perform this action");
     }
@@ -149,7 +141,7 @@ async fn migrate() {
     // Migrate but a failure happens during migrate execution
     {
         suite
-            .migrate(&mut admin, contract, v2_code_hash, &MigrateMsg::Fail)
+            .migrate(admin, contract, v2_code_hash, &MigrateMsg::Fail)
             .await
             .should_fail_with_error("host returned error: migrate failed");
 
@@ -167,7 +159,7 @@ async fn migrate() {
             .should_succeed_and_equal("v1");
 
         suite
-            .migrate(&mut admin, contract, v2_code_hash, &MigrateMsg::Ok)
+            .migrate(admin, contract, v2_code_hash, &MigrateMsg::Ok)
             .await
             .should_succeed();
 
@@ -188,11 +180,7 @@ async fn migrate() {
 
 #[tokio::test]
 async fn migrate_no_admin() {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption::default());
 
     let v1 = ContractBuilder::new(Box::new(tester::instantiate))
         .with_query(Box::new(tester::query_v1))
@@ -203,13 +191,13 @@ async fn migrate_no_admin() {
         .with_migrate(Box::new(tester::migrate_v2))
         .build();
 
-    let mut admin = accounts.remove("owner").unwrap();
+    let admin = &mut accounts.owner;
 
     let UploadAndInstantiateOutcomeSuccess {
         address: contract, ..
     } = suite
         .upload_and_instantiate(
-            &mut admin,
+            admin,
             v1,
             &Empty {},
             "salt",
@@ -220,15 +208,11 @@ async fn migrate_no_admin() {
         .await
         .should_succeed();
 
-    let v2_code_hash = suite
-        .upload(&mut admin, v2)
-        .await
-        .should_succeed()
-        .code_hash;
+    let v2_code_hash = suite.upload(admin, v2).await.should_succeed().code_hash;
 
     // Admin not set, migrate fails
     suite
-        .migrate(&mut admin, contract, v2_code_hash, &MigrateMsg::Ok)
+        .migrate(admin, contract, v2_code_hash, &MigrateMsg::Ok)
         .await
         .should_fail_with_error("sender does not have permission to perform this action");
 }

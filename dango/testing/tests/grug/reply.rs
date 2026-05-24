@@ -1,10 +1,6 @@
 use {
-    dango_testing::{
-        TestSuiteNaive,
-        builder::{TestAccounts, TestBuilder},
-    },
-    grug_types::{Addr, Coin, Coins, Empty, QuerierExt, ReplyOn, ResultExt},
-    grug_vm_rust::ContractBuilder,
+    dango_testing::{ContractBuilder, TestAccounts, TestOption, TestSuiteNaive, setup_test_naive},
+    grug_types::{Addr, Coins, Empty, QuerierExt, ReplyOn, ResultExt},
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
 };
@@ -157,11 +153,7 @@ mod replier {
 }
 
 async fn setup() -> (TestSuiteNaive, TestAccounts, Addr) {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
-        .add_account("sender", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption::default());
 
     let replier_code = ContractBuilder::new(Box::new(replier::instantiate))
         .with_execute(Box::new(replier::execute))
@@ -171,7 +163,7 @@ async fn setup() -> (TestSuiteNaive, TestAccounts, Addr) {
 
     let replier_addr = suite
         .upload_and_instantiate(
-            &mut accounts["owner"],
+            &mut accounts.owner,
             replier_code,
             &Empty {},
             "salt",
@@ -439,7 +431,7 @@ async fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_f
     let (mut suite, mut accounts, replier_addr) = setup().await;
 
     let result = suite
-        .execute(&mut accounts["owner"], replier_addr, &msg, Coins::default())
+        .execute(&mut accounts.owner, replier_addr, &msg, Coins::default())
         .await;
 
     if should_tx_fail {

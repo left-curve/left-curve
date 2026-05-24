@@ -1,5 +1,5 @@
 use {
-    dango_testing::{ContractBuilder, builder::TestBuilder},
+    dango_testing::{ContractBuilder, TestOption, setup_test_naive},
     grug_types::{Addr, Coins, Empty, Hash256, QuerierExt, ResultExt},
 };
 
@@ -42,11 +42,7 @@ mod query_maker {
 
 #[tokio::test]
 async fn query_super_smart() {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("larry", Coins::one("uusdc", 123).unwrap())
-        .set_chain_id("kebab")
-        .set_owner("larry")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption::default());
 
     let code = ContractBuilder::new(Box::new(query_maker::instantiate))
         .with_query(Box::new(query_maker::query))
@@ -54,7 +50,7 @@ async fn query_super_smart() {
 
     let contract = suite
         .upload_and_instantiate(
-            &mut accounts["larry"],
+            &mut accounts.owner,
             code,
             &Empty {},
             "contract",

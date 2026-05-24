@@ -1,9 +1,10 @@
 use {
-    dango_testing::builder::TestBuilder,
+    dango_testing::{ContractBuilder, TestOption, setup_test_naive},
+    dango_types::constants::{dango, eth, usdc},
     grug_types::{
-        Binary, Coin, Coins, Duration, Empty, Json, QuerierExt, ResultExt, Timestamp, btree_map,
+        Addressable, Binary, Coin, Coins, Duration, Empty, Json, QuerierExt, ResultExt, btree_map,
+        coins,
     },
-    grug_vm_rust::ContractBuilder,
 };
 
 /// A contract that implements the `cron_execute` export function. Used for
@@ -65,95 +66,85 @@ mod failing_tester {
 }
 
 struct Balances {
-    uatom: u128,
-    uosmo: u128,
-    umars: u128,
+    usdc: u128,
+    eth: u128,
+    dango: u128,
 }
 
 #[tokio::test]
 async fn cronjob_works() {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("larry", [("uatom", 100), ("uosmo", 100), ("umars", 100)])
-        .add_account("jake", Coins::new())
-        .set_genesis_time(Timestamp::from_nanos(0))
-        .set_block_time(Duration::from_seconds(1))
-        .set_owner("larry")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption {
+        block_time: Duration::from_seconds(1),
+        ..TestOption::default()
+    });
 
     let tester_code = ContractBuilder::new(Box::new(tester::instantiate))
         .with_cron_execute(Box::new(tester::cron_execute))
         .build();
 
-    let receiver = accounts["jake"].address;
+    let receiver = accounts.user1.address();
 
-    // Block time: 1
-    //
     // Upload the tester contract code.
     let tester_code_hash = suite
-        .upload(&mut accounts["larry"], tester_code)
+        .upload(&mut accounts.owner, tester_code)
         .await
         .should_succeed()
         .code_hash;
 
-    // Block time: 2
-    //
     // Deploy three tester contracts with different jobs.
-    // Each contract is given an initial coin balance.
+    // Each contract sends 1 unit of a different denom per cron invocation.
+    // Each contract is given 3 of its respective denom.
     let cron1 = suite
         .instantiate(
-            &mut accounts["larry"],
+            &mut accounts.owner,
             tester_code_hash,
             &tester::Job {
                 receiver,
-                coin: Coin::new("uatom", 1).unwrap(),
+                coin: Coin::new(usdc::DENOM.clone(), 1).unwrap(),
             },
             "cron1",
             Some("cron1"),
             None,
-            Coins::one("uatom", 3).unwrap(),
+            coins! { usdc::DENOM.clone() => 3 },
         )
         .await
         .should_succeed()
         .address;
 
-    // Block time: 3
     let cron2 = suite
         .instantiate(
-            &mut accounts["larry"],
+            &mut accounts.owner,
             tester_code_hash,
             &tester::Job {
                 receiver,
-                coin: Coin::new("uosmo", 1).unwrap(),
+                coin: Coin::new(eth::DENOM.clone(), 1).unwrap(),
             },
             "cron2",
             Some("cron2"),
             None,
-            Coins::one("uosmo", 3).unwrap(),
+            coins! { eth::DENOM.clone() => 3 },
         )
         .await
         .should_succeed()
         .address;
 
-    // Block time: 4
     let cron3 = suite
         .instantiate(
-            &mut accounts["larry"],
+            &mut accounts.owner,
             tester_code_hash,
             &tester::Job {
                 receiver,
-                coin: Coin::new("umars", 1).unwrap(),
+                coin: Coin::new(dango::DENOM.clone(), 1).unwrap(),
             },
             "cron3",
             Some("cron3"),
             None,
-            Coins::one("umars", 3).unwrap(),
+            coins! { dango::DENOM.clone() => 3 },
         )
         .await
         .should_succeed()
         .address;
 
-    // Block time: 5
-    //
     // Update the config to add the cronjobs.
     let mut new_cfg = suite.query_config().unwrap();
     new_cfg.cronjobs = btree_map! {
@@ -163,139 +154,151 @@ async fn cronjob_works() {
         cron3 => Duration::from_seconds(3),
     };
 
-    // cron1 scheduled at 5
-    // cron2 scheduled at 7
-    // cron3 scheduled at 8
+    // cron1 scheduled at T (fires on configure block)
+    // cron2 scheduled at T+2
+    // cron3 scheduled at T+3
     suite
-        .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
+        .configure::<Json>(&mut accounts.owner, Some(new_cfg), None)
         .await
         .should_succeed();
 
+    // Record the receiver's initial balances (after configure block's cron1 fired).
+    let initial_usdc = suite
+        .query_balance(&accounts.user1, usdc::DENOM.clone())
+        .unwrap();
+    let initial_eth = suite
+        .query_balance(&accounts.user1, eth::DENOM.clone())
+        .unwrap();
+    let initial_dango = suite
+        .query_balance(&accounts.user1, dango::DENOM.clone())
+        .unwrap();
+
     // Make some blocks.
-    // After each block, check that Jake has the correct balances.
+    // After each block, check that the receiver has the correct cumulative
+    // increases relative to the initial balances.
+    //
+    // NOTE: initial_balance is captured AFTER the configure block, during which
+    // cron1 already fired once. So cron1's contract has 2 coins remaining.
+    //
+    // Scheduling:
+    // - cron1 (usdc, interval 0): fires every block, scheduled at T
+    // - cron2 (eth, interval 2): scheduled at T+2
+    // - cron3 (dango, interval 3): scheduled at T+3
+    //
+    // After configure, cron1 has 2 remaining, cron2 has 3, cron3 has 3.
     for balances in [
-        // Block time: 5
+        // Empty block 1 (time T+1):
         //
-        // cron1 sends 1 uatom, rescheduled to 6
+        // cron1 sends 1 usdc (1 remaining after)
         Balances {
-            uatom: 1,
-            uosmo: 0,
-            umars: 0,
+            usdc: 1,
+            eth: 0,
+            dango: 0,
         },
-        // Block time: 6
+        // Empty block 2 (time T+2):
         //
-        // cron1 sends 1 uatom, rescheduled to 7
+        // cron1 sends 1 usdc (0 remaining, runs out here)
+        // cron2 sends 1 eth (2 remaining), rescheduled to T+4
         Balances {
-            uatom: 2,
-            uosmo: 0,
-            umars: 0,
+            usdc: 2,
+            eth: 1,
+            dango: 0,
         },
-        // Block time: 7
+        // Empty block 3 (time T+3):
         //
-        // cron1 sends 1 uatom, rescheduled to 8 (it runs out of coins here)
-        // cron2 sends 1 uosmo, rescheduled to 9
+        // cron1 errors (out of coins)
+        // cron3 sends 1 dango (2 remaining), rescheduled to T+6
         Balances {
-            uatom: 3,
-            uosmo: 1,
-            umars: 0,
+            usdc: 2,
+            eth: 1,
+            dango: 1,
         },
-        // Block time: 8
+        // Empty block 4 (time T+4):
         //
-        // cron1 errors because it's out of coins
-        // cron3 sends 1 umars, rescheduled to 11
+        // cron2 sends 1 eth (1 remaining), rescheduled to T+6
         Balances {
-            uatom: 3,
-            uosmo: 1,
-            umars: 1,
+            usdc: 2,
+            eth: 2,
+            dango: 1,
         },
-        // Block time: 9
-        //
-        // cron2 sends 1 uosmo, rescheduled to 11
-        Balances {
-            uatom: 3,
-            uosmo: 2,
-            umars: 1,
-        },
-        // Block time: 10
+        // Empty block 5 (time T+5):
         //
         // Nothing happens
         Balances {
-            uatom: 3,
-            uosmo: 2,
-            umars: 1,
+            usdc: 2,
+            eth: 2,
+            dango: 1,
         },
-        // Block time: 11
+        // Empty block 6 (time T+6):
         //
-        // cron2 sends 1 uosmo (runs out of coins), rescheduled to 13
-        // cron3 sends 1 umars, rescheduled to 14
+        // cron2 sends 1 eth (0 remaining, runs out), rescheduled to T+8
+        // cron3 sends 1 dango (1 remaining), rescheduled to T+9
         Balances {
-            uatom: 3,
-            uosmo: 3,
-            umars: 2,
+            usdc: 2,
+            eth: 3,
+            dango: 2,
         },
-        // Block time: 12
+        // Empty block 7 (time T+7):
         //
         // Nothing happens
         Balances {
-            uatom: 3,
-            uosmo: 3,
-            umars: 2,
+            usdc: 2,
+            eth: 3,
+            dango: 2,
         },
-        // Block time: 13
+        // Empty block 8 (time T+8):
         //
-        // cron2 errors, otherwise nothing happens
+        // cron2 errors (out of coins)
         Balances {
-            uatom: 3,
-            uosmo: 3,
-            umars: 2,
+            usdc: 2,
+            eth: 3,
+            dango: 2,
         },
-        // Block time: 14
+        // Empty block 9 (time T+9):
         //
-        // cron3 sends 1 umars, runs out of coins
+        // cron3 sends 1 dango (0 remaining, runs out)
         Balances {
-            uatom: 3,
-            uosmo: 3,
-            umars: 3,
+            usdc: 2,
+            eth: 3,
+            dango: 3,
         },
     ] {
-        // The balances Jake is expected to have at time point
-        let mut expect = Coins::new();
-        expect.insert(("uatom", balances.uatom)).unwrap();
-        expect.insert(("uosmo", balances.uosmo)).unwrap();
-        expect.insert(("umars", balances.umars)).unwrap();
-
-        // Check the balances are correct
-        suite
-            .query_balances(&accounts["jake"])
-            .should_succeed_and_equal(expect);
-
         // Advance block
         suite.make_empty_block().await;
+
+        // Check balances
+        suite
+            .query_balance(&accounts.user1, usdc::DENOM.clone())
+            .should_succeed_and_equal(initial_usdc + balances.usdc.into());
+        suite
+            .query_balance(&accounts.user1, eth::DENOM.clone())
+            .should_succeed_and_equal(initial_eth + balances.eth.into());
+        suite
+            .query_balance(&accounts.user1, dango::DENOM.clone())
+            .should_succeed_and_equal(initial_dango + balances.dango.into());
     }
 }
 
 #[tokio::test]
 async fn cronjob_fails() {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("larry", Coins::new())
-        .set_genesis_time(Timestamp::from_nanos(0))
-        .set_block_time(Duration::from_seconds(1))
-        .set_owner("larry")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption {
+        block_time: Duration::from_seconds(1),
+        ..TestOption::default()
+    });
 
     let tester_code = ContractBuilder::new(Box::new(failing_tester::instantiate))
         .with_cron_execute(Box::new(failing_tester::cron_execute))
         .build();
 
     let tester_code_hash = suite
-        .upload(&mut accounts["larry"], tester_code)
+        .upload(&mut accounts.owner, tester_code)
         .await
         .should_succeed()
         .code_hash;
 
     let cron = suite
         .instantiate(
-            &mut accounts["larry"],
+            &mut accounts.owner,
             tester_code_hash,
             &Empty {},
             "cron1",
@@ -314,7 +317,7 @@ async fn cronjob_fails() {
     };
 
     suite
-        .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
+        .configure::<Json>(&mut accounts.owner, Some(new_cfg), None)
         .await
         .should_succeed();
 

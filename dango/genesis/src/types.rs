@@ -55,6 +55,7 @@ pub struct GenesisOption {
     pub hyperlane: HyperlaneOption,
     pub oracle: OracleOption,
     pub perps: PerpsOption,
+    pub taxman: TaxmanOption,
     pub vesting: VestingOption,
 }
 
@@ -113,6 +114,12 @@ pub struct PerpsOption {
     pub param: perps::Param,
     /// Per-pair parameters, keyed by the pair ID (e.g. "perp/ethusd").
     pub pair_params: BTreeMap<PairId, PairParam>,
+}
+
+pub struct TaxmanOption {
+    /// An alternative code to use as the taxman contract.
+    /// Exclusively for use when setting up the `dango/testing/tests/grug/taxman.rs` tests.
+    pub alternative_code: Option<Binary>,
 }
 
 pub struct VestingOption {

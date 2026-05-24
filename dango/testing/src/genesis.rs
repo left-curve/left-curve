@@ -10,7 +10,7 @@ use {
     },
     dango_genesis::{
         AccountOption, BankOption, GatewayOption, GenesisOption, GenesisUser, GrugOption,
-        HyperlaneOption, OracleOption, PerpsOption, VestingOption,
+        HyperlaneOption, OracleOption, PerpsOption, TaxmanOption, VestingOption,
     },
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_types::{
@@ -174,6 +174,7 @@ impl Preset for GenesisOption {
             hyperlane: Preset::preset_test(),
             oracle: Preset::preset_test(),
             perps: Preset::preset_test(),
+            taxman: Preset::preset_test(),
             vesting: Preset::preset_test(),
         }
     }
@@ -559,6 +560,14 @@ impl Preset for PerpsOption {
                     ..PairParam::new_mock()
                 },
             },
+        }
+    }
+}
+
+impl Preset for TaxmanOption {
+    fn preset_test() -> Self {
+        TaxmanOption {
+            alternative_code: None,
         }
     }
 }

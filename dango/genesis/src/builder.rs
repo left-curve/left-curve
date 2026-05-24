@@ -25,6 +25,13 @@ where
 {
     let mut msgs = Vec::new();
 
+    // Certain tests in `dango/testing/tests/grug/taxman.rs` use an alternative
+    // taxman implementation.
+    let taxman_code = opt
+        .taxman
+        .alternative_code
+        .unwrap_or_else(|| codes.taxman.into());
+
     // Upload all the codes and compute code hashes.
     let account_code_hash = upload(&mut msgs, codes.account);
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
@@ -35,7 +42,7 @@ where
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let perps_code_hash = upload(&mut msgs, codes.perps);
-    let taxman_code_hash = upload(&mut msgs, codes.taxman);
+    let taxman_code_hash = upload(&mut msgs, taxman_code);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
 

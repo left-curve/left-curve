@@ -1,27 +1,24 @@
 use {
-    dango_testing::builder::TestBuilder,
+    dango_testing::{TestOption, setup_test_naive},
+    dango_types::constants::usdc,
     grug_app::{AppError, CHAIN_ID, CONFIG, CONTRACTS, GasTracker, HaltReason, TraceOption},
     grug_math::{Bytable, NextNumber, Uint128, Uint256},
     grug_types::{
-        Addr, BorshSerExt, Coins, Denom, Duration, Empty, JsonSerExt, MsgExecute, NextUpgrade,
-        PastUpgrade, QuerierExt, ResultExt, StdError, Timestamp, btree_map, coins,
+        Addr, Addressable, BorshSerExt, Coins, Duration, Empty, JsonSerExt, MsgExecute,
+        NextUpgrade, PastUpgrade, QuerierExt, ResultExt, StdError, btree_map,
     },
     grug_vm_rust::ContractBuilder,
-    std::{str::FromStr, sync::Arc},
+    std::sync::Arc,
 };
 
 #[tokio::test]
 async fn error_cases() {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", Coins::new())
-        .add_account("jake", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption::default());
 
     // Non-owner attempts to schedule an upgrade. Should fail.
     suite
         .upgrade(
-            &mut accounts["jake"],
+            &mut accounts.user1,
             3,
             "0.1.0",
             Some("v0.1.0"),
@@ -29,14 +26,14 @@ async fn error_cases() {
         )
         .await
         .should_fail_with_error(AppError::not_owner(
-            accounts["jake"].address,
-            accounts["owner"].address,
+            accounts.user1.address(),
+            accounts.owner.address(),
         ));
 
     // Block 2. Attempt to schedule upgrade at block 2. Should fail.
     suite
         .upgrade(
-            &mut accounts["owner"],
+            &mut accounts.owner,
             2,
             "0.1.0",
             Some("v0.1.0"),
@@ -51,24 +48,21 @@ async fn error_cases() {
 /// This upgrade doesn't involve any contract calls.
 #[tokio::test]
 async fn upgrading_without_calling_contract() {
-    const OLD_CHAIN_ID: &str = "oonga";
     const NEW_CHAIN_ID: &str = "boonga";
 
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .set_chain_id(OLD_CHAIN_ID)
-        .set_genesis_time(Timestamp::from_nanos(0))
-        .set_block_time(Duration::from_seconds(1))
-        .add_account("owner", Coins::new())
-        .set_owner("owner")
-        // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption {
+        block_time: Duration::from_seconds(1),
+        ..TestOption::default()
+    });
+
+    let old_chain_id = suite.chain_id.clone();
 
     // -------------------------------- Block 1 --------------------------------
 
     // Owner schedules an upgrade to happan at block 3. Upgrade doesn't happen yet.
     suite
         .upgrade(
-            &mut accounts["owner"],
+            &mut accounts.owner,
             3,
             "0.1.0",
             Some("v0.1.0"),
@@ -78,7 +72,7 @@ async fn upgrading_without_calling_contract() {
         .should_succeed();
 
     suite.query_status().should_succeed_and(|status| {
-        status.chain_id == OLD_CHAIN_ID && status.last_finalized_block.height == 1
+        status.chain_id == old_chain_id && status.last_finalized_block.height == 1
     });
 
     suite
@@ -96,7 +90,7 @@ async fn upgrading_without_calling_contract() {
     suite.make_empty_block().await;
 
     suite.query_status().should_succeed_and(|status| {
-        status.chain_id == OLD_CHAIN_ID && status.last_finalized_block.height == 2
+        status.chain_id == old_chain_id && status.last_finalized_block.height == 2
     });
 
     // -------------------------------- Block 3 --------------------------------
@@ -151,23 +145,23 @@ async fn upgrading_without_calling_contract() {
 /// here for testing purpose, we go with a full chain upgrade.
 #[tokio::test]
 async fn upgrading_with_calling_contract() {
-    mod new_mock_bank {
+    mod new_bank {
         use {
             grug_math::{NextNumber, Uint256},
             grug_storage::Map,
             grug_types::{Addr, Denom, Empty, MutableCtx, Order, Response, StdResult},
         };
 
-        // NOTE: using `Uint256` here.
-        pub const BALANCES_BY_ADDR: Map<(Addr, &Denom), Uint256> = Map::new("bu");
+        // NOTE: using `Uint256` here instead of `Uint128`.
+        pub const BALANCES_256: Map<(&Addr, &Denom), Uint256> = Map::new("balance");
 
         /// Call this function to convert all balances to 256-bit.
         pub fn execute(ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
             // Load all entries from the _old_ map and loop through them.
-            // Do not confuse:
-            // - The old map is `grug_mock_bank::BALANCES_BY_ADDR`.
-            // - The new map is `new_mock_bank::BALANCES_BY_ADDR`.
-            for ((addr, denom), amount) in grug_mock_bank::BALANCES_BY_ADDR
+            // The old map is `dango_bank::BALANCES` (Uint128).
+            // The new map is `new_bank::BALANCES_256` (Uint256).
+            // They share the same storage key "balance" but different value types.
+            for ((addr, denom), amount) in dango_bank::BALANCES
                 .range(ctx.storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()?
             {
@@ -175,29 +169,28 @@ async fn upgrading_with_calling_contract() {
                 let amount = amount.into_next();
 
                 // Save the 256-bit amount in the _new_ map.
-                BALANCES_BY_ADDR.save(ctx.storage, (addr, &denom), &amount)?;
+                BALANCES_256.save(ctx.storage, (&addr, &denom), &amount)?;
             }
 
             Ok(Response::new())
         }
     }
 
-    let denom = Denom::from_str("oonga").unwrap();
+    let denom = usdc::DENOM.clone();
 
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", coins! { denom.clone() => 123 })
-        .set_owner("owner")
-        // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption::default());
 
     let bank = suite.query_bank().unwrap();
+
+    // Record the owner's current USDC balance.
+    let owner_balance = suite.query_balance(&accounts.owner, denom.clone()).unwrap();
 
     // -------------------------------- Block 1 --------------------------------
 
     // Owner schedules an upgrade to happan at block 3. Upgrade doesn't happen yet.
     suite
         .upgrade(
-            &mut accounts["owner"],
+            &mut accounts.owner,
             3,
             "0.1.0",
             None::<String>,
@@ -214,12 +207,12 @@ async fn upgrading_with_calling_contract() {
     suite
         .query_wasm_raw(
             bank,
-            grug_mock_bank::BALANCES_BY_ADDR.path((accounts["owner"].address, &denom)),
+            dango_bank::BALANCES.path((&accounts.owner.address(), &denom)),
         )
         .should_succeed_and(|bytes| {
             let bytes = bytes.as_ref().unwrap();
             bytes.len() == Uint128::BYTE_LEN
-                && bytes.as_ref() == Uint128::new(123).to_borsh_vec().unwrap()
+                && bytes.as_ref() == owner_balance.to_borsh_vec().unwrap()
         });
 
     // -------------------------------- Block 3 --------------------------------
@@ -240,14 +233,15 @@ async fn upgrading_with_calling_contract() {
             let cfg = CONFIG.load(&storage)?;
             let bank_contract = CONTRACTS.load(&storage, cfg.bank)?;
 
-            // Build the new bank contract code.
-            let new_mock_bank_code = ContractBuilder::new(Box::new(grug_mock_bank::instantiate))
-                .with_execute(Box::new(new_mock_bank::execute))
+            // Build the new bank contract code with our custom execute that
+            // converts 128-bit balances to 256-bit.
+            let new_bank_code = ContractBuilder::new(Box::new(dango_bank::instantiate))
+                .with_execute(Box::new(new_bank::execute))
                 .build();
 
             // Update the bank contract's code.
             grug_app::CODES.update(&mut storage, bank_contract.code_hash, |mut code| {
-                code.code = new_mock_bank_code.to_bytes().into();
+                code.code = new_bank_code.to_bytes().into();
                 Ok::<_, StdError>(code)
             })?;
 
@@ -280,12 +274,12 @@ async fn upgrading_with_calling_contract() {
     suite
         .query_wasm_raw(
             bank,
-            new_mock_bank::BALANCES_BY_ADDR.path((accounts["owner"].address, &denom)),
+            new_bank::BALANCES_256.path((&accounts.owner.address(), &denom)),
         )
         .should_succeed_and(|bytes| {
             let bytes = bytes.as_ref().unwrap();
             bytes.len() == Uint256::BYTE_LEN
-                && bytes.as_ref() == Uint128::new(123).into_next().to_borsh_vec().unwrap()
+                && bytes.as_ref() == owner_balance.into_next().to_borsh_vec().unwrap()
         });
 }
 
@@ -301,12 +295,10 @@ async fn upgrading_with_calling_contract() {
 /// halt reason.
 #[tokio::test]
 async fn upgrade_incorrect_version_fires_shutdown_trigger() {
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .set_genesis_time(Timestamp::from_nanos(0))
-        .set_block_time(Duration::from_seconds(1))
-        .add_account("owner", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive(TestOption {
+        block_time: Duration::from_seconds(1),
+        ..TestOption::default()
+    });
 
     let (halt_tx, halt_rx) = tokio::sync::watch::channel::<Option<HaltReason>>(None);
     suite.app.set_shutdown_trigger(Arc::new(halt_tx));
@@ -314,7 +306,7 @@ async fn upgrade_incorrect_version_fires_shutdown_trigger() {
     // -------------------------------- Block 1 --------------------------------
     suite
         .upgrade(
-            &mut accounts["owner"],
+            &mut accounts.owner,
             3,
             "0.1.0",
             None::<String>,

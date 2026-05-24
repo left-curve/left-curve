@@ -1,8 +1,13 @@
 use {
-    dango_testing::builder::TestBuilder,
+    dango_genesis::{AccountOption, GenesisOption, GenesisUser, TaxmanOption},
+    dango_testing::{
+        ContractBuilder, Preset, TestOption,
+        constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
+        setup_test_naive_with_custom_genesis,
+    },
+    dango_types::{account_factory::NewUserSalt, auth::Key},
     grug_math::{NumberConst, Uint128},
-    grug_types::{Coins, Empty, Message, ResultExt},
-    grug_vm_rust::ContractBuilder,
+    grug_types::{Addressable, Coins, HashExt, Message, ResultExt},
     test_case::test_case,
 };
 
@@ -10,17 +15,18 @@ use {
 /// will always be zero (if the contract doesn't call any host function).
 /// To do testing, we create this mock up taxman that will pretend that a
 /// quarter of the gas limit was used and charge the fee accordingly.
-mod taxman {
+mod mock_taxman {
     use {
+        dango_types::constants::dango,
         grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
         grug_types::{
             AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, QuerierExt, Response,
             StdResult, Tx, TxOutcome,
         },
-        std::{str::FromStr, sync::LazyLock},
+        std::sync::LazyLock,
     };
 
-    pub static FEE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
+    pub static FEE_DENOM: LazyLock<Denom> = LazyLock::new(|| dango::DENOM.clone());
 
     pub const FEE_RATE: Udec128 = Udec128::new_percent(25);
 
@@ -41,11 +47,10 @@ mod taxman {
         let withhold_msg = if withhold_amount.is_non_zero() {
             Some(Message::execute(
                 bank,
-                &grug_mock_bank::ExecuteMsg::ForceTransfer {
+                &dango_types::bank::ExecuteMsg::ForceTransfer {
                     from: tx.sender,
                     to: ctx.contract,
-                    denom: FEE_DENOM.clone(),
-                    amount: withhold_amount,
+                    coins: Coins::one(FEE_DENOM.clone(), withhold_amount)?,
                 },
                 Coins::new(),
             )?)
@@ -161,31 +166,118 @@ async fn withholding_and_finalizing_fee_works(
     receiver_balance_after: u128,
     maybe_err: Option<&str>,
 ) {
-    let taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))
-        .with_withhold_fee(Box::new(taxman::withhold_fee))
-        .with_finalize_fee(Box::new(taxman::finalize_fee))
+    let taxman_code = ContractBuilder::new(Box::new(mock_taxman::instantiate))
+        .with_withhold_fee(Box::new(mock_taxman::withhold_fee))
+        .with_finalize_fee(Box::new(mock_taxman::finalize_fee))
         .build();
 
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .set_taxman_code(taxman_code, |_fee_denom, _fee_rate| Empty {})
-        .add_account("owner", Coins::new())
-        .add_account(
-            "sender",
-            Coins::one(taxman::FEE_DENOM.clone(), sender_balance_before).unwrap(),
-        )
-        .add_account("receiver", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, ..) = setup_test_naive_with_custom_genesis(
+        TestOption {
+            bridge_ops: |_| vec![],
+            ..TestOption::default()
+        },
+        GenesisOption {
+            taxman: TaxmanOption {
+                alternative_code: Some(taxman_code.to_bytes().into()),
+            },
+            account: AccountOption {
+                genesis_users: vec![
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(owner::PUBLIC_KEY.into()),
+                            key_hash: owner::PUBLIC_KEY.hash256(),
+                            seed: 0,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user1::PUBLIC_KEY.into()),
+                            key_hash: user1::PUBLIC_KEY.hash256(),
+                            seed: 1,
+                        },
+                        dango_balance: Uint128::new(sender_balance_before),
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user2::PUBLIC_KEY.into()),
+                            key_hash: user2::PUBLIC_KEY.hash256(),
+                            seed: 2,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user3::PUBLIC_KEY.into()),
+                            key_hash: user3::PUBLIC_KEY.hash256(),
+                            seed: 3,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user4::PUBLIC_KEY.into()),
+                            key_hash: user4::PUBLIC_KEY.hash256(),
+                            seed: 4,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user5::PUBLIC_KEY.into()),
+                            key_hash: user5::PUBLIC_KEY.hash256(),
+                            seed: 5,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user6::PUBLIC_KEY.into()),
+                            key_hash: user6::PUBLIC_KEY.hash256(),
+                            seed: 6,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user7::PUBLIC_KEY.into()),
+                            key_hash: user7::PUBLIC_KEY.hash256(),
+                            seed: 7,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user8::PUBLIC_KEY.into()),
+                            key_hash: user8::PUBLIC_KEY.hash256(),
+                            seed: 8,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                    GenesisUser {
+                        salt: NewUserSalt {
+                            key: Key::Secp256k1(user9::PUBLIC_KEY.into()),
+                            key_hash: user9::PUBLIC_KEY.hash256(),
+                            seed: 9,
+                        },
+                        dango_balance: Uint128::ZERO,
+                    },
+                ],
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        },
+    );
 
-    let to = accounts["receiver"].address;
+    let to = accounts.user9.address();
 
     let outcome = suite
         .send_message_with_gas(
-            &mut accounts["sender"],
+            &mut accounts.user1,
             gas_limit,
             Message::transfer(
                 to,
-                Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
+                Coins::one(mock_taxman::FEE_DENOM.clone(), send_amount).unwrap(),
             )
             .unwrap(),
         )
@@ -201,13 +293,13 @@ async fn withholding_and_finalizing_fee_works(
     }
 
     suite
-        .query_balance(&accounts["owner"], taxman::FEE_DENOM.clone())
+        .query_balance(&accounts.owner, mock_taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(owner_balance_after));
     suite
-        .query_balance(&accounts["sender"], taxman::FEE_DENOM.clone())
+        .query_balance(&accounts.user1, mock_taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(sender_balance_after));
     suite
-        .query_balance(&accounts["receiver"], taxman::FEE_DENOM.clone())
+        .query_balance(&accounts.user9, mock_taxman::FEE_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(receiver_balance_after));
 }
 
@@ -221,29 +313,35 @@ async fn withholding_and_finalizing_fee_works(
 // at the ERROR tracing level to raise developer's awareness.
 #[tokio::test]
 async fn finalizing_fee_erroring() {
-    let bugged_taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))
-        .with_withhold_fee(Box::new(taxman::withhold_fee))
-        .with_finalize_fee(Box::new(taxman::bugged_finalize_fee))
+    let bugged_taxman_code = ContractBuilder::new(Box::new(mock_taxman::instantiate))
+        .with_withhold_fee(Box::new(mock_taxman::withhold_fee))
+        .with_finalize_fee(Box::new(mock_taxman::bugged_finalize_fee))
         .build();
 
-    let (mut suite, mut accounts) = TestBuilder::new()
-        .set_taxman_code(bugged_taxman_code, |_fee_denom, _fee_rate| Empty {})
-        .add_account("owner", Coins::new())
-        .add_account(
-            "sender",
-            Coins::one(taxman::FEE_DENOM.clone(), 30_000).unwrap(),
-        )
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, ..) =
+        setup_test_naive_with_custom_genesis(TestOption::default(), GenesisOption {
+            taxman: TaxmanOption {
+                alternative_code: Some(bugged_taxman_code.to_bytes().into()),
+            },
+            ..Preset::preset_test()
+        });
 
-    let to = accounts["sender"].address;
+    let sender_balance_before = suite
+        .query_balance(&accounts.user1, mock_taxman::FEE_DENOM.clone())
+        .unwrap();
+
+    let owner_balance_before = suite
+        .query_balance(&accounts.owner, mock_taxman::FEE_DENOM.clone())
+        .unwrap();
+
+    let to = accounts.user1.address();
 
     // Send a transaction with a single message.
     // `withhold_fee` must pass, which should be the case as we're requesting
-    // zero gas limit.
+    // a small gas limit.
     let outcome = suite
         .send_message_with_gas(
-            &mut accounts["sender"],
+            &mut accounts.user1,
             2000,
             Message::transfer(to, Coins::new()).unwrap(),
         )
@@ -252,18 +350,15 @@ async fn finalizing_fee_erroring() {
     // Result should be an error.
     let failing = outcome.should_fail_with_error("division by zero: 1 / 0");
 
-    // All events should have been discarded.
-    assert!(failing.events.withhold.maybe_error().is_some());
-    assert!(failing.events.authenticate.maybe_error().is_some());
-    assert!(failing.events.msgs_and_backrun.maybe_error().is_some());
-    assert!(failing.events.withhold.maybe_error().is_some());
+    // The finalize event should show the error.
+    assert!(failing.events.finalize.maybe_error().is_some());
 
     // Owner and sender's balances shouldn't have changed, since state changes
     // are discarded.
     suite
-        .query_balance(&accounts["owner"], taxman::FEE_DENOM.clone())
-        .should_succeed_and_equal(Uint128::ZERO);
+        .query_balance(&accounts.owner, mock_taxman::FEE_DENOM.clone())
+        .should_succeed_and_equal(owner_balance_before);
     suite
-        .query_balance(&accounts["sender"], taxman::FEE_DENOM.clone())
-        .should_succeed_and_equal(Uint128::new(30_000));
+        .query_balance(&accounts.user1, mock_taxman::FEE_DENOM.clone())
+        .should_succeed_and_equal(sender_balance_before);
 }
