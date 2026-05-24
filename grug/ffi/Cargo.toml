@@ -11,7 +11,7 @@ version       = { workspace = true }
 
 [features]
 default = ["macros"]
-macros = ["dep:grug-macros"]
+macros  = ["dep:grug-macros"]
 
 [dependencies]
 error-backtrace = { workspace = true }

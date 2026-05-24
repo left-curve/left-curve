@@ -1,6 +1,3 @@
-#[cfg(feature = "macros")]
-pub use grug_macros::{QueryRequest, derive, event};
-
 mod address;
 mod app;
 mod bank;
@@ -74,7 +71,10 @@ mod testing;
 #[cfg(not(target_arch = "wasm32"))]
 pub use {client::*, testing::*};
 
-// ---------------------------------- prelude ----------------------------------
+// ---------------------------------- macros -----------------------------------
+
+#[cfg(feature = "macros")]
+pub use grug_macros::{QueryRequest, derive, event};
 
 // Dependencies used by the procedural macros.
 #[doc(hidden)]

@@ -1,4 +1,7 @@
-use grug_types::{Addr, Coins, Empty, Hash256, QuerierExt, ResultExt};
+use {
+    grug_testing::{ContractBuilder, TestBuilder},
+    grug_types::{Addr, Coins, Empty, Hash256, QuerierExt, ResultExt},
+};
 
 mod query_maker {
     use grug_types::{
@@ -39,13 +42,13 @@ mod query_maker {
 
 #[tokio::test]
 async fn query_super_smart() {
-    let (mut suite, mut accounts) = grug_testing::TestBuilder::new()
+    let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("larry", Coins::one("uusdc", 123).unwrap())
         .set_chain_id("kebab")
         .set_owner("larry")
         .build();
 
-    let code = grug_testing::ContractBuilder::new(Box::new(query_maker::instantiate))
+    let code = ContractBuilder::new(Box::new(query_maker::instantiate))
         .with_query(Box::new(query_maker::query))
         .build();
 
@@ -63,14 +66,18 @@ async fn query_super_smart() {
         .should_succeed()
         .address;
 
+    // Here, the compiler should be able to infer the type of the response as
+    // `String` based on the request type `QueryFooRequest`.
     suite
         .query_wasm_smart(contract, query_maker::QueryFooRequest { bar: 12345 })
         .should_succeed_and_equal(12345.to_string());
 
+    // Similarly, for unnamed variant `Fuzz`.
     suite
         .query_wasm_smart(contract, query_maker::QueryFuzzRequest(123))
         .should_succeed_and_equal(Addr::mock(123));
 
+    // Similarly, for unit variant `Buzz`.
     suite
         .query_wasm_smart(contract, query_maker::QueryBuzzRequest)
         .should_succeed_and_equal(Hash256::from_inner([1; 32]));

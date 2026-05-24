@@ -11,16 +11,16 @@ version       = { workspace = true }
 
 [features]
 default = ["macros"]
-macros = ["dep:grug-macros"]
+macros  = ["dep:grug-macros"]
 
 [dependencies]
-bnum       = { workspace = true }
-borsh      = { workspace = true }
+bnum        = { workspace = true }
+borsh       = { workspace = true }
 grug-macros = { workspace = true, optional = true }
 grug-math   = { workspace = true }
 grug-types  = { workspace = true }
-prost      = { workspace = true }
-serde      = { workspace = true }
+prost       = { workspace = true }
+serde       = { workspace = true }
 
 [dev-dependencies]
 error-backtrace = { workspace = true }
