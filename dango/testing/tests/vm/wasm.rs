@@ -1,34 +1,29 @@
 use {
-    dango_testing::{
-        TestSuite,
-        builder::{TestAccounts, TestBuilder},
-    },
+    dango_genesis::{GenesisCodes, GenesisOption},
+    dango_testing::{Preset, TestAccounts, TestSuite, setup_suite_with_db_and_vm},
     error_backtrace::Backtraceable,
-    grug_app::{AppError, NaiveProposalPreparer},
+    grug_app::{AppError, NaiveProposalPreparer, NullIndexer},
     grug_crypto::{sha2_256, sha2_512},
     grug_db_memory::MemDb,
-    grug_math::{MultiplyFraction, NumberConst, Udec128, Uint128},
     grug_tester::{
         QueryRecoverSecp256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
     },
     grug_types::{
-        Addr, Binary, Coins, Denom, GenericResult, InnerMut, Message, NonEmpty, QuerierExt,
-        QueryRequest, ResultExt, VerificationError,
+        Addr, Binary, Coins, GenericResult, InnerMut, Message, QuerierExt, QueryRequest, ResultExt,
+        VerificationError,
     },
-    grug_vm_wasm::{VmError, WasmVm},
+    grug_vm_hybrid::HybridVm,
+    grug_vm_rust::RustVm,
+    grug_vm_wasm::VmError,
     identity::{Identity256, Identity512},
     rand::rngs::OsRng,
     serde::{Serialize, de::DeserializeOwned},
-    std::{collections::BTreeMap, fmt::Debug, fs, str::FromStr, sync::LazyLock, vec},
+    std::{fmt::Debug, fs, vec},
     test_case::test_case,
 };
 
 const WASM_CACHE_CAPACITY: usize = 10;
-
-const FEE_RATE: Udec128 = Udec128::new_percent(10);
-
-static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
 fn read_wasm_file(filename: &str) -> Binary {
     let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
@@ -36,20 +31,26 @@ fn read_wasm_file(filename: &str) -> Binary {
 }
 
 async fn setup_test() -> (
-    TestSuite<MemDb, WasmVm, NaiveProposalPreparer>,
+    TestSuite<MemDb, HybridVm, NaiveProposalPreparer>,
     TestAccounts,
     Addr,
 ) {
-    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(DENOM.clone(), 32_100_000).unwrap())
-        .set_owner("owner")
-        .set_fee_rate(FEE_RATE)
-        .build();
+    let codes = RustVm::genesis_codes();
+    let vm = HybridVm::new(WASM_CACHE_CAPACITY, codes.all_code_hashes());
+
+    let (mut suite, mut accounts, ..) = setup_suite_with_db_and_vm(
+        MemDb::new(),
+        vm,
+        NaiveProposalPreparer,
+        NullIndexer,
+        codes,
+        Default::default(),
+        GenesisOption::preset_test(),
+    );
 
     let tester = suite
         .upload_and_instantiate_with_gas(
-            &mut accounts["sender"],
+            &mut accounts.owner,
             320_000_000,
             read_wasm_file("grug_tester.wasm"),
             &grug_tester::InstantiateMsg {},
@@ -73,7 +74,7 @@ async fn infinite_loop() {
 
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
+            &mut accounts.owner,
             1_000_000,
             Message::execute(
                 tester,
@@ -99,7 +100,7 @@ async fn immutable_state() {
 
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
+            &mut accounts.owner,
             2_000_000,
             Message::execute(
                 tester,
@@ -130,116 +131,17 @@ async fn message_stack_overflow() {
 
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
+            &mut accounts.owner,
             10_000_000,
             Message::execute(
                 tester,
                 &grug_tester::ExecuteMsg::StackOverflow {},
-                Coins::default(),
+                Coins::new(),
             )
             .unwrap(),
         )
         .await
         .should_fail_with_error(AppError::exceed_max_message_depth());
-}
-
-// ---- transfer tests ----
-
-#[tokio::test]
-async fn transfers() {
-    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(DENOM.clone(), 300_000).unwrap())
-        .add_account("receiver", Coins::new())
-        .set_owner("owner")
-        .set_fee_denom(DENOM.clone())
-        .set_fee_rate(FEE_RATE)
-        .build();
-
-    let to = accounts["receiver"].address;
-
-    suite
-        .query_balance(&accounts["sender"], DENOM.clone())
-        .should_succeed_and_equal(Uint128::new(300_000));
-    suite
-        .query_balance(&accounts["receiver"], DENOM.clone())
-        .should_succeed_and_equal(Uint128::ZERO);
-
-    let outcome = suite
-        .send_messages_with_gas(
-            &mut accounts["sender"],
-            2_500_000,
-            NonEmpty::new_unchecked(vec![
-                Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-                Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
-                Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
-                Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
-            ]),
-        )
-        .await;
-
-    outcome.clone().should_succeed();
-
-    let fee = Uint128::new(outcome.gas_used as u128)
-        .checked_mul_dec_ceil(FEE_RATE)
-        .unwrap();
-    let sender_balance_after = Uint128::new(300_000 - 70) - fee;
-
-    suite
-        .query_balance(&accounts["sender"], DENOM.clone())
-        .should_succeed_and_equal(sender_balance_after);
-    suite
-        .query_balance(&accounts["receiver"], DENOM.clone())
-        .should_succeed_and_equal(Uint128::new(70));
-
-    let cfg = suite.query_config().should_succeed();
-
-    suite
-        .query_wasm_smart(cfg.bank, grug_mock_bank::QueryHoldersRequest {
-            denom: DENOM.clone(),
-            start_after: None,
-            limit: None,
-        })
-        .should_succeed_and_equal(BTreeMap::from([
-            (suite.query_config().unwrap().taxman, fee),
-            (accounts["sender"].address, sender_balance_after),
-            (accounts["receiver"].address, Uint128::new(70)),
-        ]));
-}
-
-#[tokio::test]
-async fn transfers_with_insufficient_gas_limit() {
-    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(DENOM.clone(), 200_000).unwrap())
-        .add_account("receiver", Coins::new())
-        .set_owner("owner")
-        .set_fee_rate(FEE_RATE)
-        .build();
-
-    let to = accounts["receiver"].address;
-
-    let outcome = suite
-        .send_message_with_gas(
-            &mut accounts["sender"],
-            200_000,
-            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-        )
-        .await;
-
-    outcome.clone().should_fail();
-
-    let fee = Uint128::new(outcome.gas_used as u128)
-        .checked_mul_dec_ceil(FEE_RATE)
-        .unwrap();
-    let sender_balance_after = Uint128::new(200_000) - fee;
-
-    suite
-        .query_balance(&accounts["sender"], DENOM.clone())
-        .should_succeed_and_equal(sender_balance_after);
-    suite
-        .query_balance(&accounts["receiver"], DENOM.clone())
-        .should_succeed_and_equal(Uint128::ZERO);
 }
 
 // ---- crypto tests ----

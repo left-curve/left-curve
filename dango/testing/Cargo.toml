@@ -33,9 +33,6 @@ grug-app                = { workspace = true, features = ["abci", "testing", "tr
 grug-db-disk            = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-math               = { workspace = true }
-grug-mock-account       = { workspace = true, features = ["library"] }
-grug-mock-bank          = { workspace = true, features = ["library"] }
-grug-mock-taxman        = { workspace = true, features = ["library"] }
 grug-types              = { workspace = true, features = ["async-graphql"] }
 grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
@@ -81,8 +78,6 @@ error-backtrace             = { workspace = true }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
 grug-crypto                 = { workspace = true }
-grug-mock-account           = { workspace = true, features = ["library"] }
-grug-mock-bank              = { workspace = true, features = ["library"] }
 grug-storage                = { workspace = true }
 grug-tester                 = { workspace = true, features = ["library"] }
 grug-vm-wasm                = { workspace = true }

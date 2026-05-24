@@ -1,7 +1,6 @@
 mod account;
 mod account_creation;
 mod balance_tracker;
-pub mod builder; // TODO: to be deleted
 mod client;
 pub mod constants;
 mod crypto;

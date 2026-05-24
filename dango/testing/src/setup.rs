@@ -18,7 +18,9 @@ use {
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
     grug_math::Uint128,
-    grug_types::{Addr, Addressable, BlockInfo, Coins, Duration, Message, ResultExt, coins},
+    grug_types::{
+        Addr, Addressable, Binary, BlockInfo, Coins, Duration, Message, ResultExt, coins,
+    },
     grug_vm_rust::RustVm,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
@@ -342,24 +344,25 @@ pub fn setup_benchmark_rust(
     )
 }
 
-pub fn setup_suite_with_db_and_vm<DB, VM, PP, ID>(
+pub fn setup_suite_with_db_and_vm<DB, VM, PP, ID, C>(
     db: DB,
     vm: VM,
     pp: PP,
     indexer: ID,
-    codes: Codes<VM::Code>,
+    codes: Codes<C>,
     test_opt: TestOption,
     genesis_opt: GenesisOption,
 ) -> (
     TestSuite<DB, VM, PP, ID>,
     TestAccounts,
-    Codes<VM::Code>,
+    Codes<C>,
     Contracts,
     MockValidatorSets,
 )
 where
     DB: Db,
-    VM: Vm + GenesisCodes + Clone + Send + Sync + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
+    C: Clone + Into<Binary>,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,

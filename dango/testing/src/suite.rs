@@ -54,9 +54,6 @@ where
 
 impl TestSuite {
     /// Create a new test suite.
-    ///
-    /// It's not recommended to call this directly. Use [`TestBuilder`](crate::TestBuilder)
-    /// instead.
     pub fn new(
         chain_id: String,
         block_time: Duration,
