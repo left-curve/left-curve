@@ -23,10 +23,3 @@ grug-vm-rust    = { workspace = true }
 grug-vm-wasm    = { workspace = true }
 thiserror       = { workspace = true }
 
-[dev-dependencies]
-grug-db-memory = { workspace = true }
-grug-math      = { workspace = true }
-grug-tester    = { workspace = true, features = ["library"] }
-grug-vm-hybrid = { workspace = true, features = ["testing"] }
-tokio          = { workspace = true }
-tracing        = { workspace = true }

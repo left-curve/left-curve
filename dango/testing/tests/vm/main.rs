@@ -1,1 +1,2 @@
+mod hybrid;
 mod wasm;

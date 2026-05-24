@@ -9,7 +9,7 @@ use {
     grug_types::{Addr, Binary, Coins, Denom, HashExt, QuerierExt, Query, ResultExt},
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::ContractBuilder,
-    std::{fs, path::PathBuf, str::FromStr, sync::LazyLock},
+    std::{fs, str::FromStr, sync::LazyLock},
 };
 
 const WASM_CACHE_CAPACITY: usize = 10;
@@ -17,12 +17,7 @@ const WASM_CACHE_CAPACITY: usize = 10;
 const FEE_RATE: Udec128 = Udec128::new_percent(10);
 
 fn read_wasm_file(filename: &str) -> Binary {
-    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.pop();
-    path.push("wasm");
-    path.push("testdata");
-    path.push(filename);
-
+    let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
     fs::read(path).unwrap().into()
 }
 
@@ -109,8 +104,6 @@ async fn backtrace() {
         .backtrace
         .to_string();
 
-    // on wasm, backtrace is empty but the chain capture the backtrace later.
-    // there are not any grug_tester function name in the backtrace.
     assert!(!backtrace.is_empty());
     assert!(!backtrace.contains("grug_tester::query::failing_query"));
 
