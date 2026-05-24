@@ -1,8 +1,14 @@
+pub use {
+    crate::{BridgeOp, Preset, TestOption},
+    dango_genesis::GenesisOption,
+    grug_testing::BlockCreation,
+    indexer_httpd::error::Error,
+};
 use {
+    crate::{TestAccounts, setup_suite_with_db_and_vm},
     anyhow::bail,
     dango_genesis::{Codes, Contracts, GenesisCodes},
     dango_proposal_preparer::ProposalPreparer,
-    dango_testing::{TestAccounts, setup_suite_with_db_and_vm},
     grug_app::SimpleCommitment,
     grug_db_memory::MemDb,
     grug_testing::MockClient,
@@ -17,12 +23,6 @@ use {
         time::Duration,
     },
     tokio::{net::TcpStream, sync::RwLock},
-};
-pub use {
-    dango_genesis::GenesisOption,
-    dango_testing::{BridgeOp, Preset, TestOption},
-    grug_testing::BlockCreation,
-    indexer_httpd::error::Error,
 };
 
 pub async fn run(

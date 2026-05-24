@@ -41,7 +41,6 @@ assert-json-diff = { workspace = true }
 assertor         = { workspace = true }
 chrono           = { workspace = true }
 dango-genesis    = { workspace = true }
-dango-mock-httpd = { workspace = true }
 dango-testing    = { workspace = true }
 dango-types      = { workspace = true }
 graphql_client   = { workspace = true }

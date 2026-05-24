@@ -3775,29 +3775,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-mock-httpd"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-genesis",
- "dango-proposal-preparer",
- "dango-testing",
- "grug-app",
- "grug-db-memory",
- "grug-testing",
- "grug-types",
- "grug-vm-rust",
- "hyperlane-testing",
- "indexer-cache",
- "indexer-clickhouse",
- "indexer-hooked",
- "indexer-httpd",
- "indexer-sql",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "dango-oracle"
 version = "0.0.0"
 dependencies = [
@@ -3880,14 +3857,12 @@ dependencies = [
  "dango-account-factory",
  "dango-auth",
  "dango-genesis",
- "dango-mock-httpd",
  "dango-testing",
  "dango-types",
  "error-backtrace",
  "eth-utils",
  "futures",
  "graphql_client",
- "grug-testing",
  "grug-types",
  "identity",
  "indexer-graphql-types",
@@ -3956,7 +3931,6 @@ dependencies = [
  "dango-bank",
  "dango-gateway",
  "dango-genesis",
- "dango-mock-httpd",
  "dango-oracle",
  "dango-order-book",
  "dango-proposal-preparer",
@@ -6462,7 +6436,6 @@ dependencies = [
  "awc",
  "chrono",
  "dango-genesis",
- "dango-mock-httpd",
  "dango-testing",
  "dango-types",
  "futures-util",

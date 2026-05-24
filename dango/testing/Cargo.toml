@@ -33,7 +33,7 @@ identity                 = { workspace = true }
 indexer-cache            = { workspace = true, features = ["metrics", "tracing"] }
 indexer-clickhouse       = { workspace = true, features = ["metrics", "testing", "tracing"] }
 indexer-hooked           = { workspace = true, features = ["tracing"] }
-indexer-httpd            = { workspace = true, features = ["metrics"] }
+indexer-httpd            = { workspace = true, features = ["metrics", "tracing"] }
 indexer-metrics          = { workspace = true }
 indexer-sql              = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 k256                     = { workspace = true }
@@ -44,6 +44,7 @@ serde                    = { workspace = true }
 sha2                     = { workspace = true }
 temp-rocksdb             = { workspace = true }
 tokio                    = { workspace = true }
+tracing                  = { workspace = true }
 
 [dev-dependencies]
 anyhow                      = { workspace = true }
@@ -57,7 +58,6 @@ dango-account-factory       = { workspace = true }
 dango-auth                  = { workspace = true }
 dango-bank                  = { workspace = true }
 dango-gateway               = { workspace = true }
-dango-mock-httpd            = { workspace = true }
 dango-taxman                = { workspace = true }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
@@ -71,7 +71,10 @@ rand                        = { workspace = true }
 reqwest                     = { workspace = true, features = ["json"] }
 test-case                   = { workspace = true }
 tokio                       = { workspace = true, features = ["full"] }
-tracing                     = { workspace = true }
+
+[[bin]]
+name = "mock-httpd"
+path = "src/bin/mock_httpd.rs"
 
 [[bench]]
 harness = false

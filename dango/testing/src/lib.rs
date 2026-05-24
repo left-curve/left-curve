@@ -3,6 +3,7 @@ mod account_creation;
 pub mod constants;
 mod crypto;
 mod genesis;
+pub mod httpd;
 mod hyperlane;
 pub mod perps;
 mod setup;

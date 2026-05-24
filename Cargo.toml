@@ -7,7 +7,6 @@ members = [
   "dango/cli",
   "dango/gateway",
   "dango/genesis",
-  "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
   "dango/perps",
@@ -193,7 +192,6 @@ dango-auth              = { path = "dango/auth" }
 dango-bank              = { path = "dango/bank" }
 dango-gateway           = { path = "dango/gateway" }
 dango-genesis           = { path = "dango/genesis" }
-dango-mock-httpd        = { path = "dango/mocks/httpd" }
 dango-oracle            = { path = "dango/oracle" }
 dango-order-book        = { path = "dango/order-book" }
 dango-perps             = { path = "dango/perps" }

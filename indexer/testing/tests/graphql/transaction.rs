@@ -2,8 +2,10 @@ use {
     assert_json_diff::assert_json_include,
     assertor::*,
     dango_genesis::GenesisOption,
-    dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
-    dango_testing::{Preset, TestOption},
+    dango_testing::{
+        Preset, TestOption,
+        httpd::{get_mock_socket_addr, wait_for_server_ready},
+    },
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
     grug_testing::BlockCreation,
@@ -253,7 +255,7 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
         rt.block_on(async {
             tracing::info!("Starting mock HTTP server on port {port}");
 
-            if let Err(error) = dango_mock_httpd::run_with_callback(
+            if let Err(error) = dango_testing::httpd::run_with_callback(
                 port,
                 BlockCreation::OnBroadcast,
                 None,
