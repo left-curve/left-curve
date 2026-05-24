@@ -9,8 +9,9 @@ mod pagination;
 pub mod perps;
 mod request;
 mod setup;
+mod validator_set;
 
 pub use {
     account::*, account_creation::*, crypto::*, genesis::*, hyperlane::*, pagination::*,
-    request::*, setup::*,
+    request::*, setup::*, validator_set::*,
 };
