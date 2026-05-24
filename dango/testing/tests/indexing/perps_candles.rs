@@ -124,7 +124,7 @@ fn assert_candle_continuity(candles: &[PerpsCandle]) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_basic() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
@@ -168,7 +168,7 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_multiple_fills_same_block() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
@@ -211,7 +211,7 @@ async fn index_perps_candles_multiple_fills_same_block() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
     // Default block time is 250ms, so all fills land in the same second/minute.
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
@@ -246,7 +246,7 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
 /// creation at interval boundaries with open-price inheritance.
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_and_custom_genesis(
             TestOption {
                 block_time: Duration::from_seconds(20),
@@ -307,7 +307,7 @@ async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
 /// Many fills within the same minute, all aggregate into 1 candle.
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
@@ -352,7 +352,7 @@ async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
 /// in-memory cache.
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_cache_consistency() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
@@ -389,7 +389,7 @@ async fn index_perps_candles_cache_consistency() -> anyhow::Result<()> {
 /// One-second interval: 10 fills at 250ms block time span multiple seconds.
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
@@ -442,7 +442,7 @@ async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
 /// volume and flat OHLC inherited from the previous close.
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_and_custom_genesis(
             TestOption {
                 block_time: Duration::from_seconds(10),
@@ -580,7 +580,7 @@ async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
 /// Two pairs (ETH and BTC) produce independent candles.
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     let eth_pair = pair_id(); // perp/ethusd
@@ -729,7 +729,7 @@ async fn index_perps_candles_preload_rebuilds_current_bucket_from_clickhouse() -
     // including the 1d and 1h intervals exercised below.
     let genesis_secs = chrono::Utc::now().timestamp() as u128 - 3_600;
 
-    let (mut suite, mut accounts, _, contracts, _, _, clickhouse_context, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_and_custom_genesis(
             TestOption {
                 genesis_block: BlockInfo {

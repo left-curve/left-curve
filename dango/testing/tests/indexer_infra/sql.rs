@@ -1,11 +1,10 @@
 use {
     assertor::*,
-    dango_testing::create_hooked_indexer,
-    dango_types::config::AppConfig,
+    dango_testing::{TestOption, setup_test_naive_with_indexer},
+    dango_types::constants::usdc,
     grug_app::{Db, Indexer},
-    grug_testing::TestBuilder,
     grug_types::{
-        Block, BlockInfo, BlockOutcome, Coin, Coins, Denom, Empty, Hash, Message, ReplyOn,
+        Addressable, Block, BlockInfo, BlockOutcome, Coins, Empty, Hash, Message, ReplyOn,
         ResultExt,
     },
     grug_vm_rust::ContractBuilder,
@@ -13,28 +12,20 @@ use {
     indexer_sql::entity,
     replier::{ExecuteMsg, ReplyMsg},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
-    std::str::FromStr,
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_block() {
-    let denom = Denom::from_str("ugrug").unwrap();
+    let (mut suite, mut accounts, _, _, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
-    let (indexer, sql_indexer_context, ..) = create_hooked_indexer().await;
-
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
-        .set_owner("owner")
-        .build();
-
-    let to = accounts["owner"].address;
+    let to = accounts.owner.address();
 
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
-            2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            &mut accounts.user1,
+            1_000_000,
+            Message::transfer(to, Coins::one(usdc::DENOM.clone(), 100).unwrap()).unwrap(),
         )
         .await
         .should_succeed();
@@ -49,27 +40,27 @@ async fn index_block() {
 
     // ensure block was saved
     let block = entity::blocks::Entity::find()
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
     assert_that!(block.unwrap().block_height).is_equal_to(1);
 
     let transactions = entity::transactions::Entity::find()
-        .all(&sql_indexer_context.db)
+        .all(&httpd_context.db)
         .await
         .expect("Can't fetch transactions");
     assert_that!(transactions).is_not_empty();
 
     let messages = entity::messages::Entity::find()
-        .all(&sql_indexer_context.db)
+        .all(&httpd_context.db)
         .await
         .expect("Can't fetch messages");
 
     assert_that!(messages).is_not_empty();
 
     let events = entity::events::Entity::find()
-        .all(&sql_indexer_context.db)
+        .all(&httpd_context.db)
         .await
         .expect("Can't fetch events");
 
@@ -86,25 +77,16 @@ async fn index_block() {
 /// before it was indexed.
 #[tokio::test(flavor = "multi_thread")]
 async fn parse_previous_block_after_restart() {
-    let denom = Denom::from_str("ugrug").unwrap();
+    let (mut suite, mut accounts, _, _, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
-    let (indexer, sql_indexer_context, ..) = create_hooked_indexer().await;
-
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .set_app_config(&AppConfig::default())
-        .unwrap()
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
-        .set_owner("owner")
-        .build();
-
-    let to = accounts["owner"].address;
+    let to = accounts.owner.address();
 
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
-            2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            &mut accounts.user1,
+            1_000_000,
+            Message::transfer(to, Coins::one(usdc::DENOM.clone(), 100).unwrap()).unwrap(),
         )
         .await
         .should_succeed();
@@ -118,13 +100,13 @@ async fn parse_previous_block_after_restart() {
         .expect("Can't shutdown indexer");
 
     // 1. Delete database block height 1
-    entity::blocks::Entity::delete_block_and_data(&sql_indexer_context.db, 1)
+    entity::blocks::Entity::delete_block_and_data(&httpd_context.db, 1)
         .await
         .unwrap();
 
     // 1 bis. Verify the block height 1 is deleted
     let block = entity::blocks::Entity::find()
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_none();
@@ -141,7 +123,7 @@ async fn parse_previous_block_after_restart() {
 
     // 4. Verify the block height 1 is indexed
     let block = entity::blocks::Entity::find()
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -150,9 +132,9 @@ async fn parse_previous_block_after_restart() {
     // 5. Send a transaction
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
-            2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            &mut accounts.user1,
+            1_000_000,
+            Message::transfer(to, Coins::one(usdc::DENOM.clone(), 100).unwrap()).unwrap(),
         )
         .await
         .should_succeed();
@@ -168,7 +150,7 @@ async fn parse_previous_block_after_restart() {
     // 6. Verify the block height 2 is indexed
     let block = entity::blocks::Entity::find()
         .order_by_desc(entity::blocks::Column::BlockHeight)
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -180,23 +162,16 @@ async fn parse_previous_block_after_restart() {
 /// after it was indexed, and before the tmp file was deleted.
 #[tokio::test(flavor = "multi_thread")]
 async fn no_sql_index_error_after_restart() {
-    let denom = Denom::from_str("ugrug").unwrap();
+    let (mut suite, mut accounts, _, _, _, httpd_context, cache_context, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
-    let (indexer, sql_indexer_context, cache_context) = create_hooked_indexer().await;
-
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
-        .set_owner("owner")
-        .build();
-
-    let to = accounts["owner"].address;
+    let to = accounts.owner.address();
 
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
-            2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            &mut accounts.user1,
+            1_000_000,
+            Message::transfer(to, Coins::one(usdc::DENOM.clone(), 100).unwrap()).unwrap(),
         )
         .await
         .should_succeed();
@@ -211,7 +186,7 @@ async fn no_sql_index_error_after_restart() {
 
     // 1. Verify the block height 1 is indexed
     let block = entity::blocks::Entity::find()
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -250,7 +225,7 @@ async fn no_sql_index_error_after_restart() {
 
     // 4. Verify the block height 1 is still indexed
     let block = entity::blocks::Entity::find()
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -259,9 +234,9 @@ async fn no_sql_index_error_after_restart() {
     // 5. Send a transaction
     suite
         .send_message_with_gas(
-            &mut accounts["sender"],
-            2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            &mut accounts.user1,
+            1_000_000,
+            Message::transfer(to, Coins::one(usdc::DENOM.clone(), 100).unwrap()).unwrap(),
         )
         .await
         .should_succeed();
@@ -277,7 +252,7 @@ async fn no_sql_index_error_after_restart() {
     // 6. Verify the block height 2 is indexed
     let block = entity::blocks::Entity::find()
         .order_by_desc(entity::blocks::Column::BlockHeight)
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -428,13 +403,8 @@ pub mod replier {
 /// Ensure that flatten events are indexed correctly.
 #[tokio::test(flavor = "multi_thread")]
 async fn index_block_events() {
-    let (indexer, sql_indexer_context, ..) = create_hooked_indexer().await;
-
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
-        .add_account("sender", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, _, _, _, httpd_context, _, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     let replier_code = ContractBuilder::new(Box::new(replier::instantiate))
         .with_execute(Box::new(replier::execute))
@@ -444,7 +414,7 @@ async fn index_block_events() {
 
     let replier_addr = suite
         .upload_and_instantiate(
-            &mut accounts["owner"],
+            &mut accounts.owner,
             replier_code,
             &Empty {},
             "salt",
@@ -463,7 +433,7 @@ async fn index_block_events() {
     );
 
     suite
-        .execute(&mut accounts["owner"], replier_addr, &msg, Coins::default())
+        .execute(&mut accounts.owner, replier_addr, &msg, Coins::default())
         .await
         .should_succeed();
 
@@ -477,27 +447,27 @@ async fn index_block_events() {
 
     // ensure block was saved
     let block = entity::blocks::Entity::find()
-        .one(&sql_indexer_context.db)
+        .one(&httpd_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
     assert_that!(block.unwrap().block_height).is_equal_to(1);
 
     let transactions = entity::transactions::Entity::find()
-        .all(&sql_indexer_context.db)
+        .all(&httpd_context.db)
         .await
         .expect("Can't fetch transactions");
     assert_that!(transactions).is_not_empty();
 
     let messages = entity::messages::Entity::find()
-        .all(&sql_indexer_context.db)
+        .all(&httpd_context.db)
         .await
         .expect("Can't fetch messages");
     assert_that!(messages).is_not_empty();
 
     let events = entity::events::Entity::find()
         .filter(entity::events::Column::BlockHeight.eq(2))
-        .all(&sql_indexer_context.db)
+        .all(&httpd_context.db)
         .await
         .expect("Can't fetch events");
     assert_that!(events).is_not_empty();
@@ -511,7 +481,7 @@ async fn index_block_events() {
     // check for parent events
     let events = entity::events::Entity::find()
         .filter(entity::events::Column::ParentId.is_not_null())
-        .all(&sql_indexer_context.db)
+        .all(&httpd_context.db)
         .await
         .expect("Can't fetch events");
     assert_that!(events).is_not_empty();
@@ -520,13 +490,8 @@ async fn index_block_events() {
 /// Ensure the indexed blocks are compressed on disk.
 #[tokio::test(flavor = "multi_thread")]
 async fn blocks_on_disk_compressed() {
-    let (indexer, _, cache_context) = create_hooked_indexer().await;
-
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
-        .add_account("sender", Coins::new())
-        .set_owner("owner")
-        .build();
+    let (mut suite, mut accounts, _, _, _, _, cache_context, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     // Just create a block.
     let replier_code = ContractBuilder::new(Box::new(replier::instantiate))
@@ -537,7 +502,7 @@ async fn blocks_on_disk_compressed() {
 
     let _ = suite
         .upload_and_instantiate(
-            &mut accounts["owner"],
+            &mut accounts.owner,
             replier_code,
             &Empty {},
             "salt",

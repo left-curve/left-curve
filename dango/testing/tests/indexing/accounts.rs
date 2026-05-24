@@ -12,7 +12,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_account_creations() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, dango_context, _, _db_guard) =
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -57,7 +57,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_previous_blocks() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, dango_context, _, _db_guard) =
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -88,7 +88,7 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "Flaky test, needs investigation"]
 async fn index_single_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, dango_context, _, _db_guard) =
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 

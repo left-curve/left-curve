@@ -155,7 +155,7 @@ pub async fn setup_test_naive_with_indexer_and_create_blocks(
     indexer_httpd::context::FullContext,
     indexer_sql::TestDatabaseGuard,
 ) {
-    let (mut suite, mut accounts, _, _, _, httpd_context, _, db_guard) =
+    let (mut suite, mut accounts, _, _, _, httpd_context, _, _, db_guard) =
         setup_test_naive_with_indexer(test_opt).await;
 
     for _ in 0..count {
@@ -183,6 +183,7 @@ pub async fn setup_test_naive_with_indexer(
     Contracts,
     MockValidatorSets,
     indexer_httpd::context::FullContext,
+    indexer_cache::context::Context,
     indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
@@ -206,6 +207,7 @@ pub async fn setup_test_with_indexer(
     Contracts,
     MockValidatorSets,
     indexer_httpd::context::FullContext,
+    indexer_cache::context::Context,
     indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
@@ -227,6 +229,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     Contracts,
     MockValidatorSets,
     indexer_httpd::context::FullContext,
+    indexer_cache::context::Context,
     indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
@@ -249,6 +252,7 @@ async fn setup_test_with_indexer_pp_and_custom_genesis<PP>(
     Contracts,
     MockValidatorSets,
     indexer_httpd::context::FullContext,
+    indexer_cache::context::Context,
     indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 )
@@ -313,7 +317,7 @@ where
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let httpd_context = indexer_httpd::context::FullContext::new(
-        indexer_cache_context,
+        indexer_cache_context.clone(),
         sql_context,
         clickhouse_context.clone(),
         Arc::new(suite.app.clone_without_indexer()),
@@ -328,6 +332,7 @@ where
         contracts,
         validator_sets,
         httpd_context,
+        indexer_cache_context,
         clickhouse_context,
         db_guard,
     )

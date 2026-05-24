@@ -97,7 +97,7 @@ async fn api_returns_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn requester_ip_returns_forwarded_client_ip() -> anyhow::Result<()> {
-    let (_, _, _, _, _, httpd_context, _, _db_guard) =
+    let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
         setup_test_naive_with_indexer(TestOption::default()).await;
 
     let local_set = tokio::task::LocalSet::new();

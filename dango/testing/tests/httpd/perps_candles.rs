@@ -22,7 +22,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_perps_candles() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
@@ -71,7 +71,7 @@ async fn query_perps_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;

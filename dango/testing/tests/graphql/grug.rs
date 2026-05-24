@@ -157,7 +157,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_requester_ip() -> anyhow::Result<()> {
-    let (_, _, _, _, _, httpd_context, _, _db_guard) =
+    let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
         setup_test_naive_with_indexer(TestOption::default()).await;
 
     let local_set = tokio::task::LocalSet::new();
@@ -197,7 +197,7 @@ async fn graphql_returns_requester_ip() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_prefers_cf_connecting_ip_when_forwarded_headers_are_proxy_hops()
 -> anyhow::Result<()> {
-    let (_, _, _, _, _, httpd_context, _, _db_guard) =
+    let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
         setup_test_naive_with_indexer(TestOption::default()).await;
 
     let local_set = tokio::task::LocalSet::new();
