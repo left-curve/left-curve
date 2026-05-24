@@ -3,21 +3,21 @@ use {
     grug_app::AppError,
     grug_crypto::{sha2_256, sha2_512},
     grug_db_memory::MemDb,
-    grug_math::Udec128,
+    grug_math::{MultiplyFraction, NumberConst, Udec128, Uint128},
     grug_tester::{
         QueryRecoverSecp256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Binary, Coins, Denom, GenericResult, InnerMut, Message, QuerierExt, QueryRequest,
-        ResultExt, VerificationError,
+        Addr, Binary, Coins, Denom, GenericResult, InnerMut, Message, NonEmpty, QuerierExt,
+        QueryRequest, ResultExt, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     identity::{Identity256, Identity512},
     rand::rngs::OsRng,
     serde::{Serialize, de::DeserializeOwned},
-    std::{fmt::Debug, fs, str::FromStr, sync::LazyLock, vec},
+    std::{collections::BTreeMap, fmt::Debug, fs, str::FromStr, sync::LazyLock, vec},
     test_case::test_case,
 };
 
@@ -58,6 +58,8 @@ async fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
     (suite, accounts, tester)
 }
 
+// ---- vm correctness tests ----
+
 #[tokio::test]
 async fn infinite_loop() {
     let (mut suite, mut accounts, tester) = setup_test().await;
@@ -81,13 +83,6 @@ async fn infinite_loop() {
 async fn immutable_state() {
     let (mut suite, mut accounts, tester) = setup_test().await;
 
-    // Query the tester contract.
-    //
-    // During the query, the contract attempts to write to the state by directly
-    // calling the `db_write` import.
-    //
-    // This tests how the VM handles state mutability while serving the `Query`
-    // ABCI request.
     suite
         .query_wasm_smart(tester, grug_tester::QueryForceWriteRequest {
             key: "larry".to_string(),
@@ -95,13 +90,6 @@ async fn immutable_state() {
         })
         .should_fail_with_error(VmError::immutable_state());
 
-    // Execute the tester contract.
-    //
-    // During the execution, the contract makes a query to itself and the query
-    // tries to write to the storage.
-    //
-    // This tests how the VM handles state mutability while serving the
-    // `FinalizeBlock` ABCI request.
     suite
         .send_message_with_gas(
             &mut accounts["sender"],
@@ -124,8 +112,6 @@ async fn immutable_state() {
 async fn query_stack_overflow() {
     let (suite, _, tester) = setup_test().await;
 
-    // The contract attempts to call with `QueryMsg::StackOverflow` to itself in
-    // a loop. Should raise the "exceeded max query depth" error.
     suite
         .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
         .should_fail_with_error(VmError::exceed_max_query_depth());
@@ -135,8 +121,6 @@ async fn query_stack_overflow() {
 async fn message_stack_overflow() {
     let (mut suite, mut accounts, tester) = setup_test().await;
 
-    // The contract attempts to return a Response with `Execute::StackOverflow`
-    // to itself in a loop. Should raise the "exceeded max message depth" error.
     suite
         .send_message_with_gas(
             &mut accounts["sender"],
@@ -152,7 +136,106 @@ async fn message_stack_overflow() {
         .should_fail_with_error(AppError::exceed_max_message_depth());
 }
 
-// ------------------------------- crypto tests --------------------------------
+// ---- transfer tests ----
+
+#[tokio::test]
+async fn transfers() {
+    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+        .add_account("owner", Coins::new())
+        .add_account("sender", Coins::one(DENOM.clone(), 300_000).unwrap())
+        .add_account("receiver", Coins::new())
+        .set_owner("owner")
+        .set_fee_denom(DENOM.clone())
+        .set_fee_rate(FEE_RATE)
+        .build();
+
+    let to = accounts["receiver"].address;
+
+    suite
+        .query_balance(&accounts["sender"], DENOM.clone())
+        .should_succeed_and_equal(Uint128::new(300_000));
+    suite
+        .query_balance(&accounts["receiver"], DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    let outcome = suite
+        .send_messages_with_gas(
+            &mut accounts["sender"],
+            2_500_000,
+            NonEmpty::new_unchecked(vec![
+                Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
+            ]),
+        )
+        .await;
+
+    outcome.clone().should_succeed();
+
+    let fee = Uint128::new(outcome.gas_used as u128)
+        .checked_mul_dec_ceil(FEE_RATE)
+        .unwrap();
+    let sender_balance_after = Uint128::new(300_000 - 70) - fee;
+
+    suite
+        .query_balance(&accounts["sender"], DENOM.clone())
+        .should_succeed_and_equal(sender_balance_after);
+    suite
+        .query_balance(&accounts["receiver"], DENOM.clone())
+        .should_succeed_and_equal(Uint128::new(70));
+
+    let cfg = suite.query_config().should_succeed();
+
+    suite
+        .query_wasm_smart(cfg.bank, grug_mock_bank::QueryHoldersRequest {
+            denom: DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(BTreeMap::from([
+            (suite.query_config().unwrap().taxman, fee),
+            (accounts["sender"].address, sender_balance_after),
+            (accounts["receiver"].address, Uint128::new(70)),
+        ]));
+}
+
+#[tokio::test]
+async fn transfers_with_insufficient_gas_limit() {
+    let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
+        .add_account("owner", Coins::new())
+        .add_account("sender", Coins::one(DENOM.clone(), 200_000).unwrap())
+        .add_account("receiver", Coins::new())
+        .set_owner("owner")
+        .set_fee_rate(FEE_RATE)
+        .build();
+
+    let to = accounts["receiver"].address;
+
+    let outcome = suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            200_000,
+            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+        )
+        .await;
+
+    outcome.clone().should_fail();
+
+    let fee = Uint128::new(outcome.gas_used as u128)
+        .checked_mul_dec_ceil(FEE_RATE)
+        .unwrap();
+    let sender_balance_after = Uint128::new(200_000) - fee;
+
+    suite
+        .query_balance(&accounts["sender"], DENOM.clone())
+        .should_succeed_and_equal(sender_balance_after);
+    suite
+        .query_balance(&accounts["receiver"], DENOM.clone())
+        .should_succeed_and_equal(Uint128::ZERO);
+}
+
+// ---- crypto tests ----
 
 const MSG: &[u8] = b"finger but hole";
 const WRONG_MSG: &[u8] = b"precious item ahead";
@@ -378,7 +461,6 @@ async fn verifying_signature<G, M, R>(
 {
     let (suite, _, tester) = setup_test().await;
 
-    // Generate and malleate query request
     let req = generate_request();
     let req = malleate(req);
 
@@ -389,7 +471,6 @@ async fn verifying_signature<G, M, R>(
 async fn recovering_secp256k1_pubkey() {
     let (suite, _, tester) = setup_test().await;
 
-    // Generate a valid signature
     let (vk, req) = {
         use k256::ecdsa::{SigningKey, VerifyingKey};
 
@@ -406,14 +487,12 @@ async fn recovering_secp256k1_pubkey() {
         })
     };
 
-    // Ok
     {
         suite
             .query_wasm_smart(tester, req.clone())
             .should_succeed_and_equal(Binary::from_inner(vk.to_sec1_bytes().to_vec()));
     }
 
-    // Attempt to recover with a different msg. Should succeed but pk is different.
     {
         let mut false_req = req.clone();
         false_req.msg_hash = sha2_256(WRONG_MSG).into();
@@ -423,7 +502,6 @@ async fn recovering_secp256k1_pubkey() {
             .should_succeed_but_not_equal(Binary::from_inner(vk.to_sec1_bytes().to_vec()));
     }
 
-    // Attempt to recover with an invalid recovery ID. Should error.
     {
         let mut false_req = req;
         false_req.recovery_id = 123;
@@ -464,12 +542,10 @@ async fn wasm_ed25519_batch_verify() {
         }
     };
 
-    // Ok
     {
         suite.query_wasm_smart(tester, req.clone()).should_succeed();
     }
 
-    // Create an invalid batch simply by shuffling the order of signatures.
     {
         req.sigs.reverse();
 

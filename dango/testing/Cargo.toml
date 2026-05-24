@@ -33,7 +33,9 @@ grug-db-memory          = { workspace = true }
 grug-math               = { workspace = true }
 grug-testing            = { workspace = true }
 grug-types              = { workspace = true, features = ["async-graphql"] }
+grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
+grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-types         = { workspace = true }
 identity                = { workspace = true }
@@ -68,15 +70,23 @@ dango-auth                  = { workspace = true }
 dango-bank                  = { workspace = true }
 dango-gateway               = { workspace = true }
 dango-taxman                = { workspace = true }
+ed25519-dalek               = { workspace = true, features = ["batch", "digest"] }
+error-backtrace             = { workspace = true }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
+grug-crypto                 = { workspace = true }
+grug-mock-bank              = { workspace = true, features = ["library"] }
 grug-storage                = { workspace = true }
+grug-tester                 = { workspace = true, features = ["library"] }
+grug-vm-wasm                = { workspace = true, features = ["testing"] }
 hex                         = { workspace = true }
 itertools                   = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
+p256                        = { workspace = true }
 proptest                    = { workspace = true }
 rand                        = { workspace = true }
 reqwest                     = { workspace = true, features = ["json"] }
+serde                       = { workspace = true }
 test-case                   = { workspace = true }
 tokio                       = { workspace = true, features = ["full"] }
 

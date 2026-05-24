@@ -29,22 +29,19 @@ wasmer             = { workspace = true, features = ["singlepass"] }
 wasmer-middlewares = { workspace = true }
 
 [dev-dependencies]
-criterion      = { workspace = true }
-ed25519-dalek  = { workspace = true, features = ["batch", "digest"] }
-grug-app       = { workspace = true, features = ["tracing"] }
-grug-crypto    = { workspace = true }
-grug-db-memory = { workspace = true }
-grug-math      = { workspace = true }
-grug-mock-bank = { workspace = true, features = ["library"] }
-grug-tester    = { workspace = true, features = ["library"] }
-grug-testing   = { workspace = true }
-grug-vm-wasm   = { workspace = true, features = ["testing"] }
-identity       = { workspace = true }
-k256           = { workspace = true }
-p256           = { workspace = true }
-rand           = { workspace = true }
-test-case      = { workspace = true }
-tokio          = { workspace = true }
+criterion     = { workspace = true }
+ed25519-dalek = { workspace = true, features = ["batch", "digest"] }
+grug-app      = { workspace = true, features = ["tracing"] }
+grug-crypto   = { workspace = true }
+grug-math     = { workspace = true }
+grug-tester   = { workspace = true, features = ["library"] }
+grug-vm-wasm  = { workspace = true, features = ["testing"] }
+identity      = { workspace = true }
+k256          = { workspace = true }
+p256          = { workspace = true }
+rand          = { workspace = true }
+test-case     = { workspace = true }
+tokio         = { workspace = true }
 
 [[bench]]
 harness = false
