@@ -63,6 +63,7 @@ anyhow                      = { workspace = true }
 assert-json-diff            = { workspace = true }
 assertor                    = { workspace = true }
 bip32                       = { workspace = true }
+borsh                       = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono                      = { workspace = true }
 criterion                   = { workspace = true }
 dango-account-factory       = { workspace = true }
@@ -75,6 +76,7 @@ error-backtrace             = { workspace = true }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
 grug-crypto                 = { workspace = true }
+grug-mock-account           = { workspace = true, features = ["library"] }
 grug-mock-bank              = { workspace = true, features = ["library"] }
 grug-storage                = { workspace = true }
 grug-tester                 = { workspace = true, features = ["library"] }
@@ -84,10 +86,12 @@ itertools                   = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
 p256                        = { workspace = true }
 proptest                    = { workspace = true }
+prost                       = { workspace = true }
 rand                        = { workspace = true }
 reqwest                     = { workspace = true, features = ["json"] }
 serde                       = { workspace = true }
 test-case                   = { workspace = true }
+thiserror                   = { workspace = true }
 tokio                       = { workspace = true, features = ["full"] }
 
 [[bin]]
