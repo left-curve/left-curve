@@ -1,15 +1,14 @@
 use {
     assertor::*,
+    dango_testing::{
+        GraphQLCustomRequest, PaginationDirection, build_app_service, call_graphql_query,
+        call_ws_graphql_stream, create_block, create_blocks, events_query, paginate_events,
+        parse_graphql_subscription_response,
+    },
     graphql_client::GraphQLQuery,
     grug_types::{BroadcastClientExt, Coins, Denom, ResultExt},
     indexer_graphql_types::{
         Events, SubscribeEvents, Transactions, events, subscribe_events, transactions,
-    },
-    indexer_testing::{
-        GraphQLCustomRequest, PaginationDirection,
-        block::{create_block, create_blocks},
-        build_app_service, call_graphql_query, call_ws_graphql_stream, events_query,
-        paginate_events, parse_graphql_subscription_response,
     },
     itertools::Itertools,
     sea_orm::{EntityTrait, PaginatorTrait},

@@ -42,10 +42,6 @@ test-perps:
   RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-perps -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
 
-# Run indexer tests
-test-indexer:
-  RUST_BACKTRACE=1 cargo test --all-features --tests -p indexer-testing -- --nocapture
-
 # Check whether the code compiles
 check:
   cargo check --bins --tests --benches --examples --all-features --all-targets

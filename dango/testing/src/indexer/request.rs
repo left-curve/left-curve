@@ -36,8 +36,6 @@ pub use indexer_graphql_types::{
     events as events_query, messages as messages_query, transactions as transactions_query,
 };
 
-pub mod block;
-
 /// Direction for pagination.
 #[derive(Clone, Copy)]
 pub enum PaginationDirection {
@@ -187,7 +185,6 @@ impl_indexer_paginate!(
     transactions,
     TransactionsTransactionsNodes
 );
-pub mod setup;
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 5;
 

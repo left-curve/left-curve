@@ -2,7 +2,8 @@ use {
     crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_testing::{
-        TestOption,
+        GraphQLCustomRequest, TestOption, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
         perps::{create_perps_fill, pair_id, setup_perps_env},
         setup_test_with_indexer,
     },
@@ -11,9 +12,6 @@ use {
     indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
     indexer_graphql_types::{
         PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles,
-    },
-    indexer_testing::{
-        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, mpsc},

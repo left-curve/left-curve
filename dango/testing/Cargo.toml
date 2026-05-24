@@ -10,9 +10,14 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
+actix-codec             = { workspace = true }
+actix-http              = { workspace = true }
+actix-service           = { workspace = true }
+actix-test              = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-trait             = { workspace = true }
+awc                     = { workspace = true }
 clickhouse              = { workspace = true, features = ["test-util"] }
 dango-genesis           = { workspace = true }
 dango-oracle            = { workspace = true }
@@ -20,6 +25,8 @@ dango-order-book        = { workspace = true }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true, features = ["async-graphql"] }
 eth-utils               = { workspace = true }
+futures-util            = { workspace = true }
+graphql_client          = { workspace = true }
 grug-app                = { workspace = true }
 grug-db-disk            = { workspace = true }
 grug-db-memory          = { workspace = true }
@@ -30,18 +37,20 @@ grug-vm-rust            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-types         = { workspace = true }
 identity                = { workspace = true }
-indexer-cache           = { workspace = true, features = ["metrics", "tracing"] }
+indexer-cache           = { workspace = true, features = ["http-request-details", "metrics", "tracing"] }
 indexer-clickhouse      = { workspace = true, features = ["metrics", "testing", "tracing"] }
+indexer-graphql-types   = { workspace = true }
 indexer-hooked          = { workspace = true, features = ["tracing"] }
 indexer-httpd           = { workspace = true, features = ["metrics", "tracing"] }
 indexer-metrics         = { workspace = true }
-indexer-sql             = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
+indexer-sql             = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }
 k256                    = { workspace = true }
 pyth-client             = { workspace = true }
 pyth-types              = { workspace = true }
 rand                    = { workspace = true }
 sea-orm                 = { workspace = true }
 serde                   = { workspace = true }
+serde_json              = { workspace = true }
 sha2                    = { workspace = true }
 temp-rocksdb            = { workspace = true }
 tokio                   = { workspace = true }
@@ -63,8 +72,6 @@ eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
 grug-storage                = { workspace = true }
 hex                         = { workspace = true }
-indexer-graphql-types       = { workspace = true }
-indexer-testing             = { workspace = true }
 itertools                   = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
 proptest                    = { workspace = true }

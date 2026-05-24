@@ -1,8 +1,8 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
+    dango_testing::{build_app_service, call_api, call_api_with_headers, create_block},
     grug_types::{Block, BlockOutcome},
-    indexer_testing::{block::create_block, build_app_service, call_api, call_api_with_headers},
     serde_json::json,
 };
 

@@ -14,7 +14,7 @@ use {
 };
 
 // Re-export PaginationDirection from indexer_testing
-pub use indexer_testing::PaginationDirection;
+pub use dango_testing::PaginationDirection;
 
 // Re-export query modules from indexer_graphql_types for use in tests
 pub use indexer_graphql_types::{
@@ -78,11 +78,11 @@ where
     R: DeserializeOwned,
 {
     let app = build_actix_app(context);
-    indexer_testing::call_graphql_query(app, query_body).await
+    dango_testing::call_graphql_query(app, query_body).await
 }
 
-// Generate pagination test helpers using the shared macro from indexer_testing
-indexer_testing::impl_paginate!(
+// Generate pagination test helpers using the shared macro from dango_testing
+dango_testing::impl_paginate!(
     paginate_accounts,
     indexer_httpd::context::FullContext,
     Accounts,
@@ -91,7 +91,7 @@ indexer_testing::impl_paginate!(
     AccountsAccountsNodes,
     build_actix_app
 );
-indexer_testing::impl_paginate!(
+dango_testing::impl_paginate!(
     paginate_transfers,
     indexer_httpd::context::FullContext,
     Transfers,
@@ -100,7 +100,7 @@ indexer_testing::impl_paginate!(
     TransfersTransfersNodes,
     build_actix_app
 );
-indexer_testing::impl_paginate!(
+dango_testing::impl_paginate!(
     paginate_transactions,
     indexer_httpd::context::FullContext,
     Transactions,
@@ -109,7 +109,7 @@ indexer_testing::impl_paginate!(
     TransactionsTransactionsNodes,
     build_actix_app
 );
-indexer_testing::impl_paginate!(
+dango_testing::impl_paginate!(
     paginate_blocks,
     indexer_httpd::context::FullContext,
     Blocks,
@@ -118,7 +118,7 @@ indexer_testing::impl_paginate!(
     BlocksBlocksNodes,
     build_actix_app
 );
-indexer_testing::impl_paginate!(
+dango_testing::impl_paginate!(
     paginate_events,
     indexer_httpd::context::FullContext,
     Events,
@@ -127,7 +127,7 @@ indexer_testing::impl_paginate!(
     EventsEventsNodes,
     build_actix_app
 );
-indexer_testing::impl_paginate!(
+dango_testing::impl_paginate!(
     paginate_messages,
     indexer_httpd::context::FullContext,
     Messages,

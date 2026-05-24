@@ -5,16 +5,14 @@ use {
     },
     assertor::*,
     dango_testing::{
-        HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
+        GraphQLCustomRequest, HyperlaneTestSuite, TestOption, call_ws_graphql_stream,
+        create_user_and_account, parse_graphql_subscription_response, setup_test_with_indexer,
     },
     dango_types::{account_factory, constants::usdc},
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
     grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_graphql_types::{SubscribeTransfers, subscribe_transfers},
-    indexer_testing::{
-        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
-    },
     itertools::Itertools,
     tokio::sync::mpsc,
 };

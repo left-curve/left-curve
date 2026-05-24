@@ -46,7 +46,6 @@ members = [
   "indexer/httpd",
   "indexer/metrics",
   "indexer/sql",
-  "indexer/testing",
   "pyth/client",
   "pyth/types",
   "sdk/rust",
@@ -231,7 +230,6 @@ indexer-hooked          = { path = "indexer/hooked" }
 indexer-httpd           = { path = "indexer/httpd", features = ["tracing"] }
 indexer-metrics         = { path = "indexer/metrics" }
 indexer-sql             = { path = "indexer/sql" }
-indexer-testing         = { path = "indexer/testing" }
 pyth-client             = { path = "pyth/client" }
 pyth-types              = { path = "pyth/types" }
 

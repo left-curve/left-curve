@@ -1,14 +1,13 @@
 use {
     assertor::*,
+    dango_testing::{
+        GraphQLCustomRequest, PaginationDirection, blocks_query, build_app_service,
+        call_batch_graphql_query, call_graphql_query, call_ws_graphql_stream, create_block,
+        create_blocks, paginate_blocks, parse_graphql_subscription_response,
+    },
     graphql_client::GraphQLQuery,
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
     indexer_graphql_types::{Block, Blocks, SubscribeBlock, block, blocks, subscribe_block},
-    indexer_testing::{
-        GraphQLCustomRequest, PaginationDirection,
-        block::{create_block, create_blocks},
-        blocks_query, build_app_service, call_batch_graphql_query, call_graphql_query,
-        call_ws_graphql_stream, paginate_blocks, parse_graphql_subscription_response,
-    },
     std::str::FromStr,
     tokio::sync::mpsc,
 };
