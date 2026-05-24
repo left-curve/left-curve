@@ -1,5 +1,5 @@
 use {
-    grug_testing::{ContractBuilder, TestBuilder},
+    dango_testing::{ContractBuilder, builder::TestBuilder},
     grug_types::{Addr, Coins, Empty, Hash256, QuerierExt, ResultExt},
 };
 

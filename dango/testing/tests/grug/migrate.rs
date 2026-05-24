@@ -1,5 +1,5 @@
 use {
-    grug_testing::{TestBuilder, UploadAndInstantiateOutcomeSuccess},
+    dango_testing::{UploadAndInstantiateOutcomeSuccess, builder::TestBuilder},
     grug_types::{Coins, Empty, QuerierExt, ResultExt},
     grug_vm_rust::ContractBuilder,
     tester::{MigrateMsg, QueryV1, QueryV2RequestV1, QueryV2RequestV2},

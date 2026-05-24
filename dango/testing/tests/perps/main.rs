@@ -1,7 +1,10 @@
 use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
-    dango_testing::perps::{OracleTestEntry, pair_id, seed_oracle_prices},
+    dango_testing::{
+        TestAccounts, TestSuiteNaive,
+        perps::{OracleTestEntry, pair_id, seed_oracle_prices},
+    },
     dango_types::{
         constants::usdc,
         perps::{PairParam, Param, RateSchedule},
@@ -52,8 +55,8 @@ pub fn default_pair_param() -> PairParam {
 
 /// Register fixed oracle prices for the perps pair and settlement currency.
 pub async fn register_oracle_prices(
-    suite: &mut dango_testing::TestSuite<grug_app::NaiveProposalPreparer>,
-    accounts: &mut dango_testing::TestAccounts,
+    suite: &mut TestSuiteNaive,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
     eth_price: u128,
 ) {

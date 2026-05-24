@@ -1,6 +1,6 @@
 use {
+    dango_testing::builder::TestBuilder,
     grug_math::{NumberConst, Uint128},
-    grug_testing::TestBuilder,
     grug_types::{Coins, Empty, Message, ResultExt},
     grug_vm_rust::ContractBuilder,
     test_case::test_case,

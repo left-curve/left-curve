@@ -1,5 +1,5 @@
 use {
-    grug_testing::TestBuilder,
+    dango_testing::builder::TestBuilder,
     grug_types::{Coins, Empty, ResultExt},
     grug_vm_rust::ContractBuilder,
 };

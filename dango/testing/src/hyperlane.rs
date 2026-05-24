@@ -1,12 +1,11 @@
 use {
-    crate::{MockValidatorSets, constants::MOCK_HYPERLANE_LOCAL_DOMAIN},
+    crate::{MockValidatorSets, constants::MOCK_HYPERLANE_LOCAL_DOMAIN, suite::TestSuite},
     anyhow::anyhow,
     dango_genesis::Contracts,
     dango_types::{gateway::Domain, warp::TokenMessage},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
     grug_db_memory::MemDb,
     grug_math::Uint128,
-    grug_testing::TestSuite,
     grug_types::{Addr, Addressable, Coins, Hash256, Signer},
     grug_vm_rust::RustVm,
     hyperlane_types::{Addr32, mailbox},

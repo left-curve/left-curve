@@ -1,11 +1,15 @@
 use {
+    dango_testing::{
+        TestSuite,
+        builder::{TestAccounts, TestBuilder, new_hybrid_vm_testing},
+    },
     error_backtrace::Backtraceable,
+    grug_app::NaiveProposalPreparer,
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_tester::{
         BacktraceQueryResponse, QueryBacktraceRequest, QueryFailingQueryRequest, QueryMsg,
     },
-    grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{Addr, Binary, Coins, Denom, HashExt, QuerierExt, Query, ResultExt},
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::ContractBuilder,
@@ -23,14 +27,19 @@ fn read_wasm_file(filename: &str) -> Binary {
 
 static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("ugrug").unwrap());
 
-pub async fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Addr) {
+pub async fn setup_test() -> (
+    TestSuite<MemDb, HybridVm, NaiveProposalPreparer>,
+    TestAccounts,
+    Addr,
+    Addr,
+) {
     let rust_tester: Binary = ContractBuilder::new(Box::new(grug_tester::instantiate))
         .with_query(Box::new(grug_tester::query))
         .build()
         .to_bytes()
         .into();
 
-    let vm = HybridVm::new_testing(WASM_CACHE_CAPACITY, [rust_tester.hash256()]);
+    let vm = new_hybrid_vm_testing(WASM_CACHE_CAPACITY, [rust_tester.hash256()]);
 
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(vm)
         .add_account("owner", Coins::new())
@@ -74,6 +83,10 @@ pub async fn setup_test() -> (TestSuite<MemDb, HybridVm>, TestAccounts, Addr, Ad
 
 #[tokio::test]
 async fn backtrace() {
+    unsafe {
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
+
     let (suite, _, wasm_tester, rust_tester) = setup_test().await;
 
     let res = suite

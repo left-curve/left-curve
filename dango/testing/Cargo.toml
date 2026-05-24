@@ -24,16 +24,20 @@ dango-oracle            = { workspace = true }
 dango-order-book        = { workspace = true }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true, features = ["async-graphql"] }
+error-backtrace         = { workspace = true }
 eth-utils               = { workspace = true }
+futures                 = { workspace = true }
 futures-util            = { workspace = true }
 graphql_client          = { workspace = true }
-grug-app                = { workspace = true }
+grug-app                = { workspace = true, features = ["abci", "testing", "tracing"] }
 grug-db-disk            = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-math               = { workspace = true }
-grug-testing            = { workspace = true }
+grug-mock-account       = { workspace = true, features = ["library"] }
+grug-mock-bank          = { workspace = true, features = ["library"] }
+grug-mock-taxman        = { workspace = true, features = ["library"] }
 grug-types              = { workspace = true, features = ["async-graphql"] }
-grug-vm-hybrid          = { workspace = true, features = ["testing"] }
+grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
 grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
@@ -43,7 +47,7 @@ indexer-cache           = { workspace = true, features = ["http-request-details"
 indexer-clickhouse      = { workspace = true, features = ["metrics", "testing", "tracing"] }
 indexer-graphql-types   = { workspace = true }
 indexer-hooked          = { workspace = true, features = ["tracing"] }
-indexer-httpd           = { workspace = true, features = ["metrics", "testing", "tracing"] }
+indexer-httpd           = { workspace = true, features = ["metrics", "tracing"] }
 indexer-metrics         = { workspace = true }
 indexer-sql             = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }
 k256                    = { workspace = true }
@@ -57,6 +61,7 @@ sha2                    = { workspace = true }
 temp-rocksdb            = { workspace = true }
 tokio                   = { workspace = true }
 tracing                 = { workspace = true }
+tracing-subscriber      = { workspace = true }
 
 [dev-dependencies]
 anyhow                      = { workspace = true }
@@ -80,7 +85,7 @@ grug-mock-account           = { workspace = true, features = ["library"] }
 grug-mock-bank              = { workspace = true, features = ["library"] }
 grug-storage                = { workspace = true }
 grug-tester                 = { workspace = true, features = ["library"] }
-grug-vm-wasm                = { workspace = true, features = ["testing"] }
+grug-vm-wasm                = { workspace = true }
 hex                         = { workspace = true }
 itertools                   = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }

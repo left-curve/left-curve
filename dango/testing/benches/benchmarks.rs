@@ -28,7 +28,7 @@ fn random_string(len: usize) -> String {
 }
 
 async fn do_send<T, PP, DB, VM>(
-    suite: &mut TestSuite<PP, DB, VM>,
+    suite: &mut TestSuite<DB, VM, PP>,
     mut accounts: TestAccounts,
     codes: Codes<T>,
     contracts: Contracts,

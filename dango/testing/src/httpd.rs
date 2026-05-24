@@ -1,17 +1,15 @@
 pub use {
-    crate::{BridgeOp, Preset, TestOption},
+    crate::{BlockCreation, BridgeOp, Preset, TestOption},
     dango_genesis::GenesisOption,
-    grug_testing::BlockCreation,
     indexer_httpd::error::Error,
 };
 use {
-    crate::{MockValidatorSets, TestAccounts, setup_suite_with_db_and_vm},
+    crate::{MockClient, MockValidatorSets, TestAccounts, setup_suite_with_db_and_vm},
     anyhow::bail,
     dango_genesis::{Codes, Contracts, GenesisCodes},
     dango_proposal_preparer::ProposalPreparer,
     grug_app::SimpleCommitment,
     grug_db_memory::MemDb,
-    grug_testing::MockClient,
     grug_types::HttpdConfig,
     grug_vm_rust::{ContractWrapper, RustVm},
     indexer_hooked::HookedIndexer,

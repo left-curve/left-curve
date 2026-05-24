@@ -1,6 +1,10 @@
 use {
+    dango_testing::{
+        TestSuite,
+        builder::{TestAccounts, TestBuilder},
+    },
     error_backtrace::Backtraceable,
-    grug_app::AppError,
+    grug_app::{AppError, NaiveProposalPreparer},
     grug_crypto::{sha2_256, sha2_512},
     grug_db_memory::MemDb,
     grug_math::{MultiplyFraction, NumberConst, Udec128, Uint128},
@@ -8,7 +12,6 @@ use {
         QueryRecoverSecp256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
     },
-    grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
         Addr, Binary, Coins, Denom, GenericResult, InnerMut, Message, NonEmpty, QuerierExt,
         QueryRequest, ResultExt, VerificationError,
@@ -32,7 +35,11 @@ fn read_wasm_file(filename: &str) -> Binary {
     fs::read(path).unwrap().into()
 }
 
-async fn setup_test() -> (TestSuite<MemDb, WasmVm>, TestAccounts, Addr) {
+async fn setup_test() -> (
+    TestSuite<MemDb, WasmVm, NaiveProposalPreparer>,
+    TestAccounts,
+    Addr,
+) {
     let (mut suite, mut accounts) = TestBuilder::new_with_vm(WasmVm::new(WASM_CACHE_CAPACITY))
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(DENOM.clone(), 32_100_000).unwrap())

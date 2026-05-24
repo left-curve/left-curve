@@ -2,7 +2,7 @@ use {
     assertor::*,
     dango_gateway::REVERSE_ROUTES,
     dango_testing::{
-        HyperlaneTestSuite, TestOption,
+        BalanceChange, HyperlaneTestSuite, TestOption,
         constants::{MOCK_HYPERLANE_LOCAL_DOMAIN, mock_ethereum, mock_solana},
         setup_test, setup_test_with_indexer,
     },
@@ -13,7 +13,6 @@ use {
     },
     grug_app::Indexer,
     grug_math::{NumberConst, Uint128},
-    grug_testing::BalanceChange,
     grug_types::{Addr, Addressable, HashExt, QuerierExt, ResultExt, StdError, btree_map, coins},
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, addr32,

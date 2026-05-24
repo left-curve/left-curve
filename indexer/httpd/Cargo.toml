@@ -14,7 +14,6 @@ path = "src/lib.rs"
 
 [features]
 metrics = ["dep:actix-web-metrics", "dep:metrics"]
-testing = ["dep:grug-testing"]
 tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
 
 [dependencies]
@@ -32,7 +31,6 @@ error-backtrace         = { workspace = true }
 futures                 = { workspace = true }
 futures-util            = { workspace = true }
 grug-app                = { workspace = true, features = ["tracing"] }
-grug-testing            = { workspace = true, optional = true }
 grug-types              = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 indexer-cache           = { workspace = true }
 indexer-clickhouse      = { workspace = true, features = ["async-graphql"] }

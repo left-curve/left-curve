@@ -1,6 +1,6 @@
 use {
     dango_testing::{
-        HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite,
+        BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite,
         constants::{mock_ethereum, mock_solana},
         setup_test,
     },
@@ -9,7 +9,6 @@ use {
         gateway::{self, Origin, RateLimit, Remote, SetPersonalQuotaRequest},
     },
     grug_math::{MathError, NumberConst, Udec128, Uint128},
-    grug_testing::BalanceChange,
     grug_types::{
         Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
         coins,

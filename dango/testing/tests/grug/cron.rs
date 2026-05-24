@@ -1,5 +1,5 @@
 use {
-    grug_testing::TestBuilder,
+    dango_testing::builder::TestBuilder,
     grug_types::{
         Binary, Coin, Coins, Duration, Empty, Json, QuerierExt, ResultExt, Timestamp, btree_map,
     },

@@ -1,5 +1,6 @@
 use {
-    crate::{TestAccount, TestAccounts, TestSuite, TestVm, tracing::setup_tracing_subscriber},
+    super::{TestAccount, TestAccounts, TestVm},
+    crate::{setup_tracing_subscriber, suite::TestSuite},
     grug_app::{
         AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, UpgradeHandler,
     },

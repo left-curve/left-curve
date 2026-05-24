@@ -4,7 +4,7 @@ use {
         ChildOrder, Dimensionless, LiquidityDepthResponse, OrderId, OrderKind, Quantity,
         QueryOrdersByUserResponseItem, TimeInForce, UsdPrice, UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, TestSuiteNaive, perps::pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, OrderFilled, PairParam, Param, RateSchedule, UserState},
@@ -440,7 +440,7 @@ async fn liquidity_depth_tracking() {
         .await
         .should_succeed();
 
-    let query_depth = |suite: &dango_testing::TestSuite<_>| -> LiquidityDepthResponse {
+    let query_depth = |suite: &TestSuiteNaive| -> LiquidityDepthResponse {
         suite
             .query_wasm_smart(contracts.perps, perps::QueryLiquidityDepthRequest {
                 pair_id: pair.clone(),

@@ -1,5 +1,5 @@
 use {
-    crate::TestSuite,
+    crate::suite::TestSuite,
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     grug_types::{Addressable, Denom, Inner},
     std::{

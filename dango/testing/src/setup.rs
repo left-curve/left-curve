@@ -1,6 +1,7 @@
 use {
     crate::{
-        MockValidatorSets, Preset, TestAccount, TestAccounts,
+        ContractWrapper, MockValidatorSets, Preset, TestAccount, TestAccounts, TestSuite,
+        TestSuiteNaive, TestSuiteNaiveWithIndexer, TestSuiteWithIndexer,
         constants::{
             mock_arbitrum, mock_base, mock_ethereum, mock_optimism, mock_solana, owner, user1,
             user2, user3, user4, user5, user6, user7, user8, user9,
@@ -17,13 +18,11 @@ use {
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
     grug_math::Uint128,
-    grug_testing::ContractWrapper,
     grug_types::{Addr, Addressable, BlockInfo, Coins, Duration, Message, ResultExt, coins},
     grug_vm_rust::RustVm,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
     indexer_httpd::TendermintRpcClient,
-    pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
 };
@@ -63,20 +62,6 @@ pub struct BridgeOp {
     pub recipient: Addr,
 }
 
-pub type TestSuite<
-    PP = ProposalPreparer<PythClientCache>,
-    DB = MemDb,
-    VM = RustVm,
-    ID = NullIndexer,
-> = grug_testing::TestSuite<DB, VM, PP, ID>;
-
-pub type TestSuiteWithIndexer<
-    PP = ProposalPreparer<PythClientCache>,
-    DB = MemDb,
-    VM = RustVm,
-    ID = HookedIndexer,
-> = grug_testing::TestSuite<DB, VM, PP, ID>;
-
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with cached
 /// Pyth Lazer client, and `ContractWrapper` codes.
 ///
@@ -109,7 +94,7 @@ pub fn setup_test(
 pub fn setup_test_naive(
     test_opt: TestOption,
 ) -> (
-    TestSuite<NaiveProposalPreparer>,
+    TestSuiteNaive,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
@@ -122,7 +107,7 @@ pub fn setup_test_naive_with_custom_genesis(
     test_opt: TestOption,
     genesis_opt: GenesisOption,
 ) -> (
-    TestSuite<NaiveProposalPreparer>,
+    TestSuiteNaive,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
@@ -138,13 +123,6 @@ pub fn setup_test_naive_with_custom_genesis(
         genesis_opt,
     )
 }
-
-pub type TestSuiteNaiveWithIndexer = grug_testing::TestSuite<
-    MemDb<SimpleCommitment>,
-    grug_vm_rust::RustVm,
-    NaiveProposalPreparer,
-    indexer_hooked::HookedIndexer,
->;
 
 pub async fn setup_test_naive_with_indexer_and_create_blocks(
     test_opt: TestOption,
@@ -246,7 +224,7 @@ async fn setup_test_with_indexer_pp_and_custom_genesis<PP>(
     options: TestOption,
     genesis_opt: GenesisOption,
 ) -> (
-    grug_testing::TestSuite<MemDb<SimpleCommitment>, RustVm, PP, HookedIndexer>,
+    TestSuite<MemDb, RustVm, PP, HookedIndexer>,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
@@ -258,9 +236,7 @@ async fn setup_test_with_indexer_pp_and_custom_genesis<PP>(
 )
 where
     PP: grug_app::ProposalPreparer + Clone + Send + Sync + 'static,
-    AppError: From<<MemDb<SimpleCommitment> as Db>::Error>
-        + From<<RustVm as Vm>::Error>
-        + From<PP::Error>,
+    AppError: From<<MemDb as Db>::Error> + From<<RustVm as Vm>::Error> + From<PP::Error>,
 {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or("postgres://postgres@localhost/grug_test".to_string());
@@ -345,7 +321,7 @@ where
 pub fn setup_benchmark_rust(
     dir: &TempDataDir,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, RustVm, NullIndexer>,
+    TestSuite<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
@@ -375,7 +351,7 @@ pub fn setup_suite_with_db_and_vm<DB, VM, PP, ID>(
     test_opt: TestOption,
     genesis_opt: GenesisOption,
 ) -> (
-    TestSuite<PP, DB, VM, ID>,
+    TestSuite<DB, VM, PP, ID>,
     TestAccounts,
     Codes<VM::Code>,
     Contracts,
@@ -474,7 +450,7 @@ where
         }
     }
 
-    let suite = grug_testing::TestSuite::new_with_db_vm_indexer_and_pp(
+    let suite = TestSuite::new_with_db_vm_indexer_and_pp(
         db,
         vm,
         pp,

@@ -9,18 +9,12 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[features]
-# Implement `grug_testing::TestVm` trait for `WasmVm`, so that it can be used in
-# the test suite.
-testing = ["dep:grug-testing"]
-
 [dependencies]
 clru               = { workspace = true }
 data-encoding      = { workspace = true }
 error-backtrace    = { workspace = true }
 grug-app           = { workspace = true }
 grug-crypto        = { workspace = true }
-grug-testing       = { workspace = true, optional = true }
 grug-types         = { workspace = true }
 serde              = { workspace = true }
 thiserror          = { workspace = true }
@@ -35,7 +29,6 @@ grug-app      = { workspace = true, features = ["tracing"] }
 grug-crypto   = { workspace = true }
 grug-math     = { workspace = true }
 grug-tester   = { workspace = true, features = ["library"] }
-grug-vm-wasm  = { workspace = true, features = ["testing"] }
 identity      = { workspace = true }
 k256          = { workspace = true }
 p256          = { workspace = true }

@@ -2,7 +2,7 @@ use {
     crate::{default_pair_param, default_param},
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
     dango_testing::{
-        Factory, Preset, TestAccount, TestOption,
+        Factory, Preset, TestAccount, TestOption, TestSuiteNaive,
         perps::{OracleTestEntry, pair_id, seed_oracle_prices},
         setup_test_naive,
     },
@@ -15,7 +15,6 @@ use {
             UserReferralData,
         },
     },
-    grug_app::NaiveProposalPreparer,
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, CheckedContractEvent, Coins, Duration, HashExt, JsonDeExt, Op,
@@ -2649,7 +2648,7 @@ async fn cr_100_indirect_referrer_maker_rebate() {
 // ---------------------------------------------------------------------------
 
 async fn set_fee_share_ratio(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     ratio: FeeShareRatio,
@@ -2667,7 +2666,7 @@ async fn set_fee_share_ratio(
 }
 
 async fn set_commission_rate_override(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     owner: &mut (dyn Signer + Send + Sync),
     user: u32,
@@ -2686,11 +2685,7 @@ async fn set_commission_rate_override(
         .await
 }
 
-fn snapshot_margins(
-    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
-    perps: Addr,
-    addrs: &[Addr],
-) -> Vec<UsdValue> {
+fn snapshot_margins(suite: &TestSuiteNaive, perps: Addr, addrs: &[Addr]) -> Vec<UsdValue> {
     addrs
         .iter()
         .map(|addr| {
@@ -2704,7 +2699,7 @@ fn snapshot_margins(
 }
 
 async fn register_oracle_prices(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     accounts: &mut dango_testing::TestAccounts,
     contracts: &dango_genesis::Contracts,
     eth_price: u128,
@@ -2725,7 +2720,7 @@ async fn register_oracle_prices(
 }
 
 async fn deposit_margin(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     usd_amount: u128,
@@ -2743,7 +2738,7 @@ async fn deposit_margin(
 }
 
 async fn place_ask_order(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     price: UsdPrice,
@@ -2772,7 +2767,7 @@ async fn place_ask_order(
 }
 
 async fn place_market_buy(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     size: u128,
@@ -2799,7 +2794,7 @@ async fn place_market_buy(
 
 /// Place a limit ask (user1) then a market buy (user2) to produce a fill.
 async fn create_perps_fill(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     accounts: &mut dango_testing::TestAccounts,
     perps: Addr,
     price: u128,
@@ -2817,7 +2812,7 @@ async fn create_perps_fill(
 }
 
 async fn place_market_buy_with_events(
-    suite: &mut dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &mut TestSuiteNaive,
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     size: u128,
@@ -2844,7 +2839,7 @@ async fn place_market_buy_with_events(
 }
 
 fn query_referral_settings(
-    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &TestSuiteNaive,
     perps: Addr,
     user: u32,
 ) -> Option<ReferrerSettings> {
@@ -2854,7 +2849,7 @@ fn query_referral_settings(
 }
 
 fn query_referral_data(
-    suite: &dango_testing::TestSuite<NaiveProposalPreparer>,
+    suite: &TestSuiteNaive,
     perps: Addr,
     user: u32,
     since: Option<Timestamp>,

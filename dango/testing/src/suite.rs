@@ -17,11 +17,21 @@ use {
         StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
+    indexer_hooked::HookedIndexer,
+    pyth_client::PythClientCache,
     serde::ser::Serialize,
     std::collections::BTreeMap,
 };
 
-pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
+type PythProposalPreparer = dango_proposal_preparer::ProposalPreparer<PythClientCache>;
+
+pub type TestSuiteNaive = TestSuite<MemDb, RustVm, NaiveProposalPreparer, NullIndexer>;
+
+pub type TestSuiteWithIndexer = TestSuite<MemDb, RustVm, PythProposalPreparer, HookedIndexer>;
+
+pub type TestSuiteNaiveWithIndexer = TestSuite<MemDb, RustVm, NaiveProposalPreparer, HookedIndexer>;
+
+pub struct TestSuite<DB = MemDb, VM = RustVm, PP = PythProposalPreparer, ID = NullIndexer>
 where
     DB: Db,
     VM: Vm,
@@ -65,12 +75,12 @@ impl TestSuite {
     }
 }
 
-impl<VM> TestSuite<MemDb, VM, NaiveProposalPreparer, NullIndexer>
+impl<VM> TestSuite<MemDb, VM, PythProposalPreparer, NullIndexer>
 where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    /// Create a new test suite with `MemDb`, `NaiveProposalPreparer`, and the
+    /// Create a new test suite with `MemDb`, `PythProposalPreparer`, and the
     /// given VM.
     pub fn new_with_vm(
         vm: VM,
@@ -83,7 +93,7 @@ where
         Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             vm,
-            NaiveProposalPreparer,
+            PythProposalPreparer::new_with_cache(),
             NullIndexer,
             None,
             chain_id,
@@ -811,5 +821,49 @@ where
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         <Self as QuerierExt>::query_supplies(self, start_after, limit)
+    }
+}
+
+// ---- impl QueryApp for TestSuite ----
+
+#[async_trait::async_trait]
+impl<DB, VM, PP, ID> indexer_httpd::traits::QueryApp for TestSuite<DB, VM, PP, ID>
+where
+    DB: Db + Send + Sync + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
+    PP: ProposalPreparer + Send + Sync + 'static,
+    ID: Indexer + Send + Sync + 'static,
+    App<DB, VM, PP, ID>: indexer_httpd::traits::QueryApp,
+{
+    async fn query_app(
+        &self,
+        raw_req: grug_types::Query,
+        height: Option<u64>,
+    ) -> AppResult<(grug_types::QueryResponse, u64)> {
+        self.app.query_app(raw_req, height).await
+    }
+
+    async fn query_store(
+        &self,
+        key: &[u8],
+        height: Option<u64>,
+        prove: bool,
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
+        self.app.query_store(key, height, prove).await
+    }
+
+    async fn simulate(
+        &self,
+        unsigned_tx: grug_types::UnsignedTx,
+    ) -> AppResult<grug_types::TxOutcome> {
+        self.app.simulate(unsigned_tx).await
+    }
+
+    async fn chain_id(&self) -> AppResult<String> {
+        self.app.chain_id().await
+    }
+
+    async fn last_finalized_block(&self) -> AppResult<grug_types::BlockInfo> {
+        self.app.last_finalized_block().await
     }
 }

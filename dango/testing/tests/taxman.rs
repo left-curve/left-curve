@@ -1,8 +1,7 @@
 use {
-    dango_testing::setup_test_naive,
+    dango_testing::{BalanceChange, setup_test_naive},
     dango_types::{constants::usdc, taxman},
     grug_math::{MultiplyFraction, Udec128, Uint128},
-    grug_testing::BalanceChange,
     grug_types::{Addressable, Coins, Inner, ResultExt, btree_map},
 };
 

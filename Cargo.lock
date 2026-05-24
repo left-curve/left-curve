@@ -3928,6 +3928,7 @@ dependencies = [
  "async-trait",
  "awc",
  "bip32",
+ "borsh",
  "chrono",
  "clickhouse",
  "criterion",
@@ -3941,17 +3942,26 @@ dependencies = [
  "dango-proposal-preparer",
  "dango-taxman",
  "dango-types",
+ "ed25519-dalek",
+ "error-backtrace",
  "eth-utils",
+ "futures",
  "futures-util",
  "graphql_client",
  "grug-app",
+ "grug-crypto",
  "grug-db-disk",
  "grug-db-memory",
  "grug-math",
+ "grug-mock-account",
+ "grug-mock-bank",
+ "grug-mock-taxman",
  "grug-storage",
- "grug-testing",
+ "grug-tester",
  "grug-types",
+ "grug-vm-hybrid",
  "grug-vm-rust",
+ "grug-vm-wasm",
  "hex",
  "hex-literal",
  "hyperlane-types",
@@ -3966,7 +3976,9 @@ dependencies = [
  "itertools 0.14.0",
  "k256",
  "metrics-exporter-prometheus",
+ "p256 0.13.2",
  "proptest",
+ "prost 0.14.3",
  "pyth-client",
  "pyth-types",
  "rand 0.8.5",
@@ -3977,8 +3989,10 @@ dependencies = [
  "sha2 0.10.9",
  "temp-rocksdb",
  "test-case",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5449,37 +5463,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-testing"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "borsh",
- "error-backtrace",
- "futures",
- "grug-app",
- "grug-db-memory",
- "grug-math",
- "grug-mock-account",
- "grug-mock-bank",
- "grug-mock-taxman",
- "grug-storage",
- "grug-types",
- "grug-vm-rust",
- "identity",
- "k256",
- "prost 0.14.3",
- "rand 0.8.5",
- "reqwest 0.13.2",
- "serde",
- "test-case",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "grug-types"
 version = "0.0.0"
 dependencies = [
@@ -5493,7 +5476,6 @@ dependencies = [
  "grug-crypto",
  "grug-macros",
  "grug-math",
- "grug-testing",
  "hex-literal",
  "metrics",
  "ouroboros",
@@ -5513,7 +5495,6 @@ dependencies = [
  "tendermint-rpc",
  "test-case",
  "thiserror 2.0.18",
- "tokio",
 ]
 
 [[package]]
@@ -5522,17 +5503,10 @@ version = "0.0.0"
 dependencies = [
  "error-backtrace",
  "grug-app",
- "grug-db-memory",
- "grug-math",
- "grug-tester",
- "grug-testing",
  "grug-types",
- "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
  "thiserror 2.0.18",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -5543,12 +5517,10 @@ dependencies = [
  "error-backtrace",
  "grug-app",
  "grug-math",
- "grug-testing",
  "grug-types",
  "serde",
  "test-case",
  "thiserror 2.0.18",
- "tokio",
 ]
 
 [[package]]
@@ -5562,13 +5534,9 @@ dependencies = [
  "error-backtrace",
  "grug-app",
  "grug-crypto",
- "grug-db-memory",
  "grug-math",
- "grug-mock-bank",
  "grug-tester",
- "grug-testing",
  "grug-types",
- "grug-vm-wasm",
  "identity",
  "k256",
  "p256 0.13.2",
@@ -6352,7 +6320,6 @@ dependencies = [
  "futures",
  "futures-util",
  "grug-app",
- "grug-testing",
  "grug-types",
  "indexer-cache",
  "indexer-clickhouse",
@@ -8446,7 +8413,6 @@ dependencies = [
  "axum",
  "disk-saver",
  "dotenvy",
- "grug-testing",
  "grug-types",
  "metrics",
  "pyth-lazer-client",
