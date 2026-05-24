@@ -10,15 +10,9 @@ use {
     grug_types::{Addr, Binary, Coins, HashExt, QuerierExt, Query, ResultExt},
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::{ContractBuilder, RustVm},
-    std::fs,
 };
 
-const WASM_CACHE_CAPACITY: usize = 10;
-
-fn read_wasm_file(filename: &str) -> Binary {
-    let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
-    fs::read(path).unwrap().into()
-}
+use super::{WASM_CACHE_CAPACITY, read_wasm_file};
 
 pub async fn setup_test() -> (
     TestSuite<MemDb, HybridVm, NaiveProposalPreparer>,

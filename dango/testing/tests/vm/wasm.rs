@@ -19,16 +19,11 @@ use {
     identity::{Identity256, Identity512},
     rand::rngs::OsRng,
     serde::{Serialize, de::DeserializeOwned},
-    std::{fmt::Debug, fs, vec},
+    std::{fmt::Debug, vec},
     test_case::test_case,
 };
 
-const WASM_CACHE_CAPACITY: usize = 10;
-
-fn read_wasm_file(filename: &str) -> Binary {
-    let path = format!("{}/testdata/{filename}", env!("CARGO_MANIFEST_DIR"));
-    fs::read(path).unwrap().into()
-}
+use super::{WASM_CACHE_CAPACITY, read_wasm_file};
 
 async fn setup_test() -> (
     TestSuite<MemDb, HybridVm, NaiveProposalPreparer>,
