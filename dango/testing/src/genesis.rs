@@ -3,8 +3,9 @@ use {
         BridgeOp, TestOption,
         constants::{
             DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP,
-            mock_arbitrum, mock_base, mock_ethereum, mock_optimism, mock_solana, owner, user1,
-            user2, user3, user4, user5, user6, user7, user8, user9,
+            MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES, mock_arbitrum,
+            mock_base, mock_ethereum, mock_optimism, mock_solana, owner, user1, user2, user3,
+            user4, user5, user6, user7, user8, user9,
         },
     },
     dango_genesis::{
@@ -27,9 +28,6 @@ use {
     grug_types::{
         Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, Op, Timestamp, btree_map, btree_set,
-    },
-    hyperlane_testing::constants::{
-        MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
     },
     hyperlane_types::isms::multisig::ValidatorSet,
     pyth_types::constants::LAZER_TRUSTED_SIGNER,

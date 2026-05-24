@@ -1,6 +1,6 @@
 use {
     dango_testing::{
-        HyperlaneTestSuite, TestOption, TestSuite,
+        HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite,
         constants::{mock_ethereum, mock_solana},
         setup_test,
     },
@@ -14,7 +14,6 @@ use {
         Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
         coins,
     },
-    hyperlane_testing::MockValidatorSet,
     hyperlane_types::{Addr32, isms},
 };
 

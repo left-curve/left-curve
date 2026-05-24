@@ -10,45 +10,45 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-actix-web                = { workspace = true }
-anyhow                   = { workspace = true }
-async-trait              = { workspace = true }
-clickhouse               = { workspace = true, features = ["test-util"] }
-dango-genesis            = { workspace = true }
-dango-oracle             = { workspace = true }
-dango-order-book         = { workspace = true }
-dango-proposal-preparer  = { workspace = true }
-dango-types              = { workspace = true, features = ["async-graphql"] }
-grug-app                 = { workspace = true }
-grug-db-disk             = { workspace = true }
-grug-db-memory           = { workspace = true }
-grug-math                = { workspace = true }
-grug-testing             = { workspace = true }
-grug-types               = { workspace = true, features = ["async-graphql"] }
-grug-vm-rust             = { workspace = true }
-hex-literal              = { workspace = true }
-hyperlane-testing        = { workspace = true }
-hyperlane-types          = { workspace = true }
-identity                 = { workspace = true }
-indexer-cache            = { workspace = true, features = ["metrics", "tracing"] }
-indexer-clickhouse       = { workspace = true, features = ["metrics", "testing", "tracing"] }
-indexer-hooked           = { workspace = true, features = ["tracing"] }
-indexer-httpd            = { workspace = true, features = ["metrics", "tracing"] }
-indexer-metrics          = { workspace = true }
-indexer-sql              = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
-k256                     = { workspace = true }
-pyth-client              = { workspace = true }
-pyth-types               = { workspace = true }
-sea-orm                  = { workspace = true }
-serde                    = { workspace = true }
-sha2                     = { workspace = true }
-temp-rocksdb             = { workspace = true }
-tokio                    = { workspace = true }
-tracing                  = { workspace = true }
+actix-web               = { workspace = true }
+anyhow                  = { workspace = true }
+async-trait             = { workspace = true }
+clickhouse              = { workspace = true, features = ["test-util"] }
+dango-genesis           = { workspace = true }
+dango-oracle            = { workspace = true }
+dango-order-book        = { workspace = true }
+dango-proposal-preparer = { workspace = true }
+dango-types             = { workspace = true, features = ["async-graphql"] }
+eth-utils               = { workspace = true }
+grug-app                = { workspace = true }
+grug-db-disk            = { workspace = true }
+grug-db-memory          = { workspace = true }
+grug-math               = { workspace = true }
+grug-testing            = { workspace = true }
+grug-types              = { workspace = true, features = ["async-graphql"] }
+grug-vm-rust            = { workspace = true }
+hex-literal             = { workspace = true }
+hyperlane-types         = { workspace = true }
+identity                = { workspace = true }
+indexer-cache           = { workspace = true, features = ["metrics", "tracing"] }
+indexer-clickhouse      = { workspace = true, features = ["metrics", "testing", "tracing"] }
+indexer-hooked          = { workspace = true, features = ["tracing"] }
+indexer-httpd           = { workspace = true, features = ["metrics", "tracing"] }
+indexer-metrics         = { workspace = true }
+indexer-sql             = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
+k256                    = { workspace = true }
+pyth-client             = { workspace = true }
+pyth-types              = { workspace = true }
+rand                    = { workspace = true }
+sea-orm                 = { workspace = true }
+serde                   = { workspace = true }
+sha2                    = { workspace = true }
+temp-rocksdb            = { workspace = true }
+tokio                   = { workspace = true }
+tracing                 = { workspace = true }
 
 [dev-dependencies]
 anyhow                      = { workspace = true }
-grug-storage                = { workspace = true }
 assert-json-diff            = { workspace = true }
 assertor                    = { workspace = true }
 bip32                       = { workspace = true }
@@ -61,6 +61,7 @@ dango-gateway               = { workspace = true }
 dango-taxman                = { workspace = true }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
+grug-storage                = { workspace = true }
 hex                         = { workspace = true }
 indexer-graphql-types       = { workspace = true }
 indexer-testing             = { workspace = true }

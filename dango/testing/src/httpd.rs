@@ -5,7 +5,7 @@ pub use {
     indexer_httpd::error::Error,
 };
 use {
-    crate::{TestAccounts, setup_suite_with_db_and_vm},
+    crate::{MockValidatorSets, TestAccounts, setup_suite_with_db_and_vm},
     anyhow::bail,
     dango_genesis::{Codes, Contracts, GenesisCodes},
     dango_proposal_preparer::ProposalPreparer,
@@ -14,7 +14,6 @@ use {
     grug_testing::MockClient,
     grug_types::HttpdConfig,
     grug_vm_rust::{ContractWrapper, RustVm},
-    hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
     std::{
         collections::HashSet,

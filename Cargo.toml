@@ -37,7 +37,6 @@ members = [
   "grug/vm/wasm",
   "hyperlane/isms/multisig",
   "hyperlane/mailbox",
-  "hyperlane/testing",
   "hyperlane/types",
   "hyperlane/va",
   "indexer/cache",
@@ -223,7 +222,6 @@ grug-vm-rust            = { path = "grug/vm/rust" }
 grug-vm-wasm            = { path = "grug/vm/wasm" }
 hyperlane-ism           = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox       = { path = "hyperlane/mailbox" }
-hyperlane-testing       = { path = "hyperlane/testing" }
 hyperlane-types         = { path = "hyperlane/types" }
 hyperlane-va            = { path = "hyperlane/va" }
 indexer-cache           = { path = "indexer/cache" }

@@ -1,11 +1,10 @@
 use {
-    dango_testing::{generate_random_key, setup_test},
+    dango_testing::{constants::MOCK_HYPERLANE_LOCAL_DOMAIN, generate_random_key, setup_test},
     dango_types::constants::{dango, usdc},
     grug_types::{
         Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, Inner, JsonDeExt, QuerierExt,
         ResultExt, SearchEvent, UniqueVec, btree_set, coins,
     },
-    hyperlane_testing::constants::MOCK_HYPERLANE_LOCAL_DOMAIN,
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         mailbox::Domain,

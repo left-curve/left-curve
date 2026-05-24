@@ -1,6 +1,6 @@
 use {
     crate::{
-        Preset, TestAccount, TestAccounts,
+        MockValidatorSets, Preset, TestAccount, TestAccounts,
         constants::{
             mock_arbitrum, mock_base, mock_ethereum, mock_optimism, mock_solana, owner, user1,
             user2, user3, user4, user5, user6, user7, user8, user9,
@@ -19,7 +19,6 @@ use {
     grug_testing::ContractWrapper,
     grug_types::{Addr, BlockInfo, Coins, Duration, Message},
     grug_vm_rust::RustVm,
-    hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
     indexer_httpd::TendermintRpcClient,

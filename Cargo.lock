@@ -3948,7 +3948,6 @@ dependencies = [
  "grug-vm-rust",
  "hex",
  "hex-literal",
- "hyperlane-testing",
  "hyperlane-types",
  "identity",
  "indexer-cache",
@@ -6048,18 +6047,6 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "hyperlane-types",
-]
-
-[[package]]
-name = "hyperlane-testing"
-version = "0.0.0"
-dependencies = [
- "eth-utils",
- "grug-types",
- "hex-literal",
- "hyperlane-types",
- "k256",
- "rand 0.8.5",
 ]
 
 [[package]]

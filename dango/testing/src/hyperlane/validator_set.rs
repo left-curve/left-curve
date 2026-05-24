@@ -58,6 +58,7 @@ impl Nonce {
         }
     }
 }
+
 /// A mock up Hyperlane validator set for testing purpose.
 #[derive(Clone)]
 pub struct MockValidatorSet {
