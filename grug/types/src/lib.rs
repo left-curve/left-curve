@@ -1,3 +1,6 @@
+#[cfg(feature = "macros")]
+pub use grug_macros::{QueryRequest, derive, event};
+
 mod address;
 mod app;
 mod bank;

@@ -11,9 +11,10 @@ use {
             self, Deleveraged, Liquidated, OrderFilled, PairParam, Param, RateSchedule, UserState,
         },
     },
-    grug::{
+    grug_math::Uint128,
+    grug_types::{
         Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, Uint128, btree_map,
+        SearchEvent, btree_map,
     },
     std::collections::BTreeMap,
 };

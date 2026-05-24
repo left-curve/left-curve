@@ -26,9 +26,10 @@ use {
         validate_slippage, walk_book,
     },
     dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
-    grug::{
-        Addr, EventBuilder, MathResult, MutableCtx, Number, NumberConst, Order as IterationOrder,
-        QuerierWrapper, Response, Storage, Timestamp,
+    grug_math::{MathResult, Number, NumberConst},
+    grug_types::{
+        Addr, EventBuilder, MutableCtx, Order as IterationOrder, QuerierWrapper, Response, Storage,
+        Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -1142,7 +1143,7 @@ pub fn settle_fill(
         FillId,
         bool,
     )>,
-) -> grug::StdResult<FillSettlement> {
+) -> grug_types::StdResult<FillSettlement> {
     let (closing, opening) = {
         let current_pos = user_state
             .positions
@@ -1649,7 +1650,8 @@ mod tests {
             oracle::Price,
             perps::{Position, RateSchedule},
         },
-        grug::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, Uint64, hash_map},
+        grug_math::Uint64,
+        grug_types::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, hash_map},
         pyth_types::MarketSession,
     };
 

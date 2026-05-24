@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait,
-    grug::{Lengthy, NonEmpty},
+    grug_types::{Lengthy, NonEmpty},
     pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     std::{fmt::Display, pin::Pin},
 };

@@ -16,9 +16,10 @@ use {
         account_factory::{self, UserIndex},
         perps::UserReferralData,
     },
-    grug::{
+    grug_storage::StorageQuerier,
+    grug_types::{
         Addr, Bound, Order as IterationOrder, QuerierExt, QuerierWrapper, StdResult, Storage,
-        StorageQuerier, Timestamp,
+        Timestamp,
     },
     std::collections::BTreeMap,
 };

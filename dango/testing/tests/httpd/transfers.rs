@@ -9,8 +9,8 @@ use {
     },
     dango_types::{account_factory, constants::usdc},
     graphql_client::GraphQLQuery,
-    grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
+    grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_graphql_types::{SubscribeTransfers, subscribe_transfers},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,

@@ -1,5 +1,5 @@
 use {
-    grug::ByteArray,
+    grug_types::ByteArray,
     identity::Identity256,
     k256::{
         ecdsa::{Signature, SigningKey, signature::DigestSigner},

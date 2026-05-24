@@ -1,6 +1,7 @@
 use {
     dango_types::oracle::{Price, PriceSource},
-    grug::{Denom, Map, Serde, Timestamp},
+    grug_storage::{Map, Serde},
+    grug_types::{Denom, Timestamp},
     pyth_types::PythId,
 };
 

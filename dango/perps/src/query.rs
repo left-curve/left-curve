@@ -30,9 +30,10 @@ use {
             UserReferralData, UserState, UserStateExtended, VaultSnapshot,
         },
     },
-    grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, MultiIndex, Order as IterationOrder,
-        PrefixBound, PrimaryKey, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
+    grug_storage::{MultiIndex, PrefixBound, PrimaryKey, StorageQuerier},
+    grug_types::{
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, QuerierWrapper,
+        StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };

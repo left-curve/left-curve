@@ -15,6 +15,9 @@ version       = { workspace = true }
 ignored = ["strum"]
 
 [features]
+default = ["macros"]
+# Re-export procedural macros from grug-macros (derive, event, QueryRequest).
+macros = ["dep:grug-macros"]
 # Derive async-graphql traits for certain types.
 async-graphql = ["dep:async-graphql"]
 # Include methods to convert `Timestamp` to:
@@ -33,6 +36,7 @@ metrics = ["dep:metrics"]
 
 [dependencies]
 async-graphql   = { workspace = true, optional = true }
+grug-macros     = { workspace = true, optional = true }
 borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono          = { workspace = true, optional = true }
 data-encoding   = { workspace = true }
@@ -63,4 +67,6 @@ async-trait = { workspace = true }
 grug-crypto = { workspace = true }
 
 [dev-dependencies]
-test-case = { workspace = true }
+grug-testing = { workspace = true }
+test-case    = { workspace = true }
+tokio        = { workspace = true }

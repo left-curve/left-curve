@@ -26,7 +26,8 @@ pub use {
 };
 
 use {
-    grug::{Bounded, Part, Udec128, ZeroInclusiveOneExclusive},
+    grug_math::Udec128,
+    grug_types::{Bounded, Part, ZeroInclusiveOneExclusive},
     std::sync::LazyLock,
 };
 

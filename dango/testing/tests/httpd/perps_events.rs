@@ -7,8 +7,8 @@ use {
         setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
-    grug::Addressable,
     grug_app::Indexer,
+    grug_types::Addressable,
     indexer_graphql_types::{PerpsEvents, perps_events},
 };
 

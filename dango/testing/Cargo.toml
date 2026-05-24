@@ -19,10 +19,11 @@ dango-oracle             = { workspace = true }
 dango-order-book         = { workspace = true }
 dango-proposal-preparer  = { workspace = true }
 dango-types              = { workspace = true, features = ["async-graphql"] }
-grug                     = { workspace = true }
 grug-app                 = { workspace = true }
 grug-db-disk             = { workspace = true }
 grug-db-memory           = { workspace = true }
+grug-math                = { workspace = true }
+grug-testing             = { workspace = true }
 grug-types               = { workspace = true, features = ["async-graphql"] }
 grug-vm-rust             = { workspace = true }
 hex-literal              = { workspace = true }
@@ -46,6 +47,7 @@ tokio                    = { workspace = true }
 
 [dev-dependencies]
 anyhow                      = { workspace = true }
+grug-storage                = { workspace = true }
 assert-json-diff            = { workspace = true }
 assertor                    = { workspace = true }
 bip32                       = { workspace = true }

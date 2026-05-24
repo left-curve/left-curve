@@ -9,7 +9,7 @@ use {
         account_factory::{self},
         perps::FeeShareRatio,
     },
-    grug::{MutableCtx, QuerierExt, Response},
+    grug_types::{MutableCtx, QuerierExt, Response},
 };
 
 /// Maximum fee share ratio a referrer can set.

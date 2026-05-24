@@ -48,14 +48,14 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     quote::quote! {
         #input
 
-        impl ::grug::EventName for #input_name {
+        impl ::grug_types::EventName for #input_name {
             const EVENT_NAME: &'static str = #name;
         }
 
-        impl TryFrom<#input_name> for ::grug::ContractEvent {
-            type Error = ::grug::StdError;
+        impl TryFrom<#input_name> for ::grug_types::ContractEvent {
+            type Error = ::grug_types::StdError;
 
-            fn try_from(event: #input_name) -> ::grug::StdResult<Self> {
+            fn try_from(event: #input_name) -> ::grug_types::StdResult<Self> {
                 Self::new(&event)
             }
         }

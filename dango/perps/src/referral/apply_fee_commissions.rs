@@ -15,7 +15,7 @@ use {
             FeeDistributed, FeeShareRatio, Param, Referee, Referrer, ReferrerSettings, UserState,
         },
     },
-    grug::{Addr, EventBuilder, QuerierWrapper, StdResult, Storage, Timestamp},
+    grug_types::{Addr, EventBuilder, QuerierWrapper, StdResult, Storage, Timestamp},
     std::collections::BTreeMap,
 };
 

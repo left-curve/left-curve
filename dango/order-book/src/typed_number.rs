@@ -1,11 +1,12 @@
 //! A Rust type system that encapsulates the dimensionality of values.
 
 use {
-    grug::{
-        Dec128_6, Duration, Exponentiate, Inner, Int128, IsZero, MathError, MathResult,
-        MultiplyFraction, Number as _, NumberConst, PrimaryKey, RawKey, Sign, Signed, StdResult,
-        Uint128, Unsigned,
+    grug_math::{
+        Dec128_6, Exponentiate, Int128, IsZero, MathError, MathResult, MultiplyFraction,
+        Number as _, NumberConst, Sign, Signed, Uint128, Unsigned,
     },
+    grug_storage::{PrimaryKey, RawKey},
+    grug_types::{Duration, Inner, StdResult},
     std::{
         fmt,
         marker::PhantomData,

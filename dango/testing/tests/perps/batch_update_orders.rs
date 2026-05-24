@@ -16,9 +16,10 @@ use {
             UserReferralData,
         },
     },
-    grug::{
+    grug_math::{Uint64, Uint128},
+    grug_types::{
         Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, QuerierExt,
-        ResultExt, SearchEvent, Timestamp, Uint64, Uint128, btree_map,
+        ResultExt, SearchEvent, Timestamp, btree_map,
     },
     std::collections::BTreeMap,
 };

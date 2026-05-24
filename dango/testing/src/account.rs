@@ -9,12 +9,12 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
     },
-    grug::{
+    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
+    grug_types::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
         ResultExt, SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
     },
-    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
     sha2::Sha256,
     std::{array, collections::BTreeMap},

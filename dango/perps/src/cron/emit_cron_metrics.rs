@@ -5,7 +5,7 @@ use {
         state::{STATE, USER_STATES},
     },
     dango_oracle::OracleQuerier,
-    grug::{Addr, Inner, Storage},
+    grug_types::{Addr, Inner, Storage},
     std::time::Instant,
 };
 

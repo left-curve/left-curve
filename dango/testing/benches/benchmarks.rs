@@ -8,8 +8,10 @@ use {
         account_factory::{self, Salt},
         constants::usdc,
     },
-    grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
     grug_app::{AppError, Db, ProposalPreparer, Vm},
+    grug_types::{
+        Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins,
+    },
     rand::{Rng, distributions::Alphanumeric},
     std::time::Duration,
     temp_rocksdb::TempDataDir,

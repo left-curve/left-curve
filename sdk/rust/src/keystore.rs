@@ -2,7 +2,7 @@ use {
     crate::Secret,
     aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, aead::Aead},
     anyhow::anyhow,
-    grug::{Binary, ByteArray, JsonDeExt, JsonSerExt},
+    grug_types::{Binary, ByteArray, JsonDeExt, JsonSerExt},
     pbkdf2::pbkdf2_hmac,
     rand::{Rng, rngs::OsRng},
     sha2::Sha256,
@@ -16,7 +16,7 @@ const PBKDF2_KEY_LEN: usize = 32;
 const AES256GCM_NONCE_LEN: usize = 12;
 
 /// Data structure for encrypting a 32-byte private key before saving on disk.
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct Keystore {
     pub pk: ByteArray<SECP256K1_COMPRESSED_PUBKEY_LEN>,
     pub salt: ByteArray<PBKDF2_SALT_LEN>,

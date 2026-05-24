@@ -5,7 +5,7 @@ use {
         constants::btc,
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
     },
-    grug::{
+    grug_types::{
         Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
         btree_map,
     },

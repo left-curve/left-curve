@@ -9,11 +9,16 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+default = ["macros"]
+macros = ["dep:grug-macros"]
+
 [dependencies]
 bnum       = { workspace = true }
 borsh      = { workspace = true }
-grug-math  = { workspace = true }
-grug-types = { workspace = true }
+grug-macros = { workspace = true, optional = true }
+grug-math   = { workspace = true }
+grug-types  = { workspace = true }
 prost      = { workspace = true }
 serde      = { workspace = true }
 

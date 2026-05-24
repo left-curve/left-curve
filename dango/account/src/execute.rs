@@ -1,6 +1,6 @@
 use {
     dango_types::account::InstantiateMsg,
-    grug::{AuthCtx, MutableCtx, Response, Tx},
+    grug_types::{AuthCtx, MutableCtx, Response, Tx},
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {

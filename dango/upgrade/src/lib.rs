@@ -5,8 +5,8 @@ mod perps;
 mod taxman;
 
 use {
-    grug::{BlockInfo, Storage},
     grug_app::AppResult,
+    grug_types::{BlockInfo, Storage},
 };
 
 pub fn do_upgrade<VM>(mut storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {

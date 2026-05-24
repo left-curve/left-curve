@@ -6,7 +6,9 @@ use {
         remove_order,
     },
     dango_types::perps::{PairParam, UserState},
-    grug::{Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage},
+    grug_types::{
+        Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage,
+    },
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -272,8 +274,9 @@ mod tests {
             UsdPrice, UsdValue,
         },
         dango_types::perps::{PairParam, Position, UserState},
-        grug::{
-            Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp, Uint64,
+        grug_math::Uint64,
+        grug_types::{
+            Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp,
         },
         std::collections::{BTreeMap, VecDeque},
     };

@@ -1,4 +1,7 @@
-use grug::{Addr, Coin, HexByteArray, Item, Map, UniqueVec};
+use {
+    grug_storage::{Item, Map},
+    grug_types::{Addr, Coin, HexByteArray, UniqueVec},
+};
 
 pub const MAILBOX: Item<Addr> = Item::new("mailbox");
 

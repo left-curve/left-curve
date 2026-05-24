@@ -8,12 +8,13 @@ use {
         oracle::{self, Price, PriceSource},
         perps,
     },
-    grug::{
-        Addr, BorshSerExt, Coins, Denom, ResultExt, Signer, Storage, TestSuite, Timestamp, Uint128,
-        btree_map, concat,
-    },
     grug_app::{AppError, CONTRACT_NAMESPACE, Indexer, ProposalPreparer},
     grug_db_memory::MemDb,
+    grug_math::Uint128,
+    grug_testing::TestSuite,
+    grug_types::{
+        Addr, BorshSerExt, Coins, Denom, ResultExt, Signer, Storage, Timestamp, btree_map, concat,
+    },
     grug_vm_rust::RustVm,
     pyth_types::{Channel, MarketSession, PythId},
     std::collections::BTreeMap,

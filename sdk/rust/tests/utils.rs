@@ -3,7 +3,7 @@ use {
     dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
     dango_sdk::HttpClient,
     dango_testing::{Preset, TestAccounts, TestOption},
-    grug::BlockCreation,
+    grug_testing::BlockCreation,
 };
 
 pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {

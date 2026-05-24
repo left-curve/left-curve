@@ -3,10 +3,11 @@ use {
     chrono::{DateTime, Utc},
     dango_order_book::{Quantity, UsdPrice, UsdValue},
     dango_types::perps::{Deleveraged, FeeDistributed, OrderFilled},
-    grug::{
+    grug_math::{IsZero, Number as _, NumberConst, Sign, Signed, Udec128_6},
+    grug_types::{
         Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
-        EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, IsZero,
-        JsonDeExt, NaiveFlatten, Number as _, NumberConst, SearchEvent, Sign, Signed, Udec128_6,
+        EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, JsonDeExt,
+        NaiveFlatten, SearchEvent,
     },
 };
 
@@ -464,7 +465,8 @@ mod tests {
     use {
         super::*,
         dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
-        grug::{Denom, Uint64},
+        grug_math::Uint64,
+        grug_types::Denom,
         std::str::FromStr,
     };
 
@@ -515,7 +517,7 @@ mod tests {
             .unwrap()
             .checked_mul(1_000_000)
             .unwrap();
-        Udec128_6::raw(grug::Uint128::new(raw))
+        Udec128_6::raw(grug_math::Uint128::new(raw))
     }
 
     /// `OrderFilled` events come in pairs (maker/taker) sharing one

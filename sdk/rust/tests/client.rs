@@ -3,7 +3,7 @@ use {
     dango_sdk::{SubscribeBlock, WsClient, subscribe_block},
     dango_types::constants::usdc,
     futures::StreamExt,
-    grug::{
+    grug_types::{
         BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
     },
     std::time::Duration,

@@ -1,8 +1,9 @@
-use grug::{IndexedMap, MockStorage, MultiIndex, Order, StdResult, UniqueIndex};
+use {
+    grug_storage::{IndexedMap, MultiIndex, UniqueIndex},
+    grug_types::{MockStorage, Order, StdResult},
+};
 
-// To test the most general case, we create an index map where both the key and
-// value are tuples.
-#[grug::index_list((u8, u64), (i8, i64))]
+#[grug_storage::index_list((u8, u64), (i8, i64))]
 struct TestIndexes<'a> {
     pub foo: MultiIndex<'a, (u8, u64), u8, (i8, i64)>,
     pub bar: UniqueIndex<'a, (u8, u64), i64, (i8, i64)>,

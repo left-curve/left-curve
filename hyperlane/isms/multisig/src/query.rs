@@ -1,7 +1,7 @@
 use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
-    grug::{
+    grug_types::{
         Bound, DEFAULT_PAGE_LIMIT, HashExt, HexByteArray, ImmutableCtx, Inner, Json, JsonSerExt,
         Order, StdResult,
     },
@@ -150,7 +150,7 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
 mod tests {
     use {
         super::*,
-        grug::{Inner, MockContext, ResultExt, btree_set},
+        grug_types::{Inner, MockContext, ResultExt, btree_set},
         hex_literal::hex,
         hyperlane_types::{Addr32, IncrementalMerkleTree, addr32, mailbox::MAILBOX_VERSION},
         identity::Identity256,

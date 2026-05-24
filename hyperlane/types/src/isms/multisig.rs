@@ -2,11 +2,11 @@ use {
     super::IsmQueryResponse,
     crate::{Addr32, isms::IsmQuery, mailbox::Domain},
     anyhow::ensure,
-    grug::{Hash256, HexBinary, HexByteArray, Inner},
+    grug_types::{Hash256, HexBinary, HexByteArray, Inner},
     std::collections::{BTreeMap, BTreeSet},
 };
 
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub struct ValidatorSet {
     pub threshold: u32,
     // A validator is identified by an Ethereum address. However we avoid using
@@ -15,7 +15,7 @@ pub struct ValidatorSet {
     pub validators: BTreeSet<HexByteArray<20>>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct Metadata {
     pub origin_merkle_tree: Addr32,
     pub merkle_root: Hash256,
@@ -63,12 +63,12 @@ impl Metadata {
 
 // --------------------------------- messages ----------------------------------
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     pub validator_sets: BTreeMap<Domain, ValidatorSet>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Set validators for a domain.
     SetValidators {
@@ -78,7 +78,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the validator set for a domain.
     #[returns(ValidatorSet)]

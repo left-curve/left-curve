@@ -1,11 +1,11 @@
 use {
     error_backtrace::BacktracedError,
-    grug::{Binary, Empty, Query, QueryResponse},
+    grug_types::{Binary, Empty, Query, QueryResponse},
 };
 
 pub type InstantiateMsg = Empty;
 
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub enum ExecuteMsg {
     /// Perform an infinite loop. Test if the VM can properly halt execution
     /// when gas is exhausted.
@@ -26,7 +26,7 @@ pub enum ExecuteMsg {
     StackOverflow {},
 }
 
-#[grug::derive(Serde, Borsh, QueryRequest)]
+#[grug_types::derive(Serde, Borsh, QueryRequest)]
 pub enum QueryMsg {
     #[returns(())]
     FailingQuery { msg: String },
@@ -106,7 +106,7 @@ pub enum QueryMsg {
     },
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum BacktraceQueryResponse {
     Ok(QueryResponse),
     Err(BacktracedError<String>),

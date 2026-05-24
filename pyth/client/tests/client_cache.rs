@@ -3,7 +3,7 @@ pub mod common_function;
 use {
     crate::common_function::test_stream,
     disk_saver::persistence::DiskPersistence,
-    grug::NonEmpty,
+    grug_types::NonEmpty,
     pyth_client::{PYTH_CACHE_SAMPLES, PythClientCache},
     pyth_types::{
         LeEcdsaMessage,

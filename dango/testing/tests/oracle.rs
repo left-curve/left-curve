@@ -5,11 +5,12 @@ use {
         constants::{btc, eth},
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryTrustedSignersRequest},
     },
-    grug::{
-        Addr, Binary, ByteArray, Coins, Dec128_6, NonEmpty, QuerierExt, ResultExt, Timestamp,
+    grug_app::NaiveProposalPreparer,
+    grug_math::Dec128_6,
+    grug_types::{
+        Addr, Binary, ByteArray, Coins, Duration, NonEmpty, QuerierExt, ResultExt, Timestamp,
         btree_map,
     },
-    grug_app::NaiveProposalPreparer,
     pyth_types::{Channel, LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
     std::str::FromStr,
 };
@@ -90,7 +91,7 @@ async fn pyth_lazer() {
             oracle,
             &ExecuteMsg::RegisterTrustedSigner {
                 public_key: trusted_signer.clone(),
-                expires_at: current_time - grug::Duration::from_seconds(60), // 1 minute ago
+                expires_at: current_time - Duration::from_seconds(60), // 1 minute ago
             },
             Coins::default(),
         )
@@ -108,10 +109,7 @@ async fn pyth_lazer() {
 
     let (signer, timestamp) = trusted_signers.iter().next().unwrap();
     assert_eq!(signer, &trusted_signer);
-    assert_eq!(
-        timestamp,
-        &(current_time - grug::Duration::from_seconds(60))
-    );
+    assert_eq!(timestamp, &(current_time - Duration::from_seconds(60)));
 
     // Try to feed price from Pyth Lazer. Should fail because the signer is no longer trusted.
     suite
@@ -131,7 +129,7 @@ async fn pyth_lazer() {
             oracle,
             &ExecuteMsg::RegisterTrustedSigner {
                 public_key: trusted_signer.clone(),
-                expires_at: current_time + grug::Duration::from_seconds(60), // 1 minute from now
+                expires_at: current_time + Duration::from_seconds(60), // 1 minute from now
             },
             Coins::default(),
         )

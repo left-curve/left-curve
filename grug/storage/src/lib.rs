@@ -1,3 +1,12 @@
+#[cfg(feature = "macros")]
+pub use grug_macros::{PrimaryKey, index_list};
+
+#[cfg(feature = "macros")]
+#[doc(hidden)]
+pub mod __private {
+    pub use grug_types::{Binary, StdError, StdResult};
+}
+
 mod bound;
 mod codec;
 mod counter;

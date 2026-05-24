@@ -1,6 +1,8 @@
 use {
     dango_types::gateway::{PersonalQuota, Remote},
-    grug::{Addr, Denom, Map, Uint128},
+    grug_math::Uint128,
+    grug_storage::Map,
+    grug_types::{Addr, Denom},
 };
 
 pub const ROUTES: Map<(Addr, Remote), Denom> = Map::new("route");

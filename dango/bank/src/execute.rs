@@ -4,9 +4,10 @@ use {
     dango_types::bank::{
         Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
-    grug::{
-        Addr, BankMsg, Coins, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst, Part,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+    grug_math::{IsZero, Number, NumberConst, Uint128},
+    grug_types::{
+        Addr, BankMsg, Coins, Denom, EventBuilder, MutableCtx, Part, QuerierExt, Response,
+        StdError, StdResult, Storage, SudoCtx,
     },
     std::collections::HashMap,
 };

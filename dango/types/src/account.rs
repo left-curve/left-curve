@@ -3,7 +3,7 @@ use {
     std::collections::BTreeSet,
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     /// Whether this account is to be activated upon instantiation.
     /// If not, a minimum deposit is required to activate the account.
@@ -11,7 +11,7 @@ pub struct InstantiateMsg {
 }
 
 /// Query messages for the single-signature account
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the account's status.
     #[returns(AccountStatus)]

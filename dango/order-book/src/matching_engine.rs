@@ -24,7 +24,7 @@ use {
         ReasonForOrderRemoval, TriggerDirection, UsdPrice, check_price_band,
         is_price_constraint_violated, may_invert_price,
     },
-    grug::{Addr, Order as IterationOrder, StdResult, Storage},
+    grug_types::{Addr, Order as IterationOrder, StdResult, Storage},
 };
 
 /// One match produced by [`walk_book`] — pure data, no perp settlement

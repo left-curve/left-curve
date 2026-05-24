@@ -95,7 +95,7 @@ pub fn process(input: TokenStream) -> TokenStream {
 
     let raw_keys_arms = variant_idents.iter().zip(&indices).map(|(ident, idx)| {
         quote! {
-            #name::#ident => ::std::vec![::grug::RawKey::Fixed8([#idx])],
+            #name::#ident => ::std::vec![::grug_storage::RawKey::Fixed8([#idx])],
         }
     });
 
@@ -112,26 +112,26 @@ pub fn process(input: TokenStream) -> TokenStream {
     );
 
     quote! {
-        impl ::grug::PrimaryKey for #name {
+        impl ::grug_storage::PrimaryKey for #name {
             type Output = Self;
             type Prefix = ();
             type Suffix = ();
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> ::std::vec::Vec<::grug::RawKey<'_>> {
+            fn raw_keys(&self) -> ::std::vec::Vec<::grug_storage::RawKey<'_>> {
                 match self {
                     #(#raw_keys_arms)*
                 }
             }
 
-            fn from_slice(bytes: &[u8]) -> ::grug::StdResult<Self::Output> {
+            fn from_slice(bytes: &[u8]) -> ::grug_storage::__private::StdResult<Self::Output> {
                 match bytes {
                     #(#from_slice_arms)*
-                    _ => ::std::result::Result::Err(::grug::StdError::deserialize::<
+                    _ => ::std::result::Result::Err(::grug_storage::__private::StdError::deserialize::<
                         Self::Output,
                         _,
-                        ::grug::Binary,
+                        ::grug_storage::__private::Binary,
                     >(
                         "key",
                         #error_msg,

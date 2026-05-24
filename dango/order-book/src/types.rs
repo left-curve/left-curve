@@ -1,6 +1,7 @@
 use {
     crate::{Dimensionless, Quantity, UsdPrice, UsdValue},
-    grug::{Addr, Denom, Timestamp, Uint64},
+    grug_math::Uint64,
+    grug_types::{Addr, Denom, Timestamp},
     std::collections::BTreeMap,
 };
 
@@ -44,7 +45,7 @@ pub type FillId = Uint64;
 /// orders that have been canceled or filled, so they can be reused freely.
 pub type ClientOrderId = Uint64;
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 #[derive(Copy, Default)]
 pub enum TimeInForce {
     /// Persist the unfilled portion in the order book.
@@ -62,7 +63,7 @@ pub enum TimeInForce {
     PostOnly,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 #[derive(Copy)]
 pub enum OrderKind {
     /// Trade at the best available prices in the order book, optionally
@@ -97,8 +98,8 @@ pub enum OrderKind {
 
 /// For a conditional (TP/SL) order, direction the oracle price must cross to
 /// trigger it.
-#[grug::derive(Serde, Borsh)]
-#[derive(Copy, grug::PrimaryKey)]
+#[grug_types::derive(Serde, Borsh)]
+#[derive(Copy, grug_storage::PrimaryKey)]
 pub enum TriggerDirection {
     /// Trigger when oracle_price >= trigger_price (TP for longs, SL for shorts).
     Above,
@@ -112,7 +113,7 @@ pub enum TriggerDirection {
 /// This struct does not contain the pair ID, order ID, and the limit price,
 /// which are instead included in the storage key, with which this struct is
 /// saved in the contract storage.
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub struct LimitOrder {
     pub user: Addr,
     pub size: Quantity,
@@ -133,7 +134,7 @@ pub struct LimitOrder {
 }
 
 /// A conditional order stored off-book until triggered.
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub struct ConditionalOrder {
     /// Internal ID for price-time priority tiebreaking during cron execution.
     pub order_id: ConditionalOrderId,
@@ -152,7 +153,7 @@ pub struct ConditionalOrder {
 
 /// TP or SL parameters attached to a parent order as a "child order".
 /// Applied to the resulting position when the parent order fills.
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub struct ChildOrder {
     /// Oracle price that activates this order.
     pub trigger_price: UsdPrice,
@@ -164,7 +165,7 @@ pub struct ChildOrder {
     pub size: Option<Quantity>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct QueryOrderResponse {
     pub user: Addr,
     pub pair_id: PairId,
@@ -178,7 +179,7 @@ pub struct QueryOrderResponse {
     pub client_order_id: Option<ClientOrderId>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct QueryOrdersByUserResponseItem {
     pub pair_id: PairId,
     pub size: Quantity,
@@ -191,7 +192,7 @@ pub struct QueryOrdersByUserResponseItem {
     pub client_order_id: Option<ClientOrderId>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct LiquidityDepth {
     /// Absolute order size aggregated in this bucket.
     pub size: Quantity,
@@ -200,7 +201,7 @@ pub struct LiquidityDepth {
     pub notional: UsdValue,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct LiquidityDepthResponse {
     pub bids: BTreeMap<UsdPrice, LiquidityDepth>,
     pub asks: BTreeMap<UsdPrice, LiquidityDepth>,

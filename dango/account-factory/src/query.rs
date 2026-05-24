@@ -3,7 +3,7 @@ use {
     dango_types::account_factory::{
         Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexOrName,
     },
-    grug::{
+    grug_types::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Storage,
     },

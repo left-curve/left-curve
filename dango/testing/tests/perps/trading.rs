@@ -9,9 +9,10 @@ use {
         constants::usdc,
         perps::{self, OrderFilled, PairParam, Param, RateSchedule, UserState},
     },
-    grug::{
+    grug_math::Uint128,
+    grug_types::{
         Addressable, CheckedContractEvent, Coins, Inner, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, Uint128, btree_map, btree_set,
+        SearchEvent, btree_map, btree_set,
     },
     std::collections::BTreeMap,
 };

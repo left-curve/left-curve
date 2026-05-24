@@ -54,7 +54,8 @@ use {
         constants::usdc,
         perps::{self, PairParam, UserState},
     },
-    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint128, btree_map},
+    grug_math::Uint128,
+    grug_types::{Addressable, Coins, QuerierExt, ResultExt, btree_map},
 };
 
 /// Reproduces the ADL bankruptcy-price bug with an absurd resting ask.

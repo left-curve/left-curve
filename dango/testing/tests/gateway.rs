@@ -8,9 +8,11 @@ use {
         constants::{dango, usdc},
         gateway::{self, Origin, RateLimit, Remote, SetPersonalQuotaRequest},
     },
-    grug::{
-        Addr, Addressable, BalanceChange, Coin, Coins, Duration, MathError, NumberConst, Op,
-        QuerierExt, ResultExt, Udec128, Uint128, btree_map, btree_set, coins,
+    grug_math::{MathError, NumberConst, Udec128, Uint128},
+    grug_testing::BalanceChange,
+    grug_types::{
+        Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
+        coins,
     },
     hyperlane_testing::MockValidatorSet,
     hyperlane_types::{Addr32, isms},

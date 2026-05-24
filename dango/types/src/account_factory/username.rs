@@ -1,6 +1,7 @@
 use {
     core::str,
-    grug::{Binary, Inner, PrimaryKey, RawKey, StdError, StdResult},
+    grug_storage::{PrimaryKey, RawKey},
+    grug_types::{Binary, Inner, StdError, StdResult},
     serde::{Serialize, de},
     std::{fmt, str::FromStr},
 };
@@ -18,7 +19,7 @@ pub type UserIndex = u32;
 ///
 /// A valid username must contain only lowercase ASCII letters (a-z), numbers
 /// (0-9), or the underscore (_) and be between 1-15 characters.
-#[grug::derive(Borsh)]
+#[grug_types::derive(Borsh)]
 #[derive(Serialize, PartialOrd, Ord, Hash)]
 pub struct Username(String);
 

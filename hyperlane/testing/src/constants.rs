@@ -1,5 +1,5 @@
 use {
-    grug::HexByteArray,
+    grug_types::HexByteArray,
     hex_literal::hex,
     hyperlane_types::{Addr32, addr32, mailbox::Domain},
 };

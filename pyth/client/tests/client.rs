@@ -11,7 +11,8 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug::{NonEmpty, setup_tracing_subscriber},
+    grug_testing::setup_tracing_subscriber,
+    grug_types::NonEmpty,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},

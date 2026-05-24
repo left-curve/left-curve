@@ -6,7 +6,7 @@ use {
         oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource, ReplyMsg, VaultRefreshFailed},
         perps,
     },
-    grug::{
+    grug_types::{
         Addr, Api, AuthCtx, AuthMode, Binary, Coins, Denom, Inner, JsonDeExt, Message, MsgExecute,
         MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
         Timestamp, Tx,
@@ -229,7 +229,7 @@ fn verify_pyth_lazer_message(
 mod tests {
     use {
         super::*,
-        grug::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
+        grug_types::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
         pyth_types::{LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };

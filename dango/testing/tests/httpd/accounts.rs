@@ -15,12 +15,11 @@ use {
         constants::dango,
     },
     graphql_client::GraphQLQuery,
-    grug::{
-        Addressable, Coin, Coins, Inner, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
-        QueryResponse, ResultExt,
-    },
     grug_app::Indexer,
-    grug_types::{JsonSerExt, QueryWasmSmartRequest},
+    grug_types::{
+        Addressable, Coin, Coins, Inner, Json, JsonDeExt, JsonSerExt, QuerierExt, Query,
+        QueryBalanceRequest, QueryResponse, QueryWasmSmartRequest, ResultExt,
+    },
     indexer_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     indexer_testing::{
         GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,

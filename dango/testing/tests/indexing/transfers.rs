@@ -2,8 +2,8 @@ use {
     assertor::*,
     dango_testing::{TestOption, setup_test_with_indexer},
     dango_types::{account_factory, constants::usdc},
-    grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
+    grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
 };
 

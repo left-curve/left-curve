@@ -12,9 +12,11 @@ use {
         bank,
         constants::usdc,
     },
-    grug::{
+    grug_math::Uint128,
+    grug_storage::StorageQuerier,
+    grug_types::{
         Addressable, Coins, HashExt, JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt,
-        Signer, StorageQuerier, Uint128, btree_map, coins,
+        Signer, btree_map, coins,
     },
     std::str::FromStr,
 };

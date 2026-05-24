@@ -1,7 +1,7 @@
 use {
     dango_testing::{TestAccounts, constants::MOCK_CHAIN_ID, setup_test_naive},
     dango_types::{account::QuerySeenNoncesRequest, constants::dango},
-    grug::{
+    grug_types::{
         Addressable, Coins, Duration, JsonSerExt, Message, NonEmpty, QuerierExt, ResultExt, Tx,
     },
     std::vec,

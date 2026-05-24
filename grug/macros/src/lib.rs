@@ -33,15 +33,15 @@ pub fn export(_attr: TokenStream, input: TokenStream) -> TokenStream {
 /// data type `Test`.
 ///
 /// ```rust ignore
-/// use grug::{IndexedMap, MultiIndex, UniqueIndex};
+/// use grug_storage::{IndexedMap, MultiIndex, UniqueIndex};
 ///
-/// #[grug::derive(borsh)]
+/// #[grug_types::derive(borsh)]
 /// pub struct Test {
 ///     pub foo: String,
 ///     pub bar: u64,
 /// }
 ///
-/// #[grug::index_list(u32, Test)]
+/// #[grug_storage::index_list(u32, Test)]
 /// pub struct TestIndexes<'a> {
 ///     pub foo: MultiIndex<'a, u32, String, Test>,
 ///     pub bar: UniqueIndex<'a, u32, u64, Test>,

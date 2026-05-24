@@ -5,10 +5,11 @@ use {
     },
     chrono::{DateTime, Utc},
     dango_types::perps::OrderFilled,
-    grug::{
+    grug_math::{Number, NumberConst, Sign, Signed, Udec128_6},
+    grug_types::{
         Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
         EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, JsonDeExt,
-        NaiveFlatten, Number, NumberConst, SearchEvent, Sign, Signed, Udec128_6,
+        NaiveFlatten, SearchEvent,
     },
     std::collections::HashMap,
 };

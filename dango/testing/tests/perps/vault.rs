@@ -14,11 +14,12 @@ use {
         oracle::{self, Price, PriceSource, QueryPriceRequest},
         perps::{self, PairParam, Param},
     },
-    grug::{
-        Addressable, Binary, ByteArray, Coins, Duration, NonEmpty, NumberConst, QuerierExt,
-        ResultExt, Timestamp, Uint128, btree_map, concat,
-    },
     grug_app::CONTRACT_NAMESPACE,
+    grug_math::{NumberConst, Uint128},
+    grug_types::{
+        Addressable, Binary, ByteArray, Coins, Duration, NonEmpty, QuerierExt, ResultExt,
+        Timestamp, btree_map, concat,
+    },
     pyth_types::{Channel, LeEcdsaMessage, MarketSession},
     std::{collections::BTreeMap, str::FromStr},
 };

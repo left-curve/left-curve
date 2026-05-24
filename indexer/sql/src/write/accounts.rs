@@ -4,8 +4,10 @@ use {
         account_factory::{AccountRegistered, KeyDisowned, KeyOwned, UserRegistered},
         config::AppConfig,
     },
-    grug::{BlockAndBlockOutcomeWithHttpDetails, EventName, Json, JsonDeExt},
-    grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
+    grug_types::{
+        BlockAndBlockOutcomeWithHttpDetails, EventName, FlatCommitmentStatus, FlatEvent, Json,
+        JsonDeExt, SearchEvent,
+    },
     itertools::Itertools,
     sea_orm::{
         ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,

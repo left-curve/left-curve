@@ -1,7 +1,7 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::constants::usdc,
-    grug::{Addressable, Coin, Coins, Duration, ResultExt},
+    grug_types::{Addressable, Coin, Coins, Duration, ResultExt},
     session_account::SessionAccount,
 };
 
@@ -12,7 +12,7 @@ mod session_account {
             Credential, Metadata, SessionCredential, SessionInfo, SignDoc, Signature,
             StandardCredential,
         },
-        grug::{
+        grug_types::{
             Addr, Addressable, ByteArray, Defined, JsonSerExt, Message, NonEmpty, SignData, Signer,
             StdResult, Timestamp, Tx, Undefined, UnsignedTx,
         },

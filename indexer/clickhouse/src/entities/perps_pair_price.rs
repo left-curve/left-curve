@@ -2,7 +2,7 @@ use {
     crate::error::Result,
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug::Udec128_6,
+    grug_math::Udec128_6,
     serde::{Deserialize, Serialize},
 };
 #[cfg(feature = "async-graphql")]
@@ -113,17 +113,15 @@ impl PerpsPairPrice {
 
 pub mod dec {
     use {
-        grug::Inner,
+        grug_math::{Dec, Int},
+        grug_types::Inner,
         serde::{
             de::{self, Deserializer},
             ser::{Serialize, Serializer},
         },
     };
 
-    pub fn serialize<S, U, const D: u32>(
-        dec: &grug::Dec<U, D>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    pub fn serialize<S, U, const D: u32>(dec: &Dec<U, D>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
         U: Serialize,
@@ -131,16 +129,14 @@ pub mod dec {
         dec.inner().serialize(serializer)
     }
 
-    pub fn deserialize<'de, D, U, const S: u32>(
-        deserializer: D,
-    ) -> Result<grug::Dec<U, S>, D::Error>
+    pub fn deserialize<'de, D, U, const S: u32>(deserializer: D) -> Result<Dec<U, S>, D::Error>
     where
         D: Deserializer<'de>,
         U: de::Deserialize<'de>,
     {
         let inner: U = <_ as de::Deserialize<'de>>::deserialize(deserializer)?;
-        let uint = grug::Int::new(inner);
-        let dec = grug::Dec::raw(uint);
+        let uint = Int::new(inner);
+        let dec = Dec::raw(uint);
         Ok(dec)
     }
 }

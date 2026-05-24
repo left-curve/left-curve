@@ -2,7 +2,7 @@ use {
     crate::context::Context,
     dango_types::config::AppConfig,
     futures::try_join,
-    grug::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, JsonDeExt},
+    grug_types::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, JsonDeExt},
 };
 #[cfg(feature = "metrics")]
 use {

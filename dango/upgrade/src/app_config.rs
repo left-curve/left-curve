@@ -1,7 +1,7 @@
 use {
     dango_types::config::{AppAddresses, AppConfig, Hyperlane},
-    grug::{JsonDeExt, JsonSerExt, Storage},
     grug_app::AppResult,
+    grug_types::{JsonDeExt, JsonSerExt, Storage},
 };
 
 /// Snapshot of the `AppConfig` schema as it existed before this upgrade.
@@ -12,9 +12,13 @@ use {
 /// running chain, so this module defines the legacy shape verbatim and runs a
 /// one-shot migration that re-serializes the value without the dead fields.
 mod legacy_grug_app {
-    use grug::{Addr, Bounded, Coins, Item, Json, Udec128, ZeroInclusiveOneExclusive};
+    use {
+        grug_math::Udec128,
+        grug_storage::Item,
+        grug_types::{Addr, Bounded, Coins, Json, ZeroInclusiveOneExclusive},
+    };
 
-    #[grug::derive(Serde)]
+    #[grug_types::derive(Serde)]
     pub struct AppConfig {
         pub addresses: AppAddresses,
         pub minimum_deposit: Coins,
@@ -22,7 +26,7 @@ mod legacy_grug_app {
         pub taker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     }
 
-    #[grug::derive(Serde)]
+    #[grug_types::derive(Serde)]
     pub struct AppAddresses {
         pub account_factory: Addr,
         pub dex: Addr,
@@ -34,7 +38,7 @@ mod legacy_grug_app {
         pub warp: Addr,
     }
 
-    #[grug::derive(Serde)]
+    #[grug_types::derive(Serde)]
     pub struct Hyperlane {
         pub ism: Addr,
         pub mailbox: Addr,
@@ -81,7 +85,7 @@ pub fn do_app_config_upgrade(storage: &mut dyn Storage) -> AppResult<()> {
 mod tests {
     use {
         super::*,
-        grug::{Inner, Json, MockStorage, json},
+        grug_types::{Inner, Json, MockStorage, json},
     };
 
     /// Verbatim snapshot of the live mainnet `AppConfig`, retrieved via

@@ -23,10 +23,10 @@ use {
         perps::{self, PairParam},
         taxman,
     },
-    grug::{
+    grug_math::{NumberConst, Udec128, Uint128},
+    grug_types::{
         Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Op, Timestamp, Udec128, Uint128,
-        btree_map, btree_set,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, Op, Timestamp, btree_map, btree_set,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,

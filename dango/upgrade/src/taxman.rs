@@ -1,6 +1,6 @@
 use {
-    grug::{Addr, Storage, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
+    grug_types::{Addr, Storage, addr},
 };
 
 /// Address of the Taxman contract. Same on mainnet and testnet, verified via
@@ -9,8 +9,8 @@ const TAXMAN: Addr = addr!("da70a9c1417aee00f960fe896add9d571f9c365b");
 
 mod legacy_taxman {
     use {
-        dango_types::account_factory::UserIndex,
-        grug::{Map, Timestamp, Udec128_6},
+        dango_types::account_factory::UserIndex, grug_math::Udec128_6, grug_storage::Map,
+        grug_types::Timestamp,
     };
 
     /// Cumulative spot-DEX trading volume that the now-deleted
@@ -44,7 +44,8 @@ fn do_volumes_by_user_clear(taxman_storage: &mut dyn Storage) -> AppResult<()> {
 mod tests {
     use {
         super::{do_volumes_by_user_clear, legacy_taxman::VOLUMES_BY_USER},
-        grug::{MockStorage, Order, Timestamp, Udec128_6},
+        grug_math::Udec128_6,
+        grug_types::{MockStorage, Order, Timestamp},
     };
 
     #[test]

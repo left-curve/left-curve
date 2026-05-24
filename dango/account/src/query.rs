@@ -1,7 +1,7 @@
 use {
     dango_auth::{query_seen_nonces, query_status},
     dango_types::account::QueryMsg,
-    grug::{ImmutableCtx, Json, JsonSerExt, StdResult},
+    grug_types::{ImmutableCtx, Json, JsonSerExt, StdResult},
 };
 
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

@@ -12,7 +12,7 @@ use {
         auth::{Key, Signature},
         perps,
     },
-    grug::{
+    grug_types::{
         Addr, AuthCtx, AuthMode, Coins, Hash256, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
         Op, QuerierExt, Response, StdResult, Storage, Tx, btree_map,
     },

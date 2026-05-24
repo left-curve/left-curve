@@ -1,7 +1,8 @@
 use {
     anyhow::ensure,
     dango_types::perps::settlement_currency,
-    grug::{IsZero, MutableCtx, QuerierExt, Response},
+    grug_math::IsZero,
+    grug_types::{MutableCtx, QuerierExt, Response},
 };
 
 /// Accept a USDC donation to the perps contract.
@@ -38,9 +39,10 @@ mod tests {
     use {
         super::*,
         dango_types::constants::usdc,
-        grug::{
+        grug_math::Uint128,
+        grug_types::{
             Addr, Coins, Config, Denom, Duration, MockContext, MockQuerier, Permission,
-            Permissions, ResultExt, Uint128,
+            Permissions, ResultExt,
         },
         std::collections::BTreeMap,
     };

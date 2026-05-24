@@ -1,7 +1,7 @@
 use {
     crate::{CONFIG, DELIVERIES, MERKLE_TREE, NONCE},
     anyhow::{anyhow, ensure},
-    grug::{Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
+    grug_types::{Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
     hyperlane_types::{
         Addr32, IncrementalMerkleTree,
         isms::{IsmQuery, QueryIsmRequest},
@@ -148,7 +148,7 @@ fn process(
     DELIVERIES.insert(ctx.storage, message_id)?;
 
     Ok(Response::new()
-        .add_message(grug::Message::execute(
+        .add_message(grug_types::Message::execute(
             recipient,
             &recipients::ExecuteMsg::Recipient(RecipientMsg::Handle {
                 origin_domain: message.origin_domain,

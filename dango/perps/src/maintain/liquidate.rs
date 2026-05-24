@@ -29,9 +29,9 @@ use {
         BadDebtCovered, Deleveraged, Liquidated, PairParam, PairState, Param, RateSchedule, State,
         UserState,
     },
-    grug::{
-        Addr, EventBuilder, MutableCtx, NumberConst, Order as IterationOrder, Response, Storage,
-        Timestamp,
+    grug_math::NumberConst,
+    grug_types::{
+        Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -934,7 +934,8 @@ mod tests {
             oracle::Price,
             perps::{PairParam, PairState, Param, Position, State, UserState},
         },
-        grug::{Addr, Coins, MockContext, Storage, Timestamp, Uint64},
+        grug_math::Uint64,
+        grug_types::{Addr, Coins, MockContext, Storage, Timestamp},
         pyth_types::MarketSession,
         std::collections::BTreeMap,
     };

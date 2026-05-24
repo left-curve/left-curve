@@ -7,7 +7,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::round_to_day,
     dango_types::perps::VaultSnapshot,
-    grug::{Addr, Storage, Timestamp},
+    grug_types::{Addr, Storage, Timestamp},
 };
 
 /// Take a daily snapshot of the market-making vault's `(equity, share_supply)`.
@@ -70,7 +70,8 @@ mod tests {
             oracle::Price,
             perps::{PairState, Position, State, UserState},
         },
-        grug::{MockStorage, Order, Uint128, hash_map},
+        grug_math::Uint128,
+        grug_types::{MockStorage, Order, hash_map},
         pyth_types::MarketSession,
         std::collections::BTreeMap,
     };

@@ -21,7 +21,9 @@ async-graphql    = { workspace = true, optional = true }
 async-trait      = { workspace = true }
 bnum             = { workspace = true }
 dango-order-book = { workspace = true }
-grug             = { workspace = true }
+grug-math        = { workspace = true }
+grug-storage     = { workspace = true }
+grug-types       = { workspace = true }
 hyperlane-types  = { workspace = true }
 pyth-types       = { workspace = true }
 sea-orm          = { workspace = true, optional = true }

@@ -12,10 +12,12 @@ use {
         gateway::{Domain, Remote},
         warp,
     },
-    grug::{Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, Uint128},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
+    grug_math::Uint128,
+    grug_testing::ContractWrapper,
+    grug_types::{Addr, BlockInfo, Coins, Duration, Message},
     grug_vm_rust::RustVm,
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
@@ -66,14 +68,14 @@ pub type TestSuite<
     DB = MemDb,
     VM = RustVm,
     ID = NullIndexer,
-> = grug::TestSuite<DB, VM, PP, ID>;
+> = grug_testing::TestSuite<DB, VM, PP, ID>;
 
 pub type TestSuiteWithIndexer<
     PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
     ID = HookedIndexer,
-> = grug::TestSuite<DB, VM, PP, ID>;
+> = grug_testing::TestSuite<DB, VM, PP, ID>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with cached
 /// Pyth Lazer client, and `ContractWrapper` codes.
@@ -385,7 +387,7 @@ where
         }
     }
 
-    let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
+    let suite = grug_testing::TestSuite::new_with_db_vm_indexer_and_pp(
         db,
         vm,
         pp,

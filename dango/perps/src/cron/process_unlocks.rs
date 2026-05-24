@@ -2,7 +2,8 @@ use {
     crate::state::USER_STATES,
     dango_order_book::UsdValue,
     dango_types::perps::{LiquidityReleased, UserState},
-    grug::{EventBuilder, Order as IterationOrder, PrefixBound, StdResult, Storage, Timestamp},
+    grug_storage::PrefixBound,
+    grug_types::{EventBuilder, Order as IterationOrder, StdResult, Storage, Timestamp},
 };
 
 /// Pop matured unlocks from each user and credit the released USD value back
@@ -107,7 +108,7 @@ mod tests {
     use {
         super::*,
         dango_types::perps::Unlock,
-        grug::{Addr, MockStorage},
+        grug_types::{Addr, MockStorage},
         std::collections::VecDeque,
     };
 

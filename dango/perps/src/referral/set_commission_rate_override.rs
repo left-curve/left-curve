@@ -2,7 +2,7 @@ use {
     crate::state::COMMISSION_RATE_OVERRIDES,
     anyhow::ensure,
     dango_types::{account_factory::UserIndex, perps::CommissionRate},
-    grug::{MutableCtx, Op, QuerierExt, Response},
+    grug_types::{MutableCtx, Op, QuerierExt, Response},
 };
 
 /// Set or remove a commission rate override for a user.
@@ -40,7 +40,7 @@ pub fn set_commission_rate_override(
 mod tests {
     use {
         super::*,
-        grug::{
+        grug_types::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt,
         },

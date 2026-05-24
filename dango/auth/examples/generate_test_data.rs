@@ -8,7 +8,7 @@ use {
         },
     },
     data_encoding::BASE64URL_NOPAD,
-    grug::{
+    grug_types::{
         Addr, Binary, ByteArray, Hash256, HashExt, Inner, JsonSerExt, MOCK_CHAIN_ID, Message,
         NonEmpty, SignData, Timestamp, Tx, coins,
     },
@@ -313,7 +313,7 @@ where
 /// how the frontend `composeArbitraryTypedData` works for arbitrary messages.
 fn eip712_sign_arbitrary(
     sk: &k256::ecdsa::SigningKey,
-    message: grug::Json,
+    message: grug_types::Json,
 ) -> anyhow::Result<Eip712Signature> {
     // Build the EIP-712 "Message" type from the message keys.
     // All fields are typed as "string" (matching the frontend pattern).

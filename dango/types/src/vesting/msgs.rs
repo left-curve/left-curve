@@ -1,22 +1,23 @@
 use {
     crate::vesting::{Position, Schedule},
-    grug::{Addr, Duration, Uint128},
+    grug_math::Uint128,
+    grug_types::{Addr, Duration},
     std::collections::BTreeMap,
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct PositionResponse {
     pub position: Position,
     pub claimable: Uint128,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     pub unlocking_cliff: Duration,
     pub unlocking_period: Duration,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Create a vesting position for a user with the given schedule.
     ///
@@ -33,7 +34,7 @@ pub enum ExecuteMsg {
     Claim {},
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query a single vesting position by user address.
     #[returns(PositionResponse)]

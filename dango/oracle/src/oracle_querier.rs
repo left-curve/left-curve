@@ -3,7 +3,8 @@ use {
     anyhow::{anyhow, ensure},
     dango_order_book::UsdPrice,
     dango_types::oracle::{Price, PriceSource},
-    grug::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp},
+    grug_storage::StorageQuerier,
+    grug_types::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage, Timestamp},
     pyth_types::PythId,
     std::collections::HashMap,
 };
@@ -149,7 +150,7 @@ mod tests {
     use {
         super::*,
         dango_types::constants::{eth, usdc},
-        grug::{ResultExt, Timestamp, hash_map},
+        grug_types::{ResultExt, Timestamp, hash_map},
         pyth_types::MarketSession,
         test_case::test_case,
     };

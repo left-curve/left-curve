@@ -8,9 +8,10 @@ use {
         },
         constants::{dango, eth, usdc},
     },
-    grug::{
-        Addressable, BalanceChange, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded,
-        Part, QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
+    grug_testing::BalanceChange,
+    grug_types::{
+        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded, Part,
+        QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
     },
     std::collections::BTreeSet,
 };

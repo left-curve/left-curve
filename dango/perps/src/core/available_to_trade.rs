@@ -13,7 +13,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::{Dimensionless, PairId, Quantity, UsdValue},
     dango_types::perps::UserState,
-    grug::MathResult,
+    grug_math::MathResult,
 };
 
 /// Order side entering the trade form.
@@ -163,7 +163,7 @@ mod tests {
             oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug::{Timestamp, btree_map, hash_map},
+        grug_types::{Timestamp, btree_map, hash_map},
         pyth_types::MarketSession,
         test_case::test_case,
     };

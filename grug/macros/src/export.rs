@@ -22,7 +22,7 @@ pub fn process(mut input: TokenStream) -> TokenStream {
             mod __wasm_export_{name} {{
                 #[unsafe(no_mangle)]
                 extern "C" fn {name}({typed_ptrs}) -> usize {{
-                    grug::do_{name}(&super::{name}, {ptrs})
+                    ::grug_ffi::do_{name}(&super::{name}, {ptrs})
                 }}
             }}
         "##

@@ -6,8 +6,11 @@ use {
     dango_testing::{Preset, TestOption},
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
-    grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
-    grug_types::{BroadcastClientExt, Denom, GasOption, Inner, JsonSerExt},
+    grug_testing::BlockCreation,
+    grug_types::{
+        BroadcastClientExt, Coins, Denom, GasOption, Inner, JsonSerExt, MOCK_CHAIN_ID, Message,
+        NonEmpty, ResultExt, Signer,
+    },
     indexer_graphql_types::{
         Block, SubscribeTransactions, Transactions, block, subscribe_transactions, transactions,
     },

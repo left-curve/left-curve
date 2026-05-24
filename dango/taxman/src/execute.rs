@@ -5,10 +5,10 @@ use {
         DangoQuerier, bank,
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
     },
-    grug::{
-        Addr, AuthCtx, AuthMode, Coins, ContractEvent, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, QuerierExt, Response, StdResult, Tx, TxOutcome, Uint128,
-        coins,
+    grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Uint128},
+    grug_types::{
+        Addr, AuthCtx, AuthMode, Coins, ContractEvent, Message, MutableCtx, QuerierExt, Response,
+        StdResult, Tx, TxOutcome, coins,
     },
     std::collections::BTreeMap,
 };

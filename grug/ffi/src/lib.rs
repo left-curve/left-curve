@@ -1,3 +1,6 @@
+#[cfg(feature = "macros")]
+pub use grug_macros::export;
+
 mod exports;
 mod imports;
 mod memory;
