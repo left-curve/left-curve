@@ -28,15 +28,7 @@ install-client:
 test:
   RUST_BACKTRACE=1 cargo test --all-features --tests -- --nocapture
 
-# Run grug tests
-test-grug:
-  RUST_BACKTRACE=1 cargo test --all-features --tests -p grug-testing -- --nocapture
-
-# Run dango tests
-test-dango:
-  RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-testing -- --nocapture
-
-# Run dango perp tests
+# Run all perp-related tests specifically
 test-perps:
   RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-types perps::tests -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-perps -- --nocapture
@@ -77,7 +69,7 @@ book:
 
 # Update wasm artifacts used in tests
 update-testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/
+  cp -v artifacts/grug_{mock_*,tester}.wasm dango/testing/testdata/
 
 # ---------------------------------- Frontend ----------------------------------
 
