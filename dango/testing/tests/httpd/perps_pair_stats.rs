@@ -1,7 +1,6 @@
 use {
-    crate::call_graphql_query,
     dango_testing::{
-        TestOption,
+        TestOption, call_graphql_query_with_context,
         perps::{create_perps_fill, pair_id, setup_perps_env},
         setup_test_with_indexer,
     },
@@ -29,13 +28,14 @@ async fn query_perps_pair_stats() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, perps_pair_stats::ResponseData>(
-                    dango_httpd_context.clone(),
-                    PerpsPairStats::build_query(perps_pair_stats::Variables {
-                        pair_id: pair.to_string(),
-                    }),
-                )
-                .await?;
+                let response =
+                    call_graphql_query_with_context::<_, perps_pair_stats::ResponseData>(
+                        dango_httpd_context.clone(),
+                        PerpsPairStats::build_query(perps_pair_stats::Variables {
+                            pair_id: pair.to_string(),
+                        }),
+                    )
+                    .await?;
 
                 let data = response
                     .data
@@ -82,13 +82,14 @@ async fn query_perps_pair_stats_nonexistent_pair() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, perps_pair_stats_partial::ResponseData>(
-                    dango_httpd_context.clone(),
-                    PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
-                        pair_id: "perp/nonexistent".to_string(),
-                    }),
-                )
-                .await?;
+                let response =
+                    call_graphql_query_with_context::<_, perps_pair_stats_partial::ResponseData>(
+                        dango_httpd_context.clone(),
+                        PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
+                            pair_id: "perp/nonexistent".to_string(),
+                        }),
+                    )
+                    .await?;
 
                 let data = response
                     .data
@@ -123,11 +124,12 @@ async fn query_all_perps_pair_stats() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, all_perps_pair_stats::ResponseData>(
-                    dango_httpd_context.clone(),
-                    AllPerpsPairStats::build_query(all_perps_pair_stats::Variables),
-                )
-                .await?;
+                let response =
+                    call_graphql_query_with_context::<_, all_perps_pair_stats::ResponseData>(
+                        dango_httpd_context.clone(),
+                        AllPerpsPairStats::build_query(all_perps_pair_stats::Variables),
+                    )
+                    .await?;
 
                 let data = response
                     .data
@@ -174,13 +176,14 @@ async fn query_perps_pair_stats_partial_fields() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, perps_pair_stats_partial::ResponseData>(
-                    dango_httpd_context.clone(),
-                    PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
-                        pair_id: pair.to_string(),
-                    }),
-                )
-                .await?;
+                let response =
+                    call_graphql_query_with_context::<_, perps_pair_stats_partial::ResponseData>(
+                        dango_httpd_context.clone(),
+                        PerpsPairStatsPartial::build_query(perps_pair_stats_partial::Variables {
+                            pair_id: pair.to_string(),
+                        }),
+                    )
+                    .await?;
 
                 let data = response
                     .data

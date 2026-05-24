@@ -1,9 +1,8 @@
 use {
-    crate::{build_actix_app, call_graphql_query},
     assertor::*,
     dango_testing::{
-        GraphQLCustomRequest, TestOption, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query_with_context,
+        call_ws_graphql_stream, parse_graphql_subscription_response,
         perps::{create_perps_fill, pair_id, setup_perps_env},
         setup_test_with_indexer,
     },
@@ -43,7 +42,7 @@ async fn query_perps_candles() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, perps_candles::ResponseData>(
+                let response = call_graphql_query_with_context::<_, perps_candles::ResponseData>(
                     dango_httpd_context.clone(),
                     PerpsCandles::build_query(variables),
                 )
@@ -120,7 +119,7 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response: existing last candle

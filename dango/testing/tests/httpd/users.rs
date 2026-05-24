@@ -1,9 +1,8 @@
 use {
-    super::call_graphql_query,
     assertor::*,
     dango_testing::{
-        HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
-        setup_test_with_indexer,
+        HyperlaneTestSuite, TestOption, add_user_public_key, call_graphql_query_with_context,
+        create_user_and_account, setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
@@ -25,7 +24,7 @@ async fn query_user() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, users::ResponseData>(
+                let response = call_graphql_query_with_context::<_, users::ResponseData>(
                     dango_httpd_context,
                     Users::build_query(users::Variables::default()),
                 )
@@ -69,7 +68,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, users::ResponseData>(
+                let response = call_graphql_query_with_context::<_, users::ResponseData>(
                     dango_httpd_context,
                     Users::build_query(users::Variables::default()),
                 )
@@ -124,7 +123,7 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
                     user_index: test_account.user_index() as i64,
                 };
 
-                let response = call_graphql_query::<_, user::ResponseData>(
+                let response = call_graphql_query_with_context::<_, user::ResponseData>(
                     dango_httpd_context,
                     User::build_query(variables),
                 )
@@ -158,7 +157,7 @@ async fn query_users_rejects_conflicting_pagination_args() -> anyhow::Result<()>
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let response = call_graphql_query::<_, users::ResponseData>(
+                let response = call_graphql_query_with_context::<_, users::ResponseData>(
                     dango_httpd_context,
                     Users::build_query(users::Variables {
                         first: Some(1),

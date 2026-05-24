@@ -32,8 +32,9 @@ use {
 
 // Re-export PageInfo and query modules for use in pagination helpers
 pub use indexer_graphql_types::{
-    Blocks, Events, Messages, PageInfo, Transactions, blocks as blocks_query,
-    events as events_query, messages as messages_query, transactions as transactions_query,
+    Accounts, Blocks, Events, Messages, PageInfo, Transactions, Transfers,
+    accounts as accounts_query, blocks as blocks_query, events as events_query,
+    messages as messages_query, transactions as transactions_query, transfers as transfers_query,
 };
 
 /// Direction for pagination.
@@ -184,6 +185,20 @@ impl_indexer_paginate!(
     transactions_query,
     transactions,
     TransactionsTransactionsNodes
+);
+impl_indexer_paginate!(
+    paginate_accounts,
+    Accounts,
+    accounts_query,
+    accounts,
+    AccountsAccountsNodes
+);
+impl_indexer_paginate!(
+    paginate_transfers,
+    Transfers,
+    transfers_query,
+    transfers,
+    TransfersTransfersNodes
 );
 
 const DEFAULT_TIMEOUT_SECONDS: u64 = 5;
@@ -383,6 +398,21 @@ where
     let response: graphql_client::Response<R> = serde_json::from_slice(&response)?;
 
     Ok(response)
+}
+
+/// Convenience wrapper that builds the app from a `FullContext` and makes
+/// a typed GraphQL query. Reduces boilerplate in tests that don't need
+/// custom app configuration.
+pub async fn call_graphql_query_with_context<V, R>(
+    context: FullContext,
+    query_body: graphql_client::QueryBody<V>,
+) -> anyhow::Result<graphql_client::Response<R>>
+where
+    V: Serialize,
+    R: DeserializeOwned,
+{
+    let app = build_app_service(context);
+    call_graphql_query(app, query_body).await
 }
 
 /// Helper function to make typed batched GraphQL queries in tests.

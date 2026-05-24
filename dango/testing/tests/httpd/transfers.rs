@@ -1,12 +1,10 @@
 use {
-    crate::{
-        PaginationDirection, Transfers, build_actix_app, call_graphql_query, paginate_transfers,
-        transfers_query,
-    },
     assertor::*,
     dango_testing::{
-        GraphQLCustomRequest, HyperlaneTestSuite, TestOption, call_ws_graphql_stream,
-        create_user_and_account, parse_graphql_subscription_response, setup_test_with_indexer,
+        GraphQLCustomRequest, HyperlaneTestSuite, PaginationDirection, TestOption, Transfers,
+        build_app_service, call_graphql_query_with_context, call_ws_graphql_stream,
+        create_user_and_account, paginate_transfers, parse_graphql_subscription_response,
+        setup_test_with_indexer, transfers_query,
     },
     dango_types::{account_factory, constants::usdc},
     graphql_client::GraphQLQuery,
@@ -50,7 +48,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -124,7 +122,7 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -221,7 +219,7 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -412,7 +410,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
@@ -531,7 +529,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
