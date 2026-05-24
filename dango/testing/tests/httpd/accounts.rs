@@ -28,17 +28,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_accounts() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
@@ -75,17 +66,8 @@ async fn query_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_accounts_with_user_index() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
@@ -127,17 +109,8 @@ async fn query_accounts_with_user_index() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
@@ -175,17 +148,8 @@ async fn query_accounts_with_wrong_user_index() -> anyhow::Result<()> {
 #[ignore = "flaky"]
 #[tokio::test(flavor = "multi_thread")]
 async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Create two accounts under the same user. The two `TestAccount`'s should
@@ -265,17 +229,8 @@ async fn query_user_multiple_single_signature_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Create 10 accounts to paginate through
@@ -379,17 +334,8 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let _test_account =
@@ -464,17 +410,8 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
@@ -549,7 +486,7 @@ async fn graphql_subscribe_to_accounts_with_user_index() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // copied from `tracked_nonces_works``
@@ -610,7 +547,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_address_balance() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, _, _, dango_httpd_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // copied from `tracked_nonces_works``

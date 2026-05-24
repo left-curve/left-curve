@@ -4,16 +4,16 @@ use {
     dango_genesis::GenesisOption,
     dango_testing::{
         GraphQLCustomRequest, PaginationDirection, Preset, TestOption, build_app_service,
-        call_graphql_query, call_ws_graphql_stream, create_block, create_blocks,
+        call_graphql_query, call_ws_graphql_stream,
         httpd::{get_mock_socket_addr, wait_for_server_ready},
-        paginate_transactions, parse_graphql_subscription_response, transactions_query,
+        paginate_transactions, parse_graphql_subscription_response,
+        setup_test_naive_with_indexer_and_create_blocks, transactions_query,
     },
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
     grug_testing::BlockCreation,
     grug_types::{
-        BroadcastClientExt, Coins, Denom, GasOption, Inner, JsonSerExt, MOCK_CHAIN_ID, Message,
-        NonEmpty, ResultExt, Signer,
+        Addressable, Coins, Inner, JsonSerExt, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer,
     },
     indexer_graphql_types::{
         Block, SubscribeTransactions, Transactions, block, subscribe_transactions, transactions,
@@ -21,13 +21,14 @@ use {
     indexer_sql::entity,
     sea_orm::EntityTrait,
     serde_json::json,
-    std::{str::FromStr, time::Duration},
+    std::time::Duration,
     tokio::sync::mpsc,
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -57,7 +58,10 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_transactions() -> anyhow::Result<()> {
-    let (httpd_context, _client, accounts) = create_block().await?;
+    let (_, accounts, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+
+    let sender_addr = accounts.user1.address().to_string();
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -76,7 +80,7 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
 
                 assert_that!(data.transactions.nodes).has_length(1);
                 assert_that!(data.transactions.nodes[0].sender.as_str())
-                    .is_equal_to(accounts["sender"].address.to_string().as_str());
+                    .is_equal_to(sender_addr.as_str());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -87,7 +91,8 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_transactions() -> anyhow::Result<()> {
-    let (httpd_context, _client, _) = create_blocks(10).await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 10).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -161,7 +166,8 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
-    let (httpd_context, client, mut accounts) = create_block().await?;
+    let (mut suite, mut accounts, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     // Use typed subscription from indexer-graphql-types
     let request_body = GraphQLCustomRequest::from_query_body(
@@ -174,20 +180,21 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
     // Can't call this from LocalSet so using channels instead.
     tokio::spawn(async move {
         while rx.recv().await.is_some() {
-            let to = accounts["owner"].address;
-            let chain_id = client.chain_id().await;
-
-            client
-                .send_message(
-                    &mut accounts["sender"],
-                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
-                    GasOption::Predefined { gas_limit: 2000 },
-                    &chain_id,
+            suite
+                .send_messages_with_gas(
+                    &mut accounts.user1,
+                    1_000_000,
+                    NonEmpty::new_unchecked(vec![
+                        Message::transfer(
+                            accounts.user2.address(),
+                            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+                        )
+                        .unwrap(),
+                    ]),
                 )
                 .await
                 .should_succeed();
         }
-
         Ok::<(), anyhow::Error>(())
     });
 

@@ -9,6 +9,7 @@ use {
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
+        constants::usdc,
         gateway::{Domain, Remote},
         warp,
     },
@@ -17,7 +18,7 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_testing::ContractWrapper,
-    grug_types::{Addr, BlockInfo, Coins, Duration, Message},
+    grug_types::{Addr, Addressable, BlockInfo, Coins, Duration, Message, ResultExt, coins},
     grug_vm_rust::RustVm,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
@@ -138,6 +139,64 @@ pub fn setup_test_naive_with_custom_genesis(
     )
 }
 
+pub type TestSuiteNaiveWithIndexer = grug_testing::TestSuite<
+    MemDb<SimpleCommitment>,
+    grug_vm_rust::RustVm,
+    NaiveProposalPreparer,
+    indexer_hooked::HookedIndexer,
+>;
+
+pub async fn setup_test_naive_with_indexer_and_create_blocks(
+    test_opt: TestOption,
+    count: usize,
+) -> (
+    TestSuiteNaiveWithIndexer,
+    TestAccounts,
+    indexer_httpd::context::FullContext,
+    indexer_sql::TestDatabaseGuard,
+) {
+    let (mut suite, mut accounts, _, _, _, httpd_context, _, db_guard) =
+        setup_test_naive_with_indexer(test_opt).await;
+
+    for _ in 0..count {
+        suite
+            .transfer(
+                &mut accounts.user1,
+                accounts.user2.address(),
+                coins! { usdc::DENOM.clone() => 100 },
+            )
+            .await
+            .should_succeed();
+    }
+
+    suite.app.indexer.wait_for_finish().await.unwrap();
+
+    (suite, accounts, httpd_context, db_guard)
+}
+
+pub async fn setup_test_naive_with_indexer(
+    test_opt: TestOption,
+) -> (
+    TestSuiteNaiveWithIndexer,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+    indexer_httpd::context::FullContext,
+    indexer_clickhouse::context::Context,
+    indexer_sql::TestDatabaseGuard,
+) {
+    setup_test_with_indexer_pp_and_custom_genesis(
+        NaiveProposalPreparer,
+        TestOption {
+            mocked_clickhouse: true,
+            ..test_opt
+        },
+        GenesisOption::preset_test(),
+    )
+    .await
+}
+
 pub async fn setup_test_with_indexer(
     test_opt: TestOption,
 ) -> (
@@ -146,7 +205,6 @@ pub async fn setup_test_with_indexer(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::FullContext,
     indexer_httpd::context::FullContext,
     indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
@@ -169,10 +227,37 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     Contracts,
     MockValidatorSets,
     indexer_httpd::context::FullContext,
-    indexer_httpd::context::FullContext,
     indexer_clickhouse::context::Context,
     indexer_sql::TestDatabaseGuard,
 ) {
+    setup_test_with_indexer_pp_and_custom_genesis(
+        ProposalPreparer::new_with_cache(),
+        options,
+        genesis_opt,
+    )
+    .await
+}
+
+async fn setup_test_with_indexer_pp_and_custom_genesis<PP>(
+    pp: PP,
+    options: TestOption,
+    genesis_opt: GenesisOption,
+) -> (
+    grug_testing::TestSuite<MemDb<SimpleCommitment>, RustVm, PP, HookedIndexer>,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+    indexer_httpd::context::FullContext,
+    indexer_clickhouse::context::Context,
+    indexer_sql::TestDatabaseGuard,
+)
+where
+    PP: grug_app::ProposalPreparer + Clone + Send + Sync + 'static,
+    AppError: From<<MemDb<SimpleCommitment> as Db>::Error>
+        + From<<RustVm as Vm>::Error>
+        + From<PP::Error>,
+{
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or("postgres://postgres@localhost/grug_test".to_string());
 
@@ -211,24 +296,23 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
 
-    let db = MemDb::new();
-    let vm = RustVm::new();
-
     let (suite, accounts, codes, contracts, validator_sets) = setup_suite_with_db_and_vm(
-        db.clone(),
-        vm.clone(),
-        ProposalPreparer::new_with_cache(),
+        MemDb::new(),
+        RustVm::new(),
+        pp,
         hooked_indexer,
         RustVm::genesis_codes(),
         options,
         genesis_opt,
     );
 
-    clickhouse_context.start_cache().await.unwrap();
+    if !clickhouse_context.is_mocked() {
+        clickhouse_context.start_cache().await.unwrap();
+    }
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
-    let dango_httpd_context = indexer_httpd::context::FullContext::new(
+    let httpd_context = indexer_httpd::context::FullContext::new(
         indexer_cache_context,
         sql_context,
         clickhouse_context.clone(),
@@ -243,8 +327,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         codes,
         contracts,
         validator_sets,
-        dango_httpd_context.clone(),
-        dango_httpd_context,
+        httpd_context,
         clickhouse_context,
         db_guard,
     )

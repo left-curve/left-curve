@@ -12,17 +12,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_user() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
@@ -62,17 +53,8 @@ async fn query_user() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account =
@@ -125,17 +107,8 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
-    let (
-        suite,
-        mut accounts,
-        codes,
-        contracts,
-        validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (suite, mut accounts, codes, contracts, validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let test_account = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes).await;
@@ -177,17 +150,8 @@ async fn query_public_keys_by_user_index() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn query_users_rejects_conflicting_pagination_args() -> anyhow::Result<()> {
-    let (
-        _suite,
-        _accounts,
-        _codes,
-        _contracts,
-        _validator_sets,
-        _,
-        dango_httpd_context,
-        _,
-        _db_guard,
-    ) = setup_test_with_indexer(TestOption::default()).await;
+    let (_suite, _accounts, _codes, _contracts, _validator_sets, dango_httpd_context, _, _db_guard) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     let local_set = tokio::task::LocalSet::new();
 

@@ -1,7 +1,10 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
-    dango_testing::{build_app_service, call_api, call_api_with_headers, create_block},
+    dango_testing::{
+        TestOption, build_app_service, call_api, call_api_with_headers,
+        setup_test_naive_with_indexer, setup_test_naive_with_indexer_and_create_blocks,
+    },
     grug_types::{Block, BlockOutcome},
     serde_json::json,
 };
@@ -20,7 +23,8 @@ struct RequesterIpResponse {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn up_returns_200() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -33,7 +37,7 @@ async fn up_returns_200() -> anyhow::Result<()> {
 
                 let expected = json!({
                     "block": { "height": 1 },
-                    "is_running": true,
+                    "is_running": false,
                     "indexed_block_height": 1,
                     "chain_id": "",
                 });
@@ -49,7 +53,8 @@ async fn up_returns_200() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn api_returns_block() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -92,7 +97,8 @@ async fn api_returns_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn requester_ip_returns_forwarded_client_ip() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, _, _, _, httpd_context, _, _db_guard) =
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     let local_set = tokio::task::LocalSet::new();
 

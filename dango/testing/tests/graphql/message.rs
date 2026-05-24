@@ -1,20 +1,23 @@
 use {
     assertor::*,
     dango_testing::{
-        GraphQLCustomRequest, PaginationDirection, build_app_service, call_graphql_query,
-        call_ws_graphql_stream, create_block, create_blocks, messages_query, paginate_messages,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginationDirection, TestOption, build_app_service,
+        call_graphql_query, call_ws_graphql_stream, messages_query, paginate_messages,
+        parse_graphql_subscription_response, setup_test_naive_with_indexer_and_create_blocks,
     },
+    dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
-    grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
+    grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_graphql_types::{Messages, SubscribeMessages, messages, subscribe_messages},
-    std::str::FromStr,
     tokio::sync::mpsc,
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_messages() -> anyhow::Result<()> {
-    let (httpd_context, _client, accounts) = create_block().await?;
+    let (_, accounts, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+
+    let sender_addr = accounts.user1.address().to_string();
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -33,7 +36,7 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
 
                 assert_that!(data.messages.nodes).has_length(1);
                 assert_that!(data.messages.nodes[0].sender_addr.as_str())
-                    .is_equal_to(accounts["sender"].address.to_string().as_str());
+                    .is_equal_to(sender_addr.as_str());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -44,7 +47,8 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_messages() -> anyhow::Result<()> {
-    let (httpd_context, _client, _) = create_blocks(10).await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 10).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -118,7 +122,10 @@ async fn graphql_paginate_messages() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
-    let (httpd_context, client, mut accounts) = create_block().await?;
+    let (mut suite, mut accounts, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+
+    let owner_addr = accounts.user1.address().to_string();
 
     // Use typed subscription from indexer-graphql-types
     let request_body = GraphQLCustomRequest::from_query_body(
@@ -128,26 +135,24 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
 
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
 
-    let owner_addr = accounts["sender"].address.to_string();
-
     // Can't call this from LocalSet so using channels instead.
     tokio::spawn(async move {
         while rx.recv().await.is_some() {
-            let to = accounts["owner"].address;
-
-            let chain_id = client.chain_id().await;
-
-            client
-                .send_message(
-                    &mut accounts["sender"],
-                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
-                    GasOption::Predefined { gas_limit: 2000 },
-                    &chain_id,
+            suite
+                .send_messages_with_gas(
+                    &mut accounts.user1,
+                    1_000_000,
+                    NonEmpty::new_unchecked(vec![
+                        Message::transfer(
+                            accounts.user2.address(),
+                            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+                        )
+                        .unwrap(),
+                    ]),
                 )
                 .await
                 .should_succeed();
         }
-
         Ok::<(), anyhow::Error>(())
     });
 

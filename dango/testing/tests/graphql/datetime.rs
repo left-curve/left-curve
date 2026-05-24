@@ -1,15 +1,16 @@
 use {
-    dango_testing::{build_app_service, call_graphql_query, create_block},
+    dango_testing::{
+        TestOption, build_app_service, call_graphql_query,
+        setup_test_naive_with_indexer_and_create_blocks,
+    },
     graphql_client::GraphQLQuery,
     indexer_graphql_types::{Block, block},
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_iso_8601() -> anyhow::Result<()> {
-    // NOTE: It's necessary to capture the client in a variable named `_client`
-    // here. It can't be named just an underscore (`_`) or dropped (`..`).
-    // Otherwise, the indexer is dropped and the test fails.
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 

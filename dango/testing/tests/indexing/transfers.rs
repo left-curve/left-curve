@@ -9,7 +9,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn index_transfer_events() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, dango_context, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs

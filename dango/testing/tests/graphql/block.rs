@@ -1,20 +1,21 @@
 use {
     assertor::*,
     dango_testing::{
-        GraphQLCustomRequest, PaginationDirection, blocks_query, build_app_service,
-        call_batch_graphql_query, call_graphql_query, call_ws_graphql_stream, create_block,
-        create_blocks, paginate_blocks, parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginationDirection, TestOption, blocks_query, build_app_service,
+        call_batch_graphql_query, call_graphql_query, call_ws_graphql_stream, paginate_blocks,
+        parse_graphql_subscription_response, setup_test_naive_with_indexer_and_create_blocks,
     },
+    dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
-    grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
+    grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_graphql_types::{Block, Blocks, SubscribeBlock, block, blocks, subscribe_block},
-    std::str::FromStr,
     tokio::sync::mpsc,
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_blocks() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -40,7 +41,8 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -70,10 +72,8 @@ async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_block() -> anyhow::Result<()> {
-    // NOTE: It's necessary to capture the client in a variable named `_client`
-    // here. It can't be named just an underscore (`_`) or dropped (`..`).
-    // Otherwise, the indexer is dropped and the test fails.
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -99,7 +99,8 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_last_block() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -125,7 +126,8 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_blocks() -> anyhow::Result<()> {
-    let (httpd_context, _client, _) = create_blocks(10).await?;
+    let (_, _, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 10).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -199,7 +201,8 @@ async fn graphql_paginate_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
-    let (httpd_context, client, mut accounts) = create_block().await?;
+    let (mut suite, mut accounts, httpd_context, _db_guard) =
+        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
 
     // Use typed subscription from indexer-graphql-types
     let request_body = GraphQLCustomRequest::from_query_body(
@@ -212,20 +215,21 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     // Can't call this from LocalSet so using channels instead.
     tokio::spawn(async move {
         while rx.recv().await.is_some() {
-            let to = accounts["owner"].address;
-            let chain_id = client.chain_id().await;
-
-            client
-                .send_message(
-                    &mut accounts["sender"],
-                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
-                    GasOption::Predefined { gas_limit: 2000 },
-                    &chain_id,
+            suite
+                .send_messages_with_gas(
+                    &mut accounts.user1,
+                    1_000_000,
+                    NonEmpty::new_unchecked(vec![
+                        Message::transfer(
+                            accounts.user2.address(),
+                            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+                        )
+                        .unwrap(),
+                    ]),
                 )
                 .await
                 .should_succeed();
         }
-
         Ok::<(), anyhow::Error>(())
     });
 
