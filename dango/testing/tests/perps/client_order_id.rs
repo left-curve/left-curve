@@ -6,7 +6,8 @@ use {
     },
     dango_testing::{TestOption, perps::pair_id, setup_test_naive},
     dango_types::{constants::usdc, perps},
-    grug::{Addressable, Coins, QuerierExt, ResultExt, Uint64, Uint128},
+    grug_math::{Uint64, Uint128},
+    grug_types::{Addressable, Coins, QuerierExt, ResultExt},
     std::collections::BTreeMap,
 };
 

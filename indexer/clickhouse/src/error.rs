@@ -8,10 +8,10 @@ pub enum IndexerError {
     Io(std::io::Error),
 
     #[error(transparent)]
-    Std(grug::StdError),
+    Std(grug_types::StdError),
 
     #[error(transparent)]
-    Math(grug::MathError),
+    Math(grug_math::MathError),
 
     #[error(transparent)]
     #[backtrace(new)]

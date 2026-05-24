@@ -1,18 +1,18 @@
 use {
     crate::oracle::{Price, PriceSource},
-    grug::{Binary, Denom, Timestamp},
+    grug_types::{Binary, Denom, Timestamp},
     pyth_types::PriceUpdate,
     std::collections::BTreeMap,
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     pub price_sources: BTreeMap<Denom, PriceSource>,
     /// Pyth Lazer trusted signers: public keys and expiration timestamps.
     pub trusted_signers: BTreeMap<Binary, Timestamp>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceSource>),
@@ -27,12 +27,12 @@ pub enum ExecuteMsg {
     FeedPrices(PriceUpdate),
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ReplyMsg {
     AfterOnOracleUpdate {},
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query Pyth Lazer trusted signers and their expiration times.
     #[returns(BTreeMap<Binary, Timestamp>)]
@@ -62,8 +62,8 @@ pub enum QueryMsg {
 
 /// Emitted by the oracle's reply handler when the perps vault refresh
 /// submessage fails, providing on-chain observability for monitors.
-#[grug::event("vault_refresh_failed")]
-#[grug::derive(Serde)]
+#[grug_types::event("vault_refresh_failed")]
+#[grug_types::derive(Serde)]
 pub struct VaultRefreshFailed {
     pub error: String,
 }

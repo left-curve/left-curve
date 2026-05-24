@@ -1,9 +1,10 @@
 use {
-    grug::{Binary, Inner, PrimaryKey, RawKey, StdError, StdResult},
+    grug_storage::{PrimaryKey, RawKey},
+    grug_types::{Binary, Inner, StdError, StdResult},
     hyperlane_types::{Addr32, mailbox::Domain},
 };
 
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 #[derive(Copy, PartialOrd, Ord)]
 pub enum Remote {
     /// Indicates the token was received through Hyperlane's Warp protocol.
@@ -19,7 +20,7 @@ impl PrimaryKey for Remote {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<grug::RawKey<'_>> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let bytes = match self {
             Remote::Warp { domain, contract } => {
                 // tag:           1 byte

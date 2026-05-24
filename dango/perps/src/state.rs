@@ -9,7 +9,8 @@ use {
             Referrer, State, UserReferralData, UserState, VaultSnapshot,
         },
     },
-    grug::{Addr, IndexedMap, Item, Map, MultiIndex, Set, Timestamp},
+    grug_storage::{IndexedMap, Item, Map, MultiIndex, Set},
+    grug_types::{Addr, Timestamp},
     std::collections::BTreeSet,
 };
 
@@ -84,7 +85,7 @@ pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
 
 // ----------------------------------- types -----------------------------------
 
-#[grug::index_list(Addr, UserState)]
+#[grug_storage::index_list(Addr, UserState)]
 pub struct UserStateIndexes<'a> {
     /// If the user state has one or more pending unlocks, the earliest ending
     /// time of those unlocks; otherwise, `Timestamp::MAX`.
@@ -145,7 +146,7 @@ impl UserStateIndexes<'static> {
     }
 }
 
-#[grug::index_list((Referrer, Referee), RefereeStats)]
+#[grug_storage::index_list((Referrer, Referee), RefereeStats)]
 pub struct ReferrerStatisticsIndex<'a> {
     pub registered_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
     pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,

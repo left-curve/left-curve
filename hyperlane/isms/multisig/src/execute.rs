@@ -1,7 +1,7 @@
 use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
-    grug::{HexByteArray, MutableCtx, QuerierExt, Response},
+    grug_types::{HexByteArray, MutableCtx, QuerierExt, Response},
     hyperlane_types::{
         isms::multisig::{ExecuteMsg, InstantiateMsg, ValidatorSet},
         mailbox::Domain,
@@ -74,7 +74,7 @@ fn set_validators(
 mod tests {
     use {
         super::*,
-        grug::{
+        grug_types::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt, btree_set,
         },

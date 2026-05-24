@@ -19,4 +19,6 @@ library = []
 
 [dependencies]
 error-backtrace = { workspace = true }
-grug            = { workspace = true }
+grug-ffi        = { workspace = true }
+grug-math       = { workspace = true }
+grug-types      = { workspace = true }

@@ -3,7 +3,7 @@ use {
     anyhow::ensure,
     dango_order_book::Dimensionless,
     dango_types::perps::{Param, RateSchedule},
-    grug::{Addr, Order as IterationOrder, Storage},
+    grug_types::{Addr, Order as IterationOrder, Storage},
 };
 
 /// The pending fee-rate-override edit being validated, if any.
@@ -88,7 +88,7 @@ mod tests {
     use {
         super::*,
         dango_order_book::UsdValue,
-        grug::{MockStorage, btree_map},
+        grug_types::{MockStorage, btree_map},
         std::collections::BTreeMap,
     };
 

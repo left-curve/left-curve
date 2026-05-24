@@ -8,7 +8,7 @@ use {
         config::AppConfig,
         signer::SequencedSigner,
     },
-    grug::{
+    grug_types::{
         Addr, Addressable, Defined, JsonSerExt, MaybeDefined, Message, NonEmpty, QueryClient,
         QueryClientExt, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx,
     },
@@ -343,7 +343,9 @@ mod tests {
             auth::AccountStatus,
             config::{AppAddresses, AppConfig},
         },
-        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, btree_map},
+        grug_types::{
+            AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, btree_map,
+        },
     };
 
     #[test]

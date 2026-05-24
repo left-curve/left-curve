@@ -1,8 +1,8 @@
 use {
     crate::Codes,
     dango_types::config::Hyperlane,
-    grug::{Binary, ContractBuilder, ContractWrapper, Empty, StdResult},
-    grug_vm_rust::RustVm,
+    grug_types::{Binary, Empty, StdResult},
+    grug_vm_rust::{ContractBuilder, ContractWrapper, RustVm},
 };
 
 /// Get the binary codes for Dango smart contracts, for use in building the

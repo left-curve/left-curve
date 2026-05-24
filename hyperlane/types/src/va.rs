@@ -1,6 +1,6 @@
 use {
     core::str,
-    grug::{Addr, Coin, HexByteArray, UniqueVec},
+    grug_types::{Addr, Coin, HexByteArray, UniqueVec},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -8,13 +8,13 @@ pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
 
 // --------------------------------- messages ----------------------------------
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     pub mailbox: Addr,
     pub announce_fee_per_byte: Coin,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     Announce {
         validator: HexByteArray<20>,
@@ -23,7 +23,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the mailbox contract address.
     #[returns(Addr)]
@@ -46,16 +46,16 @@ pub enum QueryMsg {
 
 // ---------------------------------- events -----------------------------------
 
-#[grug::derive(Serde)]
-#[grug::event("init_validator_announce")]
+#[grug_types::derive(Serde)]
+#[grug_types::event("init_validator_announce")]
 pub struct Initialize {
     pub creator: Addr,
     pub mailbox: Addr,
     pub announce_fee_per_byte: Coin,
 }
 
-#[grug::derive(Serde)]
-#[grug::event("validator_announcement")]
+#[grug_types::derive(Serde)]
+#[grug_types::event("validator_announcement")]
 pub struct Announce {
     pub sender: Addr,
     pub validator: HexByteArray<20>,

@@ -4,7 +4,7 @@ use {
     crate::state::{PAIR_PARAMS, PAIR_STATES},
     dango_order_book::PairId,
     dango_types::perps::{PairParam, PairState},
-    grug::Storage,
+    grug_types::Storage,
 };
 
 /// An abstraction for querying perps contract state.

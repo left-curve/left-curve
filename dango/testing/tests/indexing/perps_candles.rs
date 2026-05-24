@@ -11,11 +11,9 @@ use {
         constants::usdc,
         perps::{self, PairParam, RateSchedule},
     },
-    grug::{
-        BlockInfo, Coins, Denom, Duration, Hash256, NumberConst, ResultExt, Timestamp, Udec128_6,
-        btree_map,
-    },
     grug_app::Indexer,
+    grug_math::{NumberConst, Udec128_6, Uint128},
+    grug_types::{BlockInfo, Coins, Denom, Duration, Hash256, ResultExt, Timestamp, btree_map},
     indexer_clickhouse::{
         entities::{
             CandleInterval,
@@ -663,7 +661,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
                 account,
                 contracts.perps,
                 &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
-                Coins::one(usdc::DENOM.clone(), grug::Uint128::new(100_000 * 1_000_000)).unwrap(),
+                Coins::one(usdc::DENOM.clone(), Uint128::new(100_000 * 1_000_000)).unwrap(),
             )
             .await
             .should_succeed();

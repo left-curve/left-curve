@@ -10,10 +10,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::UsdValue,
     dango_types::perps::{LiquidityUnlocking, Param, State, Unlock, UserState},
-    grug::{
-        Dec128_6, Int128, IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Timestamp,
-        Uint128,
-    },
+    grug_math::{Dec128_6, Int128, IsZero, MultiplyRatio, Number as _, Uint128},
+    grug_types::{MutableCtx, Response, Timestamp},
 };
 
 /// Request to withdraw liquidity from the counterparty vault.
@@ -196,7 +194,8 @@ mod tests {
     use {
         super::*,
         dango_order_book::UsdValue,
-        grug::{Duration, MockStorage, Uint128, hash_map},
+        grug_math::Uint128,
+        grug_types::{Duration, MockStorage, hash_map},
         std::collections::VecDeque,
     };
 

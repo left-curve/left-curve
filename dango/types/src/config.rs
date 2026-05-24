@@ -1,10 +1,10 @@
 use {
     crate::constants::usdc,
-    grug::{Addr, Coins, coins},
+    grug_types::{Addr, Coins, coins},
 };
 
 /// Application-specific configurations of the Dango chain.
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct AppConfig {
     /// Addresses of relevant Dango contracts.
     pub addresses: AppAddresses,
@@ -22,7 +22,7 @@ impl Default for AppConfig {
 }
 
 /// Addresses of relevant Dango contracts.
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct AppAddresses {
     pub account_factory: Addr,
     pub gateway: Addr,
@@ -49,7 +49,7 @@ impl Default for AppAddresses {
     }
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 #[derive(Copy)]
 pub struct Hyperlane<T> {
     pub ism: T,

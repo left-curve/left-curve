@@ -13,9 +13,10 @@ use {
         },
     },
     data_encoding::BASE64URL_NOPAD,
-    grug::{
+    grug_storage::StorageQuerier,
+    grug_types::{
         Api, AuthCtx, AuthMode, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
-        MutableCtx, SignData, StdError, StdResult, Storage, StorageQuerier, Tx,
+        MutableCtx, SignData, StdError, StdResult, Storage, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -25,7 +26,7 @@ use {
 pub mod account_factory {
     use {
         dango_types::account_factory::{User, UserIndex},
-        grug::Map,
+        grug_storage::Map,
     };
 
     pub const USERS: Map<UserIndex, User> = Map::new("user");
@@ -35,7 +36,7 @@ pub mod account_factory {
 pub mod account {
     use {
         dango_types::auth::{AccountStatus, Nonce},
-        grug::Item,
+        grug_storage::Item,
         std::collections::BTreeSet,
     };
 
@@ -601,7 +602,7 @@ mod tests {
             account_factory::Username,
             config::{AppAddresses, AppConfig},
         },
-        grug::{
+        grug_types::{
             Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
             btree_map, hash,
         },

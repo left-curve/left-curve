@@ -1,7 +1,8 @@
 use {
     dango_order_book::UsdPrice,
-    grug::{Addr, Dec128_6, Denom, Inner, Order, StdError, StdResult, Storage, Unsigned, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
+    grug_math::{Dec128_6, Unsigned},
+    grug_types::{Addr, Denom, Inner, Order, StdError, StdResult, Storage, addr},
     pyth_types::{MarketSession, PythId},
 };
 
@@ -19,11 +20,13 @@ const ORACLE: Addr = addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d");
 /// key.
 mod legacy_oracle {
     use {
-        grug::{Denom, Map, Serde, Timestamp, Udec128},
+        grug_math::Udec128,
+        grug_storage::{Map, Serde},
+        grug_types::{Denom, Timestamp},
         pyth_types::{Channel, PythId},
     };
 
-    #[grug::derive(Serde)]
+    #[grug_types::derive(Serde)]
     pub enum PriceSource {
         Fixed {
             humanized_price: Udec128,
@@ -41,7 +44,7 @@ mod legacy_oracle {
     /// pre-refactor `Price<Undefined<Precision>>` ended the struct with a
     /// `Undefined<u8>` ZST that Borsh encodes as 0 bytes, so the on-disk
     /// representation matches this two-field shape verbatim.
-    #[grug::derive(Borsh)]
+    #[grug_types::derive(Borsh)]
     pub struct PrecisionlessPrice {
         pub humanized_price: Udec128,
         pub timestamp: Timestamp,
@@ -157,7 +160,8 @@ mod tests {
     use {
         super::*,
         dango_types::constants::{atom, btc, eth, usdc},
-        grug::{MockStorage, Timestamp, Udec128, btree_map},
+        grug_math::Udec128,
+        grug_types::{MockStorage, Timestamp, btree_map},
         pyth_types::constants::{ATOM_USD_ID, BTC_USD_ID, ETH_USD_ID, USDC_USD_ID},
         std::str::FromStr,
     };

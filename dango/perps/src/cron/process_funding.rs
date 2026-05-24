@@ -5,7 +5,7 @@ use {
     },
     dango_oracle::OracleQuerier,
     dango_order_book::{Days, PairId, Quantity},
-    grug::{Addr, Storage, Timestamp},
+    grug_types::{Addr, Storage, Timestamp},
 };
 
 /// Compute and apply funding deltas for each trading pair using the vault's
@@ -143,7 +143,7 @@ mod tests {
             oracle::Price,
             perps::{PairParam, PairState, Param, Position, State, UserState},
         },
-        grug::{Duration, MockStorage, hash_map},
+        grug_types::{Duration, MockStorage, hash_map},
         pyth_types::MarketSession,
         std::collections::{BTreeMap, BTreeSet},
     };

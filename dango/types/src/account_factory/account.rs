@@ -7,7 +7,7 @@ use crate::account_factory::UserIndex;
 pub type AccountIndex = u32;
 
 /// Information of an account.
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub struct Account {
     pub index: AccountIndex,
 

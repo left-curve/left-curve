@@ -1,10 +1,8 @@
 use {
     crate::{BacktraceQueryResponse, QueryStackOverflowRequest},
     error_backtrace::Backtraceable,
-    grug::{
-        Binary, Exponentiate, ImmutableCtx, Number, Querier, QuerierExt, Query, StdError,
-        StdResult, Uint128,
-    },
+    grug_math::{Exponentiate, Number, Uint128},
+    grug_types::{Binary, ImmutableCtx, Querier, QuerierExt, Query, StdError, StdResult},
 };
 
 pub fn query_loop(iterations: u64) -> StdResult<()> {
@@ -24,7 +22,7 @@ pub fn query_loop(iterations: u64) -> StdResult<()> {
 pub fn query_force_write(_key: &str, _value: &str) {
     #[cfg(target_arch = "wasm32")]
     {
-        use grug::Region;
+        use grug_ffi::Region;
 
         unsafe extern "C" {
             fn db_write(key_ptr: usize, value_ptr: usize);

@@ -4,7 +4,7 @@ use {
         config::AppConfig,
         perps::{self, SubmitOrCancelOrderRequest, TraderMsg},
     },
-    grug::{Addr, Inner, JsonDeExt, Message, QuerierExt, QuerierWrapper, StdError, Tx},
+    grug_types::{Addr, Inner, JsonDeExt, Message, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
 };
 
@@ -208,7 +208,8 @@ mod tests {
                 ReferralMsg, SubmitOrCancelOrderRequest, SubmitOrderRequest, TraderMsg, VaultMsg,
             },
         },
-        grug::{Coins, Json, JsonSerExt, MsgExecute, NonEmpty, Uint64},
+        grug_math::Uint64,
+        grug_types::{Coins, Json, JsonSerExt, MsgExecute, NonEmpty},
         test_case::test_case,
     };
 

@@ -3,7 +3,7 @@ use {
         config::AppConfig,
         oracle::{ExecuteMsg, QueryPriceSourcesRequest},
     },
-    grug::{
+    grug_types::{
         Addr, Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper,
         Shared, StdError, StdResult, Tx,
     },

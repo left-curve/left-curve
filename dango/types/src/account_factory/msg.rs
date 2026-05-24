@@ -3,19 +3,19 @@ use {
         account_factory::{Account, AccountIndex, NewUserSalt, UserIndex, Username},
         auth::{Key, Signature},
     },
-    grug::{Addr, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
+    grug_types::{Addr, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
     sha2::Sha256,
     std::collections::BTreeMap,
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum UserIndexOrName {
     Index(UserIndex),
     Name(Username),
 }
 
 /// Information about a user. Used in query response.
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub struct User {
     /// The user's numerical index.
     pub index: UserIndex,
@@ -50,7 +50,7 @@ impl User {
 /// All fields from the `RegisterUser` message are included to prevent
 /// front-running attacks where an attacker could swap unsigned parameters
 /// (key, seed, referrer) while reusing the victim's signature.
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct RegisterUserData {
     pub chain_id: String,
     pub key: Key,
@@ -68,7 +68,7 @@ impl SignData for RegisterUserData {
     }
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     /// Code hash to be associated with the Dango account contract.
     pub account_code_hash: Hash256,
@@ -79,7 +79,7 @@ pub struct InstantiateMsg {
     pub users: Vec<NewUserSalt>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Create a new user, following an initial deposit. Creates a single-signature
     /// account too.
@@ -115,7 +115,7 @@ pub enum ExecuteMsg {
     ForceResetUsername { user_index: UserIndex },
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the code hash associated with the Dango account contract.
     #[returns(Hash256)]

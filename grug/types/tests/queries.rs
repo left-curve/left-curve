@@ -1,11 +1,14 @@
-use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, QuerierExt, ResultExt, TestBuilder};
+use {
+    grug_testing::{ContractBuilder, TestBuilder},
+    grug_types::{Addr, Coins, Empty, Hash256, QuerierExt, ResultExt},
+};
 
 mod query_maker {
-    use grug::{
+    use grug_types::{
         Addr, Empty, Hash256, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult,
     };
 
-    #[grug::derive(Serde, Borsh, QueryRequest)]
+    #[grug_types::derive(Serde, Borsh, QueryRequest)]
     pub enum QueryMsg {
         #[returns(String)]
         Foo { bar: u64 },

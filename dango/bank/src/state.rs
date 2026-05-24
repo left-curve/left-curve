@@ -1,6 +1,8 @@
 use {
     dango_types::bank::Metadata,
-    grug::{Addr, Coins, Denom, IndexedMap, Map, MultiIndex, Part, Uint128},
+    grug_math::Uint128,
+    grug_storage::{IndexedMap, Map, MultiIndex},
+    grug_types::{Addr, Coins, Denom, Part},
 };
 
 pub const NAMESPACE_OWNERS: Map<&Part, Addr> = Map::new("namespace_owner");
@@ -21,7 +23,7 @@ pub const ORPHANED_TRANSFERS: IndexedMap<(Addr, Addr), Coins, OrphanedTransferIn
         ),
     });
 
-#[grug::index_list((Addr, Addr), Coins)]
+#[grug_storage::index_list((Addr, Addr), Coins)]
 pub struct OrphanedTransferIndexes<'a> {
     pub recipient: MultiIndex<'a, (Addr, Addr), Addr, Coins>,
 }

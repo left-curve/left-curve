@@ -1,5 +1,5 @@
 use {
-    grug::{Denom, Part},
+    grug_types::{Denom, Part},
     std::sync::LazyLock,
 };
 

@@ -1,6 +1,6 @@
 use {
     dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
-    grug::MathResult,
+    grug_math::MathResult,
 };
 
 /// Compute the USD notional value of a fill.

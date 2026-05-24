@@ -6,7 +6,7 @@ use {
         constants::usdc,
         perps::{PairParam, Param, RateSchedule},
     },
-    grug::{Duration, Timestamp, btree_map},
+    grug_types::{Duration, Timestamp, btree_map},
 };
 
 mod adl_bug_reproduction;

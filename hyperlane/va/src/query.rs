@@ -1,6 +1,6 @@
 use {
     crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
-    grug::{
+    grug_types::{
         Addr, Bound, Coin, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
         StdResult, UniqueVec,
     },

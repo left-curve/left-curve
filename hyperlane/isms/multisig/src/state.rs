@@ -1,5 +1,5 @@
 use {
-    grug::Map,
+    grug_storage::Map,
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
 };
 

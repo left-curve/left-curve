@@ -9,9 +9,8 @@ use {
         constants::usdc,
         perps::{self, PairParam, Param},
     },
-    grug::{
-        Addressable, Coins, MultiplyRatio, NumberConst, QuerierExt, ResultExt, Uint128, btree_map,
-    },
+    grug_math::{MultiplyRatio, NumberConst, Uint128},
+    grug_types::{Addressable, Coins, QuerierExt, ResultExt, btree_map},
     std::collections::BTreeMap,
 };
 

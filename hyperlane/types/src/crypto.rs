@@ -1,6 +1,6 @@
 use {
     crate::{Addr32, mailbox::Domain},
-    grug::{Hash256, HashExt, Inner},
+    grug_types::{Hash256, HashExt, Inner},
     hex_literal::hex,
 };
 

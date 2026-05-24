@@ -9,12 +9,13 @@ use {
         perps::{self, PairParam},
         taxman,
     },
-    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp, Uint128},
+    grug_math::Uint128,
+    grug_types::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     std::collections::{BTreeMap, BTreeSet},
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct Contracts {
     pub account_factory: Addr,
     pub bank: Addr,

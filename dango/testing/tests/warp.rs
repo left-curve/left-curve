@@ -11,11 +11,10 @@ use {
         gateway::{self, Remote},
         warp::TokenMessage,
     },
-    grug::{
-        Addr, Addressable, BalanceChange, HashExt, NumberConst, QuerierExt, ResultExt, StdError,
-        Uint128, btree_map, coins,
-    },
     grug_app::Indexer,
+    grug_math::{NumberConst, Uint128},
+    grug_testing::BalanceChange,
+    grug_types::{Addr, Addressable, HashExt, QuerierExt, ResultExt, StdError, btree_map, coins},
     hyperlane_testing::constants::MOCK_HYPERLANE_LOCAL_DOMAIN,
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, addr32,

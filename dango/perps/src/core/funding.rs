@@ -2,7 +2,8 @@ use {
     dango_order_book::{
         Days, Dimensionless, FundingPerUnit, FundingRate, Quantity, UsdPrice, UsdValue,
     },
-    grug::{MathResult, StdResult},
+    grug_math::MathResult,
+    grug_types::StdResult,
 };
 
 /// Walk an ordered sequence of `(limit_price, size)` pairs and compute the
@@ -108,7 +109,7 @@ mod tests {
     use {
         super::*,
         dango_order_book::{Days, Dimensionless, FundingPerUnit, FundingRate, UsdPrice, UsdValue},
-        grug::{Duration, StdResult},
+        grug_types::{Duration, StdResult},
         test_case::test_case,
     };
 

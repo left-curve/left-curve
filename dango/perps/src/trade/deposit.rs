@@ -3,7 +3,8 @@ use {
     anyhow::ensure,
     dango_order_book::Quantity,
     dango_types::perps::{Deposited, SETTLEMENT_CURRENCY_PRICE, settlement_currency},
-    grug::{Addr, IsZero, MutableCtx, Response},
+    grug_math::IsZero,
+    grug_types::{Addr, MutableCtx, Response},
 };
 
 /// Deposit settlement currency into the trader's margin account.
@@ -62,7 +63,8 @@ mod tests {
         super::*,
         crate::USER_STATES,
         dango_order_book::UsdValue,
-        grug::{Addr, Coins, MockContext, ResultExt, Uint128},
+        grug_math::Uint128,
+        grug_types::{Addr, Coins, MockContext, ResultExt},
     };
 
     const SENDER: Addr = Addr::mock(1);

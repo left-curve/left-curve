@@ -106,7 +106,7 @@ mod tests {
             oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug::{Timestamp, btree_map, hash_map},
+        grug_types::{Timestamp, btree_map, hash_map},
         pyth_types::MarketSession,
         std::collections::HashMap,
     };

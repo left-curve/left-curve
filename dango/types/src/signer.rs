@@ -1,6 +1,6 @@
 use {
     crate::auth::Nonce,
-    grug::{QueryClient, Signer},
+    grug_types::{QueryClient, Signer},
 };
 
 /// Represent a signer that can query and update its nonce.

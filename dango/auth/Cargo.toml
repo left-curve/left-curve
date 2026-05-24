@@ -14,7 +14,8 @@ alloy         = { workspace = true, features = ["dyn-abi", "eip712"] }
 anyhow        = { workspace = true }
 dango-types   = { workspace = true }
 data-encoding = { workspace = true }
-grug          = { workspace = true }
+grug-storage  = { workspace = true }
+grug-types    = { workspace = true }
 hex           = { workspace = true }
 sha2          = { workspace = true }
 

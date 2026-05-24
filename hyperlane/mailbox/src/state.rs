@@ -1,5 +1,6 @@
 use {
-    grug::{Counter, Hash256, Item, Set},
+    grug_storage::{Counter, Item, Set},
+    grug_types::Hash256,
     hyperlane_types::{IncrementalMerkleTree, mailbox::Config},
 };
 

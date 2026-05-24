@@ -1,7 +1,7 @@
 use {
     crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_TRUSTED_SIGNERS},
     dango_types::oracle::{Price, PriceSource, QueryMsg},
-    grug::{
+    grug_types::{
         Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Timestamp,
     },

@@ -5,9 +5,8 @@ use {
         constants::dango,
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
-    grug::{
-        Addr, Coin, IsZero, Message, MutableCtx, Number, NumberConst, QuerierExt, Response, Uint128,
-    },
+    grug_math::{IsZero, Number, NumberConst, Uint128},
+    grug_types::{Addr, Coin, Message, MutableCtx, QuerierExt, Response},
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {

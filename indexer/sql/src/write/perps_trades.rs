@@ -4,7 +4,7 @@ use {
         error::IndexerError,
     },
     dango_types::perps::OrderFilled,
-    grug::{EventName, Timestamp},
+    grug_types::{EventName, Timestamp},
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder},
     std::collections::HashMap,
 };

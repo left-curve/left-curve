@@ -6,13 +6,12 @@ use {
     },
     async_graphql::{ComplexObject, SimpleObject},
     bigdecimal::{BigDecimal, num_bigint::BigInt},
-    grug::Inner,
-    grug_types::Timestamp,
+    grug_types::{Inner, Timestamp},
 };
 use {
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug::Udec128_6,
+    grug_math::Udec128_6,
     serde::{Deserialize, Serialize},
 };
 
@@ -211,7 +210,7 @@ fn udec128_6_to_big_decimal(v: &Udec128_6) -> GraphqlBigDecimal {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, chrono::SubsecRound, grug::NumberConst};
+    use {super::*, chrono::SubsecRound, grug_math::NumberConst};
 
     /// Round-trip the row through serde with the ClickHouse-shaped
     /// adapters (`UInt128 ↔ Udec128_6`) to guard against accidental

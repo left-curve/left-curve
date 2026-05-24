@@ -1,7 +1,7 @@
 use {
     dango_testing::{generate_random_key, setup_test},
     dango_types::constants::{dango, usdc},
-    grug::{
+    grug_types::{
         Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, Inner, JsonDeExt, QuerierExt,
         ResultExt, SearchEvent, UniqueVec, btree_set, coins,
     },

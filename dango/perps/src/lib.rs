@@ -23,9 +23,9 @@ use {
             MaintainerMsg, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg, VaultMsg,
         },
     },
-    grug::{
-        Addr, Duration, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, NumberConst,
-        Response, SudoCtx, Uint128,
+    grug_math::{NumberConst, Uint128},
+    grug_types::{
+        Addr, Duration, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, SudoCtx,
     },
 };
 
@@ -55,7 +55,7 @@ fn oracle(querier: impl DangoQuerier) -> Addr {
     #[cfg(not(debug_assertions))]
     {
         let _ = querier;
-        grug::addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d")
+        grug_types::addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d")
     }
 
     #[cfg(debug_assertions)]
@@ -69,7 +69,7 @@ fn account_factory(querier: impl DangoQuerier) -> Addr {
     #[cfg(not(debug_assertions))]
     {
         let _ = querier;
-        grug::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
+        grug_types::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
     }
 
     #[cfg(debug_assertions)]

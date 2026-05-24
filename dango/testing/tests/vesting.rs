@@ -4,11 +4,11 @@ use {
         constants::{dango, usdc},
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
     },
-    grug::{
-        Addr, Addressable, Coin, Coins, Duration, Inner, MultiplyFraction, QuerierExt, ResultExt,
-        StdError, Timestamp, Udec128, Uint128,
-    },
     grug_app::NaiveProposalPreparer,
+    grug_math::{MultiplyFraction, Udec128, Uint128},
+    grug_types::{
+        Addr, Addressable, Coin, Coins, Duration, Inner, QuerierExt, ResultExt, StdError, Timestamp,
+    },
     std::sync::LazyLock,
 };
 

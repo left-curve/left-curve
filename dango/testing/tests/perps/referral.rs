@@ -15,12 +15,13 @@ use {
             UserReferralData,
         },
     },
-    grug::{
-        Addr, Addressable, CheckedContractEvent, Coins, HashExt, JsonDeExt, Op,
-        Order as IterationOrder, QuerierExt, ResultExt, SearchEvent, Signer, Timestamp, TxOutcome,
-        Uint128, btree_map,
-    },
     grug_app::NaiveProposalPreparer,
+    grug_math::Uint128,
+    grug_types::{
+        Addr, Addressable, CheckedContractEvent, Coins, Duration, HashExt, JsonDeExt, Op,
+        Order as IterationOrder, QuerierExt, ResultExt, SearchEvent, Signer, Timestamp, TxEvents,
+        TxOutcome, btree_map,
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -1384,7 +1385,7 @@ async fn active_referral() {
 
     // Next day, User2 trades — cumulative_daily_active_referees should be 3 (cumulative),
     // but cumulative_global_active_referees stays at 2 (User2 already traded before).
-    suite.block_time = grug::Duration::from_days(1);
+    suite.block_time = Duration::from_days(1);
     suite.make_empty_block().await;
 
     create_perps_fill(&mut suite, &mut accounts, contracts.perps, 2_000, 1).await;
@@ -1429,7 +1430,7 @@ async fn negative_maker_fee_does_not_debit_referrers() {
                     referral_active: true,
                     ..default_param()
                 },
-                pair_params: grug::btree_map! {
+                pair_params: btree_map! {
                     pair.clone() => default_pair_param(),
                 },
             }),
@@ -2820,7 +2821,7 @@ async fn place_market_buy_with_events(
     perps: Addr,
     user: &mut (dyn Signer + Send + Sync),
     size: u128,
-) -> grug::TxEvents {
+) -> TxEvents {
     suite
         .execute(
             user,

@@ -2,7 +2,8 @@ use {
     crate::{referral::load_referral_data, state::COMMISSION_RATE_OVERRIDES},
     dango_order_book::{UsdValue, round_to_day},
     dango_types::perps::{CommissionRate, Param, Referrer},
-    grug::{Duration, Number, StdResult, Storage, Timestamp},
+    grug_math::Number,
+    grug_types::{Duration, StdResult, Storage, Timestamp},
 };
 
 /// Number of days in the rolling window for referees volume tiers.

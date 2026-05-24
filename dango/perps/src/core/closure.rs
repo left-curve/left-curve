@@ -6,7 +6,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, UserState},
-    grug::MathResult,
+    grug_math::MathResult,
     std::collections::BTreeMap,
 };
 
@@ -223,7 +223,7 @@ mod tests {
             oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug::{Timestamp, btree_map, hash_map},
+        grug_types::{Timestamp, btree_map, hash_map},
         pyth_types::MarketSession,
         std::collections::HashMap,
     };

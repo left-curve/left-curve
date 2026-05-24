@@ -5,7 +5,7 @@ use {
     dango_sdk::HttpClient,
     dango_testing::Preset,
     dango_types::config::AppConfig,
-    grug::QueryClientExt,
+    grug_types::QueryClientExt,
 };
 
 #[tokio::test]

@@ -1,6 +1,6 @@
 use {
     crate::{account_factory::AccountIndex, auth::Key},
-    grug::{Binary, Hash256},
+    grug_types::{Binary, Hash256},
 };
 
 // ------------------------------- new user salt -------------------------------
@@ -15,7 +15,7 @@ use {
 /// encode the user's key and key hash, such that these cannot be tempered with
 /// via frontrunning by a malicious block builder. Check the docs on the user
 /// onboarding flow for more details.
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct NewUserSalt {
     pub key: Key,
     /// An arbitrary hash used to identify the key.

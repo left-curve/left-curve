@@ -3,8 +3,8 @@
 #![allow(dead_code)]
 
 use {
-    grug::{Addr, Storage, addr},
     grug_app::{AppResult, CHAIN_ID, CONTRACT_NAMESPACE, StorageProvider},
+    grug_types::{Addr, Storage, addr},
 };
 
 const MAINNET_CHAIN_ID: &str = "dango-1";

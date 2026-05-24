@@ -10,9 +10,10 @@ use {
         },
         taxman::{self, FeeType},
     },
-    grug::{
-        Addr, Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, NumberConst, Op, Order,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
+    grug_math::{IsZero, Number, NumberConst, Uint128},
+    grug_types::{
+        Addr, Coins, Denom, Inner, Message, MutableCtx, Op, Order, QuerierExt, Response, StdError,
+        StdResult, Storage, SudoCtx, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };

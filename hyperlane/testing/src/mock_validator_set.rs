@@ -1,6 +1,6 @@
 use {
     crate::constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
-    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared},
+    grug_types::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared},
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, domain_hash, eip191_hash,
         isms::{HYPERLANE_DOMAIN_KEY, multisig::Metadata},

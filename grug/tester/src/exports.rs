@@ -5,15 +5,15 @@ use {
         query_recover_secp256k1, query_stack_overflow, query_verify_ed25519,
         query_verify_ed25519_batch, query_verify_secp256k1, query_verify_secp256r1,
     },
-    grug::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
+    grug_types::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
 
-#[cfg_attr(not(feature = "library"), grug::export)]
+#[cfg_attr(not(feature = "library"), grug_ffi::export)]
 pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
+#[cfg_attr(not(feature = "library"), grug_ffi::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
         ExecuteMsg::InfiniteLoop {} => infinite_loop(),
@@ -22,7 +22,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
+#[cfg_attr(not(feature = "library"), grug_ffi::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Loop { iterations } => query_loop(iterations)?.to_json_value(),

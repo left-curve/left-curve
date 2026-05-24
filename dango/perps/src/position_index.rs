@@ -2,7 +2,7 @@ use {
     crate::state::{LONGS, SHORTS},
     dango_order_book::{PairId, UsdPrice},
     dango_types::perps::Position,
-    grug::{Addr, StdResult, Storage},
+    grug_types::{Addr, StdResult, Storage},
 };
 
 /// Describes how the LONGS/SHORTS index should be updated after a fill.

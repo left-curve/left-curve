@@ -31,7 +31,6 @@ dango-types             = { workspace = true, features = ["async-graphql"] }
 error-backtrace         = { workspace = true }
 futures                 = { workspace = true }
 futures-util            = { workspace = true }
-grug                    = { workspace = true }
 grug-app                = { workspace = true, features = ["tracing"] }
 grug-testing            = { workspace = true, optional = true }
 grug-types              = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }

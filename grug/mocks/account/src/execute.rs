@@ -4,6 +4,7 @@ use {
     grug_types::{AuthCtx, AuthMode, JsonDeExt, MutableCtx, Response, SignData, StdResult, Tx},
 };
 
+#[cfg_attr(not(feature = "library"), grug_ffi::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Save the public key in contract store
     PUBLIC_KEY.save(ctx.storage, &msg.public_key)?;
@@ -21,6 +22,7 @@ pub fn update_key(ctx: MutableCtx, new_public_key: &PublicKey) -> anyhow::Result
     Ok(Response::new())
 }
 
+#[cfg_attr(not(feature = "library"), grug_ffi::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
     let public_key = PUBLIC_KEY.load(ctx.storage)?;
 

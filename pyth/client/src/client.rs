@@ -4,7 +4,7 @@ use {
     crate::PythClientTrait,
     anyhow::bail,
     async_stream::stream,
-    grug::{Inner, Lengthy, NonEmpty},
+    grug_types::{Inner, Lengthy, NonEmpty},
     pyth_lazer_client::{
         stream_client::{PythLazerStreamClient, PythLazerStreamClientBuilder},
         ws_connection::AnyResponse,

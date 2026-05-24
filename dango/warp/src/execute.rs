@@ -6,7 +6,8 @@ use {
         gateway::{self, Remote, bridge::BridgeMsg},
         warp::{ExecuteMsg, InstantiateMsg, TokenMessage},
     },
-    grug::{Coins, HexBinary, Message, MutableCtx, Response, StdResult, Uint128},
+    grug_math::Uint128,
+    grug_types::{Coins, HexBinary, Message, MutableCtx, Response, StdResult},
     hyperlane_types::{
         Addr32,
         mailbox::{self, Domain},

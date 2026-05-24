@@ -25,7 +25,7 @@ error-backtrace       = { workspace = true }
 eth-utils             = { workspace = true }
 futures               = { workspace = true }
 graphql_client        = { workspace = true }
-grug                  = { workspace = true }
+grug-types            = { workspace = true }
 identity              = { workspace = true }
 indexer-graphql-types = { workspace = true }
 k256                  = { workspace = true }
@@ -48,5 +48,6 @@ dango-account-factory = { workspace = true }
 dango-genesis         = { workspace = true }
 dango-mock-httpd      = { workspace = true }
 dango-testing         = { workspace = true }
+grug-testing          = { workspace = true }
 tokio                 = { workspace = true }
 tracing               = { workspace = true }

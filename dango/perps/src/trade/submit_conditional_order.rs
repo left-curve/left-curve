@@ -5,7 +5,8 @@ use {
         ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced, Dimensionless, NEXT_ORDER_ID,
         PairId, Quantity, TriggerDirection, UsdPrice, validate_slippage,
     },
-    grug::{MutableCtx, NumberConst, Response},
+    grug_math::NumberConst,
+    grug_types::{MutableCtx, Response},
 };
 
 pub fn submit_conditional_order(
@@ -93,7 +94,8 @@ mod tests {
             UsdPrice, UsdValue,
         },
         dango_types::perps::{PairParam, Param, Position, UserState},
-        grug::{Addr, Coins, MockContext, NumberConst, ResultExt, Storage, Uint64},
+        grug_math::{NumberConst, Uint64},
+        grug_types::{Addr, Coins, MockContext, ResultExt, Storage},
         std::collections::BTreeMap,
     };
 

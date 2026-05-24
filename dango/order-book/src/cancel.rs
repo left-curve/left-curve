@@ -5,7 +5,7 @@ use {
         ASKS, BIDS, LimitOrder, OrderKey, OrderRemoved, ReasonForOrderRemoval,
         decrease_liquidity_depths, may_invert_price,
     },
-    grug::{EventBuilder, StdResult, Storage},
+    grug_types::{EventBuilder, StdResult, Storage},
     std::collections::BTreeSet,
 };
 

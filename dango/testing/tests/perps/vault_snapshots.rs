@@ -6,7 +6,8 @@ use {
         constants::usdc,
         perps::{self, VaultSnapshot},
     },
-    grug::{Coins, Duration, NumberConst, QuerierExt, ResultExt, Timestamp, Uint128},
+    grug_math::{NumberConst, Uint128},
+    grug_types::{Coins, Duration, QuerierExt, ResultExt, Timestamp},
     std::collections::BTreeMap,
 };
 

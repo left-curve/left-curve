@@ -16,3 +16,12 @@ pub use {
     bound::*, codec::*, counter::*, index::*, item::*, map::*, path::*, prefix::*, prefixer::*,
     primary_key::*, querier::*, raw_key::*, set::*,
 };
+
+#[cfg(feature = "macros")]
+pub use grug_macros::{PrimaryKey, index_list};
+
+#[cfg(feature = "macros")]
+#[doc(hidden)]
+pub mod __private {
+    pub use grug_types::{Binary, StdError, StdResult};
+}

@@ -1,16 +1,16 @@
 use {
     crate::gateway::bridge::BridgeMsg,
-    grug::Addr,
+    grug_types::Addr,
     hyperlane_types::recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     /// Address of the mailbox contract.
     pub mailbox: Addr,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
@@ -18,7 +18,7 @@ pub enum ExecuteMsg {
     Bridge(BridgeMsg),
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the address of the mailbox contract.
     #[returns(Addr)]

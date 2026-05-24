@@ -11,7 +11,8 @@ version       = { workspace = true }
 
 [dependencies]
 anyhow          = { workspace = true }
-grug            = { workspace = true }
+grug-storage    = { workspace = true }
+grug-types      = { workspace = true }
 hyperlane-types = { workspace = true }
 
 [dev-dependencies]

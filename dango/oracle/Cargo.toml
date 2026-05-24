@@ -10,14 +10,15 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dep:metrics", "grug/metrics"]
+metrics = ["dep:metrics", "grug-types/metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow           = { workspace = true }
 dango-order-book = { workspace = true }
 dango-types      = { workspace = true }
-grug             = { workspace = true, features = ["chrono"] }
+grug-storage     = { workspace = true }
+grug-types       = { workspace = true, features = ["chrono"] }
 hex              = { workspace = true }
 humantime        = { workspace = true }
 metrics          = { workspace = true, optional = true }

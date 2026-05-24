@@ -1,6 +1,7 @@
 use {
     crate::{DEPTHS, PairId, Quantity, UsdPrice},
-    grug::{MathResult, StdResult, Storage},
+    grug_math::MathResult,
+    grug_types::{StdResult, Storage},
     std::collections::BTreeSet,
 };
 
@@ -85,9 +86,7 @@ pub fn decrease_liquidity_depths(
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        grug::{Dec128_6, MockStorage},
-        std::str::FromStr,
+        super::*, grug_math::Dec128_6, grug_types::MockStorage, std::str::FromStr,
         test_case::test_case,
     };
 

@@ -13,7 +13,7 @@ use {
         account_factory::{self, UserIndex},
         perps::{RefereeStats, ReferralSet},
     },
-    grug::{MutableCtx, QuerierExt, Response},
+    grug_types::{MutableCtx, QuerierExt, Response},
 };
 
 /// Register a referral relationship between a referrer and a referee.
@@ -114,7 +114,7 @@ mod tests {
             config::{AppAddresses, AppConfig},
             perps::{FeeShareRatio, UserReferralData},
         },
-        grug::{
+        grug_types::{
             Addr, Coins, Config, Duration, EventName, JsonDeExt, JsonSerExt, MockContext,
             MockQuerier, Permission, Permissions, ResultExt, Storage, Timestamp,
         },

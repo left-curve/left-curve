@@ -13,9 +13,8 @@ use {
         ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
         increase_liquidity_depths, may_invert_price,
     },
-    grug::{
-        MutableCtx, Number as _, NumberConst, Order as IterationOrder, QuerierExt, Response, Uint64,
-    },
+    grug_math::{Number as _, NumberConst, Uint64},
+    grug_types::{MutableCtx, Order as IterationOrder, QuerierExt, Response},
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
@@ -253,7 +252,7 @@ mod tests {
     use {
         super::*,
         dango_types::config::AppConfig,
-        grug::{
+        grug_types::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt,
         },

@@ -6,7 +6,7 @@ use {
     bip32::{Mnemonic, PublicKey, XPrv},
     dango_auth::EIP155_CHAIN_ID,
     dango_types::auth::{Eip712Signature, Key, SignDoc, Signature},
-    grug::{Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json},
+    grug_types::{Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json},
     identity::Identity256,
     k256::{ecdsa::signature::DigestSigner, schnorr::CryptoRngCore},
     rand::rngs::OsRng,

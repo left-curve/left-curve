@@ -81,7 +81,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 // }
                 // ```
                 generated_structs.push(quote! {
-                    #[grug::derive(Serde)]
+                    #[grug_types::derive(Serde)]
                     pub struct #request_name {
                         #(#fields_struct_definition)*
                     }
@@ -117,7 +117,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 // pub struct QueryFuzzRequest(u8);
                 // ```
                 generated_structs.push(quote! {
-                    #[grug::derive(Serde)]
+                    #[grug_types::derive(Serde)]
                     pub struct #request_name(pub #unnamed);
                 });
 
@@ -145,7 +145,7 @@ pub fn process(input: TokenStream) -> TokenStream {
                 // pub struct QueryBuzzRequest;
                 // ```
                 generated_structs.push(quote! {
-                    #[grug::derive(Serde)]
+                    #[grug_types::derive(Serde)]
                     pub struct #request_name;
                 });
 
@@ -169,7 +169,7 @@ pub fn process(input: TokenStream) -> TokenStream {
         };
 
         impl_query_request.push(quote! {
-            impl ::grug::QueryRequest for #request_name {
+            impl ::grug_types::QueryRequest for #request_name {
                 type Message = #name;
                 type Response = #return_type;
             }

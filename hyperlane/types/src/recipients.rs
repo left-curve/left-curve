@@ -1,14 +1,14 @@
 use {
     crate::{Addr32, mailbox::Domain},
-    grug::{Addr, HexBinary},
+    grug_types::{Addr, HexBinary},
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     Recipient(RecipientMsg),
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum RecipientMsg {
     Handle {
         origin_domain: Domain,
@@ -17,13 +17,13 @@ pub enum RecipientMsg {
     },
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     #[returns(RecipientQueryResponse)]
     Recipient(RecipientQuery),
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum RecipientQuery {
     /// Return the ISM this recipient would like to use for verifying incoming
     /// messages.
@@ -31,7 +31,7 @@ pub enum RecipientQuery {
     InterchainSecurityModule {},
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum RecipientQueryResponse {
     InterchainSecurityModule(Option<Addr>),
 }

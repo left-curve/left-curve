@@ -5,7 +5,7 @@ use {
         constants::{atom, bch, bnb, btc, doge, eth, ltc, perp_eth, sol, usdc, xrp},
         oracle::PriceSource,
     },
-    grug::{Denom, btree_map},
+    grug_types::{Denom, btree_map},
     pyth_types::constants::{
         ATOM_USD_ID, BCH_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LTC_USD_ID,
         SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,

@@ -6,7 +6,7 @@ use {
         config::AppConfig,
         perps::{Deleveraged, Liquidated, OrderFilled},
     },
-    grug::{
+    grug_types::{
         BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus, EvtCron,
         FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, Inner, Json, JsonDeExt,
         NaiveFlatten, SearchEvent, Timestamp,
@@ -251,8 +251,8 @@ fn extract_user_and_pair(
 ) -> Result<(String, String), IndexerError> {
     #[derive(serde::Deserialize)]
     struct UserAndPair {
-        user: grug::Addr,
-        pair_id: grug::Denom,
+        user: grug_types::Addr,
+        pair_id: grug_types::Denom,
     }
 
     let parsed: UserAndPair = event.data.clone().deserialize_json()?;

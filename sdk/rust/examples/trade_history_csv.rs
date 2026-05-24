@@ -14,7 +14,7 @@ use {
     anyhow::{Context, Result},
     dango_sdk::{HttpClient, PageInfo, perps_events},
     dango_types::perps::OrderFilled,
-    grug::EventName,
+    grug_types::EventName,
     serde::Serialize,
 };
 

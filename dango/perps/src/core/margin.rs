@@ -17,7 +17,7 @@ use {
 pub fn compute_position_unrealized_pnl(
     position: &Position,
     oracle_price: UsdPrice,
-) -> grug::MathResult<UsdValue> {
+) -> grug_math::MathResult<UsdValue> {
     let delta = oracle_price.checked_sub(position.entry_price)?;
     position.size.checked_mul(delta)
 }
@@ -39,7 +39,7 @@ pub fn compute_position_unrealized_pnl(
 pub fn compute_position_unrealized_funding(
     position: &Position,
     pair_state: &PairState,
-) -> grug::MathResult<UsdValue> {
+) -> grug_math::MathResult<UsdValue> {
     let delta = (pair_state.funding_per_unit).checked_sub(position.entry_funding_per_unit)?;
     position.size.checked_mul(delta)
 }
@@ -179,7 +179,7 @@ pub fn compute_required_margin(
     opening_size: Quantity,
     limit_price: UsdPrice,
     pair_param: &PairParam,
-) -> grug::MathResult<UsdValue> {
+) -> grug_math::MathResult<UsdValue> {
     opening_size
         .checked_abs()?
         .checked_mul(limit_price)?
@@ -289,7 +289,7 @@ mod tests {
             oracle::Price,
             perps::{PairParam, PairState, Param, Position, RateSchedule},
         },
-        grug::{Timestamp, btree_map, hash_map},
+        grug_types::{Timestamp, btree_map, hash_map},
         pyth_types::MarketSession,
         std::collections::HashMap,
         test_case::test_case,

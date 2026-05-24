@@ -9,7 +9,12 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+default = ["macros"]
+macros  = ["dep:grug-macros"]
+
 [dependencies]
 error-backtrace = { workspace = true }
+grug-macros     = { workspace = true, optional = true }
 grug-types      = { workspace = true }
 serde           = { workspace = true }

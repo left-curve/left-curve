@@ -1,16 +1,17 @@
 use {
-    grug::{Addr, Coins, Denom, Udec128},
+    grug_math::Udec128,
+    grug_types::{Addr, Coins, Denom},
     std::collections::BTreeMap,
 };
 
-#[grug::derive(Serde, Borsh)]
+#[grug_types::derive(Serde, Borsh)]
 pub struct Config {
     pub fee_denom: Denom,
     /// Units of the fee token for each unit of gas consumed.
     pub fee_rate: Udec128,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 #[derive(Copy)]
 pub enum FeeType {
     /// Gas Fee.
@@ -31,12 +32,12 @@ impl FeeType {
     }
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     pub config: Config,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Update the fee configurations.
     /// Can only be called by the chain's owner.
@@ -49,15 +50,15 @@ pub enum ExecuteMsg {
     },
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the fee configurations.
     #[returns(Config)]
     Config {},
 }
 
-#[grug::derive(Serde)]
-#[grug::event("receive_fee")]
+#[grug_types::derive(Serde)]
+#[grug_types::event("receive_fee")]
 pub struct ReceiveFee {
     /// The Dango smart contract that handled this fee.
     pub handler: Addr,

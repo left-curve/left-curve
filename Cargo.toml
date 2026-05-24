@@ -29,7 +29,6 @@ members = [
   "grug/mocks/account",
   "grug/mocks/bank",
   "grug/mocks/taxman",
-  "grug/std",
   "grug/storage",
   "grug/tester",
   "grug/testing",
@@ -206,7 +205,6 @@ dango-types             = { path = "dango/types" }
 dango-upgrade           = { path = "dango/upgrade" }
 dango-vesting           = { path = "dango/vesting" }
 dango-warp              = { path = "dango/warp" }
-grug                    = { path = "grug/std" }
 grug-app                = { path = "grug/app" }
 grug-crypto             = { path = "grug/crypto" }
 grug-db-disk            = { path = "grug/db/disk" }

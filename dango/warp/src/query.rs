@@ -1,7 +1,7 @@
 use {
     crate::MAILBOX,
     dango_types::warp::QueryMsg,
-    grug::{Addr, ImmutableCtx, Json, JsonSerExt, StdResult},
+    grug_types::{Addr, ImmutableCtx, Json, JsonSerExt, StdResult},
     hyperlane_types::recipients::{RecipientQuery, RecipientQueryResponse},
 };
 

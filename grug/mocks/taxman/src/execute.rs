@@ -12,6 +12,7 @@ pub fn initialize_config(storage: &mut dyn Storage, cfg: &Config) -> StdResult<R
     Ok(Response::new())
 }
 
+#[cfg_attr(not(feature = "library"), grug_ffi::export)]
 pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let fee_cfg = CONFIG.load(ctx.storage)?;
 
@@ -55,6 +56,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     Ok(Response::new().may_add_message(withhold_msg))
 }
 
+#[cfg_attr(not(feature = "library"), grug_ffi::export)]
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
     let (fee_cfg, withheld_amount) = WITHHELD_FEE.take(ctx.storage)?;
 

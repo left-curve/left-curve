@@ -6,7 +6,7 @@ use {
     anyhow::ensure,
     dango_order_book::{Dimensionless, FundingRate, PairId, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, PairState, Param, RateSchedule},
-    grug::{Duration, GENESIS_SENDER, MutableCtx, QuerierExt, Response},
+    grug_types::{Duration, GENESIS_SENDER, MutableCtx, QuerierExt, Response},
     std::collections::BTreeMap,
 };
 
@@ -408,7 +408,8 @@ mod tests {
     use {
         super::*,
         dango_order_book::{FundingRate, Quantity},
-        grug::{Duration, Number as _, btree_map, btree_set},
+        grug_math::Number as _,
+        grug_types::{Duration, btree_map, btree_set},
     };
 
     /// A `Param` that passes validation. Individual tests mutate one field to

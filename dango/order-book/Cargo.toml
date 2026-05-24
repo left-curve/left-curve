@@ -10,11 +10,13 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow  = { workspace = true }
-borsh   = { workspace = true }
-grug    = { workspace = true }
-serde   = { workspace = true }
-typenum = { workspace = true }
+anyhow       = { workspace = true }
+borsh        = { workspace = true }
+grug-math    = { workspace = true }
+grug-storage = { workspace = true }
+grug-types   = { workspace = true }
+serde        = { workspace = true }
+typenum      = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

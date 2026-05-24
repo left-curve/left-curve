@@ -10,7 +10,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::UsdValue,
     dango_types::perps::{LiquidityAdded, Param, State, UserState},
-    grug::{IsZero, MultiplyRatio, MutableCtx, Number as _, Response, Signed, Uint128},
+    grug_math::{IsZero, MultiplyRatio, Number as _, Signed, Uint128},
+    grug_types::{MutableCtx, Response},
 };
 
 /// Add liquidity to the counterparty vault by transferring margin to the vault.
@@ -198,7 +199,8 @@ mod tests {
             oracle::Price,
             perps::{PairParam, PairState, Position, UserState},
         },
-        grug::{MockStorage, NumberConst, Timestamp, Uint128, btree_map, hash_map},
+        grug_math::{NumberConst, Uint128},
+        grug_types::{MockStorage, Timestamp, btree_map, hash_map},
         pyth_types::MarketSession,
     };
 

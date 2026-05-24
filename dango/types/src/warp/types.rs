@@ -1,6 +1,7 @@
 use {
     anyhow::ensure,
-    grug::{Bytable, HexBinary, Inner, NextNumber, PrevNumber, Uint128, Uint256},
+    grug_math::{Bytable, NextNumber, PrevNumber, Uint128, Uint256},
+    grug_types::{HexBinary, Inner},
     hyperlane_types::Addr32,
 };
 

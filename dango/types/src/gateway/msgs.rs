@@ -1,10 +1,11 @@
 use {
     super::{Addr32, Origin, RateLimit, Remote},
-    grug::{Addr, Denom, Duration, Op, Timestamp, Uint128},
+    grug_math::Uint128,
+    grug_types::{Addr, Denom, Duration, Op, Timestamp},
     std::collections::{BTreeMap, BTreeSet},
 };
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct WithdrawalFee {
     pub denom: Denom,
     pub remote: Remote,
@@ -17,7 +18,7 @@ pub struct WithdrawalFee {
 /// Admin input for `ExecuteMsg::SetPersonalQuota`. Carries the relative
 /// lifetime `available_for`; the contract translates it into an absolute
 /// `expiry` when saving the resulting `PersonalQuota`.
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct SetPersonalQuotaRequest {
     pub amount: Uint128,
 
@@ -29,7 +30,7 @@ pub struct SetPersonalQuotaRequest {
 /// Per-account allowance that is consumed before the global outbound quota
 /// when the user sends a remote transfer. This is the stored / returned
 /// form; `SetPersonalQuotaRequest` is the admin input.
-#[grug::derive(Borsh, Serde)]
+#[grug_types::derive(Borsh, Serde)]
 pub struct PersonalQuota {
     pub amount: Uint128,
 
@@ -44,14 +45,14 @@ pub struct PersonalQuota {
     pub granted_at: Timestamp,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
     pub routes: BTreeSet<(Origin, Addr, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub withdrawal_fees: Vec<WithdrawalFee>,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Create new routes.
     ///
@@ -121,7 +122,7 @@ pub enum ExecuteMsg {
     TransferRemote { remote: Remote, recipient: Addr32 },
 }
 
-#[grug::derive(Serde, QueryRequest)]
+#[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Given a `(bridge, remote)` tuple, find the alloyed denom it belongs to.
     #[returns(Option<Denom>)]
@@ -189,28 +190,28 @@ pub enum QueryMsg {
     },
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct QueryRoutesResponseItem {
     pub bridge: Addr,
     pub remote: Remote,
     pub denom: Denom,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct QueryReservesResponseItem {
     pub bridge: Addr,
     pub remote: Remote,
     pub reserve: Uint128,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct QueryWithdrawalFeesResponseItem {
     pub denom: Denom,
     pub remote: Remote,
     pub fee: Uint128,
 }
 
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct QueryPersonalQuotasResponseItem {
     pub user: Addr,
     pub denom: Denom,
@@ -221,7 +222,7 @@ pub struct QueryPersonalQuotasResponseItem {
 /// taken at the last cron tick (or at the denom's first registration), the
 /// derived cap `supply_snapshot × limit`, and the rolling sum of withdraws
 /// over the trailing 24 hours. Available headroom is `cap − used_in_last_24h`.
-#[grug::derive(Serde)]
+#[grug_types::derive(Serde)]
 pub struct RateLimitStatus {
     pub supply_snapshot: Uint128,
     pub cap: Uint128,

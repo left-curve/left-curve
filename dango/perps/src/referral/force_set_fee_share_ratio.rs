@@ -2,7 +2,7 @@ use {
     crate::state::FEE_SHARE_RATIO,
     anyhow::ensure,
     dango_types::{account_factory::UserIndex, perps::FeeShareRatio},
-    grug::{MutableCtx, QuerierExt, Response},
+    grug_types::{MutableCtx, QuerierExt, Response},
 };
 
 /// Forcibly set a user's fee share ratio.
@@ -36,7 +36,7 @@ pub fn force_set_fee_share_ratio(
 mod tests {
     use {
         super::*,
-        grug::{
+        grug_types::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt,
         },

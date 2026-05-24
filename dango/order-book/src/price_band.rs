@@ -46,7 +46,7 @@ pub fn check_price_band(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug::ResultExt};
+    use {super::*, grug_types::ResultExt};
 
     /// oracle = 100, max_deviation = 10%
     /// Allowed range: [90, 110]

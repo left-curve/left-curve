@@ -3,7 +3,7 @@ use {
         maker_priority_handler::MakerPriorityHandler,
         pyth_handler::{PythHandler, QueryPythId},
     },
-    grug::{Lengthy, NonEmpty, QuerierWrapper, StdError},
+    grug_types::{Lengthy, NonEmpty, QuerierWrapper, StdError},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::constants::LAZER_ENDPOINTS_TEST,

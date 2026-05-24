@@ -7,7 +7,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::UsdValue,
     dango_types::perps::{SETTLEMENT_CURRENCY_PRICE, Withdrew, settlement_currency},
-    grug::{IsZero, Message, MutableCtx, Response, coins},
+    grug_math::IsZero,
+    grug_types::{Message, MutableCtx, Response, coins},
 };
 
 /// Withdraw margin from the trader's margin account.

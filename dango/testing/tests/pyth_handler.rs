@@ -5,7 +5,7 @@ use {
         constants::btc,
         oracle::{ExecuteMsg, InstantiateMsg, PriceSource},
     },
-    grug::{Coins, HashExt, NonEmpty, QuerierWrapper, ResultExt, btree_map},
+    grug_types::{Coins, HashExt, NonEmpty, QuerierWrapper, ResultExt, btree_map},
     pyth_client::PythClientTrait,
     pyth_types::{Channel, constants::LAZER_ENDPOINTS_TEST},
     std::{thread::sleep, time::Duration},

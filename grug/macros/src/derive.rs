@@ -71,41 +71,41 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     let derives = match (attrs.serde, attrs.borsh) {
         (false, true) => quote! {
             #[derive(
-                ::grug::__private::borsh::BorshSerialize,
-                ::grug::__private::borsh::BorshDeserialize,
+                ::grug_types::__private::borsh::BorshSerialize,
+                ::grug_types::__private::borsh::BorshDeserialize,
                 ::std::clone::Clone,
                 ::std::fmt::Debug,
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[borsh(crate = "::grug::__private::borsh")]
+            #[borsh(crate = "::grug_types::__private::borsh")]
         },
         (true, false) => quote! {
-            #[::grug::__private::serde_with::skip_serializing_none]
+            #[::grug_types::__private::serde_with::skip_serializing_none]
             #[derive(
-                ::grug::__private::serde::Serialize,
-                ::grug::__private::serde::Deserialize,
+                ::grug_types::__private::serde::Serialize,
+                ::grug_types::__private::serde::Deserialize,
                 ::std::clone::Clone,
                 ::std::fmt::Debug,
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[serde(rename_all = "snake_case", crate = "::grug::__private::serde")]
+            #[serde(rename_all = "snake_case", crate = "::grug_types::__private::serde")]
         },
         (true, true) => quote! {
-            #[::grug::__private::serde_with::skip_serializing_none]
+            #[::grug_types::__private::serde_with::skip_serializing_none]
             #[derive(
-                ::grug::__private::serde::Serialize,
-                ::grug::__private::serde::Deserialize,
-                ::grug::__private::borsh::BorshSerialize,
-                ::grug::__private::borsh::BorshDeserialize,
+                ::grug_types::__private::serde::Serialize,
+                ::grug_types::__private::serde::Deserialize,
+                ::grug_types::__private::borsh::BorshSerialize,
+                ::grug_types::__private::borsh::BorshDeserialize,
                 ::std::clone::Clone,
                 ::std::fmt::Debug,
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[serde(rename_all = "snake_case", crate = "::grug::__private::serde")]
-            #[borsh(crate = "::grug::__private::borsh")]
+            #[serde(rename_all = "snake_case", crate = "::grug_types::__private::serde")]
+            #[borsh(crate = "::grug_types::__private::borsh")]
         },
         (false, false) => quote! {
             #[derive(
@@ -119,7 +119,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let query_derive = if attrs.query {
         quote! {
-            #[derive(::grug::QueryRequest)]
+            #[derive(::grug_types::QueryRequest)]
         }
     } else {
         quote! {}

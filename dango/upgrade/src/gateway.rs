@@ -1,6 +1,6 @@
 use {
-    grug::{Addr, Storage, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
+    grug_types::{Addr, Storage, addr},
 };
 
 /// Address of the Bank contract. Same across mainnet and testnet.
@@ -10,7 +10,7 @@ const BANK: Addr = addr!("e0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7");
 const GATEWAY: Addr = addr!("c51e2cbe9636a90c86463ac3eb18fbee92b700d1");
 
 mod legacy_gateway {
-    use grug::{Denom, Map, Uint128};
+    use {grug_math::Uint128, grug_storage::Map, grug_types::Denom};
 
     /// Storage key the rate-limit-hardening release used for the per-denom
     /// draining outbound cap. The rolling-window release replaces it with
@@ -57,7 +57,8 @@ mod tests {
         dango_bank::SUPPLIES,
         dango_gateway::{RATE_LIMITS, SUPPLY_SNAPSHOTS},
         dango_types::gateway::RateLimit,
-        grug::{Denom, MockStorage, Udec128, Uint128, btree_map},
+        grug_math::{Udec128, Uint128},
+        grug_types::{Denom, MockStorage, btree_map},
         std::str::FromStr,
     };
 
@@ -128,7 +129,7 @@ mod tests {
 
         assert_eq!(
             SUPPLY_SNAPSHOTS
-                .range(&gateway, None, None, grug::Order::Ascending)
+                .range(&gateway, None, None, grug_types::Order::Ascending)
                 .count(),
             0,
         );

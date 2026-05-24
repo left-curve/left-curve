@@ -4,9 +4,9 @@ use {
         PersonalQuota, QueryMsg, QueryPersonalQuotasResponseItem, QueryReservesResponseItem,
         QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, Remote,
     },
-    grug::{
+    grug_math::Uint128,
+    grug_types::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
-        Uint128,
     },
 };
 

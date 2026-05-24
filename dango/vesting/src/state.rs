@@ -1,6 +1,7 @@
 use {
     dango_types::vesting::{Position, Schedule},
-    grug::{Addr, Item, Map},
+    grug_storage::{Item, Map},
+    grug_types::Addr,
 };
 
 pub const UNLOCKING_SCHEDULE: Item<Schedule> = Item::new("unlocking_schedule");
