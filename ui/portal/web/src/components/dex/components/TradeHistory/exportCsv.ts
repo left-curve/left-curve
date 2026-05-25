@@ -158,7 +158,7 @@ export function downloadCsv(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function tradeHistoryCsvFilename(market: "perps"): string {
+export function tradeHistoryCsvFilename(): string {
   const date = new Date().toISOString().slice(0, 10);
-  return `trade-history-${market}-${date}.csv`;
+  return `trade-history-perps-${date}.csv`;
 }

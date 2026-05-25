@@ -50,7 +50,7 @@ export const TradeHistoryToolbar: React.FC = () => {
         laterThan,
       });
       const csv = buildPerpsTradeHistoryCsv(result.nodes, headers);
-      downloadCsv(tradeHistoryCsvFilename("perps"), csv);
+      downloadCsv(tradeHistoryCsvFilename(), csv);
     } finally {
       setIsExporting(false);
     }
