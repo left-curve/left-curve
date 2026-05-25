@@ -1,0 +1,12 @@
+{
+  "id": "dev-9",
+  "name": "Devnet",
+  "nativeCoin": "dango",
+  "url": "https://api-devnet.dango.zone",
+  "blockExplorer": {
+    "name": "Devnet Explorer",
+    "txPage": "/tx/${txHash}",
+    "accountPage": "/account/${address}",
+    "contractPage": "/contract/${address}"
+  }
+}
