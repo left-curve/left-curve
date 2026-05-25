@@ -19,7 +19,7 @@ on:
     branches:
       - "main"
       - "develop"
-      - "v0.19.1"
+      - "v0.19"
       # - "ui/testnet"
       # - "ui/release"
     paths:
