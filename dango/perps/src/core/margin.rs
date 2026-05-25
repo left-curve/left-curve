@@ -57,11 +57,9 @@ pub fn compute_user_equity(
 
     for (pair_id, position) in &user_state.positions {
         let pair_state = perp_querier.query_pair_state(pair_id)?;
+        let oracle_price = pair_state.index_price;
 
-        total_pnl.checked_add_assign(compute_position_unrealized_pnl(
-            position,
-            pair_state.index_price,
-        )?)?;
+        total_pnl.checked_add_assign(compute_position_unrealized_pnl(position, oracle_price)?)?;
         total_funding
             .checked_add_assign(compute_position_unrealized_funding(position, &pair_state)?)?;
     }

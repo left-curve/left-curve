@@ -43,7 +43,7 @@ const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 const VOLUME_LOOKBACK: Duration = Duration::from_days(14);
 
 /// Reject oracle prices for being too old if older than this threshold.
-pub(crate) const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
+const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 
 /// Returns the oracle contract address.
 ///
@@ -51,7 +51,7 @@ pub(crate) const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 /// In debug/test builds, queries the chain's `AppConfig` at runtime so that
 /// tests with dynamically-derived addresses work correctly.
 #[inline]
-pub(crate) fn oracle(querier: impl DangoQuerier) -> Addr {
+fn oracle(querier: impl DangoQuerier) -> Addr {
     #[cfg(not(debug_assertions))]
     {
         let _ = querier;
