@@ -17,7 +17,7 @@ use {
 /// attempt to compute a one-sided mid.
 ///
 /// Returns: premium as a `Dimensionless` value.
-pub fn compute_premium(
+pub fn compute_impact_premium(
     impact_bid: UsdPrice,
     impact_ask: UsdPrice,
     oracle_price: UsdPrice,
@@ -81,7 +81,7 @@ mod tests {
         let impact_ask = UsdPrice::new_int(ask);
         let oracle_price = UsdPrice::new_int(oracle);
 
-        let premium = compute_premium(impact_bid, impact_ask, oracle_price).unwrap();
+        let premium = compute_impact_premium(impact_bid, impact_ask, oracle_price).unwrap();
         assert_eq!(premium, Dimensionless::new_raw(expected_raw));
     }
 

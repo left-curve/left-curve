@@ -85,7 +85,7 @@ fn process_funding_for_pair(
     //
     // let premium = match (impact_bid, impact_ask) {
     //     (Some(impact_bid), Some(impact_ask)) => {
-    //         compute_premium(impact_bid, impact_ask, oracle_price)?
+    //         compute_impact_premium(impact_bid, impact_ask, oracle_price)?
     //     },
     //     _ => Dimensionless::ZERO,
     // };
