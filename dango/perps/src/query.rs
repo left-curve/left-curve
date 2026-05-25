@@ -92,38 +92,22 @@ pub fn query_user_state_extended(
 ) -> anyhow::Result<UserStateExtended> {
     let user_state = USER_STATES.load(storage, user)?;
 
-    let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
-        Ok(PAIR_STATES.load(storage, pair_id)?.index_price)
-    };
-
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
     let equity = if include_all || include_equity {
-        Some(compute_user_equity(
-            &mut price_of,
-            &perp_querier,
-            &user_state,
-        )?)
+        Some(compute_user_equity(&perp_querier, &user_state)?)
     } else {
         None
     };
 
     let available_margin = if include_all || include_available_margin {
-        Some(compute_available_margin(
-            &mut price_of,
-            &perp_querier,
-            &user_state,
-        )?)
+        Some(compute_available_margin(&perp_querier, &user_state)?)
     } else {
         None
     };
 
     let maintenance_margin = if include_all || include_maintenance_margin {
-        Some(compute_maintenance_margin(
-            &mut price_of,
-            &perp_querier,
-            &user_state,
-        )?)
+        Some(compute_maintenance_margin(&perp_querier, &user_state)?)
     } else {
         None
     };
@@ -147,7 +131,7 @@ pub fn query_user_state_extended(
             };
 
             let liquidation_price = if include_all || include_liquidation_price {
-                compute_liquidation_price(pair_id, &user_state, &mut price_of, &perp_querier)?
+                compute_liquidation_price(pair_id, &user_state, &perp_querier)?
             } else {
                 None
             };

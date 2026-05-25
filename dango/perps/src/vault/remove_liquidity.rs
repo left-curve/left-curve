@@ -114,12 +114,7 @@ fn _remove_liquidity(
     );
 
     // --------------------- Step 2. Compute vault equity ----------------------
-
-    let mut price_of =
-        |pair_id: &dango_order_book::PairId| -> anyhow::Result<dango_order_book::UsdPrice> {
-            Ok(perp_querier.query_pair_state(pair_id)?.index_price)
-        };
-    let vault_equity = compute_user_equity(&mut price_of, perp_querier, vault_user_state)?;
+    let vault_equity = compute_user_equity(perp_querier, vault_user_state)?;
 
     let effective_supply = state.vault_share_supply.checked_add(VIRTUAL_SHARES)?;
 
@@ -147,8 +142,7 @@ fn _remove_liquidity(
 
     // ------------------------- Step 4. Margin check --------------------------
 
-    let vault_available_margin =
-        compute_available_margin(&mut price_of, perp_querier, vault_user_state)?;
+    let vault_available_margin = compute_available_margin(perp_querier, vault_user_state)?;
 
     ensure!(
         vault_available_margin >= amount_to_release,

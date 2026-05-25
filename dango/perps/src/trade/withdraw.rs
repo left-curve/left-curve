@@ -1,9 +1,5 @@
 use {
-    crate::{
-        core::compute_available_margin,
-        querier::NoCachePerpQuerier,
-        state::{PAIR_STATES, USER_STATES},
-    },
+    crate::{core::compute_available_margin, querier::NoCachePerpQuerier, state::USER_STATES},
     anyhow::ensure,
     dango_order_book::UsdValue,
     dango_types::perps::{SETTLEMENT_CURRENCY_PRICE, Withdrew, settlement_currency},
@@ -29,16 +25,11 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let mut price_of =
-        |pair_id: &dango_order_book::PairId| -> anyhow::Result<dango_order_book::UsdPrice> {
-            Ok(PAIR_STATES.load(ctx.storage, pair_id)?.index_price)
-        };
-
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let available = compute_available_margin(&mut price_of, &perp_querier, &user_state)?;
+    let available = compute_available_margin(&perp_querier, &user_state)?;
 
     ensure!(
         amount <= available,

@@ -76,11 +76,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     // simplifies to: max(0, equity - used_margin).
     let vault_margin_value = {
         let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-        let mut price_of =
-            |pair_id: &dango_order_book::PairId| -> anyhow::Result<dango_order_book::UsdPrice> {
-                Ok(PAIR_STATES.load(ctx.storage, pair_id)?.index_price)
-            };
-        compute_available_margin(&mut price_of, &perp_querier, &vault_state)?
+        compute_available_margin(&perp_querier, &vault_state)?
     };
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.

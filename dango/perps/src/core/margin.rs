@@ -48,22 +48,20 @@ pub fn compute_position_unrealized_funding(
 /// ```plain
 /// equity = user_state.margin + Σ(unrealized_pnl) - Σ(accrued_funding)
 /// ```
-pub fn compute_user_equity<F>(
-    price_of: &mut F,
+pub fn compute_user_equity(
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<UsdValue>
-where
-    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
-{
+) -> anyhow::Result<UsdValue> {
     let mut total_pnl = UsdValue::ZERO;
     let mut total_funding = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = price_of(pair_id)?;
         let pair_state = perp_querier.query_pair_state(pair_id)?;
 
-        total_pnl.checked_add_assign(compute_position_unrealized_pnl(position, oracle_price)?)?;
+        total_pnl.checked_add_assign(compute_position_unrealized_pnl(
+            position,
+            pair_state.index_price,
+        )?)?;
         total_funding
             .checked_add_assign(compute_position_unrealized_funding(position, &pair_state)?)?;
     }
@@ -86,18 +84,14 @@ where
 ///
 /// The maintenance margin acts as the liquidation trigger. If a user's collateral
 /// value falls below the maintenance margin, he becomes eligible for liquidation.
-pub fn compute_maintenance_margin<F>(
-    price_of: &mut F,
+pub fn compute_maintenance_margin(
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<UsdValue>
-where
-    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
-{
+) -> anyhow::Result<UsdValue> {
     let mut total = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = price_of(pair_id)?;
+        let oracle_price = perp_querier.query_pair_state(pair_id)?.index_price;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let margin = position
@@ -126,21 +120,17 @@ where
 ///
 /// When submitting an order, the user must have no less collateral than the
 /// initial margin, otherwise the order is rejected.
-pub(super) fn compute_initial_margin<F>(
-    price_of: &mut F,
+pub(super) fn compute_initial_margin(
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
     projected_pair_id: &PairId,
     projected_size: Quantity,
-) -> anyhow::Result<UsdValue>
-where
-    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
-{
+) -> anyhow::Result<UsdValue> {
     let mut total = UsdValue::ZERO;
     let mut projected_pair_seen = false;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = price_of(pair_id)?;
+        let oracle_price = perp_querier.query_pair_state(pair_id)?.index_price;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let size = if pair_id == projected_pair_id {
@@ -161,7 +151,9 @@ where
     // If the projected pair is not in existing positions and the projected size
     // is non-zero, add its margin contribution.
     if !projected_pair_seen && projected_size.is_non_zero() {
-        let oracle_price = price_of(projected_pair_id)?;
+        let oracle_price = perp_querier
+            .query_pair_state(projected_pair_id)?
+            .index_price;
         let pair_param = perp_querier.query_pair_param(projected_pair_id)?;
 
         let margin = projected_size
@@ -205,20 +197,16 @@ pub fn compute_required_margin(
 ///
 /// Returns zero when equity falls below the used + reserved requirement
 /// (the user cannot open new positions or withdraw, and may face liquidation).
-pub fn compute_available_margin<F>(
-    price_of: &mut F,
+pub fn compute_available_margin(
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<UsdValue>
-where
-    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
-{
-    let equity = compute_user_equity(price_of, perp_querier, user_state)?;
+) -> anyhow::Result<UsdValue> {
+    let equity = compute_user_equity(perp_querier, user_state)?;
 
     let mut used_margin = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = price_of(pair_id)?;
+        let oracle_price = perp_querier.query_pair_state(pair_id)?.index_price;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let margin = position
@@ -242,19 +230,15 @@ where
 ///
 /// The 0%-fill scenario (limit-order reservation) is checked separately
 /// inside `store_limit_order`.
-pub fn check_margin<F>(
-    price_of: &mut F,
+pub fn check_margin(
     pair_id: &PairId,
     perp_querier: &NoCachePerpQuerier,
     taker_state: &UserState,
     taker_fee_rate: Dimensionless,
     oracle_price: UsdPrice,
     size: Quantity,
-) -> anyhow::Result<()>
-where
-    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
-{
-    let equity = compute_user_equity(price_of, perp_querier, taker_state)?;
+) -> anyhow::Result<()> {
+    let equity = compute_user_equity(perp_querier, taker_state)?;
 
     let projected_size = {
         let current_position = taker_state
@@ -265,8 +249,7 @@ where
         current_position.checked_add(size)?
     };
 
-    let projected_im =
-        compute_initial_margin(price_of, perp_querier, taker_state, pair_id, projected_size)?;
+    let projected_im = compute_initial_margin(perp_querier, taker_state, pair_id, projected_size)?;
 
     let projected_fee = compute_trading_fee(size, oracle_price, taker_fee_rate)?;
 
@@ -298,20 +281,8 @@ mod tests {
             perps::{PairParam, PairState, Position, RateSchedule},
         },
         grug_types::{btree_map, hash_map},
-        std::collections::HashMap,
         test_case::test_case,
     };
-
-    fn mock_prices(
-        prices: HashMap<PairId, UsdPrice>,
-    ) -> impl FnMut(&PairId) -> anyhow::Result<UsdPrice> {
-        move |pair_id| {
-            prices
-                .get(pair_id)
-                .copied()
-                .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
-        }
-    }
 
     // ---- compute_position_unrealized_pnl tests ----
 
@@ -387,11 +358,10 @@ mod tests {
             margin: UsdValue::new_int(10_000),
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut price_of = mock_prices(HashMap::new());
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), Default::default());
 
         assert_eq!(
-            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -414,17 +384,16 @@ mod tests {
             },
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), hash_map! {
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: FundingPerUnit::new_int(0),
+                index_price: UsdPrice::new_percent(250_000),
                 ..Default::default()
             }
         });
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(15_000),
         );
     }
@@ -448,17 +417,16 @@ mod tests {
             },
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), hash_map! {
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: FundingPerUnit::new_int(3),
+                index_price: UsdPrice::new_percent(250_000),
                 ..Default::default()
             },
         });
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(14_980),
         );
     }
@@ -491,22 +459,21 @@ mod tests {
             },
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), hash_map! {
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: FundingPerUnit::new_int(3),
+                index_price: UsdPrice::new_percent(250_000),
                 ..Default::default()
             },
             btc::DENOM.clone() => PairState {
                 funding_per_unit: FundingPerUnit::new_int(0),
+                index_price: UsdPrice::new_percent(4_800_000),
                 ..Default::default()
             },
         });
-        let mut price_of = mock_prices(
-            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000), btc::DENOM.clone() => UsdPrice::new_percent(4_800_000) },
-        );
 
         assert_eq!(
-            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(16_980),
         );
     }
@@ -529,17 +496,16 @@ mod tests {
             },
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), hash_map! {
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: FundingPerUnit::new_int(0),
+                index_price: UsdPrice::new_percent(150_000),
                 ..Default::default()
             },
         });
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(150_000) });
 
         assert_eq!(
-            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(-4900),
         );
     }
@@ -549,11 +515,10 @@ mod tests {
     #[test]
     fn maintenance_margin_no_positions() {
         let user_state = UserState::default();
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut price_of = mock_prices(HashMap::new());
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), Default::default());
 
         assert_eq!(
-            compute_maintenance_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_maintenance_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -582,13 +547,16 @@ mod tests {
                     ..Default::default()
                 },
             },
-            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(200_000),
+                    ..Default::default()
+                },
+            },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
-            compute_maintenance_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_maintenance_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(1000),
         );
     }
@@ -628,14 +596,20 @@ mod tests {
                     ..Default::default()
                 },
             },
-            HashMap::new(),
-        );
-        let mut price_of = mock_prices(
-            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000), btc::DENOM.clone() => UsdPrice::new_percent(5_000_000) },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(200_000),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(5_000_000),
+                    ..Default::default()
+                },
+            },
         );
 
         assert_eq!(
-            compute_maintenance_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_maintenance_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(2500),
         );
     }
@@ -654,14 +628,16 @@ mod tests {
                     ..Default::default()
                 },
             },
-            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(200_000),
+                    ..Default::default()
+                },
+            },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
             compute_initial_margin(
-                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &eth::DENOM,
@@ -695,14 +671,16 @@ mod tests {
                     ..Default::default()
                 },
             },
-            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(200_000),
+                    ..Default::default()
+                },
+            },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
             compute_initial_margin(
-                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &eth::DENOM,
@@ -742,15 +720,20 @@ mod tests {
                     ..Default::default()
                 },
             },
-            HashMap::new(),
-        );
-        let mut price_of = mock_prices(
-            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000), btc::DENOM.clone() => UsdPrice::new_percent(5_000_000) },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(200_000),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(5_000_000),
+                    ..Default::default()
+                },
+            },
         );
 
         assert_eq!(
             compute_initial_margin(
-                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &btc::DENOM,
@@ -772,20 +755,17 @@ mod tests {
                     ..Default::default()
                 },
             },
-            HashMap::new(),
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(200_000),
+                    ..Default::default()
+                },
+            },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
-            compute_initial_margin(
-                &mut price_of,
-                &perp_querier,
-                &user_state,
-                &eth::DENOM,
-                Quantity::ZERO,
-            )
-            .unwrap(),
+            compute_initial_margin(&perp_querier, &user_state, &eth::DENOM, Quantity::ZERO,)
+                .unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -826,15 +806,20 @@ mod tests {
                     ..Default::default()
                 },
             },
-            HashMap::new(),
-        );
-        let mut price_of = mock_prices(
-            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000), btc::DENOM.clone() => UsdPrice::new_percent(5_000_000) },
+            hash_map! {
+                eth::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(200_000),
+                    ..Default::default()
+                },
+                btc::DENOM.clone() => PairState {
+                    index_price: UsdPrice::new_percent(5_000_000),
+                    ..Default::default()
+                },
+            },
         );
 
         assert_eq!(
             compute_initial_margin(
-                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &eth::DENOM,
@@ -883,11 +868,10 @@ mod tests {
             margin: UsdValue::new_int(10_000),
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut price_of = mock_prices(HashMap::new());
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), Default::default());
 
         assert_eq!(
-            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -921,15 +905,14 @@ mod tests {
             hash_map! {
                 eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
+                    index_price: UsdPrice::new_percent(250_000),
                     ..Default::default()
                 },
             },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(12_500),
         );
     }
@@ -962,15 +945,14 @@ mod tests {
             hash_map! {
                 eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
+                    index_price: UsdPrice::new_percent(250_000),
                     ..Default::default()
                 },
             },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_500),
         );
     }
@@ -1005,15 +987,14 @@ mod tests {
             hash_map! {
                 eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
+                    index_price: UsdPrice::new_percent(150_000),
                     ..Default::default()
                 },
             },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(150_000) });
 
         assert_eq!(
-            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -1048,15 +1029,14 @@ mod tests {
             hash_map! {
                 eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(3),
+                    index_price: UsdPrice::new_percent(250_000),
                     ..Default::default()
                 },
             },
         );
-        let mut price_of =
-            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&perp_querier, &user_state).unwrap(),
             UsdValue::new_int(12_480),
         );
     }
@@ -1091,14 +1071,14 @@ mod tests {
                 },
             },
             hash_map! {
-                pair_id.clone() => PairState::default(),
+                pair_id.clone() => PairState {
+                    index_price: UsdPrice::new_percent(5_000_000),
+                    ..Default::default()
+                },
             },
         );
-        let mut price_of =
-            mock_prices(hash_map! { pair_id.clone() => UsdPrice::new_percent(5_000_000) });
 
         let result = check_margin(
-            &mut price_of,
             &pair_id,
             &perp_querier,
             &taker_state,

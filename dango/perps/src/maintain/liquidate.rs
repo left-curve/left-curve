@@ -312,15 +312,8 @@ fn _liquidate(
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-    let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
-        oracle_prices
-            .get(pair_id)
-            .copied()
-            .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
-    };
-
     let (is_liquidatable, equity, maintenance_margin) =
-        is_liquidatable(&mut price_of, &perp_querier, &user_state)?;
+        is_liquidatable(&perp_querier, &user_state)?;
 
     ensure!(
         is_liquidatable,
@@ -333,8 +326,8 @@ fn _liquidate(
     // maintenance margin (MM) + a buffer.
     // We need to close positions such that MM + buffer <= equity.
     let deficit = {
-        let equity = compute_user_equity(&mut price_of, &perp_querier, &user_state)?;
-        let mm = compute_maintenance_margin(&mut price_of, &perp_querier, &user_state)?;
+        let equity = compute_user_equity(&perp_querier, &user_state)?;
+        let mm = compute_maintenance_margin(&perp_querier, &user_state)?;
         let one_plus_buffer = Dimensionless::ONE.checked_add(param.liquidation_buffer_ratio)?;
         let effective_equity = equity.checked_div(one_plus_buffer)?;
         mm.checked_sub(effective_equity)?
@@ -1078,7 +1071,10 @@ mod tests {
             .with_funds(Coins::default());
 
         let param = default_param();
-        let pair_state = PairState::default();
+        let pair_state = PairState {
+            index_price: UsdPrice::new_int(50_000),
+            ..Default::default()
+        };
 
         setup_storage(&mut ctx.storage, &param, &[(
             pair_btc(),
@@ -1094,7 +1090,10 @@ mod tests {
         pair_params.insert(pair_btc(), btc_pair_param());
 
         let mut pair_states = BTreeMap::new();
-        pair_states.insert(pair_btc(), PairState::default());
+        pair_states.insert(pair_btc(), PairState {
+            index_price: UsdPrice::new_int(50_000),
+            ..Default::default()
+        });
 
         let mut oracle_prices = BTreeMap::new();
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(50_000));
@@ -2308,6 +2307,7 @@ mod tests {
             let param = default_param(); // buffer defaults to 0
             let pair_state = PairState {
                 long_oi: Quantity::new_int(10),
+                index_price: UsdPrice::new_int(48_000),
                 ..Default::default()
             };
 
@@ -2377,6 +2377,7 @@ mod tests {
             };
             let pair_state = PairState {
                 long_oi: Quantity::new_int(10),
+                index_price: UsdPrice::new_int(48_000),
                 ..Default::default()
             };
 

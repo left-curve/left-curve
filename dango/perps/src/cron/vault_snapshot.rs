@@ -2,9 +2,9 @@ use {
     crate::{
         core::compute_user_equity,
         querier::NoCachePerpQuerier,
-        state::{PAIR_STATES, STATE, USER_STATES, VAULT_SNAPSHOTS},
+        state::{STATE, USER_STATES, VAULT_SNAPSHOTS},
     },
-    dango_order_book::{PairId, UsdPrice, round_to_day},
+    dango_order_book::round_to_day,
     dango_types::perps::VaultSnapshot,
     grug_types::{Addr, Storage, Timestamp},
 };
@@ -33,11 +33,7 @@ pub fn take_vault_snapshot(
     let vault_state = USER_STATES.may_load(storage, contract)?.unwrap_or_default();
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-    let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
-        Ok(PAIR_STATES.load(storage, pair_id)?.index_price)
-    };
-
-    let equity = match compute_user_equity(&mut price_of, &perp_querier, &vault_state) {
+    let equity = match compute_user_equity(&perp_querier, &vault_state) {
         Ok(e) => e,
         Err(_err) => {
             #[cfg(feature = "tracing")]
@@ -66,6 +62,7 @@ pub fn take_vault_snapshot(
 mod tests {
     use {
         super::*,
+        crate::state::PAIR_STATES,
         dango_order_book::{FundingPerUnit, PairId, Quantity, UsdPrice},
         dango_types::perps::{PairState, Position, State, UserState},
         grug_math::Uint128,

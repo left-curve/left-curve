@@ -3,10 +3,10 @@ use {
         VIRTUAL_ASSETS, VIRTUAL_SHARES,
         core::{compute_available_margin, compute_user_equity},
         querier::NoCachePerpQuerier,
-        state::{PAIR_STATES, PARAM, STATE, USER_STATES},
+        state::{PARAM, STATE, USER_STATES},
     },
     anyhow::ensure,
-    dango_order_book::{PairId, UsdPrice, UsdValue},
+    dango_order_book::UsdValue,
     dango_types::perps::{LiquidityAdded, Param, State, UserState},
     grug_math::{IsZero, MultiplyRatio, Number as _, Signed, Uint128},
     grug_types::{MutableCtx, Response},
@@ -40,15 +40,10 @@ pub fn add_liquidity(
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
-        Ok(PAIR_STATES.load(ctx.storage, pair_id)?.index_price)
-    };
-
     // --------------------------- 2. Business logic ---------------------------
 
     let shares_minted = _add_liquidity(
         &perp_querier,
-        &mut price_of,
         &param,
         &mut state,
         &mut user_state,
@@ -93,19 +88,15 @@ pub fn add_liquidity(
 /// - `vault_user_state` (margin)
 ///
 /// Returns: the number of shares minted.
-fn _add_liquidity<F>(
+fn _add_liquidity(
     perp_querier: &NoCachePerpQuerier,
-    price_of: &mut F,
     param: &Param,
     state: &mut State,
     user_state: &mut UserState,
     vault_user_state: &mut UserState,
     amount: UsdValue,
     min_shares_to_mint: Option<Uint128>,
-) -> anyhow::Result<Uint128>
-where
-    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
-{
+) -> anyhow::Result<Uint128> {
     // ----------------------- Step 1. Validate deposit ------------------------
 
     // 1. Deposit amount must be non-zero.
@@ -117,7 +108,7 @@ where
         "amount of margin to add must be positive"
     );
 
-    let available_margin = compute_available_margin(price_of, perp_querier, user_state)?;
+    let available_margin = compute_available_margin(perp_querier, user_state)?;
     ensure!(
         available_margin >= amount,
         "insufficient available margin: {available_margin} (available) < {amount} (requested)"
@@ -136,7 +127,7 @@ where
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let vault_equity = compute_user_equity(price_of, perp_querier, vault_user_state)?;
+    let vault_equity = compute_user_equity(perp_querier, vault_user_state)?;
 
     // Add virtual shares to the current vault share supply to arrive at the
     // effective supply.
@@ -202,19 +193,7 @@ mod tests {
         },
         grug_math::{NumberConst, Uint128},
         grug_types::{MockStorage, btree_map, hash_map},
-        std::collections::HashMap,
     };
-
-    fn mock_prices(
-        prices: HashMap<PairId, UsdPrice>,
-    ) -> impl FnMut(&PairId) -> anyhow::Result<UsdPrice> {
-        move |pair_id| {
-            prices
-                .get(pair_id)
-                .copied()
-                .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
-        }
-    }
 
     fn default_param() -> Param {
         Param::default()
@@ -231,7 +210,6 @@ mod tests {
     #[test]
     fn first_deposit_empty_vault() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -243,7 +221,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -261,7 +238,6 @@ mod tests {
     #[test]
     fn second_deposit_same_size() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(1_000_000);
         let mut user_state = UserState {
@@ -276,7 +252,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -294,7 +269,6 @@ mod tests {
     #[test]
     fn zero_add_liquidity() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState::default();
@@ -303,7 +277,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -323,7 +296,6 @@ mod tests {
     #[test]
     fn insufficient_margin_rejected() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -335,7 +307,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -352,7 +323,6 @@ mod tests {
     #[test]
     fn min_shares_passes() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -364,7 +334,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -381,7 +350,6 @@ mod tests {
     #[test]
     fn min_shares_fails() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -393,7 +361,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -410,7 +377,6 @@ mod tests {
     #[test]
     fn large_deposit_no_overflow() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
 
         let one_billion = 1_000_000_000_u128;
@@ -429,7 +395,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -448,7 +413,6 @@ mod tests {
     #[test]
     fn small_deposit_precision() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
 
         // Vault: $2 margin, 2M shares.
@@ -471,7 +435,6 @@ mod tests {
 
         let shares = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -488,7 +451,6 @@ mod tests {
     #[test]
     fn exact_division_shares() {
         let storage = MockStorage::new();
-        let mut price_of = mock_prices(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(2_000_000);
         let mut user_state = UserState {
@@ -503,7 +465,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -524,7 +485,6 @@ mod tests {
         let storage = MockStorage::new();
 
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
-        let mut price_of = mock_prices(hash_map! {});
 
         let param = Param {
             vault_deposit_cap: Some(UsdValue::new_int(10)),
@@ -542,7 +502,6 @@ mod tests {
 
         let shares = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -562,7 +521,6 @@ mod tests {
         let storage = MockStorage::new();
 
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
-        let mut price_of = mock_prices(hash_map! {});
 
         let param = Param {
             vault_deposit_cap: Some(UsdValue::new_int(8)),
@@ -583,7 +541,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -602,7 +559,6 @@ mod tests {
         let storage = MockStorage::new();
 
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
-        let mut price_of = mock_prices(hash_map! {});
 
         let param = Param {
             vault_deposit_cap: Some(UsdValue::new_int(10)),
@@ -623,7 +579,6 @@ mod tests {
 
         let shares = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,
@@ -693,9 +648,6 @@ mod tests {
         // available margin = $200 - $195 = $5
 
         let perp_querier = NoCachePerpQuerier::new_mock(pair_params, pair_states);
-        let mut price_of = mock_prices(hash_map! {
-            eth::DENOM.clone() => UsdPrice::new_percent(195_000),
-        });
 
         let param = default_param();
         let mut state = state_with_supply(0);
@@ -704,7 +656,6 @@ mod tests {
         // Attempting to add $150 when only $5 is available must fail.
         let err = _add_liquidity(
             &perp_querier,
-            &mut price_of,
             &param,
             &mut state,
             &mut user_state,

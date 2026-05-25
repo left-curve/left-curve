@@ -484,12 +484,7 @@ pub(crate) fn compute_submit_order_outcome(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-        let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
-            Ok(PAIR_STATES.load(storage, pair_id)?.index_price)
-        };
-
         check_margin(
-            &mut price_of,
             pair_id,
             &perp_querier,
             &taker_state,
@@ -1500,11 +1495,7 @@ fn store_limit_order(
     // 0%-fill margin check: verify the user can afford this reservation.
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
-
-        let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
-            Ok(PAIR_STATES.load(storage, pair_id)?.index_price)
-        };
-        let available_margin = compute_available_margin(&mut price_of, &perp_querier, user_state)?;
+        let available_margin = compute_available_margin(&perp_querier, user_state)?;
 
         ensure!(
             available_margin >= margin_to_reserve,
