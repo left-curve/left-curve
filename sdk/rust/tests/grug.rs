@@ -4,7 +4,9 @@ use {
     dango_sdk::HttpClient,
     dango_testing::{
         Preset,
-        httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
+        httpd::{
+            BlockCreation, TestOption, mock_httpd_get_socket_addr, mock_httpd_wait_for_server_ready,
+        },
     },
     dango_types::config::AppConfig,
     grug_types::QueryClientExt,
@@ -12,7 +14,7 @@ use {
 
 #[tokio::test]
 async fn graphql_returns_config() -> anyhow::Result<()> {
-    let port = get_mock_socket_addr();
+    let port = mock_httpd_get_socket_addr();
 
     // Spawn server in separate thread with its own runtime
     let _server_handle = std::thread::spawn(move || {
@@ -20,7 +22,7 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
         rt.block_on(async {
             tracing::info!("Starting mock HTTP server on port {port}");
 
-            if let Err(error) = dango_testing::httpd::run(
+            if let Err(error) = dango_testing::httpd::mock_httpd_run(
                 port,
                 BlockCreation::OnBroadcast,
                 None,
@@ -36,7 +38,7 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
         });
     });
 
-    wait_for_server_ready(port).await?;
+    mock_httpd_wait_for_server_ready(port).await?;
 
     let client = HttpClient::new(format!("http://localhost:{port}"))?;
     let res = client.query_app_config::<AppConfig>(None).await;

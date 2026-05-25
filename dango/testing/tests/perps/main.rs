@@ -2,8 +2,7 @@ use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_testing::{
-        TestAccounts, TestSuiteNaive,
-        perps::{OracleTestEntry, pair_id, seed_oracle_prices},
+        OracleTestEntry, TestAccounts, TestSuiteNaive, mock_pair_id, seed_oracle_prices,
     },
     dango_types::{
         constants::usdc,
@@ -66,7 +65,7 @@ pub async fn register_oracle_prices(
             humanized_price: UsdPrice::new_int(1),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
-        pair_id() => OracleTestEntry {
+        mock_pair_id() => OracleTestEntry {
             pyth_id: 2,
             humanized_price: UsdPrice::new_int(eth_price as i128),
             timestamp: Timestamp::from_nanos(u128::MAX),

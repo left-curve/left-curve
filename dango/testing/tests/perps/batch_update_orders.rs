@@ -5,9 +5,7 @@ use {
         ReasonForOrderRemoval, TimeInForce, UsdPrice,
     },
     dango_testing::{
-        TestOption,
-        perps::{OracleTestEntry, pair_id, seed_oracle_prices},
-        setup_test_naive,
+        OracleTestEntry, TestOption, mock_pair_id, seed_oracle_prices, setup_test_naive,
     },
     dango_types::{
         constants::usdc,
@@ -26,7 +24,7 @@ use {
 
 fn limit_bid(price: i128, size: i128, cid: Option<u64>) -> SubmitOrderRequest {
     SubmitOrderRequest {
-        pair_id: pair_id(),
+        pair_id: mock_pair_id(),
         size: Quantity::new_int(size),
         kind: OrderKind::Limit {
             limit_price: UsdPrice::new_int(price),
@@ -41,7 +39,7 @@ fn limit_bid(price: i128, size: i128, cid: Option<u64>) -> SubmitOrderRequest {
 
 fn limit_ask(price: i128, size: i128, cid: Option<u64>) -> SubmitOrderRequest {
     SubmitOrderRequest {
-        pair_id: pair_id(),
+        pair_id: mock_pair_id(),
         size: Quantity::new_int(-size),
         kind: OrderKind::Limit {
             limit_price: UsdPrice::new_int(price),
@@ -445,7 +443,7 @@ async fn batch_fill_reverts_on_later_failure() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
                 NonEmpty::new(vec![
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
-                        pair_id: pair_id(),
+                        pair_id: mock_pair_id(),
                         size: Quantity::new_int(1),
                         kind: OrderKind::Market {
                             max_slippage: Dimensionless::new_percent(50),
@@ -570,7 +568,7 @@ async fn batch_size_cap_enforced() {
                     ..default_param()
                 },
                 pair_params: btree_map! {
-                    pair_id() => default_pair_param(),
+                    mock_pair_id() => default_pair_param(),
                 },
             }),
             Coins::new(),
@@ -651,7 +649,7 @@ async fn batch_size_cap_enforced() {
 async fn batch_across_two_pairs() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    let eth_pair = pair_id();
+    let eth_pair = mock_pair_id();
     let btc_pair: Denom = "perp/btcusd".parse().unwrap();
 
     // Register oracle prices for both pairs (plus USDC for settlement).
@@ -799,7 +797,7 @@ async fn batch_stp_fires_for_self_match() {
                 NonEmpty::new(vec![
                     SubmitOrCancelOrderRequest::Submit(limit_bid(1_900, 1, Some(bid_cid))),
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
-                        pair_id: pair_id(),
+                        pair_id: mock_pair_id(),
                         size: Quantity::new_int(-1),
                         kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(1_800),
@@ -913,7 +911,7 @@ async fn batch_cancel_fails_for_filled_order() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
                 NonEmpty::new(vec![
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
-                        pair_id: pair_id(),
+                        pair_id: mock_pair_id(),
                         size: Quantity::new_int(1),
                         kind: OrderKind::Limit {
                             limit_price: UsdPrice::new_int(2_000),
@@ -1053,7 +1051,7 @@ async fn batch_referral_commissions_rollback() {
             &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
                 NonEmpty::new(vec![
                     SubmitOrCancelOrderRequest::Submit(SubmitOrderRequest {
-                        pair_id: pair_id(),
+                        pair_id: mock_pair_id(),
                         size: Quantity::new_int(1),
                         kind: OrderKind::Market {
                             max_slippage: Dimensionless::new_percent(10),

@@ -4,7 +4,7 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, mock_pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, Param},
@@ -40,7 +40,7 @@ async fn vault_withdrawal_at_breakeven_makes_vault_liquidatable() {
     // ---- Step 0: Setup ----
 
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 

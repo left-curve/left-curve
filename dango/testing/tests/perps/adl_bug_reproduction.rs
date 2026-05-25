@@ -49,7 +49,7 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, mock_pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, UserState},
@@ -75,7 +75,7 @@ async fn adl_bug_absurd_book_price() {
     // Oracle = $2,000.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 0: Widen the price band so user2's out-of-oracle-range ask can be

@@ -1,9 +1,8 @@
 use {
     assertor::*,
     dango_testing::{
-        TestOption, call_graphql_query_with_context,
-        perps::{create_perps_fill, pair_id, setup_perps_env},
-        setup_test_with_indexer,
+        TestOption, call_graphql_query_with_context, create_perps_fill, mock_pair_id,
+        setup_perps_env, setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
@@ -18,7 +17,7 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
     // user2 places a limit ask → user1 fills it via market buy.

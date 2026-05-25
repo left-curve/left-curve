@@ -1,15 +1,12 @@
 use {
     dango_genesis::GenesisOption,
-    dango_testing::{
-        Preset,
-        httpd::{BlockCreation, Error, TestOption},
-    },
+    dango_testing::{BlockCreation, HttpdError, Preset, TestOption},
 };
 
 #[tokio::main]
 #[allow(clippy::result_large_err)]
-async fn main() -> Result<(), Error> {
-    dango_testing::httpd::run(
+async fn main() -> Result<(), HttpdError> {
+    dango_testing::mock_httpd_run(
         8080,
         BlockCreation::OnBroadcast,
         None,

@@ -4,11 +4,7 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{
-        TestOption,
-        perps::{pair_id, write_pyth_price_raw},
-        setup_test_naive,
-    },
+    dango_testing::{TestOption, mock_pair_id, setup_test_naive, write_pyth_price_raw},
     dango_types::{
         constants::usdc,
         oracle::{self, Price, PriceSource, QueryPriceRequest},
@@ -47,7 +43,7 @@ async fn vault_lp_lifecycle() {
     // Register oracle prices: ETH = $2,000, USDC = $1.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $10,000 and adds $5,000 liquidity.
@@ -402,7 +398,7 @@ async fn vault_lp_lifecycle() {
 async fn oracle_triggers_on_oracle_update() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Setup: Register Pyth price source for the perps pair + Fixed USDC source.
@@ -701,7 +697,7 @@ async fn oracle_triggers_on_oracle_update() {
 async fn vault_overcommits_margin_after_position_and_price_drop() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Register oracle: ETH = $2,000, USDC = $1.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;

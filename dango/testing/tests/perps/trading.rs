@@ -4,7 +4,7 @@ use {
         ChildOrder, Dimensionless, LiquidityDepthResponse, OrderId, OrderKind, Quantity,
         QueryOrdersByUserResponseItem, TimeInForce, UsdPrice, UsdValue,
     },
-    dango_testing::{TestOption, TestSuiteNaive, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, TestSuiteNaive, mock_pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, OrderFilled, PairParam, Param, RateSchedule, UserState},
@@ -33,7 +33,7 @@ async fn trading_lifecycle() {
     // Register oracle prices: ETH = $2,000, USDC = $1.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: Trader (user1) deposits $10,000 USDC.
@@ -220,7 +220,7 @@ async fn limit_order_partial_fill_and_cancel() {
     // Register oracle prices: ETH = $2,000, USDC = $1.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: Trader (user1) deposits $10,000 USDC.
@@ -398,7 +398,7 @@ async fn liquidity_depth_tracking() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Configure pair with a $100 bucket size for depth tracking.
     suite
@@ -635,7 +635,7 @@ async fn protocol_fee_accumulates_across_fills() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Configure: set protocol_fee_rate = 20%.
     suite
@@ -800,7 +800,7 @@ async fn negative_maker_fee_rebate_lifecycle() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: Configure taker = 3 bps, maker = -1 bps, protocol_fee = 20%.
@@ -973,7 +973,7 @@ async fn ioc_limit_order_partial_fill() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: Both users deposit $10,000 USDC.
@@ -1105,7 +1105,7 @@ async fn ioc_limit_order_no_fill_rejected() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Step 1: Deposit.
     suite
@@ -1151,10 +1151,10 @@ async fn ioc_limit_order_no_fill_rejected() {
 /// `max_market_slippage`. user1 is funded with $10,000.
 macro_rules! setup_slippage_cap_suite {
     () => {{
-        let (mut suite, mut accounts, _, contracts, _) =
-            setup_test_naive(TestOption::default());
+        let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+        let pair = mock_pair_id();
+
         register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
-        let pair = pair_id();
 
         suite
             .execute(
@@ -1319,7 +1319,7 @@ async fn fill_id_is_shared_across_match_sides_and_increments_per_match() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Two different maker users so we also exercise the maker-states map.
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -1465,7 +1465,7 @@ async fn sell_side_market_order_partial_fill() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: Deposit margin for both users.
@@ -1588,7 +1588,7 @@ async fn buy_side_market_order_partial_fill() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: Deposit margin for both users.

@@ -1,8 +1,7 @@
 use {
     dango_testing::{
-        BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite,
-        constants::{mock_ethereum, mock_solana},
-        setup_test,
+        BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite, mock_ethereum,
+        mock_solana, setup_test,
     },
     dango_types::{
         constants::{dango, usdc},

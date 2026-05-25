@@ -2,9 +2,8 @@ use {
     assertor::*,
     dango_gateway::REVERSE_ROUTES,
     dango_testing::{
-        BalanceChange, HyperlaneTestSuite, TestOption,
-        constants::{MOCK_HYPERLANE_LOCAL_DOMAIN, mock_ethereum, mock_solana},
-        setup_test, setup_test_with_indexer,
+        BalanceChange, HyperlaneTestSuite, MOCK_HYPERLANE_LOCAL_DOMAIN, TestOption, mock_ethereum,
+        mock_solana, setup_test, setup_test_with_indexer,
     },
     dango_types::{
         constants::{sol, usdc},

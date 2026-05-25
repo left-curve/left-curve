@@ -1,8 +1,7 @@
 use {
     dango_testing::{
-        TestOption, call_graphql_query_with_context,
-        perps::{create_perps_fill, pair_id, setup_perps_env},
-        setup_test_with_indexer,
+        TestOption, call_graphql_query_with_context, create_perps_fill, mock_pair_id,
+        setup_perps_env, setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
@@ -17,7 +16,7 @@ async fn query_perps_pair_stats() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
     create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5).await;
 
@@ -113,7 +112,7 @@ async fn query_all_perps_pair_stats() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
     create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5).await;
 
@@ -165,7 +164,7 @@ async fn query_perps_pair_stats_partial_fields() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
     create_perps_fill(&mut suite, &mut accounts, &contracts, &pair, 2_000, 5).await;
 

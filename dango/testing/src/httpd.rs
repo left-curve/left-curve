@@ -1,12 +1,10 @@
-pub use {
-    crate::{BlockCreation, BridgeOp, Preset, TestOption},
-    dango_genesis::GenesisOption,
-    indexer_httpd::error::Error,
-};
 use {
-    crate::{MockClient, MockValidatorSets, TestAccounts, setup_suite_with_db_and_vm},
+    crate::{
+        BlockCreation, HttpdError, MockClient, MockValidatorSets, TestAccounts, TestOption,
+        setup_suite_with_db_and_vm,
+    },
     anyhow::bail,
-    dango_genesis::{Codes, Contracts, GenesisCodes},
+    dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption},
     dango_proposal_preparer::ProposalPreparer,
     grug_app::SimpleCommitment,
     grug_db_memory::MemDb,
@@ -22,15 +20,15 @@ use {
     tokio::{net::TcpStream, sync::RwLock},
 };
 
-pub async fn run(
+pub async fn mock_httpd_run(
     port: u16,
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
     genesis_opt: GenesisOption,
     database_url: Option<String>,
-) -> Result<(), Error> {
-    run_with_callback(
+) -> Result<(), HttpdError> {
+    mock_httpd_run_with_callback(
         port,
         block_creation,
         cors_allowed_origin,
@@ -45,15 +43,15 @@ pub async fn run(
 
 /// Run the mock server with port 0 and send the actual bound port via a channel.
 /// This is useful for tests that need to run in parallel without port conflicts.
-pub async fn run_with_port_sender(
+pub async fn mock_httpd_run_with_port_sender(
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
     genesis_opt: GenesisOption,
     database_url: Option<String>,
     port_sender: mpsc::Sender<u16>,
-) -> Result<(), Error> {
-    run_with_callback(
+) -> Result<(), HttpdError> {
+    mock_httpd_run_with_callback(
         0, // Let the OS allocate an available port
         block_creation,
         cors_allowed_origin,
@@ -66,7 +64,7 @@ pub async fn run_with_port_sender(
     .await
 }
 
-pub async fn run_with_callback<C>(
+pub async fn mock_httpd_run_with_callback<C>(
     port: u16,
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,
@@ -75,7 +73,7 @@ pub async fn run_with_callback<C>(
     database_url: Option<String>,
     port_sender: Option<mpsc::Sender<u16>>,
     callback: C,
-) -> Result<(), Error>
+) -> Result<(), HttpdError>
 where
     C: FnOnce(
             TestAccounts,
@@ -177,7 +175,7 @@ static USED_PORTS: LazyLock<StdMutex<HashSet<u16>>> =
 ///
 /// Uses OS-assigned port allocation (binding to port 0) and tracks used ports
 /// to avoid collisions when multiple tests request ports in the same process.
-pub fn get_mock_socket_addr() -> u16 {
+pub fn mock_httpd_get_socket_addr() -> u16 {
     let mut used = USED_PORTS.lock().unwrap();
 
     loop {
@@ -196,7 +194,7 @@ pub fn get_mock_socket_addr() -> u16 {
 /// Wait for the server to be ready to accept connections.
 /// CI measurements showed server starts in ~50ms (2 attempts).
 /// Using 30 attempts * 100ms = 3s max timeout for safety margin.
-pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
+pub async fn mock_httpd_wait_for_server_ready(port: u16) -> anyhow::Result<()> {
     for attempt in 1..=30 {
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
             Ok(_) => {

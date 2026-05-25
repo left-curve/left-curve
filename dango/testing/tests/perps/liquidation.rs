@@ -4,7 +4,7 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         TriggerDirection, UsdPrice, UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, mock_pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{
@@ -64,7 +64,7 @@ async fn liquidation_on_order_book() {
     // Register oracle prices: ETH = $2,000, USDC = $1.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: Fund vault and trader.
@@ -356,7 +356,7 @@ async fn liquidation_snaps_to_full_close_when_remainder_would_be_dust() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Configure the pair with a $5,000 `min_order_size` floor. Everything
     // else mirrors the default.
@@ -608,7 +608,7 @@ async fn liquidation_with_adl() {
     // Register oracle prices: ETH = $2,000, USDC = $1.
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user4) deposits $1,000 and adds $1,000 liquidity.
@@ -949,7 +949,7 @@ async fn liquidation_cancels_conditional_orders() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Step 1: Fund vault ($100k via user4), trader (user1) deposits $3,000.
     suite
@@ -1194,7 +1194,7 @@ async fn liquidation_cancels_conditional_orders() {
 async fn vault_liquidation_on_order_book() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
@@ -1540,7 +1540,7 @@ async fn liquidation_book_fills_have_fill_id_adl_does_not() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = pair_id();
+    let pair = mock_pair_id();
 
     // Trader A (user1) opens a long that will later become liquidatable.
     suite

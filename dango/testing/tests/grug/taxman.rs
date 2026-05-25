@@ -1,9 +1,8 @@
 use {
     dango_genesis::{AccountOption, GenesisOption, GenesisUser, TaxmanOption},
     dango_testing::{
-        ContractBuilder, Preset, TestOption,
-        constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
-        setup_test_naive_with_custom_genesis,
+        ContractBuilder, Preset, TestOption, owner, setup_test_naive_with_custom_genesis, user1,
+        user2, user3, user4, user5, user6, user7, user8, user9,
     },
     dango_types::{account_factory::NewUserSalt, auth::Key},
     grug_math::{NumberConst, Uint128},

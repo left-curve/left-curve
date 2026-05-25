@@ -22,7 +22,10 @@ use {
     },
     dango_testing::{
         Preset,
-        httpd::{BlockCreation, TestOption, run_with_port_sender, wait_for_server_ready},
+        httpd::{
+            BlockCreation, TestOption, mock_httpd_run_with_port_sender,
+            mock_httpd_wait_for_server_ready,
+        },
     },
     futures::StreamExt,
     graphql_client::{GraphQLQuery, Response},
@@ -46,7 +49,7 @@ async fn spawn_mock_server() -> anyhow::Result<u16> {
             .unwrap();
 
         rt.block_on(async {
-            let _ = run_with_port_sender(
+            let _ = mock_httpd_run_with_port_sender(
                 BlockCreation::OnBroadcast,
                 None,
                 TestOption::default(),
@@ -62,7 +65,7 @@ async fn spawn_mock_server() -> anyhow::Result<u16> {
         .recv()
         .map_err(|_| anyhow::anyhow!("mock server never reported a port"))?;
 
-    wait_for_server_ready(port).await?;
+    mock_httpd_wait_for_server_ready(port).await?;
 
     Ok(port)
 }

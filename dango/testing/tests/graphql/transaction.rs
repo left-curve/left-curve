@@ -4,10 +4,10 @@ use {
     dango_genesis::GenesisOption,
     dango_testing::{
         BlockCreation, GraphQLCustomRequest, PaginationDirection, Preset, TestOption,
-        build_app_service, call_graphql_query, call_ws_graphql_stream,
-        httpd::{get_mock_socket_addr, wait_for_server_ready},
-        paginate_transactions, parse_graphql_subscription_response,
-        setup_test_naive_with_indexer_and_create_blocks, transactions_query,
+        build_app_service, call_graphql_query, call_ws_graphql_stream, mock_httpd_get_socket_addr,
+        mock_httpd_run_with_callback, mock_httpd_wait_for_server_ready, paginate_transactions,
+        parse_graphql_subscription_response, setup_test_naive_with_indexer_and_create_blocks,
+        transactions_query,
     },
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
@@ -246,7 +246,7 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
-    let port = get_mock_socket_addr();
+    let port = mock_httpd_get_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();
     let (sx2, rx2) = tokio::sync::oneshot::channel();
@@ -257,7 +257,7 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
         rt.block_on(async {
             tracing::info!("Starting mock HTTP server on port {port}");
 
-            if let Err(error) = dango_testing::httpd::run_with_callback(
+            if let Err(error) = mock_httpd_run_with_callback(
                 port,
                 BlockCreation::OnBroadcast,
                 None,
@@ -279,7 +279,7 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
 
     let mut accounts = rx.await?;
     let indexer_context = rx2.await?;
-    wait_for_server_ready(port).await?;
+    mock_httpd_wait_for_server_ready(port).await?;
 
     let tx = accounts.user1.sign_transaction(
         NonEmpty::new_unchecked(vec![Message::transfer(

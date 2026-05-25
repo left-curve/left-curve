@@ -1,5 +1,5 @@
 use {
-    dango_testing::{constants::MOCK_HYPERLANE_LOCAL_DOMAIN, generate_random_key, setup_test},
+    dango_testing::{MOCK_HYPERLANE_LOCAL_DOMAIN, generate_random_key, setup_test},
     dango_types::constants::{dango, usdc},
     grug_types::{
         Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, Inner, JsonDeExt, QuerierExt,

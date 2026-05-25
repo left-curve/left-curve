@@ -1,9 +1,7 @@
 use {
     assertor::*,
     dango_testing::{
-        TestOption,
-        perps::{create_perps_fill, pair_id, setup_perps_env},
-        setup_test_with_indexer,
+        TestOption, create_perps_fill, mock_pair_id, setup_perps_env, setup_test_with_indexer,
     },
     grug_app::Indexer,
     indexer_sql::entity,
@@ -17,7 +15,15 @@ async fn index_perps_events() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
-    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
+    create_perps_fill(
+        &mut suite,
+        &mut accounts,
+        &contracts,
+        &mock_pair_id(),
+        2_000,
+        5,
+    )
+    .await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -27,7 +33,7 @@ async fn index_perps_events() -> anyhow::Result<()> {
 
     // All events should have correct pair_id and non-empty fields.
     for event in &events {
-        assert_that!(event.pair_id.as_str()).is_equal_to(pair_id().to_string().as_str());
+        assert_that!(event.pair_id.as_str()).is_equal_to(mock_pair_id().to_string().as_str());
         assert!(!event.user_addr.is_empty(), "user_addr should not be empty");
         assert!(!event.data.is_null(), "data should not be null");
     }
