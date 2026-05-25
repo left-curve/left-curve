@@ -10,6 +10,7 @@ mod hyperlane;
 mod outcomes;
 mod pagination;
 mod perps;
+mod pyth;
 mod request;
 mod setup;
 mod suite;
@@ -18,8 +19,8 @@ mod validator_set;
 
 pub use {
     account::*, account_creation::*, balance_tracker::*, client::*, constants::*, crypto::*,
-    genesis::*, httpd::*, hyperlane::*, outcomes::*, pagination::*, perps::*, request::*, setup::*,
-    suite::*, tracing_setup::*, validator_set::*,
+    genesis::*, httpd::*, hyperlane::*, outcomes::*, pagination::*, perps::*, pyth::*, request::*,
+    setup::*, suite::*, tracing_setup::*, validator_set::*,
 };
 
 // Re-exports

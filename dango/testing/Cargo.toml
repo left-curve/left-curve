@@ -17,6 +17,7 @@ actix-test              = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-trait             = { workspace = true }
+byteorder               = { workspace = true }
 awc                     = { workspace = true }
 clickhouse              = { workspace = true, features = ["test-util"] }
 dango-genesis           = { workspace = true }
@@ -30,6 +31,7 @@ futures                 = { workspace = true }
 futures-util            = { workspace = true }
 graphql_client          = { workspace = true }
 grug-app                = { workspace = true, features = ["abci", "testing", "tracing"] }
+grug-crypto             = { workspace = true }
 grug-db-disk            = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-math               = { workspace = true }
@@ -47,6 +49,7 @@ indexer-metrics         = { workspace = true }
 indexer-sql             = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }
 k256                    = { workspace = true }
 pyth-client             = { workspace = true }
+pyth-lazer-protocol     = { workspace = true }
 pyth-types              = { workspace = true }
 rand                    = { workspace = true }
 sea-orm                 = { workspace = true }
@@ -75,7 +78,6 @@ ed25519-dalek               = { workspace = true, features = ["batch", "digest"]
 error-backtrace             = { workspace = true }
 eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
-grug-crypto                 = { workspace = true }
 grug-storage                = { workspace = true }
 grug-tester                 = { workspace = true, features = ["library"] }
 grug-vm-hybrid              = { workspace = true }

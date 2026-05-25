@@ -4,7 +4,7 @@ use {
         Dimensionless, OrderId, OrderKind, OrderRemoved, Quantity, QueryOrdersByUserResponseItem,
         ReasonForOrderRemoval, TimeInForce, UsdPrice,
     },
-    dango_testing::{OracleTestEntry, TestOption, pair_id, seed_oracle_prices, setup_test_naive},
+    dango_testing::{OracleExt, OracleTestEntry, TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{
@@ -15,7 +15,7 @@ use {
     grug_math::{Uint64, Uint128},
     grug_types::{
         Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, QuerierExt,
-        ResultExt, SearchEvent, Timestamp, btree_map,
+        ResultExt, SearchEvent, btree_map,
     },
     std::collections::BTreeMap,
 };
@@ -651,29 +651,22 @@ async fn batch_across_two_pairs() {
     let btc_pair: Denom = "perp/btcusd".parse().unwrap();
 
     // Register oracle prices for both pairs (plus USDC for settlement).
-    seed_oracle_prices(
-        &mut suite,
-        &mut accounts.owner,
-        contracts.oracle,
-        btree_map! {
+    suite
+        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),
-                timestamp: Timestamp::from_nanos(u128::MAX),
             },
             eth_pair.clone() => OracleTestEntry {
                 pyth_id: 2,
                 humanized_price: UsdPrice::new_int(2_000),
-                timestamp: Timestamp::from_nanos(u128::MAX),
             },
             btc_pair.clone() => OracleTestEntry {
                 pyth_id: 3,
                 humanized_price: UsdPrice::new_int(60_000),
-                timestamp: Timestamp::from_nanos(u128::MAX),
             },
-        },
-    )
-    .await;
+        })
+        .await;
 
     // Add the BTC pair (the ETH pair is already configured at genesis;
     // re-specifying it keeps it unchanged).
