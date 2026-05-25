@@ -1,14 +1,12 @@
 use {
     crate::{
         core::{compute_available_margin, compute_vault_quotes},
-        cron::process_index_price,
         oracle,
         querier::NoCachePerpQuerier,
         state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, USER_STATES},
         trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{
         ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
         increase_liquidity_depths, may_invert_price,
@@ -32,14 +30,12 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
-    let oracle_addr = oracle(ctx.querier);
-
     // Only the oracle contract (after feeding fresh prices) or the chain owner
     // may trigger a vault refresh. Without this check any account could consume
     // the once-per-block refresh token on stale prices, causing the oracle's
     // legitimate refresh submessage to be rejected.
     ensure!(
-        ctx.sender == oracle_addr || ctx.sender == ctx.querier.query_owner()?,
+        ctx.sender == oracle(ctx.querier) || ctx.sender == ctx.querier.query_owner()?,
         "only the oracle contract or the chain owner may refresh vault orders"
     );
 
@@ -49,12 +45,6 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         ctx.block.height > last_update,
         "vault orders already updated this block"
     );
-
-    // Update index prices from the oracle before reading them. The oracle
-    // just fed fresh prices in the same transaction that triggered this
-    // refresh, so process_index_price will pick them up immediately.
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier);
-    process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
     let param = PARAM.load(ctx.storage)?;
     let pair_ids = PAIR_IDS.load(ctx.storage)?;
