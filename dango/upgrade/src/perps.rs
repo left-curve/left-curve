@@ -90,7 +90,7 @@ fn do_pair_states_migration(
 
 /// Read the oracle contract's stored price for a pair.
 ///
-/// Follows the same path as OracleQuerier::query_price_for_perps:
+/// Follows the same path as OracleQuerier::query_price:
 /// PRICE_SOURCES[denom] → pyth_id → PYTH_PRICES[pyth_id] → humanized_price.
 fn read_oracle_price(oracle_storage: &dyn Storage, pair_id: &PairId) -> Option<UsdPrice> {
     let source = dango_oracle::PRICE_SOURCES

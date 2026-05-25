@@ -1,7 +1,6 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES},
     anyhow::anyhow,
-    dango_order_book::UsdPrice,
     dango_types::oracle::{Price, PriceSource},
     grug_storage::StorageQuerier,
     grug_types::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage},
@@ -44,13 +43,6 @@ impl<'a> OracleQuerier<'a> {
         price_source: Option<PriceSource>,
     ) -> anyhow::Result<Price> {
         self.cache.get_or_fetch(denom, price_source).cloned()
-    }
-
-    /// Similar to `self.query_price` but returns just the humanized price,
-    /// matching the type used by the perps contract.
-    pub fn query_price_for_perps(&mut self, denom: &Denom) -> anyhow::Result<UsdPrice> {
-        self.query_price(denom, None)
-            .map(|price| price.humanized_price)
     }
 }
 
@@ -122,6 +114,7 @@ impl OracleContext<'_> {
 mod tests {
     use {
         super::*,
+        dango_order_book::UsdPrice,
         dango_types::constants::{eth, usdc},
         grug_types::{ResultExt, Timestamp, hash_map},
         pyth_types::MarketSession,
