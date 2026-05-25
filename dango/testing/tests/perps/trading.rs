@@ -1152,7 +1152,7 @@ async fn ioc_limit_order_no_fill_rejected() {
 macro_rules! setup_slippage_cap_suite {
     () => {{
         let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-        let pair = mock_pair_id();
+        let pair = pair_id();
 
         register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 

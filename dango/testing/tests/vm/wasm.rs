@@ -411,12 +411,14 @@ async fn recovering_secp256k1_pubkey() {
         })
     };
 
+    // Ok
     {
         suite
             .query_wasm_smart(tester, req.clone())
             .should_succeed_and_equal(Binary::from_inner(vk.to_sec1_bytes().to_vec()));
     }
 
+    // Attempt to recover with a different msg. Should succeed but pk is different.
     {
         let mut false_req = req.clone();
         false_req.msg_hash = sha2_256(WRONG_MSG).into();
@@ -426,6 +428,7 @@ async fn recovering_secp256k1_pubkey() {
             .should_succeed_but_not_equal(Binary::from_inner(vk.to_sec1_bytes().to_vec()));
     }
 
+    // Attempt to recover with an invalid recovery ID. Should error.
     {
         let mut false_req = req;
         false_req.recovery_id = 123;

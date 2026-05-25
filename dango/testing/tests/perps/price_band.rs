@@ -24,8 +24,9 @@ use {
 macro_rules! setup_band_suite {
     () => {{
         let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+        let pair = pair_id();
+
         register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
-        let pair = mock_pair_id();
 
         suite
             .execute(
