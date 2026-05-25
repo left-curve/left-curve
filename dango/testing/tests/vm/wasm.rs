@@ -61,7 +61,7 @@ async fn setup_test() -> (
     (suite, accounts, tester)
 }
 
-// ---- vm correctness tests ----
+// --------------------------- vm correctness tests ----------------------------
 
 #[tokio::test]
 async fn infinite_loop() {
@@ -86,6 +86,13 @@ async fn infinite_loop() {
 async fn immutable_state() {
     let (mut suite, mut accounts, tester) = setup_test().await;
 
+    // Query the tester contract.
+    //
+    // During the query, the contract attempts to write to the state by directly
+    // calling the `db_write` import.
+    //
+    // This tests how the VM handles state mutability while serving the `Query`
+    // ABCI request.
     suite
         .query_wasm_smart(tester, grug_tester::QueryForceWriteRequest {
             key: "larry".to_string(),
@@ -93,6 +100,13 @@ async fn immutable_state() {
         })
         .should_fail_with_error(VmError::immutable_state());
 
+    // Execute the tester contract.
+    //
+    // During the execution, the contract makes a query to itself and the query
+    // tries to write to the storage.
+    //
+    // This tests how the VM handles state mutability while serving the
+    // `FinalizeBlock` ABCI request.
     suite
         .send_message_with_gas(
             &mut accounts.owner,
@@ -115,6 +129,8 @@ async fn immutable_state() {
 async fn query_stack_overflow() {
     let (suite, _, tester) = setup_test().await;
 
+    // The contract attempts to call with `QueryMsg::StackOverflow` to itself in
+    // a loop. Should raise the "exceeded max query depth" error.
     suite
         .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
         .should_fail_with_error(VmError::exceed_max_query_depth());
@@ -124,6 +140,8 @@ async fn query_stack_overflow() {
 async fn message_stack_overflow() {
     let (mut suite, mut accounts, tester) = setup_test().await;
 
+    // The contract attempts to return a Response with `Execute::StackOverflow`
+    // to itself in a loop. Should raise the "exceeded max message depth" error.
     suite
         .send_message_with_gas(
             &mut accounts.owner,
@@ -139,7 +157,7 @@ async fn message_stack_overflow() {
         .should_fail_with_error(AppError::exceed_max_message_depth());
 }
 
-// ---- crypto tests ----
+// ------------------------------- crypto tests --------------------------------
 
 const MSG: &[u8] = b"finger but hole";
 const WRONG_MSG: &[u8] = b"precious item ahead";
@@ -365,6 +383,7 @@ async fn verifying_signature<G, M, R>(
 {
     let (suite, _, tester) = setup_test().await;
 
+    // Generate and malleate query request
     let req = generate_request();
     let req = malleate(req);
 
@@ -375,6 +394,7 @@ async fn verifying_signature<G, M, R>(
 async fn recovering_secp256k1_pubkey() {
     let (suite, _, tester) = setup_test().await;
 
+    // Generate a valid signature
     let (vk, req) = {
         use k256::ecdsa::{SigningKey, VerifyingKey};
 
@@ -446,10 +466,12 @@ async fn wasm_ed25519_batch_verify() {
         }
     };
 
+    // Ok
     {
         suite.query_wasm_smart(tester, req.clone()).should_succeed();
     }
 
+    // Create an invalid batch simply by shuffling the order of signatures.
     {
         req.sigs.reverse();
 
