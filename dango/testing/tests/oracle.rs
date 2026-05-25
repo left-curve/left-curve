@@ -54,15 +54,16 @@ async fn pyth_lazer() {
         .await
         .should_succeed();
 
-    // The trusted signer was set in genesis. For the purpose of this test,
-    // remove it for now, to test what happens if we submit price data from an
-    // untrusted signer.
+    // Genesis registers the mock signer. Remove it so this test starts with
+    // no trusted signers — we explicitly manage signer trust below.
+    let mock_pubkey = dango_testing::mock_pyth_trusted_signer();
+
     suite
         .execute(
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RemoveTrustedSigner {
-                public_key: trusted_signer.clone(),
+                public_key: mock_pubkey,
             },
             Coins::default(),
         )

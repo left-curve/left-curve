@@ -98,6 +98,7 @@ blake2                      = "0.10"
 blake3                      = "1"
 bnum                        = "0.14"
 borsh                       = "1"
+byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
 clickhouse                  = "0.14"
