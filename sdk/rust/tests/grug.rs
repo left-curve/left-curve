@@ -3,10 +3,8 @@ use {
     dango_genesis::GenesisOption,
     dango_sdk::HttpClient,
     dango_testing::{
-        Preset,
-        httpd::{
-            BlockCreation, TestOption, mock_httpd_get_socket_addr, mock_httpd_wait_for_server_ready,
-        },
+        BlockCreation, Preset, TestOption, mock_httpd_get_socket_addr,
+        mock_httpd_wait_for_server_ready,
     },
     dango_types::config::AppConfig,
     grug_types::QueryClientExt,
@@ -22,7 +20,7 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
         rt.block_on(async {
             tracing::info!("Starting mock HTTP server on port {port}");
 
-            if let Err(error) = dango_testing::httpd::mock_httpd_run(
+            if let Err(error) = dango_testing::mock_httpd_run(
                 port,
                 BlockCreation::OnBroadcast,
                 None,

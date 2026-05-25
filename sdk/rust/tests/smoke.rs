@@ -21,11 +21,8 @@ use {
         subscribe_query_status, subscribe_query_store, subscribe_transactions, subscribe_transfers,
     },
     dango_testing::{
-        Preset,
-        httpd::{
-            BlockCreation, TestOption, mock_httpd_run_with_port_sender,
-            mock_httpd_wait_for_server_ready,
-        },
+        BlockCreation, Preset, TestOption, mock_httpd_run_with_port_sender,
+        mock_httpd_wait_for_server_ready,
     },
     futures::StreamExt,
     graphql_client::{GraphQLQuery, Response},

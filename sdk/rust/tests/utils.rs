@@ -2,8 +2,8 @@ use {
     dango_genesis::GenesisOption,
     dango_sdk::HttpClient,
     dango_testing::{
-        Preset, TestAccounts, TestOption,
-        httpd::{BlockCreation, mock_httpd_get_socket_addr, mock_httpd_wait_for_server_ready},
+        BlockCreation, Preset, TestAccounts, TestOption, mock_httpd_get_socket_addr,
+        mock_httpd_wait_for_server_ready,
     },
 };
 
@@ -23,7 +23,7 @@ pub async fn setup_client_test_with_port() -> anyhow::Result<(HttpClient, TestAc
         rt.block_on(async {
             tracing::info!("Starting mock HTTP server on port {port}");
 
-            if let Err(error) = dango_testing::httpd::mock_httpd_run_with_callback(
+            if let Err(error) = dango_testing::mock_httpd_run_with_callback(
                 port,
                 BlockCreation::OnBroadcast,
                 None,
