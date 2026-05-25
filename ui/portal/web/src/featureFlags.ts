@@ -1,4 +1,4 @@
-const FEATURE_IDS = [] as const;
+const FEATURE_IDS = ["trade_history_export"] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
