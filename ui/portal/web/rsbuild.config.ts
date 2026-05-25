@@ -15,7 +15,10 @@ import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
-import { devnet, local, testnet, mainnet } from "@left-curve/sdk";
+import devnet from "@left-curve/sdk/chains/devnet.json" with { type: "json" };
+import local from "@left-curve/sdk/chains/local.json" with { type: "json" };
+import mainnet from "@left-curve/sdk/chains/mainnet.json" with { type: "json" };
+import testnet from "@left-curve/sdk/chains/testnet.json" with { type: "json" };
 
 import type { Chain } from "@left-curve/types";
 import type { Rspack } from "@rsbuild/core";

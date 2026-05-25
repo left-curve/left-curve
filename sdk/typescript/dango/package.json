@@ -34,7 +34,8 @@
   "typings": "./build/index.d.ts",
   "sideEffects": false,
   "files": [
-    "build"
+    "build",
+    "src/chains/definitions/*.json"
   ],
   "exports": {
     ".": {
@@ -54,7 +55,8 @@
       "types": "./build/hyperlane/index.d.ts",
       "import": "./build/hyperlane/index.js",
       "default": "./build/hyperlane/index.cjs"
-    }
+    },
+    "./chains/*.json": "./src/chains/definitions/*.json"
   },
   "typesVersions": {
     "*": {
