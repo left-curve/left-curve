@@ -31,9 +31,7 @@ pub fn process_index_price(
         let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
         let mut pair_state = PAIR_STATES.load(storage, &pair_id)?;
 
-        let Ok(price) = oracle_querier.query_price(&pair_id, None) else {
-            continue;
-        };
+        let price = oracle_querier.query_price(&pair_id, None).ok();
 
         process_index_price_for_pair(
             storage,
@@ -41,7 +39,7 @@ pub fn process_index_price(
             &pair_id,
             &pair_param,
             &mut pair_state,
-            &price,
+            price.as_ref(),
         )?;
 
         PAIR_STATES.save(storage, &pair_id, &pair_state)?;
@@ -65,41 +63,45 @@ fn process_index_price_for_pair(
     pair_id: &PairId,
     pair_param: &PairParam,
     pair_state: &mut PairState,
-    price: &Price,
+    price: Option<&Price>,
 ) -> anyhow::Result<()> {
-    // The oracle is considered available when the market is in regular
-    // session (not pre/post/closed) and the price is fresh enough.
-    let oracle_available = price.market_session == MarketSession::Regular
-        && price.timestamp >= current_time - MAX_ORACLE_STALENESS;
+    let index_price = match price {
+        // The oracle is considered available when the market is in regular
+        // session (not pre/post/closed) and the price is fresh enough.
+        // // When available, snap to the oracle price.
+        Some(p)
+            if p.market_session == MarketSession::Regular
+                && p.timestamp >= current_time - MAX_ORACLE_STALENESS =>
+        {
+            p.humanized_price
+        },
+        // When oracle is not available, use EWMA driven by the order book's
+        // impact bid/ask spread.
+        _ => {
+            let bid_iter = BIDS
+                .prefix(pair_id.clone())
+                .range(storage, None, None, IterationOrder::Ascending)
+                .map(|res| {
+                    let ((stored_price, _), order) = res?;
+                    let real_price = may_invert_price(stored_price, true);
+                    Ok((real_price, order.size))
+                });
 
-    // When available, snap to the oracle price. Otherwise, drift via the
-    // EWMA driven by the order book's impact bid/ask spread.
-    let index_price = if oracle_available {
-        price.humanized_price
-    } else {
-        let bid_iter = BIDS
-            .prefix(pair_id.clone())
-            .range(storage, None, None, IterationOrder::Ascending)
-            .map(|res| {
-                let ((stored_price, _), order) = res?;
-                let real_price = may_invert_price(stored_price, true);
-                Ok((real_price, order.size))
-            });
+            let ask_iter = ASKS
+                .prefix(pair_id.clone())
+                .range(storage, None, None, IterationOrder::Ascending)
+                .map(|res| {
+                    let ((stored_price, _), order) = res?;
+                    Ok((stored_price, order.size.checked_abs()?))
+                });
 
-        let ask_iter = ASKS
-            .prefix(pair_id.clone())
-            .range(storage, None, None, IterationOrder::Ascending)
-            .map(|res| {
-                let ((stored_price, _), order) = res?;
-                Ok((stored_price, order.size.checked_abs()?))
-            });
+            let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
+            let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
 
-        let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
-        let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
+            let delta_t = current_time - pair_state.last_index_time;
 
-        let delta_t = current_time - pair_state.last_index_time;
-
-        compute_ewma_index_price(pair_state.index_price, impact_bid, impact_ask, delta_t)?
+            compute_ewma_index_price(pair_state.index_price, impact_bid, impact_ask, delta_t)?
+        },
     };
 
     pair_state.index_price = index_price;
