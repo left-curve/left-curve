@@ -2599,8 +2599,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d14a3912e1478234033344e1817fc1bdd0e8b088658922101cf9c8e5dbc96f6"
 dependencies = [
  "borsh",
- "serde",
- "serde-big-array",
 ]
 
 [[package]]
@@ -3999,7 +3997,6 @@ dependencies = [
  "anyhow",
  "async-graphql",
  "async-trait",
- "bnum 0.14.2",
  "dango-order-book",
  "grug-math",
  "grug-storage",
@@ -5500,7 +5497,6 @@ dependencies = [
  "k256",
  "p256 0.13.2",
  "rand 0.8.5",
- "serde",
  "test-case",
  "thiserror 2.0.18",
  "tokio",
@@ -6215,7 +6211,6 @@ dependencies = [
  "assertor",
  "async-graphql",
  "bigdecimal",
- "bnum 0.14.2",
  "chrono",
  "clickhouse",
  "dango-order-book",
@@ -9924,15 +9919,6 @@ checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
  "serde_derive",
-]
-
-[[package]]
-name = "serde-big-array"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
-dependencies = [
- "serde",
 ]
 
 [[package]]
