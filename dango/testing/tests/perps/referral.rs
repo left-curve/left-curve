@@ -2,7 +2,7 @@ use {
     crate::{default_pair_param, default_param},
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
     dango_testing::{
-        Factory, OracleTestEntry, Preset, TestAccount, TestOption, TestSuiteNaive, mock_pair_id,
+        Factory, OracleTestEntry, Preset, TestAccount, TestOption, TestSuiteNaive, pair_id,
         seed_oracle_prices, setup_test_naive,
     },
     dango_types::{
@@ -1403,7 +1403,7 @@ async fn negative_maker_fee_does_not_debit_referrers() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // Configure negative maker fee. taker = 3 bps, maker = -1 bps, protocol = 20%.
     suite
@@ -2174,7 +2174,7 @@ async fn cr_100_indirect_referrer_taker() {
 async fn cr_100_direct_referrer_maker_positive_fee() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // taker = +5 bps, maker = +5 bps, protocol = 0.
     suite
@@ -2285,7 +2285,7 @@ async fn cr_100_direct_referrer_maker_positive_fee() {
 async fn cr_100_indirect_referrer_maker_positive_fee() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     suite
         .execute(
@@ -2423,7 +2423,7 @@ async fn cr_100_indirect_referrer_maker_positive_fee() {
 async fn cr_100_direct_referrer_maker_rebate() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // taker = +3 bps, maker = -1 bps (rebate), protocol = 20%.
     suite
@@ -2522,7 +2522,7 @@ async fn cr_100_direct_referrer_maker_rebate() {
 async fn cr_100_indirect_referrer_maker_rebate() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     suite
         .execute(
@@ -2709,7 +2709,7 @@ async fn register_oracle_prices(
             humanized_price: UsdPrice::new_int(1),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
-        mock_pair_id() => OracleTestEntry {
+        pair_id() => OracleTestEntry {
             pyth_id: 2,
             humanized_price: UsdPrice::new_int(eth_price as i128),
             timestamp: Timestamp::from_nanos(u128::MAX),
@@ -2748,7 +2748,7 @@ async fn place_ask_order(
             user,
             perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: mock_pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(-(size as i128)),
                 kind: OrderKind::Limit {
                     limit_price: price,
@@ -2776,7 +2776,7 @@ async fn place_market_buy(
             user,
             perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: mock_pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
@@ -2821,7 +2821,7 @@ async fn place_market_buy_with_events(
             user,
             perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: mock_pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),

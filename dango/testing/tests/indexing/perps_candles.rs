@@ -4,7 +4,7 @@ use {
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_testing::{
         OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteWithIndexer, create_perps_fill,
-        mock_pair_id, seed_oracle_prices, setup_perps_env, setup_test_with_indexer,
+        pair_id, seed_oracle_prices, setup_perps_env, setup_test_with_indexer,
         setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
@@ -39,7 +39,7 @@ async fn place_limit_ask(
             &mut accounts.user2,
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: mock_pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(-(size as i128)),
                 kind: OrderKind::Limit {
                     limit_price: UsdPrice::new_int(price as i128),
@@ -68,7 +68,7 @@ async fn market_buy(
             &mut accounts.user1,
             contracts.perps,
             &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
-                pair_id: mock_pair_id(),
+                pair_id: pair_id(),
                 size: Quantity::new_int(size as i128),
                 kind: OrderKind::Market {
                     max_slippage: Dimensionless::new_percent(50),
@@ -89,7 +89,7 @@ async fn query_candles(
     interval: CandleInterval,
 ) -> anyhow::Result<PerpsCandleResult> {
     Ok(
-        PerpsCandleQueryBuilder::new(interval, mock_pair_id().to_string())
+        PerpsCandleQueryBuilder::new(interval, pair_id().to_string())
             .fetch_all(clickhouse_client)
             .await?,
     )
@@ -100,7 +100,7 @@ async fn find_pair_price(clickhouse_client: &clickhouse::Client) -> anyhow::Resu
     let pair_prices = PerpsPairPrice::latest_prices(clickhouse_client, 10).await?;
     Ok(pair_prices
         .into_iter()
-        .find(|p| p.pair_id == mock_pair_id().to_string())
+        .find(|p| p.pair_id == pair_id().to_string())
         .expect("Should find pair price for perp/ethusd"))
 }
 
@@ -129,15 +129,7 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        5,
-    )
-    .await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -163,7 +155,7 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
         .next()
         .expect("Should have a 1-minute candle");
 
-    assert_that!(candle.pair_id).is_equal_to(mock_pair_id().to_string());
+    assert_that!(candle.pair_id).is_equal_to(pair_id().to_string());
     assert_that!(candle.open).is_equal_to(expected_price);
     assert_that!(candle.high).is_equal_to(expected_price);
     assert_that!(candle.low).is_equal_to(expected_price);
@@ -224,33 +216,9 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        1,
-    )
-    .await;
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        1_999,
-        1,
-    )
-    .await;
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_001,
-        1,
-    )
-    .await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 1_999, 1).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_001, 1).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -297,33 +265,9 @@ async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
 
     suite.make_empty_block().await;
 
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        1,
-    )
-    .await;
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        1_999,
-        1,
-    )
-    .await;
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_001,
-        1,
-    )
-    .await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 1_999, 1).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_001, 1).await;
 
     // Several empty blocks to force candle boundary crossing
     for _ in 0..5 {
@@ -369,15 +313,7 @@ async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
     for _ in 0..10 {
-        create_perps_fill(
-            &mut suite,
-            &mut accounts,
-            &contracts,
-            &mock_pair_id(),
-            2_000,
-            1,
-        )
-        .await;
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1).await;
     }
 
     suite.app.indexer.wait_for_finish().await?;
@@ -388,7 +324,7 @@ async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
     let perps_pps: Vec<_> = PerpsPairPrice::latest_prices(ch, 100)
         .await?
         .into_iter()
-        .filter(|p| p.pair_id == mock_pair_id().to_string())
+        .filter(|p| p.pair_id == pair_id().to_string())
         .collect();
 
     assert_that!(perps_pps.len()).is_at_least(5);
@@ -421,24 +357,8 @@ async fn index_perps_candles_cache_consistency() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        1,
-    )
-    .await;
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        1,
-    )
-    .await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -475,15 +395,7 @@ async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
     for _ in 0..10 {
-        create_perps_fill(
-            &mut suite,
-            &mut accounts,
-            &contracts,
-            &mock_pair_id(),
-            2_000,
-            1,
-        )
-        .await;
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1).await;
     }
 
     suite.app.indexer.wait_for_finish().await?;
@@ -560,15 +472,7 @@ async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
     let expected_low = *prices.iter().min().unwrap();
 
     for &price in &prices {
-        create_perps_fill(
-            &mut suite,
-            &mut accounts,
-            &contracts,
-            &mock_pair_id(),
-            price,
-            1,
-        )
-        .await;
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), price, 1).await;
     }
 
     // Push past another 5-minute boundary so we get an extra empty candle.
@@ -679,7 +583,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
-    let eth_pair = mock_pair_id(); // perp/ethusd
+    let eth_pair = pair_id(); // perp/ethusd
     let btc_pair: Denom = "perp/btcusd".parse().unwrap();
 
     // Register oracle prices for both pairs.
@@ -842,15 +746,7 @@ async fn index_perps_candles_preload_rebuilds_current_bucket_from_clickhouse() -
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
     for _ in 0..5 {
-        create_perps_fill(
-            &mut suite,
-            &mut accounts,
-            &contracts,
-            &mock_pair_id(),
-            2_000,
-            1,
-        )
-        .await;
+        create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 1).await;
     }
 
     suite.app.indexer.wait_for_finish().await?;
@@ -872,14 +768,14 @@ async fn index_perps_candles_preload_rebuilds_current_bucket_from_clickhouse() -
         CandleInterval::FourHours,
         CandleInterval::OneDay,
     ] {
-        let key = PerpsCandleCacheKey::new(mock_pair_id().to_string(), interval);
+        let key = PerpsCandleCacheKey::new(pair_id().to_string(), interval);
         let candle = fresh_cache
             .get_last_candle(&key)
             .cloned()
             .unwrap_or_else(|| {
                 panic!(
                     "preload_pairs produced no {interval} candle for {}",
-                    mock_pair_id()
+                    pair_id()
                 )
             });
 

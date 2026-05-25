@@ -19,7 +19,7 @@ use {
     std::collections::BTreeMap,
 };
 
-pub fn mock_pair_id() -> Denom {
+pub fn pair_id() -> Denom {
     "perp/ethusd".parse().unwrap()
 }
 
@@ -117,7 +117,7 @@ pub async fn setup_perps_env(
             humanized_price: UsdPrice::new_int(1),
             timestamp: Timestamp::from_nanos(u128::MAX),
         },
-        mock_pair_id() => OracleTestEntry {
+        pair_id() => OracleTestEntry {
             pyth_id: 2,
             humanized_price: UsdPrice::new_int(eth_price as i128),
             timestamp: Timestamp::from_nanos(u128::MAX),

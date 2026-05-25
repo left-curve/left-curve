@@ -4,7 +4,7 @@ use {
         ClientOrderId, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         UsdPrice,
     },
-    dango_testing::{TestOption, mock_pair_id, setup_test_naive},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{constants::usdc, perps},
     grug_math::{Uint64, Uint128},
     grug_types::{Addressable, Coins, QuerierExt, ResultExt},
@@ -23,7 +23,7 @@ async fn submit_cancel_resubmit_by_client_order_id() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
     let cid: ClientOrderId = Uint64::new(42);
 
     // Deposit margin so the trader can place a resting order.

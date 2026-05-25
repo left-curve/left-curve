@@ -4,7 +4,7 @@ use {
         ChildOrder, Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem,
         TimeInForce, TriggerDirection, UsdPrice, UsdValue,
     },
-    dango_testing::{TestOption, mock_pair_id, setup_test_naive},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, OrderFilled, PairParam, UserState},
@@ -25,7 +25,7 @@ async fn conditional_order_tp_triggers_on_price_rise() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // Step 1: Trader deposits $10,000 USDC.
     suite
@@ -201,7 +201,7 @@ async fn conditional_order_sl_triggers_on_price_drop() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // Step 1: Trader deposits $10,000, buys 5 ETH @ $2,000.
     suite
@@ -352,7 +352,7 @@ async fn conditional_orders_follow_price_time_priority() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // -------------------------------------------------------------------------
     // Setup: User1, User3 deposit $10k each. Maker (user2) deposits $100k.
@@ -630,7 +630,7 @@ async fn conditional_order_failure_does_not_block_others() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // -------------------------------------------------------------------------
     // Setup: User1, User3 deposit $10k each. Maker (user2) deposits $100k.
@@ -935,7 +935,7 @@ async fn conditional_order_self_trade_failure_preserves_user_state() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // Deposits.
     for (user, amount) in [
@@ -1158,7 +1158,7 @@ async fn child_order_market_with_tp_triggers() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     // Deposit for user1 (trader) and user2 (maker).
@@ -1283,7 +1283,7 @@ async fn child_order_market_with_sl_triggers() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -1404,7 +1404,7 @@ async fn child_order_ignored_when_position_closed() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -1527,7 +1527,7 @@ async fn child_order_overwrites_existing() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -1652,7 +1652,7 @@ async fn conditional_order_overwrite_same_direction() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
@@ -1772,7 +1772,7 @@ async fn conditional_order_size_exceeds_position_allowed() {
     let (mut suite, mut accounts, _codes, contracts, _mock_validators) =
         setup_test_naive(TestOption::default());
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
     suite
@@ -1878,7 +1878,7 @@ async fn conditional_order_cancelled_when_slippage_cap_tightened() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // Start with a permissive cap so the trader's 5% TP slippage is
     // legal at submission.
@@ -2059,7 +2059,7 @@ async fn conditional_order_trigger_fills_carry_fill_id() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // Trader deposits, buys 5 ETH long, attaches a TP at $2,500.
     suite
@@ -2219,7 +2219,7 @@ async fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
 
     register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
-    let pair = mock_pair_id();
+    let pair = pair_id();
 
     // Two traders each open a long position and attach a TP.
     for trader in [&mut accounts.user1, &mut accounts.user3] {

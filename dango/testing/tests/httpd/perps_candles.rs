@@ -2,8 +2,8 @@ use {
     assertor::*,
     dango_testing::{
         GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query_with_context,
-        call_ws_graphql_stream, create_perps_fill, mock_pair_id,
-        parse_graphql_subscription_response, setup_perps_env, setup_test_with_indexer,
+        call_ws_graphql_stream, create_perps_fill, pair_id, parse_graphql_subscription_response,
+        setup_perps_env, setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
@@ -26,15 +26,7 @@ async fn query_perps_candles() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        5,
-    )
-    .await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -44,7 +36,7 @@ async fn query_perps_candles() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let variables = perps_candles::Variables {
-                    pair_id: mock_pair_id().to_string(),
+                    pair_id: pair_id().to_string(),
                     interval: perps_candles::CandleInterval::ONE_MINUTE,
                     ..Default::default()
                 };
@@ -83,30 +75,14 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        5,
-    )
-    .await;
-    create_perps_fill(
-        &mut suite,
-        &mut accounts,
-        &contracts,
-        &mock_pair_id(),
-        2_000,
-        5,
-    )
-    .await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
+    create_perps_fill(&mut suite, &mut accounts, &contracts, &pair_id(), 2_000, 5).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
     let request_body = GraphQLCustomRequest::from_query_body(
         SubscribePerpsCandles::build_query(subscribe_perps_candles::Variables {
-            pair_id: mock_pair_id().to_string(),
+            pair_id: pair_id().to_string(),
             interval: subscribe_perps_candles::CandleInterval::ONE_MINUTE,
             later_than: None,
         }),
@@ -125,7 +101,7 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
                 &mut suite_guard,
                 &mut accounts,
                 &contracts,
-                &mock_pair_id(),
+                &pair_id(),
                 2_000,
                 1,
             )
