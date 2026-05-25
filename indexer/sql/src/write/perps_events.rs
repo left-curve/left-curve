@@ -1,6 +1,7 @@
 use {
     crate::{
         entity, entity::perps_trade::PerpsTrade, error::IndexerError, indexer::MAX_ROWS_INSERT,
+        write::perps_trades::KEEP_PER_PAIR,
     },
     dango_types::{
         config::AppConfig,
@@ -201,7 +202,7 @@ pub(crate) async fn save_perps_events(
     if !perps_trades.is_empty() {
         let mut cache = context.perps_trade_cache.write().await;
         cache.add_trades(perps_trades);
-        cache.compact_keep_n(400);
+        cache.compact_keep_n(KEEP_PER_PAIR);
     }
 
     #[cfg(feature = "metrics")]

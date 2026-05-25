@@ -5,9 +5,19 @@ use {
     },
     dango_types::perps::OrderFilled,
     grug_types::{EventName, Timestamp},
-    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder},
+    sea_orm::{
+        ColumnTrait, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect,
+    },
     std::collections::HashMap,
 };
+
+/// Per-pair cap retained at runtime by `compact_keep_n` after every block.
+pub(crate) const KEEP_PER_PAIR: usize = 20_000;
+
+/// Upper bound on rows pulled from `perps_events` during preload. Sized to
+/// cover `KEEP_PER_PAIR` × a generous number of pairs; anything beyond would
+/// be allocated and immediately trimmed by `compact_keep_n`.
+const PRELOAD_MAX_ROWS: u64 = 1_500_000;
 
 #[derive(Debug, Default)]
 pub struct PerpsTradeCache {
@@ -42,6 +52,7 @@ impl PerpsTradeCache {
             .filter(perps_events::Column::EventType.eq(OrderFilled::EVENT_NAME))
             .order_by(perps_events::Column::BlockHeight, Order::Desc)
             .order_by(perps_events::Column::Idx, Order::Desc)
+            .limit(PRELOAD_MAX_ROWS)
             .all(db)
             .await?;
 
@@ -93,6 +104,9 @@ impl PerpsTradeCache {
         }
 
         self.trades = trades;
+
+        // Match the runtime cap in case one pair dominates the preload window.
+        self.compact_keep_n(KEEP_PER_PAIR);
 
         Ok(())
     }
