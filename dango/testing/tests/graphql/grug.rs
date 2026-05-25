@@ -1,4 +1,5 @@
 use {
+    assert_json_diff::assert_json_eq,
     assertor::*,
     dango_testing::{
         GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query,
@@ -12,6 +13,7 @@ use {
         QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
     },
     indexer_graphql_types::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
+    serde_json::json,
     tokio::sync::mpsc,
 };
 
@@ -108,6 +110,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 .await
                 .should_succeed();
         }
+
         Ok::<(), anyhow::Error>(())
     });
 
@@ -127,6 +130,10 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
+                assert_json_eq!(
+                    response.data.response,
+                    json!({"balance": {"amount": "100000000100", "denom": "bridge/usdc"}})
+                );
 
                 crate_block_tx.send(2).await?;
 
@@ -137,6 +144,10 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(2);
+                assert_json_eq!(
+                    response.data.response,
+                    json!({"balance": {"amount": "100000000200", "denom": "bridge/usdc"}})
+                );
 
                 crate_block_tx.send(3).await?;
 
@@ -147,6 +158,10 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(3);
+                assert_json_eq!(
+                    response.data.response,
+                    json!({"balance": {"amount": "100000000300", "denom": "bridge/usdc"}})
+                );
 
                 Ok::<(), anyhow::Error>(())
             })
