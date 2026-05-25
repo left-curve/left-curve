@@ -1,3 +1,5 @@
+#![cfg(feature = "macros")]
+
 use {
     grug_storage::{IndexedMap, MultiIndex, UniqueIndex},
     grug_types::{MockStorage, Order, StdResult},
