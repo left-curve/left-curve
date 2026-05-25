@@ -6,6 +6,7 @@
     services:
       - dango
       - cometbft
+      - perp-liquidator
     cometbft_rpc_port: 26657
   vars_files:
     - roles/full-app/vars/main.yml
