@@ -9,6 +9,7 @@ pub use indexer_graphql_types::{
 pub enum PaginationDirection {
     /// Paginate forward using `first` and `after`
     Forward,
+
     /// Paginate backward using `last` and `before`
     Backward,
 }
@@ -19,26 +20,26 @@ pub enum PaginationDirection {
 /// an app builder expression. Use `impl_indexer_paginate!` for the common case
 /// with `indexer_httpd::context::FullContext`.
 ///
-/// # Arguments
+/// ## Arguments
 ///
-/// * `$fn_name` - The name of the generated function
-/// * `$context_type` - The context type (e.g., `indexer_httpd::context::FullContext`)
-/// * `$query_type` - The GraphQL query type (e.g., `Blocks`)
-/// * `$module` - The module containing the query types (e.g., `indexer_graphql_types::blocks`)
-/// * `$field` - The response field name (e.g., `blocks`)
-/// * `$node_type` - The node type returned by the query
-/// * `$app_builder` - Expression to build the app from context
+/// - `$fn_name` - The name of the generated function
+/// - `$context_type` - The context type (e.g., `indexer_httpd::context::FullContext`)
+/// - `$query_type` - The GraphQL query type (e.g., `Blocks`)
+/// - `$module` - The module containing the query types (e.g., `indexer_graphql_types::blocks`)
+/// - `$field` - The response field name (e.g., `blocks`)
+/// - `$node_type` - The node type returned by the query
+/// - `$app_builder` - Expression to build the app from context
 #[macro_export]
 macro_rules! impl_paginate {
     ($fn_name:ident, $context_type:ty, $query_type:ty, $module:ident, $field:ident, $node_type:ident, $app_builder:expr) => {
         /// Paginate through all results using the actix test context.
         ///
-        /// # Arguments
+        /// ## Arguments
         ///
-        /// * `context` - The httpd context
-        /// * `page_size` - Number of items to fetch per page
-        /// * `variables` - Query variables (pagination fields will be overwritten)
-        /// * `direction` - Pagination direction: `Forward` or `Backward`
+        /// - `context` - The httpd context
+        /// - `page_size` - Number of items to fetch per page
+        /// - `variables` - Query variables (pagination fields will be overwritten)
+        /// - `direction` - Pagination direction: `Forward` or `Backward`
         pub async fn $fn_name(
             context: $context_type,
             page_size: i64,
@@ -124,7 +125,6 @@ macro_rules! impl_indexer_paginate {
     };
 }
 
-// Generate pagination helpers for common query types
 impl_indexer_paginate!(
     paginate_blocks,
     Blocks,
@@ -132,6 +132,7 @@ impl_indexer_paginate!(
     blocks,
     BlocksBlocksNodes
 );
+
 impl_indexer_paginate!(
     paginate_events,
     Events,
@@ -139,6 +140,7 @@ impl_indexer_paginate!(
     events,
     EventsEventsNodes
 );
+
 impl_indexer_paginate!(
     paginate_messages,
     Messages,
@@ -146,6 +148,7 @@ impl_indexer_paginate!(
     messages,
     MessagesMessagesNodes
 );
+
 impl_indexer_paginate!(
     paginate_transactions,
     Transactions,
@@ -153,6 +156,7 @@ impl_indexer_paginate!(
     transactions,
     TransactionsTransactionsNodes
 );
+
 impl_indexer_paginate!(
     paginate_accounts,
     Accounts,
@@ -160,6 +164,7 @@ impl_indexer_paginate!(
     accounts,
     AccountsAccountsNodes
 );
+
 impl_indexer_paginate!(
     paginate_transfers,
     Transfers,
