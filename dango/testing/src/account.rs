@@ -303,9 +303,9 @@ where
     A: MaybeDefined<Addr>,
 {
     /// Register the user
-    pub async fn register_user<PP, DB, VM, ID>(
+    pub async fn register_user<DB, VM, PP, ID>(
         &self,
-        test_suite: &mut TestSuite<PP, DB, VM, ID>,
+        test_suite: &mut TestSuite<DB, VM, PP, ID>,
         factory: Addr,
         funds: Coins,
     ) where
@@ -350,9 +350,9 @@ where
 {
     /// Register a new account with the user index and key of this account and returns a new
     /// `TestAccount` with the new account's address.
-    pub async fn register_new_account<PP, DB, VM, ID>(
+    pub async fn register_new_account<DB, VM, PP, ID>(
         &mut self,
-        test_suite: &mut TestSuite<PP, DB, VM, ID>,
+        test_suite: &mut TestSuite<DB, VM, PP, ID>,
         factory: Addr,
         funds: Coins,
     ) -> StdResult<TestAccount>

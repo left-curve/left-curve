@@ -4,7 +4,7 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, Param},

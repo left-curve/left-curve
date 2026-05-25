@@ -18,7 +18,5 @@ serde           = { workspace = true }
 thiserror       = { workspace = true }
 
 [dev-dependencies]
-grug-math    = { workspace = true }
-grug-testing = { workspace = true }
-test-case    = { workspace = true }
-tokio        = { workspace = true }
+grug-math = { workspace = true }
+test-case = { workspace = true }

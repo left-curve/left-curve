@@ -49,7 +49,7 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, UserState},

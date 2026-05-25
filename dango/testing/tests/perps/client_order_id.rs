@@ -4,7 +4,7 @@ use {
         ClientOrderId, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         UsdPrice,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{constants::usdc, perps},
     grug_math::{Uint64, Uint128},
     grug_types::{Addressable, Coins, QuerierExt, ResultExt},

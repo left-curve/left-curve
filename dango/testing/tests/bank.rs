@@ -1,5 +1,5 @@
 use {
-    dango_testing::setup_test_naive,
+    dango_testing::{BalanceChange, setup_test_naive},
     dango_types::{
         bank::{
             self, OrphanedTransferResponseItem, QueryOrphanedTransfersByRecipientRequest,
@@ -8,7 +8,6 @@ use {
         },
         constants::{dango, eth, usdc},
     },
-    grug_testing::BalanceChange,
     grug_types::{
         Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded, Part,
         QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,

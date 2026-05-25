@@ -1,5 +1,5 @@
 use {
-    crate::{TestAccounts, TestSuiteWithIndexer},
+    crate::{TestAccounts, TestSuite, TestSuiteWithIndexer},
     dango_genesis::Contracts,
     dango_oracle::PYTH_PRICES,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
@@ -11,7 +11,6 @@ use {
     grug_app::{AppError, CONTRACT_NAMESPACE, Indexer, ProposalPreparer},
     grug_db_memory::MemDb,
     grug_math::Uint128,
-    grug_testing::TestSuite,
     grug_types::{
         Addr, BorshSerExt, Coins, Denom, ResultExt, Signer, Storage, Timestamp, btree_map, concat,
     },

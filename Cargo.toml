@@ -7,7 +7,6 @@ members = [
   "dango/cli",
   "dango/gateway",
   "dango/genesis",
-  "dango/mocks/httpd",
   "dango/oracle",
   "dango/order-book",
   "dango/perps",
@@ -26,19 +25,14 @@ members = [
   "grug/jellyfish-merkle",
   "grug/macros",
   "grug/math",
-  "grug/mocks/account",
-  "grug/mocks/bank",
-  "grug/mocks/taxman",
   "grug/storage",
   "grug/tester",
-  "grug/testing",
   "grug/types",
   "grug/vm/hybrid",
   "grug/vm/rust",
   "grug/vm/wasm",
   "hyperlane/isms/multisig",
   "hyperlane/mailbox",
-  "hyperlane/testing",
   "hyperlane/types",
   "hyperlane/va",
   "indexer/cache",
@@ -48,7 +42,6 @@ members = [
   "indexer/httpd",
   "indexer/metrics",
   "indexer/sql",
-  "indexer/testing",
   "pyth/client",
   "pyth/types",
   "sdk/rust",
@@ -193,7 +186,6 @@ dango-auth              = { path = "dango/auth" }
 dango-bank              = { path = "dango/bank" }
 dango-gateway           = { path = "dango/gateway" }
 dango-genesis           = { path = "dango/genesis" }
-dango-mock-httpd        = { path = "dango/mocks/httpd" }
 dango-oracle            = { path = "dango/oracle" }
 dango-order-book        = { path = "dango/order-book" }
 dango-perps             = { path = "dango/perps" }
@@ -213,19 +205,14 @@ grug-ffi                = { path = "grug/ffi" }
 grug-jmt                = { path = "grug/jellyfish-merkle" }
 grug-macros             = { path = "grug/macros" }
 grug-math               = { path = "grug/math" }
-grug-mock-account       = { path = "grug/mocks/account" }
-grug-mock-bank          = { path = "grug/mocks/bank" }
-grug-mock-taxman        = { path = "grug/mocks/taxman" }
 grug-storage            = { path = "grug/storage" }
 grug-tester             = { path = "grug/tester" }
-grug-testing            = { path = "grug/testing" }
 grug-types              = { path = "grug/types" }
 grug-vm-hybrid          = { path = "grug/vm/hybrid" }
 grug-vm-rust            = { path = "grug/vm/rust" }
 grug-vm-wasm            = { path = "grug/vm/wasm" }
 hyperlane-ism           = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox       = { path = "hyperlane/mailbox" }
-hyperlane-testing       = { path = "hyperlane/testing" }
 hyperlane-types         = { path = "hyperlane/types" }
 hyperlane-va            = { path = "hyperlane/va" }
 indexer-cache           = { path = "indexer/cache" }
@@ -235,7 +222,6 @@ indexer-hooked          = { path = "indexer/hooked" }
 indexer-httpd           = { path = "indexer/httpd", features = ["tracing"] }
 indexer-metrics         = { path = "indexer/metrics" }
 indexer-sql             = { path = "indexer/sql" }
-indexer-testing         = { path = "indexer/testing" }
 pyth-client             = { path = "pyth/client" }
 pyth-types              = { path = "pyth/types" }
 

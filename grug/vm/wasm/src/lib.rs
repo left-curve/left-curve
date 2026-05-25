@@ -6,8 +6,6 @@ mod imports;
 mod iterator;
 mod memory;
 mod region;
-#[cfg(feature = "testing")]
-mod testing;
 mod tunables;
 mod vm;
 

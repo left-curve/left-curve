@@ -1,9 +1,10 @@
 use {
     dango_genesis::GenesisOption,
-    dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
     dango_sdk::HttpClient,
-    dango_testing::{Preset, TestAccounts, TestOption},
-    grug_testing::BlockCreation,
+    dango_testing::{
+        BlockCreation, Preset, TestAccounts, TestOption, mock_httpd_get_socket_addr,
+        mock_httpd_wait_for_server_ready,
+    },
 };
 
 pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
@@ -12,7 +13,7 @@ pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
 }
 
 pub async fn setup_client_test_with_port() -> anyhow::Result<(HttpClient, TestAccounts, u16)> {
-    let port = get_mock_socket_addr();
+    let port = mock_httpd_get_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();
 
@@ -22,7 +23,7 @@ pub async fn setup_client_test_with_port() -> anyhow::Result<(HttpClient, TestAc
         rt.block_on(async {
             tracing::info!("Starting mock HTTP server on port {port}");
 
-            if let Err(error) = dango_mock_httpd::run_with_callback(
+            if let Err(error) = dango_testing::mock_httpd_run_with_callback(
                 port,
                 BlockCreation::OnBroadcast,
                 None,
@@ -43,7 +44,7 @@ pub async fn setup_client_test_with_port() -> anyhow::Result<(HttpClient, TestAc
 
     let accounts = rx.await?;
 
-    wait_for_server_ready(port).await?;
+    mock_httpd_wait_for_server_ready(port).await?;
 
     Ok((
         HttpClient::new(format!("http://localhost:{port}"))?,

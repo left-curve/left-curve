@@ -4,11 +4,7 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{
-        TestOption,
-        perps::{pair_id, write_pyth_price_raw},
-        setup_test_naive,
-    },
+    dango_testing::{TestOption, pair_id, setup_test_naive, write_pyth_price_raw},
     dango_types::{
         constants::usdc,
         oracle::{self, Price, PriceSource, QueryPriceRequest},

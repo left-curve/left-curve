@@ -5,10 +5,12 @@ use {
         constants::btc,
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
     },
+    grug_db_memory::MemDb,
     grug_types::{
         Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
         btree_map,
     },
+    grug_vm_rust::RustVm,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
         Channel, FixedRate, PythLazerSubscriptionDetails,
@@ -166,7 +168,7 @@ async fn proposal_pyth() {
 }
 
 async fn assert_price_exists<P>(
-    suite: &mut TestSuite<ProposalPreparer<P>>,
+    suite: &mut TestSuite<MemDb, RustVm, ProposalPreparer<P>>,
     oracle: Addr,
     denom: Denom,
 ) where

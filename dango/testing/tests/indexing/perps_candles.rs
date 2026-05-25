@@ -3,9 +3,9 @@ use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_testing::{
-        Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
-        perps::{OracleTestEntry, create_perps_fill, pair_id, seed_oracle_prices, setup_perps_env},
-        setup_test_with_indexer, setup_test_with_indexer_and_custom_genesis,
+        OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteWithIndexer, create_perps_fill,
+        pair_id, seed_oracle_prices, setup_perps_env, setup_test_with_indexer,
+        setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
         constants::usdc,

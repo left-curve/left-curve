@@ -1,11 +1,11 @@
 use {
-    super::HyperlaneTestSuite,
-    crate::{TestAccount, TestAccounts, constants::mock_solana},
+    crate::{
+        ContractWrapper, HyperlaneTestSuite, TestAccount, TestAccounts, constants::mock_solana,
+    },
     dango_genesis::{Codes, Contracts},
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{account_factory, auth::Key, constants::usdc},
     grug_db_memory::MemDb,
-    grug_testing::ContractWrapper,
     grug_types::{Coins, Hash256, HashExt, JsonSerExt, Op, ResultExt},
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,

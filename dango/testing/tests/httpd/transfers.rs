@@ -1,27 +1,23 @@
 use {
-    crate::{
-        PaginationDirection, Transfers, build_actix_app, call_graphql_query, paginate_transfers,
-        transfers_query,
-    },
     assertor::*,
     dango_testing::{
-        HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
+        GraphQLCustomRequest, HyperlaneTestSuite, PaginationDirection, TestOption, Transfers,
+        build_app_service, call_graphql_query_with_context, call_ws_graphql_stream,
+        create_user_and_account, paginate_transfers, parse_graphql_subscription_response,
+        setup_test_with_indexer, transfers_query,
     },
     dango_types::{account_factory, constants::usdc},
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
     grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_graphql_types::{SubscribeTransfers, subscribe_transfers},
-    indexer_testing::{
-        GraphQLCustomRequest, call_ws_graphql_stream, parse_graphql_subscription_response,
-    },
     itertools::Itertools,
     tokio::sync::mpsc,
 };
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs
@@ -52,7 +48,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -103,8 +99,8 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -135,7 +131,7 @@ async fn graphql_transfers_with_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -211,8 +207,8 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
         codes,
         contracts,
         validator_sets,
-        _,
         dango_httpd_context,
+        _,
         _,
         _db_guard,
     ) = setup_test_with_indexer(TestOption::default()).await;
@@ -241,7 +237,7 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
                     ..Default::default()
                 };
 
-                let response = call_graphql_query::<_, transfers_query::ResponseData>(
+                let response = call_graphql_query_with_context::<_, transfers_query::ResponseData>(
                     dango_httpd_context,
                     Transfers::build_query(variables),
                 )
@@ -261,7 +257,7 @@ async fn graphql_transfers_with_wrong_user_index() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_transfers() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, _, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Create 10 transfers to paginate through
@@ -377,7 +373,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs
@@ -432,7 +428,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
@@ -493,7 +489,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs
@@ -551,7 +547,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, mut framed) =
-                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                    call_ws_graphql_stream(dango_httpd_context, build_app_service, request_body)
                         .await?;
 
                 // 1st response is always the existing last block

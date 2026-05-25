@@ -13,7 +13,7 @@ use {
 /// to execute C, which emits a message to execute D... so on.
 ///
 /// Without a limit, this can leads to stack overflow which halts the chain.
-const MAX_MESSAGE_DEPTH: usize = 30;
+const MAX_MESSAGE_DEPTH: usize = 10;
 
 macro_rules! try_add_subevent {
     ($events: expr, $submsg_event: expr, $reply: expr) => {

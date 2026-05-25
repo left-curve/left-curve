@@ -1,9 +1,7 @@
 use {
-    crate::call_graphql_query,
     assertor::*,
     dango_testing::{
-        TestOption,
-        perps::{create_perps_fill, pair_id, setup_perps_env},
+        TestOption, call_graphql_query_with_context, create_perps_fill, pair_id, setup_perps_env,
         setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
@@ -16,7 +14,7 @@ use {
 /// are indexed after a limit-order match.
 #[tokio::test(flavor = "multi_thread")]
 async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _, _db_guard) =
+    let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
         setup_test_with_indexer(TestOption::default()).await;
 
     let pair = pair_id();
@@ -37,7 +35,7 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 // Ascending order.
-                let response = call_graphql_query::<_, perps_events::ResponseData>(
+                let response = call_graphql_query_with_context::<_, perps_events::ResponseData>(
                     dango_httpd_context.clone(),
                     PerpsEvents::build_query(perps_events::Variables {
                         user_addr: Some(user2_addr.clone()),
@@ -76,16 +74,17 @@ async fn query_perps_events_user_lifecycle() -> anyhow::Result<()> {
                 }
 
                 // Descending order — same single event.
-                let response_desc = call_graphql_query::<_, perps_events::ResponseData>(
-                    dango_httpd_context.clone(),
-                    PerpsEvents::build_query(perps_events::Variables {
-                        user_addr: Some(user2_addr.clone()),
-                        sort_by: Some(perps_events::PerpsEventSortBy::BLOCK_HEIGHT_DESC),
-                        pair_id: Some(pair.to_string()),
-                        ..Default::default()
-                    }),
-                )
-                .await?;
+                let response_desc =
+                    call_graphql_query_with_context::<_, perps_events::ResponseData>(
+                        dango_httpd_context.clone(),
+                        PerpsEvents::build_query(perps_events::Variables {
+                            user_addr: Some(user2_addr.clone()),
+                            sort_by: Some(perps_events::PerpsEventSortBy::BLOCK_HEIGHT_DESC),
+                            pair_id: Some(pair.to_string()),
+                            ..Default::default()
+                        }),
+                    )
+                    .await?;
 
                 let nodes_desc = response_desc.data.unwrap().perps_events.nodes;
                 assert_that!(nodes_desc).has_length(1);

@@ -9,7 +9,7 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         UsdPrice,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, UserState},
@@ -24,8 +24,9 @@ use {
 macro_rules! setup_band_suite {
     () => {{
         let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
         let pair = pair_id();
+
+        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
         suite
             .execute(

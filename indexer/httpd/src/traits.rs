@@ -1,5 +1,3 @@
-#[cfg(feature = "testing")]
-use grug_testing::TestSuite;
 use {
     async_trait::async_trait,
     grug_app::{
@@ -82,45 +80,5 @@ where
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         Ok(last_finalized_block)
-    }
-}
-
-#[cfg(feature = "testing")]
-#[async_trait]
-impl<DB, VM, PP, ID> QueryApp for TestSuite<DB, VM, PP, ID>
-where
-    DB: Db + Send + Sync + 'static,
-    VM: Vm + Clone + Send + Sync + 'static,
-    PP: ProposalPreparer + Send + Sync + 'static,
-    ID: Indexer + Send + Sync + 'static,
-    App<DB, VM, PP, ID>: QueryApp,
-{
-    async fn query_app(
-        &self,
-        raw_req: Query,
-        height: Option<u64>,
-    ) -> AppResult<(QueryResponse, u64)> {
-        self.app.query_app(raw_req, height).await
-    }
-
-    async fn query_store(
-        &self,
-        key: &[u8],
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
-        self.app.query_store(key, height, prove).await
-    }
-
-    async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
-        self.app.simulate(unsigned_tx).await
-    }
-
-    async fn chain_id(&self) -> AppResult<String> {
-        self.app.chain_id().await
-    }
-
-    async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
-        self.app.last_finalized_block().await
     }
 }

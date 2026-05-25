@@ -10,9 +10,9 @@ use {
         taxman,
     },
     grug_math::Uint128,
-    grug_types::{Addr, Binary, Coin, Coins, Denom, Duration, Timestamp},
+    grug_types::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, HashExt, Timestamp},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::{BTreeMap, BTreeSet, HashSet},
 };
 
 #[grug_types::derive(Serde)]
@@ -42,6 +42,34 @@ pub struct Codes<T> {
     pub warp: T,
 }
 
+impl<T> Codes<T>
+where
+    T: Clone + Into<Binary>,
+{
+    pub fn all_code_hashes(&self) -> HashSet<Hash256> {
+        [
+            &self.account,
+            &self.account_factory,
+            &self.bank,
+            &self.gateway,
+            &self.hyperlane.ism,
+            &self.hyperlane.mailbox,
+            &self.hyperlane.va,
+            &self.oracle,
+            &self.perps,
+            &self.taxman,
+            &self.vesting,
+            &self.warp,
+        ]
+        .into_iter()
+        .map(|code| {
+            let binary: Binary = code.clone().into();
+            binary.hash256()
+        })
+        .collect()
+    }
+}
+
 pub struct GenesisUser {
     pub salt: NewUserSalt,
     pub dango_balance: Uint128,
@@ -55,6 +83,7 @@ pub struct GenesisOption {
     pub hyperlane: HyperlaneOption,
     pub oracle: OracleOption,
     pub perps: PerpsOption,
+    pub taxman: TaxmanOption,
     pub vesting: VestingOption,
 }
 
@@ -113,6 +142,12 @@ pub struct PerpsOption {
     pub param: perps::Param,
     /// Per-pair parameters, keyed by the pair ID (e.g. "perp/ethusd").
     pub pair_params: BTreeMap<PairId, PairParam>,
+}
+
+pub struct TaxmanOption {
+    /// An alternative code to use as the taxman contract.
+    /// Exclusively for use when setting up the `dango/testing/tests/grug/taxman.rs` tests.
+    pub alternative_code: Option<Binary>,
 }
 
 pub struct VestingOption {

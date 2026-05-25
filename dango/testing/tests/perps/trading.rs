@@ -4,7 +4,7 @@ use {
         ChildOrder, Dimensionless, LiquidityDepthResponse, OrderId, OrderKind, Quantity,
         QueryOrdersByUserResponseItem, TimeInForce, UsdPrice, UsdValue,
     },
-    dango_testing::{TestOption, perps::pair_id, setup_test_naive},
+    dango_testing::{TestOption, TestSuiteNaive, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, OrderFilled, PairParam, Param, RateSchedule, UserState},
@@ -440,7 +440,7 @@ async fn liquidity_depth_tracking() {
         .await
         .should_succeed();
 
-    let query_depth = |suite: &dango_testing::TestSuite<_>| -> LiquidityDepthResponse {
+    let query_depth = |suite: &TestSuiteNaive| -> LiquidityDepthResponse {
         suite
             .query_wasm_smart(contracts.perps, perps::QueryLiquidityDepthRequest {
                 pair_id: pair.clone(),
@@ -1151,10 +1151,10 @@ async fn ioc_limit_order_no_fill_rejected() {
 /// `max_market_slippage`. user1 is funded with $10,000.
 macro_rules! setup_slippage_cap_suite {
     () => {{
-        let (mut suite, mut accounts, _, contracts, _) =
-            setup_test_naive(TestOption::default());
-        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+        let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
         let pair = pair_id();
+
+        register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
 
         suite
             .execute(

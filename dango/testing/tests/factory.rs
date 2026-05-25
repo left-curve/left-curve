@@ -2,7 +2,7 @@ use {
     dango_account_factory::{MAX_ACCOUNTS_PER_USER, USERS},
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-        Factory, HyperlaneTestSuite, Preset, TestAccount, constants::mock_solana, setup_test_naive,
+        Factory, HyperlaneTestSuite, Preset, TestAccount, mock_solana, setup_test_naive,
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
