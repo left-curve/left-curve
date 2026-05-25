@@ -373,7 +373,7 @@ export const PerpsTradeHistory: React.FC = () => {
     !hasNextPage && !isLoading && !isFetchingNextPage && normalizedNodes.length > 0;
 
   return (
-    <div className="flex flex-col w-full max-h-[60vh] overflow-x-auto">
+    <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto">
       <div
         className="grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
         style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}
