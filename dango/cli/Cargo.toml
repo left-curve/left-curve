@@ -37,6 +37,7 @@ opentelemetry-otlp          = { workspace = true }
 opentelemetry_sdk           = { workspace = true }
 sentry                      = { workspace = true }
 serde                       = { workspace = true }
+tikv-jemallocator           = { workspace = true }
 tokio                       = { workspace = true }
 tower-abci                  = { workspace = true }
 tracing                     = { workspace = true }

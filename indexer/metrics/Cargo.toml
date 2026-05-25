@@ -18,6 +18,10 @@ tracing = ["dep:tracing"]
 [dependencies]
 actix-web                   = { workspace = true }
 actix-web-metrics           = { workspace = true }
+jemalloc_pprof              = { workspace = true }
+metrics                     = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
 sentry-actix                = { workspace = true }
+tikv-jemalloc-ctl           = { workspace = true }
+tokio                       = { workspace = true }
 tracing                     = { workspace = true, optional = true }
