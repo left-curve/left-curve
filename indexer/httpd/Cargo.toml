@@ -16,8 +16,10 @@ path = "src/lib.rs"
 metrics = [
   "dep:actix-web-metrics",
   "dep:futures-util",
+  "dep:jemalloc_pprof",
   "dep:metrics",
   "dep:metrics-exporter-prometheus",
+  "dep:tikv-jemalloc-ctl",
   "grug-httpd/metrics",
 ]
 tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
@@ -42,6 +44,7 @@ grug-types                  = { workspace = true, features = ["async-graphql", "
 indexer-cache               = { workspace = true }
 indexer-sql                 = { workspace = true, features = ["async-graphql"] }
 itertools                   = { workspace = true }
+jemalloc_pprof              = { workspace = true, optional = true }
 metrics                     = { workspace = true, optional = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }
 num_cpus                    = { workspace = true }
@@ -54,6 +57,7 @@ tempfile                    = { workspace = true }
 tendermint                  = { workspace = true }
 tendermint-rpc              = { workspace = true, features = ["http-client"] }
 thiserror                   = { workspace = true }
+tikv-jemalloc-ctl           = { workspace = true, optional = true }
 tokio                       = { workspace = true }
 tracing                     = { workspace = true, optional = true }
 tracing-subscriber          = { workspace = true }
