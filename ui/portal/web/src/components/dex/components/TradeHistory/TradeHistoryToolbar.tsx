@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Button, DateRangePicker, Select, twMerge, useMediaQuery } from "@left-curve/applets-kit";
-import { useAccount, usePublicClient } from "@left-curve/store";
+import { useAccount } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
@@ -10,12 +10,9 @@ import {
 } from "./tradeHistoryFilterContext";
 import { buildPerpsTradeHistoryCsv, downloadCsv, tradeHistoryCsvFilename } from "./exportCsv";
 
-const EXPORT_CSV_FETCH_LIMIT = 1000;
-
 export const TradeHistoryToolbar: React.FC = () => {
-  const { filter, setPreset, setCustomRange } = useTradeHistoryFilter();
+  const { filter, setPreset, setCustomRange, nodes, filtersEnabled } = useTradeHistoryFilter();
   const { account } = useAccount();
-  const publicClient = usePublicClient();
   const { isMd } = useMediaQuery();
   const [isExporting, setIsExporting] = useState(false);
 
@@ -36,25 +33,22 @@ export const TradeHistoryToolbar: React.FC = () => {
     [],
   );
 
-  const handleExport = useCallback(async () => {
-    if (!account || isExporting) return;
+  const handleExport = useCallback(() => {
+    if (!account || isExporting || nodes.length === 0) return;
     setIsExporting(true);
     try {
-      const earlierThan = filter.to.toISOString();
-      const laterThan = filter.from.toISOString();
-      const result = await publicClient.queryPerpsEvents({
-        userAddr: account.address,
-        sortBy: "BLOCK_HEIGHT_DESC",
-        first: EXPORT_CSV_FETCH_LIMIT,
-        earlierThan,
-        laterThan,
-      });
-      const csv = buildPerpsTradeHistoryCsv(result.nodes, headers);
+      // Export uses the pages already loaded by the infinite query — users can
+      // scroll further to load more before exporting.
+      const csv = buildPerpsTradeHistoryCsv(nodes, headers);
       downloadCsv(tradeHistoryCsvFilename(), csv);
     } finally {
       setIsExporting(false);
     }
-  }, [account, headers, isExporting, publicClient, filter.from, filter.to]);
+  }, [account, headers, isExporting, nodes]);
+
+  // Filter UI and CSV export are gated by the `trade_history_export` flag.
+  // ProTrade controls this via the provider's `enableFilters` prop.
+  if (!filtersEnabled) return null;
 
   const datePicker = (
     <DateRangePicker
@@ -73,7 +67,7 @@ export const TradeHistoryToolbar: React.FC = () => {
       variant="link"
       size="xs"
       onClick={handleExport}
-      isDisabled={!account}
+      isDisabled={!account || nodes.length === 0}
       isLoading={isExporting}
     >
       {m["dex.protrade.tradeHistory.exportCsv"]()}

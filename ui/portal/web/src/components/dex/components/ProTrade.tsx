@@ -48,11 +48,8 @@ import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
 import { TradeHeader } from "./TradeHeader";
 import { ErrorBoundary } from "react-error-boundary";
-import {
-  PerpsTradeHistory,
-  TradeHistoryFilterProvider,
-  TradeHistoryToolbar,
-} from "./TradeHistory";
+import { PerpsTradeHistory, TradeHistoryFilterProvider, TradeHistoryToolbar } from "./TradeHistory";
+import { isFeatureEnabled } from "../../../featureFlags";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
@@ -245,7 +242,7 @@ const ProTradeHistory: React.FC = () => {
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
       {activeTab === "trade-history" ? (
-        <TradeHistoryFilterProvider>
+        <TradeHistoryFilterProvider enableFilters={isFeatureEnabled("trade_history_export")}>
           <TradeHistoryToolbar />
           <div className="w-full h-full relative">
             <PerpsTradeHistory />
