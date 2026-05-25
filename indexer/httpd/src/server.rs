@@ -23,8 +23,11 @@ use {
     crate::middlewares::metrics::init_httpd_metrics,
     actix_web_metrics::ActixWebMetricsBuilder,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-    std::fmt::Display,
+    std::{fmt::Display, time::Duration as StdDuration},
 };
+
+#[cfg(feature = "metrics")]
+const JEMALLOC_REFRESH_INTERVAL: StdDuration = StdDuration::from_secs(10);
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
 pub async fn run_server<CA, GS>(
@@ -128,6 +131,11 @@ where
     #[cfg(feature = "tracing")]
     tracing::info!(%ip, port, "Starting metrics httpd server");
 
+    // Background task that periodically refreshes the jemalloc gauges so they
+    // show up in `/metrics`. Detached: runs for the lifetime of the tokio
+    // runtime and exits when the process does.
+    tokio::spawn(refresh_jemalloc_gauges_forever());
+
     let metrics = ActixWebMetricsBuilder::new().build();
 
     let recorder = PrometheusBuilder::new().build_recorder();
@@ -167,12 +175,223 @@ where
                     }
                 }),
             )
+            .route("/debug/pprof/heap", web::get().to(dump_heap_pprof))
+            .route(
+                "/debug/pprof/heap/activate",
+                web::post().to(activate_heap_pprof),
+            )
+            .route(
+                "/debug/pprof/heap/deactivate",
+                web::post().to(deactivate_heap_pprof),
+            )
+            .route("/debug/jemalloc/stats", web::get().to(dump_jemalloc_stats))
     })
     .bind((ip.to_string(), port))?
     .run()
     .await?;
 
     Ok(())
+}
+
+// ---- jemalloc heap profiling endpoints ----
+
+/// Returns a pprof-format heap snapshot.
+///
+/// Requires jemalloc built with profiling (the workspace enables this via the
+/// `tikv-jemallocator` `profiling` feature) AND profiling armed at startup via
+/// the env var `MALLOC_CONF=prof:true`. Activation can be done at startup
+/// (`prof_active:true`) or on demand via `/debug/pprof/heap/activate`.
+#[cfg(feature = "metrics")]
+async fn dump_heap_pprof() -> HttpResponse {
+    let Some(prof_ctl) = jemalloc_pprof::PROF_CTL.as_ref() else {
+        return HttpResponse::ServiceUnavailable()
+            .body("jemalloc profiling not available; restart with MALLOC_CONF=prof:true");
+    };
+    let mut prof_ctl = prof_ctl.lock().await;
+    if !prof_ctl.activated() {
+        return HttpResponse::ServiceUnavailable()
+            .body("jemalloc profiling not active; POST /debug/pprof/heap/activate first");
+    }
+    match prof_ctl.dump_pprof() {
+        Ok(bytes) => HttpResponse::Ok()
+            .content_type("application/octet-stream")
+            .body(bytes),
+        Err(err) => HttpResponse::InternalServerError().body(format!("dump_pprof failed: {err}")),
+    }
+}
+
+#[cfg(feature = "metrics")]
+async fn activate_heap_pprof() -> HttpResponse {
+    let Some(prof_ctl) = jemalloc_pprof::PROF_CTL.as_ref() else {
+        return HttpResponse::ServiceUnavailable()
+            .body("jemalloc profiling not available; restart with MALLOC_CONF=prof:true");
+    };
+    let mut prof_ctl = prof_ctl.lock().await;
+    match prof_ctl.activate() {
+        Ok(()) => HttpResponse::Ok().body("activated"),
+        Err(err) => HttpResponse::InternalServerError().body(format!("activate failed: {err}")),
+    }
+}
+
+#[cfg(feature = "metrics")]
+async fn deactivate_heap_pprof() -> HttpResponse {
+    let Some(prof_ctl) = jemalloc_pprof::PROF_CTL.as_ref() else {
+        return HttpResponse::ServiceUnavailable()
+            .body("jemalloc profiling not available; restart with MALLOC_CONF=prof:true");
+    };
+    let mut prof_ctl = prof_ctl.lock().await;
+    match prof_ctl.deactivate() {
+        Ok(()) => HttpResponse::Ok().body("deactivated"),
+        Err(err) => HttpResponse::InternalServerError().body(format!("deactivate failed: {err}")),
+    }
+}
+
+// ---- jemalloc arena-level stats dump ----
+
+// jemalloc's `malloc_stats_print`, exposed unprefixed because the workspace
+// enables the `unprefixed_malloc_on_supported_platforms` feature on
+// tikv-jemallocator. Declared inline to avoid pulling tikv-jemalloc-sys
+// explicitly — the symbol is already in the binary via the global allocator.
+#[cfg(feature = "metrics")]
+unsafe extern "C" {
+    unsafe fn malloc_stats_print(
+        write_cb: Option<
+            unsafe extern "C" fn(opaque: *mut std::ffi::c_void, msg: *const std::ffi::c_char),
+        >,
+        cbopaque: *mut std::ffi::c_void,
+        opts: *const std::ffi::c_char,
+    );
+}
+
+/// Returns a human-readable, arena-by-arena dump of jemalloc state:
+/// dirty/muzzy/purged pages per arena, large allocation histograms, retained
+/// vs mapped, decay configuration, etc. Complements the pprof flame graph
+/// when diagnosing fragmentation vs allocation growth.
+#[cfg(feature = "metrics")]
+async fn dump_jemalloc_stats() -> HttpResponse {
+    use std::{
+        ffi::{CStr, c_char, c_void},
+        ptr,
+    };
+
+    let mut buf = String::new();
+
+    unsafe extern "C" fn write_cb(opaque: *mut c_void, msg: *const c_char) {
+        if msg.is_null() || opaque.is_null() {
+            return;
+        }
+        // SAFETY: jemalloc passes back the same `opaque` pointer we gave it,
+        // which we set to a `&mut String`. `msg` is a null-terminated C string
+        // produced by jemalloc itself.
+        unsafe {
+            let s = CStr::from_ptr(msg).to_string_lossy();
+            let buf = &mut *(opaque as *mut String);
+            buf.push_str(&s);
+        }
+    }
+
+    // SAFETY: calling jemalloc's stats printer with our callback. The buffer
+    // outlives the call (we own it in this stack frame, and the function is
+    // synchronous despite the async wrapper).
+    unsafe {
+        malloc_stats_print(
+            Some(write_cb),
+            &mut buf as *mut _ as *mut c_void,
+            ptr::null(),
+        );
+    }
+
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(buf)
+}
+
+// ---- jemalloc statistics gauges ----
+
+/// Refresh the jemalloc gauges every `JEMALLOC_REFRESH_INTERVAL`.
+///
+/// These six numbers are the cheapest way to understand the allocator's
+/// state in real time:
+/// - `allocated`: bytes requested by the application and currently live.
+/// - `active`:    bytes in active pages assigned to threads (≈ allocated + small overhead).
+/// - `resident`:  bytes mapped into RAM from jemalloc's POV (≈ container RSS).
+/// - `mapped`:    bytes mapped in total (including pages not yet returned to the kernel).
+/// - `retained`:  bytes of virtual memory retained (mapped but not in
+///   `resident`/`active`). A large `retained` indicates virtual-memory
+///   fragmentation, where the allocator has unmapped physical pages but kept
+///   the virtual reservation.
+/// - `metadata`:  bytes consumed by jemalloc's own bookkeeping (arenas, chunks).
+///   Should be small (tens of MiB) — sustained growth signals a structural problem.
+///
+/// The ratio `resident / allocated` is the best at-a-glance fragmentation
+/// signal: ~1.0 means the process is using what it has; >1.5 means the
+/// allocator is holding onto a lot of overhead.
+#[cfg(feature = "metrics")]
+async fn refresh_jemalloc_gauges_forever() {
+    use tikv_jemalloc_ctl::{epoch, stats};
+
+    // Resolve MIBs once; reads via MIB are faster than via the string keys.
+    let mibs = match (
+        epoch::mib(),
+        stats::allocated::mib(),
+        stats::active::mib(),
+        stats::resident::mib(),
+        stats::mapped::mib(),
+        stats::retained::mib(),
+        stats::metadata::mib(),
+    ) {
+        (Ok(e), Ok(a), Ok(act), Ok(r), Ok(m), Ok(ret), Ok(meta)) => {
+            Some((e, a, act, r, m, ret, meta))
+        },
+        _ => None,
+    };
+
+    let Some((
+        epoch_mib,
+        allocated_mib,
+        active_mib,
+        resident_mib,
+        mapped_mib,
+        retained_mib,
+        metadata_mib,
+    )) = mibs
+    else {
+        #[cfg(feature = "tracing")]
+        tracing::warn!("Failed to resolve jemalloc stat MIBs; gauges disabled");
+        return;
+    };
+
+    let mut interval = tokio::time::interval(JEMALLOC_REFRESH_INTERVAL);
+
+    loop {
+        interval.tick().await;
+
+        // Stats are cached until the epoch is advanced.
+        if let Err(_err) = epoch_mib.advance() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(%_err, "jemalloc epoch advance failed");
+            continue;
+        }
+
+        if let Ok(v) = allocated_mib.read() {
+            metrics::gauge!("jemalloc_allocated_bytes").set(v as f64);
+        }
+        if let Ok(v) = active_mib.read() {
+            metrics::gauge!("jemalloc_active_bytes").set(v as f64);
+        }
+        if let Ok(v) = resident_mib.read() {
+            metrics::gauge!("jemalloc_resident_bytes").set(v as f64);
+        }
+        if let Ok(v) = mapped_mib.read() {
+            metrics::gauge!("jemalloc_mapped_bytes").set(v as f64);
+        }
+        if let Ok(v) = retained_mib.read() {
+            metrics::gauge!("jemalloc_retained_bytes").set(v as f64);
+        }
+        if let Ok(v) = metadata_mib.read() {
+            metrics::gauge!("jemalloc_metadata_bytes").set(v as f64);
+        }
+    }
 }
 
 pub fn config_app<G>(app_ctx: Context, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>

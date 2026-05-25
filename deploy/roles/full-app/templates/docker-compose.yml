@@ -177,6 +177,11 @@ services:
       - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
       - INDEXER__CLICKHOUSE__URL=${CLICKHOUSE_URL}
       - RUST_BACKTRACE=1
+      # Arm jemalloc heap profiling without activating it: zero overhead at
+      # rest, can be turned on at incident time by POSTing to
+      # /debug/pprof/heap/activate on the metrics port (9191), then dumped
+      # via GET /debug/pprof/heap. See indexer-httpd::server for the endpoints.
+      - MALLOC_CONF=prof:true,prof_active:false,lg_prof_sample:19,background_thread:true
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]

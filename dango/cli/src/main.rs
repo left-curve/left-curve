@@ -22,6 +22,18 @@ use {
     tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
 
+/// Register jemalloc as the global allocator.
+///
+/// Why: glibc malloc has no heap profiling, fragments badly on long-running
+/// allocation-heavy workloads, and is slow to return memory to the kernel
+/// (inflating RSS). jemalloc fixes all three. With the `profiling` feature
+/// enabled, heap snapshots can be dumped on demand from the `/debug/pprof/heap`
+/// endpoint on the metrics server — see `indexer-httpd::server`. To arm
+/// profiling without paying its cost at rest, set the env var
+/// `MALLOC_CONF=prof:true,prof_active:false`.
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 static VERSION_WITH_COMMIT: LazyLock<String> =
     LazyLock::new(|| format!("{} ({})", env!("CARGO_PKG_VERSION"), grug_types::GIT_COMMIT));
 
