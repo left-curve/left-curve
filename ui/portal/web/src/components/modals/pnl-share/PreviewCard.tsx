@@ -1,18 +1,29 @@
 import { Badge, FormattedNumber, twMerge, useTheme } from "@left-curve/applets-kit";
-import { Decimal } from "@left-curve/utils";
 import { getReferralLink, useAccount, useConfig } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { Ref } from "react";
 
 import { CHARACTERS } from "../../foundation/CharacterSelector";
 
-type PnlCardProps = {
+export type PnlCardProps = {
   ref?: Ref<HTMLDivElement>;
   symbol: string;
+  /** Signed size — sign determines long/short. */
   size: string;
-  entryPrice: string;
-  currentPrice: number;
-  equity: string | null;
+  /** Price label shown under the "Entry Price" slot. */
+  referencePrice: string;
+  /**
+   * Price label shown under the "Mark Price" slot. For historical fills
+   * this equals `referencePrice` (the fill price); for live positions
+   * it's the current mark.
+   */
+  markPrice: string | number;
+  /** Precomputed signed percent — caller decides the formula. */
+  displayPercent: number;
+  /** Leverage suffix, e.g. "2.50". `null` omits the suffix from the badge. */
+  leverage: string | null;
+  /** Optional small subtitle line under the symbol row. */
+  subtitle?: string;
   selectedCharacter: number;
 };
 
@@ -20,28 +31,18 @@ export function PreviewCard({
   ref,
   symbol,
   size,
-  entryPrice,
-  currentPrice,
-  equity,
+  referencePrice,
+  markPrice,
+  displayPercent,
+  leverage,
+  subtitle,
   selectedCharacter,
 }: PnlCardProps) {
   const { theme } = useTheme();
   const { coins } = useConfig();
   const { userIndex } = useAccount();
 
-  const sizeD = Decimal(size);
-  const entryD = Decimal(entryPrice);
-  const currentD = Decimal(currentPrice);
-  const equityD = equity ? Decimal(equity) : Decimal(0);
-
-  const isLong = sizeD.gt(0);
-  const leverageD = equityD.gt(0) ? sizeD.abs().mul(currentD).div(equityD) : null;
-  const leverage = leverageD?.toFixed(2) ?? null;
-
-  const priceChangePercent = currentD.minus(entryD).div(entryD).mul(100);
-  const directionalPriceChange = isLong ? priceChangePercent : priceChangePercent.neg();
-  const roiPercent = leverageD ? directionalPriceChange.mul(leverageD) : directionalPriceChange;
-  const displayPercent = roiPercent.toNumber();
+  const isLong = !size.startsWith("-") && Number(size) > 0;
   const isPositive = displayPercent >= 0;
 
   const referralLink = getReferralLink(userIndex);
@@ -68,6 +69,9 @@ export function PreviewCard({
             size="s"
           />
         </div>
+        {subtitle ? (
+          <span className="diatype-xs-regular text-ink-tertiary-500">{subtitle}</span>
+        ) : null}
         <p
           className={twMerge(
             "exposure-h1-italic leading-tight",
@@ -86,7 +90,7 @@ export function PreviewCard({
             </span>
             <FormattedNumber
               as="span"
-              number={entryPrice}
+              number={referencePrice}
               formatOptions={{ currency: "USD" }}
               className="diatype-sm-bold text-ink-primary-900"
             />
@@ -97,7 +101,7 @@ export function PreviewCard({
             </span>
             <FormattedNumber
               as="span"
-              number={currentPrice}
+              number={markPrice}
               formatOptions={{ currency: "USD" }}
               className="diatype-sm-bold text-ink-primary-900"
             />

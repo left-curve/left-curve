@@ -429,6 +429,7 @@ const PerpsPositionsTable: React.FC = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                       showModal(Modals.PnlShare, {
+                        mode: "position",
                         pairId: row.original.pairId,
                         symbol: row.original.symbol,
                         size: row.original.size,

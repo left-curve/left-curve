@@ -490,7 +490,8 @@
       "entryPrice": "Entry Price",
       "markPrice": "Mark Price",
       "copyLink": "Copy Link",
-      "shareOnX": "Share on X"
+      "shareOnX": "Share on X",
+      "closedAt": "Closed {date}"
     },
     "pointsShare": {
       "weekLabel": "Week",
@@ -1221,7 +1222,8 @@
         "time": "Time",
         "dateAndTime": "Date & Time",
         "exportCsv": "Export CSV",
-        "customDate": "Custom date"
+        "customDate": "Custom date",
+        "totalLoaded": "Showing {count} trades"
       },
       "history": {
         "id": "ID",

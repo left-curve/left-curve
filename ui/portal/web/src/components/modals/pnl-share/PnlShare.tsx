@@ -1,16 +1,72 @@
-import { forwardRef, useRef, useState } from "react";
+import { forwardRef, useMemo, useRef, useState } from "react";
 import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
+import { Decimal } from "@left-curve/utils";
 import { saveCardAsImage } from "@left-curve/foundation";
 import { getReferralLink, useAccount } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { format } from "date-fns";
 
 import { CharacterSelector } from "../../foundation/CharacterSelector";
 import { shareCardFontEmbedCSS } from "../shareCardFonts.js";
 import { PreviewCard } from "./PreviewCard.js";
 import type { PnlShareProps } from "./types.js";
 
+type NormalizedCardData = {
+  symbol: string;
+  size: string;
+  referencePrice: string;
+  markPrice: string | number;
+  displayPercent: number;
+  leverage: string | null;
+  subtitle: string | undefined;
+};
+
+function normalize(props: PnlShareProps): NormalizedCardData {
+  if (props.mode === "position") {
+    const { symbol, size, entryPrice, currentPrice, equity } = props;
+    const sizeD = Decimal(size);
+    const entryD = Decimal(entryPrice);
+    const currentD = Decimal(currentPrice);
+    const equityD = equity ? Decimal(equity) : Decimal(0);
+
+    const isLong = sizeD.gt(0);
+    const leverageD = equityD.gt(0) ? sizeD.abs().mul(currentD).div(equityD) : null;
+    const leverage = leverageD?.toFixed(2) ?? null;
+
+    const priceChangePercent = currentD.minus(entryD).div(entryD).mul(100);
+    const directionalPriceChange = isLong ? priceChangePercent : priceChangePercent.neg();
+    const roiPercent = leverageD ? directionalPriceChange.mul(leverageD) : directionalPriceChange;
+    return {
+      symbol,
+      size,
+      referencePrice: entryPrice,
+      markPrice: currentPrice,
+      displayPercent: roiPercent.toNumber(),
+      leverage,
+      subtitle: undefined,
+    };
+  }
+  const { symbol, size, fillPrice, realizedPnl, createdAt } = props;
+  const sizeAbs = size.startsWith("-") ? size.slice(1) : size;
+  const notional = Decimal(sizeAbs).times(Decimal(fillPrice));
+  const displayPercent = notional.gt(0)
+    ? Decimal(realizedPnl).div(notional).mul(100).toNumber()
+    : 0;
+  const subtitle = m["modals.pnlShare.closedAt"]({
+    date: format(new Date(createdAt), "MMM d, yyyy HH:mm"),
+  });
+  return {
+    symbol,
+    size,
+    referencePrice: fillPrice,
+    markPrice: fillPrice,
+    displayPercent,
+    leverage: null,
+    subtitle,
+  };
+}
+
 export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
-  const { symbol, size, entryPrice, currentPrice, equity } = props;
   const { hideModal } = useApp();
   const { userIndex } = useAccount();
   const referralLink = getReferralLink(userIndex);
@@ -18,12 +74,14 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [selectedCharacter, setSelectedCharacter] = useState(0);
 
+  const cardData = useMemo(() => normalize(props), [props]);
+
   const handleSaveImage = async () => {
     if (!cardRef.current) return;
     try {
       await saveCardAsImage({
         source: cardRef.current,
-        filename: `pnl-${symbol}.png`,
+        filename: `pnl-${cardData.symbol}.png`,
         width: 752,
         fontEmbedCSS: shareCardFontEmbedCSS,
       });
@@ -44,11 +102,13 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
 
       <PreviewCard
         ref={cardRef}
-        symbol={symbol}
-        size={size}
-        entryPrice={entryPrice}
-        currentPrice={currentPrice}
-        equity={equity}
+        symbol={cardData.symbol}
+        size={cardData.size}
+        referencePrice={cardData.referencePrice}
+        markPrice={cardData.markPrice}
+        displayPercent={cardData.displayPercent}
+        leverage={cardData.leverage}
+        subtitle={cardData.subtitle}
         selectedCharacter={selectedCharacter}
       />
 
