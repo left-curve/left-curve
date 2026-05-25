@@ -8,7 +8,9 @@ use {
     dango_oracle::OracleQuerier,
     dango_order_book::{Dimensionless, FundingRate, PairId, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, PairState, Param, RateSchedule},
-    grug_types::{Duration, GENESIS_SENDER, MutableCtx, QuerierExt, Response},
+    grug_types::{
+        Duration, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER, MutableCtx, QuerierExt, Response,
+    },
     std::collections::BTreeMap,
 };
 
@@ -64,15 +66,29 @@ pub fn configure(
         PAIR_PARAMS.save(ctx.storage, pair_id, pair_param)?;
 
         if !PAIR_STATES.has(ctx.storage, pair_id) {
-            let index_price = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-                .query_price_for_perps(pair_id)
-                .unwrap_or(UsdPrice::ZERO);
+            let pair_state = if ctx.block.height == GENESIS_BLOCK_HEIGHT {
+                // At genesis the oracle has no prices yet (they are fed after
+                // all contracts are instantiated). Setting index_price to zero
+                // is technically wrong, but harmless: process_index_price will
+                // populate it on the first cron tick after prices are fed.
+                // This only affects tests — mainnet has already genesis'd.
+                PairState::default()
+            } else {
+                // Post-genesis, the oracle must have a price. Defaulting to
+                // zero would break margin and PnL calculations.
+                let price = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+                    .query_price(pair_id, None)?;
 
-            PAIR_STATES.save(ctx.storage, pair_id, &PairState {
-                index_price,
-                last_index_time: ctx.block.timestamp,
-                ..Default::default()
-            })?;
+                // Use the oracle's own timestamp so that last_index_time
+                // reflects when the price was actually observed.
+                PairState {
+                    index_price: price.humanized_price,
+                    last_index_time: price.timestamp,
+                    ..Default::default()
+                }
+            };
+
+            PAIR_STATES.save(ctx.storage, pair_id, &pair_state)?;
         }
     }
 
