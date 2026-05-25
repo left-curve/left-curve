@@ -1,5 +1,6 @@
 pub mod core;
 pub mod cron;
+pub mod index_price;
 pub mod maintain;
 #[cfg(feature = "metrics")]
 pub mod metrics;
@@ -14,7 +15,6 @@ pub mod vault;
 use {
     crate::state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{FillId, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, UsdValue},
     dango_types::{
         DangoQuerier,
@@ -97,10 +97,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut events = EventBuilder::new();
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
-
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
-
-    cron::process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
     cron::process_funding(ctx.storage, ctx.block.timestamp, ctx.contract)?;
 

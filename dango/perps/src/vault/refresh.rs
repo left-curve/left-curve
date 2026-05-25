@@ -1,7 +1,7 @@
 use {
     crate::{
         core::{compute_available_margin, compute_vault_quotes},
-        cron::process_index_price,
+        index_price::process_index_price,
         oracle,
         querier::NoCachePerpQuerier,
         state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, USER_STATES},
