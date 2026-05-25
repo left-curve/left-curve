@@ -6,6 +6,7 @@
 mod cancel;
 mod decompose;
 mod events;
+mod impact_price;
 mod liquidity_depth;
 mod matching_engine;
 mod min_size;
@@ -19,7 +20,7 @@ mod types;
 mod volume;
 
 pub use {
-    cancel::*, decompose::*, events::*, liquidity_depth::*, matching_engine::*, min_size::*,
-    price::*, price_band::*, slippage::*, state::*, target_price::*, typed_number::*, types::*,
-    volume::*,
+    cancel::*, decompose::*, events::*, impact_price::*, liquidity_depth::*, matching_engine::*,
+    min_size::*, price::*, price_band::*, slippage::*, state::*, target_price::*, typed_number::*,
+    types::*, volume::*,
 };
