@@ -1,17 +1,16 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES},
-    anyhow::{anyhow, ensure},
+    anyhow::anyhow,
     dango_order_book::UsdPrice,
     dango_types::oracle::{Price, PriceSource},
     grug_storage::StorageQuerier,
-    grug_types::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage, Timestamp},
+    grug_types::{Addr, Cache, Denom, QuerierWrapper, StdResult, Storage},
     pyth_types::PythId,
     std::collections::HashMap,
 };
 
 pub struct OracleQuerier<'a> {
     cache: Cache<'a, Denom, Price, anyhow::Error, PriceSource>,
-    no_older_than: Option<Timestamp>,
 }
 
 impl<'a> OracleQuerier<'a> {
@@ -24,7 +23,6 @@ impl<'a> OracleQuerier<'a> {
             cache: Cache::new(move |denom, price_source| {
                 no_cache_querier.query_price(denom, price_source)
             }),
-            no_older_than: None,
         }
     }
 
@@ -37,40 +35,15 @@ impl<'a> OracleQuerier<'a> {
                     anyhow!("[mock]: price not provided to oracle querier for denom `{denom}`")
                 })
             }),
-            no_older_than: None,
         }
     }
 
-    pub fn with_no_older_than(mut self, no_older_than: Timestamp) -> Self {
-        self.no_older_than = Some(no_older_than);
-        self
-    }
-
-    /// Query the price for a given denom, optionally specifying the price source.
-    /// If `no_older_than` is set, the returned price's timestamp must be no older
-    /// than the specified timestamp. Otherwise, an error is returned.
     pub fn query_price(
         &mut self,
         denom: &Denom,
         price_source: Option<PriceSource>,
     ) -> anyhow::Result<Price> {
-        self.cache
-            .get_or_fetch(denom, price_source)
-            .and_then(|price| {
-                if let Some(no_older_than) = self.no_older_than {
-                    ensure!(
-                        price.timestamp >= no_older_than,
-                        "price is too old! denom: {}, timestamp: {}, must be no older than: {}, delta: {}",
-                        denom,
-                        price.timestamp.to_rfc3339_string(),
-                        no_older_than.to_rfc3339_string(),
-                        humantime::format_duration((no_older_than - price.timestamp).into_std())
-                    );
-                }
-
-                Ok(price)
-            })
-            .cloned()
+        self.cache.get_or_fetch(denom, price_source).cloned()
     }
 
     /// Similar to `self.query_price` but returns just the humanized price,
@@ -200,40 +173,5 @@ mod tests {
                 "price not provided to oracle querier for denom `{}`",
                 eth::DENOM.clone()
             ));
-    }
-
-    #[test_case(
-        Timestamp::from_seconds(1730802926), None => true;
-        "`no_older_than` is unspecified; should succeed"
-    )]
-    #[test_case(
-        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802925)) => true;
-        "`no_older_than` is older than the price timestamp; should succeed"
-    )]
-    #[test_case(
-        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802926)) => true;
-        "`no_older_than` equals the price timestamp; should succeed"
-    )]
-    #[test_case(
-        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802927)) => false;
-        "`no_older_than` is newer than the price timestamp; should fail"
-    )]
-    fn querier_staleness_assertion_works(
-        publish_time: Timestamp,
-        no_older_than: Option<Timestamp>,
-    ) -> bool {
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_int(2_000),
-                publish_time,
-                MarketSession::Regular,
-            ),
-        });
-
-        if let Some(no_older_than) = no_older_than {
-            oracle_querier = oracle_querier.with_no_older_than(no_older_than);
-        }
-
-        oracle_querier.query_price(&eth::DENOM, None).is_ok()
     }
 }

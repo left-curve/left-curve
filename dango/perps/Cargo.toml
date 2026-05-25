@@ -11,7 +11,7 @@ version       = { workspace = true }
 
 [features]
 metrics = ["dep:metrics", "grug-types/metrics"]
-tracing = ["dep:tracing"]
+tracing = ["dep:tracing", "grug-types/chrono"]
 
 [dependencies]
 anyhow                = { workspace = true }

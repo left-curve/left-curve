@@ -31,7 +31,7 @@ pub fn process_index_price(
         let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
         let mut pair_state = PAIR_STATES.load(storage, &pair_id)?;
 
-        let price = oracle_querier.query_price(&pair_id, None).ok();
+        let price = oracle_querier.query_price(&pair_id, None);
 
         process_index_price_for_pair(
             storage,
@@ -39,7 +39,7 @@ pub fn process_index_price(
             &pair_id,
             &pair_param,
             &mut pair_state,
-            price.as_ref(),
+            price,
         )?;
 
         PAIR_STATES.save(storage, &pair_id, &pair_state)?;
@@ -63,13 +63,13 @@ fn process_index_price_for_pair(
     pair_id: &PairId,
     pair_param: &PairParam,
     pair_state: &mut PairState,
-    price: Option<&Price>,
+    price: anyhow::Result<Price>,
 ) -> anyhow::Result<()> {
-    let index_price = match price {
+    let index_price = match &price {
         // The oracle is considered available when the market is in regular
         // session (not pre/post/closed) and the price is fresh enough.
-        // // When available, snap to the oracle price.
-        Some(p)
+        // When available, snap to the oracle price.
+        Ok(p)
             if p.market_session == MarketSession::Regular
                 && p.timestamp >= current_time - MAX_ORACLE_STALENESS =>
         {
@@ -78,6 +78,26 @@ fn process_index_price_for_pair(
         // When oracle is not available, use EWMA driven by the order book's
         // impact bid/ask spread.
         _ => {
+            #[cfg(feature = "tracing")]
+            match price {
+                Ok(p) => {
+                    tracing::warn!(
+                        %pair_id,
+                        price = %p.humanized_price,
+                        market_session = ?p.market_session,
+                        timestamp = p.timestamp.to_rfc3339_string(),
+                        "Oracle unavailable; using EWMA"
+                    );
+                },
+                Err(err) => {
+                    tracing::warn!(
+                        %pair_id,
+                        %err,
+                        "Oracle query failed; using EWMA"
+                    );
+                },
+            }
+
             let bid_iter = BIDS
                 .prefix(pair_id.clone())
                 .range(storage, None, None, IterationOrder::Ascending)
