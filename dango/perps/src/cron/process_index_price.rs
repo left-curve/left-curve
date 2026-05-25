@@ -27,10 +27,12 @@ pub fn process_index_price(
         let pair_param = PAIR_PARAMS.load(storage, &pair_id)?;
         let mut pair_state = PAIR_STATES.load(storage, &pair_id)?;
 
-        let price = oracle_querier.query_price(&pair_id, None)?;
+        let Ok(price) = oracle_querier.query_price(&pair_id, None) else {
+            continue;
+        };
 
         let oracle_available = price.market_session == MarketSession::Regular
-            && current_time - price.timestamp <= MAX_ORACLE_STALENESS;
+            && price.timestamp >= current_time - MAX_ORACLE_STALENESS;
 
         if oracle_available {
             pair_state.index_price = price.humanized_price;

@@ -76,7 +76,9 @@ pub fn configure(
         }
     }
 
-    PAIR_IDS.save(ctx.storage, &pair_params.into_keys().collect())?;
+    if !pair_params.is_empty() {
+        PAIR_IDS.save(ctx.storage, &pair_params.into_keys().collect())?;
+    }
 
     Ok(Response::new())
 }
