@@ -1,5 +1,8 @@
 use {
-    crate::{entity, entity::perps_trade::PerpsTrade, error::Error},
+    crate::{
+        entity, entity::perps_trade::PerpsTrade, error::Error,
+        indexer::perps_trades::cache::KEEP_PER_PAIR,
+    },
     dango_types::{
         config::AppConfig,
         perps::{Deleveraged, Liquidated, OrderFilled},
@@ -200,7 +203,7 @@ pub(crate) async fn save_perps_events(
     if !perps_trades.is_empty() {
         let mut cache = context.perps_trade_cache.write().await;
         cache.add_trades(perps_trades);
-        cache.compact_keep_n(400);
+        cache.compact_keep_n(KEEP_PER_PAIR);
     }
 
     #[cfg(feature = "metrics")]
