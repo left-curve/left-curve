@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { GraphqlPagination, GraphqlQueryResult } from "@left-curve/types";
 import type {
@@ -33,13 +33,30 @@ export function useQueryWithPagination<
 ) {
   const { limit = 10, sortBy = "BLOCK_HEIGHT_DESC", queryFn, ...query } = parameters;
 
-  const [pagination, setPagination] = useState<GraphqlPagination>({
+  const initialPagination: GraphqlPagination = {
     first: limit,
     last: undefined,
     after: undefined,
     before: undefined,
     sortBy,
-  });
+  };
+
+  const [pagination, setPagination] = useState<GraphqlPagination>(initialPagination);
+
+  // Reset to the first page whenever the caller-provided queryKey changes
+  // (e.g. when a filter like a date range is updated). Without this, the cursor
+  // from the previous query would stay applied and the user would land on an
+  // arbitrary page of the new dataset.
+  const serializedQueryKey = JSON.stringify(query.queryKey);
+  useEffect(() => {
+    setPagination({
+      first: limit,
+      last: undefined,
+      after: undefined,
+      before: undefined,
+      sortBy,
+    });
+  }, [serializedQueryKey, limit, sortBy]);
 
   const { data, ...response } = useQuery<
     GraphqlQueryResult<TData>,
@@ -67,9 +84,9 @@ export function useQueryWithPagination<
       setPagination({
         before: undefined,
         last: undefined,
-        first: 10,
+        first: limit,
         after: data.pageInfo.endCursor as string,
-        sortBy: "BLOCK_HEIGHT_DESC",
+        sortBy,
       });
     }
   };
@@ -79,9 +96,9 @@ export function useQueryWithPagination<
       setPagination({
         after: undefined,
         first: undefined,
-        last: 10,
+        last: limit,
         before: data.pageInfo.startCursor as string,
-        sortBy: "BLOCK_HEIGHT_DESC",
+        sortBy,
       });
     }
   };

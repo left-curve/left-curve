@@ -74,14 +74,19 @@ export const PerpsTradeHistory: React.FC = () => {
 
   const { data, pagination, isLoading } = useQueryWithPagination({
     enabled: !!account,
+    limit: 25,
     queryKey: ["perpsTradeHistory", account?.address as string, earlierThan, laterThan],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       if (!account) throw new Error();
       return await publicClient.queryPerpsEvents({
         userAddr: account.address,
         sortBy: "BLOCK_HEIGHT_DESC",
         earlierThan,
         laterThan,
+        first: pageParam.first,
+        last: pageParam.last,
+        after: pageParam.after,
+        before: pageParam.before,
       });
     },
   });
@@ -290,5 +295,12 @@ export const PerpsTradeHistory: React.FC = () => {
     },
   ];
 
-  return <TradeHistoryTable data={normalizedData} columns={columns} isLoading={isLoading} />;
+  return (
+    <TradeHistoryTable
+      data={normalizedData}
+      columns={columns}
+      isLoading={isLoading}
+      pagination={pagination}
+    />
+  );
 };
