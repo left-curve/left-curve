@@ -20,8 +20,9 @@ export type TradeHistoryFilter = {
 };
 
 // TODO: Backend currently caps `perpsEvents` at max_items=100. Once bumped,
-// this can be raised so a single fetch covers larger windows.
-const PAGE_SIZE = 100;
+// this can be raised — keeping the page small for now also gives users the
+// expected "load more on scroll" feedback when the dataset is medium-sized.
+const PAGE_SIZE = 25;
 
 const buildPresetRange = (days: number): { from: Date; to: Date } => {
   const to = new Date();
