@@ -271,8 +271,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         } => {
             let res = query::query_user_state_extended(
                 ctx.storage,
-                ctx.querier,
-                ctx.block.timestamp,
                 user,
                 include_equity,
                 include_available_margin,
@@ -297,8 +295,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         } => {
             let res = query::query_user_states_extended(
                 ctx.storage,
-                ctx.querier,
-                ctx.block.timestamp,
                 start_after,
                 limit,
                 include_equity,

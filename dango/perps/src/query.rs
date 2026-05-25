@@ -29,8 +29,8 @@ use {
     },
     grug_storage::{MultiIndex, PrefixBound, PrimaryKey, StorageQuerier},
     grug_types::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, QuerierWrapper,
-        StdResult, Storage, Timestamp,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, StdResult, Storage,
+        Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -79,8 +79,6 @@ pub fn query_user_states(
 
 pub fn query_user_state_extended(
     storage: &dyn Storage,
-    _querier: QuerierWrapper,
-    _current_time: Timestamp,
     user: Addr,
     include_equity: bool,
     include_available_margin: bool,
@@ -164,8 +162,6 @@ pub fn query_user_state_extended(
 
 pub fn query_user_states_extended(
     storage: &dyn Storage,
-    _querier: QuerierWrapper,
-    _current_time: Timestamp,
     start_after: Option<Addr>,
     limit: Option<u32>,
     include_equity: bool,
@@ -186,8 +182,6 @@ pub fn query_user_states_extended(
             let user = res?;
             let user_state = query_user_state_extended(
                 storage,
-                _querier,
-                _current_time,
                 user,
                 include_equity,
                 include_available_margin,
