@@ -72,16 +72,17 @@ export function graphqlClient(url: string, options: GraphqlClientOptions = {}): 
           });
         }
 
-        const error = Array.isArray(data) ? data.at(0)?.errors?.at(0) : data.errors?.at(0);
-
-        if (error) {
-          throw new HttpRequestError({
-            body,
-            details: JSON.stringify(error.message),
-            headers: response.headers,
-            status: response.status,
-            url,
-          });
+        if (!Array.isArray(data)) {
+          const error = data.errors?.at(0);
+          if (error) {
+            throw new HttpRequestError({
+              body,
+              details: JSON.stringify(error.message),
+              headers: response.headers,
+              status: response.status,
+              url,
+            });
+          }
         }
 
         return data;
