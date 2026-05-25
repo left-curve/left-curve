@@ -9,10 +9,11 @@ use {
 /// closes ~63% of the gap.
 pub const INDEX_TIME_CONSTANT: Duration = Duration::from_minutes(30);
 
-/// Maximum fraction of the time constant that a single tick can cover.
-/// Caps the per-tick EWMA weight to `1 - exp(-MAX_TICK_FRACTION)` ~= 9.52%,
-/// preventing large jumps after long pauses.
-pub const MAX_TICK_FRACTION: u128 = 10; // c = 1/10 = 0.1
+/// Denominator of the maximum fraction of the time constant that a single tick
+/// can cover. Caps the per-tick EWMA weight to
+/// `1 - exp(-1/MAX_TICK_FRACTION_DENOMINATOR)` ~= 9.52%, preventing large jumps
+/// after long pauses.
+pub const MAX_TICK_FRACTION_DENOMINATOR: u128 = 10; // c = 1/10 = 0.1
 
 /// Approximate `exp(-x)` via degree-4 Taylor polynomial.
 ///
@@ -55,7 +56,7 @@ pub fn compute_ewma_index_price(
     let dt_millis = delta_t.into_millis();
 
     // Δt* = min(Δt, c × τ)
-    let c_tau_millis = tau_millis / MAX_TICK_FRACTION;
+    let c_tau_millis = tau_millis / MAX_TICK_FRACTION_DENOMINATOR;
     let dt_star_millis = dt_millis.min(c_tau_millis);
 
     if dt_star_millis == 0 {
