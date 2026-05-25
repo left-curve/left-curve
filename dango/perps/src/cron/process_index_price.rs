@@ -5,7 +5,11 @@ use {
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES},
     },
     dango_oracle::OracleQuerier,
-    dango_order_book::{ASKS, BIDS, compute_impact_price, may_invert_price},
+    dango_order_book::{ASKS, BIDS, PairId, compute_impact_price, may_invert_price},
+    dango_types::{
+        oracle::Price,
+        perps::{PairParam, PairState},
+    },
     grug_types::{Order as IterationOrder, Storage, Timestamp},
     pyth_types::MarketSession,
 };
@@ -31,39 +35,14 @@ pub fn process_index_price(
             continue;
         };
 
-        let oracle_available = price.market_session == MarketSession::Regular
-            && price.timestamp >= current_time - MAX_ORACLE_STALENESS;
-
-        if oracle_available {
-            pair_state.index_price = price.humanized_price;
-        } else {
-            let bid_iter = BIDS
-                .prefix(pair_id.clone())
-                .range(storage, None, None, IterationOrder::Ascending)
-                .map(|res| {
-                    let ((stored_price, _), order) = res?;
-                    let real_price = may_invert_price(stored_price, true);
-                    Ok((real_price, order.size))
-                });
-
-            let ask_iter = ASKS
-                .prefix(pair_id.clone())
-                .range(storage, None, None, IterationOrder::Ascending)
-                .map(|res| {
-                    let ((stored_price, _), order) = res?;
-                    Ok((stored_price, order.size.checked_abs()?))
-                });
-
-            let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
-            let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
-
-            let delta_t = current_time - pair_state.last_index_time;
-
-            pair_state.index_price =
-                compute_ewma_index_price(pair_state.index_price, impact_bid, impact_ask, delta_t)?;
-        }
-
-        pair_state.last_index_time = current_time;
+        process_index_price_for_pair(
+            storage,
+            current_time,
+            &pair_id,
+            &pair_param,
+            &mut pair_state,
+            &price,
+        )?;
 
         PAIR_STATES.save(storage, &pair_id, &pair_state)?;
 
@@ -72,11 +51,59 @@ pub fn process_index_price(
             tracing::info!(
                 %pair_id,
                 index_price = %pair_state.index_price,
-                oracle_available,
                 "Updated index price"
             );
         }
     }
+
+    Ok(())
+}
+
+fn process_index_price_for_pair(
+    storage: &dyn Storage,
+    current_time: Timestamp,
+    pair_id: &PairId,
+    pair_param: &PairParam,
+    pair_state: &mut PairState,
+    price: &Price,
+) -> anyhow::Result<()> {
+    // The oracle is considered available when the market is in regular
+    // session (not pre/post/closed) and the price is fresh enough.
+    let oracle_available = price.market_session == MarketSession::Regular
+        && price.timestamp >= current_time - MAX_ORACLE_STALENESS;
+
+    // When available, snap to the oracle price. Otherwise, drift via the
+    // EWMA driven by the order book's impact bid/ask spread.
+    let index_price = if oracle_available {
+        price.humanized_price
+    } else {
+        let bid_iter = BIDS
+            .prefix(pair_id.clone())
+            .range(storage, None, None, IterationOrder::Ascending)
+            .map(|res| {
+                let ((stored_price, _), order) = res?;
+                let real_price = may_invert_price(stored_price, true);
+                Ok((real_price, order.size))
+            });
+
+        let ask_iter = ASKS
+            .prefix(pair_id.clone())
+            .range(storage, None, None, IterationOrder::Ascending)
+            .map(|res| {
+                let ((stored_price, _), order) = res?;
+                Ok((stored_price, order.size.checked_abs()?))
+            });
+
+        let impact_bid = compute_impact_price(bid_iter, pair_param.impact_size)?;
+        let impact_ask = compute_impact_price(ask_iter, pair_param.impact_size)?;
+
+        let delta_t = current_time - pair_state.last_index_time;
+
+        compute_ewma_index_price(pair_state.index_price, impact_bid, impact_ask, delta_t)?
+    };
+
+    pair_state.index_price = index_price;
+    pair_state.last_index_time = current_time;
 
     Ok(())
 }
