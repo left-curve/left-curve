@@ -17,11 +17,10 @@ actix-test              = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-trait             = { workspace = true }
-byteorder               = { workspace = true }
 awc                     = { workspace = true }
+byteorder               = { workspace = true }
 clickhouse              = { workspace = true, features = ["test-util"] }
 dango-genesis           = { workspace = true }
-dango-oracle            = { workspace = true }
 dango-order-book        = { workspace = true }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true, features = ["async-graphql"] }

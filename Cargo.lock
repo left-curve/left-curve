@@ -3935,7 +3935,6 @@ dependencies = [
  "dango-bank",
  "dango-gateway",
  "dango-genesis",
- "dango-oracle",
  "dango-order-book",
  "dango-proposal-preparer",
  "dango-taxman",
