@@ -2,8 +2,8 @@ use {
     crate::{default_pair_param, default_param},
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
     dango_testing::{
-        Factory, OracleTestEntry, Preset, TestAccount, TestOption, TestSuiteNaive, pair_id,
-        seed_oracle_prices, setup_test_naive,
+        Factory, OracleExt, OracleTestEntry, Preset, TestAccount, TestOption, TestSuiteNaive,
+        pair_id, setup_test_naive,
     },
     dango_types::{
         account_factory::{self, RegisterUserData},
@@ -2703,19 +2703,18 @@ async fn register_oracle_prices(
     contracts: &dango_genesis::Contracts,
     eth_price: u128,
 ) {
-    seed_oracle_prices(suite, &mut accounts.owner, contracts.oracle, btree_map! {
-        usdc::DENOM.clone() => OracleTestEntry {
-            pyth_id: 1,
-            humanized_price: UsdPrice::new_int(1),
-            timestamp: Timestamp::from_nanos(u128::MAX),
-        },
-        pair_id() => OracleTestEntry {
-            pyth_id: 2,
-            humanized_price: UsdPrice::new_int(eth_price as i128),
-            timestamp: Timestamp::from_nanos(u128::MAX),
-        },
-    })
-    .await;
+    suite
+        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+            usdc::DENOM.clone() => OracleTestEntry {
+                pyth_id: 1,
+                humanized_price: UsdPrice::new_int(1),
+            },
+            pair_id() => OracleTestEntry {
+                pyth_id: 2,
+                humanized_price: UsdPrice::new_int(eth_price as i128),
+            },
+        })
+        .await;
 }
 
 async fn deposit_margin(

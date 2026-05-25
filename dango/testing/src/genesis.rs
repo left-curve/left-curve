@@ -26,12 +26,10 @@ use {
     },
     grug_math::{NumberConst, Udec128, Uint128},
     grug_types::{
-        Addressable, Binary, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
+        Addressable, BlockInfo, Bounded, Coin, Coins, Denom, Duration, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, Op, Timestamp, btree_map, btree_set,
     },
     hyperlane_types::isms::multisig::ValidatorSet,
-    pyth_types::constants::LAZER_TRUSTED_SIGNER,
-    std::str::FromStr,
 };
 
 /// Describing a data that has a preset value for testing purposes.
@@ -522,12 +520,11 @@ impl Preset for HyperlaneOption {
 
 impl Preset for OracleOption {
     fn preset_test() -> Self {
+        let pubkey = crate::pyth::mock_pyth_trusted_signer();
+
         OracleOption {
             pyth_price_sources: PYTH_PRICE_SOURCES.clone(),
-            pyth_trusted_signers: {
-                let trused_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
-                btree_map! { trused_signer => Timestamp::from_nanos(u128::MAX) } // FIXME: what's the appropriate expiration time for this?
-            },
+            pyth_trusted_signers: btree_map! { pubkey => Timestamp::from_nanos(u128::MAX) },
         }
     }
 }

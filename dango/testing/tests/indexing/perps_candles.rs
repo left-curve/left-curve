@@ -3,8 +3,8 @@ use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_testing::{
-        OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteWithIndexer, create_perps_fill,
-        pair_id, seed_oracle_prices, setup_perps_env, setup_test_with_indexer,
+        OracleExt, OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
+        create_perps_fill, pair_id, setup_perps_env, setup_test_with_indexer,
         setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
@@ -587,29 +587,22 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
     let btc_pair: Denom = "perp/btcusd".parse().unwrap();
 
     // Register oracle prices for both pairs.
-    seed_oracle_prices(
-        &mut suite,
-        &mut accounts.owner,
-        contracts.oracle,
-        btree_map! {
+    suite
+        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),
-                timestamp: Timestamp::from_nanos(u128::MAX),
             },
             eth_pair.clone() => OracleTestEntry {
                 pyth_id: 2,
                 humanized_price: UsdPrice::new_int(2_000),
-                timestamp: Timestamp::from_nanos(u128::MAX),
             },
             btc_pair.clone() => OracleTestEntry {
                 pyth_id: 3,
                 humanized_price: UsdPrice::new_int(60_000),
-                timestamp: Timestamp::from_nanos(u128::MAX),
             },
-        },
-    )
-    .await;
+        })
+        .await;
 
     // Register the BTC pair via MaintainerMsg::Configure (ETH pair already
     // exists from genesis; re-specifying it keeps it unchanged).

@@ -4,19 +4,18 @@ use {
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
         UsdValue,
     },
-    dango_testing::{TestOption, pair_id, setup_test_naive, write_pyth_price_raw},
+    dango_testing::{OracleExt, OracleTestEntry, TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
-        oracle::{self, Price, PriceSource, QueryPriceRequest},
+        oracle::QueryPriceRequest,
         perps::{self, PairParam, Param},
     },
     grug_app::CONTRACT_NAMESPACE,
-    grug_math::{NumberConst, Uint128},
+    grug_math::{Dec128_6, NumberConst, Uint128},
     grug_types::{
-        Addressable, Binary, ByteArray, Coins, Duration, NonEmpty, QuerierExt, ResultExt,
-        Timestamp, btree_map, concat,
+        Addressable, Coins, Duration, QuerierExt, ResultExt, Timestamp, btree_map, concat,
     },
-    pyth_types::{Channel, LeEcdsaMessage, MarketSession},
+    pyth_types::MarketSession,
     std::{collections::BTreeMap, str::FromStr},
 };
 
@@ -401,40 +400,22 @@ async fn oracle_triggers_on_oracle_update() {
     let pair = pair_id();
 
     // -------------------------------------------------------------------------
-    // Setup: Register Pyth price source for the perps pair + Fixed USDC source.
-    // Genesis already registers the LAZER trusted signer with Timestamp::MAX.
-    // We override USDC to Fixed so we don't need a USDC Pyth feed in this test.
+    // Setup: Register Pyth price sources and seed USDC + a dummy ETH price.
+    // The real ETH price is fed via signed Pyth Lazer messages later.
     // -------------------------------------------------------------------------
 
     suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource {
-                    id: 1,
-                    channel: Channel::RealTime,
-                },
-                pair.clone() => PriceSource {
-                    id: 2,
-                    channel: Channel::RealTime,
-                },
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-
-    // Seed USDC's PYTH_PRICES entry directly. The perp pair's price is fed via
-    // signed Pyth Lazer messages later in the test.
-    suite.app.db.with_state_storage_mut(|storage| {
-        let price = Price::new(
-            UsdPrice::new_int(1),
-            Timestamp::from_nanos(u128::MAX),
-            MarketSession::Regular,
-        );
-        write_pyth_price_raw(storage, contracts.oracle, 1, &price);
-    });
+        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+            usdc::DENOM.clone() => OracleTestEntry {
+                pyth_id: 1,
+                humanized_price: UsdPrice::new_int(1),
+            },
+            pair.clone() => OracleTestEntry {
+                pyth_id: 2,
+                humanized_price: UsdPrice::new_int(1),
+            },
+        })
+        .await;
 
     // -------------------------------------------------------------------------
     // Setup: Deposit USDC and add vault liquidity (follows vault_lp_lifecycle).
@@ -507,27 +488,16 @@ async fn oracle_triggers_on_oracle_update() {
     // and the vault should place bid+ask orders.
     // -------------------------------------------------------------------------
 
-    let message1 = LeEcdsaMessage {
-        payload: Binary::from_str(
-            "ddPHkyAnhCsRTAYAAQICAAAAAgDLzMJzLwAAAAT4/wcAAAACAPnb9QUAAAAABPj/",
-        )
-        .unwrap(),
-        signature: ByteArray::from_str(
-            "HJt9BJHEBuX0VhWDIjldnfwIYO9ufenGCVTMhQUwxhoYiX+TVDSqbNdQpXsRilNrS9Z7q/ET8obCBM9c97DmcQ==",
-        )
-        .unwrap(),
-        recovery_id: 1,
-    };
+    let eth_price = UsdPrice::new(Dec128_6::from_str("2038.056").unwrap());
 
     suite
-        .execute(
+        .feed_oracle_prices(
             &mut accounts.owner,
             contracts.oracle,
-            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message1])),
-            Coins::new(),
+            &[(2, eth_price, MarketSession::Regular)],
+            Some(Timestamp::MAX - Duration::from_seconds(1)),
         )
-        .await
-        .should_succeed();
+        .await;
 
     // Oracle price should be set for the perps pair.
     let price1 = suite
@@ -608,27 +578,14 @@ async fn oracle_triggers_on_oracle_update() {
     // changes, so vault orders remain unchanged.
     // -------------------------------------------------------------------------
 
-    let message2 = LeEcdsaMessage {
-        payload: Binary::from_str(
-            "ddPHk0DIiysRTAYAAQICAAAAAgD3e8JzLwAAAAT4/wcAAAACADDZ9QUAAAAABPj/",
-        )
-        .unwrap(),
-        signature: ByteArray::from_str(
-            "kToxd5mWk50/kezThZVzUf7cFIJ7t/fpDs5TboBop5Av9MgXhfcwsFPxtPwXkN7zwxul1U+Z/EOVje4HW53BBg==",
-        )
-        .unwrap(),
-        recovery_id: 0,
-    };
-
     suite
-        .execute(
+        .feed_oracle_prices(
             &mut accounts.owner,
             contracts.oracle,
-            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message2])),
-            Coins::new(),
+            &[(2, eth_price, MarketSession::Regular)],
+            None,
         )
-        .await
-        .should_succeed();
+        .await;
 
     // Oracle price should have been updated (new timestamp or value).
     let price2 = suite
