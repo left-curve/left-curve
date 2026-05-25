@@ -43,7 +43,7 @@ const VIRTUAL_ASSETS: UsdValue = UsdValue::new_int(1);
 const VOLUME_LOOKBACK: Duration = Duration::from_days(14);
 
 /// Reject oracle prices for being too old if older than this threshold.
-const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
+pub(crate) const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 
 /// Returns the oracle contract address.
 ///
@@ -51,7 +51,7 @@ const MAX_ORACLE_STALENESS: Duration = Duration::from_millis(500);
 /// In debug/test builds, queries the chain's `AppConfig` at runtime so that
 /// tests with dynamically-derived addresses work correctly.
 #[inline]
-fn oracle(querier: impl DangoQuerier) -> Addr {
+pub(crate) fn oracle(querier: impl DangoQuerier) -> Addr {
     #[cfg(not(debug_assertions))]
     {
         let _ = querier;
@@ -98,38 +98,28 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier);
 
-    cron::process_funding(
-        ctx.storage,
-        ctx.block.timestamp,
-        ctx.contract,
-        &mut oracle_querier,
-    )?;
+    cron::process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
+
+    cron::process_funding(ctx.storage, ctx.block.timestamp, ctx.contract)?;
 
     cron::process_conditional_orders(
         ctx.storage,
         ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
-        &mut oracle_querier,
         &mut events,
     )?;
 
     // Take the vault snapshot last, so equity reflects the end-of-block state
     // — including funding application and any conditional-order fills that
     // settled this block. Mirrors what the metrics path captures below.
-    cron::take_vault_snapshot(
-        ctx.storage,
-        ctx.block.timestamp,
-        ctx.contract,
-        &mut oracle_querier,
-    )?;
+    cron::take_vault_snapshot(ctx.storage, ctx.block.timestamp, ctx.contract)?;
 
     #[cfg(feature = "metrics")]
     {
-        cron::emit_cron_metrics(ctx.storage, ctx.contract, &mut oracle_querier, start)?;
+        cron::emit_cron_metrics(ctx.storage, ctx.contract, start)?;
     }
 
     Ok(Response::new().add_events(events)?)

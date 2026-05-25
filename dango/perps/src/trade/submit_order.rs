@@ -1,11 +1,10 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS, VOLUME_LOOKBACK,
+        VOLUME_LOOKBACK,
         core::{
             FillPnl, check_margin, check_oi_constraint, compute_available_margin, compute_notional,
             compute_required_margin, compute_trading_fee, execute_fill,
         },
-        oracle,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
@@ -15,7 +14,6 @@ use {
         state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     },
     anyhow::{bail, ensure},
-    dango_oracle::OracleQuerier,
     dango_order_book::{
         ASKS, BIDS, ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced,
         Dimensionless, FillId, LimitOrder, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, OrderKind,
@@ -100,10 +98,7 @@ pub(crate) fn _submit_order(
 
     let taker_state = USER_STATES.may_load(storage, sender)?.unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(querier), querier)
-        .with_no_older_than(current_time - MAX_ORACLE_STALENESS);
-
-    let oracle_price = oracle_querier.query_price_for_perps(&pair_id)?;
+    let oracle_price = PAIR_STATES.load(storage, &pair_id)?.index_price;
 
     // --------------------------- 2. Business logic ---------------------------
 
@@ -124,7 +119,6 @@ pub(crate) fn _submit_order(
         sender,
         contract,
         current_time,
-        &mut oracle_querier,
         &param,
         &state,
         &pair_id,
@@ -325,7 +319,6 @@ pub(crate) fn compute_submit_order_outcome(
     taker: Addr,
     contract: Addr,
     current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
     param: &Param,
     state: &State,
     pair_id: &PairId,
@@ -439,7 +432,6 @@ pub(crate) fn compute_submit_order_outcome(
             storage,
             taker,
             current_time,
-            oracle_querier,
             param,
             pair_id,
             pair_param,
@@ -492,8 +484,12 @@ pub(crate) fn compute_submit_order_outcome(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
+        let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
+            Ok(PAIR_STATES.load(storage, pair_id)?.index_price)
+        };
+
         check_margin(
-            oracle_querier,
+            &mut price_of,
             pair_id,
             &perp_querier,
             &taker_state,
@@ -592,7 +588,6 @@ pub(crate) fn compute_submit_order_outcome(
                     storage,
                     taker,
                     current_time,
-                    oracle_querier,
                     param,
                     pair_param,
                     &taker_state,
@@ -1389,7 +1384,6 @@ fn store_post_only_limit_order(
     storage: &dyn Storage,
     taker: Addr,
     current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_id: &PairId,
     pair_param: &PairParam,
@@ -1436,7 +1430,6 @@ fn store_post_only_limit_order(
         storage,
         taker,
         current_time,
-        oracle_querier,
         param,
         pair_param,
         taker_state,
@@ -1474,7 +1467,6 @@ fn store_limit_order(
     storage: &dyn Storage,
     user: Addr,
     current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
     param: &Param,
     pair_param: &PairParam,
     user_state: &UserState,
@@ -1509,7 +1501,10 @@ fn store_limit_order(
     if !reduce_only {
         let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-        let available_margin = compute_available_margin(oracle_querier, &perp_querier, user_state)?;
+        let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
+            Ok(PAIR_STATES.load(storage, pair_id)?.index_price)
+        };
+        let available_margin = compute_available_margin(&mut price_of, &perp_querier, user_state)?;
 
         ensure!(
             available_margin >= margin_to_reserve,
@@ -1646,13 +1641,9 @@ mod tests {
         super::*,
         crate::USER_STATES,
         dango_order_book::{Dimensionless, FundingPerUnit},
-        dango_types::{
-            oracle::Price,
-            perps::{Position, RateSchedule},
-        },
+        dango_types::perps::{Position, RateSchedule},
         grug_math::Uint64,
-        grug_types::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp, hash_map},
-        pyth_types::MarketSession,
+        grug_types::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp},
     };
 
     const CONTRACT: Addr = Addr::mock(0);
@@ -1662,16 +1653,6 @@ mod tests {
 
     /// Large collateral value that trivially satisfies any margin check.
     const LARGE_COLLATERAL: UsdValue = UsdValue::new_int(999_999_999);
-
-    fn test_oracle_querier() -> OracleQuerier<'static> {
-        OracleQuerier::new_mock(hash_map! {
-            pair_id() => Price::new(
-                UsdPrice::new_percent(5_000_000), // $50,000
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        })
-    }
 
     fn pair_id() -> PairId {
         "perp/btcusd".parse().unwrap()
@@ -1709,7 +1690,10 @@ mod tests {
             .save(storage, &pair_id(), &test_pair_param())
             .unwrap();
         PAIR_STATES
-            .save(storage, &pair_id(), &PairState::default())
+            .save(storage, &pair_id(), &PairState {
+                index_price: UsdPrice::new_percent(5_000_000), // $50,000
+                ..Default::default()
+            })
             .unwrap();
         NEXT_ORDER_ID.save(storage, &Uint64::new(1)).unwrap();
         NEXT_FILL_ID.save(storage, &FillId::ONE).unwrap();
@@ -1788,7 +1772,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state,
@@ -1801,7 +1784,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -1854,7 +1836,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -1866,7 +1847,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -1909,14 +1889,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -1960,7 +1938,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -1972,7 +1949,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2017,7 +1993,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2029,7 +2004,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2078,7 +2052,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2090,7 +2063,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2138,7 +2110,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -2149,7 +2120,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2201,14 +2171,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2263,7 +2231,6 @@ mod tests {
             conditional_order_above: None,
             conditional_order_below: None,
         });
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2275,7 +2242,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2316,14 +2282,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2367,7 +2331,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state,
@@ -2380,7 +2343,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2430,7 +2392,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2442,7 +2403,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2489,7 +2449,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2501,7 +2460,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2555,7 +2513,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         // 50,100 is a valid multiple of tick size 100 — should succeed.
         let result = compute_submit_order_outcome(
@@ -2563,7 +2520,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2606,14 +2562,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2660,7 +2614,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2673,7 +2626,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2728,7 +2680,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2740,7 +2691,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2781,7 +2731,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -2793,7 +2742,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2891,14 +2839,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome { maker_states, .. } = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -2981,7 +2927,6 @@ mod tests {
                 margin: LARGE_COLLATERAL,
                 ..Default::default()
             };
-            let mut oq = test_oracle_querier();
 
             let SubmitOrderOutcome {
                 pair_state,
@@ -2994,7 +2939,6 @@ mod tests {
                 TAKER,
                 CONTRACT,
                 Timestamp::ZERO,
-                &mut oq,
                 &param,
                 &State::default(),
                 &pair_id(),
@@ -3043,7 +2987,6 @@ mod tests {
         // ---------- Phase 2: consume the remainder (triggers full-fill branch) ----------
         let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             maker_states,
@@ -3054,7 +2997,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -3139,7 +3081,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state,
@@ -3152,7 +3093,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -3264,7 +3204,6 @@ mod tests {
         let param = test_param();
         let pair_param = test_pair_param();
         let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -3275,7 +3214,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -3325,14 +3263,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4073,7 +4009,6 @@ mod tests {
             ..Default::default()
         };
         let state = State::default();
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             state,
@@ -4086,7 +4021,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &state,
             &pair_id(),
@@ -4186,7 +4120,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state,
@@ -4199,7 +4132,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4262,7 +4194,6 @@ mod tests {
 
         let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -4273,7 +4204,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4352,7 +4282,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state,
@@ -4365,7 +4294,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4422,7 +4350,6 @@ mod tests {
 
         let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -4433,7 +4360,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4480,7 +4406,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -4493,7 +4418,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4540,14 +4464,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4587,14 +4509,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4634,7 +4554,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -4647,7 +4566,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4693,14 +4611,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4740,7 +4656,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -4752,7 +4667,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4803,7 +4717,6 @@ mod tests {
             conditional_order_above: None,
             conditional_order_below: None,
         });
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -4815,7 +4728,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4868,14 +4780,12 @@ mod tests {
             margin: UsdValue::new_int(1_000), // insufficient collateral
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let err = compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -4931,7 +4841,6 @@ mod tests {
         // reserved margin and open_order_count).
         let mut taker_state = taker_state_before.clone();
         taker_state.margin = LARGE_COLLATERAL;
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -4944,7 +4853,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5023,7 +4931,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -5035,7 +4942,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5108,7 +5014,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -5120,7 +5025,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5187,7 +5091,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -5198,7 +5101,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5276,7 +5178,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             taker_state,
@@ -5288,7 +5189,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5386,7 +5286,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state,
@@ -5399,7 +5298,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5447,7 +5345,6 @@ mod tests {
 
         let pair_state = PAIR_STATES.load(&ctx.storage, &pair_id()).unwrap();
         let taker_state = USER_STATES.load(&ctx.storage, TAKER).unwrap();
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             pair_state: _,
@@ -5459,7 +5356,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5577,7 +5473,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         // MAKER_B sells -10 → matches vault bid at $51,000.
         //   vault: closes short at $51,000 → loss = -$10,000
@@ -5592,7 +5487,6 @@ mod tests {
             MAKER_B,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -5650,7 +5544,6 @@ mod tests {
                 margin: LARGE_COLLATERAL,
                 ..Default::default()
             };
-            let mut oq = test_oracle_querier();
 
             let SubmitOrderOutcome {
                 pair_state,
@@ -5663,7 +5556,6 @@ mod tests {
                 TAKER,
                 CONTRACT,
                 Timestamp::ZERO,
-                &mut oq,
                 &param,
                 &State::default(),
                 &pair_id(),
@@ -5718,7 +5610,6 @@ mod tests {
                 margin: LARGE_COLLATERAL,
                 ..Default::default()
             };
-            let mut oq = test_oracle_querier();
 
             let SubmitOrderOutcome {
                 pair_state: _,
@@ -5731,7 +5622,6 @@ mod tests {
                 TAKER,
                 CONTRACT,
                 Timestamp::ZERO,
-                &mut oq,
                 &param,
                 &State::default(),
                 &pair_id(),
@@ -5803,7 +5693,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -5855,7 +5744,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -5926,7 +5814,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -5972,7 +5859,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6022,7 +5908,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6089,7 +5974,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6168,7 +6052,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6224,7 +6107,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6292,7 +6174,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6372,7 +6253,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6464,7 +6344,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut test_oracle_querier(),
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6521,15 +6400,6 @@ mod tests {
 
         let ts = taker_state(&ctx.storage);
 
-        // Oracle at $48k (matches the fill price).
-        let mut oracle = OracleQuerier::new_mock(hash_map! {
-            pair_id() => Price::new(
-                UsdPrice::new_percent(4_800_000), // $48,000
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
-
         // Market buy 10 with SL @ $49k. The fill price ($48k) is below the
         // SL trigger ($49k), so the SL condition is already met.
         let SubmitOrderOutcome {
@@ -6539,7 +6409,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::from_seconds(0),
-            &mut oracle,
             &test_param(),
             &State::default(),
             &pair_id(),
@@ -6591,14 +6460,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6638,14 +6505,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6686,14 +6551,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6732,14 +6595,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6780,14 +6641,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6828,14 +6687,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6876,14 +6733,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6924,14 +6779,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -6972,14 +6825,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -7021,14 +6872,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -7064,14 +6913,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -7127,7 +6974,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
         let cid = Uint64::new(7);
 
         let SubmitOrderOutcome { order_to_store, .. } = compute_submit_order_outcome(
@@ -7135,7 +6981,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -7193,14 +7038,12 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         compute_submit_order_outcome(
             &ctx.storage,
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -7325,7 +7168,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
         let mut events = EventBuilder::new();
 
         // Taker GTC limit buy carrying its own cid fully fills the maker.
@@ -7334,7 +7176,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),
@@ -7429,7 +7270,6 @@ mod tests {
             margin: LARGE_COLLATERAL,
             ..Default::default()
         };
-        let mut oq = test_oracle_querier();
 
         let SubmitOrderOutcome {
             order_mutations, ..
@@ -7438,7 +7278,6 @@ mod tests {
             TAKER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oq,
             &param,
             &State::default(),
             &pair_id(),

@@ -5,7 +5,6 @@ use {
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
         trade::{SubmitOrderOutcome, compute_submit_order_outcome},
     },
-    dango_oracle::OracleQuerier,
     dango_order_book::{
         ASKS, BIDS, ConditionalOrderRemoved, ConditionalOrderTriggered, NEXT_FILL_ID,
         NEXT_ORDER_ID, OrderKind, PairId, ReasonForOrderRemoval, TriggerDirection, UsdPrice,
@@ -29,7 +28,6 @@ pub fn process_conditional_orders(
     querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
     events: &mut EventBuilder,
 ) -> anyhow::Result<()> {
     let param = PARAM.load(storage)?;
@@ -42,7 +40,6 @@ pub fn process_conditional_orders(
             querier,
             contract,
             current_time,
-            oracle_querier,
             &param,
             &mut state,
             &pair_id,
@@ -60,13 +57,12 @@ fn process_conditional_orders_for_pair(
     querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
     param: &Param,
     state: &mut State,
     pair_id: &PairId,
     events: &mut EventBuilder,
 ) -> anyhow::Result<()> {
-    let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+    let oracle_price = PAIR_STATES.load(storage, pair_id)?.index_price;
     let pair_param = PAIR_PARAMS.load(storage, pair_id)?;
     let mut pair_state = PAIR_STATES.load(storage, pair_id)?;
 
@@ -101,7 +97,6 @@ fn process_conditional_orders_for_pair(
             querier,
             contract,
             current_time,
-            oracle_querier,
             param,
             state,
             pair_id,
@@ -148,7 +143,6 @@ fn process_conditional_orders_for_pair(
             querier,
             contract,
             current_time,
-            oracle_querier,
             param,
             state,
             pair_id,
@@ -196,7 +190,6 @@ fn process_triggered_order(
     querier: QuerierWrapper,
     contract: Addr,
     current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
     param: &Param,
     state: &State,
     pair_id: &PairId,
@@ -385,7 +378,6 @@ fn process_triggered_order(
         user,
         contract,
         current_time,
-        oracle_querier,
         param,
         state,
         pair_id,

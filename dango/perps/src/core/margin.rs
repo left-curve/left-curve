@@ -1,7 +1,6 @@
 use {
     crate::{core::compute_trading_fee, querier::NoCachePerpQuerier},
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{Dimensionless, PairId, Quantity, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, PairState, Position, UserState},
 };
@@ -49,16 +48,19 @@ pub fn compute_position_unrealized_funding(
 /// ```plain
 /// equity = user_state.margin + Σ(unrealized_pnl) - Σ(accrued_funding)
 /// ```
-pub fn compute_user_equity(
-    oracle_querier: &mut OracleQuerier,
+pub fn compute_user_equity<F>(
+    price_of: &mut F,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<UsdValue> {
+) -> anyhow::Result<UsdValue>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
     let mut total_pnl = UsdValue::ZERO;
     let mut total_funding = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+        let oracle_price = price_of(pair_id)?;
         let pair_state = perp_querier.query_pair_state(pair_id)?;
 
         total_pnl.checked_add_assign(compute_position_unrealized_pnl(position, oracle_price)?)?;
@@ -84,15 +86,18 @@ pub fn compute_user_equity(
 ///
 /// The maintenance margin acts as the liquidation trigger. If a user's collateral
 /// value falls below the maintenance margin, he becomes eligible for liquidation.
-pub fn compute_maintenance_margin(
-    oracle_querier: &mut OracleQuerier,
+pub fn compute_maintenance_margin<F>(
+    price_of: &mut F,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<UsdValue> {
+) -> anyhow::Result<UsdValue>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
     let mut total = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+        let oracle_price = price_of(pair_id)?;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let margin = position
@@ -121,18 +126,21 @@ pub fn compute_maintenance_margin(
 ///
 /// When submitting an order, the user must have no less collateral than the
 /// initial margin, otherwise the order is rejected.
-pub(super) fn compute_initial_margin(
-    oracle_querier: &mut OracleQuerier,
+pub(super) fn compute_initial_margin<F>(
+    price_of: &mut F,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
     projected_pair_id: &PairId,
     projected_size: Quantity,
-) -> anyhow::Result<UsdValue> {
+) -> anyhow::Result<UsdValue>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
     let mut total = UsdValue::ZERO;
     let mut projected_pair_seen = false;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+        let oracle_price = price_of(pair_id)?;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let size = if pair_id == projected_pair_id {
@@ -153,7 +161,7 @@ pub(super) fn compute_initial_margin(
     // If the projected pair is not in existing positions and the projected size
     // is non-zero, add its margin contribution.
     if !projected_pair_seen && projected_size.is_non_zero() {
-        let oracle_price = oracle_querier.query_price_for_perps(projected_pair_id)?;
+        let oracle_price = price_of(projected_pair_id)?;
         let pair_param = perp_querier.query_pair_param(projected_pair_id)?;
 
         let margin = projected_size
@@ -197,17 +205,20 @@ pub fn compute_required_margin(
 ///
 /// Returns zero when equity falls below the used + reserved requirement
 /// (the user cannot open new positions or withdraw, and may face liquidation).
-pub fn compute_available_margin(
-    oracle_querier: &mut OracleQuerier,
+pub fn compute_available_margin<F>(
+    price_of: &mut F,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<UsdValue> {
-    let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
+) -> anyhow::Result<UsdValue>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
+    let equity = compute_user_equity(price_of, perp_querier, user_state)?;
 
     let mut used_margin = UsdValue::ZERO;
 
     for (pair_id, position) in &user_state.positions {
-        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+        let oracle_price = price_of(pair_id)?;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
 
         let margin = position
@@ -231,16 +242,19 @@ pub fn compute_available_margin(
 ///
 /// The 0%-fill scenario (limit-order reservation) is checked separately
 /// inside `store_limit_order`.
-pub fn check_margin(
-    oracle_querier: &mut OracleQuerier,
+pub fn check_margin<F>(
+    price_of: &mut F,
     pair_id: &PairId,
     perp_querier: &NoCachePerpQuerier,
     taker_state: &UserState,
     taker_fee_rate: Dimensionless,
     oracle_price: UsdPrice,
     size: Quantity,
-) -> anyhow::Result<()> {
-    let equity = compute_user_equity(oracle_querier, perp_querier, taker_state)?;
+) -> anyhow::Result<()>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
+    let equity = compute_user_equity(price_of, perp_querier, taker_state)?;
 
     let projected_size = {
         let current_position = taker_state
@@ -251,13 +265,8 @@ pub fn check_margin(
         current_position.checked_add(size)?
     };
 
-    let projected_im = compute_initial_margin(
-        oracle_querier,
-        perp_querier,
-        taker_state,
-        pair_id,
-        projected_size,
-    )?;
+    let projected_im =
+        compute_initial_margin(price_of, perp_querier, taker_state, pair_id, projected_size)?;
 
     let projected_fee = compute_trading_fee(size, oracle_price, taker_fee_rate)?;
 
@@ -286,14 +295,23 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
             constants::{btc, eth},
-            oracle::Price,
-            perps::{PairParam, PairState, Param, Position, RateSchedule},
+            perps::{PairParam, PairState, Position, RateSchedule},
         },
-        grug_types::{Timestamp, btree_map, hash_map},
-        pyth_types::MarketSession,
+        grug_types::{btree_map, hash_map},
         std::collections::HashMap,
         test_case::test_case,
     };
+
+    fn mock_prices(
+        prices: HashMap<PairId, UsdPrice>,
+    ) -> impl FnMut(&PairId) -> anyhow::Result<UsdPrice> {
+        move |pair_id| {
+            prices
+                .get(pair_id)
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
+        }
+    }
 
     // ---- compute_position_unrealized_pnl tests ----
 
@@ -370,10 +388,10 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+        let mut price_of = mock_prices(HashMap::new());
 
         assert_eq!(
-            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -402,16 +420,11 @@ mod tests {
                 ..Default::default()
             }
         });
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(15_000),
         );
     }
@@ -441,16 +454,11 @@ mod tests {
                 ..Default::default()
             },
         });
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(14_980),
         );
     }
@@ -493,21 +501,12 @@ mod tests {
                 ..Default::default()
             },
         });
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-            btc::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(4_800_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of = mock_prices(
+            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000), btc::DENOM.clone() => UsdPrice::new_percent(4_800_000) },
+        );
 
         assert_eq!(
-            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(16_980),
         );
     }
@@ -536,16 +535,11 @@ mod tests {
                 ..Default::default()
             },
         });
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(150_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(150_000) });
 
         assert_eq!(
-            compute_user_equity(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_user_equity(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(-4900),
         );
     }
@@ -556,10 +550,10 @@ mod tests {
     fn maintenance_margin_no_positions() {
         let user_state = UserState::default();
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+        let mut price_of = mock_prices(HashMap::new());
 
         assert_eq!(
-            compute_maintenance_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_maintenance_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -590,16 +584,11 @@ mod tests {
             },
             HashMap::new(),
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
-            compute_maintenance_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_maintenance_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(1000),
         );
     }
@@ -641,21 +630,12 @@ mod tests {
             },
             HashMap::new(),
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-            btc::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(5_000_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of = mock_prices(
+            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000), btc::DENOM.clone() => UsdPrice::new_percent(5_000_000) },
+        );
 
         assert_eq!(
-            compute_maintenance_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_maintenance_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(2500),
         );
     }
@@ -676,17 +656,12 @@ mod tests {
             },
             HashMap::new(),
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
             compute_initial_margin(
-                &mut oracle_querier,
+                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &eth::DENOM,
@@ -722,17 +697,12 @@ mod tests {
             },
             HashMap::new(),
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
             compute_initial_margin(
-                &mut oracle_querier,
+                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &eth::DENOM,
@@ -774,22 +744,13 @@ mod tests {
             },
             HashMap::new(),
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-            btc::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(5_000_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of = mock_prices(
+            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000), btc::DENOM.clone() => UsdPrice::new_percent(5_000_000) },
+        );
 
         assert_eq!(
             compute_initial_margin(
-                &mut oracle_querier,
+                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &btc::DENOM,
@@ -813,17 +774,12 @@ mod tests {
             },
             HashMap::new(),
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert_eq!(
             compute_initial_margin(
-                &mut oracle_querier,
+                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &eth::DENOM,
@@ -872,22 +828,13 @@ mod tests {
             },
             HashMap::new(),
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-            btc::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(5_000_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of = mock_prices(
+            hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000), btc::DENOM.clone() => UsdPrice::new_percent(5_000_000) },
+        );
 
         assert_eq!(
             compute_initial_margin(
-                &mut oracle_querier,
+                &mut price_of,
                 &perp_querier,
                 &user_state,
                 &eth::DENOM,
@@ -937,10 +884,10 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+        let mut price_of = mock_prices(HashMap::new());
 
         assert_eq!(
-            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_000),
         );
     }
@@ -978,16 +925,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(12_500),
         );
     }
@@ -1024,16 +966,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(10_500),
         );
     }
@@ -1072,16 +1009,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(150_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(150_000) });
 
         assert_eq!(
-            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::ZERO,
         );
     }
@@ -1120,16 +1052,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert_eq!(
-            compute_available_margin(&mut oracle_querier, &perp_querier, &user_state).unwrap(),
+            compute_available_margin(&mut price_of, &perp_querier, &user_state).unwrap(),
             UsdValue::new_int(12_480),
         );
     }
@@ -1147,11 +1074,8 @@ mod tests {
     #[test]
     fn margin_check_full_fill_fails() {
         let pair_id: PairId = "perp/btcusd".parse().unwrap();
-        let param = Param {
-            taker_fee_rates: RateSchedule {
-                base: Dimensionless::new_permille(1), // 0.1%
-                ..Default::default()
-            },
+        let _param = RateSchedule {
+            base: Dimensionless::new_permille(1), // 0.1%
             ..Default::default()
         };
         let taker_state = UserState {
@@ -1170,20 +1094,15 @@ mod tests {
                 pair_id.clone() => PairState::default(),
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            pair_id.clone() => Price::new(
-                UsdPrice::new_percent(5_000_000), // $50,000
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { pair_id.clone() => UsdPrice::new_percent(5_000_000) });
 
         let result = check_margin(
-            &mut oracle_querier,
+            &mut price_of,
             &pair_id,
             &perp_querier,
             &taker_state,
-            param.taker_fee_rates.base,
+            Dimensionless::new_permille(1), // 0.1%
             UsdPrice::new_int(50_000),
             Quantity::new_int(10),
         );

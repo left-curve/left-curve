@@ -1,14 +1,12 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS,
         core::{compute_available_margin, compute_vault_quotes},
         oracle,
         querier::NoCachePerpQuerier,
-        state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PARAM, USER_STATES},
+        state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, USER_STATES},
         trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{
         ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
         increase_liquidity_depths, may_invert_price,
@@ -57,9 +55,6 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
-
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
     let CancelAllOrdersOutcome {
@@ -81,7 +76,11 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     // simplifies to: max(0, equity - used_margin).
     let vault_margin_value = {
         let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-        compute_available_margin(&mut oracle_querier, &perp_querier, &vault_state)?
+        let mut price_of =
+            |pair_id: &dango_order_book::PairId| -> anyhow::Result<dango_order_book::UsdPrice> {
+                Ok(PAIR_STATES.load(ctx.storage, pair_id)?.index_price)
+            };
+        compute_available_margin(&mut price_of, &perp_querier, &vault_state)?
     };
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
@@ -110,7 +109,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             continue;
         }
 
-        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+        let oracle_price = PAIR_STATES.load(ctx.storage, pair_id)?.index_price;
 
         // Compute this pair's allocated margin.
         let pair_margin = vault_margin_value

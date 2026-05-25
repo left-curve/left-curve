@@ -1,9 +1,11 @@
 use {
     crate::{
         core::check_fee_sign_invariant,
+        oracle,
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM},
     },
     anyhow::ensure,
+    dango_oracle::OracleQuerier,
     dango_order_book::{Dimensionless, FundingRate, PairId, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, PairState, Param, RateSchedule},
     grug_types::{Duration, GENESIS_SENDER, MutableCtx, QuerierExt, Response},
@@ -62,7 +64,15 @@ pub fn configure(
         PAIR_PARAMS.save(ctx.storage, pair_id, pair_param)?;
 
         if !PAIR_STATES.has(ctx.storage, pair_id) {
-            PAIR_STATES.save(ctx.storage, pair_id, &PairState::default())?;
+            let index_price = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
+                .query_price_for_perps(pair_id)
+                .unwrap_or(UsdPrice::ZERO);
+
+            PAIR_STATES.save(ctx.storage, pair_id, &PairState {
+                index_price,
+                last_index_time: ctx.block.timestamp,
+                ..Default::default()
+            })?;
         }
     }
 

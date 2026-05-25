@@ -1,11 +1,9 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS,
         core::{
             compute_bankruptcy_price, compute_close_schedule, compute_maintenance_margin,
             compute_user_equity, compute_user_equity_with_pnl, is_liquidatable,
         },
-        oracle,
         position_index::{
             PositionIndexUpdate, apply_position_index_updates, compute_position_diff,
         },
@@ -18,7 +16,6 @@ use {
         },
     },
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{
         ASKS, BIDS, ConditionalOrderRemoved, Dimensionless, FillId, LimitOrder, NEXT_FILL_ID,
         NEXT_ORDER_ID, OrderId, PairId, Quantity, ReasonForOrderRemoval, TriggerDirection,
@@ -55,9 +52,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     let state = STATE.load(ctx.storage)?;
 
     let user_state = USER_STATES.may_load(ctx.storage, user)?.unwrap_or_default();
-
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     let mut events = EventBuilder::new();
 
@@ -115,7 +109,7 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     for pair_id in &pair_ids {
         oracle_prices.insert(
             pair_id.clone(),
-            oracle_querier.query_price_for_perps(pair_id)?,
+            PAIR_STATES.load(ctx.storage, pair_id)?.index_price,
         );
     }
 
@@ -136,7 +130,6 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         user,
         ctx.contract,
         ctx.block.timestamp,
-        &mut oracle_querier,
         &param,
         &state,
         &pair_params,
@@ -301,7 +294,6 @@ fn _liquidate(
     user: Addr,
     contract: Addr,
     current_time: Timestamp,
-    oracle_querier: &mut OracleQuerier,
     param: &Param,
     state: &State,
     pair_params: &BTreeMap<PairId, PairParam>,
@@ -320,8 +312,15 @@ fn _liquidate(
 
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
+    let mut price_of = |pair_id: &PairId| -> anyhow::Result<UsdPrice> {
+        oracle_prices
+            .get(pair_id)
+            .copied()
+            .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
+    };
+
     let (is_liquidatable, equity, maintenance_margin) =
-        is_liquidatable(oracle_querier, &perp_querier, &user_state)?;
+        is_liquidatable(&mut price_of, &perp_querier, &user_state)?;
 
     ensure!(
         is_liquidatable,
@@ -334,8 +333,8 @@ fn _liquidate(
     // maintenance margin (MM) + a buffer.
     // We need to close positions such that MM + buffer <= equity.
     let deficit = {
-        let equity = compute_user_equity(oracle_querier, &perp_querier, &user_state)?;
-        let mm = compute_maintenance_margin(oracle_querier, &perp_querier, &user_state)?;
+        let equity = compute_user_equity(&mut price_of, &perp_querier, &user_state)?;
+        let mm = compute_maintenance_margin(&mut price_of, &perp_querier, &user_state)?;
         let one_plus_buffer = Dimensionless::ONE.checked_add(param.liquidation_buffer_ratio)?;
         let effective_equity = equity.checked_div(one_plus_buffer)?;
         mm.checked_sub(effective_equity)?
@@ -930,13 +929,9 @@ mod tests {
             ChildOrder, Dimensionless, FundingPerUnit, LimitOrder, OrderKey, Quantity, UsdPrice,
             UsdValue, may_invert_price,
         },
-        dango_types::{
-            oracle::Price,
-            perps::{PairParam, PairState, Param, Position, State, UserState},
-        },
+        dango_types::perps::{PairParam, PairState, Param, Position, State, UserState},
         grug_math::Uint64,
         grug_types::{Addr, Coins, MockContext, Storage, Timestamp},
-        pyth_types::MarketSession,
         std::collections::BTreeMap,
     };
 
@@ -1074,21 +1069,6 @@ mod tests {
         ASKS.save(storage, key, &order).unwrap();
     }
 
-    fn mock_oracle_querier(pairs: Vec<(PairId, i128)>) -> OracleQuerier<'static> {
-        let mut map = std::collections::HashMap::new();
-        for (pair_id, price) in pairs {
-            map.insert(
-                pair_id,
-                Price::new(
-                    UsdPrice::new_percent((price as u128 * 100) as i128),
-                    Timestamp::from_seconds(0),
-                    MarketSession::Regular,
-                ),
-            );
-        }
-        OracleQuerier::new_mock(map)
-    }
-
     // ======================== Tests ========================
 
     #[test]
@@ -1122,7 +1102,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(10_000);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 50_000)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let result = _liquidate(
@@ -1130,7 +1109,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -1193,7 +1171,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(2_400);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let LiquidateOutcome { user_state, .. } = _liquidate(
@@ -1201,7 +1178,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -1263,7 +1239,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(2_400);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let result = _liquidate(
@@ -1271,7 +1246,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -1352,7 +1326,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(2_500);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let LiquidateOutcome { state, .. } = _liquidate(
@@ -1360,7 +1333,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -1476,7 +1448,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(2_000);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         // Snapshot pre-liquidation values.
@@ -1497,7 +1468,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -1632,7 +1602,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(2_500);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let treasury_before = state.treasury;
@@ -1651,7 +1620,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -1761,7 +1729,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, CONTRACT).unwrap();
         user_state.margin = UsdValue::new_int(2_000);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let treasury_before = state.treasury;
@@ -1777,7 +1744,6 @@ mod tests {
             CONTRACT, // vault is the user being liquidated
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -1913,7 +1879,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(1_200);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         // Snapshot pre-liquidation values.
@@ -1935,7 +1900,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -2041,8 +2005,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(2_400);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
-
         let LiquidateOutcome {
             state, user_state, ..
         } = _liquidate(
@@ -2050,7 +2012,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -2160,7 +2121,6 @@ mod tests {
         let mut oracle_prices = BTreeMap::new();
         oracle_prices.insert(pair_btc(), UsdPrice::new_int(47_500));
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let result = _liquidate(
@@ -2168,7 +2128,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -2270,7 +2229,6 @@ mod tests {
         let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
         user_state.margin = UsdValue::new_int(2_400);
 
-        let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 47_500)]);
         let state = STATE.load(&ctx.storage).unwrap();
 
         let LiquidateOutcome {
@@ -2282,7 +2240,6 @@ mod tests {
             USER,
             CONTRACT,
             Timestamp::ZERO,
-            &mut oracle_querier,
             &param,
             &state,
             &pair_params,
@@ -2384,7 +2341,6 @@ mod tests {
             let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
             user_state.margin = UsdValue::new_int(25_000);
 
-            let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
             let state = STATE.load(&ctx.storage).unwrap();
 
             let LiquidateOutcome { user_state, .. } = _liquidate(
@@ -2392,7 +2348,6 @@ mod tests {
                 USER,
                 CONTRACT,
                 Timestamp::ZERO,
-                &mut oracle_querier,
                 &param,
                 &state,
                 &pair_params,
@@ -2455,7 +2410,6 @@ mod tests {
             let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
             user_state.margin = UsdValue::new_int(25_000);
 
-            let mut oracle_querier = mock_oracle_querier(vec![(pair_btc(), 48_000)]);
             let state = STATE.load(&ctx.storage).unwrap();
 
             let LiquidateOutcome { user_state, .. } = _liquidate(
@@ -2463,7 +2417,6 @@ mod tests {
                 USER,
                 CONTRACT,
                 Timestamp::ZERO,
-                &mut oracle_querier,
                 &param,
                 &state,
                 &pair_params,

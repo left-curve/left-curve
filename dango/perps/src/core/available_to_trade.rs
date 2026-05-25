@@ -10,8 +10,7 @@
 
 use {
     crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
-    dango_oracle::OracleQuerier,
-    dango_order_book::{Dimensionless, PairId, Quantity, UsdValue},
+    dango_order_book::{Dimensionless, PairId, Quantity, UsdPrice, UsdValue},
     dango_types::perps::UserState,
     grug_math::MathResult,
 };
@@ -68,14 +67,17 @@ pub enum Side {
 ///
 /// Clamping is deliberately skipped here (the caller can clamp) so callers
 /// that want to reason about the raw signed value can do so.
-pub fn compute_available_to_trade(
-    oracle_querier: &mut OracleQuerier,
+pub fn compute_available_to_trade<F>(
+    price_of: &mut F,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
     current_pair_id: &PairId,
     action: Side,
-) -> anyhow::Result<UsdValue> {
-    let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
+) -> anyhow::Result<UsdValue>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
+    let equity = compute_user_equity(price_of, perp_querier, user_state)?;
 
     let mut other_im = UsdValue::ZERO;
     for (pair_id, position) in &user_state.positions {
@@ -87,7 +89,7 @@ pub fn compute_available_to_trade(
             continue;
         }
 
-        let price = oracle_querier.query_price_for_perps(pair_id)?;
+        let price = price_of(pair_id)?;
         let pair_param = perp_querier.query_pair_param(pair_id)?;
         let im = position
             .size
@@ -107,7 +109,7 @@ pub fn compute_available_to_trade(
     let current_term = if current_pos.is_zero() {
         UsdValue::ZERO
     } else {
-        let price = oracle_querier.query_price_for_perps(current_pair_id)?;
+        let price = price_of(current_pair_id)?;
         let pair_param = perp_querier.query_pair_param(current_pair_id)?;
         let abs_im = current_pos
             .checked_abs()?
@@ -157,16 +159,26 @@ mod tests {
     use {
         super::*,
         crate::core::check_margin,
-        dango_order_book::{FundingPerUnit, UsdPrice},
+        dango_order_book::FundingPerUnit,
         dango_types::{
             constants::{btc, eth},
-            oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug_types::{Timestamp, btree_map, hash_map},
-        pyth_types::MarketSession,
+        grug_types::{btree_map, hash_map},
+        std::collections::HashMap,
         test_case::test_case,
     };
+
+    fn mock_prices(
+        prices: HashMap<PairId, UsdPrice>,
+    ) -> impl FnMut(&PairId) -> anyhow::Result<UsdPrice> {
+        move |pair_id| {
+            prices
+                .get(pair_id)
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
+        }
+    }
 
     /// Static inputs shared by every test case. Chosen so that every
     /// test case's `availToTrade` stays comfortably positive and the
@@ -185,7 +197,7 @@ mod tests {
         has_orders: bool,
     ) -> (
         UserState,
-        OracleQuerier<'static>,
+        impl FnMut(&PairId) -> anyhow::Result<UsdPrice>,
         NoCachePerpQuerier<'static>,
     ) {
         let mut positions = btree_map! {};
@@ -245,24 +257,12 @@ mod tests {
             },
         );
 
-        // The oracle stores prices as `Udec128` (18 decimals), whereas
-        // `UsdPrice` is `Dec128_6`. The numeric values (2_000 and 50_000)
-        // must match the `CURRENT_PRICE` and `OTHER_PRICE` consts above
-        // so unrealized pnl stays zero at entry.
-        let oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_int(2_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-            btc::DENOM.clone() => Price::new(
-                UsdPrice::new_int(50_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
+        let price_of = mock_prices(hash_map! {
+            eth::DENOM.clone() => UsdPrice::new_int(2_000),
+            btc::DENOM.clone() => UsdPrice::new_int(50_000),
         });
 
-        (user_state, oracle_querier, perp_querier)
+        (user_state, price_of, perp_querier)
     }
 
     /// Full cartesian matrix — 2 × 3 × 3 × 2 = **36** cases — covering
@@ -319,13 +319,13 @@ mod tests {
         other_pos: i128,
         has_orders: bool,
     ) {
-        let (user_state, mut oracle_querier, perp_querier) =
+        let (user_state, mut price_of, perp_querier) =
             build_setup(current_pos, other_pos, has_orders);
         let current_pair_id = eth::DENOM.clone();
 
         // 1. Available to trade, then max notional, then max base size.
         let avail = compute_available_to_trade(
-            &mut oracle_querier,
+            &mut price_of,
             &perp_querier,
             &user_state,
             &current_pair_id,
@@ -360,7 +360,7 @@ mod tests {
 
         // 2. Boundary order: check_margin should accept.
         check_margin(
-            &mut oracle_querier,
+            &mut price_of,
             &current_pair_id,
             &perp_querier,
             &user_state,
@@ -378,7 +378,7 @@ mod tests {
             .expect("bumped size should compute");
 
         let bumped_res = check_margin(
-            &mut oracle_querier,
+            &mut price_of,
             &current_pair_id,
             &perp_querier,
             &user_state,

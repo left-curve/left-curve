@@ -3,7 +3,6 @@ use {
         core::{compute_position_unrealized_funding, compute_position_unrealized_pnl},
         querier::NoCachePerpQuerier,
     },
-    dango_oracle::OracleQuerier,
     dango_order_book::{PairId, UsdPrice, UsdValue},
     dango_types::perps::UserState,
 };
@@ -31,12 +30,15 @@ use {
 /// Returns `None` when:
 /// - The computed price is non-positive (the position alone cannot trigger liquidation).
 /// - The position does not exist for the given pair.
-pub fn compute_liquidation_price(
+pub fn compute_liquidation_price<F>(
     pair_id: &PairId,
     user_state: &UserState,
-    oracle_querier: &mut OracleQuerier,
+    price_of: &mut F,
     perp_querier: &NoCachePerpQuerier,
-) -> anyhow::Result<Option<UsdPrice>> {
+) -> anyhow::Result<Option<UsdPrice>>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
     let Some(target) = user_state.positions.get(pair_id) else {
         return Ok(None);
     };
@@ -49,7 +51,7 @@ pub fn compute_liquidation_price(
     let mut other_mm = UsdValue::ZERO;
 
     for (pid, position) in &user_state.positions {
-        let oracle_price = oracle_querier.query_price_for_perps(pid)?;
+        let oracle_price = price_of(pid)?;
         let pair_state = perp_querier.query_pair_state(pid)?;
 
         let funding = compute_position_unrealized_funding(position, &pair_state)?;
@@ -103,23 +105,21 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
             constants::{btc, eth},
-            oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug_types::{Timestamp, btree_map, hash_map},
-        pyth_types::MarketSession,
+        grug_types::{btree_map, hash_map},
         std::collections::HashMap,
     };
 
-    /// Helper: build an oracle price entry for the mock querier.
-    ///
-    /// `price` is the integer dollar price (e.g. 2000 for $2,000).
-    fn oracle_entry(price: u128) -> Price {
-        Price::new(
-            UsdPrice::new_int(price as i128),
-            Timestamp::from_seconds(0),
-            MarketSession::Regular,
-        )
+    fn mock_prices(
+        prices: HashMap<PairId, UsdPrice>,
+    ) -> impl FnMut(&PairId) -> anyhow::Result<UsdPrice> {
+        move |pair_id| {
+            prices
+                .get(pair_id)
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
+        }
     }
 
     fn pair_param_with_mmr(mmr_permille: i128) -> PairParam {
@@ -155,13 +155,11 @@ mod tests {
             hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
             hash_map! { eth::DENOM.clone() => PairState::default() },
         );
-        let mut oracle_querier =
-            OracleQuerier::new_mock(hash_map! { eth::DENOM.clone() => oracle_entry(2000) });
+        let mut price_of = mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_int(2000) });
 
-        let liq =
-            compute_liquidation_price(&eth::DENOM, &user_state, &mut oracle_querier, &perp_querier)
-                .unwrap()
-                .expect("should have a liquidation price");
+        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &mut price_of, &perp_querier)
+            .unwrap()
+            .expect("should have a liquidation price");
 
         assert_eq!(liq, UsdPrice::new_raw(1_052_631_578));
     }
@@ -192,13 +190,11 @@ mod tests {
             hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
             hash_map! { eth::DENOM.clone() => PairState::default() },
         );
-        let mut oracle_querier =
-            OracleQuerier::new_mock(hash_map! { eth::DENOM.clone() => oracle_entry(2000) });
+        let mut price_of = mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_int(2000) });
 
-        let liq =
-            compute_liquidation_price(&eth::DENOM, &user_state, &mut oracle_querier, &perp_querier)
-                .unwrap()
-                .expect("should have a liquidation price");
+        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &mut price_of, &perp_querier)
+            .unwrap()
+            .expect("should have a liquidation price");
 
         assert_eq!(liq, UsdPrice::new_raw(2_857_142_857));
     }
@@ -235,13 +231,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier =
-            OracleQuerier::new_mock(hash_map! { eth::DENOM.clone() => oracle_entry(2000) });
+        let mut price_of = mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_int(2000) });
 
-        let liq =
-            compute_liquidation_price(&eth::DENOM, &user_state, &mut oracle_querier, &perp_querier)
-                .unwrap()
-                .expect("should have a liquidation price");
+        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &mut price_of, &perp_querier)
+            .unwrap()
+            .expect("should have a liquidation price");
 
         // C = -10000 - 50 = -10050, denom = -9.5
         // liq = 10050 / 9.5 = 1057.894736... (truncated at 6 decimals)
@@ -299,15 +293,13 @@ mod tests {
                 btc::DENOM.clone() => PairState::default(),
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => oracle_entry(2000),
-            btc::DENOM.clone() => oracle_entry(55_000),
-        });
+        let mut price_of = mock_prices(
+            hash_map! { eth::DENOM.clone() => UsdPrice::new_int(2000), btc::DENOM.clone() => UsdPrice::new_int(55_000) },
+        );
 
-        let liq =
-            compute_liquidation_price(&eth::DENOM, &user_state, &mut oracle_querier, &perp_querier)
-                .unwrap()
-                .expect("should have a liquidation price");
+        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &mut price_of, &perp_querier)
+            .unwrap()
+            .expect("should have a liquidation price");
 
         // C = 1000 + 5000 - 20000 - 0 - 2750 = -16750, denom = -9.5
         // liq = 16750 / 9.5 = 1763.157894... (truncated at 6 decimals)
@@ -343,11 +335,10 @@ mod tests {
             hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
             hash_map! { eth::DENOM.clone() => PairState::default() },
         );
-        let mut oracle_querier =
-            OracleQuerier::new_mock(hash_map! { eth::DENOM.clone() => oracle_entry(2000) });
+        let mut price_of = mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_int(2000) });
 
         let result =
-            compute_liquidation_price(&eth::DENOM, &user_state, &mut oracle_querier, &perp_querier)
+            compute_liquidation_price(&eth::DENOM, &user_state, &mut price_of, &perp_querier)
                 .unwrap();
 
         assert!(result.is_none());
@@ -361,10 +352,10 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+        let mut price_of = mock_prices(HashMap::new());
 
         let result =
-            compute_liquidation_price(&eth::DENOM, &user_state, &mut oracle_querier, &perp_querier)
+            compute_liquidation_price(&eth::DENOM, &user_state, &mut price_of, &perp_querier)
                 .unwrap();
 
         assert!(result.is_none());
@@ -403,13 +394,11 @@ mod tests {
             hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
             hash_map! { eth::DENOM.clone() => PairState::default() },
         );
-        let mut oracle_querier =
-            OracleQuerier::new_mock(hash_map! { eth::DENOM.clone() => oracle_entry(1500) });
+        let mut price_of = mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_int(1500) });
 
-        let liq =
-            compute_liquidation_price(&eth::DENOM, &user_state, &mut oracle_querier, &perp_querier)
-                .unwrap()
-                .expect("should still have a liquidation price");
+        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &mut price_of, &perp_querier)
+            .unwrap()
+            .expect("should still have a liquidation price");
 
         // liq = 19900 / 9.5 = 2094.736842... (above current oracle of 1500)
         assert_eq!(liq, UsdPrice::new_raw(2_094_736_842));

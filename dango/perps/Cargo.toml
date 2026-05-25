@@ -23,8 +23,8 @@ grug-math             = { workspace = true }
 grug-storage          = { workspace = true }
 grug-types            = { workspace = true }
 metrics               = { workspace = true, optional = true }
+pyth-types            = { workspace = true }
 tracing               = { workspace = true, optional = true }
 
 [dev-dependencies]
-pyth-types = { workspace = true }
 test-case  = { workspace = true }

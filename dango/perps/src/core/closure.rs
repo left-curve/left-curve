@@ -3,7 +3,6 @@ use {
         core::{compute_maintenance_margin, compute_user_equity},
         querier::NoCachePerpQuerier,
     },
-    dango_oracle::OracleQuerier,
     dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, UserState},
     grug_math::MathResult,
@@ -17,13 +16,16 @@ use {
 /// - accrued funding) falls below their total maintenance margin.
 ///
 /// A user with no open positions is never liquidatable.
-pub fn is_liquidatable(
-    oracle_querier: &mut OracleQuerier,
+pub fn is_liquidatable<F>(
+    price_of: &mut F,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
-) -> anyhow::Result<(bool, UsdValue, UsdValue)> {
-    let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
-    let maintenance_margin = compute_maintenance_margin(oracle_querier, perp_querier, user_state)?;
+) -> anyhow::Result<(bool, UsdValue, UsdValue)>
+where
+    F: FnMut(&PairId) -> anyhow::Result<UsdPrice>,
+{
+    let equity = compute_user_equity(price_of, perp_querier, user_state)?;
+    let maintenance_margin = compute_maintenance_margin(price_of, perp_querier, user_state)?;
 
     Ok((equity < maintenance_margin, equity, maintenance_margin))
 }
@@ -220,13 +222,22 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
             constants::eth,
-            oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug_types::{Timestamp, btree_map, hash_map},
-        pyth_types::MarketSession,
+        grug_types::{btree_map, hash_map},
         std::collections::HashMap,
     };
+
+    fn mock_prices(
+        prices: HashMap<PairId, UsdPrice>,
+    ) -> impl FnMut(&PairId) -> anyhow::Result<UsdPrice> {
+        move |pair_id| {
+            prices
+                .get(pair_id)
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("no price for {pair_id}"))
+        }
+    }
 
     fn pair_btc() -> PairId {
         "perp/btcusd".parse().unwrap()
@@ -259,10 +270,10 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+        let mut price_of = mock_prices(HashMap::new());
 
         assert!(
-            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            !is_liquidatable(&mut price_of, &perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -301,16 +312,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(250_000) });
 
         assert!(
-            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            !is_liquidatable(&mut price_of, &perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -349,16 +355,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
 
         assert!(
-            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            !is_liquidatable(&mut price_of, &perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -397,16 +398,11 @@ mod tests {
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(150_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
+        let mut price_of =
+            mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(150_000) });
 
         assert!(
-            is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            is_liquidatable(&mut price_of, &perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -453,28 +449,23 @@ mod tests {
                     },
                 },
             );
-            let oracle_querier = OracleQuerier::new_mock(hash_map! {
-                eth::DENOM.clone() => Price::new(
-                    UsdPrice::new_percent(200_000),
-                    Timestamp::from_seconds(0),
-                    MarketSession::Regular,
-                ),
-            });
-            (user_state, perp_querier, oracle_querier)
+            let price_of =
+                mock_prices(hash_map! { eth::DENOM.clone() => UsdPrice::new_percent(200_000) });
+            (user_state, perp_querier, price_of)
         };
 
         // Case 1: healthy despite funding
-        let (us, pq, mut oq) = make_fixtures(10_000);
+        let (us, pq, mut po) = make_fixtures(10_000);
         assert!(
-            !is_liquidatable(&mut oq, &pq, &us)
+            !is_liquidatable(&mut po, &pq, &us)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
 
         // Case 2: funding pushes equity below maintenance margin
-        let (us, pq, mut oq) = make_fixtures(900);
+        let (us, pq, mut po) = make_fixtures(900);
         assert!(
-            is_liquidatable(&mut oq, &pq, &us)
+            is_liquidatable(&mut po, &pq, &us)
                 .map(|(is, ..)| is)
                 .unwrap()
         );

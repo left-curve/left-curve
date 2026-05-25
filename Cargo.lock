@@ -4016,6 +4016,7 @@ dependencies = [
  "dango-gateway",
  "dango-oracle",
  "dango-order-book",
+ "dango-perps",
  "dango-types",
  "grug-app",
  "grug-math",
