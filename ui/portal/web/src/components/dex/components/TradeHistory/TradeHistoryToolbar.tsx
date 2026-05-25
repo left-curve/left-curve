@@ -37,8 +37,6 @@ export const TradeHistoryToolbar: React.FC = () => {
     if (!account || isExporting || nodes.length === 0) return;
     setIsExporting(true);
     try {
-      // Export uses the pages already loaded by the infinite query — users can
-      // scroll further to load more before exporting.
       const csv = buildPerpsTradeHistoryCsv(nodes, headers);
       downloadCsv(tradeHistoryCsvFilename(), csv);
     } finally {
@@ -46,8 +44,6 @@ export const TradeHistoryToolbar: React.FC = () => {
     }
   }, [account, headers, isExporting, nodes]);
 
-  // Filter UI and CSV export are gated by the `trade_history_export` flag.
-  // ProTrade controls this via the provider's `enableFilters` prop.
   if (!filtersEnabled) return null;
 
   const datePicker = (

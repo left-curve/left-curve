@@ -43,10 +43,9 @@ export function useQueryWithPagination<
 
   const [pagination, setPagination] = useState<GraphqlPagination>(initialPagination);
 
-  // Reset to the first page whenever the caller-provided queryKey changes
-  // (e.g. when a filter like a date range is updated). Without this, the cursor
-  // from the previous query would stay applied and the user would land on an
-  // arbitrary page of the new dataset.
+  // Reset to the first page when the caller's queryKey changes (e.g. a filter
+  // update). Without this the previous cursor would still be applied to the
+  // new dataset and the user would land on an arbitrary page.
   const serializedQueryKey = JSON.stringify(query.queryKey);
   useEffect(() => {
     setPagination({

@@ -8,21 +8,11 @@ import { CHARACTERS } from "../../foundation/CharacterSelector";
 export type PnlCardProps = {
   ref?: Ref<HTMLDivElement>;
   symbol: string;
-  /** Signed size — sign determines long/short. */
   size: string;
-  /** Price label shown under the "Entry Price" slot. */
   referencePrice: string;
-  /**
-   * Price label shown under the "Mark Price" slot. For historical fills
-   * this equals `referencePrice` (the fill price); for live positions
-   * it's the current mark.
-   */
   markPrice: string | number;
-  /** Precomputed signed percent — caller decides the formula. */
   displayPercent: number;
-  /** Leverage suffix, e.g. "2.50". `null` omits the suffix from the badge. */
   leverage: string | null;
-  /** Optional small subtitle line under the symbol row. */
   subtitle?: string;
   selectedCharacter: number;
 };

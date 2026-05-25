@@ -34,10 +34,7 @@ const eventTypeLabels: Record<string, string> = {
 const V016_CUTOFF = new Date("2026-04-22T12:00:00Z");
 const V017_CUTOFF = new Date("2026-04-30T12:00:00Z");
 
-// Roughly the rendered row height — virtualizer adapts via measureElement,
-// but a sensible estimate keeps the initial scroll math accurate.
 const ROW_HEIGHT = 32;
-// Prefetch the next page when the user is within this many rows of the end.
 const FETCH_NEXT_THRESHOLD = 10;
 
 type NormalizedFields = {
@@ -92,8 +89,6 @@ function normalizePerpsEvent(event: PerpsEvent): NormalizedFields {
 type ColumnDef = {
   key: string;
   header: string;
-  // Width string passed to grid-template-columns. `1fr` for the stretchy
-  // first column, fixed/min widths for the rest so columns stay aligned.
   width: string;
   render: (event: PerpsEvent, fields: NormalizedFields) => React.ReactNode;
 };
@@ -364,8 +359,6 @@ export const PerpsTradeHistory: React.FC = () => {
 
   const virtualItems = virtualizer.getVirtualItems();
 
-  // Auto-load the next page once the bottom of the viewport reaches the
-  // threshold. The context guard avoids overlapping fetches.
   useEffect(() => {
     const last = virtualItems[virtualItems.length - 1];
     if (!last) return;
@@ -379,9 +372,6 @@ export const PerpsTradeHistory: React.FC = () => {
   const showEndOfList =
     !hasNextPage && !isLoading && !isFetchingNextPage && normalizedNodes.length > 0;
 
-  // Split scroll into two layers: horizontal scroll on the outer wrapper so
-  // header + body slide together; vertical scroll on the inner body only so
-  // the sticky header stays in place and the scrollbar sits next to the rows.
   return (
     <div className="flex flex-col w-full max-h-[60vh] overflow-x-auto">
       <div

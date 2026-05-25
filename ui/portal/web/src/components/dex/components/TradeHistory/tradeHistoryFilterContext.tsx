@@ -19,9 +19,7 @@ export type TradeHistoryFilter = {
   to: Date;
 };
 
-// TODO: Backend currently caps `perpsEvents` at max_items=100. Once bumped,
-// this can be raised. 30 is sized to comfortably cover the initial viewport
-// so a follow-up fetch only fires once the user actually scrolls past it.
+// Backend caps `perpsEvents` at max_items=100; revisit if that limit changes.
 const PAGE_SIZE = 30;
 
 const buildPresetRange = (days: number): { from: Date; to: Date } => {
@@ -44,17 +42,11 @@ type TradeHistoryContextValue = {
   setPreset: (preset: TradeHistoryPreset) => void;
   setCustomRange: (from: Date, to: Date) => void;
   queryRange: QueryRange;
-  /** Flat list of perps events across all loaded pages. */
   nodes: PerpsEvent[];
   isLoading: boolean;
   isFetchingNextPage: boolean;
   hasNextPage: boolean;
   fetchNextPage: () => void;
-  /**
-   * Whether the filter UI (date presets, range picker) should be exposed and
-   * applied to the query. When false, the query runs without date filters so
-   * the user sees the most recent events regardless of when the page loaded.
-   */
   filtersEnabled: boolean;
 };
 
@@ -69,11 +61,11 @@ export const TradeHistoryFilterProvider: React.FC<
   const publicClient = usePublicClient();
   const [filter, setFilter] = useState<TradeHistoryFilter>(initialFilter);
 
+  // Rolling presets stay open-ended on the upper bound so newly indexed
+  // trades aren't capped by a `to` value frozen at page load. Only custom
+  // ranges keep the explicit upper bound the user picked.
   const queryRange: QueryRange = enableFilters
     ? {
-        // Rolling presets stay open-ended on the upper bound so newly indexed
-        // trades aren't capped by a `to` value frozen at page load. Custom
-        // ranges keep the explicit upper bound the user picked.
         earlierThan: filter.preset === null ? filter.to.toISOString() : undefined,
         laterThan: filter.from.toISOString(),
       }
