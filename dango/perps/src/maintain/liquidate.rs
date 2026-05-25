@@ -104,14 +104,10 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // -------------------- 4. Compute oracle prices ---------------------------
 
-    let mut oracle_prices = BTreeMap::new();
-
-    for pair_id in &pair_ids {
-        oracle_prices.insert(
-            pair_id.clone(),
-            PAIR_STATES.load(ctx.storage, pair_id)?.index_price,
-        );
-    }
+    let oracle_prices = pair_states
+        .iter()
+        .map(|(pair_id, pair_state)| (pair_id.clone(), pair_state.index_price))
+        .collect::<BTreeMap<_, _>>();
 
     // --------------------------- 5. Business logic ---------------------------
 
