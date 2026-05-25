@@ -256,4 +256,107 @@ mod tests {
         .unwrap();
         assert!(result < UsdPrice::new_int(110));
     }
+
+    /// When delta_t equals the cap exactly (c * tau = 0.1 * 30min = 180s),
+    /// the EWMA weight is 1 - exp(-0.1) ~= 9.52%. The result should match
+    /// the theoretical value.
+    #[test]
+    fn c1_delta_t_exactly_at_cap() {
+        let result = compute_ewma_index_price(
+            UsdPrice::new_int(100),
+            Some(UsdPrice::new_int(110)),
+            Some(UsdPrice::new_int(115)),
+            Duration::from_seconds(180),
+        )
+        .unwrap();
+        assert!(result > UsdPrice::new_percent(10_090)); // > 100.90
+        assert!(result < UsdPrice::new_int(101)); // < 101
+    }
+
+    /// At 181s the time delta is capped to 180s, so the result must equal
+    /// the 180s result exactly. At 179s (below the cap) the result must be
+    /// strictly smaller since a shorter interval yields a smaller EWMA weight.
+    #[test]
+    fn c2_cap_boundary_179s_vs_181s() {
+        let s = UsdPrice::new_int(100);
+        let bid = Some(UsdPrice::new_int(110));
+        let ask = Some(UsdPrice::new_int(115));
+
+        let at_179 = compute_ewma_index_price(s, bid, ask, Duration::from_seconds(179)).unwrap();
+        let at_180 = compute_ewma_index_price(s, bid, ask, Duration::from_seconds(180)).unwrap();
+        let at_181 = compute_ewma_index_price(s, bid, ask, Duration::from_seconds(181)).unwrap();
+
+        // 181s is capped to 180s, so result must equal 180s exactly.
+        assert_eq!(at_181, at_180);
+        // 179s is below the cap, so it yields a slightly smaller alpha.
+        assert!(at_179 < at_180);
+    }
+
+    /// Per the trade.xyz spec, after one time constant (tau = 30 min) of
+    /// sustained one-sided pressure, the index converges ~63% of the gap
+    /// toward the order book. With S_0 = 100 and a target of 200, after
+    /// 600 ticks of 3s each the result should be approximately 163.
+    #[test]
+    fn c3_sustained_convergence_over_tau() {
+        let mut s = UsdPrice::new_int(100);
+        let bid = Some(UsdPrice::new_int(200));
+        let ask = Some(UsdPrice::new_int(200));
+        let dt = Duration::from_seconds(3);
+
+        for _ in 0..600 {
+            s = compute_ewma_index_price(s, bid, ask, dt).unwrap();
+        }
+
+        let target = UsdPrice::new_int(163);
+        let tolerance = UsdPrice::new_int(2);
+        assert!(
+            s > target.checked_sub(tolerance).unwrap()
+                && s < target.checked_add(tolerance).unwrap(),
+            "after tau of pressure, expected ~163, got {s}"
+        );
+    }
+
+    /// When the index is below the bid but well inside the ask, only the bid
+    /// side contributes to IPD. The ask term is zero because the index is not
+    /// above the ask.
+    #[test]
+    fn c4_asymmetric_below_bid_inside_ask() {
+        let result = compute_ewma_index_price(
+            UsdPrice::new_int(100),
+            Some(UsdPrice::new_int(105)),
+            Some(UsdPrice::new_int(120)),
+            Duration::from_seconds(3),
+        )
+        .unwrap();
+        assert!(result > UsdPrice::new_int(100));
+        assert!(result < UsdPrice::new_int(101));
+    }
+
+    /// Equal displacement on opposite sides of the spread must produce equal
+    /// magnitude of movement. Setup A has IPD = +10 (below bid); setup B has
+    /// IPD = -10 (above ask). The absolute price change must be the same.
+    #[test]
+    fn c5_symmetry_equal_displacement() {
+        let dt = Duration::from_seconds(3);
+
+        let result_a = compute_ewma_index_price(
+            UsdPrice::new_int(100),
+            Some(UsdPrice::new_int(110)),
+            Some(UsdPrice::new_int(115)),
+            dt,
+        )
+        .unwrap();
+
+        let result_b = compute_ewma_index_price(
+            UsdPrice::new_int(125),
+            Some(UsdPrice::new_int(110)),
+            Some(UsdPrice::new_int(115)),
+            dt,
+        )
+        .unwrap();
+
+        let delta_a = result_a.checked_sub(UsdPrice::new_int(100)).unwrap();
+        let delta_b = UsdPrice::new_int(125).checked_sub(result_b).unwrap();
+        assert_eq!(delta_a, delta_b);
+    }
 }
