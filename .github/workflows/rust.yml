@@ -20,6 +20,7 @@ on:
       - "main"
       - "develop"
       - "v0.19"
+      - "v0.19-jemalloc"
       # - "ui/testnet"
       # - "ui/release"
     paths:
