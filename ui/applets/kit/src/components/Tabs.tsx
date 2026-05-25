@@ -43,6 +43,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   const hasMounted = useHasMounted();
   const containerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [tabLayouts, setTabLayouts] = useState<Map<string, TabLayout>>(new Map());
 
   const tabs = keys ? keys : Children.toArray(children);
@@ -79,13 +80,26 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   useEffect(() => {
     measureTabs();
     window.addEventListener("resize", measureTabs);
-    return () => window.removeEventListener("resize", measureTabs);
+
+    const observer = new ResizeObserver(() => measureTabs());
+    resizeObserverRef.current = observer;
+    if (containerRef.current) observer.observe(containerRef.current);
+    tabRefs.current.forEach((button) => observer.observe(button));
+
+    return () => {
+      window.removeEventListener("resize", measureTabs);
+      observer.disconnect();
+      resizeObserverRef.current = null;
+    };
   }, [measureTabs, tabs.length]);
 
   const setTabRef = useCallback((key: string, el: HTMLButtonElement | null) => {
     if (el) {
       tabRefs.current.set(key, el);
+      resizeObserverRef.current?.observe(el);
     } else {
+      const existing = tabRefs.current.get(key);
+      if (existing) resizeObserverRef.current?.unobserve(existing);
       tabRefs.current.delete(key);
     }
   }, []);
