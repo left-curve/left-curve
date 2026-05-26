@@ -58,7 +58,7 @@ export function createTransport(
     maxDelay: wsMaxDelay = 30_000,
   } = config.wsRetry ?? {};
 
-  const wsClientStatus = { isConnected: false };
+  const wsClientStatus = { isConnected: false, isConnecting: false };
   const wsStatusEmitter = new EventEmitter();
   const wsRef: { current: ReturnType<typeof createClient> | null } = { current: null };
   let wsInitialized = false;
@@ -81,14 +81,29 @@ export function createTransport(
           typeof retryCount === "number" ? retryCount < wsMaxRetries : true,
       });
 
+      if (!isLazy) {
+        wsClientStatus.isConnected = false;
+        wsClientStatus.isConnecting = true;
+      }
+
       ws.on("connected", () => {
+        if (wsRef.current !== ws) return;
         wsClientStatus.isConnected = true;
+        wsClientStatus.isConnecting = false;
         wsStatusEmitter.emit("connected");
       });
 
       ws.on("closed", () => {
+        if (wsRef.current !== ws) return;
         wsClientStatus.isConnected = false;
+        wsClientStatus.isConnecting = false;
         wsStatusEmitter.emit("closed");
+      });
+
+      ws.on("connecting", () => {
+        if (wsRef.current !== ws) return;
+        wsClientStatus.isConnected = false;
+        wsClientStatus.isConnecting = true;
       });
 
       return ws;
@@ -96,18 +111,11 @@ export function createTransport(
 
     wsRef.current = createWsClient(lazy);
 
-    let reconnecting = false;
     const attemptReconnect = () => {
-      if (reconnecting) return;
-      reconnecting = true;
-      try {
-        if (!wsClientStatus.isConnected) {
-          wsRef.current?.dispose();
-          wsRef.current = createWsClient(false);
-        }
-      } finally {
-        reconnecting = false;
-      }
+      if (wsClientStatus.isConnected || wsClientStatus.isConnecting) return;
+      const previousWs = wsRef.current;
+      wsRef.current = createWsClient(false);
+      void previousWs?.dispose();
     };
 
     if (typeof document !== "undefined") {
