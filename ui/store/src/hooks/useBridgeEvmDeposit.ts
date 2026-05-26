@@ -18,6 +18,10 @@ import type { useBridgeState } from "./useBridgeState.js";
 
 const MAX_SAFE = 2n ** 256n - 1n;
 
+export class BridgeConfigError extends Error {
+  override name = "BridgeConfigError";
+}
+
 export type UseBridgeEvmDepositParameters = {
   connector?: Connector;
   coin: AnyCoin;
@@ -27,7 +31,7 @@ export type UseBridgeEvmDepositParameters = {
 
 export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
   const { connector, coin, amount, config } = parameters;
-  if (!config || !config.router) throw new Error("Unexpected missing router config");
+  if (!config || !config.router) throw new BridgeConfigError("Unexpected missing router config");
 
   const { bridger, router, chain } = config;
 
