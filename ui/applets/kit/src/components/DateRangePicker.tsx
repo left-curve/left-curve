@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
-import { format } from "date-fns";
-import { twMerge } from "@left-curve/foundation";
-import { formatDate } from "@left-curve/foundation";
+import { formatDate, twMerge } from "@left-curve/foundation";
 
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { Popover } from "./Popover";
@@ -160,8 +158,8 @@ export function DateRangePicker({
         },
       }}
       formatters={{
-        formatWeekdayName: (date) => format(date, "EEEEEE"),
-        formatCaption: (date) => format(date, "MMMM yyyy"),
+        formatWeekdayName: (date) => formatDate(date, "EEEEEE"),
+        formatCaption: (date) => formatDate(date, "MMMM yyyy"),
       }}
       classNames={dayPickerClassNames}
     />
