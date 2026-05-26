@@ -1223,7 +1223,12 @@
         "dateAndTime": "Date & Time",
         "exportCsv": "Export CSV",
         "customDate": "Custom date",
-        "totalLoaded": "Showing {count} trades"
+        "totalLoaded": "Showing {count} trades",
+        "eventType.trade": "Trade",
+        "eventType.liquidation": "Liquidation",
+        "eventType.adl": "ADL",
+        "side.buy": "Buy",
+        "side.sell": "Sell"
       },
       "history": {
         "id": "ID",

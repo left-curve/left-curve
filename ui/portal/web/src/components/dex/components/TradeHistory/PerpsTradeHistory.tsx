@@ -17,15 +17,10 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
+import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
 import { useTradeHistoryFilter } from "./tradeHistoryFilterContext";
 
 import type { PerpsEvent } from "@left-curve/types";
-
-const eventTypeLabels: Record<string, string> = {
-  order_filled: "Trade",
-  liquidated: "Liquidation",
-  deleveraged: "ADL",
-};
 
 const V016_CUTOFF = new Date("2026-04-22T12:00:00Z");
 const V017_CUTOFF = new Date("2026-04-30T12:00:00Z");
@@ -57,7 +52,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       key: "type",
       header: m["dex.protrade.history.type"](),
       width: "minmax(80px, 1fr)",
-      render: (event) => <Cell.Text text={eventTypeLabels[event.eventType] ?? event.eventType} />,
+      render: (event) => <Cell.Text text={getPerpsEventLabel(event.eventType)} />,
     },
     {
       key: "direction",
@@ -65,11 +60,11 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       width: "minmax(80px, 1fr)",
       render: (_, { size }) => {
         if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
-        const isBuy = !size.startsWith("-");
+        const isShort = size.startsWith("-");
         return (
           <Cell.Text
-            text={isBuy ? "Buy" : "Sell"}
-            className={isBuy ? "text-green-500" : "text-red-500"}
+            text={getSideLabel(isShort)}
+            className={isShort ? "text-red-500" : "text-green-500"}
           />
         );
       },
@@ -244,15 +239,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
             </Tooltip>
           );
         }
-        return (
-          <Cell.Text
-            text={
-              isMaker
-                ? m["dex.protrade.tradeHistory.maker"]()
-                : m["dex.protrade.tradeHistory.taker"]()
-            }
-          />
-        );
+        return <Cell.Text text={getMakerTakerLabel(!!isMaker)} />;
       },
     },
     {

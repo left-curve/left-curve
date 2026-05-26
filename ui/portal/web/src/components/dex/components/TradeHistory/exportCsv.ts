@@ -3,12 +3,7 @@ import { Decimal } from "@left-curve/utils";
 import type { PerpsEvent } from "@left-curve/types";
 
 import { normalizePerpsEvent } from "./normalizePerpsEvent";
-
-const PERPS_EVENT_LABELS: Record<string, string> = {
-  order_filled: "Trade",
-  liquidated: "Liquidation",
-  deleveraged: "ADL",
-};
+import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
 
 export type PerpsCsvHeaders = {
   pair: string;
@@ -59,10 +54,10 @@ export function buildPerpsTradeHistoryCsv(
     const norm = normalizePerpsEvent(event);
     const pair = event.pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
     const baseSymbol = event.pairId.replace("perp/", "").replace(/usd$/i, "").toUpperCase();
-    const eventLabel = PERPS_EVENT_LABELS[event.eventType] ?? event.eventType;
+    const eventLabel = getPerpsEventLabel(event.eventType);
 
     const isShort = norm.size?.startsWith("-") ?? false;
-    const direction = norm.size ? (isShort ? "Sell" : "Buy") : "";
+    const direction = norm.size ? getSideLabel(isShort) : "";
     const absSize = norm.size ? (isShort ? norm.size.slice(1) : norm.size) : "";
     const sizeWithSymbol = absSize ? `${absSize} ${baseSymbol}` : "";
 
@@ -70,11 +65,9 @@ export function buildPerpsTradeHistoryCsv(
       absSize && norm.price ? Decimal(absSize).times(Decimal(norm.price)).toFixed() : "";
 
     const makerTaker =
-      event.eventType !== "order_filled" || norm.isMaker === null
+      event.eventType !== "order_filled" || norm.isMaker === undefined
         ? ""
-        : norm.isMaker
-          ? "Maker"
-          : "Taker";
+        : getMakerTakerLabel(norm.isMaker);
 
     return [
       pair,
@@ -95,7 +88,6 @@ export function buildPerpsTradeHistoryCsv(
 }
 
 export function downloadCsv(filename: string, content: string): void {
-  // Prefix with BOM so Excel detects UTF-8 properly.
   const blob = new Blob([`\ufeff${content}`], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
