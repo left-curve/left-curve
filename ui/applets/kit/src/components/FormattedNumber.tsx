@@ -2,7 +2,7 @@ import { useApp } from "@left-curve/foundation";
 import { useId } from "react";
 import { twMerge } from "@left-curve/foundation";
 
-import { formatDisplayNumber } from "@left-curve/utils";
+import { Decimal, formatDisplayNumber } from "@left-curve/utils";
 
 import type React from "react";
 import type { FormatNumberOptions } from "@left-curve/utils";
@@ -28,11 +28,7 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
 
   const Component = as;
 
-  if (
-    number === null ||
-    number === undefined ||
-    (typeof number === "number" && !Number.isFinite(number))
-  ) {
+  if (number === null || number === undefined || Decimal.isNaN(number)) {
     return <Component className={twMerge(className)}>-</Component>;
   }
 

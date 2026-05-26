@@ -5,6 +5,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { useHeaderHeight } from "@left-curve/applets-kit";
 
 import { ProTrade } from "~/components/dex/components/ProTrade";
+import {
+  getTradeQuoteDenom,
+  parseTradePairSymbols,
+} from "~/components/dex/helpers/tradePairSymbols";
 
 export const Route = createLazyFileRoute("/(app)/_app/trade/$pairSymbols")({
   component: ProTradeApplet,
@@ -43,11 +47,11 @@ function ProTradeApplet() {
     });
   };
 
-  const [baseSymbol, quoteSymbol] = pairSymbols.split("-");
+  const symbols = parseTradePairSymbols(pairSymbols);
 
   const pairId = {
-    baseDenom: coins.bySymbol[baseSymbol]?.denom,
-    quoteDenom: coins.bySymbol[quoteSymbol]?.denom,
+    baseDenom: symbols ? (coins.bySymbol[symbols.baseSymbol]?.denom ?? "") : "",
+    quoteDenom: symbols ? (getTradeQuoteDenom(symbols.quoteSymbol, coins.bySymbol) ?? "") : "",
   };
 
   return (
