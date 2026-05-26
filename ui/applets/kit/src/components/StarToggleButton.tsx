@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { twMerge } from "@left-curve/foundation";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { IconStar } from "./icons/IconStar";
 import { IconEmptyStar } from "./icons/IconEmptyStar";
@@ -15,10 +16,11 @@ type StarToggleButtonProps = {
 export const StarToggleButton = memo<StarToggleButtonProps>(
   ({ isActive, onToggle, className, isDisabled, "aria-label": ariaLabel }) => {
     const Icon = isActive ? IconStar : IconEmptyStar;
+    const defaultLabel = isActive ? m["common.starToggle.remove"]() : m["common.starToggle.add"]();
     return (
       <button
         type="button"
-        aria-label={ariaLabel ?? (isActive ? "Remove from favorites" : "Add to favorites")}
+        aria-label={ariaLabel ?? defaultLabel}
         aria-pressed={isActive}
         disabled={isDisabled}
         onPointerDown={(e) => e.stopPropagation()}

@@ -87,7 +87,9 @@
     "welcomeToDango": "Welcome to Dango",
     "connectWithPasskey": "Connect with Passkey",
     "connectWallet": "Connect Wallet",
-    "createNewUser": "Create New User"
+    "createNewUser": "Create New User",
+    "starToggle.add": "Add to favorites",
+    "starToggle.remove": "Remove from favorites"
   },
   "footer": {
     "terms": "Terms of Use",

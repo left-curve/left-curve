@@ -8,9 +8,14 @@ import { SearchTokenTable } from "./SearchTokenTable";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
-import type { PairId, PerpsPairParam } from "@left-curve/types";
+import type { GetAppConfigData } from "@left-curve/store";
+import type { PairId } from "@left-curve/types";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
+
+function assertNever(x: never): never {
+  throw new Error(`Unexpected value: ${String(x)}`);
+}
 
 type SearchTokenHeaderProps = {
   pairId: PairId;
@@ -56,13 +61,13 @@ const PERPS_QUOTE_COIN: AnyCoin = {
 };
 
 function normalizeRows(
-  config: any,
+  config: GetAppConfigData | undefined,
   coins: { byDenom: Record<string, AnyCoin>; bySymbol: Record<string, AnyCoin> },
 ): SearchTokenRow[] {
   const rows: SearchTokenRow[] = [];
 
-  const perpsPairs: Record<string, PerpsPairParam> = (config as any)?.perpsPairs ?? {};
-  for (const [perpsPairId, _param] of Object.entries(perpsPairs)) {
+  const perpsPairs = config?.perpsPairs ?? {};
+  for (const [perpsPairId] of Object.entries(perpsPairs)) {
     const symbol = perpsPairId.replace("perp/", "").toUpperCase();
 
     const baseSym = symbol.replace(/USDC$|USD$/, "");
@@ -106,6 +111,8 @@ const SearchTokenMenu: React.FC<{
               return true;
             case "favorites":
               return hasFavPair(row.pairKey);
+            default:
+              return assertNever(activeTab);
           }
         })
         .filter((row) => {
