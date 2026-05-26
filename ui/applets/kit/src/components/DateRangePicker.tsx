@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import { formatDate, twMerge } from "@left-curve/foundation";
+import { tv } from "tailwind-variants";
 
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { Popover } from "./Popover";
@@ -80,11 +81,6 @@ export function DateRangePicker({
     </>
   );
 
-  const triggerClasses = twMerge(
-    "exposure-xs-italic text-ink-secondary-blue hover:text-primitives-blue-light-600 transition-colors gap-1.5 whitespace-nowrap",
-    triggerClassName,
-  );
-
   const calendar = (effectiveNumberOfMonths: number) => (
     <DayPicker
       mode="range"
@@ -121,37 +117,23 @@ export function DateRangePicker({
           const isMiddle = !!modifiers.range_middle;
           const isSelected = !!modifiers.selected;
 
-          const isStartAndEnd = isStart && isEnd;
-          const onlyStart = isStart && !isEnd;
-          const onlyEnd = isEnd && !isStart;
+          const state =
+            isStart && isEnd
+              ? "startAndEnd"
+              : isStart
+                ? "onlyStart"
+                : isEnd
+                  ? "onlyEnd"
+                  : isMiddle
+                    ? "middle"
+                    : isSelected
+                      ? "selected"
+                      : "default";
 
-          const stateClasses = isStartAndEnd
-            ? "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg"
-            : onlyStart
-              ? "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-l-lg rounded-r-none"
-              : onlyEnd
-                ? "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-r-lg rounded-l-none"
-                : isMiddle
-                  ? "bg-surface-primary-red text-ink-secondary-700 rounded-none"
-                  : isSelected
-                    ? "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg"
-                    : "rounded-md hover:bg-surface-tertiary-rice";
-
-          const hasRightExtension = (onlyStart || isMiddle) && !isEnd;
-          const extensionClasses = hasRightExtension
-            ? "relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red"
-            : "";
+          const hasRightExtension = (state === "onlyStart" || state === "middle") && !isEnd;
 
           return (
-            <button
-              type="button"
-              {...props}
-              className={twMerge(
-                "w-full h-full flex items-center justify-center cursor-pointer transition-colors diatype-sm-medium text-ink-secondary-700 outline-none focus:outline-none focus-visible:outline-none",
-                stateClasses,
-                extensionClasses,
-              )}
-            >
+            <button type="button" {...props} className={dayButton({ state, hasRightExtension })}>
               {day.date.getDate()}
             </button>
           );
@@ -171,7 +153,7 @@ export function DateRangePicker({
         showArrow={false}
         classNames={{
           base: className,
-          trigger: triggerClasses,
+          trigger: trigger({ className: triggerClassName }),
           menu: "p-6 bg-surface-secondary-rice rounded-xl shadow-account-card",
         }}
         trigger={triggerContent}
@@ -185,7 +167,7 @@ export function DateRangePicker({
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className={twMerge("flex items-center", triggerClasses, className)}
+        className={trigger({ asButton: true, className: twMerge(triggerClassName, className) })}
       >
         {triggerContent}
       </button>
@@ -210,6 +192,35 @@ export function DateRangePicker({
     </>
   );
 }
+
+const trigger = tv({
+  base: "exposure-xs-italic text-ink-secondary-blue hover:text-primitives-blue-light-600 transition-colors gap-1.5 whitespace-nowrap",
+  variants: {
+    asButton: { true: "flex items-center" },
+  },
+});
+
+const dayButton = tv(
+  {
+    base: "w-full h-full flex items-center justify-center cursor-pointer transition-colors diatype-sm-medium text-ink-secondary-700 outline-none focus:outline-none focus-visible:outline-none",
+    variants: {
+      state: {
+        startAndEnd: "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg",
+        onlyStart:
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-l-lg rounded-r-none",
+        onlyEnd:
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-r-lg rounded-l-none",
+        middle: "bg-surface-primary-red text-ink-secondary-700 rounded-none",
+        selected: "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg",
+        default: "rounded-md hover:bg-surface-tertiary-rice",
+      },
+      hasRightExtension: {
+        true: "relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
+      },
+    },
+  },
+  { twMerge: true },
+);
 
 const dayPickerClassNames = {
   root: "rdp text-ink-primary-900 relative w-fit mx-auto",
