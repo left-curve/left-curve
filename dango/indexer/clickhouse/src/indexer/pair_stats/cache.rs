@@ -76,7 +76,10 @@ impl PairStatsCache {
 
     // -- batch helpers --------------------------------------------------------
 
-    /// Latest clearing_price per pair (the one with the highest block_height).
+    /// Latest clearing_price per pair (the one with the highest block_height),
+    /// bounded to the last 7 days. Pairs dormant for >7 days drop out of
+    /// "current" — acceptable since the same pair would also report zero 24 h
+    /// volume.
     async fn fetch_current_prices(
         client: &clickhouse::Client,
     ) -> Result<HashMap<(String, String), u128>> {
@@ -86,6 +89,7 @@ impl PairStatsCache {
                 SELECT base_denom, quote_denom,
                        argMax(clearing_price, block_height) AS price
                 FROM pair_prices
+                WHERE created_at >= now() - INTERVAL 7 DAY
                 GROUP BY base_denom, quote_denom
                 "#,
             )
@@ -124,8 +128,8 @@ impl PairStatsCache {
             .collect())
     }
 
-    /// Earliest clearing_price per pair – used as fallback when no data exists
-    /// from 24 h ago.
+    /// Earliest clearing_price per pair within the last 24 h – used as
+    /// fallback when no data exists from 24 h ago.
     async fn fetch_earliest_prices(
         client: &clickhouse::Client,
     ) -> Result<HashMap<(String, String), u128>> {
@@ -135,6 +139,7 @@ impl PairStatsCache {
                 SELECT base_denom, quote_denom,
                        argMin(clearing_price, block_height) AS price
                 FROM pair_prices
+                WHERE created_at >= now() - INTERVAL 24 HOUR
                 GROUP BY base_denom, quote_denom
                 "#,
             )
