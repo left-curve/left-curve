@@ -1278,7 +1278,13 @@
         "name": "Name",
         "price": "Price",
         "24hChange": "24h Change",
-        "volume": "Volume"
+        "volume": "Volume",
+        "tabs": {
+          "all": "All",
+          "favorites": "Favorites",
+          "crypto": "Crypto"
+        },
+        "emptyFavorites": "You haven't added any favorites yet. Tap the star next to a pair to add it."
       },
       "perps": {
         "availableToTrade": "Available to Trade",

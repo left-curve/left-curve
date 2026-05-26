@@ -1,7 +1,7 @@
 import { useAppConfig, useConfig, perpsMarginAsset, useFavPairs } from "@left-curve/store";
 import { useRef, useState } from "react";
 
-import { IconSearch, Input, Popover, Tabs, useMediaQuery } from "@left-curve/applets-kit";
+import { IconSearch, Input, Popover, Tab, Tabs, useMediaQuery } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
@@ -80,14 +80,13 @@ function normalizeRows(
   return rows;
 }
 
-const SEARCH_TOKEN_TABS = ["All", "Favorites", "Crypto"] as const;
-type SearchTokenTab = (typeof SEARCH_TOKEN_TABS)[number];
+type SearchTokenTab = "all" | "favorites" | "crypto";
 
 const SearchTokenMenu: React.FC<{
   pairId: PairId;
   onChangePairId: (row: SearchTokenRow) => void;
 }> = ({ onChangePairId }) => {
-  const [activeTab, setActiveTab] = useState<SearchTokenTab>("All");
+  const [activeTab, setActiveTab] = useState<SearchTokenTab>("all");
   const [searchText, setSearchText] = useState<string>("");
   const { data: config } = useAppConfig();
   const { coins } = useConfig();
@@ -98,10 +97,10 @@ const SearchTokenMenu: React.FC<{
   const filteredRows = allRows
     .filter((row) => {
       switch (activeTab) {
-        case "All":
-        case "Crypto":
+        case "all":
+        case "crypto":
           return true;
-        case "Favorites":
+        case "favorites":
           return hasFavPair(row.pairKey);
       }
     })
@@ -115,7 +114,7 @@ const SearchTokenMenu: React.FC<{
       );
     });
 
-  const showFavoritesEmpty = activeTab === "Favorites" && favPairs.length === 0;
+  const showFavoritesEmpty = activeTab === "favorites" && favPairs.length === 0;
 
   return (
     <div className="flex flex-col gap-2">
@@ -138,15 +137,18 @@ const SearchTokenMenu: React.FC<{
           color="line-red"
           layoutId="search-token-tabs"
           selectedTab={activeTab}
-          keys={[...SEARCH_TOKEN_TABS]}
           onTabChange={(tab) => setActiveTab(tab as SearchTokenTab)}
           classNames={{ base: "z-10" }}
-        />
+        >
+          <Tab title="all">{m["dex.protrade.searchPairTable.tabs.all"]()}</Tab>
+          <Tab title="favorites">{m["dex.protrade.searchPairTable.tabs.favorites"]()}</Tab>
+          <Tab title="crypto">{m["dex.protrade.searchPairTable.tabs.crypto"]()}</Tab>
+        </Tabs>
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
       {showFavoritesEmpty ? (
         <p className="diatype-sm-medium text-ink-tertiary-500 text-center py-8">
-          You haven't added any favorites yet. Tap the star next to a pair to add it.
+          {m["dex.protrade.searchPairTable.emptyFavorites"]()}
         </p>
       ) : (
         <SearchTokenTable data={filteredRows} onChangePairId={onChangePairId} />
