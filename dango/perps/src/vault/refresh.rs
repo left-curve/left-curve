@@ -43,18 +43,13 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         "only the oracle contract or the chain owner may refresh vault orders"
     );
 
-    let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
-
     ensure!(
-        ctx.block.height > last_update,
+        {
+            let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
+            ctx.block.height > last_update
+        },
         "vault orders already updated this block"
     );
-
-    // Update index prices from the oracle before reading them. The oracle
-    // just fed fresh prices in the same transaction that triggered this
-    // refresh, so process_index_price will pick them up immediately.
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier);
-    process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
     let param = PARAM.load(ctx.storage)?;
     let pair_ids = PAIR_IDS.load(ctx.storage)?;
@@ -62,6 +57,15 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut vault_state = USER_STATES
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
+
+    // --------------------- Step 0. Refresh index prices ----------------------
+
+    // Update index prices from the oracle before reading them. The oracle
+    // just fed fresh prices in the same transaction that triggered this
+    // refresh, so process_index_price will pick them up immediately.
+    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier);
+
+    process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
