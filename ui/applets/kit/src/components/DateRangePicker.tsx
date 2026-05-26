@@ -189,7 +189,7 @@ const trigger = tv({
 
 const dayButton = tv(
   {
-    base: "w-full h-full flex items-center justify-center cursor-pointer transition-colors diatype-sm-medium text-ink-secondary-700 outline-none focus:outline-none focus-visible:outline-none rounded-md hover:bg-surface-tertiary-rice",
+    base: "w-full h-full flex items-center justify-center cursor-pointer transition-colors diatype-sm-medium text-ink-secondary-700 outline-none focus:outline-none focus-visible:outline-none rounded-md",
     variants: {
       isStart: { true: "" },
       isEnd: { true: "" },
@@ -198,37 +198,42 @@ const dayButton = tv(
     },
     compoundVariants: [
       {
+        isStart: false,
+        isEnd: false,
+        isMiddle: false,
+        isSelected: false,
+        class: "hover:bg-surface-tertiary-rice",
+      },
+      {
         isStart: true,
         isEnd: true,
-        class:
-          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg hover:bg-transparent",
+        class: "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg",
       },
       {
         isStart: true,
         isEnd: false,
         class:
-          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-l-lg rounded-r-none hover:bg-transparent relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-l-lg rounded-r-none relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
       },
       {
         isStart: false,
         isEnd: true,
         class:
-          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-r-lg rounded-l-none hover:bg-transparent",
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-r-lg rounded-l-none",
       },
       {
         isStart: false,
         isEnd: false,
         isMiddle: true,
         class:
-          "bg-surface-primary-red text-ink-secondary-700 rounded-none hover:bg-transparent relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
+          "bg-surface-primary-red text-ink-secondary-700 rounded-none hover:bg-surface-secondary-red relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
       },
       {
         isStart: false,
         isEnd: false,
         isMiddle: false,
         isSelected: true,
-        class:
-          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg hover:bg-transparent",
+        class: "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg",
       },
     ],
   },
