@@ -17,7 +17,7 @@ const PRESET_LABELS: Record<TradeHistoryPreset, () => string> = {
   "3m": m["dex.protrade.tradeHistory.preset.3m"],
 };
 
-export const TradeHistoryToolbar: React.FC = () => {
+export function TradeHistoryToolbar() {
   const { filter, setPreset, setCustomRange, nodes, filtersEnabled } = useTradeHistoryFilter();
   const { account } = useAccount();
   const { isMd } = useMediaQuery();
@@ -122,4 +122,4 @@ export const TradeHistoryToolbar: React.FC = () => {
       <div className="flex justify-end">{exportButton}</div>
     </div>
   );
-};
+}

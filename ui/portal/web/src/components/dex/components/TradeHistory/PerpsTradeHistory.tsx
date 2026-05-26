@@ -251,7 +251,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
   ];
 }
 
-export const PerpsTradeHistory: React.FC = () => {
+export function PerpsTradeHistory() {
   const navigate = useNavigate();
   const { showModal } = useApp();
   const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, filtersEnabled } =
@@ -394,4 +394,4 @@ export const PerpsTradeHistory: React.FC = () => {
       </div>
     </div>
   );
-};
+}

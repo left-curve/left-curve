@@ -56,9 +56,10 @@ const [Provider, useTradeHistoryFilter] = createContext<TradeHistoryContextValue
 
 export { useTradeHistoryFilter };
 
-export const TradeHistoryFilterProvider: React.FC<
-  PropsWithChildren<{ enableFilters: boolean }>
-> = ({ children, enableFilters }) => {
+export function TradeHistoryFilterProvider({
+  children,
+  enableFilters,
+}: PropsWithChildren<{ enableFilters: boolean }>) {
   const { account } = useAccount();
   const publicClient = usePublicClient();
   const [filter, setFilter] = useState<TradeHistoryFilter>(initialFilter);
@@ -147,4 +148,4 @@ export const TradeHistoryFilterProvider: React.FC<
   );
 
   return <Provider value={value}>{children}</Provider>;
-};
+}
