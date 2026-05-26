@@ -50,9 +50,11 @@ type TradeHistoryContextValue = {
   filtersEnabled: boolean;
 };
 
-const [Provider, useTradeHistoryContext] = createContext<TradeHistoryContextValue>({
-  name: "TradeHistoryContext",
+const [Provider, useTradeHistoryFilter] = createContext<TradeHistoryContextValue>({
+  name: "TradeHistoryFilterContext",
 });
+
+export { useTradeHistoryFilter };
 
 export const TradeHistoryFilterProvider: React.FC<
   PropsWithChildren<{ enableFilters: boolean }>
@@ -146,5 +148,3 @@ export const TradeHistoryFilterProvider: React.FC<
 
   return <Provider value={value}>{children}</Provider>;
 };
-
-export const useTradeHistoryFilter = useTradeHistoryContext;
