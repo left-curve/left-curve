@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 import { Decimal } from "@left-curve/utils";
 import { saveCardAsImage } from "@left-curve/foundation";
@@ -66,7 +66,7 @@ function normalize(props: PnlShareProps): NormalizedCardData {
   };
 }
 
-export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
+export function PnlShare(props: PnlShareProps) {
   const { hideModal } = useApp();
   const { userIndex } = useAccount();
   const referralLink = getReferralLink(userIndex);
@@ -132,4 +132,4 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
       </div>
     </div>
   );
-});
+}
