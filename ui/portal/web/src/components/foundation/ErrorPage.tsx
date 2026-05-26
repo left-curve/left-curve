@@ -15,7 +15,7 @@ type ErrorPageProps = {
 
 export const ErrorPage: React.FC<ErrorPageProps> = ({ error, reset }) => {
   const navigate = useNavigate();
-  const isChunkError = error instanceof Error && isChunkLoadError(error);
+  const isChunkError = isChunkLoadError(error);
 
   const { data: isChainRunning, isFetched } = useQuery({
     queryKey: ["error_page_chain_status"],
@@ -36,18 +36,14 @@ export const ErrorPage: React.FC<ErrorPageProps> = ({ error, reset }) => {
     if (isChunkError || !isFetched) return;
     if (isChainRunning) captureException(error);
     else navigate({ to: "/maintenance" });
-  }, [isChunkError, isFetched, isChainRunning]);
+  }, [error, isChunkError, isFetched, isChainRunning, navigate]);
 
-  if (isChunkError) {
+  useEffect(() => {
+    if (!isChunkError) return;
     if (!reloadOnChunkError()) reset();
-    return (
-      <div className="flex-1 w-full flex justify-center items-center h-screen">
-        <Spinner size="lg" color="pink" />
-      </div>
-    );
-  }
+  }, [isChunkError, reset]);
 
-  if (!isFetched || !isChainRunning) {
+  if (isChunkError || !isFetched || !isChainRunning) {
     return (
       <div className="flex-1 w-full flex justify-center items-center h-screen">
         <Spinner size="lg" color="pink" />

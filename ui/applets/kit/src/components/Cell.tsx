@@ -47,9 +47,9 @@ type CellAssetProps = Prettify<
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
   const { coins } = useConfig();
 
-  const coin = asset || coins.getCoinInfo(denom as string);
+  const coin = asset ?? (denom ? coins.getCoinInfo(denom as string) : null);
 
-  if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
+  if (!coin) return <div className="flex h-full items-center diatype-sm-medium">-</div>;
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
