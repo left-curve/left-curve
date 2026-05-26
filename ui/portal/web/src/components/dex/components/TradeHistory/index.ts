@@ -1,3 +1,4 @@
+export { LegacyPerpsTradeHistory } from "./LegacyPerpsTradeHistory";
 export { PerpsTradeHistory } from "./PerpsTradeHistory";
 export {
   TradeHistoryFilterProvider,

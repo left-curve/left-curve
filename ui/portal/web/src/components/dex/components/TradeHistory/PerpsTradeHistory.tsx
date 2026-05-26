@@ -259,7 +259,7 @@ export function PerpsTradeHistory() {
   const navigate = useNavigate();
   const { showModal } = useApp();
   const { isMd } = useMediaQuery();
-  const { queryRange, filtersEnabled } = useTradeHistoryFilter();
+  const { queryRange } = useTradeHistoryFilter();
   const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     usePerpsTradeHistory(queryRange);
 
@@ -310,29 +310,23 @@ export function PerpsTradeHistory() {
   const showEmpty = !isLoading && normalizedNodes.length === 0;
   const showInitialSpinner = isLoading && normalizedNodes.length === 0;
   const showEndOfList =
-    filtersEnabled &&
-    !hasNextPage &&
-    !isLoading &&
-    !isFetchingNextPage &&
-    normalizedNodes.length > 0;
+    !hasNextPage && !isLoading && !isFetchingNextPage && normalizedNodes.length > 0;
 
   return (
     <>
-      {filtersEnabled ? (
-        isMd ? (
-          <div className="flex items-center justify-between gap-4 py-2 px-1">
-            <TradeHistoryToolbar layout="desktop" />
+      {isMd ? (
+        <div className="flex items-center justify-between gap-4 py-2 px-1">
+          <TradeHistoryToolbar layout="desktop" />
+          <ExportCsvButton events={nodes} />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 py-2 px-1">
+          <TradeHistoryToolbar layout="mobile" />
+          <div className="flex justify-end">
             <ExportCsvButton events={nodes} />
           </div>
-        ) : (
-          <div className="flex flex-col gap-3 py-2 px-1">
-            <TradeHistoryToolbar layout="mobile" />
-            <div className="flex justify-end">
-              <ExportCsvButton events={nodes} />
-            </div>
-          </div>
-        )
-      ) : null}
+        </div>
+      )}
 
       <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto">
         <div

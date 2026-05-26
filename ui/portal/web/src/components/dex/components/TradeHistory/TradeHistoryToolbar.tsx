@@ -19,9 +19,7 @@ type TradeHistoryToolbarProps = {
 };
 
 export function TradeHistoryToolbar({ layout }: TradeHistoryToolbarProps) {
-  const { filter, setPreset, setCustomRange, filtersEnabled } = useTradeHistoryFilter();
-
-  if (!filtersEnabled) return null;
+  const { filter, setPreset, setCustomRange } = useTradeHistoryFilter();
 
   const datePicker = (
     <DateRangePicker

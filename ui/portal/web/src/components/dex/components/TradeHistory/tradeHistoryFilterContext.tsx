@@ -40,7 +40,6 @@ type TradeHistoryFilterContextValue = {
   setPreset: (preset: TradeHistoryPreset) => void;
   setCustomRange: (from: Date, to: Date) => void;
   queryRange: QueryRange;
-  filtersEnabled: boolean;
 };
 
 const [Provider, useTradeHistoryFilter] = createContext<TradeHistoryFilterContextValue>({
@@ -49,18 +48,13 @@ const [Provider, useTradeHistoryFilter] = createContext<TradeHistoryFilterContex
 
 export { useTradeHistoryFilter };
 
-export function TradeHistoryFilterProvider({
-  children,
-  enableFilters,
-}: PropsWithChildren<{ enableFilters: boolean }>) {
+export function TradeHistoryFilterProvider({ children }: PropsWithChildren) {
   const [filter, setFilter] = useState<TradeHistoryFilter>(initialFilter);
 
-  const queryRange: QueryRange = enableFilters
-    ? {
-        earlierThan: filter.preset === null ? filter.to.toISOString() : undefined,
-        laterThan: filter.from.toISOString(),
-      }
-    : { earlierThan: undefined, laterThan: undefined };
+  const queryRange: QueryRange = {
+    earlierThan: filter.preset === null ? filter.to.toISOString() : undefined,
+    laterThan: filter.from.toISOString(),
+  };
 
   const setPreset = useCallback((preset: TradeHistoryPreset) => {
     const config = PRESETS.find((p) => p.id === preset);
@@ -73,21 +67,8 @@ export function TradeHistoryFilterProvider({
   }, []);
 
   const value = useMemo<TradeHistoryFilterContextValue>(
-    () => ({
-      filter,
-      setPreset,
-      setCustomRange,
-      queryRange,
-      filtersEnabled: enableFilters,
-    }),
-    [
-      filter,
-      setPreset,
-      setCustomRange,
-      queryRange.earlierThan,
-      queryRange.laterThan,
-      enableFilters,
-    ],
+    () => ({ filter, setPreset, setCustomRange, queryRange }),
+    [filter, setPreset, setCustomRange, queryRange.earlierThan, queryRange.laterThan],
   );
 
   return <Provider value={value}>{children}</Provider>;
