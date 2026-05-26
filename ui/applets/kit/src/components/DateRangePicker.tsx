@@ -111,33 +111,20 @@ export function DateRangePicker({
             </button>
           </nav>
         ),
-        DayButton: ({ day, modifiers, className: _dayClassName, ...props }) => {
-          const isStart = !!modifiers.range_start;
-          const isEnd = !!modifiers.range_end;
-          const isMiddle = !!modifiers.range_middle;
-          const isSelected = !!modifiers.selected;
-
-          const state =
-            isStart && isEnd
-              ? "startAndEnd"
-              : isStart
-                ? "onlyStart"
-                : isEnd
-                  ? "onlyEnd"
-                  : isMiddle
-                    ? "middle"
-                    : isSelected
-                      ? "selected"
-                      : "default";
-
-          const hasRightExtension = (state === "onlyStart" || state === "middle") && !isEnd;
-
-          return (
-            <button type="button" {...props} className={dayButton({ state, hasRightExtension })}>
-              {day.date.getDate()}
-            </button>
-          );
-        },
+        DayButton: ({ day, modifiers, className: _dayClassName, ...props }) => (
+          <button
+            type="button"
+            {...props}
+            className={dayButton({
+              isStart: !!modifiers.range_start,
+              isEnd: !!modifiers.range_end,
+              isMiddle: !!modifiers.range_middle,
+              isSelected: !!modifiers.selected,
+            })}
+          >
+            {day.date.getDate()}
+          </button>
+        ),
       }}
       formatters={{
         formatWeekdayName: (date) => formatDate(date, "EEEEEE"),
@@ -202,22 +189,48 @@ const trigger = tv({
 
 const dayButton = tv(
   {
-    base: "w-full h-full flex items-center justify-center cursor-pointer transition-colors diatype-sm-medium text-ink-secondary-700 outline-none focus:outline-none focus-visible:outline-none",
+    base: "w-full h-full flex items-center justify-center cursor-pointer transition-colors diatype-sm-medium text-ink-secondary-700 outline-none focus:outline-none focus-visible:outline-none rounded-md hover:bg-surface-tertiary-rice",
     variants: {
-      state: {
-        startAndEnd: "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg",
-        onlyStart:
-          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-l-lg rounded-r-none",
-        onlyEnd:
-          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-r-lg rounded-l-none",
-        middle: "bg-surface-primary-red text-ink-secondary-700 rounded-none",
-        selected: "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg",
-        default: "rounded-md hover:bg-surface-tertiary-rice",
-      },
-      hasRightExtension: {
-        true: "relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
-      },
+      isStart: { true: "" },
+      isEnd: { true: "" },
+      isMiddle: { true: "" },
+      isSelected: { true: "" },
     },
+    compoundVariants: [
+      {
+        isStart: true,
+        isEnd: true,
+        class:
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg hover:bg-transparent",
+      },
+      {
+        isStart: true,
+        isEnd: false,
+        class:
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-l-lg rounded-r-none hover:bg-transparent relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
+      },
+      {
+        isStart: false,
+        isEnd: true,
+        class:
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-r-lg rounded-l-none hover:bg-transparent",
+      },
+      {
+        isStart: false,
+        isEnd: false,
+        isMiddle: true,
+        class:
+          "bg-surface-primary-red text-ink-secondary-700 rounded-none hover:bg-transparent relative after:content-[''] after:absolute after:left-full after:top-0 after:bottom-0 after:w-[2px] after:bg-surface-primary-red",
+      },
+      {
+        isStart: false,
+        isEnd: false,
+        isMiddle: false,
+        isSelected: true,
+        class:
+          "bg-brand-red-bean text-white shadow-btn-shadow-gradient rounded-lg hover:bg-transparent",
+      },
+    ],
   },
   { twMerge: true },
 );
