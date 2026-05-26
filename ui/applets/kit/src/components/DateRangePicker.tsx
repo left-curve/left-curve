@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import { format } from "date-fns";
@@ -50,12 +50,15 @@ export function DateRangePicker({
   placeholder = "Select range",
 }: DateRangePickerProps) {
   const { isMd } = useMediaQuery();
-  const [pendingRange, setPendingRange] = useState<DateRange | undefined>(toRange(value));
+  const [pendingRange, setPendingRange] = useState<DateRange | undefined>(() => toRange(value));
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
+  const valueKey = `${value.from?.getTime() ?? ""}-${value.to?.getTime() ?? ""}`;
+  const [lastValueKey, setLastValueKey] = useState(valueKey);
+  if (valueKey !== lastValueKey) {
+    setLastValueKey(valueKey);
     setPendingRange(toRange(value));
-  }, [value.from?.getTime(), value.to?.getTime()]);
+  }
 
   const handleSelect = (range: DateRange | undefined, triggerDate: Date) => {
     const hadCompleteRange = !!(pendingRange?.from && pendingRange?.to);
