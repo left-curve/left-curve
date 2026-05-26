@@ -6,13 +6,16 @@ import type {
 } from "@left-curve/types";
 
 export type NormalizedFields = {
-  size: string | null | undefined;
-  price: string | null | undefined;
-  pnl: string | null | undefined;
-  fee: string | null | undefined;
-  funding: string | null | undefined;
-  isMaker: boolean | null | undefined;
+  size: string | undefined;
+  price: string | undefined;
+  pnl: string | undefined;
+  fee: string | undefined;
+  funding: string | undefined;
+  isMaker: boolean | undefined;
 };
+
+const orUndefined = <T>(value: T | null | undefined): T | undefined =>
+  value === null ? undefined : value;
 
 export function normalizePerpsEvent(event: PerpsEvent): NormalizedFields {
   switch (event.eventType) {
@@ -23,19 +26,19 @@ export function normalizePerpsEvent(event: PerpsEvent): NormalizedFields {
         price: d.fill_price,
         pnl: d.realized_pnl,
         fee: d.fee,
-        funding: d.realized_funding,
-        isMaker: d.is_maker,
+        funding: orUndefined(d.realized_funding),
+        isMaker: orUndefined(d.is_maker),
       };
     }
     case "liquidated": {
       const d = event.data as LiquidatedData;
       return {
         size: d.adl_size,
-        price: d.adl_price,
+        price: orUndefined(d.adl_price),
         pnl: d.adl_realized_pnl,
-        fee: null,
-        funding: d.adl_realized_funding,
-        isMaker: null,
+        fee: undefined,
+        funding: orUndefined(d.adl_realized_funding),
+        isMaker: undefined,
       };
     }
     case "deleveraged": {
@@ -44,12 +47,19 @@ export function normalizePerpsEvent(event: PerpsEvent): NormalizedFields {
         size: d.closing_size,
         price: d.fill_price,
         pnl: d.realized_pnl,
-        fee: null,
-        funding: d.realized_funding,
-        isMaker: null,
+        fee: undefined,
+        funding: orUndefined(d.realized_funding),
+        isMaker: undefined,
       };
     }
     default:
-      return { size: null, price: null, pnl: null, fee: null, funding: null, isMaker: null };
+      return {
+        size: undefined,
+        price: undefined,
+        pnl: undefined,
+        fee: undefined,
+        funding: undefined,
+        isMaker: undefined,
+      };
   }
 }
