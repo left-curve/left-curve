@@ -320,7 +320,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
 export const PerpsTradeHistory: React.FC = () => {
   const navigate = useNavigate();
   const { showModal } = useApp();
-  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, filtersEnabled } =
     useTradeHistoryFilter();
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -370,7 +370,11 @@ export const PerpsTradeHistory: React.FC = () => {
   const showEmpty = !isLoading && normalizedNodes.length === 0;
   const showInitialSpinner = isLoading && normalizedNodes.length === 0;
   const showEndOfList =
-    !hasNextPage && !isLoading && !isFetchingNextPage && normalizedNodes.length > 0;
+    filtersEnabled &&
+    !hasNextPage &&
+    !isLoading &&
+    !isFetchingNextPage &&
+    normalizedNodes.length > 0;
 
   return (
     <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto">
