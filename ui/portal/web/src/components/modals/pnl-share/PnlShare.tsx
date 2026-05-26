@@ -5,6 +5,7 @@ import { getReferralLink, useAccount } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { CharacterSelector } from "../../foundation/CharacterSelector";
+import { shareCardFontEmbedCSS } from "../shareCardFonts.js";
 import { PreviewCard } from "./PreviewCard.js";
 import type { PnlShareProps } from "./types.js";
 
@@ -24,6 +25,7 @@ export const PnlShare = forwardRef<unknown, PnlShareProps>((props, _ref) => {
         source: cardRef.current,
         filename: `pnl-${symbol}.png`,
         width: 752,
+        fontEmbedCSS: shareCardFontEmbedCSS,
       });
     } catch (err) {
       console.error("Failed to save image", err);

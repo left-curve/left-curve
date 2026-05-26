@@ -32,14 +32,17 @@ export function PreviewCard({
   const sizeD = Decimal(size);
   const entryD = Decimal(entryPrice);
   const currentD = Decimal(currentPrice);
+  const equityD = equity ? Decimal(equity) : Decimal(0);
 
   const isLong = sizeD.gt(0);
-  const pnlPercent = currentD.minus(entryD).div(entryD).mul(100);
-  const displayPercent = isLong ? pnlPercent.toNumber() : -pnlPercent.toNumber();
-  const isPositive = displayPercent >= 0;
+  const leverageD = equityD.gt(0) ? sizeD.abs().mul(currentD).div(equityD) : null;
+  const leverage = leverageD?.toFixed(2) ?? null;
 
-  const equityD = equity ? Decimal(equity) : Decimal(0);
-  const leverage = equityD.gt(0) ? sizeD.abs().mul(currentD).div(equityD).toFixed(2) : null;
+  const priceChangePercent = currentD.minus(entryD).div(entryD).mul(100);
+  const directionalPriceChange = isLong ? priceChangePercent : priceChangePercent.neg();
+  const roiPercent = leverageD ? directionalPriceChange.mul(leverageD) : directionalPriceChange;
+  const displayPercent = roiPercent.toNumber();
+  const isPositive = displayPercent >= 0;
 
   const referralLink = getReferralLink(userIndex);
   const logoURI = coins.bySymbol[symbol]?.logoURI;
