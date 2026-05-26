@@ -387,14 +387,8 @@ async fn refresh_jemalloc_gauges_forever() {
         // the stats epoch — update it unconditionally so a forgotten
         // activation is observable even if stats reads fail.
         let profiling_active = match jemalloc_pprof::PROF_CTL.as_ref() {
-            Some(prof_ctl) => {
-                if prof_ctl.lock().await.activated() {
-                    1.0
-                } else {
-                    0.0
-                }
-            },
-            None => 0.0,
+            Some(prof_ctl) if prof_ctl.lock().await.activated() => 1.0,
+            _ => 0.0,
         };
         metrics::gauge!("jemalloc_profiling_active").set(profiling_active);
 
