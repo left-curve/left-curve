@@ -12,7 +12,7 @@ use {
         gateway::{Domain, Remote},
         warp,
     },
-    grug::{Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, Uint128},
+    grug::{Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, Timestamp, Uint128},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
@@ -44,6 +44,24 @@ impl TestOption {
         Self {
             mocked_clickhouse: true,
             ..Self::default()
+        }
+    }
+
+    /// Anchor the genesis block (and therefore every derived block timestamp)
+    /// to wall-clock `now()`. Indexer tests that read ClickHouse columns
+    /// filtered by `created_at >= now() - INTERVAL …` need this so the synthetic
+    /// block timestamps fall inside the lookback window.
+    pub fn with_recent_genesis(self) -> Self {
+        let now_secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock before unix epoch")
+            .as_secs();
+        Self {
+            genesis_block: BlockInfo {
+                timestamp: Timestamp::from_seconds(now_secs as u128),
+                ..self.genesis_block
+            },
+            ..self
         }
     }
 }

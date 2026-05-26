@@ -67,7 +67,10 @@ impl PerpsPairStatsCache {
 
     // -- batch helpers --------------------------------------------------------
 
-    /// Latest close price per pair (the one with the highest block_height).
+    /// Latest close price per pair (the one with the highest block_height),
+    /// bounded to the last 7 days. Pairs dormant for >7 days drop out of
+    /// "current" — acceptable since the same pair would also report zero 24 h
+    /// volume.
     async fn fetch_current_prices(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let rows: Vec<PerpsPriceRow> = client
             .query(
@@ -75,6 +78,7 @@ impl PerpsPairStatsCache {
                 SELECT pair_id,
                        argMax(close, block_height) AS price
                 FROM perps_pair_prices
+                WHERE created_at >= now() - INTERVAL 7 DAY
                 GROUP BY pair_id
                 "#,
             )
@@ -84,7 +88,9 @@ impl PerpsPairStatsCache {
         Ok(rows.into_iter().map(|r| (r.pair_id, r.price)).collect())
     }
 
-    /// Close price closest to (but not after) 24 h ago, per pair.
+    /// Close price closest to (but not after) 24 h ago, per pair, within a
+    /// 7-day lookback. Pairs with no row in that window fall through to
+    /// `fetch_earliest_prices`.
     async fn fetch_prices_24h_ago(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let ts = chrono::Utc::now() - chrono::Duration::hours(24);
 
@@ -94,7 +100,8 @@ impl PerpsPairStatsCache {
                 SELECT pair_id,
                        argMax(close, created_at) AS price
                 FROM perps_pair_prices
-                WHERE created_at <= toDateTime64(?, 6)
+                WHERE created_at >= now() - INTERVAL 7 DAY
+                  AND created_at <= toDateTime64(?, 6)
                 GROUP BY pair_id
                 "#,
             )
@@ -105,7 +112,8 @@ impl PerpsPairStatsCache {
         Ok(rows.into_iter().map(|r| (r.pair_id, r.price)).collect())
     }
 
-    /// Earliest close price per pair – fallback when no data from 24 h ago.
+    /// Earliest close price per pair within the last 24 h – fallback when no
+    /// data from 24 h ago.
     async fn fetch_earliest_prices(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let rows: Vec<PerpsPriceRow> = client
             .query(
@@ -113,6 +121,7 @@ impl PerpsPairStatsCache {
                 SELECT pair_id,
                        argMin(close, block_height) AS price
                 FROM perps_pair_prices
+                WHERE created_at >= now() - INTERVAL 24 HOUR
                 GROUP BY pair_id
                 "#,
             )
