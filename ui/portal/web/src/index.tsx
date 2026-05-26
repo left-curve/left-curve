@@ -1,34 +1,15 @@
 import ReactDOM from "react-dom/client";
 import { App } from "./app";
-import { router } from "./app.router";
 import { notifyUpdate } from "./app.updater";
+import { initSentry } from "./app.sentry";
 import * as ReactScan from "react-scan";
-
-import * as Sentry from "@sentry/react";
 
 const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN;
 const SENTRY_ENV = import.meta.env.PUBLIC_SENTRY_ENVIRONMENT;
 
 if (process.env.NODE_ENV === "development") ReactScan.start();
 
-if (SENTRY_DSN && SENTRY_ENV) {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    environment: SENTRY_ENV,
-    integrations: (defaultIntegrations) =>
-      defaultIntegrations
-        .filter((integration) => integration.name !== "GlobalHandlers")
-        .concat([
-          Sentry.contextLinesIntegration(),
-          Sentry.httpClientIntegration(),
-          Sentry.tanstackRouterBrowserTracingIntegration(router),
-        ]),
-    tracesSampleRate: 0.5,
-    tracePropagationTargets: [/^https:\/\/.+\.dango\.zone/],
-    replaysOnErrorSampleRate: 0.5,
-    maxValueLength: 5000,
-  });
-}
+if (SENTRY_DSN && SENTRY_ENV) initSentry(SENTRY_DSN, SENTRY_ENV);
 
 if (!window.location.origin.includes("localhost") && "serviceWorker" in navigator) {
   const initiallyControlled = !!navigator.serviceWorker.controller;

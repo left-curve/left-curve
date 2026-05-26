@@ -7,14 +7,13 @@ import {
   session,
   privy,
 } from "@left-curve/store";
-import { captureException } from "@sentry/react";
 import { createIndexedDBStorage } from "./storage.config";
 import { coins } from "@left-curve/foundation/coins";
 
 import type { Config } from "@left-curve/store/types";
-import { serializeJson } from "@left-curve/encoding";
 
 import { PRIVY_APP_ID, PRIVY_CLIENT_ID } from "~/constants";
+import { reportStoreError } from "~/app.sentry";
 
 const chain = window.dango.chain;
 
@@ -68,30 +67,5 @@ export const config: Config = createConfig({
     }),
   ],
   storage: createAsyncStorage({ storage: createIndexedDBStorage() }),
-  onError: (e) => {
-    if (
-      Array.isArray(e) &&
-      e.every((err: { message?: string }) => err.message?.includes("data not found"))
-    )
-      return;
-
-    let finalError: Error;
-    const m = serializeJson(e);
-
-    if (Array.isArray(e) && e[0]?.message) {
-      finalError = new Error(`GraphQLWS Error: ${e[0].message} (${m})`);
-    } else if (e instanceof Event) {
-      if ("code" in e) {
-        finalError = new Error(`WebSocket closed: (${m})`);
-      } else {
-        finalError = new Error(`WebSocket connection failed (${m})`);
-      }
-    } else if (e instanceof Error) {
-      finalError = e;
-    } else {
-      finalError = new Error(`Unknown Error (${m})`);
-    }
-
-    captureException(finalError);
-  },
+  onError: reportStoreError,
 });
