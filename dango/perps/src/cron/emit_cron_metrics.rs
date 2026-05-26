@@ -4,7 +4,6 @@ use {
         querier::NoCachePerpQuerier,
         state::{STATE, USER_STATES},
     },
-    dango_oracle::OracleQuerier,
     grug_types::{Addr, Inner, Storage},
     std::time::Instant,
 };
@@ -16,14 +15,13 @@ use {
 pub fn emit_cron_metrics(
     storage: &dyn Storage,
     contract: Addr,
-    oracle_querier: &mut OracleQuerier,
     start: Instant,
 ) -> anyhow::Result<()> {
     let state = STATE.load(storage)?;
     let vault_state = USER_STATES.may_load(storage, contract)?.unwrap_or_default();
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-    if let Ok(vault_equity) = compute_user_equity(oracle_querier, &perp_querier, &vault_state) {
+    if let Ok(vault_equity) = compute_user_equity(&perp_querier, &vault_state) {
         metrics::gauge!(crate::metrics::LABEL_VAULT_EQUITY).set(vault_equity.to_f64());
     }
 

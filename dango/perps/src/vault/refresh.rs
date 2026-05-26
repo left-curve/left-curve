@@ -1,10 +1,10 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS,
         core::{compute_available_margin, compute_vault_quotes},
+        index_price::process_index_price,
         oracle,
         querier::NoCachePerpQuerier,
-        state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PARAM, USER_STATES},
+        state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, USER_STATES},
         trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
@@ -43,10 +43,11 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         "only the oracle contract or the chain owner may refresh vault orders"
     );
 
-    let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
-
     ensure!(
-        ctx.block.height > last_update,
+        {
+            let last_update = LAST_VAULT_ORDERS_UPDATE.may_load(ctx.storage)?.unwrap_or(0);
+            ctx.block.height > last_update
+        },
         "vault orders already updated this block"
     );
 
@@ -57,8 +58,14 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+    // --------------------- Step 0. Refresh index prices ----------------------
+
+    // Update index prices from the oracle before reading them. The oracle
+    // just fed fresh prices in the same transaction that triggered this
+    // refresh, so process_index_price will pick them up immediately.
+    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier);
+
+    process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
@@ -81,7 +88,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     // simplifies to: max(0, equity - used_margin).
     let vault_margin_value = {
         let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
-        compute_available_margin(&mut oracle_querier, &perp_querier, &vault_state)?
+        compute_available_margin(&perp_querier, &vault_state)?
     };
 
     // If vault_total_weight is zero, no pairs have weights configured — skip.
@@ -110,7 +117,7 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             continue;
         }
 
-        let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
+        let oracle_price = PAIR_STATES.load(ctx.storage, pair_id)?.index_price;
 
         // Compute this pair's allocated margin.
         let pair_margin = vault_margin_value

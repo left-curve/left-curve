@@ -4,7 +4,6 @@ use {
         querier::NoCachePerpQuerier,
         state::{STATE, USER_STATES, VAULT_SNAPSHOTS},
     },
-    dango_oracle::OracleQuerier,
     dango_order_book::round_to_day,
     dango_types::perps::VaultSnapshot,
     grug_types::{Addr, Storage, Timestamp},
@@ -21,7 +20,6 @@ pub fn take_vault_snapshot(
     storage: &mut dyn Storage,
     current_time: Timestamp,
     contract: Addr,
-    oracle_querier: &mut OracleQuerier,
 ) -> anyhow::Result<()> {
     let key = round_to_day(current_time);
 
@@ -35,7 +33,7 @@ pub fn take_vault_snapshot(
     let vault_state = USER_STATES.may_load(storage, contract)?.unwrap_or_default();
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
-    let equity = match compute_user_equity(oracle_querier, &perp_querier, &vault_state) {
+    let equity = match compute_user_equity(&perp_querier, &vault_state) {
         Ok(e) => e,
         Err(_err) => {
             #[cfg(feature = "tracing")]
@@ -66,13 +64,9 @@ mod tests {
         super::*,
         crate::state::PAIR_STATES,
         dango_order_book::{FundingPerUnit, PairId, Quantity, UsdPrice},
-        dango_types::{
-            oracle::Price,
-            perps::{PairState, Position, State, UserState},
-        },
+        dango_types::perps::{PairState, Position, State, UserState},
         grug_math::Uint128,
-        grug_types::{MockStorage, Order, hash_map},
-        pyth_types::MarketSession,
+        grug_types::{MockStorage, Order},
         std::collections::BTreeMap,
     };
 
@@ -117,29 +111,12 @@ mod tests {
             .unwrap();
     }
 
-    fn mock_oracle_for_btc() -> OracleQuerier<'static> {
-        OracleQuerier::new_mock(hash_map! {
-            btc_pair_id() => Price::new(
-                UsdPrice::new_percent(5_000_000), // $50,000
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        })
-    }
-
     #[test]
     fn snapshot_written_when_bucket_empty() {
         let mut storage = MockStorage::new();
         init_storage(&mut storage, 1_000_000, 0);
-        let mut oracle = mock_oracle_for_btc();
 
-        take_vault_snapshot(
-            &mut storage,
-            Timestamp::from_seconds(0),
-            CONTRACT,
-            &mut oracle,
-        )
-        .unwrap();
+        take_vault_snapshot(&mut storage, Timestamp::from_seconds(0), CONTRACT).unwrap();
 
         let snapshot = VAULT_SNAPSHOTS
             .load(&storage, Timestamp::from_seconds(0))
@@ -151,16 +128,9 @@ mod tests {
     fn snapshot_idempotent_within_day() {
         let mut storage = MockStorage::new();
         init_storage(&mut storage, 1_000_000, 0);
-        let mut oracle = mock_oracle_for_btc();
 
         // First call records share_supply = 1_000_000.
-        take_vault_snapshot(
-            &mut storage,
-            Timestamp::from_seconds(0),
-            CONTRACT,
-            &mut oracle,
-        )
-        .unwrap();
+        take_vault_snapshot(&mut storage, Timestamp::from_seconds(0), CONTRACT).unwrap();
 
         // Mutate state so we can detect overwrites.
         let mut state = STATE.load(&storage).unwrap();
@@ -168,13 +138,7 @@ mod tests {
         STATE.save(&mut storage, &state).unwrap();
 
         // Second call later the same day must NOT overwrite.
-        take_vault_snapshot(
-            &mut storage,
-            Timestamp::from_seconds(ONE_DAY - 1),
-            CONTRACT,
-            &mut oracle,
-        )
-        .unwrap();
+        take_vault_snapshot(&mut storage, Timestamp::from_seconds(ONE_DAY - 1), CONTRACT).unwrap();
 
         let snapshot = VAULT_SNAPSHOTS
             .load(&storage, Timestamp::from_seconds(0))
@@ -193,14 +157,12 @@ mod tests {
     fn snapshot_written_for_each_new_day() {
         let mut storage = MockStorage::new();
         init_storage(&mut storage, 1_000_000, 0);
-        let mut oracle = mock_oracle_for_btc();
 
         for day in 0u128..3 {
             take_vault_snapshot(
                 &mut storage,
                 Timestamp::from_seconds(day * ONE_DAY),
                 CONTRACT,
-                &mut oracle,
             )
             .unwrap();
         }
@@ -219,19 +181,15 @@ mod tests {
     #[test]
     fn snapshot_skipped_on_equity_failure() {
         let mut storage = MockStorage::new();
-        // Vault has a BTC position, but the oracle has no BTC price → equity
-        // computation fails.
+        // Vault has a BTC position, but no pair state has index_price set →
+        // equity computation fails.
         init_storage(&mut storage, 1_000_000, 50);
-        let mut oracle = OracleQuerier::new_mock(hash_map! {});
+
+        // Remove the pair state so the price_of closure fails.
+        PAIR_STATES.remove(&mut storage, &btc_pair_id());
 
         // Must not propagate the error.
-        take_vault_snapshot(
-            &mut storage,
-            Timestamp::from_seconds(0),
-            CONTRACT,
-            &mut oracle,
-        )
-        .unwrap();
+        take_vault_snapshot(&mut storage, Timestamp::from_seconds(0), CONTRACT).unwrap();
 
         // No snapshot written.
         assert!(
@@ -244,12 +202,11 @@ mod tests {
     fn snapshot_key_rounds_down_to_day() {
         let mut storage = MockStorage::new();
         init_storage(&mut storage, 1_000_000, 0);
-        let mut oracle = mock_oracle_for_btc();
 
         // 1.5 days into the chain.
         let ts = Timestamp::from_seconds(ONE_DAY + ONE_DAY / 2);
 
-        take_vault_snapshot(&mut storage, ts, CONTRACT, &mut oracle).unwrap();
+        take_vault_snapshot(&mut storage, ts, CONTRACT).unwrap();
 
         // Snapshot is keyed at the day boundary, not the raw timestamp.
         assert!(VAULT_SNAPSHOTS.has(&storage, Timestamp::from_seconds(ONE_DAY)));

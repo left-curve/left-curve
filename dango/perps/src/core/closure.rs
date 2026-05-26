@@ -3,7 +3,6 @@ use {
         core::{compute_maintenance_margin, compute_user_equity},
         querier::NoCachePerpQuerier,
     },
-    dango_oracle::OracleQuerier,
     dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, UserState},
     grug_math::MathResult,
@@ -18,12 +17,11 @@ use {
 ///
 /// A user with no open positions is never liquidatable.
 pub fn is_liquidatable(
-    oracle_querier: &mut OracleQuerier,
     perp_querier: &NoCachePerpQuerier,
     user_state: &UserState,
 ) -> anyhow::Result<(bool, UsdValue, UsdValue)> {
-    let equity = compute_user_equity(oracle_querier, perp_querier, user_state)?;
-    let maintenance_margin = compute_maintenance_margin(oracle_querier, perp_querier, user_state)?;
+    let equity = compute_user_equity(perp_querier, user_state)?;
+    let maintenance_margin = compute_maintenance_margin(perp_querier, user_state)?;
 
     Ok((equity < maintenance_margin, equity, maintenance_margin))
 }
@@ -220,12 +218,9 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
             constants::eth,
-            oracle::Price,
             perps::{PairParam, PairState, Position},
         },
-        grug_types::{Timestamp, btree_map, hash_map},
-        pyth_types::MarketSession,
-        std::collections::HashMap,
+        grug_types::{btree_map, hash_map},
     };
 
     fn pair_btc() -> PairId {
@@ -258,11 +253,10 @@ mod tests {
             margin: UsdValue::new_int(10_000),
             ..Default::default()
         };
-        let perp_querier = NoCachePerpQuerier::new_mock(HashMap::new(), HashMap::new());
-        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
+        let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), Default::default());
 
         assert!(
-            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            !is_liquidatable(&perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -297,20 +291,14 @@ mod tests {
             hash_map! {
                 eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
+                    index_price: UsdPrice::new_percent(250_000),
                     ..Default::default()
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(250_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
 
         assert!(
-            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            !is_liquidatable(&perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -345,20 +333,14 @@ mod tests {
             hash_map! {
                 eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
+                    index_price: UsdPrice::new_percent(200_000),
                     ..Default::default()
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(200_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
 
         assert!(
-            !is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            !is_liquidatable(&perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -393,20 +375,14 @@ mod tests {
             hash_map! {
                 eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
+                    index_price: UsdPrice::new_percent(150_000),
                     ..Default::default()
                 },
             },
         );
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(150_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        });
 
         assert!(
-            is_liquidatable(&mut oracle_querier, &perp_querier, &user_state)
+            is_liquidatable(&perp_querier, &user_state)
                 .map(|(is, ..)| is)
                 .unwrap()
         );
@@ -449,35 +425,21 @@ mod tests {
                 hash_map! {
                     eth::DENOM.clone() => PairState {
                         funding_per_unit: FundingPerUnit::new_int(100),
+                        index_price: UsdPrice::new_percent(200_000),
                         ..Default::default()
                     },
                 },
             );
-            let oracle_querier = OracleQuerier::new_mock(hash_map! {
-                eth::DENOM.clone() => Price::new(
-                    UsdPrice::new_percent(200_000),
-                    Timestamp::from_seconds(0),
-                    MarketSession::Regular,
-                ),
-            });
-            (user_state, perp_querier, oracle_querier)
+            (user_state, perp_querier)
         };
 
         // Case 1: healthy despite funding
-        let (us, pq, mut oq) = make_fixtures(10_000);
-        assert!(
-            !is_liquidatable(&mut oq, &pq, &us)
-                .map(|(is, ..)| is)
-                .unwrap()
-        );
+        let (us, pq) = make_fixtures(10_000);
+        assert!(!is_liquidatable(&pq, &us).map(|(is, ..)| is).unwrap());
 
         // Case 2: funding pushes equity below maintenance margin
-        let (us, pq, mut oq) = make_fixtures(900);
-        assert!(
-            is_liquidatable(&mut oq, &pq, &us)
-                .map(|(is, ..)| is)
-                .unwrap()
-        );
+        let (us, pq) = make_fixtures(900);
+        assert!(is_liquidatable(&pq, &us).map(|(is, ..)| is).unwrap());
     }
 
     // -------------------- `compute_close_schedule` tests ---------------------

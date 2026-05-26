@@ -1,10 +1,6 @@
 use {
-    crate::{
-        MAX_ORACLE_STALENESS, core::compute_available_margin, oracle, querier::NoCachePerpQuerier,
-        state::USER_STATES,
-    },
+    crate::{core::compute_available_margin, querier::NoCachePerpQuerier, state::USER_STATES},
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::UsdValue,
     dango_types::perps::{SETTLEMENT_CURRENCY_PRICE, Withdrew, settlement_currency},
     grug_math::IsZero,
@@ -29,14 +25,11 @@ pub fn withdraw(ctx: MutableCtx, amount: UsdValue) -> anyhow::Result<Response> {
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
-
     let mut user_state = USER_STATES
         .may_load(ctx.storage, ctx.sender)?
         .unwrap_or_default();
 
-    let available = compute_available_margin(&mut oracle_querier, &perp_querier, &user_state)?;
+    let available = compute_available_margin(&perp_querier, &user_state)?;
 
     ensure!(
         amount <= available,

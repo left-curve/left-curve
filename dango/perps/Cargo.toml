@@ -11,7 +11,7 @@ version       = { workspace = true }
 
 [features]
 metrics = ["dep:metrics", "grug-types/metrics"]
-tracing = ["dep:tracing"]
+tracing = ["dep:tracing", "grug-types/chrono"]
 
 [dependencies]
 anyhow                = { workspace = true }
@@ -23,8 +23,8 @@ grug-math             = { workspace = true }
 grug-storage          = { workspace = true }
 grug-types            = { workspace = true }
 metrics               = { workspace = true, optional = true }
+pyth-types            = { workspace = true }
 tracing               = { workspace = true, optional = true }
 
 [dev-dependencies]
-pyth-types = { workspace = true }
 test-case  = { workspace = true }

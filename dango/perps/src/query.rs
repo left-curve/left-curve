@@ -1,12 +1,10 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS,
         core::{
             compute_available_margin, compute_liquidation_price, compute_maintenance_margin,
             compute_position_unrealized_funding, compute_position_unrealized_pnl,
             compute_user_equity,
         },
-        oracle,
         querier::NoCachePerpQuerier,
         referral::calculate_commission_rate,
         state::{
@@ -16,7 +14,6 @@ use {
         },
     },
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{
         ASKS, BIDS, DEPTHS, Dimensionless, LimitOrder, LiquidityDepth, LiquidityDepthResponse,
         OrderId, PairId, QueryOrderResponse, QueryOrdersByUserResponseItem, UsdPrice, UsdValue,
@@ -32,8 +29,8 @@ use {
     },
     grug_storage::{MultiIndex, PrefixBound, PrimaryKey, StorageQuerier},
     grug_types::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, QuerierWrapper,
-        StdResult, Storage, Timestamp,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Order as IterationOrder, StdResult, Storage,
+        Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -82,8 +79,6 @@ pub fn query_user_states(
 
 pub fn query_user_state_extended(
     storage: &dyn Storage,
-    querier: QuerierWrapper,
-    current_time: Timestamp,
     user: Addr,
     include_equity: bool,
     include_available_margin: bool,
@@ -95,37 +90,22 @@ pub fn query_user_state_extended(
 ) -> anyhow::Result<UserStateExtended> {
     let user_state = USER_STATES.load(storage, user)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(querier), querier)
-        .with_no_older_than(current_time - MAX_ORACLE_STALENESS);
-
     let perp_querier = NoCachePerpQuerier::new_local(storage);
 
     let equity = if include_all || include_equity {
-        Some(compute_user_equity(
-            &mut oracle_querier,
-            &perp_querier,
-            &user_state,
-        )?)
+        Some(compute_user_equity(&perp_querier, &user_state)?)
     } else {
         None
     };
 
     let available_margin = if include_all || include_available_margin {
-        Some(compute_available_margin(
-            &mut oracle_querier,
-            &perp_querier,
-            &user_state,
-        )?)
+        Some(compute_available_margin(&perp_querier, &user_state)?)
     } else {
         None
     };
 
     let maintenance_margin = if include_all || include_maintenance_margin {
-        Some(compute_maintenance_margin(
-            &mut oracle_querier,
-            &perp_querier,
-            &user_state,
-        )?)
+        Some(compute_maintenance_margin(&perp_querier, &user_state)?)
     } else {
         None
     };
@@ -135,8 +115,8 @@ pub fn query_user_state_extended(
         .iter()
         .map(|(pair_id, position)| {
             let unrealized_pnl = if include_all || include_unrealized_pnl {
-                let oracle_price = oracle_querier.query_price_for_perps(pair_id)?;
-                Some(compute_position_unrealized_pnl(position, oracle_price)?)
+                let index_price = PAIR_STATES.load(storage, pair_id)?.index_price;
+                Some(compute_position_unrealized_pnl(position, index_price)?)
             } else {
                 None
             };
@@ -149,7 +129,7 @@ pub fn query_user_state_extended(
             };
 
             let liquidation_price = if include_all || include_liquidation_price {
-                compute_liquidation_price(pair_id, &user_state, &mut oracle_querier, &perp_querier)?
+                compute_liquidation_price(pair_id, &user_state, &perp_querier)?
             } else {
                 None
             };
@@ -182,8 +162,6 @@ pub fn query_user_state_extended(
 
 pub fn query_user_states_extended(
     storage: &dyn Storage,
-    querier: QuerierWrapper,
-    current_time: Timestamp,
     start_after: Option<Addr>,
     limit: Option<u32>,
     include_equity: bool,
@@ -204,8 +182,6 @@ pub fn query_user_states_extended(
             let user = res?;
             let user_state = query_user_state_extended(
                 storage,
-                querier,
-                current_time,
                 user,
                 include_equity,
                 include_available_margin,

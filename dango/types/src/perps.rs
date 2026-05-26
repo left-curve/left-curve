@@ -455,6 +455,17 @@ pub struct PairState {
     /// collection. Positive means longs pay shorts; negative means shorts pay
     /// longs.
     pub funding_rate: FundingRate,
+
+    /// The reference price used for margin, PnL, funding, and liquidation
+    /// calculations. Equals the oracle price when the oracle is available
+    /// (regular market session, fresh timestamp); drifts via an EWMA driven by
+    /// the order book's impact bid/ask when the oracle is unavailable (market
+    /// closed, stale feed).
+    pub index_price: UsdPrice,
+
+    /// Block timestamp at which `index_price` was last updated. Used to compute
+    /// the time delta for the EWMA smoothing step.
+    pub last_index_time: Timestamp,
 }
 
 /// State of a specific user. Saved in contract storage.

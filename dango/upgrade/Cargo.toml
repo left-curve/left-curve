@@ -13,6 +13,7 @@ dango-bank       = { workspace = true }
 dango-gateway    = { workspace = true }
 dango-oracle     = { workspace = true }
 dango-order-book = { workspace = true }
+dango-perps      = { workspace = true }
 dango-types      = { workspace = true }
 grug-math        = { workspace = true }
 grug-storage     = { workspace = true }

@@ -1,5 +1,6 @@
 pub mod core;
 pub mod cron;
+pub mod index_price;
 pub mod maintain;
 #[cfg(feature = "metrics")]
 pub mod metrics;
@@ -14,7 +15,6 @@ pub mod vault;
 use {
     crate::state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{FillId, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, UsdValue},
     dango_types::{
         DangoQuerier,
@@ -98,38 +98,24 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     cron::process_unlocks(ctx.storage, ctx.block.timestamp, &mut events)?;
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
-
-    cron::process_funding(
-        ctx.storage,
-        ctx.block.timestamp,
-        ctx.contract,
-        &mut oracle_querier,
-    )?;
+    cron::process_funding(ctx.storage, ctx.block.timestamp, ctx.contract)?;
 
     cron::process_conditional_orders(
         ctx.storage,
         ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
-        &mut oracle_querier,
         &mut events,
     )?;
 
     // Take the vault snapshot last, so equity reflects the end-of-block state
     // — including funding application and any conditional-order fills that
     // settled this block. Mirrors what the metrics path captures below.
-    cron::take_vault_snapshot(
-        ctx.storage,
-        ctx.block.timestamp,
-        ctx.contract,
-        &mut oracle_querier,
-    )?;
+    cron::take_vault_snapshot(ctx.storage, ctx.block.timestamp, ctx.contract)?;
 
     #[cfg(feature = "metrics")]
     {
-        cron::emit_cron_metrics(ctx.storage, ctx.contract, &mut oracle_querier, start)?;
+        cron::emit_cron_metrics(ctx.storage, ctx.contract, start)?;
     }
 
     Ok(Response::new().add_events(events)?)
@@ -281,8 +267,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         } => {
             let res = query::query_user_state_extended(
                 ctx.storage,
-                ctx.querier,
-                ctx.block.timestamp,
                 user,
                 include_equity,
                 include_available_margin,
@@ -307,8 +291,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         } => {
             let res = query::query_user_states_extended(
                 ctx.storage,
-                ctx.querier,
-                ctx.block.timestamp,
                 start_after,
                 limit,
                 include_equity,

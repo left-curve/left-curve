@@ -1,13 +1,11 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS, VIRTUAL_ASSETS, VIRTUAL_SHARES,
+        VIRTUAL_ASSETS, VIRTUAL_SHARES,
         core::{compute_available_margin, compute_user_equity},
-        oracle,
         querier::NoCachePerpQuerier,
         state::{PARAM, STATE, USER_STATES},
     },
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::UsdValue,
     dango_types::perps::{LiquidityAdded, Param, State, UserState},
     grug_math::{IsZero, MultiplyRatio, Number as _, Signed, Uint128},
@@ -42,14 +40,10 @@ pub fn add_liquidity(
 
     let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
 
-    let mut oracle_querier = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
-
     // --------------------------- 2. Business logic ---------------------------
 
     let shares_minted = _add_liquidity(
         &perp_querier,
-        &mut oracle_querier,
         &param,
         &mut state,
         &mut user_state,
@@ -96,7 +90,6 @@ pub fn add_liquidity(
 /// Returns: the number of shares minted.
 fn _add_liquidity(
     perp_querier: &NoCachePerpQuerier,
-    oracle_querier: &mut OracleQuerier,
     param: &Param,
     state: &mut State,
     user_state: &mut UserState,
@@ -115,7 +108,7 @@ fn _add_liquidity(
         "amount of margin to add must be positive"
     );
 
-    let available_margin = compute_available_margin(oracle_querier, perp_querier, user_state)?;
+    let available_margin = compute_available_margin(perp_querier, user_state)?;
     ensure!(
         available_margin >= amount,
         "insufficient available margin: {available_margin} (available) < {amount} (requested)"
@@ -134,7 +127,7 @@ fn _add_liquidity(
 
     // --------------------- Step 2. Compute vault equity ----------------------
 
-    let vault_equity = compute_user_equity(oracle_querier, perp_querier, vault_user_state)?;
+    let vault_equity = compute_user_equity(perp_querier, vault_user_state)?;
 
     // Add virtual shares to the current vault share supply to arrive at the
     // effective supply.
@@ -196,12 +189,10 @@ mod tests {
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice},
         dango_types::{
             constants::eth,
-            oracle::Price,
             perps::{PairParam, PairState, Position, UserState},
         },
         grug_math::{NumberConst, Uint128},
-        grug_types::{MockStorage, Timestamp, btree_map, hash_map},
-        pyth_types::MarketSession,
+        grug_types::{MockStorage, btree_map, hash_map},
     };
 
     fn default_param() -> Param {
@@ -219,7 +210,6 @@ mod tests {
     #[test]
     fn first_deposit_empty_vault() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -231,7 +221,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -249,7 +238,6 @@ mod tests {
     #[test]
     fn second_deposit_same_size() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(1_000_000);
         let mut user_state = UserState {
@@ -264,7 +252,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -282,7 +269,6 @@ mod tests {
     #[test]
     fn zero_add_liquidity() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState::default();
@@ -291,7 +277,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -311,7 +296,6 @@ mod tests {
     #[test]
     fn insufficient_margin_rejected() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -323,7 +307,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -340,7 +323,6 @@ mod tests {
     #[test]
     fn min_shares_passes() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -352,7 +334,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -369,7 +350,6 @@ mod tests {
     #[test]
     fn min_shares_fails() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(0);
         let mut user_state = UserState {
@@ -381,7 +361,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -398,7 +377,6 @@ mod tests {
     #[test]
     fn large_deposit_no_overflow() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
 
         let one_billion = 1_000_000_000_u128;
@@ -417,7 +395,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -436,7 +413,6 @@ mod tests {
     #[test]
     fn small_deposit_precision() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
 
         // Vault: $2 margin, 2M shares.
@@ -459,7 +435,6 @@ mod tests {
 
         let shares = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -476,7 +451,6 @@ mod tests {
     #[test]
     fn exact_division_shares() {
         let storage = MockStorage::new();
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
         let param = default_param();
         let mut state = state_with_supply(2_000_000);
         let mut user_state = UserState {
@@ -491,7 +465,6 @@ mod tests {
 
         _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -512,7 +485,6 @@ mod tests {
         let storage = MockStorage::new();
 
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let param = Param {
             vault_deposit_cap: Some(UsdValue::new_int(10)),
@@ -530,7 +502,6 @@ mod tests {
 
         let shares = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -550,7 +521,6 @@ mod tests {
         let storage = MockStorage::new();
 
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let param = Param {
             vault_deposit_cap: Some(UsdValue::new_int(8)),
@@ -571,7 +541,6 @@ mod tests {
 
         let err = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -590,7 +559,6 @@ mod tests {
         let storage = MockStorage::new();
 
         let perp_querier = NoCachePerpQuerier::new_local(&storage);
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {});
 
         let param = Param {
             vault_deposit_cap: Some(UsdValue::new_int(10)),
@@ -611,7 +579,6 @@ mod tests {
 
         let shares = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
@@ -670,6 +637,7 @@ mod tests {
         let pair_states = hash_map! {
             eth::DENOM.clone() => PairState {
                 funding_per_unit: FundingPerUnit::new_int(0),
+                index_price: UsdPrice::new_percent(195_000),
                 ..Default::default()
             },
         };
@@ -678,16 +646,8 @@ mod tests {
         // equity = $250 + (-$50) = $200
         // initial margin used = 1 * $1950 * 10% = $195
         // available margin = $200 - $195 = $5
-        let oracle_prices = hash_map! {
-            eth::DENOM.clone() => Price::new(
-                UsdPrice::new_percent(195_000),
-                Timestamp::from_seconds(0),
-                MarketSession::Regular,
-            ),
-        };
 
         let perp_querier = NoCachePerpQuerier::new_mock(pair_params, pair_states);
-        let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
 
         let param = default_param();
         let mut state = state_with_supply(0);
@@ -696,7 +656,6 @@ mod tests {
         // Attempting to add $150 when only $5 is available must fail.
         let err = _add_liquidity(
             &perp_querier,
-            &mut oracle_querier,
             &param,
             &mut state,
             &mut user_state,
