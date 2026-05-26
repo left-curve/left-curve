@@ -6,11 +6,11 @@ import { useCallback, useMemo, useState } from "react";
 
 export type TradeHistoryPreset = "1d" | "1w" | "1m" | "3m";
 
-export const PRESETS: Array<{ id: TradeHistoryPreset; days: number; label: string }> = [
-  { id: "1d", days: 1, label: "1 Day" },
-  { id: "1w", days: 7, label: "1 Week" },
-  { id: "1m", days: 30, label: "1 Month" },
-  { id: "3m", days: 90, label: "3 Months" },
+export const PRESETS: ReadonlyArray<{ id: TradeHistoryPreset; days: number }> = [
+  { id: "1d", days: 1 },
+  { id: "1w", days: 7 },
+  { id: "1m", days: 30 },
+  { id: "3m", days: 90 },
 ];
 
 export type TradeHistoryFilter = {

@@ -10,6 +10,13 @@ import {
 } from "./tradeHistoryFilterContext";
 import { buildPerpsTradeHistoryCsv, downloadCsv, tradeHistoryCsvFilename } from "./exportCsv";
 
+const PRESET_LABELS: Record<TradeHistoryPreset, () => string> = {
+  "1d": m["dex.protrade.tradeHistory.preset.1d"],
+  "1w": m["dex.protrade.tradeHistory.preset.1w"],
+  "1m": m["dex.protrade.tradeHistory.preset.1m"],
+  "3m": m["dex.protrade.tradeHistory.preset.3m"],
+};
+
 export const TradeHistoryToolbar: React.FC = () => {
   const { filter, setPreset, setCustomRange, nodes, filtersEnabled } = useTradeHistoryFilter();
   const { account } = useAccount();
@@ -79,7 +86,7 @@ export const TradeHistoryToolbar: React.FC = () => {
       onClick={() => setPreset(preset.id)}
       className={twMerge(filter.preset === preset.id && "bg-surface-primary-blue")}
     >
-      {preset.label}
+      {PRESET_LABELS[preset.id]()}
     </Button>
   ));
 
@@ -110,7 +117,7 @@ export const TradeHistoryToolbar: React.FC = () => {
         >
           {PRESETS.map((preset) => (
             <Select.Item key={preset.id} value={preset.id}>
-              {preset.label}
+              {PRESET_LABELS[preset.id]()}
             </Select.Item>
           ))}
           {filter.preset === null && (
