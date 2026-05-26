@@ -32,7 +32,7 @@ export function PreviewCard({
   const { coins } = useConfig();
   const { userIndex } = useAccount();
 
-  const isLong = !size.startsWith("-") && Number(size) > 0;
+  const isLong = !size.startsWith("-");
   const isPositive = displayPercent >= 0;
 
   const referralLink = getReferralLink(userIndex);
