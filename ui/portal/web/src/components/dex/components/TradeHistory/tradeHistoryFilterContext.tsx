@@ -1,6 +1,4 @@
 import { createContext } from "@left-curve/applets-kit";
-import { useAccount, usePublicClient, useInfiniteGraphqlQuery } from "@left-curve/store";
-import type { PerpsEvent } from "@left-curve/types";
 import type { PropsWithChildren } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -19,8 +17,10 @@ export type TradeHistoryFilter = {
   to: Date;
 };
 
-// Backend caps `perpsEvents` at max_items=100; revisit if that limit changes.
-const PAGE_SIZE = 30;
+export type QueryRange = {
+  earlierThan: string | undefined;
+  laterThan: string | undefined;
+};
 
 const buildPresetRange = (days: number): { from: Date; to: Date } => {
   const to = new Date();
@@ -35,22 +35,15 @@ const initialFilter: TradeHistoryFilter = {
   ...buildPresetRange(PRESETS.find((p) => p.id === initialPreset)?.days ?? 30),
 };
 
-type QueryRange = { earlierThan: string | undefined; laterThan: string | undefined };
-
-type TradeHistoryContextValue = {
+type TradeHistoryFilterContextValue = {
   filter: TradeHistoryFilter;
   setPreset: (preset: TradeHistoryPreset) => void;
   setCustomRange: (from: Date, to: Date) => void;
   queryRange: QueryRange;
-  nodes: PerpsEvent[];
-  isLoading: boolean;
-  isFetchingNextPage: boolean;
-  hasNextPage: boolean;
-  fetchNextPage: () => void;
   filtersEnabled: boolean;
 };
 
-const [Provider, useTradeHistoryFilter] = createContext<TradeHistoryContextValue>({
+const [Provider, useTradeHistoryFilter] = createContext<TradeHistoryFilterContextValue>({
   name: "TradeHistoryFilterContext",
 });
 
@@ -60,54 +53,14 @@ export function TradeHistoryFilterProvider({
   children,
   enableFilters,
 }: PropsWithChildren<{ enableFilters: boolean }>) {
-  const { account } = useAccount();
-  const publicClient = usePublicClient();
   const [filter, setFilter] = useState<TradeHistoryFilter>(initialFilter);
 
-  // Rolling presets stay open-ended on the upper bound so newly indexed
-  // trades aren't capped by a `to` value frozen at page load. Only custom
-  // ranges keep the explicit upper bound the user picked.
   const queryRange: QueryRange = enableFilters
     ? {
         earlierThan: filter.preset === null ? filter.to.toISOString() : undefined,
         laterThan: filter.from.toISOString(),
       }
     : { earlierThan: undefined, laterThan: undefined };
-
-  const { earlierThan, laterThan } = queryRange;
-  const address = account?.address;
-
-  const infiniteQuery = useInfiniteGraphqlQuery<PerpsEvent>({
-    limit: PAGE_SIZE,
-    query: {
-      enabled: !!address,
-      queryKey: ["perpsTradeHistory", address ?? "", earlierThan ?? "", laterThan ?? ""],
-      queryFn: async ({ pageParam }) => {
-        if (!address) throw new Error("missing account");
-        return await publicClient.queryPerpsEvents({
-          userAddr: address,
-          sortBy: "BLOCK_HEIGHT_DESC",
-          earlierThan,
-          laterThan,
-          first: pageParam.first,
-          last: pageParam.last,
-          after: pageParam.after,
-          before: pageParam.before,
-        });
-      },
-    },
-  });
-
-  const nodes = useMemo(
-    () => infiniteQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
-    [infiniteQuery.data],
-  );
-
-  const fetchNextPage = useCallback(() => {
-    if (infiniteQuery.hasNextPage && !infiniteQuery.isFetchingNextPage) {
-      infiniteQuery.fetchNextPage();
-    }
-  }, [infiniteQuery.fetchNextPage, infiniteQuery.hasNextPage, infiniteQuery.isFetchingNextPage]);
 
   const setPreset = useCallback((preset: TradeHistoryPreset) => {
     const config = PRESETS.find((p) => p.id === preset);
@@ -119,17 +72,12 @@ export function TradeHistoryFilterProvider({
     setFilter({ preset: null, from, to });
   }, []);
 
-  const value = useMemo<TradeHistoryContextValue>(
+  const value = useMemo<TradeHistoryFilterContextValue>(
     () => ({
       filter,
       setPreset,
       setCustomRange,
       queryRange,
-      nodes,
-      isLoading: infiniteQuery.isLoading,
-      isFetchingNextPage: infiniteQuery.isFetchingNextPage,
-      hasNextPage: infiniteQuery.hasNextPage,
-      fetchNextPage,
       filtersEnabled: enableFilters,
     }),
     [
@@ -138,11 +86,6 @@ export function TradeHistoryFilterProvider({
       setCustomRange,
       queryRange.earlierThan,
       queryRange.laterThan,
-      nodes,
-      infiniteQuery.isLoading,
-      infiniteQuery.isFetchingNextPage,
-      infiniteQuery.hasNextPage,
-      fetchNextPage,
       enableFilters,
     ],
   );

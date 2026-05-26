@@ -8,6 +8,7 @@ import {
   Tooltip,
   twMerge,
   useApp,
+  useMediaQuery,
 } from "@left-curve/applets-kit";
 import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -16,9 +17,12 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
 
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
+import { ExportCsvButton } from "./ExportCsvButton";
+import { TradeHistoryToolbar } from "./TradeHistoryToolbar";
 import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
 import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
 import { useTradeHistoryFilter } from "./tradeHistoryFilterContext";
+import { usePerpsTradeHistory } from "./usePerpsTradeHistory";
 
 import type { PerpsEvent } from "@left-curve/types";
 
@@ -254,8 +258,10 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
 export function PerpsTradeHistory() {
   const navigate = useNavigate();
   const { showModal } = useApp();
-  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, filtersEnabled } =
-    useTradeHistoryFilter();
+  const { isMd } = useMediaQuery();
+  const { queryRange, filtersEnabled } = useTradeHistoryFilter();
+  const { nodes, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    usePerpsTradeHistory(queryRange);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -311,87 +317,105 @@ export function PerpsTradeHistory() {
     normalizedNodes.length > 0;
 
   return (
-    <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto">
-      <div
-        className="grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
-        style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}
-      >
-        {columns.map((col) => (
-          <div key={col.key} className="px-2">
-            {col.header}
+    <>
+      {filtersEnabled ? (
+        isMd ? (
+          <div className="flex items-center justify-between gap-4 py-2 px-1">
+            <TradeHistoryToolbar layout="desktop" />
+            <ExportCsvButton events={nodes} />
           </div>
-        ))}
-      </div>
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ minWidth: "fit-content" }}>
-        {showEmpty ? (
-          <EmptyPlaceholder
-            component={m["dex.protrade.history.noOpenOrders"]()}
-            className="h-[3.5rem]"
-          />
         ) : (
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              position: "relative",
-              minWidth: "fit-content",
-            }}
-          >
-            {virtualItems.map((virtualRow) => {
-              const item = normalizedNodes[virtualRow.index];
-              if (!item) return null;
-              return (
-                <button
-                  key={virtualRow.key}
-                  type="button"
-                  onClick={() =>
-                    navigate({
-                      to: "/block/$block",
-                      params: { block: item.event.blockHeight.toString() },
-                    })
-                  }
-                  className={twMerge(
-                    "grid items-center w-full text-left px-1 diatype-xs-regular cursor-pointer transition-colors hover:bg-surface-secondary-rice",
-                  )}
-                  style={{
-                    gridTemplateColumns: gridTemplate,
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    transform: `translateY(${virtualRow.start}px)`,
-                    height: `${virtualRow.size}px`,
-                    minWidth: "fit-content",
-                  }}
-                >
-                  {columns.map((col) => (
-                    <div key={col.key} className="px-2 py-1">
-                      {col.render(item.event, item.fields)}
-                    </div>
-                  ))}
-                </button>
-              );
-            })}
+          <div className="flex flex-col gap-3 py-2 px-1">
+            <TradeHistoryToolbar layout="mobile" />
+            <div className="flex justify-end">
+              <ExportCsvButton events={nodes} />
+            </div>
           </div>
-        )}
+        )
+      ) : null}
 
-        {showInitialSpinner ? (
-          <div className="flex items-center justify-center py-6">
-            <Spinner color="pink" size="md" />
-          </div>
-        ) : null}
+      <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto">
+        <div
+          className="grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
+          style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}
+        >
+          {columns.map((col) => (
+            <div key={col.key} className="px-2">
+              {col.header}
+            </div>
+          ))}
+        </div>
 
-        {isFetchingNextPage ? (
-          <div className="flex items-center justify-center py-3">
-            <Spinner color="pink" size="sm" />
-          </div>
-        ) : null}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ minWidth: "fit-content" }}>
+          {showEmpty ? (
+            <EmptyPlaceholder
+              component={m["dex.protrade.history.noOpenOrders"]()}
+              className="h-[3.5rem]"
+            />
+          ) : (
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                position: "relative",
+                minWidth: "fit-content",
+              }}
+            >
+              {virtualItems.map((virtualRow) => {
+                const item = normalizedNodes[virtualRow.index];
+                if (!item) return null;
+                return (
+                  <button
+                    key={virtualRow.key}
+                    type="button"
+                    onClick={() =>
+                      navigate({
+                        to: "/block/$block",
+                        params: { block: item.event.blockHeight.toString() },
+                      })
+                    }
+                    className={twMerge(
+                      "grid items-center w-full text-left px-1 diatype-xs-regular cursor-pointer transition-colors hover:bg-surface-secondary-rice",
+                    )}
+                    style={{
+                      gridTemplateColumns: gridTemplate,
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      transform: `translateY(${virtualRow.start}px)`,
+                      height: `${virtualRow.size}px`,
+                      minWidth: "fit-content",
+                    }}
+                  >
+                    {columns.map((col) => (
+                      <div key={col.key} className="px-2 py-1">
+                        {col.render(item.event, item.fields)}
+                      </div>
+                    ))}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-        {showEndOfList ? (
-          <div className="text-center text-ink-tertiary-500 diatype-xs-regular py-2">
-            {m["dex.protrade.tradeHistory.totalLoaded"]({ count: normalizedNodes.length })}
-          </div>
-        ) : null}
+          {showInitialSpinner ? (
+            <div className="flex items-center justify-center py-6">
+              <Spinner color="pink" size="md" />
+            </div>
+          ) : null}
+
+          {isFetchingNextPage ? (
+            <div className="flex items-center justify-center py-3">
+              <Spinner color="pink" size="sm" />
+            </div>
+          ) : null}
+
+          {showEndOfList ? (
+            <div className="text-center text-ink-tertiary-500 diatype-xs-regular py-2">
+              {m["dex.protrade.tradeHistory.totalLoaded"]({ count: normalizedNodes.length })}
+            </div>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

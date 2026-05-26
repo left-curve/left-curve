@@ -1,6 +1,4 @@
-import { useCallback, useMemo } from "react";
-import { Button, DateRangePicker, Select, twMerge, useMediaQuery } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { Button, DateRangePicker, Select, twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
@@ -8,7 +6,6 @@ import {
   type TradeHistoryPreset,
   useTradeHistoryFilter,
 } from "./tradeHistoryFilterContext";
-import { buildPerpsTradeHistoryCsv, downloadCsv, tradeHistoryCsvFilename } from "./exportCsv";
 
 const PRESET_LABELS: Record<TradeHistoryPreset, () => string> = {
   "1d": m["dex.protrade.tradeHistory.preset.1d"],
@@ -17,33 +14,12 @@ const PRESET_LABELS: Record<TradeHistoryPreset, () => string> = {
   "3m": m["dex.protrade.tradeHistory.preset.3m"],
 };
 
-export function TradeHistoryToolbar() {
-  const { filter, setPreset, setCustomRange, nodes, filtersEnabled } = useTradeHistoryFilter();
-  const { account } = useAccount();
-  const { isMd } = useMediaQuery();
+type TradeHistoryToolbarProps = {
+  layout: "desktop" | "mobile";
+};
 
-  const headers = useMemo(
-    () => ({
-      pair: m["dex.protrade.tradeHistory.pair"](),
-      type: m["dex.protrade.history.type"](),
-      direction: m["dex.protrade.tradeHistory.direction"](),
-      size: "Size",
-      tradeValue: m["dex.protrade.tradeHistory.tradeValue"](),
-      price: m["dex.protrade.history.price"](),
-      pnl: m["dex.protrade.tradeHistory.pnl"](),
-      funding: m["dex.protrade.tradeHistory.funding"](),
-      fees: m["dex.protrade.tradeHistory.fees"](),
-      makerTaker: m["dex.protrade.tradeHistory.makerTaker"](),
-      time: m["dex.protrade.tradeHistory.time"](),
-    }),
-    [],
-  );
-
-  const handleExport = useCallback(() => {
-    if (!account || nodes.length === 0) return;
-    const csv = buildPerpsTradeHistoryCsv(nodes, headers);
-    downloadCsv(tradeHistoryCsvFilename(), csv);
-  }, [account, headers, nodes]);
+export function TradeHistoryToolbar({ layout }: TradeHistoryToolbarProps) {
+  const { filter, setPreset, setCustomRange, filtersEnabled } = useTradeHistoryFilter();
 
   if (!filtersEnabled) return null;
 
@@ -58,68 +34,48 @@ export function TradeHistoryToolbar() {
     />
   );
 
-  const exportButton = (
-    <Button
-      type="button"
-      variant="link"
-      size="xs"
-      onClick={handleExport}
-      isDisabled={!account || nodes.length === 0}
-    >
-      {m["dex.protrade.tradeHistory.exportCsv"]()}
-    </Button>
-  );
-
-  const presetButtons = PRESETS.map((preset) => (
-    <Button
-      key={preset.id}
-      type="button"
-      variant="link"
-      size="xs"
-      onClick={() => setPreset(preset.id)}
-      className={twMerge(filter.preset === preset.id && "bg-surface-primary-blue")}
-    >
-      {PRESET_LABELS[preset.id]()}
-    </Button>
-  ));
-
-  if (isMd) {
+  if (layout === "desktop") {
     return (
-      <div className="flex items-center justify-between gap-4 py-2 px-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          {presetButtons}
-          <span aria-hidden className="shrink-0 w-px h-4 bg-outline-secondary-gray mx-1" />
-          {datePicker}
-        </div>
-        {exportButton}
+      <div className="flex items-center gap-2 flex-wrap">
+        {PRESETS.map((preset) => (
+          <Button
+            key={preset.id}
+            type="button"
+            variant="link"
+            size="xs"
+            onClick={() => setPreset(preset.id)}
+            className={twMerge(filter.preset === preset.id && "bg-surface-primary-blue")}
+          >
+            {PRESET_LABELS[preset.id]()}
+          </Button>
+        ))}
+        <span aria-hidden className="shrink-0 w-px h-4 bg-outline-secondary-gray mx-1" />
+        {datePicker}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3 py-2 px-1">
-      <div className="flex items-center justify-between gap-3">
-        <Select
-          value={filter.preset ?? "custom"}
-          onChange={(v) => {
-            if (v !== "custom") setPreset(v as TradeHistoryPreset);
-          }}
-          classNames={{
-            trigger: "py-1.5 px-3 exposure-xs-italic text-ink-secondary-blue",
-          }}
-        >
-          {PRESETS.map((preset) => (
-            <Select.Item key={preset.id} value={preset.id}>
-              {PRESET_LABELS[preset.id]()}
-            </Select.Item>
-          ))}
-          {filter.preset === null && (
-            <Select.Item value="custom">{m["dex.protrade.tradeHistory.customDate"]()}</Select.Item>
-          )}
-        </Select>
-        {datePicker}
-      </div>
-      <div className="flex justify-end">{exportButton}</div>
+    <div className="flex items-center justify-between gap-3">
+      <Select
+        value={filter.preset ?? "custom"}
+        onChange={(v) => {
+          if (v !== "custom") setPreset(v as TradeHistoryPreset);
+        }}
+        classNames={{
+          trigger: "py-1.5 px-3 exposure-xs-italic text-ink-secondary-blue",
+        }}
+      >
+        {PRESETS.map((preset) => (
+          <Select.Item key={preset.id} value={preset.id}>
+            {PRESET_LABELS[preset.id]()}
+          </Select.Item>
+        ))}
+        {filter.preset === null && (
+          <Select.Item value="custom">{m["dex.protrade.tradeHistory.customDate"]()}</Select.Item>
+        )}
+      </Select>
+      {datePicker}
     </div>
   );
 }
