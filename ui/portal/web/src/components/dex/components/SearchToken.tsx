@@ -1,7 +1,7 @@
-import { useAppConfig, useConfig, perpsMarginAsset } from "@left-curve/store";
+import { useAppConfig, useConfig, perpsMarginAsset, useFavPairs } from "@left-curve/store";
 import { useRef, useState } from "react";
 
-import { IconSearch, Input, Popover, useMediaQuery } from "@left-curve/applets-kit";
+import { IconSearch, Input, Popover, Tabs, useMediaQuery } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
@@ -80,25 +80,42 @@ function normalizeRows(
   return rows;
 }
 
+const SEARCH_TOKEN_TABS = ["All", "Favorites", "Crypto"] as const;
+type SearchTokenTab = (typeof SEARCH_TOKEN_TABS)[number];
+
 const SearchTokenMenu: React.FC<{
   pairId: PairId;
   onChangePairId: (row: SearchTokenRow) => void;
 }> = ({ onChangePairId }) => {
+  const [activeTab, setActiveTab] = useState<SearchTokenTab>("All");
   const [searchText, setSearchText] = useState<string>("");
   const { data: config } = useAppConfig();
   const { coins } = useConfig();
+  const { hasFavPair, favPairs } = useFavPairs();
 
   const allRows = normalizeRows(config, coins);
 
-  const filteredRows = allRows.filter((row) => {
-    if (!searchText) return true;
-    const upper = searchText.toUpperCase();
-    return (
-      row.baseCoin.symbol.toUpperCase().includes(upper) ||
-      row.quoteCoin.symbol.toUpperCase().includes(upper) ||
-      row.pairKey.toUpperCase().includes(upper)
-    );
-  });
+  const filteredRows = allRows
+    .filter((row) => {
+      switch (activeTab) {
+        case "All":
+        case "Crypto":
+          return true;
+        case "Favorites":
+          return hasFavPair(row.pairKey);
+      }
+    })
+    .filter((row) => {
+      if (!searchText) return true;
+      const upper = searchText.toUpperCase();
+      return (
+        row.baseCoin.symbol.toUpperCase().includes(upper) ||
+        row.quoteCoin.symbol.toUpperCase().includes(upper) ||
+        row.pairKey.toUpperCase().includes(upper)
+      );
+    });
+
+  const showFavoritesEmpty = activeTab === "Favorites" && favPairs.length === 0;
 
   return (
     <div className="flex flex-col gap-2">
@@ -116,7 +133,24 @@ const SearchTokenMenu: React.FC<{
           </div>
         }
       />
-      <SearchTokenTable data={filteredRows} onChangePairId={onChangePairId} />
+      <div className="relative overflow-x-auto scrollbar-none pt-1">
+        <Tabs
+          color="line-red"
+          layoutId="search-token-tabs"
+          selectedTab={activeTab}
+          keys={[...SEARCH_TOKEN_TABS]}
+          onTabChange={(tab) => setActiveTab(tab as SearchTokenTab)}
+          classNames={{ base: "z-10" }}
+        />
+        <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
+      </div>
+      {showFavoritesEmpty ? (
+        <p className="diatype-sm-medium text-ink-tertiary-500 text-center py-8">
+          You haven't added any favorites yet. Tap the star next to a pair to add it.
+        </p>
+      ) : (
+        <SearchTokenTable data={filteredRows} onChangePairId={onChangePairId} />
+      )}
     </div>
   );
 };
