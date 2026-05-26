@@ -1,12 +1,12 @@
-import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
+import { AddressVisualizer, StarToggleButton, useMediaQuery } from "@left-curve/applets-kit";
 import { useFavApplets } from "@left-curve/store";
 
-import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
+import { TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
 import type { AccountDetails, Address, ContractInfo, User } from "@left-curve/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
-import type { MouseEvent, PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 
 const childVariants = {
   hidden: { opacity: 0, y: -30 },
@@ -24,12 +24,6 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
   const { favApplets, addFavApplet, removeFavApplet } = useFavApplets();
   const isFav = favApplets.includes(id);
 
-  const onClickStar = (e: MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (isFav) removeFavApplet(applet);
-    else addFavApplet(applet);
-  };
-
   return (
     <motion.div
       className="w-full p-2 flex items-center justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
@@ -45,13 +39,11 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
           <p className="diatype-m-regular text-ink-tertiary-500">{description}</p>
         </div>
       </div>
-      <div onClick={onClickStar}>
-        {isFav ? (
-          <IconStar className="w-6 h-6 text-primitives-rice-light-500" />
-        ) : (
-          <IconEmptyStar className="w-6 h-6 text-primitives-rice-light-500" />
-        )}
-      </div>
+      <StarToggleButton
+        isActive={isFav}
+        onToggle={() => (isFav ? removeFavApplet(applet) : addFavApplet(applet))}
+        className="w-6 h-6 text-primitives-rice-light-500"
+      />
     </motion.div>
   );
 };

@@ -1,16 +1,21 @@
-import { useAppConfig, useConfig, perpsMarginAsset } from "@left-curve/store";
-import { useRef, useState } from "react";
+import { useAppConfig, useConfig, perpsMarginAsset, useFavPairs } from "@left-curve/store";
+import { useMemo, useRef, useState } from "react";
 
-import { IconSearch, Input, Popover, useMediaQuery } from "@left-curve/applets-kit";
+import { IconSearch, Input, Popover, Tab, Tabs, useMediaQuery } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
-import type { PairId, PerpsPairParam } from "@left-curve/types";
+import type { GetAppConfigData } from "@left-curve/store";
+import type { PairId } from "@left-curve/types";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
+
+function assertNever(x: never): never {
+  throw new Error(`Unexpected value: ${String(x)}`);
+}
 
 type SearchTokenHeaderProps = {
   pairId: PairId;
@@ -43,62 +48,87 @@ export type SearchTokenRow = {
   pairId: PairId;
   pairKey: string;
   perpsPairId: string;
+  isFavorite: boolean;
+};
+
+const PERPS_QUOTE_COIN: AnyCoin = {
+  symbol: perpsMarginAsset.symbol,
+  denom: "usd",
+  decimals: perpsMarginAsset.decimals,
+  name: perpsMarginAsset.name,
+  logoURI: perpsMarginAsset.logoURI,
+  type: "native",
 };
 
 function normalizeRows(
-  config: any,
+  config: GetAppConfigData | undefined,
   coins: { byDenom: Record<string, AnyCoin>; bySymbol: Record<string, AnyCoin> },
 ): SearchTokenRow[] {
   const rows: SearchTokenRow[] = [];
 
-  const perpsPairs: Record<string, PerpsPairParam> = (config as any)?.perpsPairs ?? {};
-  for (const [perpsPairId, _param] of Object.entries(perpsPairs)) {
+  const perpsPairs = config?.perpsPairs ?? {};
+  for (const [perpsPairId] of Object.entries(perpsPairs)) {
     const symbol = perpsPairId.replace("perp/", "").toUpperCase();
 
     const baseSym = symbol.replace(/USDC$|USD$/, "");
     const base = coins.bySymbol[baseSym];
     if (!base) continue;
 
-    const syntheticQuote: AnyCoin = {
-      symbol: perpsMarginAsset.symbol,
-      denom: "usd",
-      decimals: perpsMarginAsset.decimals,
-      name: perpsMarginAsset.name,
-      logoURI: perpsMarginAsset.logoURI,
-      type: "native",
-    };
-
     rows.push({
       baseCoin: base,
-      quoteCoin: syntheticQuote,
+      quoteCoin: PERPS_QUOTE_COIN,
       pairId: { baseDenom: base.denom, quoteDenom: "usd" },
       pairKey: `${base.symbol}-USD`,
       perpsPairId,
+      isFavorite: false,
     });
   }
 
   return rows;
 }
 
+type SearchTokenTab = "all" | "favorites" | "crypto";
+
 const SearchTokenMenu: React.FC<{
   pairId: PairId;
   onChangePairId: (row: SearchTokenRow) => void;
 }> = ({ onChangePairId }) => {
+  const [activeTab, setActiveTab] = useState<SearchTokenTab>("all");
   const [searchText, setSearchText] = useState<string>("");
   const { data: config } = useAppConfig();
   const { coins } = useConfig();
+  const { hasFavPair, favPairs } = useFavPairs();
 
-  const allRows = normalizeRows(config, coins);
+  const allRows = useMemo(() => normalizeRows(config, coins), [config, coins]);
 
-  const filteredRows = allRows.filter((row) => {
-    if (!searchText) return true;
-    const upper = searchText.toUpperCase();
-    return (
-      row.baseCoin.symbol.toUpperCase().includes(upper) ||
-      row.quoteCoin.symbol.toUpperCase().includes(upper) ||
-      row.pairKey.toUpperCase().includes(upper)
-    );
-  });
+  const filteredRows = useMemo(
+    () =>
+      allRows
+        .filter((row) => {
+          switch (activeTab) {
+            case "all":
+            case "crypto":
+              return true;
+            case "favorites":
+              return hasFavPair(row.pairKey);
+            default:
+              return assertNever(activeTab);
+          }
+        })
+        .filter((row) => {
+          if (!searchText) return true;
+          const upper = searchText.toUpperCase();
+          return (
+            row.baseCoin.symbol.toUpperCase().includes(upper) ||
+            row.quoteCoin.symbol.toUpperCase().includes(upper) ||
+            row.pairKey.toUpperCase().includes(upper)
+          );
+        })
+        .map((row) => ({ ...row, isFavorite: hasFavPair(row.pairKey) })),
+    [allRows, activeTab, searchText, hasFavPair],
+  );
+
+  const showFavoritesEmpty = activeTab === "favorites" && favPairs.length === 0;
 
   return (
     <div className="flex flex-col gap-2">
@@ -116,7 +146,27 @@ const SearchTokenMenu: React.FC<{
           </div>
         }
       />
-      <SearchTokenTable data={filteredRows} onChangePairId={onChangePairId} />
+      <div className="relative overflow-x-auto scrollbar-none pt-1">
+        <Tabs
+          color="line-red"
+          layoutId="search-token-tabs"
+          selectedTab={activeTab}
+          onTabChange={(tab) => setActiveTab(tab as SearchTokenTab)}
+          classNames={{ base: "z-10" }}
+        >
+          <Tab title="all">{m["dex.protrade.searchPairTable.tabs.all"]()}</Tab>
+          <Tab title="favorites">{m["dex.protrade.searchPairTable.tabs.favorites"]()}</Tab>
+          <Tab title="crypto">{m["dex.protrade.searchPairTable.tabs.crypto"]()}</Tab>
+        </Tabs>
+        <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
+      </div>
+      {showFavoritesEmpty ? (
+        <p className="diatype-sm-medium text-ink-tertiary-500 text-center py-8">
+          {m["dex.protrade.searchPairTable.emptyFavorites"]()}
+        </p>
+      ) : (
+        <SearchTokenTable data={filteredRows} onChangePairId={onChangePairId} />
+      )}
     </div>
   );
 };

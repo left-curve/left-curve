@@ -46,6 +46,7 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
   onRowPointerDown?: (row: Row<T>) => void;
+  getRowId?: (row: T, index: number, parent?: Row<T>) => string;
   classNames?: TableClassNames;
   isLoading?: boolean;
   skeletonType?: "row" | "cell";
@@ -63,6 +64,7 @@ export const Table = <T,>({
   onColumnFiltersChange,
   onRowClick,
   onRowPointerDown,
+  getRowId,
   isLoading = false,
   emptyComponent,
   initialSortState = { fixed: [], variable: [] },
@@ -103,6 +105,7 @@ export const Table = <T,>({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getRowId,
   });
 
   const styles = tabsVariants({
