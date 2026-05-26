@@ -33,6 +33,7 @@ const PerpsPairNameWithFav: React.FC<{
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
       <button
         type="button"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           toggleFavPair(pairKey);
