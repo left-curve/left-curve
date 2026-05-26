@@ -16,14 +16,10 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
 
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
+import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
 import { useTradeHistoryFilter } from "./tradeHistoryFilterContext";
 
-import type {
-  DeleveragedData,
-  LiquidatedData,
-  OrderFilledData,
-  PerpsEvent,
-} from "@left-curve/types";
+import type { PerpsEvent } from "@left-curve/types";
 
 const eventTypeLabels: Record<string, string> = {
   order_filled: "Trade",
@@ -36,55 +32,6 @@ const V017_CUTOFF = new Date("2026-04-30T12:00:00Z");
 
 const ROW_HEIGHT = 32;
 const FETCH_NEXT_THRESHOLD = 10;
-
-type NormalizedFields = {
-  size: string | null | undefined;
-  price: string | null | undefined;
-  pnl: string | null | undefined;
-  fee: string | null | undefined;
-  funding: string | null | undefined;
-  isMaker: boolean | null | undefined;
-};
-
-function normalizePerpsEvent(event: PerpsEvent): NormalizedFields {
-  switch (event.eventType) {
-    case "order_filled": {
-      const d = event.data as OrderFilledData;
-      return {
-        size: d.fill_size,
-        price: d.fill_price,
-        pnl: d.realized_pnl,
-        fee: d.fee,
-        funding: d.realized_funding,
-        isMaker: d.is_maker,
-      };
-    }
-    case "liquidated": {
-      const d = event.data as LiquidatedData;
-      return {
-        size: d.adl_size,
-        price: d.adl_price,
-        pnl: d.adl_realized_pnl,
-        fee: null,
-        funding: d.adl_realized_funding,
-        isMaker: null,
-      };
-    }
-    case "deleveraged": {
-      const d = event.data as DeleveragedData;
-      return {
-        size: d.closing_size,
-        price: d.fill_price,
-        pnl: d.realized_pnl,
-        fee: null,
-        funding: d.realized_funding,
-        isMaker: null,
-      };
-    }
-    default:
-      return { size: null, price: null, pnl: null, fee: null, funding: null, isMaker: null };
-  }
-}
 
 type ColumnDef = {
   key: string;
