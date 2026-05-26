@@ -4,3 +4,8 @@ export {
   TradeHistoryFilterProvider,
   useTradeHistoryFilter,
 } from "./tradeHistoryFilterContext";
+export type {
+  QueryRange,
+  TradeHistoryFilter,
+  TradeHistoryPreset,
+} from "./tradeHistoryFilterContext";
