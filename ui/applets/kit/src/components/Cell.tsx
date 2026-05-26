@@ -27,8 +27,7 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
 import { PairAssets } from "./PairAssets";
-import { IconStar } from "./icons/IconStar";
-import { IconEmptyStar } from "./icons/IconEmptyStar";
+import { StarToggleButton } from "./StarToggleButton";
 
 const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
   <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
@@ -367,14 +366,12 @@ type CellPairNameWithFavProps = {
 
 const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type, className }) => {
   const { coins } = useConfig();
+  const { toggleFavPair, hasFavPair } = useFavPairs();
   const { baseDenom, quoteDenom } = pairId;
   const baseCoin = coins.byDenom[baseDenom];
   const quoteCoin = coins.byDenom[quoteDenom];
-  const { toggleFavPair, hasFavPair } = useFavPairs();
 
   const pairSymbols = `${baseCoin.symbol}-${quoteCoin.symbol}`;
-
-  const isFav = hasFavPair(pairSymbols);
 
   return (
     <div
@@ -383,22 +380,12 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = memo(({ pairId, type
         className,
       )}
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleFavPair(pairSymbols);
-        }}
-        className="focus:outline-none flex-shrink-0"
-      >
-        {isFav ? (
-          <IconStar className="w-4 h-4 text-fg-primary-700" />
-        ) : (
-          <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
-        )}
-      </button>
+      <StarToggleButton
+        isActive={hasFavPair(pairSymbols)}
+        onToggle={() => toggleFavPair(pairSymbols)}
+      />
       <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
-      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <p className="whitespace-nowrap">{pairSymbols}</p>
       {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );

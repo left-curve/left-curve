@@ -1,5 +1,5 @@
 import { useAppConfig, useConfig, perpsMarginAsset, useFavPairs } from "@left-curve/store";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { IconSearch, Input, Popover, Tab, Tabs, useMediaQuery } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
@@ -43,6 +43,16 @@ export type SearchTokenRow = {
   pairId: PairId;
   pairKey: string;
   perpsPairId: string;
+  isFavorite: boolean;
+};
+
+const PERPS_QUOTE_COIN: AnyCoin = {
+  symbol: perpsMarginAsset.symbol,
+  denom: "usd",
+  decimals: perpsMarginAsset.decimals,
+  name: perpsMarginAsset.name,
+  logoURI: perpsMarginAsset.logoURI,
+  type: "native",
 };
 
 function normalizeRows(
@@ -59,21 +69,13 @@ function normalizeRows(
     const base = coins.bySymbol[baseSym];
     if (!base) continue;
 
-    const syntheticQuote: AnyCoin = {
-      symbol: perpsMarginAsset.symbol,
-      denom: "usd",
-      decimals: perpsMarginAsset.decimals,
-      name: perpsMarginAsset.name,
-      logoURI: perpsMarginAsset.logoURI,
-      type: "native",
-    };
-
     rows.push({
       baseCoin: base,
-      quoteCoin: syntheticQuote,
+      quoteCoin: PERPS_QUOTE_COIN,
       pairId: { baseDenom: base.denom, quoteDenom: "usd" },
       pairKey: `${base.symbol}-USD`,
       perpsPairId,
+      isFavorite: false,
     });
   }
 
@@ -92,27 +94,32 @@ const SearchTokenMenu: React.FC<{
   const { coins } = useConfig();
   const { hasFavPair, favPairs } = useFavPairs();
 
-  const allRows = normalizeRows(config, coins);
+  const allRows = useMemo(() => normalizeRows(config, coins), [config, coins]);
 
-  const filteredRows = allRows
-    .filter((row) => {
-      switch (activeTab) {
-        case "all":
-        case "crypto":
-          return true;
-        case "favorites":
-          return hasFavPair(row.pairKey);
-      }
-    })
-    .filter((row) => {
-      if (!searchText) return true;
-      const upper = searchText.toUpperCase();
-      return (
-        row.baseCoin.symbol.toUpperCase().includes(upper) ||
-        row.quoteCoin.symbol.toUpperCase().includes(upper) ||
-        row.pairKey.toUpperCase().includes(upper)
-      );
-    });
+  const filteredRows = useMemo(
+    () =>
+      allRows
+        .filter((row) => {
+          switch (activeTab) {
+            case "all":
+            case "crypto":
+              return true;
+            case "favorites":
+              return hasFavPair(row.pairKey);
+          }
+        })
+        .filter((row) => {
+          if (!searchText) return true;
+          const upper = searchText.toUpperCase();
+          return (
+            row.baseCoin.symbol.toUpperCase().includes(upper) ||
+            row.quoteCoin.symbol.toUpperCase().includes(upper) ||
+            row.pairKey.toUpperCase().includes(upper)
+          );
+        })
+        .map((row) => ({ ...row, isFavorite: hasFavPair(row.pairKey) })),
+    [allRows, activeTab, searchText, hasFavPair],
+  );
 
   const showFavoritesEmpty = activeTab === "favorites" && favPairs.length === 0;
 

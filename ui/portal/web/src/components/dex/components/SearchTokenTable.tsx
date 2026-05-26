@@ -1,15 +1,14 @@
-import { allPerpsPairStatsStore, useFavPairs, TradePairStore } from "@left-curve/store";
+import { allPerpsPairStatsStore, TradePairStore, useFavPairs } from "@left-curve/store";
 import {
   Badge,
   Cell,
   FormattedNumber,
-  IconEmptyStar,
-  IconStar,
   PairStatValue,
   SortHeader,
+  StarToggleButton,
   Table,
 } from "@left-curve/applets-kit";
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
@@ -27,25 +26,10 @@ const PerpsPairNameWithFav: React.FC<{
   pairKey: string;
 }> = memo(({ baseCoin, quoteCoin, pairKey }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
-  const isFav = hasFavPair(pairKey);
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
-      <button
-        type="button"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleFavPair(pairKey);
-        }}
-        className="focus:outline-none flex-shrink-0"
-      >
-        {isFav ? (
-          <IconStar className="w-4 h-4 text-fg-primary-700" />
-        ) : (
-          <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
-        )}
-      </button>
+      <StarToggleButton isActive={hasFavPair(pairKey)} onToggle={() => toggleFavPair(pairKey)} />
       <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
       <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <Badge text="Perp" color="green" size="s" />
@@ -118,98 +102,103 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
   data: rows,
   onChangePairId,
 }) => {
-  const { favPairs } = useFavPairs();
-
-  const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
   const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
 
-  const data = useMemo(() => [...rows], [rows, favPairs]);
+  const columns = useMemo<TableColumn<SearchTokenRow>>(
+    () => [
+      {
+        id: "isFavorite",
+        accessorFn: (row) => row.isFavorite,
+      },
+      {
+        id: "pairName",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.name"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+          />
+        ),
+        cell: ({ row }) => (
+          <PerpsPairNameWithFav
+            baseCoin={row.original.baseCoin}
+            quoteCoin={row.original.quoteCoin}
+            pairKey={row.original.pairKey}
+          />
+        ),
+        filterFn: (row, _, value) => {
+          const v = String(value ?? "").toUpperCase();
+          return (
+            row.original.baseCoin.symbol.toUpperCase().includes(v) ||
+            row.original.quoteCoin.symbol.toUpperCase().includes(v)
+          );
+        },
+        accessorFn: (row) => row.pairKey,
+      },
+      {
+        id: "price",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.price"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+          />
+        ),
+        cell: ({ row }) => <PriceCell row={row.original} />,
+        accessorFn: (row) => {
+          const stats =
+            allPerpsPairStatsStore.getState().perpsPairStatsByPairId[getPerpsPairId(row.pairId)];
+          return Number(stats?.currentPrice ?? 0);
+        },
+      },
+      {
+        id: "change24h",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.24hChange"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+          />
+        ),
+        cell: ({ row }) => <ChangeCell row={row.original} />,
+        accessorFn: (row) => {
+          const stats =
+            allPerpsPairStatsStore.getState().perpsPairStatsByPairId[getPerpsPairId(row.pairId)];
+          const value = stats?.priceChange24H;
+          return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+        },
+      },
+      {
+        id: "volume",
+        header: (ctx: TableHeaderContext<SearchTokenRow>) => (
+          <SortHeader
+            label={m["dex.protrade.searchPairTable.volume"]()}
+            sorted={ctx.column.getIsSorted()}
+            toggleSort={ctx.column.toggleSorting}
+            className="ml-auto w-full justify-end"
+          />
+        ),
+        cell: ({ row }) => <VolumeCell row={row.original} />,
+        accessorFn: (row) => {
+          const stats =
+            allPerpsPairStatsStore.getState().perpsPairStatsByPairId[getPerpsPairId(row.pairId)];
+          const value = stats?.volume24H;
+          return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
+        },
+      },
+    ],
+    [getPerpsPairId],
+  );
 
-  const getPairStats = (row: SearchTokenRow) => {
-    return perpStatsByPairId[getPerpsPairId(row.pairId)];
-  };
-
-  const columns: TableColumn<SearchTokenRow> = [
-    {
-      id: "isFavorite",
-      accessorFn: (row) => favPairs.includes(row.pairKey),
-    },
-    {
-      id: "pairName",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.name"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-        />
-      ),
-      cell: ({ row }) => (
-        <PerpsPairNameWithFav
-          baseCoin={row.original.baseCoin}
-          quoteCoin={row.original.quoteCoin}
-          pairKey={row.original.pairKey}
-        />
-      ),
-      filterFn: (row, _, value) => {
-        const v = String(value ?? "").toUpperCase();
-        return (
-          row.original.baseCoin.symbol.toUpperCase().includes(v) ||
-          row.original.quoteCoin.symbol.toUpperCase().includes(v)
-        );
-      },
-      accessorFn: (row) => row.pairKey,
-    },
-    {
-      id: "price",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.price"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-        />
-      ),
-      cell: ({ row }) => <PriceCell row={row.original} />,
-      accessorFn: (row) => Number(getPairStats(row)?.currentPrice ?? 0),
-    },
-    {
-      id: "change24h",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.24hChange"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-        />
-      ),
-      cell: ({ row }) => <ChangeCell row={row.original} />,
-      accessorFn: (row) => {
-        const value = getPairStats(row)?.priceChange24H;
-        return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
-      },
-    },
-    {
-      id: "volume",
-      header: (ctx: TableHeaderContext<SearchTokenRow>) => (
-        <SortHeader
-          label={m["dex.protrade.searchPairTable.volume"]()}
-          sorted={ctx.column.getIsSorted()}
-          toggleSort={ctx.column.toggleSorting}
-          className="ml-auto w-full justify-end"
-        />
-      ),
-      cell: ({ row }) => <VolumeCell row={row.original} />,
-      accessorFn: (row) => {
-        const value = getPairStats(row)?.volume24H;
-        return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
-      },
-    },
-  ];
+  const getRowId = useCallback((row: SearchTokenRow) => row.pairKey, []);
 
   return (
     <Table
-      data={data}
+      data={rows}
       columns={columns}
       style="simple"
       classNames={classNames}
+      getRowId={getRowId}
       initialSortState={{
         fixed: [{ id: "isFavorite", desc: true }],
         variable: [{ id: "pairName", desc: false }],
