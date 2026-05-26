@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { Button, DateRangePicker, Select, twMerge, useMediaQuery } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -21,7 +21,6 @@ export const TradeHistoryToolbar: React.FC = () => {
   const { filter, setPreset, setCustomRange, nodes, filtersEnabled } = useTradeHistoryFilter();
   const { account } = useAccount();
   const { isMd } = useMediaQuery();
-  const [isExporting, setIsExporting] = useState(false);
 
   const headers = useMemo(
     () => ({
@@ -41,15 +40,10 @@ export const TradeHistoryToolbar: React.FC = () => {
   );
 
   const handleExport = useCallback(() => {
-    if (!account || isExporting || nodes.length === 0) return;
-    setIsExporting(true);
-    try {
-      const csv = buildPerpsTradeHistoryCsv(nodes, headers);
-      downloadCsv(tradeHistoryCsvFilename(), csv);
-    } finally {
-      setIsExporting(false);
-    }
-  }, [account, headers, isExporting, nodes]);
+    if (!account || nodes.length === 0) return;
+    const csv = buildPerpsTradeHistoryCsv(nodes, headers);
+    downloadCsv(tradeHistoryCsvFilename(), csv);
+  }, [account, headers, nodes]);
 
   if (!filtersEnabled) return null;
 
@@ -71,7 +65,6 @@ export const TradeHistoryToolbar: React.FC = () => {
       size="xs"
       onClick={handleExport}
       isDisabled={!account || nodes.length === 0}
-      isLoading={isExporting}
     >
       {m["dex.protrade.tradeHistory.exportCsv"]()}
     </Button>
