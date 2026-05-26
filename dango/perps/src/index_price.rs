@@ -456,7 +456,10 @@ mod tests {
         )
         .unwrap();
 
-        assert!(pair_state.index_price > UsdPrice::new_int(95));
+        // S = 95, impact_bid = 100, impact_ask = 106, dt = 3s, α = raw(1665)
+        // IPD = max(100 − 95, 0) − max(95 − 106, 0) = 5
+        // S_new = 95 + 1665 × 5_000_000 / 1_000_000 = raw(95_008_325)
+        assert_eq!(pair_state.index_price, UsdPrice::new_raw(95_008_325));
     }
 
     /// When the index is above the impact ask, sellers are willing to sell
@@ -485,7 +488,10 @@ mod tests {
         )
         .unwrap();
 
-        assert!(pair_state.index_price < UsdPrice::new_int(112));
+        // S = 112, impact_bid = 100 < S → 0, impact_ask = 106, dt = 3s, α = raw(1665)
+        // IPD = 0 − (112 − 106) = −6
+        // S_new = 112 + 1665 × (−6_000_000) / 1_000_000 = raw(111_990_010)
+        assert_eq!(pair_state.index_price, UsdPrice::new_raw(111_990_010));
     }
 
     /// When the bid side has insufficient depth to fill the impact notional,
@@ -516,8 +522,10 @@ mod tests {
         )
         .unwrap();
 
-        // Index above ask, bid has no contribution -> only ask pulls down.
-        assert!(pair_state.index_price < UsdPrice::new_int(112));
+        // bid insufficient (notional 100 < 10_000) → impact_bid = None
+        // impact_ask = 106, S = 112, IPD = 0 − (112 − 106) = −6
+        // S_new = 112 + 1665 × (−6_000_000) / 1_000_000 = raw(111_990_010)
+        assert_eq!(pair_state.index_price, UsdPrice::new_raw(111_990_010));
     }
 
     /// When the ask side has insufficient depth, its contribution to IPD is
@@ -548,8 +556,10 @@ mod tests {
         )
         .unwrap();
 
-        // Index below bid, ask has no contribution -> only bid pulls up.
-        assert!(pair_state.index_price > UsdPrice::new_int(95));
+        // ask insufficient (notional 106 < 10_000) → impact_ask = None
+        // impact_bid = 100, S = 95, IPD = (100 − 95) − 0 = 5
+        // S_new = 95 + 1665 × 5_000_000 / 1_000_000 = raw(95_008_325)
+        assert_eq!(pair_state.index_price, UsdPrice::new_raw(95_008_325));
     }
 
     /// When both sides of the book have insufficient depth, neither side
@@ -644,15 +654,22 @@ mod tests {
         let price = Ok(Price::new(UsdPrice::new_int(999), t2, MarketSession::Other));
         process_index_price_for_pair(&storage, t2, &pair_id, &pair_param, &mut pair_state, price)
             .unwrap();
+        // S = 100, bid = 105, ask = 110, dt = 3s, α = raw(1665)
+        // IPD = (105 − 100) − 0 = 5
+        // S_new = 100 + 1665 × 5_000_000 / 1_000_000 = raw(100_008_325)
         let after_step2 = pair_state.index_price;
-        assert!(after_step2 > UsdPrice::new_int(100));
+        assert_eq!(after_step2, UsdPrice::new_raw(100_008_325));
 
         // Step 3: Other, 3s later -> further drift
         let t3 = t2 + Duration::from_seconds(3);
         let price = Ok(Price::new(UsdPrice::new_int(999), t3, MarketSession::Other));
         process_index_price_for_pair(&storage, t3, &pair_id, &pair_param, &mut pair_state, price)
             .unwrap();
-        assert!(pair_state.index_price > after_step2);
+        // S = 100.008325 (raw 100_008_325), bid = 105
+        // IPD = 105_000_000 − 100_008_325 = 4_991_675
+        // delta = 1665 × 4_991_675 / 1_000_000 = 8_311 (truncated)
+        // S_new = 100_008_325 + 8_311 = raw(100_016_636)
+        assert_eq!(pair_state.index_price, UsdPrice::new_raw(100_016_636));
 
         // Step 4: Regular@98 -> snap back exactly
         let t4 = t3 + Duration::from_seconds(3);
@@ -763,7 +780,10 @@ mod tests {
             prev_increment = increment;
         }
 
-        // After 5 ticks of 3s, should still be below 110 (the bid)
-        assert!(pair_state.index_price < UsdPrice::new_int(110));
+        // After 5 ticks of 3s with α = raw(1665), bid = 110, ask = 115:
+        //   tick 1: S = raw(100_016_650)  tick 2: raw(100_033_272)
+        //   tick 3: raw(100_049_866)      tick 4: raw(100_066_432)
+        //   tick 5: raw(100_082_971)
+        assert_eq!(pair_state.index_price, UsdPrice::new_raw(100_082_971));
     }
 }

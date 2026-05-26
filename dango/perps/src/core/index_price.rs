@@ -143,8 +143,11 @@ mod tests {
             Duration::from_seconds(3),
         )
         .unwrap();
-        assert!(result > UsdPrice::new_int(100));
-        assert!(result < UsdPrice::new_percent(10_001)); // < 100.01
+        // dt*=3000ms, x=3000/1_800_000 → raw(1666)
+        // β = 1 - 1666 + 1 = raw(998_335), α = 1 - β = raw(1665)
+        // IPD = max(102 − 100, 0) − max(100 − 105, 0) = 2
+        // S_new = 100 + 1665 × 2_000_000 / 1_000_000 = raw(100_003_330)
+        assert_eq!(result, UsdPrice::new_raw(100_003_330));
     }
 
     #[test]
@@ -157,8 +160,10 @@ mod tests {
             Duration::from_seconds(3),
         )
         .unwrap();
-        assert!(result < UsdPrice::new_int(110));
-        assert!(result > UsdPrice::new_percent(10_999)); // > 109.99
+        // α = raw(1665) (dt = 3s, same as above)
+        // IPD = max(102 − 110, 0) − max(110 − 105, 0) = 0 − 5 = −5
+        // S_new = 110 + 1665 × (−5_000_000) / 1_000_000 = raw(109_991_675)
+        assert_eq!(result, UsdPrice::new_raw(109_991_675));
     }
 
     #[test]
@@ -184,7 +189,9 @@ mod tests {
             Duration::from_seconds(3),
         )
         .unwrap();
-        assert!(result > UsdPrice::new_int(100));
+        // ask = None → ask_contrib = 0; bid > S → IPD = 2. Same as both_sides.
+        // S_new = 100 + 1665 × 2_000_000 / 1_000_000 = raw(100_003_330)
+        assert_eq!(result, UsdPrice::new_raw(100_003_330));
     }
 
     #[test]
@@ -197,7 +204,9 @@ mod tests {
             Duration::from_seconds(3),
         )
         .unwrap();
-        assert!(result < UsdPrice::new_int(110));
+        // bid = None → bid_contrib = 0; S > ask → IPD = −5. Same as both_sides.
+        // S_new = 110 + 1665 × (−5_000_000) / 1_000_000 = raw(109_991_675)
+        assert_eq!(result, UsdPrice::new_raw(109_991_675));
     }
 
     #[test]
@@ -238,8 +247,12 @@ mod tests {
             Duration::from_seconds(7200),
         )
         .unwrap();
-        assert!(result > UsdPrice::new_percent(10_090)); // > 100.90
-        assert!(result < UsdPrice::new_int(101)); // < 101
+        // dt = 7200s capped to c·τ = 180s → x = 180_000/1_800_000 = raw(100_000)
+        // β = Taylor(0.1) = 1 − 100000 + 5000 − 166 + 4 = raw(904_838)
+        // α = 1 − β = raw(95_162)
+        // IPD = max(110 − 100, 0) − max(100 − 115, 0) = 10
+        // S_new = 100 + 95162 × 10_000_000 / 1_000_000 = raw(100_951_620)
+        assert_eq!(result, UsdPrice::new_raw(100_951_620));
     }
 
     #[test]
@@ -254,7 +267,10 @@ mod tests {
             Duration::from_seconds(999_999),
         )
         .unwrap();
-        assert!(result < UsdPrice::new_int(110));
+        // α = raw(95_162) (dt capped to 180s, same as delta_t_exceeds_cap)
+        // IPD = max(200 − 100, 0) − max(100 − 200, 0) = 100
+        // S_new = 100 + 95162 × 100_000_000 / 1_000_000 = raw(109_516_200)
+        assert_eq!(result, UsdPrice::new_raw(109_516_200));
     }
 
     /// When delta_t equals the cap exactly (c * tau = 0.1 * 30min = 180s),
@@ -269,8 +285,10 @@ mod tests {
             Duration::from_seconds(180),
         )
         .unwrap();
-        assert!(result > UsdPrice::new_percent(10_090)); // > 100.90
-        assert!(result < UsdPrice::new_int(101)); // < 101
+        // dt = 180s = c·τ exactly → same computation as delta_t_exceeds_cap
+        // α = raw(95_162), IPD = 10
+        // S_new = 100 + 95162 × 10_000_000 / 1_000_000 = raw(100_951_620)
+        assert_eq!(result, UsdPrice::new_raw(100_951_620));
     }
 
     /// At 181s the time delta is capped to 180s, so the result must equal
@@ -286,10 +304,14 @@ mod tests {
         let at_180 = compute_ewma_index_price(s, bid, ask, Duration::from_seconds(180)).unwrap();
         let at_181 = compute_ewma_index_price(s, bid, ask, Duration::from_seconds(181)).unwrap();
 
+        // at_179: x = 179_000/1_800_000 → raw(99_444)
+        //   β = 1 − 99444 + 4944 − 163 + 4 = raw(905_341), α = raw(94_659)
+        //   S_new = 100 + 94659 × 10_000_000 / 1_000_000 = raw(100_946_590)
+        assert_eq!(at_179, UsdPrice::new_raw(100_946_590));
+        // at_180: α = raw(95_162), S_new = raw(100_951_620)
+        assert_eq!(at_180, UsdPrice::new_raw(100_951_620));
         // 181s is capped to 180s, so result must equal 180s exactly.
         assert_eq!(at_181, at_180);
-        // 179s is below the cap, so it yields a slightly smaller alpha.
-        assert!(at_179 < at_180);
     }
 
     /// Per the trade.xyz spec, after one time constant (tau = 30 min) of
@@ -307,13 +329,9 @@ mod tests {
             s = compute_ewma_index_price(s, bid, ask, dt).unwrap();
         }
 
-        let target = UsdPrice::new_int(163);
-        let tolerance = UsdPrice::new_int(2);
-        assert!(
-            s > target.checked_sub(tolerance).unwrap()
-                && s < target.checked_add(tolerance).unwrap(),
-            "after tau of pressure, expected ~163, got {s}"
-        );
+        // 600 iterations of S += floor(1665 × (200e6 − S) / 1e6), starting
+        // at S_0 = 100e6. Converges 63.2% of the 100-unit gap toward 200.
+        assert_eq!(s, UsdPrice::new_raw(163_205_711));
     }
 
     /// When the index is below the bid but well inside the ask, only the bid
@@ -328,8 +346,10 @@ mod tests {
             Duration::from_seconds(3),
         )
         .unwrap();
-        assert!(result > UsdPrice::new_int(100));
-        assert!(result < UsdPrice::new_int(101));
+        // S = 100, bid = 105 > S → bid_contrib = 5; S < ask = 120 → ask_contrib = 0
+        // IPD = 5, α = raw(1665), delta = 1665 × 5_000_000 / 1_000_000 = 8325
+        // S_new = raw(100_008_325)
+        assert_eq!(result, UsdPrice::new_raw(100_008_325));
     }
 
     /// Equal displacement on opposite sides of the spread must produce equal

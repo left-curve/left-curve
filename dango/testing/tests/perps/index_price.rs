@@ -137,11 +137,13 @@ async fn e2_close_drift_reopen() {
     suite.make_empty_block().await;
     suite.make_empty_block().await;
 
+    // 1 EWMA tick (only the feed block triggers process_index_price).
+    // dt = 5 × 250ms = 1250ms, x = 1250/1_800_000 → raw(694)
+    // β = 1_000_000 − 694 = raw(999_306), α = raw(694)
+    // IPD = 2010 − 2000 = 10
+    // S_new = 2000 + 694 × 10_000_000 / 1_000_000 = raw(2_000_006_940)
     let index_drifted = query_index_price(&suite, contracts.perps).await;
-    assert!(
-        index_drifted > UsdPrice::new_int(2_000),
-        "expected drift up from 2000, got {index_drifted}"
-    );
+    assert_eq!(index_drifted, UsdPrice::new_raw(2_000_006_940));
 
     // Step 5: Feed Regular@2005 (market reopens). R3: snap back immediately.
     suite
@@ -296,10 +298,12 @@ async fn e6_oracle_flapping() {
 
     suite.make_empty_block().await;
 
+    // 1 EWMA tick from the feed block. dt = 2×250ms + 3000ms = 3500ms
+    // x = 3500/1_800_000 → raw(1944), β = 1e6 − 1944 + 1 = raw(998_057)
+    // α = raw(1943), IPD = 2050 − 2000 = 50
+    // S_new = 2000 + 1943 × 50_000_000 / 1_000_000 = raw(2_000_097_150)
     let index2 = query_index_price(&suite, contracts.perps).await;
-    // May have drifted slightly or stayed (depends on whether bid has enough
-    // depth for impact_size). Either way, not corrupted.
-    assert!(index2 >= UsdPrice::new_int(2_000));
+    assert_eq!(index2, UsdPrice::new_raw(2_000_097_150));
 
     // Block 3: Regular@2001 -> snap.
     suite
@@ -330,8 +334,11 @@ async fn e6_oracle_flapping() {
 
     suite.make_empty_block().await;
 
+    // 1 EWMA tick from the feed block. dt = 3000ms, α = raw(1665)
+    // IPD = 2050 − 2001 = 49
+    // S_new = 2001 + 1665 × 49_000_000 / 1_000_000 = raw(2_001_081_585)
     let index4 = query_index_price(&suite, contracts.perps).await;
-    assert!(index4 >= UsdPrice::new_int(2_001));
+    assert_eq!(index4, UsdPrice::new_raw(2_001_081_585));
 
     // Block 5: Regular@1999 -> snap.
     suite
