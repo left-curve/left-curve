@@ -2,7 +2,7 @@ import { Spinner, isChunkLoadError, reloadOnChunkError } from "@left-curve/apple
 import { captureException } from "@sentry/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { NotFound } from "./NotFound";
 
@@ -15,8 +15,7 @@ type ErrorPageProps = {
 
 export const ErrorPage: React.FC<ErrorPageProps> = ({ error, reset }) => {
   const navigate = useNavigate();
-  const isChunkError = error instanceof Error && isChunkLoadError(error);
-  const handledChunkError = useRef(false);
+  const isChunkError = isChunkLoadError(error);
 
   const { data: isChainRunning, isFetched } = useQuery({
     queryKey: ["error_page_chain_status"],
@@ -40,11 +39,8 @@ export const ErrorPage: React.FC<ErrorPageProps> = ({ error, reset }) => {
   }, [error, isChunkError, isFetched, isChainRunning, navigate]);
 
   useEffect(() => {
-    if (!isChunkError || handledChunkError.current) return;
-    handledChunkError.current = true;
-    if (!reloadOnChunkError()) {
-      reset();
-    }
+    if (!isChunkError) return;
+    if (!reloadOnChunkError()) reset();
   }, [isChunkError, reset]);
 
   if (isChunkError || !isFetched || !isChainRunning) {

@@ -47,11 +47,11 @@ function ProTradeApplet() {
     });
   };
 
-  const symbols = parseTradePairSymbols(pairSymbols);
+  const { baseSymbol = "", quoteSymbol = "" } = parseTradePairSymbols(pairSymbols) ?? {};
 
   const pairId = {
-    baseDenom: symbols ? (coins.bySymbol[symbols.baseSymbol]?.denom ?? "") : "",
-    quoteDenom: symbols ? (getTradeQuoteDenom(symbols.quoteSymbol, coins.bySymbol) ?? "") : "",
+    baseDenom: coins.bySymbol[baseSymbol]?.denom ?? "",
+    quoteDenom: getTradeQuoteDenom(quoteSymbol, coins.bySymbol) ?? "",
   };
 
   return (

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getDefaultTradePairSymbols,
-  getPerpsPairIdFromSymbols,
+  getPerpsPairId,
   getTradeQuoteDenom,
   normalizeTradePairSymbols,
   parseTradePairSymbols,
@@ -14,25 +14,26 @@ describe("trade pair symbols", () => {
     expect(getDefaultTradePairSymbols("Mainnet")).toBe("BTC-USD");
   });
 
-  it("normalizes single-symbol URLs to USD pairs", () => {
-    expect(normalizeTradePairSymbols("ETH")).toBe("ETH-USD");
-    expect(normalizeTradePairSymbols("btc")).toBe("BTC-USD");
+  it("parses single-symbol URLs into USD pairs", () => {
+    expect(parseTradePairSymbols("ETH")).toEqual({ baseSymbol: "ETH", quoteSymbol: "USD" });
+    expect(parseTradePairSymbols("btc")).toEqual({ baseSymbol: "BTC", quoteSymbol: "USD" });
   });
 
-  it("normalizes explicit pairs and rejects malformed pairs", () => {
+  it("parses explicit pairs and rejects malformed input", () => {
+    expect(parseTradePairSymbols("eth-usd")).toEqual({ baseSymbol: "ETH", quoteSymbol: "USD" });
+    expect(parseTradePairSymbols("-USD")).toBeNull();
+    expect(parseTradePairSymbols("ETH-USD-EXTRA")).toBeNull();
+  });
+
+  it("normalizes parsed symbols back into a canonical string", () => {
+    expect(normalizeTradePairSymbols("ETH")).toBe("ETH-USD");
     expect(normalizeTradePairSymbols("eth-usd")).toBe("ETH-USD");
     expect(normalizeTradePairSymbols("-USD")).toBeNull();
-    expect(normalizeTradePairSymbols("ETH-USD-EXTRA")).toBeNull();
   });
 
-  it("derives perps pair ids from normalized symbols", () => {
-    expect(getPerpsPairIdFromSymbols("ETH")).toBe("perp/ethusd");
-    expect(getPerpsPairIdFromSymbols("BTC-USDC")).toBe("perp/btcusdc");
-    expect(getPerpsPairIdFromSymbols("BTC-USD-EXTRA")).toBeNull();
-  });
-
-  it("parses normalized symbols for UI denom lookup", () => {
-    expect(parseTradePairSymbols("eth")).toEqual({ baseSymbol: "ETH", quoteSymbol: "USD" });
+  it("derives perps pair ids from parsed symbols", () => {
+    expect(getPerpsPairId({ baseSymbol: "ETH", quoteSymbol: "USD" })).toBe("perp/ethusd");
+    expect(getPerpsPairId({ baseSymbol: "BTC", quoteSymbol: "USDC" })).toBe("perp/btcusdc");
   });
 
   it("uses the synthetic USD quote denom for perps", () => {

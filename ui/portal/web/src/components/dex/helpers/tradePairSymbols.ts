@@ -2,7 +2,7 @@ const DEFAULT_QUOTE_SYMBOL = "USD";
 const DEFAULT_DEVNET_PAIR_SYMBOLS = `ETH-${DEFAULT_QUOTE_SYMBOL}`;
 const DEFAULT_PAIR_SYMBOLS = `BTC-${DEFAULT_QUOTE_SYMBOL}`;
 
-type TradePairSymbols = {
+export type TradePairSymbols = {
   baseSymbol: string;
   quoteSymbol: string;
 };
@@ -11,29 +11,24 @@ export function getDefaultTradePairSymbols(chainName: string): string {
   return chainName === "Devnet" ? DEFAULT_DEVNET_PAIR_SYMBOLS : DEFAULT_PAIR_SYMBOLS;
 }
 
-export function normalizeTradePairSymbols(pairSymbols: string): string | null {
-  const [rawBaseSymbol, rawQuoteSymbol, ...extraSymbols] = pairSymbols.split("-");
-  const baseSymbol = rawBaseSymbol?.trim().toUpperCase();
-  const quoteSymbol = rawQuoteSymbol?.trim().toUpperCase() || DEFAULT_QUOTE_SYMBOL;
-
-  if (!baseSymbol || extraSymbols.length > 0) return null;
-
-  return `${baseSymbol}-${quoteSymbol}`;
-}
-
 export function parseTradePairSymbols(pairSymbols: string): TradePairSymbols | null {
-  const normalizedPairSymbols = normalizeTradePairSymbols(pairSymbols);
-  if (!normalizedPairSymbols) return null;
+  const [rawBase, rawQuote, ...extra] = pairSymbols.split("-");
+  if (extra.length > 0) return null;
 
-  const [baseSymbol = "", quoteSymbol = DEFAULT_QUOTE_SYMBOL] = normalizedPairSymbols.split("-");
+  const baseSymbol = rawBase?.trim().toUpperCase();
+  if (!baseSymbol) return null;
+
+  const quoteSymbol = rawQuote?.trim().toUpperCase() || DEFAULT_QUOTE_SYMBOL;
   return { baseSymbol, quoteSymbol };
 }
 
-export function getPerpsPairIdFromSymbols(pairSymbols: string): string | null {
-  const symbols = parseTradePairSymbols(pairSymbols);
-  if (!symbols) return null;
+export function normalizeTradePairSymbols(pairSymbols: string): string | null {
+  const parsed = parseTradePairSymbols(pairSymbols);
+  return parsed && `${parsed.baseSymbol}-${parsed.quoteSymbol}`;
+}
 
-  return `perp/${symbols.baseSymbol.toLowerCase()}${symbols.quoteSymbol.toLowerCase()}`;
+export function getPerpsPairId({ baseSymbol, quoteSymbol }: TradePairSymbols): string {
+  return `perp/${baseSymbol.toLowerCase()}${quoteSymbol.toLowerCase()}`;
 }
 
 export function getTradeQuoteDenom(
