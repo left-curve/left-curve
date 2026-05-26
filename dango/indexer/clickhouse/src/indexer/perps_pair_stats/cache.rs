@@ -88,7 +88,9 @@ impl PerpsPairStatsCache {
         Ok(rows.into_iter().map(|r| (r.pair_id, r.price)).collect())
     }
 
-    /// Close price closest to (but not after) 24 h ago, per pair.
+    /// Close price closest to (but not after) 24 h ago, per pair, within a
+    /// 7-day lookback. Pairs with no row in that window fall through to
+    /// `fetch_earliest_prices`.
     async fn fetch_prices_24h_ago(client: &clickhouse::Client) -> Result<HashMap<String, u128>> {
         let ts = chrono::Utc::now() - chrono::Duration::hours(24);
 
@@ -98,7 +100,8 @@ impl PerpsPairStatsCache {
                 SELECT pair_id,
                        argMax(close, created_at) AS price
                 FROM perps_pair_prices
-                WHERE created_at <= toDateTime64(?, 6)
+                WHERE created_at >= now() - INTERVAL 7 DAY
+                  AND created_at <= toDateTime64(?, 6)
                 GROUP BY pair_id
                 "#,
             )

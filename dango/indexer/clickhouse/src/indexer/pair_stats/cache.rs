@@ -102,7 +102,9 @@ impl PairStatsCache {
             .collect())
     }
 
-    /// Clearing price closest to (but not after) 24 h ago, per pair.
+    /// Clearing price closest to (but not after) 24 h ago, per pair, within a
+    /// 7-day lookback. Pairs with no row in that window fall through to
+    /// `fetch_earliest_prices`.
     async fn fetch_prices_24h_ago(
         client: &clickhouse::Client,
     ) -> Result<HashMap<(String, String), u128>> {
@@ -114,7 +116,8 @@ impl PairStatsCache {
                 SELECT base_denom, quote_denom,
                        argMax(clearing_price, created_at) AS price
                 FROM pair_prices
-                WHERE created_at <= toDateTime64(?, 6)
+                WHERE created_at >= now() - INTERVAL 7 DAY
+                  AND created_at <= toDateTime64(?, 6)
                 GROUP BY base_denom, quote_denom
                 "#,
             )
