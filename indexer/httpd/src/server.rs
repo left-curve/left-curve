@@ -274,8 +274,6 @@ async fn dump_jemalloc_stats() -> HttpResponse {
         ptr,
     };
 
-    let mut buf = String::new();
-
     unsafe extern "C" fn write_cb(opaque: *mut c_void, msg: *const c_char) {
         if msg.is_null() || opaque.is_null() {
             return;
@@ -290,28 +288,41 @@ async fn dump_jemalloc_stats() -> HttpResponse {
         }
     }
 
-    // SAFETY: calling jemalloc's stats printer with our callback. The buffer
-    // outlives the call (we own it in this stack frame, and the function is
-    // synchronous despite the async wrapper).
-    unsafe {
-        malloc_stats_print(
-            Some(write_cb),
-            &mut buf as *mut _ as *mut c_void,
-            ptr::null(),
-        );
-    }
+    // `malloc_stats_print` walks every arena and emits a multi-MB report on
+    // a large heap; on a 30 GiB process this can stall the calling thread
+    // for hundreds of ms. Run it on the blocking pool so it doesn't tie up
+    // an actix worker (which is exactly when we'd want it: during an
+    // incident with a bloated heap).
+    let result = tokio::task::spawn_blocking(|| {
+        let mut buf = String::new();
+        // SAFETY: jemalloc invokes the callback synchronously from the
+        // calling thread for the duration of this call. `buf` lives on this
+        // stack frame until `malloc_stats_print` returns.
+        unsafe {
+            malloc_stats_print(
+                Some(write_cb),
+                &mut buf as *mut _ as *mut c_void,
+                ptr::null(),
+            );
+        }
+        buf
+    })
+    .await;
 
-    HttpResponse::Ok()
-        .content_type("text/plain; charset=utf-8")
-        .body(buf)
+    match result {
+        Ok(buf) => HttpResponse::Ok()
+            .content_type("text/plain; charset=utf-8")
+            .body(buf),
+        Err(err) => HttpResponse::InternalServerError()
+            .body(format!("dump_jemalloc_stats join failed: {err}")),
+    }
 }
 
 // ---- jemalloc statistics gauges ----
 
 /// Refresh the jemalloc gauges every `JEMALLOC_REFRESH_INTERVAL`.
 ///
-/// These six numbers are the cheapest way to understand the allocator's
-/// state in real time:
+/// Memory-state gauges (refreshed only after a successful `epoch.advance()`):
 /// - `allocated`: bytes requested by the application and currently live.
 /// - `active`:    bytes in active pages assigned to threads (≈ allocated + small overhead).
 /// - `resident`:  bytes mapped into RAM from jemalloc's POV (≈ container RSS).
@@ -322,6 +333,12 @@ async fn dump_jemalloc_stats() -> HttpResponse {
 ///   the virtual reservation.
 /// - `metadata`:  bytes consumed by jemalloc's own bookkeeping (arenas, chunks).
 ///   Should be small (tens of MiB) — sustained growth signals a structural problem.
+///
+/// Profiling-state gauge (refreshed every tick, independent of stats):
+/// - `profiling_active`: 1 if heap sampling is currently on, 0 otherwise.
+///   Pair with an alert (`> 0 for 15m`) to catch a forgotten activation —
+///   live sampling costs ~5-15% CPU on top of the ~1-3% baseline of armed-but-
+///   inactive profiling.
 ///
 /// The ratio `resident / allocated` is the best at-a-glance fragmentation
 /// signal: ~1.0 means the process is using what it has; >1.5 means the
@@ -365,6 +382,21 @@ async fn refresh_jemalloc_gauges_forever() {
 
     loop {
         interval.tick().await;
+
+        // Profiling-active state lives in `jemalloc_pprof::PROF_CTL`, not in
+        // the stats epoch — update it unconditionally so a forgotten
+        // activation is observable even if stats reads fail.
+        let profiling_active = match jemalloc_pprof::PROF_CTL.as_ref() {
+            Some(prof_ctl) => {
+                if prof_ctl.lock().await.activated() {
+                    1.0
+                } else {
+                    0.0
+                }
+            },
+            None => 0.0,
+        };
+        metrics::gauge!("jemalloc_profiling_active").set(profiling_active);
 
         // Stats are cached until the epoch is advanced.
         if let Err(_err) = epoch_mib.advance() {
