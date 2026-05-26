@@ -29,8 +29,13 @@ use {
 /// (inflating RSS). jemalloc fixes all three. With the `profiling` feature
 /// enabled, heap snapshots can be dumped on demand from the `/debug/pprof/heap`
 /// endpoint on the metrics server — see `indexer-httpd::server`. To arm
-/// profiling without paying its cost at rest, set the env var
-/// `MALLOC_CONF=prof:true,prof_active:false`.
+/// profiling without active sampling, set the env var
+/// `MALLOC_CONF=prof:true,prof_active:false`. `prof:true` is not zero-cost:
+/// the profiling-aware allocator hot path adds ~1-3% CPU even when sampling
+/// is dormant. Do NOT add `background_thread:true` — under dango's allocation
+/// rate the dedicated decay threads generated a `madvise` syscall storm that
+/// loaded dockerd and starved cloudflared on the testnet host (incident
+/// 2026-05-25).
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
