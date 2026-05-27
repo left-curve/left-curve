@@ -276,7 +276,12 @@ temp-rocksdb    = { path = "utils/temp-rocksdb" }
 
 [profile.release]
 codegen-units    = 1
-debug            = false
+# `line-tables-only` adds function names + source line numbers + GNU
+# build-id (no full DWARF .debug_info). Required for jemalloc heap pprof
+# symbolization — without it, `pprof -top` attributes 100% of allocations
+# to the `[dango]` blob (verified on testnet 2026-05-26). ~+5-10% binary
+# size vs `debug = false`.
+debug            = "line-tables-only"
 debug-assertions = false
 incremental      = false
 lto              = true
