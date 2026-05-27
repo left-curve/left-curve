@@ -16,6 +16,8 @@ use {
 
 // --------------------------------- constants ---------------------------------
 
+pub const LAST_INDEX_PRICE_UPDATE: Item<u64> = Item::new("last_index_price_update");
+
 pub const LAST_VAULT_ORDERS_UPDATE: Item<u64> = Item::new("last_vault_orders_update");
 
 pub const PARAM: Item<Param> = Item::new("param");

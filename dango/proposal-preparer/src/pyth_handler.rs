@@ -2,6 +2,7 @@ use {
     dango_types::{
         config::AppConfig,
         oracle::{ExecuteMsg, QueryPriceSourcesRequest},
+        perps,
     },
     grug_types::{
         Addr, Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper,
@@ -210,20 +211,56 @@ where
             return Ok(txs);
         };
 
-        // Build the tx and insert it at the front of the block.
-        let tx = Tx {
-            sender: cfg.addresses.oracle,
-            gas_limit: GAS_LIMIT,
-            msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                cfg.addresses.oracle,
-                &ExecuteMsg::FeedPrices(price_update),
-                Coins::new(),
-            )?]),
-            data: Json::null(),
-            credential: Json::null(),
-        };
+        // Build the oracle price-feed tx and insert it at the front of the block.
+        {
+            let oracle_tx = Tx {
+                sender: cfg.addresses.oracle,
+                gas_limit: GAS_LIMIT,
+                msgs: NonEmpty::new_unchecked(vec![Message::execute(
+                    cfg.addresses.oracle,
+                    &ExecuteMsg::FeedPrices(price_update),
+                    Coins::new(),
+                )?]),
+                data: Json::null(),
+                credential: Json::null(),
+            };
 
-        txs.insert(0, tx.to_json_vec()?.into());
+            txs.insert(0, oracle_tx.to_json_vec()?.into());
+        }
+
+        // Insert perps index-price refresh transaction.
+        {
+            let index_tx = Tx {
+                sender: cfg.addresses.perps,
+                gas_limit: GAS_LIMIT,
+                msgs: NonEmpty::new_unchecked(vec![Message::execute(
+                    cfg.addresses.perps,
+                    &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+                    Coins::new(),
+                )?]),
+                data: Json::null(),
+                credential: Json::null(),
+            };
+
+            txs.insert(1, index_tx.to_json_vec()?.into());
+        }
+
+        // Insert perps vault-order refresh transaction.
+        {
+            let vault_tx = Tx {
+                sender: cfg.addresses.perps,
+                gas_limit: GAS_LIMIT,
+                msgs: NonEmpty::new_unchecked(vec![Message::execute(
+                    cfg.addresses.perps,
+                    &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
+                    Coins::new(),
+                )?]),
+                data: Json::null(),
+                credential: Json::null(),
+            };
+
+            txs.insert(2, vault_tx.to_json_vec()?.into());
+        }
 
         #[cfg(feature = "metrics")]
         histogram!("proposal_preparer.prepare_proposal.duration",)

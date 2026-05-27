@@ -14,7 +14,7 @@ pub mod vault;
 
 use {
     crate::state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_order_book::{FillId, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, UsdValue},
     dango_types::{
         DangoQuerier,
@@ -25,7 +25,8 @@ use {
     },
     grug_math::{NumberConst, Uint128},
     grug_types::{
-        Addr, Duration, EventBuilder, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, SudoCtx,
+        Addr, AuthCtx, AuthMode, Duration, EventBuilder, ImmutableCtx, Json, JsonDeExt, JsonSerExt,
+        Message, MsgExecute, MutableCtx, Response, SudoCtx, Tx,
     },
 };
 
@@ -148,6 +149,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 user,
                 maker_taker_fee_rates,
             } => maintain::set_fee_rate_override(ctx, user, maker_taker_fee_rates),
+            MaintainerMsg::RefreshIndexPrices => maintain::refresh_index_prices(ctx),
+            MaintainerMsg::RefreshVaultOrders => maintain::refresh_vault_orders(ctx),
         },
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),
@@ -201,7 +204,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             VaultMsg::RemoveLiquidity { shares_to_burn } => {
                 vault::remove_liquidity(ctx, shares_to_burn)
             },
-            VaultMsg::Refresh {} => vault::refresh_orders(ctx),
         },
         ExecuteMsg::Referral(msg) => match msg {
             ReferralMsg::SetReferral { referrer, referee } => {
@@ -373,4 +375,176 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
     }
     .map_err(Into::into)
+}
+
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.mode == AuthMode::Finalize,
+        "you don't have the right, O you don't have the right"
+    );
+
+    for msg in tx.msgs.iter() {
+        let Message::Execute(MsgExecute { contract, msg, .. }) = msg else {
+            bail!("all messages must be execute messages");
+        };
+
+        ensure!(
+            contract == ctx.contract,
+            "all messages must target the perps contract"
+        );
+
+        let Ok(ExecuteMsg::Maintain(
+            MaintainerMsg::RefreshIndexPrices | MaintainerMsg::RefreshVaultOrders,
+        )) = msg.clone().deserialize_json()
+        else {
+            bail!("all execute messages must be RefreshIndexPrices or RefreshVaultOrders");
+        };
+    }
+
+    Ok(Response::new())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        grug_types::{Coins, Json, MockContext, NonEmpty, ResultExt},
+        std::collections::BTreeMap,
+    };
+
+    const CONTRACT: Addr = Addr::mock(0);
+
+    fn make_tx(msgs: Vec<Message>) -> Tx {
+        Tx {
+            sender: CONTRACT,
+            gas_limit: 1_000_000,
+            msgs: NonEmpty::new_unchecked(msgs),
+            data: Json::null(),
+            credential: Json::null(),
+        }
+    }
+
+    fn refresh_index_prices_msg(contract: Addr) -> Message {
+        Message::execute(
+            contract,
+            &ExecuteMsg::Maintain(MaintainerMsg::RefreshIndexPrices),
+            Coins::new(),
+        )
+        .unwrap()
+    }
+
+    fn refresh_vault_orders_msg(contract: Addr) -> Message {
+        Message::execute(
+            contract,
+            &ExecuteMsg::Maintain(MaintainerMsg::RefreshVaultOrders),
+            Coins::new(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn authenticate_single_refresh_index_prices() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Finalize);
+
+        let tx = make_tx(vec![refresh_index_prices_msg(CONTRACT)]);
+        authenticate(ctx.as_auth(), tx).should_succeed();
+    }
+
+    #[test]
+    fn authenticate_single_refresh_vault_orders() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Finalize);
+
+        let tx = make_tx(vec![refresh_vault_orders_msg(CONTRACT)]);
+        authenticate(ctx.as_auth(), tx).should_succeed();
+    }
+
+    #[test]
+    fn authenticate_both_messages() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Finalize);
+
+        let tx = make_tx(vec![
+            refresh_index_prices_msg(CONTRACT),
+            refresh_vault_orders_msg(CONTRACT),
+        ]);
+        authenticate(ctx.as_auth(), tx).should_succeed();
+    }
+
+    #[test]
+    fn authenticate_rejects_check_mode() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Check);
+
+        let tx = make_tx(vec![refresh_index_prices_msg(CONTRACT)]);
+        authenticate(ctx.as_auth(), tx).should_fail_with_error("you don't have the right");
+    }
+
+    #[test]
+    fn authenticate_rejects_wrong_contract() {
+        let wrong_contract = Addr::mock(99);
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Finalize);
+
+        let tx = make_tx(vec![refresh_index_prices_msg(wrong_contract)]);
+        authenticate(ctx.as_auth(), tx)
+            .should_fail_with_error("all messages must target the perps contract");
+    }
+
+    #[test]
+    fn authenticate_rejects_non_execute_message() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Finalize);
+
+        let tx = make_tx(vec![Message::Transfer(BTreeMap::new())]);
+        authenticate(ctx.as_auth(), tx)
+            .should_fail_with_error("all messages must be execute messages");
+    }
+
+    #[test]
+    fn authenticate_rejects_invalid_execute() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Finalize);
+
+        let msg = Message::execute(
+            CONTRACT,
+            &ExecuteMsg::Maintain(MaintainerMsg::Donate {}),
+            Coins::new(),
+        )
+        .unwrap();
+
+        let tx = make_tx(vec![msg]);
+        authenticate(ctx.as_auth(), tx).should_fail_with_error(
+            "all execute messages must be RefreshIndexPrices or RefreshVaultOrders",
+        );
+    }
+
+    #[test]
+    fn authenticate_rejects_mixed_valid_invalid() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_mode(AuthMode::Finalize);
+
+        let invalid_msg = Message::execute(
+            CONTRACT,
+            &ExecuteMsg::Maintain(MaintainerMsg::Donate {}),
+            Coins::new(),
+        )
+        .unwrap();
+
+        let tx = make_tx(vec![refresh_index_prices_msg(CONTRACT), invalid_msg]);
+        authenticate(ctx.as_auth(), tx).should_fail_with_error(
+            "all execute messages must be RefreshIndexPrices or RefreshVaultOrders",
+        );
+    }
 }

@@ -1,15 +1,10 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
-    dango_types::{
-        DangoQuerier,
-        oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource, ReplyMsg, VaultRefreshFailed},
-        perps,
-    },
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource},
     grug_types::{
-        Addr, Api, AuthCtx, AuthMode, Binary, Coins, Denom, Inner, JsonDeExt, Message, MsgExecute,
-        MutableCtx, QuerierExt, Response, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
-        Timestamp, Tx,
+        Api, AuthCtx, AuthMode, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
+        QuerierExt, Response, Storage, Timestamp, Tx,
     },
     pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
     std::collections::BTreeMap,
@@ -74,21 +69,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         } => register_trusted_signer(ctx, public_key, expires_at),
         ExecuteMsg::RemoveTrustedSigner { public_key } => remove_trusted_signer(ctx, public_key),
         ExecuteMsg::FeedPrices(price_update) => feed_prices(ctx, price_update),
-    }
-}
-
-pub fn reply(_ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
-    match msg {
-        ReplyMsg::AfterOnOracleUpdate {} => {
-            let error = res.unwrap_err();
-
-            #[cfg(feature = "tracing")]
-            {
-                tracing::error!(error, "!!! PERPS VAULT REFRESH FAILED !!!");
-            }
-
-            Response::new().add_event(VaultRefreshFailed { error })
-        },
     }
 }
 
@@ -170,26 +150,7 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
         }
     }
 
-    // Call the perps contract's `on_oracle_update` function.
-    // The perps market making vault refreshes its quotes based on the latest
-    // oracle prices.
-    // Use `reply_on_error` to ensure that even if the perps contract errors,
-    // the oracle update itself isn't reverted.
-    // Skip if perps address is zero (not yet instantiated).
-    let perps = ctx.querier.query_perps()?;
-
-    Ok(Response::new().may_add_submessage(if perps != Addr::ZERO {
-        Some(SubMessage::reply_on_error(
-            Message::execute(
-                perps,
-                &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
-                Coins::new(),
-            )?,
-            &ReplyMsg::AfterOnOracleUpdate {},
-        )?)
-    } else {
-        None
-    }))
+    Ok(Response::new())
 }
 
 fn verify_pyth_lazer_message(

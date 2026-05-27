@@ -205,7 +205,7 @@ mod tests {
             constants::btc,
             perps::{
                 CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, MaintainerMsg,
-                ReferralMsg, SubmitOrCancelOrderRequest, SubmitOrderRequest, TraderMsg, VaultMsg,
+                ReferralMsg, SubmitOrCancelOrderRequest, SubmitOrderRequest, TraderMsg,
             },
         },
         grug_math::Uint64,
@@ -498,7 +498,8 @@ mod tests {
     // A perps Execute message whose payload is not `Trade(...)` is never
     // priority — covers all sibling variants of `ExecuteMsg`.
     #[test_case(ExecuteMsg::Maintain(MaintainerMsg::Donate {})                             => PriorityClass::Other ; "case_non_trade_maintain")]
-    #[test_case(ExecuteMsg::Vault(VaultMsg::Refresh {})                                    => PriorityClass::Other ; "case_non_trade_vault")]
+    #[test_case(ExecuteMsg::Maintain(MaintainerMsg::RefreshIndexPrices {})                 => PriorityClass::Other ; "case_non_trade_refresh_index")]
+    #[test_case(ExecuteMsg::Maintain(MaintainerMsg::RefreshVaultOrders {})                 => PriorityClass::Other ; "case_non_trade_refresh_vault")]
     #[test_case(ExecuteMsg::Referral(ReferralMsg::SetReferral { referrer: 1, referee: 2 }) => PriorityClass::Other ; "case_non_trade_referral")]
     fn priority_tx_non_trade_execute_msg(execute_msg: ExecuteMsg) -> PriorityClass {
         let tx = tx_with_messages(vec![
