@@ -149,8 +149,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 user,
                 maker_taker_fee_rates,
             } => maintain::set_fee_rate_override(ctx, user, maker_taker_fee_rates),
-            MaintainerMsg::RefreshIndexPrices => maintain::refresh_index_prices(ctx),
-            MaintainerMsg::RefreshVaultOrders => maintain::refresh_vault_orders(ctx),
+            MaintainerMsg::RefreshIndexPrices {} => maintain::refresh_index_prices(ctx),
+            MaintainerMsg::RefreshVaultOrders {} => maintain::refresh_vault_orders(ctx),
         },
         ExecuteMsg::Trade(msg) => match msg {
             TraderMsg::Deposit { to } => trade::deposit(ctx, to),
@@ -394,7 +394,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
         );
 
         let Ok(ExecuteMsg::Maintain(
-            MaintainerMsg::RefreshIndexPrices | MaintainerMsg::RefreshVaultOrders,
+            MaintainerMsg::RefreshIndexPrices {} | MaintainerMsg::RefreshVaultOrders {},
         )) = msg.clone().deserialize_json()
         else {
             bail!("all execute messages must be RefreshIndexPrices or RefreshVaultOrders");
@@ -429,7 +429,7 @@ mod tests {
     fn refresh_index_prices_msg(contract: Addr) -> Message {
         Message::execute(
             contract,
-            &ExecuteMsg::Maintain(MaintainerMsg::RefreshIndexPrices),
+            &ExecuteMsg::Maintain(MaintainerMsg::RefreshIndexPrices {}),
             Coins::new(),
         )
         .unwrap()
@@ -438,7 +438,7 @@ mod tests {
     fn refresh_vault_orders_msg(contract: Addr) -> Message {
         Message::execute(
             contract,
-            &ExecuteMsg::Maintain(MaintainerMsg::RefreshVaultOrders),
+            &ExecuteMsg::Maintain(MaintainerMsg::RefreshVaultOrders {}),
             Coins::new(),
         )
         .unwrap()

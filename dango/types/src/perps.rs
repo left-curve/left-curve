@@ -830,10 +830,10 @@ pub enum MaintainerMsg {
     },
 
     /// Update index prices from the latest oracle data.
-    RefreshIndexPrices,
+    RefreshIndexPrices {},
 
     /// Refresh vault market-making orders based on the current index prices.
-    RefreshVaultOrders,
+    RefreshVaultOrders {},
 }
 
 #[grug_types::derive(Serde)]
