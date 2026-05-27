@@ -10,8 +10,8 @@ use {
     grug_db_memory::MemDb,
     grug_math::Fraction,
     grug_types::{
-        Binary, BroadcastClient, ByteArray, Coins, Denom, Message, NonEmpty, ResultExt, Signer,
-        Timestamp,
+        Addr, Binary, BroadcastClient, ByteArray, Coins, Denom, Message, NonEmpty, ResultExt,
+        Signer, Timestamp,
     },
     grug_vm_rust::RustVm,
     identity::Identity256,
@@ -109,8 +109,8 @@ fn timestamp_to_micros(t: Timestamp) -> u64 {
 }
 
 fn build_oracle_messages(
-    oracle: grug_types::Addr,
-    perps: grug_types::Addr,
+    oracle: Addr,
+    perps: Addr,
     do_feed_prices: Option<(&[(PythId, UsdPrice, MarketSession)], Timestamp)>,
     do_refresh_index_prices: bool,
     do_refresh_vault_orders: bool,
@@ -208,8 +208,7 @@ where
             do_refresh_vault_orders,
         );
 
-        if !msgs.is_empty() {
-            let msgs = NonEmpty::new_unchecked(msgs);
+        if let Ok(msgs) = NonEmpty::new(msgs) {
             self.send_messages(owner, msgs).await.should_succeed();
         }
     }
@@ -243,9 +242,14 @@ where
         feeds: &[(PythId, UsdPrice, MarketSession)],
         timestamp: Option<Timestamp>,
     ) {
-        let timestamp = timestamp.unwrap_or(Timestamp::MAX);
-        self.do_oracle_actions(owner, None, Some((feeds, timestamp)), true, true)
-            .await;
+        self.do_oracle_actions(
+            owner,
+            None,
+            Some((feeds, timestamp.unwrap_or(Timestamp::MAX))),
+            true,
+            true,
+        )
+        .await;
     }
 }
 
@@ -276,19 +280,21 @@ where
         if let Some(entries) = &do_register_price_sources {
             let price_sources = build_register_price_sources(entries);
 
-            let msg = Message::execute(
-                contracts.oracle,
-                &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
-                Coins::new(),
-            )
-            .unwrap();
             let tx = owner
                 .sign_transaction(
-                    NonEmpty::new_unchecked(vec![msg]),
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.oracle,
+                            &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
+                            Coins::new(),
+                        )
+                        .unwrap(),
+                    ]),
                     &chain_id,
                     MOCK_CLIENT_GAS_LIMIT,
                 )
                 .unwrap();
+
             self.broadcast_tx(tx)
                 .await
                 .unwrap()
@@ -304,11 +310,11 @@ where
             do_refresh_vault_orders,
         );
 
-        if !msgs.is_empty() {
-            let msgs = NonEmpty::new_unchecked(msgs);
+        if let Ok(msgs) = NonEmpty::new(msgs) {
             let tx = owner
                 .sign_transaction(msgs, &chain_id, MOCK_CLIENT_GAS_LIMIT)
                 .unwrap();
+
             self.broadcast_tx(tx)
                 .await
                 .unwrap()
@@ -346,8 +352,13 @@ where
         feeds: &[(PythId, UsdPrice, MarketSession)],
         timestamp: Option<Timestamp>,
     ) {
-        let timestamp = timestamp.unwrap_or(Timestamp::MAX);
-        self.do_oracle_actions(owner, None, Some((feeds, timestamp)), true, true)
-            .await;
+        self.do_oracle_actions(
+            owner,
+            None,
+            Some((feeds, timestamp.unwrap_or(Timestamp::MAX))),
+            true,
+            true,
+        )
+        .await;
     }
 }
