@@ -35,6 +35,10 @@ test-perps:
   RUST_BACKTRACE=1 cargo test --all-features --tests -p dango-perps -- --nocapture
   RUST_BACKTRACE=1 cargo test --all-features -p dango-testing --test perps -- --nocapture
 
+# Run all dango-related tests specifically
+test-dango:
+  RUST_BACKTRACE=1 cargo test --all-features -p dango-testing -- --nocapture
+
 # Check whether the code compiles
 check:
   cargo check --bins --tests --benches --examples --all-features --all-targets
