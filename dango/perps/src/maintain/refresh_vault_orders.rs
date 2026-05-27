@@ -14,6 +14,17 @@ use {
     grug_types::{MutableCtx, Order as IterationOrder, QuerierExt, Response},
 };
 
+/// Entry point for vault market-making, triggered at the beginning of each
+/// block after the index price refresh.
+///
+/// 1. Cancels all existing vault orders.
+/// 2. Computes available margin for the vault.
+/// 3. For each trading pair, places fresh bid/ask limit orders based on the
+///    oracle price and the pair's market-making parameters.
+///
+/// Mutates: `USER_STATES[contract]`, `BIDS`, `ASKS`, `NEXT_ORDER_ID`.
+///
+/// Returns: empty `Response` (no token transfers).
 pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
@@ -46,7 +57,7 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         ctx.storage,
         ctx.contract,
         &vault_state,
-        None,
+        None, // Vault order churn is not user-facing — no events emitted.
         ReasonForOrderRemoval::Canceled,
     )?;
 
@@ -54,12 +65,17 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // ------------- Step 2: Compute the vault's available margin --------------
 
+    // Compute available margin: equity minus margin consumed by existing
+    // positions. After cancellation reserved_margin is zero, so the formula
+    // simplifies to: max(0, equity - used_margin).
     let vault_margin_value = {
         let perp_querier = NoCachePerpQuerier::new_local(ctx.storage);
         compute_available_margin(&perp_querier, &vault_state)?
     };
 
+    // If vault_total_weight is zero, no pairs have weights configured — skip.
     if param.vault_total_weight.is_zero() || !vault_margin_value.is_positive() {
+        // Persist vault state (orders were cancelled).
         if vault_state.is_empty() {
             USER_STATES.remove(ctx.storage, ctx.contract)?;
         } else {
@@ -78,16 +94,19 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     for pair_id in &pair_ids {
         let pair_param = PAIR_PARAMS.load(ctx.storage, pair_id)?;
 
+        // Skip pairs with zero weight.
         if pair_param.vault_liquidity_weight.is_zero() {
             continue;
         }
 
         let oracle_price = PAIR_STATES.load(ctx.storage, pair_id)?.index_price;
 
+        // Compute this pair's allocated margin.
         let pair_margin = vault_margin_value
             .checked_mul(pair_param.vault_liquidity_weight)?
             .checked_div(param.vault_total_weight)?;
 
+        // Read best bid (un-inverted) and best ask from the book.
         let best_bid = BIDS
             .prefix(pair_id.clone())
             .range(ctx.storage, None, None, IterationOrder::Ascending)
@@ -102,12 +121,14 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             .transpose()?
             .map(|((stored_price, _), _)| stored_price);
 
+        // Vault's current position for this pair (zero if none).
         let position_size = vault_state
             .positions
             .get(pair_id)
             .map(|p| p.size)
             .unwrap_or(Quantity::ZERO);
 
+        // Compute vault quotes with inventory skew.
         let (bid, ask) = compute_vault_quotes(
             oracle_price,
             &pair_param,
@@ -117,6 +138,7 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             position_size,
         )?;
 
+        // Place bid order.
         if let Some(bid_quote) = bid {
             let stored_price = may_invert_price(bid_quote.price, true);
             let order = LimitOrder {
@@ -149,6 +171,7 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             next_order_id.checked_add_assign(Uint64::ONE)?;
         }
 
+        // Place ask order.
         if let Some(ask_quote) = ask {
             let order = LimitOrder {
                 user: ctx.contract,
