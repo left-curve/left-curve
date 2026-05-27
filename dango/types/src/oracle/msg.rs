@@ -27,11 +27,6 @@ pub enum ExecuteMsg {
     FeedPrices(PriceUpdate),
 }
 
-#[grug_types::derive(Serde)]
-pub enum ReplyMsg {
-    AfterOnOracleUpdate {},
-}
-
 #[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query Pyth Lazer trusted signers and their expiration times.
@@ -58,12 +53,4 @@ pub enum QueryMsg {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },
-}
-
-/// Emitted by the oracle's reply handler when the perps vault refresh
-/// submessage fails, providing on-chain observability for monitors.
-#[grug_types::event("vault_refresh_failed")]
-#[grug_types::derive(Serde)]
-pub struct VaultRefreshFailed {
-    pub error: String,
 }

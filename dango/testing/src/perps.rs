@@ -1,5 +1,5 @@
 use {
-    crate::{OracleExt, TestAccounts, TestSuiteWithIndexer},
+    crate::{OracleExt, TestAccounts, TestSuiteNaiveWithIndexer},
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_types::{constants::usdc, perps},
@@ -24,14 +24,14 @@ pub struct OracleTestEntry {
 
 /// Common setup: register oracle prices + deposit margin for user1 and user2.
 pub async fn setup_perps_env(
-    suite: &mut TestSuiteWithIndexer,
+    suite: &mut TestSuiteNaiveWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     eth_price: u128,
     margin_per_user: u128,
 ) {
     suite
-        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),
@@ -60,7 +60,7 @@ pub async fn setup_perps_env(
 /// Place a limit ask (user2) then a market buy (user1) to produce an
 /// `OrderFilled` at the given price and size.
 pub async fn create_perps_fill(
-    suite: &mut TestSuiteWithIndexer,
+    suite: &mut TestSuiteNaiveWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     pair_id: &Denom,

@@ -31,8 +31,11 @@ struct RequesterIpGraphqlResponse {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_query_app() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
 
     let body_request = Query::AppConfig(QueryAppConfigRequest {}).to_json_value()?;
 
@@ -71,7 +74,11 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
     let (mut suite, mut accounts, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+        setup_test_naive_with_indexer_and_create_blocks(
+            TestOption::default().with_mocked_clickhouse(),
+            1,
+        )
+        .await;
 
     let user2_addr = accounts.user2.address();
 
@@ -173,7 +180,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_requester_ip() -> anyhow::Result<()> {
     let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
-        setup_test_naive_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -213,7 +220,7 @@ async fn graphql_returns_requester_ip() -> anyhow::Result<()> {
 async fn graphql_prefers_cf_connecting_ip_when_forwarded_headers_are_proxy_hops()
 -> anyhow::Result<()> {
     let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
-        setup_test_naive_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let local_set = tokio::task::LocalSet::new();
 

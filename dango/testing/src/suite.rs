@@ -3,6 +3,7 @@ use {
         BalanceTracker, InstantiateOutcome, MakeBlockOutcome, UploadAndInstantiateOutcome,
         UploadOutcome,
     },
+    dango_genesis::Contracts,
     error_backtrace::Backtraceable,
     grug_app::{
         App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
@@ -39,6 +40,7 @@ where
     ID: Indexer,
 {
     pub app: App<DB, VM, PP, ID>,
+    pub contracts: Contracts,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.
     pub chain_id: String,
@@ -55,6 +57,7 @@ where
 impl TestSuite {
     /// Create a new test suite.
     pub fn new(
+        contracts: Contracts,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -63,6 +66,7 @@ impl TestSuite {
     ) -> Self {
         Self::new_with_vm(
             RustVm::new(),
+            contracts,
             chain_id,
             block_time,
             default_gas_limit,
@@ -81,6 +85,7 @@ where
     /// given VM.
     pub fn new_with_vm(
         vm: VM,
+        contracts: Contracts,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -93,6 +98,7 @@ where
             PythProposalPreparer::new_with_cache(),
             NullIndexer,
             None,
+            contracts,
             chain_id,
             block_time,
             default_gas_limit,
@@ -111,6 +117,7 @@ where
     /// preparer.
     pub fn new_with_pp(
         pp: PP,
+        contracts: Contracts,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -123,6 +130,7 @@ where
             pp,
             NullIndexer,
             None,
+            contracts,
             chain_id,
             block_time,
             default_gas_limit,
@@ -147,6 +155,7 @@ where
         pp: PP,
         mut id: ID,
         upgrade_handler: Option<UpgradeHandler<VM>>,
+        contracts: Contracts,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -188,12 +197,20 @@ where
                 panic!("fatal error while initializing chain: {err}");
             });
 
-        Self::new_with_app(app, chain_id, genesis_block, block_time, default_gas_limit)
+        Self::new_with_app(
+            app,
+            contracts,
+            chain_id,
+            genesis_block,
+            block_time,
+            default_gas_limit,
+        )
     }
 
     /// Create a new test suite with the given already initialized app instance.
     pub fn new_with_app(
         app: App<DB, VM, PP, ID>,
+        contracts: Contracts,
         chain_id: String,
         last_finalized_block: BlockInfo,
         block_time: Duration,
@@ -201,6 +218,7 @@ where
     ) -> Self {
         Self {
             app,
+            contracts,
             chain_id,
             block: last_finalized_block,
             block_time,

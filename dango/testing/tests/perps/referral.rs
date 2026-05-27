@@ -472,7 +472,7 @@ async fn set_share_ratio_aggregates_volume_across_accounts() {
         .should_succeed();
 
     // Register oracle prices: ETH = $1,000.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_000).await;
 
     // Create a second account for user1 (same user_index, different address).
     let mut user1_account2 = accounts
@@ -538,7 +538,7 @@ async fn set_share_ratio_aggregates_volume_across_accounts() {
 async fn referral_active_flag() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
@@ -701,7 +701,7 @@ async fn commission_rate_override() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
 
@@ -795,7 +795,7 @@ async fn commission_rate_override() {
 async fn referrer_stats() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -945,7 +945,7 @@ async fn commission_rate_margins() {
         .query_wasm_smart(contracts.perps, QueryParamRequest {})
         .unwrap();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Deposit margin for user8 (maker) and all referee/referrer users.
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
@@ -1310,7 +1310,7 @@ async fn referee_count() {
 async fn active_referral() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -1401,7 +1401,7 @@ async fn active_referral() {
 async fn negative_maker_fee_does_not_debit_referrers() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(TestOption::preset_test());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1609,7 +1609,7 @@ async fn fee_distributed_event_without_referrer() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
 
@@ -1691,7 +1691,7 @@ async fn fee_distributed_event_with_referrer() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
@@ -1820,7 +1820,7 @@ async fn fee_distributed_event_with_referrer_without_share_ratio() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user8, 100_000).await;
@@ -1935,7 +1935,7 @@ async fn cr_100_direct_referrer_taker() {
         .query_wasm_smart(contracts.perps, QueryParamRequest {})
         .unwrap();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
@@ -2023,7 +2023,7 @@ async fn cr_100_indirect_referrer_taker() {
         .query_wasm_smart(contracts.perps, QueryParamRequest {})
         .unwrap();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -2204,7 +2204,7 @@ async fn cr_100_direct_referrer_maker_positive_fee() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
@@ -2314,7 +2314,7 @@ async fn cr_100_indirect_referrer_maker_positive_fee() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -2453,7 +2453,7 @@ async fn cr_100_direct_referrer_maker_rebate() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user4, 100_000).await;
@@ -2551,7 +2551,7 @@ async fn cr_100_indirect_referrer_maker_rebate() {
         .await
         .should_succeed();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user1, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user2, 100_000).await;
     deposit_margin(&mut suite, contracts.perps, &mut accounts.user3, 100_000).await;
@@ -2700,11 +2700,10 @@ fn snapshot_margins(suite: &TestSuiteNaive, perps: Addr, addrs: &[Addr]) -> Vec<
 async fn register_oracle_prices(
     suite: &mut TestSuiteNaive,
     accounts: &mut dango_testing::TestAccounts,
-    contracts: &dango_genesis::Contracts,
     eth_price: u128,
 ) {
     suite
-        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),

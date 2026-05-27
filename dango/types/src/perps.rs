@@ -828,6 +828,12 @@ pub enum MaintainerMsg {
         /// First element is maker rate, second is taker rate.
         maker_taker_fee_rates: Op<(Dimensionless, Dimensionless)>,
     },
+
+    /// Update index prices from the latest oracle data.
+    RefreshIndexPrices {},
+
+    /// Refresh vault market-making orders based on the current index prices.
+    RefreshVaultOrders {},
 }
 
 #[grug_types::derive(Serde)]
@@ -894,13 +900,6 @@ pub enum VaultMsg {
 
     /// Request to withdraw liquidity from the counterparty vault.
     RemoveLiquidity { shares_to_burn: Uint128 },
-
-    /// Refresh vault market-making orders. Triggered at the beginning of each
-    /// block, right after the oracle update.
-    ///
-    /// The vault places new orders based on the oracle price, the state of the
-    /// order book at the time, and its policy for market making.
-    Refresh {},
 }
 
 #[grug_types::derive(Serde)]

@@ -23,7 +23,7 @@ use {
 async fn conditional_order_tp_triggers_on_price_rise() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -159,7 +159,7 @@ async fn conditional_order_tp_triggers_on_price_rise() {
         .should_succeed();
 
     // Step 7: Oracle updated to $2,500.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_500).await;
 
     // Step 8: Advance time so perps cron fires (interval = 1 min).
     suite.increase_time(Duration::from_minutes(2)).await;
@@ -199,7 +199,7 @@ async fn conditional_order_tp_triggers_on_price_rise() {
 async fn conditional_order_sl_triggers_on_price_drop() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -305,7 +305,7 @@ async fn conditional_order_sl_triggers_on_price_drop() {
         .should_succeed();
 
     // Step 4: Oracle drops to $1,800, advance time so perps cron fires.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_800).await;
     suite.increase_time(Duration::from_minutes(2)).await;
 
     // Step 5: Verify trader state — position closed, PnL = 5*($1,800-$2,000) = -$1,000.
@@ -350,7 +350,7 @@ async fn conditional_order_sl_triggers_on_price_drop() {
 async fn conditional_orders_follow_price_time_priority() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -559,7 +559,7 @@ async fn conditional_orders_follow_price_time_priority() {
     // Both $1,790 and $1,770 are above $1,764 → within tolerance.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_800).await;
     suite.increase_time(Duration::from_minutes(2)).await;
 
     // -------------------------------------------------------------------------
@@ -628,7 +628,7 @@ async fn conditional_orders_follow_price_time_priority() {
 async fn conditional_order_failure_does_not_block_others() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -857,7 +857,7 @@ async fn conditional_order_failure_does_not_block_others() {
     //      → succeeds.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_800).await;
     suite.increase_time(Duration::from_minutes(2)).await;
 
     // -------------------------------------------------------------------------
@@ -933,7 +933,7 @@ async fn conditional_order_failure_does_not_block_others() {
 async fn conditional_order_self_trade_failure_preserves_user_state() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1060,7 +1060,7 @@ async fn conditional_order_self_trade_failure_preserves_user_state() {
     // memory, `match_order` has no more liquidity, `ensure!` fails, and
     // `process_triggered_order` gracefully cancels the conditional order via
     // `SlippageExceeded`.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_960).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_960).await;
     suite.increase_time(Duration::from_minutes(2)).await;
 
     // --- Post-trigger assertions ---
@@ -1159,7 +1159,7 @@ async fn child_order_market_with_tp_triggers() {
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Deposit for user1 (trader) and user2 (maker).
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -1233,7 +1233,7 @@ async fn child_order_market_with_tp_triggers() {
     assert!(pos.conditional_order_below.is_none(), "no SL");
 
     // Oracle rises to $2,500 → trigger TP.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_500).await;
 
     // Maker places bid to fill the TP market sell.
     suite
@@ -1284,7 +1284,7 @@ async fn child_order_market_with_sl_triggers() {
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -1357,7 +1357,7 @@ async fn child_order_market_with_sl_triggers() {
     assert!(pos.conditional_order_above.is_none(), "no TP");
 
     // Oracle drops to $1,800 → trigger SL.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_800).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_800).await;
 
     // Maker places bid to fill SL.
     suite
@@ -1405,7 +1405,7 @@ async fn child_order_ignored_when_position_closed() {
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -1528,7 +1528,7 @@ async fn child_order_overwrites_existing() {
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -1653,7 +1653,7 @@ async fn conditional_order_overwrite_same_direction() {
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -1773,7 +1773,7 @@ async fn conditional_order_size_exceeds_position_allowed() {
         setup_test_naive(TestOption::default());
 
     let pair = pair_id();
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -1876,7 +1876,7 @@ async fn conditional_order_size_exceeds_position_allowed() {
 async fn conditional_order_cancelled_when_slippage_cap_tightened() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -2023,7 +2023,7 @@ async fn conditional_order_cancelled_when_slippage_cap_tightened() {
         .should_succeed();
 
     // Oracle rises to the TP trigger.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_500).await;
 
     // Advance time so the perps cron fires.
     suite.increase_time(Duration::from_minutes(2)).await;
@@ -2057,7 +2057,7 @@ async fn conditional_order_cancelled_when_slippage_cap_tightened() {
 async fn conditional_order_trigger_fills_carry_fill_id() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -2163,7 +2163,7 @@ async fn conditional_order_trigger_fills_carry_fill_id() {
     // Move oracle above the TP trigger and advance time to fire cron.
     // `increase_time` discards the block outcome, so inline its body to
     // keep access to the cron-emitted events.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_500).await;
 
     let old_block_time = suite.block_time;
     suite.block_time = Duration::from_minutes(2);
@@ -2217,7 +2217,7 @@ async fn conditional_order_trigger_fills_carry_fill_id() {
 async fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -2344,7 +2344,7 @@ async fn two_conditional_triggers_in_one_cron_tick_have_consecutive_fill_ids() {
     }
 
     // Move the oracle so both TPs trigger, then fire cron.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_500).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_500).await;
 
     let old_block_time = suite.block_time;
     suite.block_time = Duration::from_minutes(2);

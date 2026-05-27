@@ -14,8 +14,11 @@ use {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_blocks() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -41,8 +44,11 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -72,8 +78,11 @@ async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_block() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -99,8 +108,11 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_returns_last_block() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -126,8 +138,11 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_paginate_blocks() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 10).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        10,
+    )
+    .await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -202,7 +217,11 @@ async fn graphql_paginate_blocks() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     let (mut suite, mut accounts, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+        setup_test_naive_with_indexer_and_create_blocks(
+            TestOption::default().with_mocked_clickhouse(),
+            1,
+        )
+        .await;
 
     // Use typed subscription from indexer-graphql-types
     let request_body = GraphQLCustomRequest::from_query_body(

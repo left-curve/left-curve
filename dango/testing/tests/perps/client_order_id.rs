@@ -21,7 +21,7 @@ use {
 async fn submit_cancel_resubmit_by_client_order_id() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
     let cid: ClientOrderId = Uint64::new(42);
@@ -132,7 +132,7 @@ async fn submit_cancel_resubmit_by_client_order_id() {
 async fn cancel_by_unknown_client_order_id_fails() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(

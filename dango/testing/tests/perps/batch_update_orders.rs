@@ -55,7 +55,7 @@ fn limit_ask(price: i128, size: i128, cid: Option<u64>) -> SubmitOrderRequest {
 #[tokio::test]
 async fn batch_submit_then_cancel() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -105,7 +105,7 @@ async fn batch_submit_then_cancel() {
 #[tokio::test]
 async fn batch_atomic_replace() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -178,7 +178,7 @@ async fn batch_atomic_replace() {
 #[tokio::test]
 async fn batch_reuse_client_order_id() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let cid = 42u64;
 
@@ -242,7 +242,7 @@ async fn batch_reuse_client_order_id() {
 #[tokio::test]
 async fn batch_atomicity_on_submit_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -307,7 +307,7 @@ async fn batch_atomicity_on_submit_failure() {
 #[tokio::test]
 async fn batch_atomicity_on_cancel_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -378,7 +378,7 @@ async fn batch_atomicity_on_cancel_failure() {
 #[tokio::test]
 async fn batch_fill_reverts_on_later_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Both users deposit margin.
     for user in [&mut accounts.user1, &mut accounts.user2] {
@@ -512,7 +512,7 @@ async fn batch_fill_reverts_on_later_failure() {
 #[tokio::test]
 async fn batch_single_action() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -553,7 +553,7 @@ async fn batch_single_action() {
 #[tokio::test]
 async fn batch_size_cap_enforced() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Lower the cap to 3.
     suite
@@ -652,7 +652,7 @@ async fn batch_across_two_pairs() {
 
     // Register oracle prices for both pairs (plus USDC for settlement).
     suite
-        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),
@@ -761,7 +761,7 @@ async fn batch_across_two_pairs() {
 #[tokio::test]
 async fn batch_stp_fires_for_self_match() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     suite
         .execute(
@@ -846,7 +846,7 @@ async fn batch_stp_fires_for_self_match() {
 #[tokio::test]
 async fn batch_cancel_fails_for_filled_order() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     for user in [&mut accounts.user1, &mut accounts.user2] {
         suite
@@ -962,7 +962,7 @@ async fn batch_cancel_fails_for_filled_order() {
 #[tokio::test]
 async fn batch_referral_commissions_rollback() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // user1 activates their referrer slot by setting a fee share
     // ratio; user2 then points to user1 as their referrer.

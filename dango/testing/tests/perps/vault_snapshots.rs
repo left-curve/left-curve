@@ -23,7 +23,7 @@ use {
 async fn vault_snapshots_accrue_daily() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // LP deposits collateral and adds liquidity. None of these short-interval
     // blocks trigger the perps cron (interval = 1 min, block time = 250ms),

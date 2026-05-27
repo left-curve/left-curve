@@ -1,14 +1,11 @@
 use {
     crate::{
         core::{compute_available_margin, compute_vault_quotes},
-        index_price::process_index_price,
-        oracle,
         querier::NoCachePerpQuerier,
         state::{LAST_VAULT_ORDERS_UPDATE, PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, USER_STATES},
         trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
-    dango_oracle::OracleQuerier,
     dango_order_book::{
         ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
         increase_liquidity_depths, may_invert_price,
@@ -18,7 +15,7 @@ use {
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
-/// block after the oracle update.
+/// block after the index price refresh.
 ///
 /// 1. Cancels all existing vault orders.
 /// 2. Computes available margin for the vault.
@@ -28,19 +25,13 @@ use {
 /// Mutates: `USER_STATES[contract]`, `BIDS`, `ASKS`, `NEXT_ORDER_ID`.
 ///
 /// Returns: empty `Response` (no token transfers).
-pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
+pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
 
-    let oracle_addr = oracle(ctx.querier);
-
-    // Only the oracle contract (after feeding fresh prices) or the chain owner
-    // may trigger a vault refresh. Without this check any account could consume
-    // the once-per-block refresh token on stale prices, causing the oracle's
-    // legitimate refresh submessage to be rejected.
     ensure!(
-        ctx.sender == oracle_addr || ctx.sender == ctx.querier.query_owner()?,
-        "only the oracle contract or the chain owner may refresh vault orders"
+        ctx.sender == ctx.contract || ctx.sender == ctx.querier.query_owner()?,
+        "only the perps contract itself or the chain owner may refresh vault orders"
     );
 
     ensure!(
@@ -57,15 +48,6 @@ pub fn refresh_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut vault_state = USER_STATES
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
-
-    // --------------------- Step 0. Refresh index prices ----------------------
-
-    // Update index prices from the oracle before reading them. The oracle
-    // just fed fresh prices in the same transaction that triggered this
-    // refresh, so process_index_price will pick them up immediately.
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier);
-
-    process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
@@ -284,8 +266,6 @@ mod tests {
         }
     }
 
-    /// Build a mock querier whose `AppConfig` returns `ORACLE` as the oracle
-    /// address and whose `Config` returns `OWNER` as the chain owner.
     fn mock_querier() -> MockQuerier {
         MockQuerier::new()
             .with_app_config(AppConfig {
@@ -300,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn refresh_orders_rejects_unauthorized_sender() {
+    fn rejects_unauthorized_sender() {
         let mut ctx = MockContext::new()
             .with_querier(mock_querier())
             .with_contract(CONTRACT)
@@ -308,13 +288,13 @@ mod tests {
             .with_funds(Coins::default())
             .with_block_height(10);
 
-        refresh_orders(ctx.as_mutable()).should_fail_with_error(
-            "only the oracle contract or the chain owner may refresh vault orders",
+        refresh_vault_orders(ctx.as_mutable()).should_fail_with_error(
+            "only the perps contract itself or the chain owner may refresh vault orders",
         );
     }
 
     #[test]
-    fn refresh_orders_owner_can_trigger() {
+    fn owner_can_trigger() {
         let mut ctx = MockContext::new()
             .with_querier(mock_querier())
             .with_contract(CONTRACT)
@@ -327,34 +307,40 @@ mod tests {
             .save(&mut ctx.storage, &Default::default())
             .unwrap();
 
-        refresh_orders(ctx.as_mutable()).should_succeed();
+        refresh_vault_orders(ctx.as_mutable()).should_succeed();
     }
 
     #[test]
-    fn refresh_orders_once_per_block() {
-        // Use the contract itself as sender (self-call path).
+    fn contract_can_trigger() {
         let mut ctx = MockContext::new()
             .with_querier(mock_querier())
             .with_contract(CONTRACT)
-            .with_sender(ORACLE) // note: refreshing order is permissioned to only the oracle contract.
+            .with_sender(CONTRACT)
             .with_funds(Coins::default())
             .with_block_height(10);
 
-        // Simulate a previous successful call at block 10.
+        PARAM.save(&mut ctx.storage, &Default::default()).unwrap();
+        PAIR_IDS
+            .save(&mut ctx.storage, &Default::default())
+            .unwrap();
+
+        refresh_vault_orders(ctx.as_mutable()).should_succeed();
+    }
+
+    #[test]
+    fn once_per_block() {
+        let mut ctx = MockContext::new()
+            .with_querier(mock_querier())
+            .with_contract(CONTRACT)
+            .with_sender(CONTRACT)
+            .with_funds(Coins::default())
+            .with_block_height(10);
+
         LAST_VAULT_ORDERS_UPDATE
             .save(&mut ctx.storage, &10)
             .unwrap();
 
-        // Second call at the same block height should fail.
-        let result = refresh_orders(ctx.as_mutable());
-
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("already updated this block"),
-            "expected 'already updated this block' error"
-        );
+        refresh_vault_orders(ctx.as_mutable())
+            .should_fail_with_error("vault orders already updated this block");
     }
 }
