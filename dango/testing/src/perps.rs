@@ -31,7 +31,7 @@ pub async fn setup_perps_env(
     margin_per_user: u128,
 ) {
     suite
-        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),

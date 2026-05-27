@@ -62,7 +62,7 @@ async fn liquidation_on_order_book() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -189,7 +189,7 @@ async fn liquidation_on_order_book() {
     // MM = 5 * $1,450 * 5% = $362.50; equity < MM -> liquidatable.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_450).await;
 
     // -------------------------------------------------------------------------
     // Step 5: Bidder (user3) deposits $10,000 USDC and places bid: 5 ETH @ $1,450.
@@ -354,7 +354,7 @@ async fn liquidation_on_order_book() {
 async fn liquidation_snaps_to_full_close_when_remainder_would_be_dust() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -478,7 +478,7 @@ async fn liquidation_snaps_to_full_close_when_remainder_would_be_dust() {
     // test: equity $240, MM $362.50, deficit $122.50).
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_450).await;
 
     // -------------------------------------------------------------------------
     // Bidder (user3) posts a 5 ETH bid @ $1,450 ($7,250 notional > $5,000 min).
@@ -606,7 +606,7 @@ async fn liquidation_with_adl() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -793,7 +793,7 @@ async fn liquidation_with_adl() {
     // PnL = 5 * ($1,450 - $2,000) = -$2,750; equity = $1,090 - $2,750 = -$1,660.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_450).await;
 
     // -------------------------------------------------------------------------
     // Step 9: Liquidate Trader A.
@@ -947,7 +947,7 @@ async fn liquidation_with_adl() {
 async fn liquidation_cancels_conditional_orders() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1088,7 +1088,7 @@ async fn liquidation_cancels_conditional_orders() {
     );
 
     // Step 4: Oracle drops to $1,450.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_450).await;
 
     // Step 5: Bidder (user3) deposits and places bid: 5 ETH @ $1,450.
     suite
@@ -1196,7 +1196,7 @@ async fn vault_liquidation_on_order_book() {
 
     let pair = pair_id();
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $5,000 USDC and adds all as vault liquidity.
@@ -1260,7 +1260,17 @@ async fn vault_liquidation_on_order_book() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
             Coins::new(),
         )
         .await
@@ -1336,7 +1346,7 @@ async fn vault_liquidation_on_order_book() {
     //   $250 < $1,000 → liquidatable
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_600).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_600).await;
 
     // Sanity: verify vault is liquidatable (equity < MM).
     let vault_ext: perps::UserStateExtended = suite
@@ -1538,7 +1548,7 @@ async fn vault_liquidation_on_order_book() {
 async fn liquidation_book_fills_have_fill_id_adl_does_not() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -1662,7 +1672,7 @@ async fn liquidation_book_fills_have_fill_id_adl_does_not() {
     // Oracle drops to $1,450. Trader A is deeply underwater and forced
     // to close the full position; equity is negative so target_price for
     // book matching is the oracle ($1,450).
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_450).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_450).await;
 
     // Partial book liquidity for the liquidation: Maker places a bid for
     // 2 ETH @ $1,450. Trader A's liquidation will fill this, then ADL

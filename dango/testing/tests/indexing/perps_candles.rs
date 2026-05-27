@@ -588,7 +588,7 @@ async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
 
     // Register oracle prices for both pairs.
     suite
-        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),

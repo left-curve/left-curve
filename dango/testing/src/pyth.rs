@@ -2,11 +2,16 @@ use {
     crate::{OracleTestEntry, TestSuite},
     byteorder::LE,
     dango_order_book::UsdPrice,
-    dango_types::oracle::{self, PriceSource},
+    dango_types::{
+        oracle::{self, PriceSource},
+        perps,
+    },
     grug_app::{AppError, Indexer, ProposalPreparer},
     grug_db_memory::MemDb,
     grug_math::Fraction,
-    grug_types::{Addr, Binary, ByteArray, Coins, Denom, NonEmpty, ResultExt, Signer, Timestamp},
+    grug_types::{
+        Binary, ByteArray, Coins, Denom, Message, NonEmpty, ResultExt, Signer, Timestamp,
+    },
     grug_vm_rust::RustVm,
     identity::Identity256,
     k256::ecdsa::SigningKey,
@@ -106,17 +111,28 @@ fn timestamp_to_micros(t: Timestamp) -> u64 {
 
 #[allow(async_fn_in_trait)]
 pub trait OracleExt {
+    /// Execute an arbitrary combination of oracle and perps maintenance actions.
+    async fn do_oracle_actions(
+        &mut self,
+        owner: &mut (dyn Signer + Send + Sync),
+        do_register_price_sources: Option<BTreeMap<Denom, OracleTestEntry>>,
+        do_feed_prices: Option<(&[(PythId, UsdPrice, MarketSession)], Timestamp)>,
+        do_refresh_index_prices: bool,
+        do_refresh_vault_orders: bool,
+    );
+
+    /// Register price sources, feed initial prices, and refresh index prices
+    /// and vault orders.
     async fn seed_oracle_prices(
         &mut self,
         owner: &mut (dyn Signer + Send + Sync),
-        oracle: Addr,
         entries: BTreeMap<Denom, OracleTestEntry>,
     );
 
+    /// Feed prices and refresh index prices and vault orders.
     async fn feed_oracle_prices(
         &mut self,
         owner: &mut (dyn Signer + Send + Sync),
-        oracle: Addr,
         feeds: &[(PythId, UsdPrice, MarketSession)],
         timestamp: Option<Timestamp>,
     );
@@ -128,57 +144,107 @@ where
     ID: Indexer,
     AppError: From<<PP as ProposalPreparer>::Error>,
 {
+    async fn do_oracle_actions(
+        &mut self,
+        owner: &mut (dyn Signer + Send + Sync),
+        do_register_price_sources: Option<BTreeMap<Denom, OracleTestEntry>>,
+        do_feed_prices: Option<(&[(PythId, UsdPrice, MarketSession)], Timestamp)>,
+        do_refresh_index_prices: bool,
+        do_refresh_vault_orders: bool,
+    ) {
+        if let Some(entries) = do_register_price_sources {
+            let price_sources: BTreeMap<Denom, PriceSource> = entries
+                .iter()
+                .map(|(denom, e)| {
+                    (denom.clone(), PriceSource {
+                        id: e.pyth_id,
+                        channel: Channel::RealTime,
+                    })
+                })
+                .collect();
+
+            self.execute(
+                owner,
+                self.contracts.oracle,
+                &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
+                Coins::new(),
+            )
+            .await
+            .should_succeed();
+        }
+
+        let mut msgs = Vec::new();
+
+        if let Some((feeds, timestamp)) = do_feed_prices {
+            let signer = MockPythSigner::new();
+            let message = signer.sign_prices(feeds, timestamp);
+
+            msgs.push(
+                Message::execute(
+                    self.contracts.oracle,
+                    &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message])),
+                    Coins::new(),
+                )
+                .unwrap(),
+            );
+        }
+
+        if do_refresh_index_prices {
+            msgs.push(
+                Message::execute(
+                    self.contracts.perps,
+                    &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+                    Coins::new(),
+                )
+                .unwrap(),
+            );
+        }
+
+        if do_refresh_vault_orders {
+            msgs.push(
+                Message::execute(
+                    self.contracts.perps,
+                    &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
+                    Coins::new(),
+                )
+                .unwrap(),
+            );
+        }
+
+        if !msgs.is_empty() {
+            let msgs = NonEmpty::new_unchecked(msgs);
+            self.send_messages(owner, msgs).await.should_succeed();
+        }
+    }
+
     async fn seed_oracle_prices(
         &mut self,
         owner: &mut (dyn Signer + Send + Sync),
-        oracle: Addr,
         entries: BTreeMap<Denom, OracleTestEntry>,
     ) {
-        let price_sources: BTreeMap<Denom, PriceSource> = entries
-            .iter()
-            .map(|(denom, e)| {
-                (denom.clone(), PriceSource {
-                    id: e.pyth_id,
-                    channel: Channel::RealTime,
-                })
-            })
-            .collect();
-
-        self.execute(
-            owner,
-            oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-
         let feeds: Vec<_> = entries
             .values()
             .map(|e| (e.pyth_id, e.humanized_price, MarketSession::Regular))
             .collect();
 
-        self.feed_oracle_prices(owner, oracle, &feeds, None).await;
+        self.do_oracle_actions(
+            owner,
+            Some(entries),
+            Some((&feeds, Timestamp::MAX)),
+            true,
+            true,
+        )
+        .await;
     }
 
     async fn feed_oracle_prices(
         &mut self,
         owner: &mut (dyn Signer + Send + Sync),
-        oracle: Addr,
         feeds: &[(PythId, UsdPrice, MarketSession)],
         timestamp: Option<Timestamp>,
     ) {
-        let signer = MockPythSigner::new();
         let timestamp = timestamp.unwrap_or(Timestamp::MAX);
-        let message = signer.sign_prices(feeds, timestamp);
-
-        self.execute(
-            owner,
-            oracle,
-            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message])),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
+        self.do_oracle_actions(owner, None, Some((feeds, timestamp)), true, true)
+            .await;
     }
 }

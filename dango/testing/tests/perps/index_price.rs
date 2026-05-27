@@ -32,7 +32,7 @@ async fn query_index_price(
 async fn e1_basic_snap() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let index = query_index_price(&suite, contracts.perps).await;
     assert_eq!(index, UsdPrice::new_int(2_000));
@@ -48,7 +48,7 @@ async fn e2_close_drift_reopen() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Step 1: Feed Regular@2000. After this block, index = 2000.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let index_before = query_index_price(&suite, contracts.perps).await;
     assert_eq!(index_before, UsdPrice::new_int(2_000));
@@ -124,7 +124,6 @@ async fn e2_close_drift_reopen() {
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(ETH_PYTH_ID, UsdPrice::new_int(2_000), MarketSession::Other)],
             None,
         )
@@ -149,7 +148,6 @@ async fn e2_close_drift_reopen() {
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(
                 ETH_PYTH_ID,
                 UsdPrice::new_int(2_005),
@@ -175,13 +173,12 @@ async fn e3_stale_regular_triggers_ewma() {
     suite.block_time = Duration::from_millis(100);
 
     // Seed oracle price sources first.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Re-feed with an explicit (non-MAX) timestamp.
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(
                 ETH_PYTH_ID,
                 UsdPrice::new_int(2_000),
@@ -214,13 +211,12 @@ async fn e3_stale_regular_triggers_ewma() {
 async fn e5_empty_book_closed_market_no_movement() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Switch to Other session (market closed).
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(ETH_PYTH_ID, UsdPrice::new_int(2_000), MarketSession::Other)],
             None,
         )
@@ -246,7 +242,7 @@ async fn e5_empty_book_closed_market_no_movement() {
 async fn e6_oracle_flapping() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // Deposit and place orders so EWMA has something to drift toward.
     suite
@@ -290,7 +286,6 @@ async fn e6_oracle_flapping() {
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(ETH_PYTH_ID, UsdPrice::new_int(2_000), MarketSession::Other)],
             None,
         )
@@ -309,7 +304,6 @@ async fn e6_oracle_flapping() {
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(
                 ETH_PYTH_ID,
                 UsdPrice::new_int(2_001),
@@ -326,7 +320,6 @@ async fn e6_oracle_flapping() {
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(ETH_PYTH_ID, UsdPrice::new_int(2_001), MarketSession::Other)],
             None,
         )
@@ -344,7 +337,6 @@ async fn e6_oracle_flapping() {
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(
                 ETH_PYTH_ID,
                 UsdPrice::new_int(1_999),

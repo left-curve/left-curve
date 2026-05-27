@@ -1,5 +1,4 @@
 use {
-    dango_genesis::Contracts,
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
     dango_testing::{OracleExt, OracleTestEntry, TestAccounts, TestSuiteNaive, pair_id},
     dango_types::{
@@ -55,11 +54,10 @@ pub fn default_pair_param() -> PairParam {
 pub async fn register_oracle_prices(
     suite: &mut TestSuiteNaive,
     accounts: &mut TestAccounts,
-    contracts: &Contracts,
     eth_price: u128,
 ) {
     suite
-        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),

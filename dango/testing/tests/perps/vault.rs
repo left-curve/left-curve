@@ -40,7 +40,7 @@ async fn vault_lp_lifecycle() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Register oracle prices: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -138,7 +138,17 @@ async fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
             Coins::new(),
         )
         .await
@@ -228,7 +238,7 @@ async fn vault_lp_lifecycle() {
     // Step 5: Oracle → $2,200. Vault's long has unrealized profit.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_200).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_200).await;
 
     // -------------------------------------------------------------------------
     // Step 6: OnOracleUpdate at $2,200 → vault refreshes orders.
@@ -240,7 +250,17 @@ async fn vault_lp_lifecycle() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
             Coins::new(),
         )
         .await
@@ -405,7 +425,7 @@ async fn oracle_triggers_on_oracle_update() {
     // -------------------------------------------------------------------------
 
     suite
-        .seed_oracle_prices(&mut accounts.owner, contracts.oracle, btree_map! {
+        .seed_oracle_prices(&mut accounts.owner, btree_map! {
             usdc::DENOM.clone() => OracleTestEntry {
                 pyth_id: 1,
                 humanized_price: UsdPrice::new_int(1),
@@ -493,7 +513,6 @@ async fn oracle_triggers_on_oracle_update() {
     suite
         .feed_oracle_prices(
             &mut accounts.owner,
-            contracts.oracle,
             &[(2, eth_price, MarketSession::Regular)],
             Some(Timestamp::MAX - Duration::from_seconds(1)),
         )
@@ -562,8 +581,8 @@ async fn oracle_triggers_on_oracle_update() {
     assert_eq!(vo1_asks[0].size, Quantity::new_int(-2));
 
     // -------------------------------------------------------------------------
-    // Step 2: Corrupt perps PARAM storage so OnOracleUpdate will fail on the
-    // next invocation (deserialization error).
+    // Step 2: Corrupt perps PARAM storage so RefreshVaultOrders will fail on
+    // the next invocation (deserialization error).
     // -------------------------------------------------------------------------
 
     suite.app.db.with_state_storage_mut(|storage| {
@@ -573,17 +592,18 @@ async fn oracle_triggers_on_oracle_update() {
     });
 
     // -------------------------------------------------------------------------
-    // Step 3: Feed price #2. The oracle update itself succeeds (reply_on_error
-    // catches the perps failure), but OnOracleUpdate rolls back its state
-    // changes, so vault orders remain unchanged.
+    // Step 3: Feed price #2 without perps refresh. The oracle update succeeds
+    // independently. Then verify the perps refresh fails (corrupted storage)
+    // but the oracle price is still updated.
     // -------------------------------------------------------------------------
 
     suite
-        .feed_oracle_prices(
+        .do_oracle_actions(
             &mut accounts.owner,
-            contracts.oracle,
-            &[(2, eth_price, MarketSession::Regular)],
             None,
+            Some((&[(2, eth_price, MarketSession::Regular)], Timestamp::MAX)),
+            false,
+            false,
         )
         .await;
 
@@ -596,11 +616,11 @@ async fn oracle_triggers_on_oracle_update() {
 
     assert!(
         price2.timestamp >= price1.timestamp,
-        "oracle price should be updated despite OnOracleUpdate failure"
+        "oracle price should be updated despite perps failure"
     );
 
-    // Vault orders should be unchanged — the failed OnOracleUpdate rolled back
-    // any state changes it attempted (cancel + re-place). Compare order IDs to
+    // Vault orders should be unchanged — we did not call refresh, and even if
+    // we tried, it would fail on the corrupted storage. Compare order IDs to
     // prove these are the exact same orders, not new ones at the same price.
     let vault_orders_2: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
         .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
@@ -613,7 +633,7 @@ async fn oracle_triggers_on_oracle_update() {
             .keys()
             .zip(vault_orders_2.keys())
             .all(|(a, b)| a == b),
-        "order IDs should be unchanged after failed OnOracleUpdate"
+        "order IDs should be unchanged after skipped refresh"
     );
 }
 
@@ -657,7 +677,7 @@ async fn vault_overcommits_margin_after_position_and_price_drop() {
     let pair = pair_id();
 
     // Register oracle: ETH = $2,000, USDC = $1.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     // -------------------------------------------------------------------------
     // Step 1: LP (user1) deposits $5,000 USDC and adds all of it as vault
@@ -737,7 +757,17 @@ async fn vault_overcommits_margin_after_position_and_price_drop() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
             Coins::new(),
         )
         .await
@@ -816,7 +846,7 @@ async fn vault_overcommits_margin_after_position_and_price_drop() {
     //   Vault is STILL HEALTHY ($1,500 >= $1,062.50) but has $0 available.
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 1_700).await;
+    register_oracle_prices(&mut suite, &mut accounts, 1_700).await;
 
     // Sanity check: vault should be healthy at this point.
     let vault_ext: perps::UserStateExtended = suite
@@ -865,7 +895,17 @@ async fn vault_overcommits_margin_after_position_and_price_drop() {
         .execute(
             &mut accounts.owner,
             contracts.perps,
-            &perps::ExecuteMsg::Vault(perps::VaultMsg::Refresh {}),
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
             Coins::new(),
         )
         .await

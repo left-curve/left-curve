@@ -73,7 +73,7 @@ async fn adl_bug_absurd_book_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
 
     // Oracle = $2,000.
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_000).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
 
     let pair = pair_id();
 
@@ -248,7 +248,7 @@ async fn adl_bug_absurd_book_price() {
     //   → close entire SHORT position
     // -------------------------------------------------------------------------
 
-    register_oracle_prices(&mut suite, &mut accounts, &contracts, 2_300).await;
+    register_oracle_prices(&mut suite, &mut accounts, 2_300).await;
 
     // -------------------------------------------------------------------------
     // Step 5: Liquidate user1.
