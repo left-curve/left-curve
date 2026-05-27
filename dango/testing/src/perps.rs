@@ -1,5 +1,5 @@
 use {
-    crate::{OracleExt, TestAccounts, TestSuiteNaiveWithIndexer},
+    crate::{TestAccounts, TestSuiteNaiveWithIndexer},
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_types::{constants::usdc, perps},

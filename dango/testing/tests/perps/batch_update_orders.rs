@@ -4,7 +4,7 @@ use {
         Dimensionless, OrderId, OrderKind, OrderRemoved, Quantity, QueryOrdersByUserResponseItem,
         ReasonForOrderRemoval, TimeInForce, UsdPrice,
     },
-    dango_testing::{OracleExt, OracleTestEntry, TestOption, pair_id, setup_test_naive},
+    dango_testing::{OracleTestEntry, TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{
