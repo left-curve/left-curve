@@ -1,16 +1,17 @@
 use {
-    crate::{OracleTestEntry, TestSuite},
+    crate::{MockClient, OracleTestEntry, TestSuite},
     byteorder::LE,
     dango_order_book::UsdPrice,
     dango_types::{
         oracle::{self, PriceSource},
         perps,
     },
-    grug_app::{AppError, Indexer, ProposalPreparer},
+    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     grug_db_memory::MemDb,
     grug_math::Fraction,
     grug_types::{
-        Binary, ByteArray, Coins, Denom, Message, NonEmpty, ResultExt, Signer, Timestamp,
+        Binary, BroadcastClient, ByteArray, Coins, Denom, Message, NonEmpty, ResultExt, Signer,
+        Timestamp,
     },
     grug_vm_rust::RustVm,
     identity::Identity256,
@@ -107,44 +108,78 @@ fn timestamp_to_micros(t: Timestamp) -> u64 {
     micros.min(u64::MAX as u128) as u64
 }
 
-// ---- OracleExt extension trait ----
+fn build_oracle_messages(
+    oracle: grug_types::Addr,
+    perps: grug_types::Addr,
+    do_feed_prices: Option<(&[(PythId, UsdPrice, MarketSession)], Timestamp)>,
+    do_refresh_index_prices: bool,
+    do_refresh_vault_orders: bool,
+) -> Vec<Message> {
+    let mut msgs = Vec::new();
 
-#[allow(async_fn_in_trait)]
-pub trait OracleExt {
-    /// Execute an arbitrary combination of oracle and perps maintenance actions.
-    async fn do_oracle_actions(
-        &mut self,
-        owner: &mut (dyn Signer + Send + Sync),
-        do_register_price_sources: Option<BTreeMap<Denom, OracleTestEntry>>,
-        do_feed_prices: Option<(&[(PythId, UsdPrice, MarketSession)], Timestamp)>,
-        do_refresh_index_prices: bool,
-        do_refresh_vault_orders: bool,
-    );
+    if let Some((feeds, timestamp)) = do_feed_prices {
+        let signer = MockPythSigner::new();
+        let message = signer.sign_prices(feeds, timestamp);
 
-    /// Register price sources, feed initial prices, and refresh index prices
-    /// and vault orders.
-    async fn seed_oracle_prices(
-        &mut self,
-        owner: &mut (dyn Signer + Send + Sync),
-        entries: BTreeMap<Denom, OracleTestEntry>,
-    );
+        msgs.push(
+            Message::execute(
+                oracle,
+                &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message])),
+                Coins::new(),
+            )
+            .unwrap(),
+        );
+    }
 
-    /// Feed prices and refresh index prices and vault orders.
-    async fn feed_oracle_prices(
-        &mut self,
-        owner: &mut (dyn Signer + Send + Sync),
-        feeds: &[(PythId, UsdPrice, MarketSession)],
-        timestamp: Option<Timestamp>,
-    );
+    if do_refresh_index_prices {
+        msgs.push(
+            Message::execute(
+                perps,
+                &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+                Coins::new(),
+            )
+            .unwrap(),
+        );
+    }
+
+    if do_refresh_vault_orders {
+        msgs.push(
+            Message::execute(
+                perps,
+                &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
+                Coins::new(),
+            )
+            .unwrap(),
+        );
+    }
+
+    msgs
 }
 
-impl<PP, ID> OracleExt for TestSuite<MemDb, RustVm, PP, ID>
+fn build_register_price_sources(
+    entries: &BTreeMap<Denom, OracleTestEntry>,
+) -> BTreeMap<Denom, PriceSource> {
+    entries
+        .iter()
+        .map(|(denom, e)| {
+            (denom.clone(), PriceSource {
+                id: e.pyth_id,
+                channel: Channel::RealTime,
+            })
+        })
+        .collect()
+}
+
+// ---- TestSuite methods ----
+
+impl<PP, ID> TestSuite<MemDb, RustVm, PP, ID>
 where
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<<PP as ProposalPreparer>::Error>,
 {
-    async fn do_oracle_actions(
+    /// Execute an arbitrary combination of oracle and perps maintenance actions.
+    pub async fn do_oracle_actions(
         &mut self,
         owner: &mut (dyn Signer + Send + Sync),
         do_register_price_sources: Option<BTreeMap<Denom, OracleTestEntry>>,
@@ -152,16 +187,8 @@ where
         do_refresh_index_prices: bool,
         do_refresh_vault_orders: bool,
     ) {
-        if let Some(entries) = do_register_price_sources {
-            let price_sources: BTreeMap<Denom, PriceSource> = entries
-                .iter()
-                .map(|(denom, e)| {
-                    (denom.clone(), PriceSource {
-                        id: e.pyth_id,
-                        channel: Channel::RealTime,
-                    })
-                })
-                .collect();
+        if let Some(entries) = &do_register_price_sources {
+            let price_sources = build_register_price_sources(entries);
 
             self.execute(
                 owner,
@@ -173,43 +200,13 @@ where
             .should_succeed();
         }
 
-        let mut msgs = Vec::new();
-
-        if let Some((feeds, timestamp)) = do_feed_prices {
-            let signer = MockPythSigner::new();
-            let message = signer.sign_prices(feeds, timestamp);
-
-            msgs.push(
-                Message::execute(
-                    self.contracts.oracle,
-                    &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![message])),
-                    Coins::new(),
-                )
-                .unwrap(),
-            );
-        }
-
-        if do_refresh_index_prices {
-            msgs.push(
-                Message::execute(
-                    self.contracts.perps,
-                    &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
-                    Coins::new(),
-                )
-                .unwrap(),
-            );
-        }
-
-        if do_refresh_vault_orders {
-            msgs.push(
-                Message::execute(
-                    self.contracts.perps,
-                    &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
-                    Coins::new(),
-                )
-                .unwrap(),
-            );
-        }
+        let msgs = build_oracle_messages(
+            self.contracts.oracle,
+            self.contracts.perps,
+            do_feed_prices,
+            do_refresh_index_prices,
+            do_refresh_vault_orders,
+        );
 
         if !msgs.is_empty() {
             let msgs = NonEmpty::new_unchecked(msgs);
@@ -217,7 +214,9 @@ where
         }
     }
 
-    async fn seed_oracle_prices(
+    /// Register price sources, feed initial prices, and refresh index prices
+    /// and vault orders.
+    pub async fn seed_oracle_prices(
         &mut self,
         owner: &mut (dyn Signer + Send + Sync),
         entries: BTreeMap<Denom, OracleTestEntry>,
@@ -237,8 +236,112 @@ where
         .await;
     }
 
-    async fn feed_oracle_prices(
+    /// Feed prices and refresh index prices and vault orders.
+    pub async fn feed_oracle_prices(
         &mut self,
+        owner: &mut (dyn Signer + Send + Sync),
+        feeds: &[(PythId, UsdPrice, MarketSession)],
+        timestamp: Option<Timestamp>,
+    ) {
+        let timestamp = timestamp.unwrap_or(Timestamp::MAX);
+        self.do_oracle_actions(owner, None, Some((feeds, timestamp)), true, true)
+            .await;
+    }
+}
+
+// ---- MockClient methods ----
+
+const MOCK_CLIENT_GAS_LIMIT: u64 = 20_000_000;
+
+impl<DB, VM, PP, ID> MockClient<DB, VM, PP, ID>
+where
+    DB: Db + Send + Sync + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
+    PP: ProposalPreparer + Send + Sync + 'static,
+    ID: Indexer + Send + Sync + 'static,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+{
+    /// Execute an arbitrary combination of oracle and perps maintenance actions.
+    pub async fn do_oracle_actions(
+        &self,
+        owner: &mut (dyn Signer + Send + Sync),
+        do_register_price_sources: Option<BTreeMap<Denom, OracleTestEntry>>,
+        do_feed_prices: Option<(&[(PythId, UsdPrice, MarketSession)], Timestamp)>,
+        do_refresh_index_prices: bool,
+        do_refresh_vault_orders: bool,
+    ) {
+        let chain_id = self.chain_id().await;
+        let contracts = self.suite().await.contracts.clone();
+
+        if let Some(entries) = &do_register_price_sources {
+            let price_sources = build_register_price_sources(entries);
+
+            let msg = Message::execute(
+                contracts.oracle,
+                &oracle::ExecuteMsg::RegisterPriceSources(price_sources),
+                Coins::new(),
+            )
+            .unwrap();
+            let tx = owner
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![msg]),
+                    &chain_id,
+                    MOCK_CLIENT_GAS_LIMIT,
+                )
+                .unwrap();
+            self.broadcast_tx(tx)
+                .await
+                .unwrap()
+                .check_tx
+                .should_succeed();
+        }
+
+        let msgs = build_oracle_messages(
+            contracts.oracle,
+            contracts.perps,
+            do_feed_prices,
+            do_refresh_index_prices,
+            do_refresh_vault_orders,
+        );
+
+        if !msgs.is_empty() {
+            let msgs = NonEmpty::new_unchecked(msgs);
+            let tx = owner
+                .sign_transaction(msgs, &chain_id, MOCK_CLIENT_GAS_LIMIT)
+                .unwrap();
+            self.broadcast_tx(tx)
+                .await
+                .unwrap()
+                .check_tx
+                .should_succeed();
+        }
+    }
+
+    /// Register price sources, feed initial prices, and refresh index prices
+    /// and vault orders.
+    pub async fn seed_oracle_prices(
+        &self,
+        owner: &mut (dyn Signer + Send + Sync),
+        entries: BTreeMap<Denom, OracleTestEntry>,
+    ) {
+        let feeds: Vec<_> = entries
+            .values()
+            .map(|e| (e.pyth_id, e.humanized_price, MarketSession::Regular))
+            .collect();
+
+        self.do_oracle_actions(
+            owner,
+            Some(entries),
+            Some((&feeds, Timestamp::MAX)),
+            true,
+            true,
+        )
+        .await;
+    }
+
+    /// Feed prices and refresh index prices and vault orders.
+    pub async fn feed_oracle_prices(
+        &self,
         owner: &mut (dyn Signer + Send + Sync),
         feeds: &[(PythId, UsdPrice, MarketSession)],
         timestamp: Option<Timestamp>,

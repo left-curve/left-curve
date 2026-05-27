@@ -3,7 +3,7 @@ use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_testing::{
-        OracleExt, OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteNaiveWithIndexer,
+        OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteNaiveWithIndexer,
         create_perps_fill, pair_id, setup_perps_env, setup_test_naive_with_indexer,
         setup_test_with_indexer_pp_and_custom_genesis,
     },

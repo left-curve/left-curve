@@ -1,6 +1,6 @@
 use {
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
-    dango_testing::{OracleExt, OracleTestEntry, TestAccounts, TestSuiteNaive, pair_id},
+    dango_testing::{OracleTestEntry, TestAccounts, TestSuiteNaive, pair_id},
     dango_types::{
         constants::usdc,
         perps::{PairParam, Param, RateSchedule},

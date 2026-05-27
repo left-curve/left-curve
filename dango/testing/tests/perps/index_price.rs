@@ -1,7 +1,7 @@
 use {
     crate::register_oracle_prices,
     dango_order_book::{OrderKind, Quantity, TimeInForce, UsdPrice},
-    dango_testing::{OracleExt, TestOption, pair_id, setup_test_naive},
+    dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairState},
