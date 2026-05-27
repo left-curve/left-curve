@@ -409,10 +409,17 @@ async fn vault_lp_lifecycle() {
     );
 }
 
-/// Verify that feeding Pyth prices triggers `OnOracleUpdate` (placing vault
-/// orders), and that when `OnOracleUpdate` fails the oracle price update is
-/// **not** reverted while the perps state changes from the failed call are
-/// rolled back.
+/// Verify that an oracle price update succeeds even when the perps contract
+/// is in a broken state, and that vault orders remain unchanged.
+///
+/// Under the old architecture the oracle's `FeedPrices` called perps
+/// `VaultMsg::Refresh` via a submessage with `reply_on_error`, so a perps
+/// failure had to be explicitly caught to avoid reverting the oracle update.
+/// Under the new architecture oracle feeding and perps refreshing are
+/// separate transactions injected by the proposal preparer, so a perps
+/// failure cannot affect the oracle by construction. The property this test
+/// asserts is therefore guaranteed structurally, making the test technically
+/// irrelevant, but we keep it since there is no cost.
 #[tokio::test]
 async fn oracle_triggers_on_oracle_update() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
