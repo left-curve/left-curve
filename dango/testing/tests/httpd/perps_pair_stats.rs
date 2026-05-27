@@ -1,7 +1,7 @@
 use {
     dango_testing::{
         TestOption, call_graphql_query_with_context, create_perps_fill, pair_id, setup_perps_env,
-        setup_test_with_indexer,
+        setup_test_naive_with_indexer,
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
@@ -14,7 +14,7 @@ use {
 #[tokio::test(flavor = "multi_thread")]
 async fn query_perps_pair_stats() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default().with_recent_genesis()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_recent_genesis()).await;
 
     let pair = pair_id();
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
@@ -72,7 +72,7 @@ async fn query_perps_pair_stats() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn query_perps_pair_stats_nonexistent_pair() -> anyhow::Result<()> {
     let (suite, _, _, _, _, dango_httpd_context, _, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default().with_recent_genesis()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_recent_genesis()).await;
 
     suite.app.indexer.wait_for_finish().await?;
 
@@ -110,7 +110,7 @@ async fn query_perps_pair_stats_nonexistent_pair() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn query_all_perps_pair_stats() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default().with_recent_genesis()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_recent_genesis()).await;
 
     let pair = pair_id();
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
@@ -162,7 +162,7 @@ async fn query_all_perps_pair_stats() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn query_perps_pair_stats_partial_fields() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default().with_recent_genesis()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_recent_genesis()).await;
 
     let pair = pair_id();
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;

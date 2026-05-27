@@ -3,7 +3,7 @@ use {
     dango_testing::{
         GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query_with_context,
         call_ws_graphql_stream, create_perps_fill, pair_id, parse_graphql_subscription_response,
-        setup_perps_env, setup_test_with_indexer,
+        setup_perps_env, setup_test_naive_with_indexer,
     },
     graphql_client::GraphQLQuery,
     grug_app::Indexer,
@@ -22,7 +22,7 @@ use {
 #[tokio::test(flavor = "multi_thread")]
 async fn query_perps_candles() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
@@ -71,7 +71,7 @@ async fn query_perps_candles() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, dango_httpd_context, _, _, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 

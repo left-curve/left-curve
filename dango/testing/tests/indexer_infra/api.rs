@@ -23,8 +23,11 @@ struct RequesterIpResponse {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn up_returns_200() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -53,8 +56,11 @@ async fn up_returns_200() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn api_returns_block() -> anyhow::Result<()> {
-    let (_, _, httpd_context, _db_guard) =
-        setup_test_naive_with_indexer_and_create_blocks(TestOption::default(), 1).await;
+    let (_, _, httpd_context, _db_guard) = setup_test_naive_with_indexer_and_create_blocks(
+        TestOption::default().with_mocked_clickhouse(),
+        1,
+    )
+    .await;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -98,7 +104,7 @@ async fn api_returns_block() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn requester_ip_returns_forwarded_client_ip() -> anyhow::Result<()> {
     let (_, _, _, _, _, httpd_context, _, _, _db_guard) =
-        setup_test_naive_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let local_set = tokio::task::LocalSet::new();
 

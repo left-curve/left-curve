@@ -3,9 +3,9 @@ use {
     dango_genesis::Contracts,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
     dango_testing::{
-        OracleExt, OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteWithIndexer,
-        create_perps_fill, pair_id, setup_perps_env, setup_test_with_indexer,
-        setup_test_with_indexer_and_custom_genesis,
+        OracleExt, OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteNaiveWithIndexer,
+        create_perps_fill, pair_id, setup_perps_env, setup_test_naive_with_indexer,
+        setup_test_with_indexer_pp_and_custom_genesis,
     },
     dango_types::{
         constants::usdc,
@@ -28,7 +28,7 @@ use {
 
 /// Place a resting limit ask for user2 (no immediate fill).
 async fn place_limit_ask(
-    suite: &mut TestSuiteWithIndexer,
+    suite: &mut TestSuiteNaiveWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     price: u128,
@@ -58,7 +58,7 @@ async fn place_limit_ask(
 
 /// Submit a market buy for user1 (crosses resting asks).
 async fn market_buy(
-    suite: &mut TestSuiteWithIndexer,
+    suite: &mut TestSuiteNaiveWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     size: u128,
@@ -125,7 +125,7 @@ fn assert_candle_continuity(candles: &[PerpsCandle]) {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_basic() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
@@ -169,7 +169,7 @@ async fn index_perps_candles_basic() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_multiple_fills_same_block() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 100_000).await;
 
@@ -212,7 +212,7 @@ async fn index_perps_candles_multiple_fills_same_block() -> anyhow::Result<()> {
 async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
     // Default block time is 250ms, so all fills land in the same second/minute.
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
@@ -247,7 +247,8 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer_and_custom_genesis(
+        setup_test_with_indexer_pp_and_custom_genesis(
+            grug_app::NaiveProposalPreparer,
             TestOption {
                 block_time: Duration::from_seconds(20),
                 genesis_block: BlockInfo {
@@ -308,7 +309,7 @@ async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
@@ -353,7 +354,7 @@ async fn index_perps_candles_many_fills_one_minute() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_cache_consistency() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
@@ -390,7 +391,7 @@ async fn index_perps_candles_cache_consistency() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     setup_perps_env(&mut suite, &mut accounts, &contracts, 2_000, 50_000).await;
 
@@ -443,7 +444,8 @@ async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer_and_custom_genesis(
+        setup_test_with_indexer_pp_and_custom_genesis(
+            grug_app::NaiveProposalPreparer,
             TestOption {
                 block_time: Duration::from_seconds(10),
                 genesis_block: BlockInfo {
@@ -581,7 +583,7 @@ async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_perps_candles_multi_pair() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default()).await;
 
     let eth_pair = pair_id(); // perp/ethusd
     let btc_pair: Denom = "perp/btcusd".parse().unwrap();
@@ -723,7 +725,8 @@ async fn index_perps_candles_preload_rebuilds_current_bucket_from_clickhouse() -
     let genesis_secs = chrono::Utc::now().timestamp() as u128 - 3_600;
 
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
-        setup_test_with_indexer_and_custom_genesis(
+        setup_test_with_indexer_pp_and_custom_genesis(
+            grug_app::NaiveProposalPreparer,
             TestOption {
                 genesis_block: BlockInfo {
                     height: 0,

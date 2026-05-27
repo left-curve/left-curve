@@ -46,7 +46,7 @@ impl TestOption {
     pub fn with_mocked_clickhouse(self) -> Self {
         Self {
             mocked_clickhouse: true,
-            ..Self::default()
+            ..self
         }
     }
 
@@ -59,6 +59,7 @@ impl TestOption {
             .duration_since(std::time::UNIX_EPOCH)
             .expect("system clock before unix epoch")
             .as_secs();
+
         Self {
             genesis_block: BlockInfo {
                 timestamp: Timestamp::from_seconds(now_secs as u128),
@@ -187,10 +188,7 @@ pub async fn setup_test_naive_with_indexer(
 ) {
     setup_test_with_indexer_pp_and_custom_genesis(
         NaiveProposalPreparer,
-        TestOption {
-            mocked_clickhouse: true,
-            ..test_opt
-        },
+        test_opt,
         GenesisOption::preset_test(),
     )
     .await
@@ -239,7 +237,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     .await
 }
 
-async fn setup_test_with_indexer_pp_and_custom_genesis<PP>(
+pub async fn setup_test_with_indexer_pp_and_custom_genesis<PP>(
     pp: PP,
     options: TestOption,
     genesis_opt: GenesisOption,

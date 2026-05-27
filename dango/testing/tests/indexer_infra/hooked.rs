@@ -18,7 +18,7 @@ use {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_block() {
     let (mut suite, mut accounts, _, _, _, httpd_context, _, _, _db_guard) =
-        setup_test_naive_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let to = accounts.owner.address();
 
@@ -79,7 +79,7 @@ async fn index_block() {
 #[tokio::test(flavor = "multi_thread")]
 async fn parse_previous_block_after_restart() {
     let (mut suite, mut accounts, _, _, _, httpd_context, _, _, _db_guard) =
-        setup_test_naive_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let to = accounts.owner.address();
 
@@ -175,7 +175,7 @@ async fn parse_previous_block_after_restart() {
 #[tokio::test(flavor = "multi_thread")]
 async fn no_sql_index_error_after_restart() {
     let (mut suite, mut accounts, _, _, _, httpd_context, cache_context, _, _db_guard) =
-        setup_test_naive_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let to = accounts.owner.address();
 
@@ -288,7 +288,7 @@ async fn no_sql_index_error_after_restart() {
 #[tokio::test(flavor = "multi_thread")]
 async fn index_block_events() {
     let (mut suite, mut accounts, _, _, _, httpd_context, _, _, _db_guard) =
-        setup_test_naive_with_indexer(TestOption::default()).await;
+        setup_test_naive_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let replier_code = ContractBuilder::new(Box::new(replier::instantiate))
         .with_execute(Box::new(replier::execute))
