@@ -61,4 +61,6 @@ define_perp_denom! {
     perp_eth  => "ethusd",
     perp_sol  => "solusd",
     perp_hype => "hypeusd",
+    perp_xau  => "xauusd",
+    perp_xag  => "xagusd",
 }
