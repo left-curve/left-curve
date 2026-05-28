@@ -458,51 +458,37 @@ fn query_metadatas_works() {
         .should_succeed_and(|metadatas| {
             metadatas.keys().collect::<BTreeSet<_>>()
                 == BTreeSet::from([
-                    &Denom::new_unchecked(["bridge", "atom"]),
-                    &Denom::new_unchecked(["bridge", "bch"]),
-                    &Denom::new_unchecked(["bridge", "bnb"]),
-                    &Denom::new_unchecked(["bridge", "btc"]),
-                    &Denom::new_unchecked(["bridge", "doge"]),
                     &Denom::new_unchecked(["bridge", "eth"]),
-                    &Denom::new_unchecked(["bridge", "ltc"]),
-                    &Denom::new_unchecked(["bridge", "sol"]),
                     &Denom::new_unchecked(["bridge", "usdc"]),
-                    &Denom::new_unchecked(["bridge", "xrp"]),
                     &Denom::new_unchecked(["dango"]),
                 ])
         });
 
-    // Start after btc
+    // Start after eth
     suite
         .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
-            start_after: Some(Denom::new_unchecked(["bridge", "btc"])),
+            start_after: Some(Denom::new_unchecked(["bridge", "eth"])),
             limit: None,
         })
         .should_succeed_and(|metadatas| {
             metadatas.keys().collect::<BTreeSet<_>>()
                 == BTreeSet::from([
-                    &Denom::new_unchecked(["bridge", "doge"]),
-                    &Denom::new_unchecked(["bridge", "eth"]),
-                    &Denom::new_unchecked(["bridge", "ltc"]),
-                    &Denom::new_unchecked(["bridge", "sol"]),
                     &Denom::new_unchecked(["bridge", "usdc"]),
-                    &Denom::new_unchecked(["bridge", "xrp"]),
                     &Denom::new_unchecked(["dango"]),
                 ])
         });
 
-    // Limit 3
+    // Limit 2
     suite
         .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
             start_after: None,
-            limit: Some(3),
+            limit: Some(2),
         })
         .should_succeed_and(|metadatas| {
             metadatas.keys().collect::<BTreeSet<_>>()
                 == BTreeSet::from([
-                    &Denom::new_unchecked(["bridge", "atom"]),
-                    &Denom::new_unchecked(["bridge", "bch"]),
-                    &Denom::new_unchecked(["bridge", "bnb"]),
+                    &Denom::new_unchecked(["bridge", "eth"]),
+                    &Denom::new_unchecked(["bridge", "usdc"]),
                 ])
         });
 }
