@@ -1,6 +1,9 @@
 //! Reference: <https://docs.pyth.network/price-feeds/pro/price-feed-ids>
 
-use {crate::PythLazerSubscriptionDetails, pyth_lazer_protocol::api::Channel};
+use {
+    crate::PythLazerSubscriptionDetails,
+    pyth_lazer_protocol::{api::Channel, time::FixedRate},
+};
 
 pub const LAZER_ENDPOINTS_TEST: [&str; 3] = [
     "wss://pyth-lazer-0.dourolabs.app/v1/stream",
@@ -10,8 +13,15 @@ pub const LAZER_ENDPOINTS_TEST: [&str; 3] = [
 
 pub const LAZER_TRUSTED_SIGNER: &str = "A6Q4DwETbrJkD5DBfh4xngK7r77vLm5n3EivU/mCfhVb";
 
-pub const LAZER_ID_ALL: [PythLazerSubscriptionDetails; 5] =
-    [BTC_USD_ID, ETH_USD_ID, HYPE_USD_ID, SOL_USD_ID, USDC_USD_ID];
+pub const LAZER_ID_ALL: [PythLazerSubscriptionDetails; 7] = [
+    BTC_USD_ID,
+    ETH_USD_ID,
+    HYPE_USD_ID,
+    SOL_USD_ID,
+    USDC_USD_ID,
+    XAU_USD_ID,
+    XAG_USD_ID,
+];
 
 pub const BTC_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
     id: 1,
@@ -36,4 +46,14 @@ pub const SOL_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetail
 pub const USDC_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
     id: 7,
     channel: Channel::RealTime,
+};
+
+pub const XAU_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 346,
+    channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+};
+
+pub const XAG_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 345,
+    channel: Channel::FixedRate(FixedRate::RATE_200_MS),
 };
