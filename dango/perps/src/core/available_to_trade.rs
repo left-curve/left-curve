@@ -157,7 +157,7 @@ mod tests {
         crate::core::check_margin,
         dango_order_book::{FundingPerUnit, UsdPrice},
         dango_types::{
-            constants::{btc, eth},
+            constants::{perp_btc, perp_eth},
             perps::{PairParam, PairState, Position},
         },
         grug_types::{btree_map, hash_map},
@@ -182,7 +182,7 @@ mod tests {
     ) -> (UserState, NoCachePerpQuerier<'static>) {
         let mut positions = btree_map! {};
         if current_pos != 0 {
-            positions.insert(eth::DENOM.clone(), Position {
+            positions.insert(perp_eth::DENOM.clone(), Position {
                 size: Quantity::new_int(current_pos),
                 // entry_price = oracle so unrealized pnl is zero
                 entry_price: CURRENT_PRICE,
@@ -192,7 +192,7 @@ mod tests {
             });
         }
         if other_pos != 0 {
-            positions.insert(btc::DENOM.clone(), Position {
+            positions.insert(perp_btc::DENOM.clone(), Position {
                 size: Quantity::new_int(other_pos),
                 entry_price: OTHER_PRICE,
                 entry_funding_per_unit: FundingPerUnit::new_int(0),
@@ -216,22 +216,22 @@ mod tests {
 
         let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
-                eth::DENOM.clone() => PairParam {
+                perp_eth::DENOM.clone() => PairParam {
                     initial_margin_ratio: CURRENT_IMR,
                     ..Default::default()
                 },
-                btc::DENOM.clone() => PairParam {
+                perp_btc::DENOM.clone() => PairParam {
                     initial_margin_ratio: OTHER_IMR,
                     ..Default::default()
                 },
             },
             hash_map! {
-                eth::DENOM.clone() => PairState {
+                perp_eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
                     index_price: UsdPrice::new_int(2_000),
                     ..Default::default()
                 },
-                btc::DENOM.clone() => PairState {
+                perp_btc::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(0),
                     index_price: UsdPrice::new_int(50_000),
                     ..Default::default()
@@ -297,7 +297,7 @@ mod tests {
         has_orders: bool,
     ) {
         let (user_state, perp_querier) = build_setup(current_pos, other_pos, has_orders);
-        let current_pair_id = eth::DENOM.clone();
+        let current_pair_id = perp_eth::DENOM.clone();
 
         // 1. Available to trade, then max notional, then max base size.
         let avail =

@@ -1,7 +1,7 @@
 use {
     dango_testing::{
-        BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite, mock_ethereum,
-        mock_solana, setup_test,
+        BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite, mock_arbitrum,
+        mock_ethereum, setup_test,
     },
     dango_types::{
         constants::{dango, usdc},
@@ -14,6 +14,11 @@ use {
     },
     hyperlane_types::{Addr32, isms},
 };
+
+/// USDC withdrawal fee charged on the Arbitrum Warp route. This mirrors the
+/// value configured in the test genesis at `dango/testing/src/genesis.rs:336`;
+/// keep the two in sync.
+const ARBITRUM_USDC_WITHDRAWAL_FEE: u128 = 10_000;
 
 #[tokio::test]
 async fn rate_limit() {
@@ -30,9 +35,7 @@ async fn rate_limit() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     suite.balances().record(receiver);
 
@@ -42,7 +45,7 @@ async fn rate_limit() {
     {
         for (domain, origin_warp, amount) in [
             (mock_ethereum::DOMAIN, mock_ethereum::USDC_WARP, 100_000_000),
-            (mock_solana::DOMAIN, mock_solana::USDC_WARP, 200_000_000),
+            (mock_arbitrum::DOMAIN, mock_arbitrum::USDC_WARP, 200_000_000),
         ] {
             suite
                 .receive_warp_transfer(relayer, domain, origin_warp, receiver, amount)
@@ -81,7 +84,7 @@ async fn rate_limit() {
     // Try send back exact tokens to don't trigger rate limit.
     // Current limit = 10% of 300 = 30
     // alloy_usdc => 300 * 0.1 = 30
-    // Send 30 alloy_usdc back to solana.
+    // Send 30 alloy_usdc back to arbitrum.
 
     suite
         .execute(
@@ -89,12 +92,16 @@ async fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                30_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -106,12 +113,12 @@ async fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, residue after personal quota: 1");
@@ -130,7 +137,7 @@ async fn rate_limit() {
         .should_succeed();
 
     // Supply is now 300M + 100M = 400M minus the 30M already sent back to
-    // solana = 370M. Receiver holds everything except the 10_000 fee paid.
+    // arbitrum = 370M. Receiver holds everything except the 10_000 fee paid.
     {
         suite
             .query_supply(usdc::DENOM.clone())
@@ -149,12 +156,12 @@ async fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, residue after personal quota: 1");
@@ -163,7 +170,7 @@ async fn rate_limit() {
     advance_to_next_day(&mut suite).await;
 
     // Reserves: ethereum received 100M twice (no outflow) → 200M.
-    //           solana received 200M, sent 30M back → 170M.
+    //           arbitrum received 200M, sent 30M back → 170M.
     for (remote, amount) in [
         (
             Remote::Warp {
@@ -174,8 +181,8 @@ async fn rate_limit() {
         ),
         (
             Remote::Warp {
-                domain: mock_solana::DOMAIN,
-                contract: mock_solana::USDC_WARP,
+                domain: mock_arbitrum::DOMAIN,
+                contract: mock_arbitrum::USDC_WARP,
             },
             170_000_000,
         ),
@@ -188,19 +195,23 @@ async fn rate_limit() {
             .should_succeed_and_equal(amount.into());
     }
 
-    // Drain the full 37M quota to solana.
+    // Drain the full 37M quota to arbitrum.
     suite
         .execute(
             receiver,
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 37_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                37_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -212,12 +223,12 @@ async fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, residue after personal quota: 1");
@@ -239,7 +250,7 @@ async fn rate_limit() {
     // Another day. Supply is 370M - 37M = 333M; quota is 333M × 99%.
     advance_to_next_day(&mut suite).await;
 
-    // Solana reserve after the previous 37M withdraw is 170M - 37M = 133M.
+    // Arbitrum reserve after the previous 37M withdraw is 170M - 37M = 133M.
     // Drain it completely in a single transfer (well under the new quota).
     suite
         .execute(
@@ -247,17 +258,21 @@ async fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 133_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                133_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
 
-    // Solana reserve is now empty; the next transfer fails on reserve, not
+    // Arbitrum reserve is now empty; the next transfer fails on reserve, not
     // quota.
     suite
         .execute(
@@ -265,12 +280,12 @@ async fn rate_limit() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient reserve!");
@@ -291,18 +306,16 @@ async fn boundary_attack() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
-    let usdc_sol_fee = 10_000;
-
-    // Mint 300M USDC into the chain via solana so the receiver has 300M to
-    // send back over the same route, and the solana reserve can cover up to
+    // Mint 300M USDC into the chain via arbitrum so the receiver has 300M to
+    // send back over the same route, and the arbitrum reserve can cover up to
     // 300M of outbound transfers.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             300_000_000,
         )
@@ -343,12 +356,16 @@ async fn boundary_attack() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 25_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                25_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -366,12 +383,12 @@ async fn boundary_attack() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 25_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 25_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 25000000, residue after personal quota: 25000000, rolling sum: 25000000, cap: 27500000");
@@ -388,12 +405,16 @@ async fn boundary_attack() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: gateway::Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 25_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                25_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -531,15 +552,14 @@ async fn set_rate_limits_resets_quota() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
-    // Receive 100M USDC from solana so we have reserves + supply to work with.
+    // Receive 100M USDC from arbitrum so we have reserves + supply to work with.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -567,12 +587,16 @@ async fn set_rate_limits_resets_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                10_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -584,12 +608,12 @@ async fn set_rate_limits_resets_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, residue after personal quota: 1");
@@ -617,12 +641,12 @@ async fn set_rate_limits_resets_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_succeed();
@@ -638,12 +662,12 @@ async fn set_rate_limits_resets_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_succeed();
@@ -667,12 +691,16 @@ async fn set_rate_limits_resets_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                50_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -689,12 +717,16 @@ async fn set_rate_limits_resets_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                20_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -719,15 +751,14 @@ async fn set_rate_limits_does_not_refresh_supply_snapshot() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
-    // Setup: 100M USDC supply, reserve 100M on solana.
+    // Setup: 100M USDC supply, reserve 100M on arbitrum.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -754,12 +785,16 @@ async fn set_rate_limits_does_not_refresh_supply_snapshot() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                30_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -784,12 +819,16 @@ async fn set_rate_limits_does_not_refresh_supply_snapshot() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 19_999_999 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                19_999_999 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -800,12 +839,12 @@ async fn set_rate_limits_does_not_refresh_supply_snapshot() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 2 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 2 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota!");
@@ -831,12 +870,12 @@ async fn set_rate_limits_does_not_refresh_supply_snapshot() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota!");
@@ -862,12 +901,16 @@ async fn set_rate_limits_does_not_refresh_supply_snapshot() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                30_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -887,12 +930,12 @@ async fn set_rate_limits_does_not_refresh_supply_snapshot() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_succeed();
@@ -915,16 +958,15 @@ async fn personal_quota() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
-    // Seed 200M USDC from solana so there's both stock and a non-trivial
+    // Seed 200M USDC from arbitrum so there's both stock and a non-trivial
     // reserve for withdrawals to hit.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             200_000_000,
         )
@@ -1021,12 +1063,16 @@ async fn personal_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 40_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                40_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -1053,12 +1099,16 @@ async fn personal_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 12_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                12_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -1079,12 +1129,12 @@ async fn personal_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, residue after personal quota: 1");
@@ -1119,12 +1169,12 @@ async fn personal_quota() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, requested: 1, residue after personal quota: 1");
@@ -1177,15 +1227,14 @@ async fn personal_quota_revoke_via_op_delete() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     // 100M supply. 10% rate limit → global quota = 10M.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -1267,12 +1316,12 @@ async fn personal_quota_revoke_via_op_delete() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 20_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 20_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error(
@@ -1286,12 +1335,16 @@ async fn personal_quota_revoke_via_op_delete() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                10_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -1315,15 +1368,14 @@ async fn zero_rate_limit_revokes_personal_quotas() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     // 100M supply, 10% rate limit → cap 10M.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -1396,12 +1448,12 @@ async fn zero_rate_limit_revokes_personal_quotas() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota!");
@@ -1428,16 +1480,15 @@ async fn personal_quota_on_un_rate_limited_denom() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     // Seed 100M reserve + supply. No SetRateLimits call anywhere — USDC is
     // not globally rate-limited.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -1469,12 +1520,16 @@ async fn personal_quota_on_un_rate_limited_denom() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                30_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -1499,12 +1554,16 @@ async fn personal_quota_on_un_rate_limited_denom() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 50_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                50_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -1525,12 +1584,16 @@ async fn personal_quota_on_un_rate_limited_denom() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                10_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -1557,15 +1620,14 @@ async fn personal_quota_mid_consumption_overwrite() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     // Reserve / supply seed.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             200_000_000,
         )
@@ -1610,12 +1672,16 @@ async fn personal_quota_mid_consumption_overwrite() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 40_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                40_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -1797,16 +1863,15 @@ async fn personal_quota_expire_at_boundary() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     // 100M supply; leave USDC un-rate-limited so that the transfer's quota
     // path depends only on the personal allowance.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -1845,12 +1910,12 @@ async fn personal_quota_expire_at_boundary() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_succeed();
@@ -1897,12 +1962,12 @@ async fn personal_quota_expire_at_boundary() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_succeed();
@@ -1938,15 +2003,14 @@ async fn personal_quota_regrant_after_expiry() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     // Reserve + supply seed.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -2030,12 +2094,16 @@ async fn personal_quota_regrant_after_expiry() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                1_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -2074,8 +2142,8 @@ async fn personal_quota_cron_tick_does_not_scrub_expired_entry() {
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             &accounts.user2,
             100_000_000,
         )
@@ -2159,15 +2227,14 @@ async fn rolling_window_releases_gradually() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
 
     // 200M USDC supply.
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             200_000_000,
         )
@@ -2194,12 +2261,16 @@ async fn rolling_window_releases_gradually() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 10_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                10_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -2217,12 +2288,12 @@ async fn rolling_window_releases_gradually() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc::DENOM.clone(), 1 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_fail_with_error("insufficient outbound quota!");
@@ -2238,12 +2309,16 @@ async fn rolling_window_releases_gradually() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 9_500_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc::DENOM.clone(),
+                9_500_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -2272,8 +2347,8 @@ async fn cap_is_snapshotted_at_cron_tick() {
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -2306,8 +2381,8 @@ async fn cap_is_snapshotted_at_cron_tick() {
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -2353,15 +2428,14 @@ async fn personal_quota_does_not_consume_rolling_window() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
     let usdc_denom = usdc::DENOM.clone();
 
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -2407,12 +2481,16 @@ async fn personal_quota_does_not_consume_rolling_window() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc_denom.clone(), 40_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(
+                usdc_denom.clone(),
+                40_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
         )
         .await
         .should_succeed();
@@ -2445,15 +2523,14 @@ async fn denom_removal_clears_withdraw_volumes() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
     let usdc_denom = usdc::DENOM.clone();
 
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -2479,12 +2556,12 @@ async fn denom_removal_clears_withdraw_volumes() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc_denom.clone(), 5_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc_denom.clone(), 5_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_succeed();
@@ -2555,8 +2632,7 @@ async fn query_rate_limit_status() {
     let relayer = &mut accounts.user1;
     let owner = &mut accounts.owner;
 
-    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
-    let usdc_sol_fee = 10_000;
+    let mock_arbitrum_recipient: Addr32 = Addr::mock(201).into();
     let usdc_denom = usdc::DENOM.clone();
 
     // Un-rate-limited denom returns None.
@@ -2570,8 +2646,8 @@ async fn query_rate_limit_status() {
     suite
         .receive_warp_transfer(
             relayer,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             receiver,
             100_000_000,
         )
@@ -2597,12 +2673,12 @@ async fn query_rate_limit_status() {
             contracts.gateway,
             &gateway::ExecuteMsg::TransferRemote {
                 remote: Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
+                    domain: mock_arbitrum::DOMAIN,
+                    contract: mock_arbitrum::USDC_WARP,
                 },
-                recipient: mock_solana_recipient,
+                recipient: mock_arbitrum_recipient,
             },
-            Coin::new(usdc_denom.clone(), 3_000_000 + usdc_sol_fee).unwrap(),
+            Coin::new(usdc_denom.clone(), 3_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE).unwrap(),
         )
         .await
         .should_succeed();

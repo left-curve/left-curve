@@ -3,8 +3,8 @@ use {
         ContractWrapper, MockValidatorSets, Preset, TestAccount, TestAccounts, TestSuite,
         TestSuiteNaive, TestSuiteNaiveWithIndexer, TestSuiteWithIndexer,
         constants::{
-            mock_arbitrum, mock_base, mock_ethereum, mock_optimism, mock_solana, owner, user1,
-            user2, user3, user4, user5, user6, user7, user8, user9,
+            mock_arbitrum, mock_ethereum, owner, user1, user2, user3, user4, user5, user6, user7,
+            user8, user9,
         },
     },
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
@@ -439,16 +439,8 @@ where
     // Create the mock validator sets.
     // TODO: For now, we always use the preset mock. It may not match the ones
     // in the genesis state. We should generate this based on the `genesis_opt`.
-    let validator_sets = MockValidatorSets::new_preset(
-        &[
-            mock_arbitrum::DOMAIN,
-            mock_base::DOMAIN,
-            mock_ethereum::DOMAIN,
-            mock_optimism::DOMAIN,
-            mock_solana::DOMAIN,
-        ],
-        false,
-    );
+    let validator_sets =
+        MockValidatorSets::new_preset(&[mock_arbitrum::DOMAIN, mock_ethereum::DOMAIN], false);
 
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {

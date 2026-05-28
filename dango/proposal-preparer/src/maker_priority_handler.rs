@@ -202,7 +202,7 @@ mod tests {
             UsdPrice, UsdValue,
         },
         dango_types::{
-            constants::btc,
+            constants::perp_btc,
             perps::{
                 CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, MaintainerMsg,
                 ReferralMsg, SubmitOrCancelOrderRequest, SubmitOrderRequest, TraderMsg,
@@ -261,7 +261,7 @@ mod tests {
 
     fn submit(kind: OrderKind) -> SubmitOrderRequest {
         SubmitOrderRequest {
-            pair_id: btc::DENOM.clone(),
+            pair_id: perp_btc::DENOM.clone(),
             size: Quantity::new_int(1),
             kind,
             reduce_only: false,
@@ -280,7 +280,7 @@ mod tests {
 
     fn submit_with_tp_sl(kind: OrderKind) -> SubmitOrderRequest {
         SubmitOrderRequest {
-            pair_id: btc::DENOM.clone(),
+            pair_id: perp_btc::DENOM.clone(),
             size: Quantity::new_int(1),
             kind,
             reduce_only: false,
@@ -305,14 +305,14 @@ mod tests {
 
     fn cancel_cond_one() -> TraderMsg {
         TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::One {
-            pair_id: btc::DENOM.clone(),
+            pair_id: perp_btc::DENOM.clone(),
             trigger_direction: TriggerDirection::Above,
         })
     }
 
     fn cancel_cond_all_for_pair() -> TraderMsg {
         TraderMsg::CancelConditionalOrder(CancelConditionalOrderRequest::AllForPair {
-            pair_id: btc::DENOM.clone(),
+            pair_id: perp_btc::DENOM.clone(),
         })
     }
 
@@ -397,7 +397,7 @@ mod tests {
 
     fn submit_conditional() -> TraderMsg {
         TraderMsg::SubmitConditionalOrder {
-            pair_id: btc::DENOM.clone(),
+            pair_id: perp_btc::DENOM.clone(),
             size: None,
             trigger_price: UsdPrice::new_int(100),
             trigger_direction: TriggerDirection::Above,

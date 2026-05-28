@@ -2,7 +2,7 @@ use {
     dango_account_factory::{MAX_ACCOUNTS_PER_USER, USERS},
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-        Factory, HyperlaneTestSuite, Preset, TestAccount, mock_solana, setup_test_naive,
+        Factory, HyperlaneTestSuite, Preset, TestAccount, mock_arbitrum, setup_test_naive,
         setup_test_naive_with_custom_genesis,
     },
     dango_types::{
@@ -106,8 +106,8 @@ async fn onboarding_without_deposit() {
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             &user,
             10_000_000, // Minimum deposit is 10_000_000. Need to send at this that amount.
         )
@@ -264,8 +264,8 @@ async fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
             &user,
             10_000_000,
         )

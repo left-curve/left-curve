@@ -11,7 +11,7 @@ pub mod dango {
     pub const DECIMAL: u32 = 6;
 }
 
-macro_rules! define_denom {
+macro_rules! define_spot_denom {
     ($name:ident => $decimal:literal) => {
         pub mod $name {
             use super::*;
@@ -25,32 +25,20 @@ macro_rules! define_denom {
             pub const DECIMAL: u32 = $decimal;
         }
     };
-    ($($name:ident => $decimal:literal),*) => {
+    ($($name:ident => $decimal:literal),* $(,)?) => {
         $(
-            define_denom!($name => $decimal);
+            define_spot_denom!($name => $decimal);
         )*
     };
 }
 
-define_denom! {
-    atom => 6,
-    bch  => 8,
-    bnb  => 18,
-    btc  => 8,
-    doge => 8,
+define_spot_denom! {
     eth  => 18,
-    // HYPE has 8 decimals in HyperCore, 18 decimals in HyperEVM.
-    // We do not support bridging spot HYPE anyways, so what we use here doesn't matter.
-    // But ideally we support HyperCore, so putting 8 here for now.
-    hype => 8,
-    ltc  => 8,
-    sol  => 9,
     usdc => 6,
-    xrp  => 6
 }
 
 macro_rules! define_perp_denom {
-    ($name:ident, $subdenom:literal => $decimal:expr) => {
+    ($name:ident => $subdenom:literal) => {
         pub mod $name {
             use super::*;
 
@@ -59,20 +47,18 @@ macro_rules! define_perp_denom {
             pub static DENOM: LazyLock<Denom> = LazyLock::new(|| {
                 Denom::from_parts([crate::perps::NAMESPACE.clone(), SUBDENOM.clone()]).unwrap()
             });
-
-            pub const DECIMAL: u32 = $decimal;
         }
     };
-    ($($name:ident, $subdenom:literal => $decimal:expr),*) => {
+    ($($name:ident => $subdenom:literal),* $(,)?) => {
         $(
-            define_perp_denom!($name, $subdenom => $decimal);
+            define_perp_denom!($name => $subdenom);
         )*
     };
 }
 
 define_perp_denom! {
-    perp_btc,  "btcusd"  => btc::DECIMAL,
-    perp_eth,  "ethusd"  => eth::DECIMAL,
-    perp_sol,  "solusd"  => sol::DECIMAL,
-    perp_hype, "hypeusd" => hype::DECIMAL
+    perp_btc  => "btcusd",
+    perp_eth  => "ethusd",
+    perp_sol  => "solusd",
+    perp_hype => "hypeusd",
 }

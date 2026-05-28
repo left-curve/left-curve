@@ -1,7 +1,5 @@
 use {
-    crate::{
-        ContractWrapper, HyperlaneTestSuite, TestAccount, TestAccounts, constants::mock_solana,
-    },
+    crate::{ContractWrapper, HyperlaneTestSuite, TestAccount, TestAccounts, mock_ethereum},
     dango_genesis::{Codes, Contracts},
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{account_factory, auth::Key, constants::usdc},
@@ -72,8 +70,8 @@ pub async fn create_user_and_account(
     suite
         .receive_warp_transfer(
             &mut accounts.owner,
-            mock_solana::DOMAIN,
-            mock_solana::USDC_WARP,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
             &user,
             150_000_000, // Make sure this is bigger than the minimum deposit.
         )

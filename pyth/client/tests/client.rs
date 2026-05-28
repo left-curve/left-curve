@@ -20,7 +20,7 @@ use {
     },
     pyth_types::{
         PythLazerSubscriptionDetails,
-        constants::{ATOM_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST},
+        constants::{BTC_USD_ID, ETH_USD_ID, HYPE_USD_ID, LAZER_ENDPOINTS_TEST, SOL_USD_ID},
     },
     rand::Rng,
     reqwest::StatusCode,
@@ -34,16 +34,16 @@ use {
     tracing::{error, info},
 };
 
-const TOKEN: &str = "inser_lazer_token_here";
+const TOKEN: &str = "insert_lazer_token_here";
 
 #[ignore = "rely on network calls"]
 #[tokio::test]
 async fn test_lazer_stream() {
     let client = PythClient::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
 
-    test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
-        ETH_USD_ID,
-        ATOM_USD_ID,
+    test_stream(client, vec![BTC_USD_ID, ETH_USD_ID], vec![
+        SOL_USD_ID,
+        HYPE_USD_ID,
     ])
     .await;
 }

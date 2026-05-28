@@ -2,7 +2,7 @@ use {
     dango_proposal_preparer::{ProposalPreparer, QueryPythId},
     dango_testing::{TestSuite, setup_test},
     dango_types::{
-        constants::btc,
+        constants::perp_btc,
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
     },
     grug_db_memory::MemDb,
@@ -64,7 +64,7 @@ async fn proposal_pyth() {
     let oracle = contracts.oracle;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel }
+        perp_btc::DENOM.clone() => PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel }
     );
 
     let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
@@ -92,14 +92,14 @@ async fn proposal_pyth() {
         .await
         .should_succeed();
 
-    // Assert the price of btc exists.
+    // Assert the price of perp_btc exists.
     sleep(Duration::from_secs(2));
-    assert_price_exists(&mut suite, contracts.oracle, btc::DENOM.clone()).await;
+    assert_price_exists(&mut suite, contracts.oracle, perp_btc::DENOM.clone()).await;
 
     // Retrieve the prices and sequences.
     let prices1 = suite
         .query_wasm_smart(oracle, QueryPriceRequest {
-            denom: btc::DENOM.clone(),
+            denom: perp_btc::DENOM.clone(),
         })
         .should_succeed();
 
@@ -110,7 +110,7 @@ async fn proposal_pyth() {
 
     let prices2 = suite
         .query_wasm_smart(oracle, QueryPriceRequest {
-            denom: btc::DENOM.clone(),
+            denom: perp_btc::DENOM.clone(),
         })
         .should_succeed();
 

@@ -159,10 +159,10 @@ fn do_pyth_prices_migration(storage: &mut dyn Storage) -> AppResult<()> {
 mod tests {
     use {
         super::*,
-        dango_types::constants::{atom, btc, eth, usdc},
+        dango_types::constants::{eth, perp_btc, usdc},
         grug_math::Udec128,
         grug_types::{MockStorage, Timestamp, btree_map},
-        pyth_types::constants::{ATOM_USD_ID, BTC_USD_ID, ETH_USD_ID, USDC_USD_ID},
+        pyth_types::constants::{BTC_USD_ID, ETH_USD_ID, USDC_USD_ID},
         std::str::FromStr,
     };
 
@@ -171,12 +171,7 @@ mod tests {
     /// the values in `dango/types/src/constants/pyth.rs`).
     fn seed_legacy_price_sources(storage: &mut dyn Storage) {
         let entries = btree_map! {
-            atom::DENOM.clone() => legacy_oracle::PriceSource::Pyth {
-                id: ATOM_USD_ID.id,
-                channel: ATOM_USD_ID.channel,
-                precision: 6,
-            },
-            btc::DENOM.clone() => legacy_oracle::PriceSource::Pyth {
+            perp_btc::DENOM.clone() => legacy_oracle::PriceSource::Pyth {
                 id: BTC_USD_ID.id,
                 channel: BTC_USD_ID.channel,
                 precision: 8,
@@ -209,7 +204,7 @@ mod tests {
         // Each entry should now decode under the new struct shape with the
         // `id` and `channel` preserved; `precision` is gone.
         let migrated_btc = dango_oracle::PRICE_SOURCES
-            .load(&storage, &btc::DENOM)
+            .load(&storage, &perp_btc::DENOM)
             .unwrap();
         assert_eq!(migrated_btc.id, BTC_USD_ID.id);
         assert_eq!(migrated_btc.channel, BTC_USD_ID.channel);
@@ -224,7 +219,7 @@ mod tests {
         let count = dango_oracle::PRICE_SOURCES
             .range(&storage, None, None, Order::Ascending)
             .count();
-        assert_eq!(count, 4);
+        assert_eq!(count, 3);
     }
 
     #[test]
@@ -234,7 +229,7 @@ mod tests {
         legacy_oracle::PRICE_SOURCES
             .save(
                 &mut storage,
-                &btc::DENOM,
+                &perp_btc::DENOM,
                 &legacy_oracle::PriceSource::Pyth {
                     id: BTC_USD_ID.id,
                     channel: BTC_USD_ID.channel,
@@ -259,7 +254,7 @@ mod tests {
         // BTC survives as the new struct.
         assert!(
             dango_oracle::PRICE_SOURCES
-                .may_load(&storage, &btc::DENOM)
+                .may_load(&storage, &perp_btc::DENOM)
                 .unwrap()
                 .is_some(),
         );
