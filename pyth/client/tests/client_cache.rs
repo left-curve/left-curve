@@ -7,9 +7,7 @@ use {
     pyth_client::{PYTH_CACHE_SAMPLES, PythClientCache},
     pyth_types::{
         LeEcdsaMessage,
-        constants::{
-            ATOM_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_ID_ALL,
-        },
+        constants::{BTC_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_ID_ALL, SOL_USD_ID},
     },
 };
 
@@ -18,11 +16,7 @@ async fn test_lazer_stream() {
     let client =
         PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token").unwrap();
 
-    test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
-        ETH_USD_ID,
-        ATOM_USD_ID,
-    ])
-    .await;
+    test_stream(client, vec![BTC_USD_ID, ETH_USD_ID], vec![SOL_USD_ID]).await;
 }
 
 // This test is used to create the cache files for Pyth Lazer.

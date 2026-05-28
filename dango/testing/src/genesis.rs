@@ -4,8 +4,7 @@ use {
         constants::{
             DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP,
             MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES, mock_arbitrum,
-            mock_base, mock_ethereum, mock_optimism, mock_solana, owner, user1, user2, user3,
-            user4, user5, user6, user7, user8, user9,
+            mock_ethereum, owner, user1, user2, user3, user4, user5, user6, user7, user8, user9,
         },
     },
     dango_genesis::{
@@ -17,9 +16,7 @@ use {
         account_factory::NewUserSalt,
         auth::Key,
         bank::Metadata,
-        constants::{
-            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
-        },
+        constants::{PYTH_PRICE_SOURCES, dango, eth, usdc},
         gateway::{Origin, Remote, WithdrawalFee},
         perps::{self, PairParam},
         taxman,
@@ -291,64 +288,16 @@ impl Preset for BankOption {
                     decimals: dango::DECIMAL,
                     description: Some(LengthBounded::new_unchecked("Native token of Dango".to_string())),
                 },
-                atom::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("Atom".to_string()),
-                    symbol: LengthBounded::new_unchecked("ATOM".to_string()),
-                    decimals: atom::DECIMAL,
-                    description: None,
-                },
-                bch::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("Bitcoin Cash".to_string()),
-                    symbol: LengthBounded::new_unchecked("BCH".to_string()),
-                    decimals: bch::DECIMAL,
-                    description: None,
-                },
-                bnb::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("Binance Coin".to_string()),
-                    symbol: LengthBounded::new_unchecked("BNB".to_string()),
-                    decimals: bnb::DECIMAL,
-                    description: None,
-                },
-                btc::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("Bitcoin".to_string()),
-                    symbol: LengthBounded::new_unchecked("BTC".to_string()),
-                    decimals: btc::DECIMAL,
-                    description: None,
-                },
-                doge::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("Dogecoin".to_string()),
-                    symbol: LengthBounded::new_unchecked("DOGE".to_string()),
-                    decimals: doge::DECIMAL,
-                    description: None,
-                },
                 eth::DENOM.clone() => Metadata {
                     name: LengthBounded::new_unchecked("Ether".to_string()),
                     symbol: LengthBounded::new_unchecked("ETH".to_string()),
                     decimals: eth::DECIMAL,
                     description: None,
                 },
-                ltc::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("Litecoin".to_string()),
-                    symbol: LengthBounded::new_unchecked("LTC".to_string()),
-                    decimals: ltc::DECIMAL,
-                    description: None,
-                },
-                sol::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("Solana".to_string()),
-                    symbol: LengthBounded::new_unchecked("SOL".to_string()),
-                    decimals: sol::DECIMAL,
-                    description: None,
-                },
                 usdc::DENOM.clone() => Metadata {
                     name: LengthBounded::new_unchecked("USD Coin".to_string()),
                     symbol: LengthBounded::new_unchecked("USDC".to_string()),
                     decimals: usdc::DECIMAL,
-                    description: None,
-                },
-                xrp::DENOM.clone() => Metadata {
-                    name: LengthBounded::new_unchecked("XRP".to_string()),
-                    symbol: LengthBounded::new_unchecked("XRP".to_string()),
-                    decimals: xrp::DECIMAL,
                     description: None,
                 },
             },
@@ -365,40 +314,16 @@ impl Preset for GatewayOption {
                     contract: mock_arbitrum::USDC_WARP,
                 }),
                 (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: mock_base::DOMAIN,
-                    contract: mock_base::USDC_WARP,
-                }),
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: mock_ethereum::DOMAIN,
                     contract: mock_ethereum::USDC_WARP,
-                }),
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: mock_optimism::DOMAIN,
-                    contract: mock_optimism::USDC_WARP,
-                }),
-                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::USDC_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: mock_arbitrum::DOMAIN,
                     contract: mock_arbitrum::ETH_WARP,
                 }),
                 (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
-                    domain: mock_base::DOMAIN,
-                    contract: mock_base::ETH_WARP,
-                }),
-                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: mock_ethereum::DOMAIN,
                     contract: mock_ethereum::ETH_WARP,
-                }),
-                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
-                    domain: mock_optimism::DOMAIN,
-                    contract: mock_optimism::ETH_WARP,
-                }),
-                (Origin::Remote(sol::SUBDENOM.clone()), Remote::Warp {
-                    domain: mock_solana::DOMAIN,
-                    contract: mock_solana::SOL_WARP,
                 }),
             },
             withdrawal_fees: vec![
@@ -408,15 +333,7 @@ impl Preset for GatewayOption {
                         domain: mock_arbitrum::DOMAIN,
                         contract: mock_arbitrum::USDC_WARP,
                     },
-                    fee: Op::Insert(Uint128::new(100_000)),
-                },
-                WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
-                    remote: Remote::Warp {
-                        domain: mock_base::DOMAIN,
-                        contract: mock_base::USDC_WARP,
-                    },
-                    fee: Op::Insert(Uint128::new(100_000)),
+                    fee: Op::Insert(Uint128::new(10_000)),
                 },
                 WithdrawalFee {
                     denom: usdc::DENOM.clone(),
@@ -425,22 +342,6 @@ impl Preset for GatewayOption {
                         contract: mock_ethereum::USDC_WARP,
                     },
                     fee: Op::Insert(Uint128::new(1_000_000)),
-                },
-                WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
-                    remote: Remote::Warp {
-                        domain: mock_optimism::DOMAIN,
-                        contract: mock_optimism::USDC_WARP,
-                    },
-                    fee: Op::Insert(Uint128::new(100_000)),
-                },
-                WithdrawalFee {
-                    denom: usdc::DENOM.clone(),
-                    remote: Remote::Warp {
-                        domain: mock_solana::DOMAIN,
-                        contract: mock_solana::USDC_WARP,
-                    },
-                    fee: Op::Insert(Uint128::new(10_000)),
                 },
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
@@ -453,40 +354,15 @@ impl Preset for GatewayOption {
                 WithdrawalFee {
                     denom: eth::DENOM.clone(),
                     remote: Remote::Warp {
-                        domain: mock_base::DOMAIN,
-                        contract: mock_base::ETH_WARP,
-                    },
-                    fee: Op::Insert(Uint128::new(50_000_000_000_000)),
-                },
-                WithdrawalFee {
-                    denom: eth::DENOM.clone(),
-                    remote: Remote::Warp {
                         domain: mock_ethereum::DOMAIN,
                         contract: mock_ethereum::ETH_WARP,
                     },
                     fee: Op::Insert(Uint128::new(500_000_000_000_000)),
                 },
-                WithdrawalFee {
-                    denom: eth::DENOM.clone(),
-                    remote: Remote::Warp {
-                        domain: mock_optimism::DOMAIN,
-                        contract: mock_optimism::ETH_WARP,
-                    },
-                    fee: Op::Insert(Uint128::new(50_000_000_000_000)),
-                },
-                WithdrawalFee {
-                    denom: sol::DENOM.clone(),
-                    remote: Remote::Warp {
-                        domain: mock_solana::DOMAIN,
-                        contract: mock_solana::SOL_WARP,
-                    },
-                    fee: Op::Insert(Uint128::new(66_667)), // ~$0.01, assume SOL is $150
-                },
             ],
             rate_limits: btree_map! {
                 usdc::DENOM.clone() => Bounded::new_unchecked(Udec128::new_percent(10)),
                 eth::DENOM.clone()  => Bounded::new_unchecked(Udec128::new_percent(10)),
-                sol::DENOM.clone()  => Bounded::new_unchecked(Udec128::new_percent(10)),
             },
             rate_limit_refresh_period: Duration::from_days(1),
         }
@@ -504,11 +380,8 @@ impl Preset for HyperlaneOption {
         HyperlaneOption {
             local_domain: MOCK_HYPERLANE_LOCAL_DOMAIN,
             ism_validator_sets: btree_map! {
-                mock_arbitrum::DOMAIN         => mock_validator_set.clone(),
-                mock_base::DOMAIN             => mock_validator_set.clone(),
-                mock_ethereum::DOMAIN         => mock_validator_set.clone(),
-                mock_optimism::DOMAIN         => mock_validator_set.clone(),
-                mock_solana::DOMAIN           => mock_validator_set,
+                mock_arbitrum::DOMAIN => mock_validator_set.clone(),
+                mock_ethereum::DOMAIN => mock_validator_set,
             },
             va_announce_fee_per_byte: Coin {
                 denom: usdc::DENOM.clone(),

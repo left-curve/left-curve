@@ -2,7 +2,7 @@ use {
     dango_proposal_preparer::{PythHandler, QueryPythId},
     dango_testing::setup_test,
     dango_types::{
-        constants::btc,
+        constants::perp_btc,
         oracle::{ExecuteMsg, InstantiateMsg, PriceSource},
     },
     grug_types::{Coins, HashExt, NonEmpty, QuerierWrapper, ResultExt, btree_map},
@@ -38,7 +38,7 @@ async fn handler() {
         .address;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource {
+        perp_btc::DENOM.clone() => PriceSource {
             id: 1,
             channel: Channel::RealTime,
         },

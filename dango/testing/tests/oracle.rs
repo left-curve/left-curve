@@ -2,7 +2,7 @@ use {
     dango_order_book::UsdPrice,
     dango_testing::{TestAccounts, TestSuiteNaive, setup_test_naive},
     dango_types::{
-        constants::{btc, eth},
+        constants::{eth, perp_btc},
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryTrustedSignersRequest},
     },
     grug_math::Dec128_6,
@@ -46,7 +46,7 @@ async fn pyth_lazer() {
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc::DENOM.clone() => PriceSource { id: 1, channel: Channel::RealTime },
+                perp_btc::DENOM.clone() => PriceSource { id: 1, channel: Channel::RealTime },
                 eth::DENOM.clone() => PriceSource { id: 2, channel: Channel::RealTime },
             }),
             Coins::default(),
@@ -150,7 +150,7 @@ async fn pyth_lazer() {
     // Query the BTC price
     let price = suite
         .query_wasm_smart(oracle, QueryPriceRequest {
-            denom: btc::DENOM.clone(),
+            denom: perp_btc::DENOM.clone(),
         })
         .unwrap();
 

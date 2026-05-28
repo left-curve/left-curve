@@ -100,7 +100,7 @@ mod tests {
         super::*,
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
         dango_types::{
-            constants::{btc, eth},
+            constants::{perp_btc, perp_eth},
             perps::{PairParam, PairState, Position},
         },
         grug_types::{btree_map, hash_map},
@@ -125,7 +125,7 @@ mod tests {
         let user_state = UserState {
             margin: UsdValue::new_int(10_000),
             positions: btree_map! {
-                eth::DENOM.clone() => Position {
+                perp_eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
@@ -136,14 +136,14 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
-            hash_map! { eth::DENOM.clone() => PairState {
+            hash_map! { perp_eth::DENOM.clone() => pair_param_with_mmr(50) },
+            hash_map! { perp_eth::DENOM.clone() => PairState {
                 index_price: UsdPrice::new_int(2000),
                 ..Default::default()
             } },
         );
 
-        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &perp_querier)
+        let liq = compute_liquidation_price(&perp_eth::DENOM, &user_state, &perp_querier)
             .unwrap()
             .expect("should have a liquidation price");
 
@@ -162,7 +162,7 @@ mod tests {
         let user_state = UserState {
             margin: UsdValue::new_int(5_000),
             positions: btree_map! {
-                eth::DENOM.clone() => Position {
+                perp_eth::DENOM.clone() => Position {
                     size: Quantity::new_int(-5),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
@@ -173,14 +173,14 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
-            hash_map! { eth::DENOM.clone() => PairState {
+            hash_map! { perp_eth::DENOM.clone() => pair_param_with_mmr(50) },
+            hash_map! { perp_eth::DENOM.clone() => PairState {
                 index_price: UsdPrice::new_int(2000),
                 ..Default::default()
             } },
         );
 
-        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &perp_querier)
+        let liq = compute_liquidation_price(&perp_eth::DENOM, &user_state, &perp_querier)
             .unwrap()
             .expect("should have a liquidation price");
 
@@ -200,7 +200,7 @@ mod tests {
         let user_state = UserState {
             margin: UsdValue::new_int(10_000),
             positions: btree_map! {
-                eth::DENOM.clone() => Position {
+                perp_eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
@@ -211,9 +211,9 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
+            hash_map! { perp_eth::DENOM.clone() => pair_param_with_mmr(50) },
             hash_map! {
-                eth::DENOM.clone() => PairState {
+                perp_eth::DENOM.clone() => PairState {
                     funding_per_unit: FundingPerUnit::new_int(5),
                     index_price: UsdPrice::new_int(2000),
                     ..Default::default()
@@ -221,7 +221,7 @@ mod tests {
             },
         );
 
-        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &perp_querier)
+        let liq = compute_liquidation_price(&perp_eth::DENOM, &user_state, &perp_querier)
             .unwrap()
             .expect("should have a liquidation price");
 
@@ -254,14 +254,14 @@ mod tests {
         let user_state = UserState {
             margin: UsdValue::new_int(1_000),
             positions: btree_map! {
-                eth::DENOM.clone() => Position {
+                perp_eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
                     conditional_order_above: None,
                     conditional_order_below: None,
                 },
-                btc::DENOM.clone() => Position {
+                perp_btc::DENOM.clone() => Position {
                     size: Quantity::new_int(1),
                     entry_price: UsdPrice::new_int(50_000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
@@ -273,22 +273,22 @@ mod tests {
         };
         let perp_querier = NoCachePerpQuerier::new_mock(
             hash_map! {
-                eth::DENOM.clone() => pair_param_with_mmr(50),
-                btc::DENOM.clone() => pair_param_with_mmr(50),
+                perp_eth::DENOM.clone() => pair_param_with_mmr(50),
+                perp_btc::DENOM.clone() => pair_param_with_mmr(50),
             },
             hash_map! {
-                eth::DENOM.clone() => PairState {
+                perp_eth::DENOM.clone() => PairState {
                     index_price: UsdPrice::new_int(2000),
                     ..Default::default()
                 },
-                btc::DENOM.clone() => PairState {
+                perp_btc::DENOM.clone() => PairState {
                     index_price: UsdPrice::new_int(55_000),
                     ..Default::default()
                 },
             },
         );
 
-        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &perp_querier)
+        let liq = compute_liquidation_price(&perp_eth::DENOM, &user_state, &perp_querier)
             .unwrap()
             .expect("should have a liquidation price");
 
@@ -312,7 +312,7 @@ mod tests {
         let user_state = UserState {
             margin: UsdValue::new_int(100_000),
             positions: btree_map! {
-                eth::DENOM.clone() => Position {
+                perp_eth::DENOM.clone() => Position {
                     size: Quantity::new_int(1),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
@@ -323,14 +323,15 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
-            hash_map! { eth::DENOM.clone() => PairState {
+            hash_map! { perp_eth::DENOM.clone() => pair_param_with_mmr(50) },
+            hash_map! { perp_eth::DENOM.clone() => PairState {
                 index_price: UsdPrice::new_int(2000),
                 ..Default::default()
             } },
         );
 
-        let result = compute_liquidation_price(&eth::DENOM, &user_state, &perp_querier).unwrap();
+        let result =
+            compute_liquidation_price(&perp_eth::DENOM, &user_state, &perp_querier).unwrap();
 
         assert!(result.is_none());
     }
@@ -344,7 +345,8 @@ mod tests {
         };
         let perp_querier = NoCachePerpQuerier::new_mock(Default::default(), Default::default());
 
-        let result = compute_liquidation_price(&eth::DENOM, &user_state, &perp_querier).unwrap();
+        let result =
+            compute_liquidation_price(&perp_eth::DENOM, &user_state, &perp_querier).unwrap();
 
         assert!(result.is_none());
     }
@@ -368,7 +370,7 @@ mod tests {
         let user_state = UserState {
             margin: UsdValue::new_int(100),
             positions: btree_map! {
-                eth::DENOM.clone() => Position {
+                perp_eth::DENOM.clone() => Position {
                     size: Quantity::new_int(10),
                     entry_price: UsdPrice::new_int(2000),
                     entry_funding_per_unit: FundingPerUnit::ZERO,
@@ -379,14 +381,14 @@ mod tests {
             ..Default::default()
         };
         let perp_querier = NoCachePerpQuerier::new_mock(
-            hash_map! { eth::DENOM.clone() => pair_param_with_mmr(50) },
-            hash_map! { eth::DENOM.clone() => PairState {
+            hash_map! { perp_eth::DENOM.clone() => pair_param_with_mmr(50) },
+            hash_map! { perp_eth::DENOM.clone() => PairState {
                 index_price: UsdPrice::new_int(1500),
                 ..Default::default()
             } },
         );
 
-        let liq = compute_liquidation_price(&eth::DENOM, &user_state, &perp_querier)
+        let liq = compute_liquidation_price(&perp_eth::DENOM, &user_state, &perp_querier)
             .unwrap()
             .expect("should still have a liquidation price");
 
