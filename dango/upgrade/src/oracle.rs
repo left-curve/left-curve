@@ -219,7 +219,7 @@ mod tests {
         let count = dango_oracle::PRICE_SOURCES
             .range(&storage, None, None, Order::Ascending)
             .count();
-        assert_eq!(count, 4);
+        assert_eq!(count, 3);
     }
 
     #[test]
