@@ -51,7 +51,7 @@ async fn receiving_remote() {
     // Alloyed synthetic tokens should have been minted to the receiver.
     suite.balances().should_change(
         &accounts.user1,
-        btree_map! { eth::DENOM.clone() => BalanceChange::Increased(MOCK_RECEIVE_AMOUNT.into()) },
+        btree_map! { eth::DENOM.clone() => BalanceChange::Increased(MOCK_RECEIVE_AMOUNT) },
     );
 }
 
