@@ -242,6 +242,8 @@ export {
   usePerpsUserState,
   perpsUserStateStore,
   perpsMarginAsset,
+  getPerpsAssetClass,
+  type PerpsAssetClass,
 } from "./hooks/usePerpsUserState.js";
 export {
   usePerpsUserStateExtended,
