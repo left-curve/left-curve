@@ -533,6 +533,49 @@ A master account is created in the **inactive** state (for the purpose of spam p
 
 **Step 2 — Activate.** Send at least the `minimum_deposit` (10 USDC = `10000000` `bridge/usdc` on mainnet) to the new master account address. The transfer can either come from an existing Dango account, or from another chain via Hyperlane bridging. Upon receipt, the account activates itself and becomes ready to use.
 
+#### 3.1.1 Funding a new account via the faucet (testnet)
+
+On testnet there is nothing of value to bridge, so in place of Step 2 you can call the public **faucet** to mint test tokens directly to the new master account. The account activates as soon as it receives the tokens. _The faucet exists on testnet only; there is no faucet on mainnet._
+
+**Endpoint:** `GET https://faucet-testnet.dango.zone/mint/{address}` (see [§11. Constants](#11-constants)).
+
+A freshly registered account is empty and owns exactly one account, so it passes the faucet's eligibility checks and the bare call succeeds:
+
+```bash
+curl 'https://faucet-testnet.dango.zone/mint/0xYOUR_ACCOUNT_ADDRESS'
+```
+
+| Path parameter | Type   | Description                                                     |
+| -------------- | ------ | --------------------------------------------------------------- |
+| `address`      | `Addr` | The new master account's address, hex-encoded with `0x` prefix. |
+
+| Query parameter | Type   | Default | Description                                                                                                                                                                                                                                                      |
+| --------------- | ------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skip_check`    | `bool` | `false` | When `false`, the faucet mints only to a brand-new account: it refuses if the address already holds any balance, or if the owning user has more than one account. Set to `true` to bypass both checks and mint unconditionally. The web app sets this to `true`. |
+
+A successful call mints the following test tokens to the address (current amounts):
+
+| Token   | Denom         | Amount  | Decimals |
+| ------- | ------------- | ------- | -------- |
+| USDC    | `bridge/usdc` | 200,000 | 6        |
+| Ether   | `bridge/eth`  | 50      | 18       |
+| Bitcoin | `bridge/btc`  | 2       | 8        |
+| Solana  | `bridge/sol`  | 1,040   | 9        |
+| XRP     | `bridge/xrp`  | 61,500  | 6        |
+
+**Response.** On success, returns `200 OK` with the resulting transaction as JSON (hash, block height, events, outcome). On failure, returns `400 Bad Request` with a JSON error body, e.g.:
+
+```json
+{
+  "error": "Tokens already minted",
+  "address": "0x..."
+}
+```
+
+The eligibility errors (only when `skip_check` is not set) are `"Tokens already minted"` and `"User already have multiple accounts"`. Transaction-level failures return `"Broadcast failed!"`, `"Tx failed"`, or `"Tx broadcasted but not found"` with the broadcast outcome under `data`.
+
+A `GET /health` endpoint returns `{ "version": "<faucet version>" }` and can be used to check that the faucet is reachable.
+
 ### 3.2 Register subaccount
 
 Create an additional account for an existing user (maximum 5 accounts per user):
@@ -2603,6 +2646,8 @@ One action inside a [`batch_update_orders`](#66-batch-update-orders) list. Condi
 | ------- | ---------------------------------------- | -------------------------------------- |
 | Mainnet | `https://api-mainnet.dango.zone/graphql` | `wss://api-mainnet.dango.zone/graphql` |
 | Testnet | `https://api-testnet.dango.zone/graphql` | `wss://api-testnet.dango.zone/graphql` |
+
+The testnet **faucet** is served separately at `https://faucet-testnet.dango.zone/mint` (see [§3.1.1](#311-funding-a-new-account-via-the-faucet-testnet)). There is no faucet on mainnet.
 
 ### Chain IDs
 
