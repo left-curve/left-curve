@@ -214,7 +214,35 @@ The `data` field contains authentication metadata:
 | `nonce`      | `u32`               | Replay protection nonce                        |
 | `expiry`     | `Timestamp \| null` | Optional expiration; `null` = no expiry        |
 
-**Nonce semantics:** Dango uses **unordered nonces** with a sliding window of 20, similar to [the approach used by Hyperliquid](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets#hyperliquid-nonces). The account tracks the 20 most recently seen nonces. A transaction is accepted if its nonce is newer than the oldest seen nonce, has not been used before, and not greater than newest seen nonce + 100. This means transactions may arrive out of order without being rejected. SDK implementations should track the next available nonce client-side by querying the account's seen nonces and choosing the next integer above the maximum.
+**Nonce semantics.** Dango uses **unordered nonces** with a sliding window, similar to [the approach used by Hyperliquid](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets#hyperliquid-nonces). Crucially, nonces are tracked **per signer**, in two separate namespaces:
+
+- A **standard credential** (signed with a master key) draws from a single account-wide window.
+- A **session credential** draws from its own window, keyed by the session public key. This lets several clients — for example, one bot per session key — drive the same account concurrently without their nonces colliding.
+
+Within either window, the account keeps the 20 most recently seen nonces. A transaction is accepted if its nonce has not been used before, is newer than the oldest nonce in the window, and is no greater than the newest seen nonce plus 100. Transactions may therefore arrive out of order without being rejected. Windows are never pruned.
+
+The _first_ nonce accepted into an empty window is bounded:
+
+- For a standard window — or a session window on an account that has never sent a transaction — the first nonce must be less than 100.
+- For a session window on an account that _has_ transacted, the first nonce must be **greater than the account's standard-nonce high-water mark** (the largest nonce in the standard window). This rejects replays of session transactions that were signed before per-session windows existed. A client that picks `max + 1` always satisfies it.
+
+SDK implementations should choose the next nonce client-side by querying the relevant window. Both queries target the **account's own contract** (the `sender` address) and return the seen nonces as an ascending array of integers.
+
+A standard signer queries:
+
+```json
+{ "seen_nonces": {} }
+```
+
+and uses `max + 1` (or `0` if the array is empty).
+
+A session signer queries (where `session_key` is the base64-encoded 33-byte compressed public key):
+
+```json
+{ "session_seen_nonces": { "session_key": "<base64>" } }
+```
+
+and uses `max + 1` of that array. If the session window is empty, it falls back to the standard window's `max + 1` (the floor above), or `0` if the account has never transacted.
 
 ### 2.3 Message format
 
@@ -377,7 +405,7 @@ For Passkey (WebAuthn), the SHA-256 hash becomes the `challenge` in the WebAuthn
 The full transaction lifecycle:
 
 1. **Compose messages** — build the contract execute message(s).
-2. **Fetch metadata** — query chain ID, account's user_index, and next available nonce.
+2. **Fetch metadata** — query chain ID, the account's user_index, and the next available nonce. Standard signers read the nonce from the account-wide window; session signers read it from their per-session-key window (see [§2.2](#22-metadata)).
 3. **Simulate** — send an `UnsignedTx` to estimate gas (see [§2.8](#28-gas-estimation)).
 4. **Set gas limit** — use the simulation result, adding ~770,000 for signature verification overhead.
 5. **Build SignDoc** — assemble `{sender, gas_limit, messages, data}`.
