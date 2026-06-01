@@ -269,6 +269,11 @@ export const tailwindConfig: Partial<Config> = {
             green: "var(--color-surface-button-green)",
             "green-hover": "var(--color-surface-button-green-hover)",
           },
+          alert: {
+            success: "var(--color-surface-alert-success)",
+            warning: "var(--color-surface-alert-warning)",
+            error: "var(--color-surface-alert-error)",
+          },
           playground: "var(--color-surface-playground)",
         },
         outline: {
@@ -312,6 +317,11 @@ export const tailwindConfig: Partial<Config> = {
           },
           quaternary: {
             rice: "var(--color-fg-quaternary-rice)",
+          },
+          alert: {
+            success: "var(--color-fg-alert-success)",
+            warning: "var(--color-fg-alert-warning)",
+            error: "var(--color-fg-alert-error)",
           },
           logo: "var(--color-fg-logo)",
           disabled: "var(--color-fg-disabled)",
