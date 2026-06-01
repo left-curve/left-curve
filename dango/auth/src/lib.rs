@@ -35,14 +35,10 @@ pub mod account_factory {
 /// The expected storage layout of the account contract.
 pub mod account {
     use {
-        dango_types::auth::{AccountStatus, Nonce},
+        dango_types::auth::{AccountStatus, Nonce, SessionKey},
         grug_storage::{Item, Map},
-        grug_types::ByteArray,
         std::collections::BTreeSet,
     };
-
-    /// A session key: a Secp256k1 compressed public key.
-    pub type SessionKey = ByteArray<33>;
 
     /// The account's status. Only accounts in the `Active` state can send
     /// transactions.
@@ -366,14 +362,19 @@ pub fn verify_nonce_and_signature(
                 // window is empty (its first use).
                 Some(session) => {
                     let session_key = session.session_info.session_key;
+
                     let mut nonces = account::SESSION_SEEN_NONCES
                         .may_load(ctx.storage, session_key)?
                         .unwrap_or_default();
-                    check_and_record_nonce(&mut nonces, metadata.nonce, || {
+
+                    let may_load_floor = || {
                         account::SEEN_NONCES
                             .may_load(ctx.storage)
                             .map(|opt| opt.and_then(|set| set.last().copied()))
-                    })?;
+                    };
+
+                    check_and_record_nonce(&mut nonces, metadata.nonce, may_load_floor)?;
+
                     account::SESSION_SEEN_NONCES.save(ctx.storage, session_key, &nonces)?;
                 },
                 // Standard credential: the account-wide window (unchanged).
@@ -381,7 +382,9 @@ pub fn verify_nonce_and_signature(
                     let mut nonces = account::SEEN_NONCES
                         .may_load(ctx.storage)?
                         .unwrap_or_default();
+
                     check_and_record_nonce(&mut nonces, metadata.nonce, || Ok(None))?;
+
                     account::SEEN_NONCES.save(ctx.storage, &nonces)?;
                 },
             }
