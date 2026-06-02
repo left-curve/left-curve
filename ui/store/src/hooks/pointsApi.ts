@@ -217,7 +217,7 @@ export const fetchCurrentEpoch = async (baseUrl: string): Promise<EpochInfo> => 
 /** Subset of the `/config` response used by the UI. The full payload contains
  * `bot_config`, `referral_config`, `compensation`, etc. — extend as needed. */
 export type PointsConfigResponse = {
-  boost_config: {
+  boost_config?: {
     pair?: Record<string, Record<string, string>>;
   };
 };

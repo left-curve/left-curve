@@ -48,7 +48,7 @@ export function useBoostedPairs(parameters: UseBoostedPairsParameters) {
 
   const boostByPairId = useMemo<Record<string, string>>(() => {
     if (currentEpoch === null) return {};
-    const pairMap = query.data?.boost_config.pair;
+    const pairMap = query.data?.boost_config?.pair;
     if (!pairMap) return {};
 
     const out: Record<string, string> = {};
