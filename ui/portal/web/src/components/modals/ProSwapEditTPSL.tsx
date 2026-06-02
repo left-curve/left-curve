@@ -93,7 +93,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     const slPrice = inputs.slPrice?.value || "";
 
     const [configureAmount, setConfigureAmount] = useState(false);
-    const [sizePercent, setSizePercent] = useState(100);
+    const [sizeAmount, setSizeAmount] = useState<number>(absSize);
 
     const { onTpPriceChange, onTpPercentChange, onSlPriceChange, onSlPercentChange } =
       useTPSLPriceSync({
@@ -119,8 +119,8 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
 
     const orderSize = useMemo(() => {
       if (!configureAmount) return undefined;
-      return Decimal(absSize).mul(Decimal(sizePercent).div(100)).toFixed(6);
-    }, [configureAmount, sizePercent, absSize]);
+      return Decimal(sizeAmount).toFixed(6);
+    }, [configureAmount, sizeAmount]);
 
     const validationError = useMemo(() => {
       const tp = Number(tpPrice);
@@ -295,11 +295,11 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
           />
           {configureAmount ? (
             <Range
-              minValue={1}
-              maxValue={100}
-              defaultValue={100}
-              value={sizePercent}
-              onChange={(v) => setSizePercent(v)}
+              minValue={0}
+              maxValue={absSize}
+              defaultValue={absSize}
+              value={sizeAmount}
+              onChange={(v) => setSizeAmount(v)}
               inputEndContent={symbol}
               withInput
               classNames={{ input: "max-w-[10rem]" }}
