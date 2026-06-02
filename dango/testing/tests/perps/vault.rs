@@ -1,8 +1,8 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
     dango_order_book::{
-        Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, UsdPrice,
-        UsdValue,
+        Dimensionless, OrderId, OrderKind, OrderPersisted, OrderRemoved, Quantity,
+        QueryOrdersByUserResponseItem, ReasonForOrderRemoval, UsdPrice, UsdValue,
     },
     dango_testing::{OracleTestEntry, TestOption, pair_id, setup_test_naive},
     dango_types::{
@@ -13,7 +13,8 @@ use {
     grug_app::CONTRACT_NAMESPACE,
     grug_math::{Dec128_6, NumberConst, Uint128},
     grug_types::{
-        Addressable, Coins, Duration, QuerierExt, ResultExt, Timestamp, btree_map, concat,
+        Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, QuerierExt, ResultExt,
+        SearchEvent, Timestamp, TxEvents, btree_map, concat,
     },
     pyth_types::MarketSession,
     std::{collections::BTreeMap, str::FromStr},
@@ -1009,5 +1010,217 @@ async fn vault_overcommits_margin_after_position_and_price_drop() {
     assert!(
         equity >= maintenance_margin,
         "vault should be healthy: equity ({equity}) >= maintenance_margin ({maintenance_margin})"
+    );
+}
+
+/// Extract the `order_persisted` events emitted by a transaction.
+fn order_persisted_events(events: &TxEvents) -> Vec<OrderPersisted> {
+    events
+        .clone()
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_persisted")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderPersisted>().unwrap())
+        .collect()
+}
+
+/// Extract the `order_removed` events emitted by a transaction.
+fn order_removed_events(events: &TxEvents) -> Vec<OrderRemoved> {
+    events
+        .clone()
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_removed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderRemoved>().unwrap())
+        .collect()
+}
+
+/// The protocol-owned vault's order-book activity is no longer redacted.
+///
+/// Vault order churn was redacted prior to v0.21.0 (exclusive), but is emitted
+/// since v0.21.0 (inclusive) to aid debugging. This exercises all three sites:
+///
+/// - placements during `RefreshVaultOrders` emit `OrderPersisted`;
+/// - cancellations during a subsequent `RefreshVaultOrders` emit `OrderRemoved`
+///   with reason `Canceled`;
+/// - a user filling a vault maker order emits `OrderRemoved` with reason
+///   `Filled` for the vault.
+#[tokio::test]
+async fn vault_order_churn_emits_events() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let pair = pair_id();
+    let vault = contracts.perps;
+
+    // LP seeds the vault with $5,000 of liquidity.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Vault(perps::VaultMsg::AddLiquidity {
+                amount: UsdValue::new_int(5_000),
+                min_shares_to_mint: None,
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // Enable vault market-making: one pair, weight 1, 5% half-spread, max 2 ETH.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: Param {
+                    vault_total_weight: Dimensionless::new_int(1),
+                    ..default_param()
+                },
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        vault_liquidity_weight: Dimensionless::new_int(1),
+                        vault_half_spread: Dimensionless::new_permille(50), // 5%
+                        vault_max_quote_size: Quantity::new_int(2),
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // --- First refresh: the vault places fresh orders. ---
+    suite.make_empty_block().await;
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    let place_events = suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    let persisted = order_persisted_events(&place_events);
+    assert!(
+        !persisted.is_empty(),
+        "vault placements should emit OrderPersisted since v0.21.0"
+    );
+    assert!(
+        persisted.iter().all(|o| o.user == vault),
+        "all OrderPersisted from RefreshVaultOrders should belong to the vault"
+    );
+
+    // --- Second refresh: prior orders are cancelled, then replaced. ---
+    suite.make_empty_block().await;
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshIndexPrices {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    let refresh_events = suite
+        .execute(
+            &mut accounts.owner,
+            contracts.perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::RefreshVaultOrders {}),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    assert!(
+        order_removed_events(&refresh_events)
+            .iter()
+            .any(|o| o.user == vault && o.reason == ReasonForOrderRemoval::Canceled),
+        "refreshing vault orders should emit OrderRemoved (Canceled) for the vault since v0.21.0"
+    );
+    assert!(
+        !order_persisted_events(&refresh_events).is_empty(),
+        "refreshing vault orders should re-emit OrderPersisted"
+    );
+
+    // --- A taker fully fills the vault's bid: the vault maker order is removed. ---
+    let vault_orders: BTreeMap<OrderId, QueryOrdersByUserResponseItem> = suite
+        .query_wasm_smart(contracts.perps, perps::QueryOrdersByUserRequest {
+            user: vault,
+        })
+        .should_succeed();
+    let vault_bid_size = vault_orders
+        .values()
+        .find(|o| o.size.is_positive())
+        .expect("vault should have a resting bid")
+        .size;
+
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::Deposit { to: None }),
+            Coins::one(usdc::DENOM.clone(), Uint128::new(10_000_000_000)).unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    let fill_events = suite
+        .execute(
+            &mut accounts.user2,
+            contracts.perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: vault_bid_size.checked_neg().unwrap(), // sell into the vault's bid
+                kind: OrderKind::Market {
+                    max_slippage: Dimensionless::new_percent(50),
+                },
+                reduce_only: false,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    assert!(
+        order_removed_events(&fill_events)
+            .iter()
+            .any(|o| o.user == vault && o.reason == ReasonForOrderRemoval::Filled),
+        "filling the vault's maker order should emit OrderRemoved (Filled) for the vault since v0.21.0"
     );
 }

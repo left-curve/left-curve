@@ -1030,16 +1030,16 @@ pub fn match_order(
                         maker_pre_fill_size,
                     ));
 
-                    // Vault order removal is internal churn — suppress the event.
-                    if maker_user != contract {
-                        events.push(OrderRemoved {
-                            order_id: maker_order_id,
-                            pair_id: pair_id.clone(),
-                            user: maker_user,
-                            reason: ReasonForOrderRemoval::Filled,
-                            client_order_id: maker_client_order_id,
-                        })?;
-                    }
+                    // Vault order removals are internal churn. They were
+                    // redacted prior to v0.21.0 (exclusive), but are no longer
+                    // redacted since v0.21.0 (inclusive), as they aid debugging.
+                    events.push(OrderRemoved {
+                        order_id: maker_order_id,
+                        pair_id: pair_id.clone(),
+                        user: maker_user,
+                        reason: ReasonForOrderRemoval::Filled,
+                        client_order_id: maker_client_order_id,
+                    })?;
 
                     #[cfg(feature = "metrics")]
                     {

@@ -7,11 +7,11 @@ use {
     },
     anyhow::ensure,
     dango_order_book::{
-        ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
-        increase_liquidity_depths, may_invert_price,
+        ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, OrderPersisted, Quantity, ReasonForOrderRemoval,
+        UsdValue, increase_liquidity_depths, may_invert_price,
     },
     grug_math::{Number as _, NumberConst, Uint64},
-    grug_types::{MutableCtx, Order as IterationOrder, QuerierExt, Response},
+    grug_types::{EventBuilder, MutableCtx, Order as IterationOrder, QuerierExt, Response},
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
@@ -24,7 +24,8 @@ use {
 ///
 /// Mutates: `USER_STATES[contract]`, `BIDS`, `ASKS`, `NEXT_ORDER_ID`.
 ///
-/// Returns: empty `Response` (no token transfers).
+/// Returns: a `Response` carrying the vault's `OrderRemoved` (cancellations)
+/// and `OrderPersisted` (placements) events; no token transfers.
 pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     #[cfg(feature = "metrics")]
     let start = std::time::Instant::now();
@@ -49,6 +50,11 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         .may_load(ctx.storage, ctx.contract)?
         .unwrap_or_default();
 
+    // Vault order churn (cancellations in step 1, placements in step 3) was
+    // redacted prior to v0.21.0 (exclusive), but is no longer redacted since
+    // v0.21.0 (inclusive), as it aids debugging.
+    let mut events = EventBuilder::new();
+
     // --------------- Step 1: Cancel all existing vault orders ----------------
 
     let CancelAllOrdersOutcome {
@@ -57,7 +63,7 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
         ctx.storage,
         ctx.contract,
         &vault_state,
-        None, // Vault order churn is not user-facing — no events emitted.
+        Some(&mut events),
         ReasonForOrderRemoval::Canceled,
     )?;
 
@@ -84,7 +90,7 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         LAST_VAULT_ORDERS_UPDATE.save(ctx.storage, &ctx.block.height)?;
 
-        return Ok(Response::new());
+        return Ok(Response::new().add_events(events)?);
     }
 
     // ----------- Step 3: Iterate each pair and place vault orders ------------
@@ -168,6 +174,16 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             )?;
 
             vault_state.open_order_count += 1;
+
+            events.push(OrderPersisted {
+                order_id: next_order_id,
+                pair_id: pair_id.clone(),
+                user: ctx.contract,
+                limit_price: bid_quote.price,
+                size: bid_quote.size,
+                client_order_id: None,
+            })?;
+
             next_order_id.checked_add_assign(Uint64::ONE)?;
         }
 
@@ -200,6 +216,16 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             )?;
 
             vault_state.open_order_count += 1;
+
+            events.push(OrderPersisted {
+                order_id: next_order_id,
+                pair_id: pair_id.clone(),
+                user: ctx.contract,
+                limit_price: ask_quote.price,
+                size: ask_quote.size,
+                client_order_id: None,
+            })?;
+
             next_order_id.checked_add_assign(Uint64::ONE)?;
         }
     }
@@ -231,7 +257,7 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
             .record(start.elapsed().as_secs_f64());
     }
 
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
 
 // ----------------------------------- tests -----------------------------------
