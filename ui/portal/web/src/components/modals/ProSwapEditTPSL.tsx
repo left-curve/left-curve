@@ -299,7 +299,7 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
               maxValue={absSize}
               defaultValue={absSize}
               value={sizeAmount}
-              onChange={(v) => setSizeAmount(v)}
+              onChange={(v) => setSizeAmount(Math.min(absSize, Math.max(0, v)))}
               inputEndContent={symbol}
               withInput
               classNames={{ input: "max-w-[10rem]" }}
@@ -324,7 +324,9 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
         <Button
           fullWidth
           isLoading={isPending}
-          isDisabled={!hasInput || validationError !== null}
+          isDisabled={
+            !hasInput || validationError !== null || (configureAmount && sizeAmount <= 0)
+          }
           onClick={() => submitOrders()}
         >
           {m["modals.tpsl.confirm"]()}
