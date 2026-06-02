@@ -114,6 +114,9 @@
           "max-file": "3"
         }
       }
+  notify: restart docker
+  tags:
+    - daemon-config
 
 - name: Reload systemd
   become: true
