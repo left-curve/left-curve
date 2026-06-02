@@ -1,6 +1,6 @@
 use {
     crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_TRUSTED_SIGNERS},
-    dango_types::oracle::{Price, PriceSource, QueryMsg},
+    dango_types::oracle::{Price, PriceSourceWithWeight, QueryMsg},
     grug_types::{
         Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Timestamp,
@@ -82,7 +82,7 @@ fn query_prices(
         .collect())
 }
 
-fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<PriceSource> {
+fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<Vec<PriceSourceWithWeight>> {
     PRICE_SOURCES.load(ctx.storage, &denom)
 }
 
@@ -90,7 +90,7 @@ fn query_price_sources(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Denom, PriceSource>> {
+) -> StdResult<BTreeMap<Denom, Vec<PriceSourceWithWeight>>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 

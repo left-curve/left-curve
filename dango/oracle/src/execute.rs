@@ -1,7 +1,8 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource},
+    dango_order_book::Dimensionless,
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSourceWithWeight},
     grug_types::{
         Api, AuthCtx, AuthMode, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
         QuerierExt, Response, Storage, Timestamp, Tx,
@@ -11,8 +12,10 @@ use {
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (denom, price_source) in msg.price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    ensure_valid_price_sources(&msg.price_sources)?;
+
+    for (denom, price_sources) in msg.price_sources {
+        PRICE_SOURCES.save(ctx.storage, &denom, &price_sources)?;
     }
 
     for (public_key, expires_at) in msg.trusted_signers {
@@ -74,7 +77,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn register_price_sources(
     ctx: MutableCtx,
-    price_sources: BTreeMap<Denom, PriceSource>,
+    price_sources: BTreeMap<Denom, Vec<PriceSourceWithWeight>>,
 ) -> anyhow::Result<Response> {
     // Only chain owner can register a denom.
     ensure!(
@@ -82,11 +85,45 @@ fn register_price_sources(
         "you don't have the right, O you don't have the right"
     );
 
-    for (denom, price_source) in price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    ensure_valid_price_sources(&price_sources)?;
+
+    for (denom, sources) in price_sources {
+        PRICE_SOURCES.save(ctx.storage, &denom, &sources)?;
     }
 
     Ok(Response::new())
+}
+
+/// Validate price source registrations: every denom must map to a non-empty
+/// list of sources, each carrying a strictly positive weight (so the total
+/// weight is positive). Enforcing this at registration lets `query_price`
+/// combine the sources without re-validating at read time.
+fn ensure_valid_price_sources(
+    price_sources: &BTreeMap<Denom, Vec<PriceSourceWithWeight>>,
+) -> anyhow::Result<()> {
+    for (denom, sources) in price_sources {
+        ensure!(
+            !sources.is_empty(),
+            "price source list for denom `{denom}` is empty"
+        );
+
+        let mut total_weight = Dimensionless::ZERO;
+        for source in sources {
+            ensure!(
+                source.weight > Dimensionless::ZERO,
+                "price source weight for denom `{denom}` must be positive, got `{}`",
+                source.weight
+            );
+            total_weight = total_weight.checked_add(source.weight)?;
+        }
+
+        ensure!(
+            total_weight > Dimensionless::ZERO,
+            "total price source weight for denom `{denom}` must be positive"
+        );
+    }
+
+    Ok(())
 }
 
 fn register_trusted_signer(
@@ -190,8 +227,9 @@ fn verify_pyth_lazer_message(
 mod tests {
     use {
         super::*,
-        grug_types::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
-        pyth_types::{LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
+        dango_types::{constants::eth, oracle::PriceSource},
+        grug_types::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt, btree_map},
+        pyth_types::{Channel, LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
 
@@ -264,5 +302,41 @@ mod tests {
             // falls back to `Other`.
             assert_eq!(price.market_session, MarketSession::Other);
         }
+    }
+
+    #[test]
+    fn validating_price_sources() {
+        let source = |weight| PriceSourceWithWeight {
+            price_source: PriceSource {
+                id: 1,
+                channel: Channel::RealTime,
+            },
+            weight,
+        };
+
+        // An empty source list is rejected.
+        ensure_valid_price_sources(&btree_map! { eth::DENOM.clone() => vec![] })
+            .should_fail_with_error("is empty");
+
+        // A zero weight is rejected.
+        ensure_valid_price_sources(&btree_map! {
+            eth::DENOM.clone() => vec![source(Dimensionless::ZERO)],
+        })
+        .should_fail_with_error("must be positive");
+
+        // A negative weight is rejected.
+        ensure_valid_price_sources(&btree_map! {
+            eth::DENOM.clone() => vec![source(Dimensionless::new_int(-1))],
+        })
+        .should_fail_with_error("must be positive");
+
+        // A valid multi-source registration (weights summing to one) is accepted.
+        ensure_valid_price_sources(&btree_map! {
+            eth::DENOM.clone() => vec![
+                source(Dimensionless::new_percent(75)),
+                source(Dimensionless::new_percent(25)),
+            ],
+        })
+        .should_succeed();
     }
 }

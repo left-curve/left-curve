@@ -3,7 +3,7 @@ use {
     dango_testing::setup_test,
     dango_types::{
         constants::perp_btc,
-        oracle::{ExecuteMsg, InstantiateMsg, PriceSource},
+        oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PriceSourceWithWeight},
     },
     grug_types::{Coins, HashExt, NonEmpty, QuerierWrapper, ResultExt, btree_map},
     pyth_client::PythClientTrait,
@@ -38,10 +38,10 @@ async fn handler() {
         .address;
 
     let price_source = btree_map!(
-        perp_btc::DENOM.clone() => PriceSource {
+        perp_btc::DENOM.clone() => vec![PriceSourceWithWeight::single(PriceSource {
             id: 1,
             channel: Channel::RealTime,
-        },
+        })],
     );
 
     suite

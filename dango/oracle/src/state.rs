@@ -1,11 +1,11 @@
 use {
-    dango_types::oracle::{Price, PriceSource},
+    dango_types::oracle::{Price, PriceSourceWithWeight},
     grug_storage::{Map, Serde},
     grug_types::{Denom, Timestamp},
     pyth_types::PythId,
 };
 
-pub const PRICE_SOURCES: Map<&Denom, PriceSource, Serde> = Map::new("price_source");
+pub const PRICE_SOURCES: Map<&Denom, Vec<PriceSourceWithWeight>, Serde> = Map::new("price_source");
 
 pub const PYTH_TRUSTED_SIGNERS: Map<&[u8], Timestamp> = Map::new("pyth_trusted_signer");
 

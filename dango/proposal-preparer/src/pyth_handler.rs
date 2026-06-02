@@ -434,12 +434,17 @@ fn pyth_ids_lazer(
     querier: QuerierWrapper,
     oracle: Addr,
 ) -> StdResult<Vec<PythLazerSubscriptionDetails>> {
+    // Each denom maps to one or more weighted price sources; flatten them into
+    // the single subscription list the streamer expects. Duplicate feeds (e.g.
+    // two denoms sharing a Pyth ID) are left as-is, matching prior behavior.
     let new_ids = querier
         .query_wasm_smart(oracle, QueryPriceSourcesRequest {
             start_after: None,
             limit: Some(u32::MAX),
         })?
         .into_values()
+        .flatten()
+        .map(|source| source.price_source)
         .collect();
 
     Ok(new_ids)

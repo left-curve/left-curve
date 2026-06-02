@@ -3,7 +3,7 @@ use {
     byteorder::LE,
     dango_order_book::UsdPrice,
     dango_types::{
-        oracle::{self, PriceSource},
+        oracle::{self, PriceSource, PriceSourceWithWeight},
         perps,
     },
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
@@ -158,14 +158,16 @@ fn build_oracle_messages(
 
 fn build_register_price_sources(
     entries: &BTreeMap<Denom, OracleTestEntry>,
-) -> BTreeMap<Denom, PriceSource> {
+) -> BTreeMap<Denom, Vec<PriceSourceWithWeight>> {
     entries
         .iter()
         .map(|(denom, e)| {
-            (denom.clone(), PriceSource {
-                id: e.pyth_id,
-                channel: Channel::RealTime,
-            })
+            (denom.clone(), vec![PriceSourceWithWeight::single(
+                PriceSource {
+                    id: e.pyth_id,
+                    channel: Channel::RealTime,
+                },
+            )])
         })
         .collect()
 }
