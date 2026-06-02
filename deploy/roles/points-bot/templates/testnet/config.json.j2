@@ -11,54 +11,7 @@
       "block": 18290000
     },
     "from_block": 18280000,
-    "loot_tables": {
-      "25000": {
-        "chest": "bronze",
-        "drop_rate": [
-          ["70", "common"],
-          ["20", "uncommon"],
-          ["8", "rare"],
-          ["1.5", "epic"],
-          ["0.45", "legendary"],
-          ["0.05", "mythic"]
-        ]
-      },
-      "100000": {
-        "chest": "silver",
-        "drop_rate": [
-          ["45", "common"],
-          ["30", "uncommon"],
-          ["15", "rare"],
-          ["7", "epic"],
-          ["2.5", "legendary"],
-          ["0.5", "mythic"]
-        ]
-      },
-      "250000": {
-        "chest": "gold",
-        "drop_rate": [
-          ["25", "common"],
-          ["25", "uncommon"],
-          ["20", "rare"],
-          ["17", "epic"],
-          ["9", "legendary"],
-          ["4", "mythic"]
-        ]
-      },
-      "500000": {
-        "chest": "crystal",
-        "drop_rate": [
-          ["5", "common"],
-          ["10", "uncommon"],
-          ["25", "rare"],
-          ["25", "epic"],
-          ["25", "legendary"],
-          ["10", "mythic"]
-        ]
-      }
-    },
-    "oat_multiplier": "1",
-    "oat_window": "2weeks",
+    "loot_tables": {{ (points_bot_loot_tables[network] | default({})) | to_nice_json(indent=2) | indent(4) }},
     "perps_expression": "1 + max(0.0, math::log10(x))",
     "epoch_perps_share": "7500",
     "epoch_vault_points": "2500",
@@ -75,8 +28,22 @@
   "log_level": "info",
   "referral": {
     "direct_share": "0.2",
-    "indirect_share": "0.05",
-    "referral_boosts": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }}
+    "indirect_share": "0.05"
   },
-  "user_boosts": {{ (points_bot_user_boosts[network] | default({})) | to_nice_json(indent=2) | indent(2) }}
+  "boost": {
+    "oat": {
+      "multiplier": "1",
+      "window": "2weeks"
+    },
+    "user": {{ (points_bot_user_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }},
+    "referral": {{ (points_bot_referral_boosts[network] | default({})) | to_nice_json(indent=2) | indent(4) }},
+    "pair": {
+      "perp/xauusd":{
+        "8630-": "2"
+      },
+      "perp/xagusd":{
+        "8630-": "2"
+      }
+    }
+  }
 }
