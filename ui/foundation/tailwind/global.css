@@ -30,6 +30,10 @@
   --color-surface-button-green: theme("colors.primitives.green.light.400");
   --color-surface-button-green-hover: theme("colors.primitives.green.light.500");
 
+  --color-surface-alert-success: #f1f7e9;
+  --color-surface-alert-warning: #feefda;
+  --color-surface-alert-error: #fdeae4;
+
   --color-surface-playground: #fff;
 
   /* outline (Border) */
@@ -69,6 +73,10 @@
   --color-fg-logo: theme("colors.primitives.gray.light.900");
 
   --color-fg-disabled: theme("colors.primitives.gray.light.300");
+
+  --color-fg-alert-success: #166a19;
+  --color-fg-alert-warning: #a15e06;
+  --color-fg-alert-error: #b91313;
 
   /* Ink (Text) */
   --color-ink-primary-900: theme("colors.primitives.gray.light.900");
@@ -220,6 +228,10 @@
   --color-surface-button-green: theme("colors.primitives.green.light.300");
   --color-surface-button-green-hover: theme("colors.primitives.green.light.400");
 
+  --color-surface-alert-success: #30382d;
+  --color-surface-alert-warning: #453826;
+  --color-surface-alert-error: #3c2a29;
+
   --color-surface-playground: #1e1e1e;
 
   /* outline (Border) */
@@ -259,6 +271,10 @@
   --color-fg-logo: theme("colors.primitives.white.light.100");
 
   --color-fg-disabled: theme("colors.primitives.gray.dark.400");
+
+  --color-fg-alert-success: #a8e0aa;
+  --color-fg-alert-warning: #fedf89;
+  --color-fg-alert-error: #f17474;
 
   /* Ink (Text) */
   --color-ink-primary-900: theme("colors.primitives.white.light.100");
