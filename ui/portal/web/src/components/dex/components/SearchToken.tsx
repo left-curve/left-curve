@@ -1,9 +1,11 @@
 import {
-  useAppConfig,
-  useConfig,
-  perpsMarginAsset,
-  useFavPairs,
   getPerpsAssetClass,
+  perpsMarginAsset,
+  useAppConfig,
+  useBoostedPairs,
+  useConfig,
+  useCurrentEpoch,
+  useFavPairs,
 } from "@left-curve/store";
 import { useMemo, useRef, useState } from "react";
 
@@ -55,6 +57,9 @@ export type SearchTokenRow = {
   pairKey: string;
   perpsPairId: string;
   isFavorite: boolean;
+  /** Perps weight multiplier (e.g. "2.000000") when this pair is currently
+   * boosted; undefined otherwise. */
+  boostMultiplier?: string;
 };
 
 const PERPS_QUOTE_COIN: AnyCoin = {
@@ -104,6 +109,9 @@ const SearchTokenMenu: React.FC<{
   const { data: config } = useAppConfig();
   const { coins } = useConfig();
   const { hasFavPair, favPairs } = useFavPairs();
+  const pointsUrl = window.dango.urls.pointsUrl;
+  const { currentEpoch } = useCurrentEpoch({ pointsUrl });
+  const { boostByPairId } = useBoostedPairs({ pointsUrl, currentEpoch });
 
   const allRows = useMemo(() => normalizeRows(config, coins), [config, coins]);
 
@@ -133,8 +141,12 @@ const SearchTokenMenu: React.FC<{
             row.pairKey.toUpperCase().includes(upper)
           );
         })
-        .map((row) => ({ ...row, isFavorite: hasFavPair(row.pairKey) })),
-    [allRows, activeTab, searchText, hasFavPair],
+        .map((row) => ({
+          ...row,
+          isFavorite: hasFavPair(row.pairKey),
+          boostMultiplier: boostByPairId[row.perpsPairId],
+        })),
+    [allRows, activeTab, searchText, hasFavPair, boostByPairId],
   );
 
   const showFavoritesEmpty = activeTab === "favorites" && favPairs.length === 0;

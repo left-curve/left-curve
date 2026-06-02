@@ -3,10 +3,12 @@ import {
   Badge,
   Cell,
   FormattedNumber,
+  IconFlame,
   PairStatValue,
   SortHeader,
   StarToggleButton,
   Table,
+  Tooltip,
 } from "@left-curve/applets-kit";
 import { memo, useCallback, useMemo } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -20,11 +22,16 @@ const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
   <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
 ));
 
+// `Udec128_6` arrives as a stringified decimal like "2.000000". Trim trailing
+// zeros (and the dangling dot) for display: "2.000000" → "2", "2.500000" → "2.5".
+const formatMultiplier = (raw: string) => raw.replace(/\.?0+$/, "") || raw;
+
 const PerpsPairNameWithFav: React.FC<{
   baseCoin: { symbol: string; logoURI?: string };
   quoteCoin: { symbol: string };
   pairKey: string;
-}> = memo(({ baseCoin, quoteCoin, pairKey }) => {
+  boostMultiplier?: string;
+}> = memo(({ baseCoin, quoteCoin, pairKey, boostMultiplier }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
 
   return (
@@ -33,6 +40,11 @@ const PerpsPairNameWithFav: React.FC<{
       <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
       <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <Badge text="Perp" color="green" size="s" />
+      {boostMultiplier ? (
+        <Tooltip title={`${formatMultiplier(boostMultiplier)}x points`}>
+          <IconFlame className="text-primitives-red-light-500 w-4 h-4" />
+        </Tooltip>
+      ) : null}
     </div>
   );
 });
@@ -124,6 +136,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             baseCoin={row.original.baseCoin}
             quoteCoin={row.original.quoteCoin}
             pairKey={row.original.pairKey}
+            boostMultiplier={row.original.boostMultiplier}
           />
         ),
         filterFn: (row, _, value) => {
