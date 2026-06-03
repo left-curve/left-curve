@@ -299,6 +299,11 @@ export {
 } from "./hooks/useCurrentEpoch.js";
 
 export {
+  type UseBoostedPairsParameters,
+  useBoostedPairs,
+} from "./hooks/useBoostedPairs.js";
+
+export {
   type UsePredictPointsParameters,
   usePredictPoints,
 } from "./hooks/usePredictPoints.js";

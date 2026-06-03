@@ -213,3 +213,17 @@ export const fetchCurrentEpoch = async (baseUrl: string): Promise<EpochInfo> => 
   if (!res.ok) throw new Error(`Failed to fetch current epoch: ${res.status}`);
   return res.json();
 };
+
+/** Subset of the `/config` response used by the UI. The full payload contains
+ * `bot_config`, `referral_config`, `compensation`, etc. — extend as needed. */
+export type PointsConfigResponse = {
+  boost_config?: {
+    pair?: Record<string, Record<string, string>>;
+  };
+};
+
+export const fetchPointsConfig = async (baseUrl: string): Promise<PointsConfigResponse> => {
+  const res = await fetch(`${baseUrl}/config`);
+  if (!res.ok) throw new Error(`Failed to fetch points config: ${res.status}`);
+  return res.json();
+};
