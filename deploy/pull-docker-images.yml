@@ -1,0 +1,67 @@
+---
+# Pull the docker images that `deploy-<network>` will use, without touching
+# running services. Useful to warm the cache so the next deploy doesn't fail
+# when GHCR is slow/unreachable. Docker only re-downloads layers whose
+# digests aren't already present locally, so this is cheap to re-run.
+- name: Pull docker images
+  hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars_files:
+    - roles/full-app/vars/main.yml
+    - roles/full-app/defaults/main.yml
+  tasks:
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry: ghcr.io
+        username: "{{ ghcr_user }}"
+        password: "{{ ghcr_token }}"
+
+    - name: Pull dango / cometbft / frontend images
+      command: "docker pull {{ item.image }}:{{ item.tag }}"
+      loop:
+        - name: dango
+          image: ghcr.io/left-curve/left-curve/dango
+          tag: "{{ dango_image_tag }}"
+        - name: cometbft
+          image: ghcr.io/left-curve/left-curve/cometbft
+          tag: "{{ cometbft_tag }}"
+        - name: dango-frontend
+          image: ghcr.io/left-curve/left-curve/dango-frontend
+          tag: "{{ frontend_image_tag }}"
+      register: core_pull
+      retries: 3
+      delay: 10
+      until: core_pull.rc == 0
+      changed_when: "'Downloaded newer image' in (core_pull.stdout | default(''))"
+      loop_control:
+        label: "{{ item.name }}:{{ item.tag }}"
+
+    - name: Pull bot images (only on hosts that run them)
+      command: "docker pull {{ item.image }}:{{ item.tag }}"
+      loop:
+        - name: faucet-bot
+          image: ghcr.io/left-curve/bots/faucet
+          tag: "{{ faucet_bot_tag }}"
+          enabled: "{{ faucet_bot_enabled | default(false) }}"
+        - name: perps-bot
+          image: ghcr.io/left-curve/bots/perps
+          tag: "{{ perps_bot_tag }}"
+          enabled: "{{ (perps_bot_enabled | default(false)) and inventory_hostname == perps_bot_host }}"
+        - name: perp-liquidator
+          image: ghcr.io/left-curve/bots/perps-liquidator
+          tag: "{{ perp_liquidator_tag }}"
+          enabled: "{{ inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))) }}"
+      when: item.enabled | bool
+      register: bot_pull
+      retries: 3
+      delay: 10
+      until: bot_pull.rc == 0
+      changed_when: "'Downloaded newer image' in (bot_pull.stdout | default(''))"
+      loop_control:
+        label: "{{ item.name }}:{{ item.tag }}"
+
+    - name: Logout from GHCR
+      community.docker.docker_login:
+        registry: ghcr.io
+        state: absent
