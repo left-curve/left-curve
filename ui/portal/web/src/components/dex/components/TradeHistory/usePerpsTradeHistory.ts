@@ -2,7 +2,7 @@ import { useAccount, useInfiniteGraphqlQuery, usePublicClient } from "@left-curv
 import type { PerpsEvent } from "@left-curve/types";
 import { useCallback, useMemo } from "react";
 
-import type { QueryRange } from "./tradeHistoryFilterContext";
+import type { QueryRange } from "./useTradeHistoryFilter";
 
 const PAGE_SIZE = 30;
 

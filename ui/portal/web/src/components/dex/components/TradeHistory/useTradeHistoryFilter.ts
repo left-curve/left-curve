@@ -1,6 +1,4 @@
-import { createContext } from "@left-curve/applets-kit";
-import type { PropsWithChildren } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 export type TradeHistoryPreset = "1d" | "1w" | "1m" | "3m";
 
@@ -35,20 +33,7 @@ const initialFilter: TradeHistoryFilter = {
   ...buildPresetRange(PRESETS.find((p) => p.id === initialPreset)?.days ?? 30),
 };
 
-type TradeHistoryFilterContextValue = {
-  filter: TradeHistoryFilter;
-  setPreset: (preset: TradeHistoryPreset) => void;
-  setCustomRange: (from: Date, to: Date) => void;
-  queryRange: QueryRange;
-};
-
-const [Provider, useTradeHistoryFilter] = createContext<TradeHistoryFilterContextValue>({
-  name: "TradeHistoryFilterContext",
-});
-
-export { useTradeHistoryFilter };
-
-export function TradeHistoryFilterProvider({ children }: PropsWithChildren) {
+export function useTradeHistoryFilter() {
   const [filter, setFilter] = useState<TradeHistoryFilter>(initialFilter);
 
   const queryRange: QueryRange = {
@@ -66,10 +51,5 @@ export function TradeHistoryFilterProvider({ children }: PropsWithChildren) {
     setFilter({ preset: null, from, to });
   }, []);
 
-  const value = useMemo<TradeHistoryFilterContextValue>(
-    () => ({ filter, setPreset, setCustomRange, queryRange }),
-    [filter, setPreset, setCustomRange, queryRange.earlierThan, queryRange.laterThan],
-  );
-
-  return <Provider value={value}>{children}</Provider>;
+  return { filter, setPreset, setCustomRange, queryRange };
 }
