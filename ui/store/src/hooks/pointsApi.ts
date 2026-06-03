@@ -38,7 +38,21 @@ export type BoxCount = {
   opened: number;
 };
 
-export type BoxesResponse = Record<string, Record<string, BoxCount>>;
+export type BoxChest = "bronze" | "silver" | "gold" | "crystal";
+
+export type HuntedLoot = "bronze_shell" | "silver_shell" | "golden_shell" | "pearl_dango";
+
+export type HuntedBoxEntry = {
+  chest: BoxChest;
+  loot: HuntedLoot;
+  epoch: number;
+  opened: boolean;
+};
+
+export type BoxesResponse = {
+  chests: Record<string, Record<string, BoxCount>>;
+  hunted: HuntedBoxEntry[];
+};
 
 export type OatEntry = {
   collection_id: number;
@@ -47,6 +61,17 @@ export type OatEntry = {
   registered_at: string;
   /** Seconds with nanosecond decimal precision — may be clamped to the epoch window by the backend */
   expired_at: string;
+};
+
+export type HuntedLootBooster = {
+  loot: HuntedLoot;
+  epoch: number;
+  multiplier: string;
+};
+
+export type BoostersResponse = {
+  oats: OatEntry[];
+  hunted_loots: HuntedLootBooster[];
 };
 
 export class OatRateLimitError extends Error {
@@ -125,14 +150,32 @@ export const fetchUserBoxes = async (
 export const openBoxes = async (
   baseUrl: string,
   userIndex: number,
-  boxes: Record<string, Record<string, number>>,
+  boxes: Record<string, Record<string, number>> | undefined,
+  hunted?: ReadonlyArray<{ epoch: number; loot: HuntedLoot }>,
 ): Promise<{ success: boolean }> => {
+  const body: {
+    user_index: number;
+    boxes?: Record<string, Record<string, number>>;
+    hunted?: ReadonlyArray<{ epoch: number; loot: HuntedLoot }>;
+  } = { user_index: userIndex };
+  if (boxes && Object.keys(boxes).length > 0) body.boxes = boxes;
+  if (hunted && hunted.length > 0) body.hunted = hunted;
+
   const res = await fetch(`${baseUrl}/boxes/open`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_index: userIndex, boxes }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Failed to open boxes: ${res.status}`);
+  return res.json();
+};
+
+export const fetchBoosters = async (
+  baseUrl: string,
+  userIndex: number,
+): Promise<BoostersResponse> => {
+  const res = await fetch(`${baseUrl}/boosters/${userIndex}`);
+  if (!res.ok) throw new Error(`Failed to fetch boosters: ${res.status}`);
   return res.json();
 };
 

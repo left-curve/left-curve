@@ -321,6 +321,13 @@ export {
 } from "./hooks/useOats.js";
 
 export {
+  type UseBoostersParameters,
+  type UseBoostersReturnType,
+  type HuntedBooster,
+  useBoosters,
+} from "./hooks/useBoosters.js";
+
+export {
   type UseRegisterOatParameters,
   useRegisterOat,
   OatRateLimitError,
@@ -334,6 +341,11 @@ export {
   type LeaderboardEntry,
   type BoxesResponse,
   type BoxCount,
+  type BoxChest,
+  type HuntedLoot,
+  type HuntedBoxEntry,
+  type HuntedLootBooster,
+  type BoostersResponse,
   type OatEntry,
   type EpochInfo,
   type EpochInfoNotStarted,
@@ -344,6 +356,7 @@ export {
   fetchTotalUsersWithPoints,
   fetchUserBoxes,
   openBoxes,
+  fetchBoosters,
   fetchUserOats,
   fetchCampaigns,
   registerOat,
