@@ -5,16 +5,18 @@ import type React from "react";
 
 function formatBoostEndsAt(date: Date, locale: string, timeZone: string): string {
   const tz = timeZone === "local" ? undefined : timeZone;
-  const fmt = new Intl.DateTimeFormat(locale, {
+  const dateFmt = new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
+    timeZone: tz,
+  });
+  const timeFmt = new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
     timeZone: tz,
-    timeZoneName: "short",
   });
-  return fmt.format(date);
+  return `${dateFmt.format(date)}, ${timeFmt.format(date)}`;
 }
 
 const FALLBACK_MULTIPLIER: Record<HuntedLoot, string> = {
@@ -75,10 +77,10 @@ export const BoosterCard: React.FC<BoosterCardProps> = ({
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
-          <IconFlash className="w-6 h-6 text-primitives-green-light-400" />
+          <IconFlash className="w-6 h-6 text-primitives-green-light-400 flex-shrink-0" />
           <span
             className={twMerge(
-              "diatype-xs-regular text-ink-primary-900",
+              "diatype-xs-regular text-ink-primary-900 ml-auto text-right",
               isLocked && "text-ink-tertiary-500",
             )}
           >
@@ -86,10 +88,10 @@ export const BoosterCard: React.FC<BoosterCardProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-2 px-2 py-1 bg-surface-tertiary-gray rounded-md">
-          <IconClock className="w-6 h-6 text-fg-primary-red" />
+          <IconClock className="w-6 h-6 text-fg-primary-red flex-shrink-0" />
           <span
             className={twMerge(
-              "diatype-xs-regular text-ink-primary-900",
+              "diatype-xs-regular text-ink-primary-900 ml-auto text-right",
               isLocked && "text-ink-tertiary-500",
             )}
           >
