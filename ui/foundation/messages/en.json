@@ -1646,11 +1646,19 @@
       "title": "Boosters",
       "description": "A limited-time points multiplier for eligible NFT holders.",
       "multiplierLabel": "{multiplier}x Boost",
-      "locked": "--",
-      "modalTitle": "NFT Card",
-      "shareToX": "Share to X",
+      "locked": "--"
+    },
+    "chestOpening": {
+      "summaryTitle": "Your Loot",
+      "nftCardTitle": "NFT Card",
+      "boosterTitle": "Booster",
       "done": "Done",
-      "shareText": "I just won a {multiplier}x points booster on Dango!"
+      "next": "Next",
+      "shareToX": "Share to X",
+      "closeLabel": "Close",
+      "shareBoostText": "I just won a {multiplier}x points booster on Dango!",
+      "shareNftText": "I just won {article} {label} NFT on Dango!",
+      "shareBulkText": "I just opened {count} chests on Dango!"
     },
     "leagues": {
       "title": "Leagues",

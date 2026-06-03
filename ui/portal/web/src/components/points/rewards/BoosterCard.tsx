@@ -1,7 +1,21 @@
-import { formatDate, IconClock, IconFlash, twMerge, useApp } from "@left-curve/applets-kit";
+import { IconClock, IconFlash, twMerge, useApp } from "@left-curve/applets-kit";
 import type { HuntedLoot } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
+
+function formatBoostEndsAt(date: Date, locale: string, timeZone: string): string {
+  const tz = timeZone === "local" ? undefined : timeZone;
+  const fmt = new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: tz,
+    timeZoneName: "short",
+  });
+  return fmt.format(date);
+}
 
 const FALLBACK_MULTIPLIER: Record<HuntedLoot, string> = {
   bronze_shell: "1.25",
@@ -31,14 +45,15 @@ export const BoosterCard: React.FC<BoosterCardProps> = ({
   className,
 }) => {
   const { settings } = useApp();
-  const { dateFormat, timeFormat } = settings;
+  const locale = settings.formatNumberOptions.language;
+  const timeZone = settings.timeZone;
 
   const isLocked = multiplier === undefined;
   const displayMultiplier = multiplier ?? FALLBACK_MULTIPLIER[loot];
 
   const expirationDisplay = (() => {
     if (!endsAt || Number.isNaN(endsAt.getTime())) return m["points.boosters.locked"]();
-    return formatDate(endsAt, `${dateFormat} ${timeFormat}`);
+    return formatBoostEndsAt(endsAt, locale, timeZone);
   })();
 
   return (

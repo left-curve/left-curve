@@ -1,4 +1,5 @@
 import { Button } from "@left-curve/applets-kit";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { motion } from "framer-motion";
 import type React from "react";
 
@@ -24,11 +25,11 @@ export const LootResult: React.FC<LootResultProps> = ({
   const handleShareToX = () => {
     const text =
       display.kind === "hunted"
-        ? `I just won a ${display.label} on Dango!`
-        : (() => {
-            const article = /^[aeiou]/i.test(display.label) ? "an" : "a";
-            return `I just won ${article} ${display.label} NFT on Dango!`;
-          })();
+        ? m["points.chestOpening.shareBoostText"]({ multiplier: display.label.replace(/x.*/, "") })
+        : m["points.chestOpening.shareNftText"]({
+            article: /^[aeiou]/i.test(display.label) ? "an" : "a",
+            label: display.label,
+          });
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
   };
@@ -41,23 +42,26 @@ export const LootResult: React.FC<LootResultProps> = ({
     else onContinue();
   };
 
-  const headerLabel = display.kind === "hunted" ? "Booster" : "NFT Card";
+  const headerLabel =
+    display.kind === "hunted"
+      ? m["points.chestOpening.boosterTitle"]()
+      : m["points.chestOpening.nftCardTitle"]();
 
   return (
     <motion.div
-      className="bg-[#3a3530] rounded-2xl overflow-hidden shadow-2xl w-[320px] lg:w-[380px]"
+      className="bg-surface-primary-rice border border-outline-secondary-gray rounded-2xl overflow-hidden shadow-2xl w-[320px] lg:w-[380px]"
       initial={{ opacity: 0, scale: 0.9, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#4a4540]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-outline-secondary-gray">
         <div className="w-6" />
-        <p className="diatype-m-medium text-white/80">{headerLabel}</p>
+        <p className="diatype-m-medium text-ink-secondary-700">{headerLabel}</p>
         <button
           onClick={onContinue}
-          className="text-white/50 hover:text-white transition-colors"
+          className="text-ink-tertiary-500 hover:text-ink-primary-900 transition-colors"
           type="button"
-          aria-label="Close"
+          aria-label={m["points.chestOpening.closeLabel"]()}
         >
           <svg
             width="20"
@@ -88,7 +92,7 @@ export const LootResult: React.FC<LootResultProps> = ({
         </motion.div>
 
         {isOpenAllMode && (
-          <p className="diatype-m-medium text-white/80">
+          <p className="diatype-m-medium text-ink-secondary-700">
             {currentBoxIndex + 1}/{totalBoxesToOpen}
           </p>
         )}
@@ -96,18 +100,18 @@ export const LootResult: React.FC<LootResultProps> = ({
 
       <div className="px-6 pb-6 flex flex-col gap-3">
         <Button variant="secondary" className="w-full" onClick={handleButtonClick}>
-          {showNextButton ? "Next" : "Done"}
+          {showNextButton ? m["points.chestOpening.next"]() : m["points.chestOpening.done"]()}
         </Button>
 
         <button
           onClick={handleShareToX}
-          className="flex items-center justify-center gap-2 text-white/50 hover:text-white transition-colors diatype-sm-medium py-2"
+          className="flex items-center justify-center gap-2 text-ink-tertiary-500 hover:text-ink-primary-900 transition-colors diatype-sm-medium py-2"
           type="button"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
           </svg>
-          Share to X
+          {m["points.chestOpening.shareToX"]()}
         </button>
       </div>
     </motion.div>
