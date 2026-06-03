@@ -65,11 +65,7 @@ const NFTCard: React.FC<NFTCardProps> = ({ nft, index, motionX, itemTotalWidth }
       }}
     >
       <div className="w-full h-[284px] lg:h-[374px] rounded-2xl overflow-hidden shadow-xl">
-        <img
-          src={nft.frameSrc}
-          alt={nft.label}
-          className="w-full h-full object-cover"
-        />
+        <img src={nft.frameSrc} alt={nft.label} className="w-full h-full object-cover" />
       </div>
     </motion.div>
   );
