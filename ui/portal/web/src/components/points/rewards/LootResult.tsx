@@ -1,10 +1,11 @@
 import { Button } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 import type React from "react";
-import type { NFTItem } from "./NFTCarousel";
 
-type NFTResultProps = {
-  nft: NFTItem;
+import type { LootDisplay } from "./loot";
+
+type LootResultProps = {
+  display: LootDisplay;
   onContinue: () => void;
   isOpenAllMode?: boolean;
   currentBoxIndex?: number;
@@ -12,8 +13,8 @@ type NFTResultProps = {
   onNext?: () => void;
 };
 
-export const NFTResult: React.FC<NFTResultProps> = ({
-  nft,
+export const LootResult: React.FC<LootResultProps> = ({
+  display,
   onContinue,
   isOpenAllMode = false,
   currentBoxIndex = 0,
@@ -21,8 +22,13 @@ export const NFTResult: React.FC<NFTResultProps> = ({
   onNext,
 }) => {
   const handleShareToX = () => {
-    const article = /^[aeiou]/i.test(nft.label) ? "an" : "a";
-    const text = `I just won ${article} ${nft.label} NFT on Dango!`;
+    const text =
+      display.kind === "hunted"
+        ? `I just won a ${display.label} on Dango!`
+        : (() => {
+            const article = /^[aeiou]/i.test(display.label) ? "an" : "a";
+            return `I just won ${article} ${display.label} NFT on Dango!`;
+          })();
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
   };
@@ -31,12 +37,11 @@ export const NFTResult: React.FC<NFTResultProps> = ({
   const showNextButton = isOpenAllMode && !isLastBox;
 
   const handleButtonClick = () => {
-    if (showNextButton && onNext) {
-      onNext();
-    } else {
-      onContinue();
-    }
+    if (showNextButton && onNext) onNext();
+    else onContinue();
   };
+
+  const headerLabel = display.kind === "hunted" ? "Booster" : "NFT Card";
 
   return (
     <motion.div
@@ -47,13 +52,21 @@ export const NFTResult: React.FC<NFTResultProps> = ({
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#4a4540]">
         <div className="w-6" />
-        <p className="diatype-m-medium text-white/80">NFT Card</p>
+        <p className="diatype-m-medium text-white/80">{headerLabel}</p>
         <button
           onClick={onContinue}
           className="text-white/50 hover:text-white transition-colors"
           type="button"
+          aria-label="Close"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -67,8 +80,8 @@ export const NFTResult: React.FC<NFTResultProps> = ({
           transition={{ delay: 0.1, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
         >
           <img
-            src={nft.frameSrc}
-            alt={nft.label}
+            src={display.frameSrc}
+            alt={display.label}
             crossOrigin="anonymous"
             className="w-full h-full object-cover"
           />
@@ -82,11 +95,7 @@ export const NFTResult: React.FC<NFTResultProps> = ({
       </div>
 
       <div className="px-6 pb-6 flex flex-col gap-3">
-        <Button
-          variant="secondary"
-          className="w-full"
-          onClick={handleButtonClick}
-        >
+        <Button variant="secondary" className="w-full" onClick={handleButtonClick}>
           {showNextButton ? "Next" : "Done"}
         </Button>
 
