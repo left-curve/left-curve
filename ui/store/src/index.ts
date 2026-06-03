@@ -315,24 +315,11 @@ export {
 } from "./hooks/useBoxes.js";
 
 export {
-  type UseOatsParameters,
-  type OATStatus,
-  useOats,
-} from "./hooks/useOats.js";
-
-export {
   type UseBoostersParameters,
   type UseBoostersReturnType,
   type HuntedBooster,
   useBoosters,
 } from "./hooks/useBoosters.js";
-
-export {
-  type UseRegisterOatParameters,
-  useRegisterOat,
-  OatRateLimitError,
-  NoOatsFoundError,
-} from "./hooks/useRegisterOat.js";
 
 export {
   type Points,
@@ -346,7 +333,6 @@ export {
   type HuntedBoxEntry,
   type HuntedLootBooster,
   type BoostersResponse,
-  type OatEntry,
   type EpochInfo,
   type EpochInfoNotStarted,
   type EpochInfoActive,
@@ -357,10 +343,6 @@ export {
   fetchUserBoxes,
   openBoxes,
   fetchBoosters,
-  fetchUserOats,
-  fetchCampaigns,
-  registerOat,
-  checkOat,
   fetchCurrentEpoch,
 } from "./hooks/pointsApi.js";
 

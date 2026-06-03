@@ -54,15 +54,6 @@ export type BoxesResponse = {
   hunted: HuntedBoxEntry[];
 };
 
-export type OatEntry = {
-  collection_id: number;
-  token_id: string;
-  /** Seconds with nanosecond decimal precision, serialized as a string by the backend (e.g. "1743460800.000000000") */
-  registered_at: string;
-  /** Seconds with nanosecond decimal precision — may be clamped to the epoch window by the backend */
-  expired_at: string;
-};
-
 export type HuntedLootBooster = {
   loot: HuntedLoot;
   epoch: number;
@@ -70,35 +61,8 @@ export type HuntedLootBooster = {
 };
 
 export type BoostersResponse = {
-  oats: OatEntry[];
   hunted_loots: HuntedLootBooster[];
 };
-
-export class OatRateLimitError extends Error {
-  retryAfterSeconds: number;
-
-  constructor(retryAfterSeconds: number) {
-    super(`Address already linked recently. Retry in ${retryAfterSeconds} seconds.`);
-    this.name = "OatRateLimitError";
-    this.retryAfterSeconds = retryAfterSeconds;
-  }
-}
-
-export class NoOatsFoundError extends Error {
-  constructor() {
-    super("No OATs found for this address");
-    this.name = "NoOatsFoundError";
-  }
-}
-
-function parseRetrySeconds(message: string): number {
-  const match = message.match(/retry in (\d+) second/i);
-  return match ? Number.parseInt(match[1], 10) : 60;
-}
-
-function isNoOatsFoundError(text: string): boolean {
-  return text.includes("empty_address_or_galxe_id");
-}
 
 export const fetchUserStats = async (baseUrl: string, userIndex: number): Promise<UserPoints> => {
   const res = await fetch(`${baseUrl}/stats/user/${userIndex}`);
@@ -176,58 +140,6 @@ export const fetchBoosters = async (
 ): Promise<BoostersResponse> => {
   const res = await fetch(`${baseUrl}/boosters/${userIndex}`);
   if (!res.ok) throw new Error(`Failed to fetch boosters: ${res.status}`);
-  return res.json();
-};
-
-export const fetchUserOats = async (baseUrl: string, userIndex: number): Promise<OatEntry[]> => {
-  const res = await fetch(`${baseUrl}/oat/user/${userIndex}`);
-  if (!res.ok) throw new Error(`Failed to fetch OATs: ${res.status}`);
-  return res.json();
-};
-
-export const fetchCampaigns = async (baseUrl: string): Promise<[string, number][]> => {
-  const res = await fetch(`${baseUrl}/oat/campaigns`);
-  if (!res.ok) throw new Error(`Failed to fetch campaigns: ${res.status}`);
-  return res.json();
-};
-
-export const registerOat = async (
-  baseUrl: string,
-  body: {
-    user_index: number;
-    evm_address: string;
-    signature: unknown;
-  },
-): Promise<unknown> => {
-  const res = await fetch(`${baseUrl}/oat/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-
-    if (res.status === 429) {
-      throw new OatRateLimitError(parseRetrySeconds(text));
-    }
-
-    if (isNoOatsFoundError(text)) {
-      throw new NoOatsFoundError();
-    }
-
-    throw new Error(`Failed to register OAT: ${res.status}`);
-  }
-
-  return res.json();
-};
-
-export const checkOat = async (
-  baseUrl: string,
-  evmAddress: string,
-): Promise<Record<number, string>> => {
-  const res = await fetch(`${baseUrl}/oat/check/${evmAddress}`);
-  if (!res.ok) throw new Error(`Failed to check OAT: ${res.status}`);
   return res.json();
 };
 

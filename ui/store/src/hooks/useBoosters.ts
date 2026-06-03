@@ -1,11 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  type BoostersResponse,
-  type HuntedLoot,
-  type OatEntry,
-  fetchBoosters,
-} from "./pointsApi.js";
+import { type BoostersResponse, type HuntedLoot, fetchBoosters } from "./pointsApi.js";
 
 export type UseBoostersParameters = {
   pointsUrl: string;
@@ -28,13 +23,11 @@ export type HuntedBooster = {
 };
 
 export type UseBoostersReturnType = {
-  oats: OatEntry[];
   huntedBoosters: HuntedBooster[];
   isLoading: boolean;
 };
 
 const EMPTY_RETURN: UseBoostersReturnType = {
-  oats: [],
   huntedBoosters: [],
   isLoading: false,
 };
@@ -47,7 +40,6 @@ export function useBoosters(parameters: UseBoostersParameters): UseBoostersRetur
     queryFn: () => fetchBoosters(pointsUrl, userIndex!),
     enabled: enabled && !!userIndex,
     select: (raw): UseBoostersReturnType => ({
-      oats: raw.oats,
       huntedBoosters: raw.hunted_loots
         .map((row) => ({
           loot: row.loot,

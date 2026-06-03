@@ -7,8 +7,6 @@ export { LootSummary, type LootBucket } from "./LootSummary";
 export { NFTCard, type NFTRarity } from "./NFTCard";
 export { NFTCarousel } from "./NFTCarousel";
 export { NFTsSection } from "./NFTsSection";
-export { OATCard, type OATType } from "./OATCard";
-export { OATsSection } from "./OATsSection";
 export { PointsProgressBar } from "./PointsProgressBar";
 export { ChestOpeningOverlay } from "./ChestOpeningOverlay";
 export {
