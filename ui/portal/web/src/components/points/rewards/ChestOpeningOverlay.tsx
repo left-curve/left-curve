@@ -1,9 +1,10 @@
 import { Button } from "@left-curve/applets-kit";
+import type { HuntedLoot } from "@left-curve/store";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { HuntedLoot } from "@left-curve/store";
 import { LootResult } from "./LootResult";
 import { type LootBucket, LootSummary } from "./LootSummary";
 import { NFTCarousel } from "./NFTCarousel";
@@ -250,7 +251,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
             >
-              Spin to win
+              {m["points.chestOpening.spinToWin"]()}
             </motion.p>
 
             <NFTCarousel
@@ -285,7 +286,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
                     transition={{ delay: 0.2, duration: 0.3, ease: "easeOut" }}
                   >
                     <Button as={motion.button} variant="primary" size="lg" onClick={handleSpin}>
-                      Spin Now!
+                      {m["points.chestOpening.spinNow"]()}
                     </Button>
                   </motion.div>
                 )}
@@ -305,13 +306,13 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
                       scale: { duration: 0.3, ease: "easeOut" },
                     }}
                   >
-                    Spinning...
+                    {m["points.chestOpening.spinning"]()}
                   </motion.p>
                 )}
               </AnimatePresence>
 
               <Button as={motion.button} variant="link" onClick={onClose}>
-                ← Back
+                {m["points.chestOpening.back"]()}
               </Button>
             </div>
           </motion.div>
