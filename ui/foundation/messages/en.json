@@ -1644,9 +1644,15 @@
     },
     "boosters": {
       "title": "Boosters",
-      "description": "A limited-time points multiplier to reward early testnet users.",
+      "description": "A limited-time points multiplier for eligible NFT holders.",
       "linkEvmWallet": "Link EVM Wallet",
       "pointsBoost": "+{pointsBoost}% Points",
+      "multiplierLabel": "{multiplier}x Boost",
+      "locked": "--",
+      "modalTitle": "NFT Card",
+      "shareToX": "Share to X",
+      "done": "Done",
+      "shareText": "I just won a {multiplier}x points booster on Dango!",
       "toast": {
         "successTitle": "Wallet Linked",
         "successDescription": "Your EVM wallet has been linked successfully.",
