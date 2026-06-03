@@ -131,6 +131,7 @@ services:
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
+    pull_policy: missing
     restart: unless-stopped
     labels:
       <<: *common-labels
@@ -192,6 +193,7 @@ services:
 
   dango-frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
+    pull_policy: missing
     restart: unless-stopped
     ulimits:
       nofile:
@@ -230,6 +232,7 @@ services:
 {% if faucet_bot_enabled %}
   faucet-bot:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_BOT_TAG:-latest}
+    pull_policy: missing
     restart: unless-stopped
     ulimits:
       nofile:
@@ -262,6 +265,7 @@ services:
 {% if perps_bot_enabled and inventory_hostname == perps_bot_host %}
   perps-bot:
     image: ghcr.io/left-curve/bots/perps:${PERPS_BOT_TAG:-latest}
+    pull_policy: missing
     labels:
       <<: *common-labels
       service_name: "perps_bot"
@@ -277,6 +281,7 @@ services:
 {% if inventory_hostname in liq_hosts %}
   perp-liquidator:
     image: ghcr.io/left-curve/bots/perps-liquidator:${PERP_LIQUIDATOR_TAG:-latest}
+    pull_policy: missing
     labels:
       <<: *common-labels
       service_name: "perp_liquidator"
@@ -306,6 +311,7 @@ services:
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
+    pull_policy: missing
     restart: unless-stopped
     ulimits:
       nofile:
@@ -345,6 +351,7 @@ services:
       "
   graphiql:
     image: ghcr.io/left-curve/graphiql:${GRAPHIQL_TAG:-latest}
+    pull_policy: missing
     restart: unless-stopped
 {% if expose_ports %}
     ports:
