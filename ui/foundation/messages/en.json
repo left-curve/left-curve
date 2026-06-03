@@ -1297,7 +1297,8 @@
         "tabs": {
           "all": "All",
           "favorites": "Favorites",
-          "crypto": "Crypto"
+          "crypto": "Crypto",
+          "commodities": "Commodities"
         },
         "emptyFavorites": "You haven't added any favorites yet. Tap the star next to a pair to add it."
       },

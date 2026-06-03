@@ -1,4 +1,10 @@
-import { useAppConfig, useConfig, perpsMarginAsset, useFavPairs } from "@left-curve/store";
+import {
+  useAppConfig,
+  useConfig,
+  perpsMarginAsset,
+  useFavPairs,
+  getPerpsAssetClass,
+} from "@left-curve/store";
 import { useMemo, useRef, useState } from "react";
 
 import { IconSearch, Input, Popover, Tab, Tabs, useMediaQuery } from "@left-curve/applets-kit";
@@ -87,7 +93,7 @@ function normalizeRows(
   return rows;
 }
 
-type SearchTokenTab = "all" | "favorites" | "crypto";
+type SearchTokenTab = "all" | "favorites" | "crypto" | "commodities";
 
 const SearchTokenMenu: React.FC<{
   pairId: PairId;
@@ -107,8 +113,11 @@ const SearchTokenMenu: React.FC<{
         .filter((row) => {
           switch (activeTab) {
             case "all":
-            case "crypto":
               return true;
+            case "crypto":
+              return getPerpsAssetClass(row.baseCoin.symbol) === "crypto";
+            case "commodities":
+              return getPerpsAssetClass(row.baseCoin.symbol) === "commodity";
             case "favorites":
               return hasFavPair(row.pairKey);
             default:
@@ -157,6 +166,7 @@ const SearchTokenMenu: React.FC<{
           <Tab title="all">{m["dex.protrade.searchPairTable.tabs.all"]()}</Tab>
           <Tab title="favorites">{m["dex.protrade.searchPairTable.tabs.favorites"]()}</Tab>
           <Tab title="crypto">{m["dex.protrade.searchPairTable.tabs.crypto"]()}</Tab>
+          <Tab title="commodities">{m["dex.protrade.searchPairTable.tabs.commodities"]()}</Tab>
         </Tabs>
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
