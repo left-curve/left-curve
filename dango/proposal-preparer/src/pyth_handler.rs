@@ -441,8 +441,8 @@ fn pyth_ids_lazer(
         })?
         .into_values()
         // Each denom maps to a price config; flatten to the feeds the streamer
-        // must subscribe to (one for a single source, several for a futures
-        // roll — current, next, and any upcoming contracts).
+        // must subscribe to (one for a single source, two for a futures roll —
+        // current and next).
         .flat_map(|config| config.feeds())
         .collect();
 

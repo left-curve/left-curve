@@ -176,7 +176,6 @@ mod tests {
         },
         grug_types::{MockStorage, ResultExt, Timestamp, hash_map},
         pyth_types::{Channel, MarketSession},
-        std::collections::VecDeque,
         test_case::test_case,
     };
 
@@ -293,7 +292,6 @@ mod tests {
                     next_weight: Dimensionless::new_percent(100),
                 },
             ],
-            upcoming: VecDeque::new(),
         });
 
         query_local(

@@ -2,12 +2,11 @@ use {
     dango_order_book::{Dimensionless, UsdPrice},
     dango_testing::setup_test_naive,
     dango_types::oracle::{
-        ExecuteMsg, Fixing, PriceConfig, PriceSource, QueryPriceRequest, QueryPriceSourceRequest,
-        RollScheduleUpdate, RollState, ScheduledRoll,
+        ExecuteMsg, Fixing, PriceConfig, PriceSource, QueryPriceRequest, RollState,
     },
     grug_types::{Coins, Denom, Duration, QuerierExt, ResultExt, Timestamp, btree_map},
     pyth_types::{Channel, MarketSession},
-    std::{collections::VecDeque, str::FromStr},
+    std::str::FromStr,
 };
 
 fn source(id: u32) -> PriceSource {
@@ -43,7 +42,6 @@ async fn roll_price_blends_over_the_schedule() {
                 next_weight: Dimensionless::ONE,
             },
         ],
-        upcoming: VecDeque::new(),
     });
     suite
         .execute(
@@ -97,180 +95,4 @@ async fn roll_price_blends_over_the_schedule() {
         })
         .should_succeed();
     assert_eq!(price.humanized_price, UsdPrice::new_int(200));
-}
-
-/// The maintenance cron advances a roll once its last fixing has passed:
-/// `next` becomes `current` and the head of `upcoming` becomes the new `next`.
-#[tokio::test]
-async fn cron_advances_completed_roll() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
-    let oracle = contracts.oracle;
-    suite.block_time = Duration::from_seconds(1);
-
-    let denom = Denom::from_str("perp/oil").unwrap();
-    let t0 = suite.block.timestamp;
-
-    let roll = PriceConfig::Roll(RollState {
-        current: source(9001),
-        next: source(9002),
-        fixings: vec![Fixing {
-            at: t0 + Duration::from_seconds(10),
-            next_weight: Dimensionless::ONE,
-        }],
-        upcoming: VecDeque::from([ScheduledRoll {
-            contract: source(9003),
-            fixings: vec![Fixing {
-                at: t0 + Duration::from_seconds(10_000),
-                next_weight: Dimensionless::ONE,
-            }],
-        }]),
-    });
-    suite
-        .execute(
-            &mut accounts.owner,
-            oracle,
-            &ExecuteMsg::RegisterPriceSources(btree_map! { denom.clone() => roll }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-
-    // Not advanced yet.
-    let PriceConfig::Roll(before) = suite
-        .query_wasm_smart(oracle, QueryPriceSourceRequest {
-            denom: denom.clone(),
-        })
-        .should_succeed()
-    else {
-        panic!("expected a roll");
-    };
-    assert_eq!(before.current.id, 9001);
-
-    // Advance past the last fixing (10s) and the cron interval (60s): the cron
-    // fires during the block and advances the roll.
-    suite.increase_time(Duration::from_seconds(120)).await;
-
-    let PriceConfig::Roll(after) = suite
-        .query_wasm_smart(oracle, QueryPriceSourceRequest {
-            denom: denom.clone(),
-        })
-        .should_succeed()
-    else {
-        panic!("expected a roll");
-    };
-    assert_eq!(after.current.id, 9002, "next was promoted to current");
-    assert_eq!(after.next.id, 9003, "successor pulled from upcoming");
-    assert!(after.upcoming.is_empty());
-}
-
-/// `UpdateRollSchedules` is owner-only, appends to / overrides the `upcoming`
-/// queue, and re-validates the whole config so a bad schedule is rejected.
-#[tokio::test]
-async fn update_roll_schedules_append_override_and_auth() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
-    let oracle = contracts.oracle;
-    suite.block_time = Duration::from_seconds(1);
-
-    let denom = Denom::from_str("perp/oil").unwrap();
-    let t0 = suite.block.timestamp;
-
-    let roll = PriceConfig::Roll(RollState {
-        current: source(9001),
-        next: source(9002),
-        fixings: vec![Fixing {
-            at: t0 + Duration::from_seconds(100),
-            next_weight: Dimensionless::ONE,
-        }],
-        upcoming: VecDeque::new(),
-    });
-    suite
-        .execute(
-            &mut accounts.owner,
-            oracle,
-            &ExecuteMsg::RegisterPriceSources(btree_map! { denom.clone() => roll }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-
-    let scheduled = |id: u32, at_secs: u128| ScheduledRoll {
-        contract: source(id),
-        fixings: vec![Fixing {
-            at: t0 + Duration::from_seconds(at_secs),
-            next_weight: Dimensionless::ONE,
-        }],
-    };
-
-    // A non-owner cannot update schedules.
-    suite
-        .execute(
-            &mut accounts.user1,
-            oracle,
-            &ExecuteMsg::UpdateRollSchedules(btree_map! {
-                denom.clone() => RollScheduleUpdate::Append(vec![scheduled(9003, 200)]),
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_fail_with_error("don't have the right");
-
-    // The owner appends a valid scheduled roll.
-    suite
-        .execute(
-            &mut accounts.owner,
-            oracle,
-            &ExecuteMsg::UpdateRollSchedules(btree_map! {
-                denom.clone() => RollScheduleUpdate::Append(vec![scheduled(9003, 200)]),
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-    let PriceConfig::Roll(r) = suite
-        .query_wasm_smart(oracle, QueryPriceSourceRequest {
-            denom: denom.clone(),
-        })
-        .should_succeed()
-    else {
-        panic!("expected a roll");
-    };
-    assert_eq!(r.upcoming.len(), 1);
-    assert_eq!(r.upcoming[0].contract.id, 9003);
-
-    // Appending an out-of-order roll (starts before the previous one's last
-    // fixing at t0+200) is rejected by validation.
-    suite
-        .execute(
-            &mut accounts.owner,
-            oracle,
-            &ExecuteMsg::UpdateRollSchedules(btree_map! {
-                denom.clone() => RollScheduleUpdate::Append(vec![scheduled(9004, 150)]),
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_fail_with_error("after the previous");
-
-    // Override replaces the whole queue.
-    suite
-        .execute(
-            &mut accounts.owner,
-            oracle,
-            &ExecuteMsg::UpdateRollSchedules(btree_map! {
-                denom.clone() => RollScheduleUpdate::Override(vec![scheduled(9005, 300)]),
-            }),
-            Coins::new(),
-        )
-        .await
-        .should_succeed();
-    let PriceConfig::Roll(r) = suite
-        .query_wasm_smart(oracle, QueryPriceSourceRequest {
-            denom: denom.clone(),
-        })
-        .should_succeed()
-    else {
-        panic!("expected a roll");
-    };
-    assert_eq!(r.upcoming.len(), 1);
-    assert_eq!(r.upcoming[0].contract.id, 9005);
 }

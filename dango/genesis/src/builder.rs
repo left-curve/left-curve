@@ -270,9 +270,6 @@ where
         cronjobs: btree_map! {
             gateway => opt.gateway.rate_limit_refresh_period,
             perps => Duration::from_minutes(1),
-            // Advance any completed futures rolls. Same cadence as perps; the work
-            // is cheap and mostly a no-op (a roll only advances about monthly).
-            oracle => Duration::from_minutes(1),
         },
         permissions: Permissions {
             upload: Permission::Nobody,

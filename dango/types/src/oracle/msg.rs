@@ -1,5 +1,5 @@
 use {
-    crate::oracle::{Price, PriceConfig, RollScheduleUpdate},
+    crate::oracle::{Price, PriceConfig},
     grug_types::{Binary, Denom, Timestamp},
     pyth_types::PriceUpdate,
     std::collections::BTreeMap,
@@ -16,9 +16,6 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceConfig>),
-    /// Update the upcoming futures-roll schedules for the given denoms. The
-    /// resulting config is validated, so a bad schedule is rejected.
-    UpdateRollSchedules(BTreeMap<Denom, RollScheduleUpdate>),
     /// Register a trusted signer for Pyth Lazer.
     RegisterTrustedSigner {
         public_key: Binary,

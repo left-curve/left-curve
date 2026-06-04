@@ -1,9 +1,5 @@
 use {
-    anyhow::{anyhow, ensure},
-    dango_order_book::Dimensionless,
-    grug_math::MathResult,
-    grug_types::Timestamp,
-    std::collections::VecDeque,
+    anyhow::ensure, dango_order_book::Dimensionless, grug_math::MathResult, grug_types::Timestamp,
 };
 
 /// A single Pyth Lazer price feed subscription (feed id + channel). Identical in
@@ -29,11 +25,11 @@ pub enum PriceConfig {
 /// The state of an in-progress (or not-yet-started) futures roll.
 ///
 /// The weight on `next` steps up through `fixings` as the block timestamp
-/// crosses each fixing time; before the first fixing the price is 100% `current`,
-/// and the last fixing must carry the full weight (100% `next`). Once the final
-/// fixing has passed, the maintenance cron advances the roll by pulling the
-/// following contract from `upcoming`. This mirrors trade.xyz's per-session step
-/// roll (no intraday interpolation).
+/// crosses each fixing time: before the first fixing the price is 100% `current`,
+/// and after the last fixing (which carries the full weight) it is 100% `next`.
+/// This mirrors trade.xyz's per-session step roll, with no intraday
+/// interpolation. Rolling forward to the next pair of contracts is done by
+/// re-registering the config.
 #[grug_types::derive(Serde)]
 pub struct RollState {
     /// The contract being rolled out of (the front month).
@@ -44,10 +40,6 @@ pub struct RollState {
     /// weight on `next` at or after its timestamp; the last entry must carry
     /// weight one.
     pub fixings: Vec<Fixing>,
-    /// Future contracts and their fixings, pre-loaded by the owner and consumed
-    /// one per completed roll by the maintenance cron. Keeping the schedule
-    /// on-chain is what lets the roll run without recurring owner transactions.
-    pub upcoming: VecDeque<ScheduledRoll>,
 }
 
 /// A single roll fixing: at or after `at`, the weight on the next contract
@@ -56,27 +48,6 @@ pub struct RollState {
 pub struct Fixing {
     pub at: Timestamp,
     pub next_weight: Dimensionless,
-}
-
-/// A pre-scheduled future roll: the contract to roll into, and the fixings for
-/// rolling out of the previous `next` and into this `contract`.
-#[grug_types::derive(Serde)]
-pub struct ScheduledRoll {
-    pub contract: PriceSource,
-    pub fixings: Vec<Fixing>,
-}
-
-/// An update to a denom's `upcoming` roll schedule, applied by the chain owner
-/// via `ExecuteMsg::UpdateRollSchedules`. The resulting config is always
-/// re-validated, so a bad schedule is rejected.
-#[grug_types::derive(Serde)]
-pub enum RollScheduleUpdate {
-    /// Append these scheduled rolls to the end of the existing `upcoming` queue —
-    /// the routine top-up that keeps a roll running indefinitely.
-    Append(Vec<ScheduledRoll>),
-    /// Replace the entire `upcoming` queue with these scheduled rolls — used to
-    /// correct a queue that was populated incorrectly.
-    Override(Vec<ScheduledRoll>),
 }
 
 impl PriceConfig {
@@ -96,17 +67,12 @@ impl PriceConfig {
         }
     }
 
-    /// Every feed this config can reference, for feed subscription. Includes the
-    /// current and next contracts plus all upcoming ones, so each contract's
-    /// feed is already live by the time the roll advances into it.
+    /// Every feed this config references, for feed subscription: the single
+    /// source, or both the current and next contracts of a roll.
     pub fn feeds(&self) -> Vec<PriceSource> {
         match self {
             PriceConfig::Single(source) => vec![source.clone()],
-            PriceConfig::Roll(roll) => {
-                let mut feeds = vec![roll.current.clone(), roll.next.clone()];
-                feeds.extend(roll.upcoming.iter().map(|s| s.contract.clone()));
-                feeds
-            },
+            PriceConfig::Roll(roll) => vec![roll.current.clone(), roll.next.clone()],
         }
     }
 
@@ -151,34 +117,10 @@ impl RollState {
         })
     }
 
-    /// Whether the current roll has fully completed (the last fixing has passed)
-    /// and a following contract is queued — i.e. the maintenance cron should
-    /// call [`advance`](Self::advance).
-    pub fn should_advance(&self, now: Timestamp) -> bool {
-        !self.upcoming.is_empty() && self.fixings.last().is_some_and(|f| f.at <= now)
-    }
-
-    /// Advance to the next scheduled roll: the contract we just rolled into
-    /// becomes the new front, and the head of `upcoming` becomes the new next.
-    pub fn advance(&mut self) -> anyhow::Result<()> {
-        let scheduled = self
-            .upcoming
-            .pop_front()
-            .ok_or_else(|| anyhow!("no scheduled roll to advance into"))?;
-
-        self.current = std::mem::replace(&mut self.next, scheduled.contract);
-        self.fixings = scheduled.fixings;
-
-        Ok(())
-    }
-
     /// Validate the roll:
     /// - `current` and `next` must be different feeds;
     /// - `fixings` must be non-empty and strictly ascending in both time and
-    ///   weight, with each weight in `(0, 1]` and the last weight exactly one;
-    /// - the `upcoming` chain must be chronologically ordered (each scheduled
-    ///   roll starts after the previous roll's last fixing) with each pair of
-    ///   consecutive contracts different.
+    ///   weight, with each weight in `(0, 1]` and the last weight exactly one.
     pub fn validate(&self) -> anyhow::Result<()> {
         ensure!(
             self.current.id != self.next.id,
@@ -186,33 +128,6 @@ impl RollState {
         );
 
         validate_fixings(&self.fixings)?;
-
-        // Walk the upcoming chain `next -> upcoming[0] -> upcoming[1] -> ...`,
-        // checking each roll's fixings, that consecutive contracts differ, and
-        // that each roll starts strictly after the previous one's last fixing.
-        let mut prev_end = self.fixings.last().map(|f| f.at);
-        let mut prev_contract = self.next.id;
-        for scheduled in &self.upcoming {
-            validate_fixings(&scheduled.fixings)?;
-
-            ensure!(
-                scheduled.contract.id != prev_contract,
-                "consecutive roll contracts must differ, got feed `{}` twice",
-                scheduled.contract.id
-            );
-
-            // `validate_fixings` guarantees the list is non-empty.
-            let first = scheduled.fixings.first().unwrap().at;
-            if let Some(prev_end) = prev_end {
-                ensure!(
-                    first > prev_end,
-                    "each scheduled roll must start after the previous roll's last fixing"
-                );
-            }
-
-            prev_end = scheduled.fixings.last().map(|f| f.at);
-            prev_contract = scheduled.contract.id;
-        }
 
         Ok(())
     }
@@ -283,7 +198,6 @@ mod tests {
                 fixing(400, 80),
                 fixing(500, 100),
             ],
-            upcoming: VecDeque::new(),
         }
     }
 
@@ -409,62 +323,5 @@ mod tests {
                 .to_string()
                 .contains("no fixings")
         );
-    }
-
-    #[test]
-    fn validate_checks_upcoming_chain() {
-        let mut roll = five_step_roll();
-        roll.upcoming.push_back(ScheduledRoll {
-            contract: src(3),
-            fixings: vec![fixing(1_000, 100)],
-        });
-        // Valid: the queued roll starts after the current roll's last fixing
-        // (t=500) and rolls into a new contract.
-        PriceConfig::Roll(roll.clone()).validate().unwrap();
-
-        // Out of order: the queued roll starts before the current roll ends.
-        let mut bad = roll.clone();
-        bad.upcoming[0].fixings = vec![fixing(400, 100)];
-        assert!(
-            PriceConfig::Roll(bad)
-                .validate()
-                .unwrap_err()
-                .to_string()
-                .contains("after the previous")
-        );
-
-        // Repeated contract: the queued contract equals the current `next`.
-        let mut bad = roll;
-        bad.upcoming[0].contract = src(2);
-        assert!(
-            PriceConfig::Roll(bad)
-                .validate()
-                .unwrap_err()
-                .to_string()
-                .contains("must differ")
-        );
-    }
-
-    #[test]
-    fn advance_promotes_next_and_pulls_from_upcoming() {
-        let mut roll = five_step_roll();
-        roll.upcoming.push_back(ScheduledRoll {
-            contract: src(3),
-            fixings: vec![fixing(1_000, 100)],
-        });
-
-        // The last fixing (t=500) has passed at t=600, and a roll is queued.
-        assert!(roll.should_advance(Timestamp::from_seconds(600)));
-
-        roll.advance().unwrap();
-
-        // `next` (2) became the new front; the queued contract (3) is the new next.
-        assert_eq!(roll.current, src(2));
-        assert_eq!(roll.next, src(3));
-        assert_eq!(roll.fixings, vec![fixing(1_000, 100)]);
-        assert!(roll.upcoming.is_empty());
-
-        // The new fixings are in the future, so we should not advance again.
-        assert!(!roll.should_advance(Timestamp::from_seconds(600)));
     }
 }
