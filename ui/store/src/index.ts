@@ -322,6 +322,13 @@ export {
 } from "./hooks/useBoosters.js";
 
 export {
+  type UseHuntedLatestParameters,
+  type UseHuntedMultipliersParameters,
+  useHuntedLatest,
+  useHuntedMultipliers,
+} from "./hooks/useHuntedLatest.js";
+
+export {
   type Points,
   type UserStats,
   type UserPoints,
@@ -332,6 +339,7 @@ export {
   type HuntedLoot,
   type HuntedBoxEntry,
   type HuntedLootBooster,
+  type HuntedLatestEntry,
   type BoostersResponse,
   type EpochInfo,
   type EpochInfoNotStarted,
@@ -343,6 +351,7 @@ export {
   fetchUserBoxes,
   openBoxes,
   fetchBoosters,
+  fetchHuntedLatest,
   fetchCurrentEpoch,
 } from "./hooks/pointsApi.js";
 
