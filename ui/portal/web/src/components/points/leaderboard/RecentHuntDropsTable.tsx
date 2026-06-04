@@ -7,14 +7,14 @@ import {
   useHuntedLatest,
   useHuntedMultipliers,
 } from "@left-curve/store";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
 
 import { type Decimal, formatUsername } from "@left-curve/utils";
 
-const PAGE_SIZE = 10;
+const DISPLAY_PAGE_SIZE = 5;
 
 const REWARD_META: Record<HuntedLoot, { color: string; star?: boolean }> = {
   pearl_dango: { color: "text-utility-blue-600", star: true },
@@ -38,13 +38,23 @@ function formatBoost(multiplier: InstanceType<typeof Decimal> | null): string {
 
 export const RecentHuntDropsTable: React.FC = () => {
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { entries, isLoading, isFetching } = useHuntedLatest({ pointsUrl });
+  const { pages, hasNextPage, fetchNextPage, isLoading, isFetching, isFetchingNextPage } =
+    useHuntedLatest({ pointsUrl });
   const { resolveMultiplier } = useHuntedMultipliers({ pointsUrl });
 
+  const allEntries = pages.flat();
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(allEntries.length / DISPLAY_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pageEntries = entries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageEntries = allEntries.slice(
+    (currentPage - 1) * DISPLAY_PAGE_SIZE,
+    currentPage * DISPLAY_PAGE_SIZE,
+  );
+
+  const loadAndAdvance = useCallback(async () => {
+    await fetchNextPage();
+    setPage((p) => p + 1);
+  }, [fetchNextPage]);
 
   const columns: TableColumn<HuntedLatestEntry> = [
     {
@@ -103,7 +113,7 @@ export const RecentHuntDropsTable: React.FC = () => {
         data={pageEntries}
         columns={columns}
         style="default"
-        isLoading={(isLoading || isFetching) && entries.length === 0}
+        isLoading={(isLoading || isFetching) && pages.length === 0}
         classNames={{
           base: "shadow-none p-0 pt-0 bg-surface-primary-gray",
           row: "border-b border-outline-secondary-gray",
@@ -118,8 +128,14 @@ export const RecentHuntDropsTable: React.FC = () => {
           </div>
         }
         bottomContent={
-          totalPages > 1 ? (
-            <Pagination totalPages={totalPages} currentPage={currentPage} onPageChange={setPage} />
+          totalPages > 1 || hasNextPage ? (
+            <Pagination
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={setPage}
+              onNextOverflow={hasNextPage ? loadAndAdvance : undefined}
+              isOverflowLoading={isFetchingNextPage}
+            />
           ) : null
         }
       />

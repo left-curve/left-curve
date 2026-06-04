@@ -1,5 +1,5 @@
 import { Decimal } from "@left-curve/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import {
@@ -17,26 +17,33 @@ export type UseHuntedLatestParameters = {
 };
 
 const DEFAULT_REFETCH_INTERVAL = 60_000;
+const DEFAULT_PAGE_SIZE = 20;
 
 export function useHuntedLatest(parameters: UseHuntedLatestParameters) {
   const {
     pointsUrl,
-    limit,
+    limit = DEFAULT_PAGE_SIZE,
     enabled = true,
     refetchInterval = DEFAULT_REFETCH_INTERVAL,
   } = parameters;
 
-  const query = useQuery({
-    queryKey: ["hunted-latest", limit ?? null],
-    queryFn: () => fetchHuntedLatest(pointsUrl, { limit }),
+  const query = useInfiniteQuery({
+    queryKey: ["hunted-latest", limit],
+    queryFn: ({ pageParam }) => fetchHuntedLatest(pointsUrl, { limit, start_after: pageParam }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.length === limit ? lastPage[lastPage.length - 1].block_height : undefined,
     enabled,
     refetchInterval,
   });
 
   return {
-    entries: query.data ?? ([] as HuntedLatestEntry[]),
+    pages: (query.data?.pages ?? []) as HuntedLatestEntry[][],
+    hasNextPage: query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
+    isFetchingNextPage: query.isFetchingNextPage,
     isError: query.isError,
   };
 }

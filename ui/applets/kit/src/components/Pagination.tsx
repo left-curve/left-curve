@@ -17,6 +17,18 @@ type PaginationProps = VariantProps<typeof paginationVariants> &
     labelOf?: string;
     labelPage?: string;
     onPageChange?: (page: number) => void;
+    /**
+     * Called when the user clicks "next" while already on the last page.
+     * Use this to load more items (e.g. fetch the next backend cursor)
+     * before advancing. When provided, the next arrow stays enabled on
+     * the last page.
+     */
+    onNextOverflow?: () => void;
+    /** Disables the next arrow while an overflow fetch is in-flight. */
+    isOverflowLoading?: boolean;
+    /** When set, renders this text next to the chevron while the next button
+     * is acting as an overflow trigger (last page + onNextOverflow). */
+    overflowLabel?: string;
   };
 
 export const Pagination: React.FC<PaginationProps> = ({
@@ -24,6 +36,9 @@ export const Pagination: React.FC<PaginationProps> = ({
   currentPage: _currentPage_,
   initialPage = 1,
   onPageChange,
+  onNextOverflow,
+  isOverflowLoading = false,
+  overflowLabel,
   siblings = 1,
   boundaries = 1,
   isDisabled,
@@ -125,14 +140,16 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       <button
         type="button"
-        onClick={nextPage}
-        disabled={!hasNextPage || isDisabled}
+        onClick={() => (hasNextPage ? nextPage() : onNextOverflow?.())}
+        disabled={(!hasNextPage && !onNextOverflow) || isDisabled || isOverflowLoading}
         className={twMerge(
           styles.item(),
-          !hasNextPage && "opacity-60",
+          !hasNextPage && !onNextOverflow && "opacity-60",
           "ml-3 text-ink-secondary-blue",
+          !hasNextPage && onNextOverflow && overflowLabel && "w-auto gap-1 px-2",
         )}
       >
+        {!hasNextPage && onNextOverflow && overflowLabel ? <span>{overflowLabel}</span> : null}
         <IconChevronRight className="w-5 h-5" />
       </button>
     </motion.div>
