@@ -8,6 +8,7 @@ import type {
 } from "@left-curve/types";
 import { composeTxTypedData } from "@left-curve/utils";
 import { getAccountSeenNonces } from "#actions/account-factory/queries/getAccountSeenNonces.js";
+import { getAccountSessionSeenNonces } from "#actions/account-factory/queries/getAccountSessionSeenNonces.js";
 import { getAccountInfo } from "#actions/account-factory/queries/getAccountInfo.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
@@ -36,7 +37,9 @@ export async function signAndBroadcastTx(
     return chainId;
   })();
 
-  const [nonce] = await getAccountSeenNonces(client, { address: sender });
+  const [nonce] = client.sessionKey
+    ? await getAccountSessionSeenNonces(client, { address: sender, sessionKey: client.sessionKey })
+    : await getAccountSeenNonces(client, { address: sender });
 
   const account = await getAccountInfo(client, { address: sender });
 
