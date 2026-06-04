@@ -23,7 +23,7 @@ pub struct AppAddresses {
 ```
 
 Other shared types include authentication types (`Key`, `Signature`, `Credential`,
-`SignDoc`, `Metadata`), fee types (`FeeType`), and price types
+`SignDoc`, `Metadata`) and price types
 (`PrecisionlessPrice`, `PrecisionedPrice`).
 
 ## 2. Bank (`dango/bank/`)

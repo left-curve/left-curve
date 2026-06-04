@@ -328,7 +328,7 @@ export function PerpsTradeHistory() {
         </div>
       )}
 
-      <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto">
+      <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto scrollbar-none">
         <div
           className="grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
           style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}
@@ -340,7 +340,11 @@ export function PerpsTradeHistory() {
           ))}
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ minWidth: "fit-content" }}>
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto scrollbar-none"
+          style={{ minWidth: "fit-content" }}
+        >
           {showEmpty ? (
             <EmptyPlaceholder
               component={m["dex.protrade.history.noOpenOrders"]()}
@@ -357,18 +361,26 @@ export function PerpsTradeHistory() {
               {virtualItems.map((virtualRow) => {
                 const item = normalizedNodes[virtualRow.index];
                 if (!item) return null;
+                const goToBlock = () =>
+                  navigate({
+                    to: "/block/$block",
+                    params: { block: item.event.blockHeight.toString() },
+                  });
                 return (
-                  <button
+                  // biome-ignore lint/a11y/useSemanticElements: row contains nested buttons (share action), so a real <button> would be invalid HTML
+                  <div
                     key={virtualRow.key}
-                    type="button"
-                    onClick={() =>
-                      navigate({
-                        to: "/block/$block",
-                        params: { block: item.event.blockHeight.toString() },
-                      })
-                    }
+                    role="button"
+                    tabIndex={0}
+                    onClick={goToBlock}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        goToBlock();
+                      }
+                    }}
                     className={twMerge(
-                      "grid items-center w-full text-left px-1 diatype-xs-regular cursor-pointer transition-colors hover:bg-surface-secondary-rice",
+                      "grid items-center w-full text-left px-1 diatype-xs-regular cursor-pointer transition-colors hover:bg-surface-secondary-rice focus:outline-none focus-visible:bg-surface-secondary-rice",
                     )}
                     style={{
                       gridTemplateColumns: gridTemplate,
@@ -385,7 +397,7 @@ export function PerpsTradeHistory() {
                         {col.render(item.event, item.fields)}
                       </div>
                     ))}
-                  </button>
+                  </div>
                 );
               })}
             </div>

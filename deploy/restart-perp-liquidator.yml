@@ -1,0 +1,34 @@
+---
+- hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars_files:
+    - roles/full-app/vars/main.yml
+    - roles/full-app/defaults/main.yml
+  tasks:
+    - name: Set perp-liquidator instance index
+      set_fact:
+        perp_liquidator_instance_index: >-
+          {{ (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))).index(inventory_hostname) }}
+      when: inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([])))
+
+    - name: Skip hosts without a liquidator instance
+      meta: end_host
+      when: perp_liquidator_instance_index is not defined
+
+    - name: Read current deploy
+      include_role:
+        name: full-app
+        tasks_from: read_current_deploy.yml
+
+    - name: Set deployment facts
+      set_fact:
+        deployment_name: "{{ current_deployment }}"
+
+    - name: Restart perp-liquidator service
+      community.docker.docker_compose_v2:
+        project_name: "{{ current_deployment }}"
+        project_src: "{{ deployment_dir }}"
+        services:
+          - perp-liquidator
+        state: restarted

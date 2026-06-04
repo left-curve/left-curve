@@ -4017,12 +4017,14 @@ dependencies = [
  "dango-oracle",
  "dango-order-book",
  "dango-perps",
+ "dango-testing",
  "dango-types",
  "grug-app",
  "grug-math",
  "grug-storage",
  "grug-types",
  "pyth-types",
+ "tokio",
  "tracing",
 ]
 

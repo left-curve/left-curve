@@ -1,39 +1,40 @@
 use {
-    grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
-    grug_types::{Addr, Storage, addr},
+    dango_bank::BALANCES,
+    grug_app::{AppResult, CONFIG, CONTRACT_NAMESPACE, StorageProvider},
+    grug_math::{Number, NumberConst, Uint128},
+    grug_types::{Denom, Order, StdResult, Storage},
 };
 
-/// Address of the Taxman contract. Same on mainnet and testnet, verified via
-/// the public GraphQL API.
-const TAXMAN: Addr = addr!("da70a9c1417aee00f960fe896add9d571f9c365b");
+/// The taxman has accumulated protocol fees (tracked as token balances in the
+/// bank contract) but has no message for withdrawing them. Move all of the
+/// taxman's balances to the chain owner: credit each to the owner, then delete
+/// the taxman's entry.
+pub fn sweep_fees_to_owner(storage: Box<dyn Storage>) -> AppResult<()> {
+    let cfg = CONFIG.load(&storage)?;
 
-mod legacy_taxman {
-    use {
-        dango_types::account_factory::UserIndex, grug_math::Udec128_6, grug_storage::Map,
-        grug_types::Timestamp,
-    };
+    // Scope storage to the bank contract, where token balances live.
+    let mut bank_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &cfg.bank]);
 
-    /// Cumulative spot-DEX trading volume that the now-deleted
-    /// `taxman::ExecuteMsg::ReportVolumes` handler used to write. With the
-    /// spot DEX gone there is no writer, so the migration drops every entry
-    /// behind this prefix.
-    pub const VOLUMES_BY_USER: Map<(UserIndex, Timestamp), Udec128_6> = Map::new("volume__user");
-}
+    // Collect the taxman's balances first, so the read borrow ends before we
+    // start writing.
+    let taxman_balances = BALANCES
+        .prefix(&cfg.taxman)
+        .range(&bank_storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(Denom, Uint128)>>>()?;
 
-pub fn do_taxman_upgrades(storage: Box<dyn Storage>) -> AppResult<()> {
-    let mut taxman_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &TAXMAN]);
+    for (denom, amount) in taxman_balances {
+        // The owner may already hold this denom, so add rather than overwrite.
+        BALANCES.may_modify(
+            &mut bank_storage,
+            (&cfg.owner, &denom),
+            |maybe| -> StdResult<_> {
+                Ok(Some(maybe.unwrap_or(Uint128::ZERO).checked_add(amount)?))
+            },
+        )?;
 
-    do_volumes_by_user_clear(&mut taxman_storage)
-}
-
-/// Drop every entry behind the legacy `VOLUMES_BY_USER` prefix. After the
-/// spot-DEX retirement these records are unreachable: the only writer was
-/// removed alongside the source-level storage handle, and the perps contract
-/// tracks volume in its own substore.
-fn do_volumes_by_user_clear(taxman_storage: &mut dyn Storage) -> AppResult<()> {
-    legacy_taxman::VOLUMES_BY_USER.clear(taxman_storage, None, None);
-
-    tracing::info!("Cleared taxman `VOLUMES_BY_USER` (legacy spot-DEX volume records)");
+        // Zero out the taxman's balance.
+        BALANCES.remove(&mut bank_storage, (&cfg.taxman, &denom));
+    }
 
     Ok(())
 }
@@ -43,63 +44,103 @@ fn do_volumes_by_user_clear(taxman_storage: &mut dyn Storage) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use {
-        super::{do_volumes_by_user_clear, legacy_taxman::VOLUMES_BY_USER},
-        grug_math::Udec128_6,
-        grug_types::{MockStorage, Order, Timestamp},
+        dango_testing::{TestOption, setup_test_naive},
+        dango_types::constants::{eth, usdc},
+        grug_app::AppError,
+        grug_math::{IsZero, Number, NumberConst, Uint128},
+        grug_types::{QuerierExt, ResultExt, coins},
     };
 
-    #[test]
-    fn wipes_every_legacy_volume_entry() {
-        let mut storage = MockStorage::new();
+    /// On mainnet the taxman holds protocol fees in multiple tokens (ETH and
+    /// USDC) while the owner holds only USDC. The chain upgrade must sweep every
+    /// balance to the owner. We reproduce that here, so the sweep is exercised
+    /// both on a denom the owner already holds (USDC, which must be merged) and
+    /// one it doesn't (ETH, which must be created).
+    #[tokio::test]
+    async fn sweeping_taxman_fees_to_owner() {
+        let usdc = usdc::DENOM.clone();
+        let eth = eth::DENOM.clone();
 
-        // Seed a handful of entries spread across users and days so the
-        // assertion below catches both partial and trailing leftovers.
-        VOLUMES_BY_USER
-            .save(
-                &mut storage,
-                (0, Timestamp::from_seconds(86_400)),
-                &Udec128_6::new(1),
-            )
-            .unwrap();
-        VOLUMES_BY_USER
-            .save(
-                &mut storage,
-                (0, Timestamp::from_seconds(172_800)),
-                &Udec128_6::new(2),
-            )
-            .unwrap();
-        VOLUMES_BY_USER
-            .save(
-                &mut storage,
-                (42, Timestamp::from_seconds(86_400)),
-                &Udec128_6::new(3),
-            )
-            .unwrap();
+        const USDC_SEED: u128 = 5_000_000_000;
 
-        do_volumes_by_user_clear(&mut storage).unwrap();
+        let (mut suite, mut accounts, ..) = setup_test_naive(TestOption::default());
 
+        let taxman = suite.query_taxman().unwrap();
+
+        // The owner is funded with both USDC and ETH at genesis. Move all of its
+        // ETH, plus some USDC, into the taxman, so the taxman holds two tokens
+        // while the owner is left holding only USDC. Funds are credited by
+        // attaching them to an execute; `Configure` is the taxman's only message,
+        // so we pass its current config back unchanged.
+        let owner_eth = suite.query_balance(&accounts.owner, eth.clone()).unwrap();
+        assert!(owner_eth.is_non_zero());
+        let taxman_cfg = suite
+            .query_wasm_smart(taxman, dango_types::taxman::QueryConfigRequest {})
+            .unwrap();
+        suite
+            .execute(
+                &mut accounts.owner,
+                taxman,
+                &dango_types::taxman::ExecuteMsg::Configure {
+                    new_cfg: taxman_cfg,
+                },
+                coins! { usdc.clone() => Uint128::new(USDC_SEED), eth.clone() => owner_eth },
+            )
+            .await
+            .should_succeed();
+
+        // Schedule the upgrade, then advance to the block just before it.
+        suite
+            .upgrade(
+                &mut accounts.owner,
+                4,
+                "0.1.0",
+                None::<String>,
+                None::<String>,
+            )
+            .await
+            .should_succeed();
+        suite.make_empty_block().await;
+
+        // Record balances right before the upgrade. The taxman holds USDC (the
+        // seed plus accrued gas fees) and ETH; the owner holds only USDC.
+        let taxman_usdc = suite.query_balance(&taxman, usdc.clone()).unwrap();
+        let taxman_eth = suite.query_balance(&taxman, eth.clone()).unwrap();
+        let owner_usdc = suite.query_balance(&accounts.owner, usdc.clone()).unwrap();
+        assert!(taxman_usdc.is_non_zero());
+        assert_eq!(taxman_eth, owner_eth);
         assert_eq!(
-            VOLUMES_BY_USER
-                .range(&storage, None, None, Order::Ascending)
-                .count(),
-            0,
+            suite.query_balance(&accounts.owner, eth.clone()).unwrap(),
+            Uint128::ZERO
         );
-    }
 
-    /// A taxman substore that never recorded any volumes (the only state the
-    /// chain will be in once the upgrade has run once and immediately again
-    /// in a backfill) must remain valid.
-    #[test]
-    fn empty_substore_is_noop() {
-        let mut storage = MockStorage::new();
+        // The chain halts on the version mismatch; install the real upgrade
+        // handler and remake the block so the upgrade runs.
+        suite.try_make_empty_block().await.should_fail_with_error(
+            AppError::upgrade_incorrect_version("0.0.0".into(), "0.1.0".into()),
+        );
+        suite
+            .app
+            .set_cargo_version_and_upgrade_handler("0.1.0", Some(crate::do_upgrade));
+        suite.make_empty_block().await;
 
-        do_volumes_by_user_clear(&mut storage).unwrap();
-
+        // The taxman has been emptied of both tokens; the owner received all of
+        // it: USDC merged into its existing balance, ETH as a brand-new one.
         assert_eq!(
-            VOLUMES_BY_USER
-                .range(&storage, None, None, Order::Ascending)
-                .count(),
-            0,
+            suite.query_balance(&taxman, usdc.clone()).unwrap(),
+            Uint128::ZERO
+        );
+        assert_eq!(
+            suite.query_balance(&taxman, eth.clone()).unwrap(),
+            Uint128::ZERO
+        );
+        assert_eq!(
+            suite.query_balance(&accounts.owner, usdc).unwrap(),
+            owner_usdc.checked_add(taxman_usdc).unwrap()
+        );
+        assert_eq!(
+            suite.query_balance(&accounts.owner, eth).unwrap(),
+            owner_eth
         );
     }
 }

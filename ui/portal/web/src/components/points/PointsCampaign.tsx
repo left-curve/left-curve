@@ -18,14 +18,14 @@ import { LeaderboardTable } from "./leaderboard";
 import { PointsHeader } from "./PointsHeader";
 import { LigueLevels, PointsProfileTable } from "./profile";
 import {
+  BoostersSection,
   BoxesSection,
   ChestOpeningProvider,
   NFTsSection,
-  OATsSection,
   PointsProgressBar,
 } from "./rewards";
 import { UserPointsProvider, useUserPoints } from "./useUserPoints";
-import { useAccount, useBoxes, useOats } from "@left-curve/store";
+import { useAccount, useBoosters, useBoxes, useCurrentEpoch } from "@left-curve/store";
 
 type PointsCampaignTab = "profile" | "rewards" | "leaderboard";
 
@@ -69,10 +69,16 @@ const ChestOpeningProviderWrapper: React.FC<PropsWithChildren<{ userIndex?: numb
   userIndex,
 }) => {
   const pointsUrl = window.dango.urls.pointsUrl;
-  const { unopenedBoxes } = useBoxes({ pointsUrl, userIndex });
+  const { unopenedBoxes, huntedBoxes } = useBoxes({ pointsUrl, userIndex });
+  const { huntedBoosters } = useBoosters({ pointsUrl, userIndex });
 
   return (
-    <ChestOpeningProvider userIndex={userIndex} unopenedBoxes={unopenedBoxes}>
+    <ChestOpeningProvider
+      userIndex={userIndex}
+      unopenedBoxes={unopenedBoxes}
+      huntedBoxes={huntedBoxes}
+      huntedBoosters={huntedBoosters}
+    >
       {children}
     </ChestOpeningProvider>
   );
@@ -132,7 +138,8 @@ const RewardsLoot: React.FC = () => {
   const { userIndex } = useAccount();
   const pointsUrl = window.dango.urls.pointsUrl;
   const { nfts, unopenedCounts } = useBoxes({ pointsUrl, userIndex });
-  const { oatStatuses } = useOats({ pointsUrl, userIndex });
+  const { huntedBoosters } = useBoosters({ pointsUrl, userIndex });
+  const { currentEpoch, endDate } = useCurrentEpoch({ pointsUrl });
   const { volume } = useUserPoints();
 
   return (
@@ -142,7 +149,11 @@ const RewardsLoot: React.FC = () => {
       </div>
       <BoxesSection unopenedBoxes={unopenedCounts} />
       <NFTsSection nfts={nfts} />
-      <OATsSection oatStatuses={oatStatuses} />
+      <BoostersSection
+        huntedBoosters={huntedBoosters}
+        currentEpoch={currentEpoch}
+        currentEpochEndsAt={endDate}
+      />
     </div>
   );
 };

@@ -225,6 +225,16 @@ deploy-perp-liquidator network tag="latest":
       --limit perp-liquidator-{{network}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-perp-liquidator.log
 
+# Restart the perp-liquidator container without pulling a new image
+# Usage: just restart-perp-liquidator devnet
+#        just restart-perp-liquidator testnet
+restart-perp-liquidator network:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook restart-perp-liquidator.yml \
+      -e dango_network={{network}} \
+      --limit perp-liquidator-{{network}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-restart-perp-liquidator.log
+
 # ---------------------------------- Testnet -----------------------------------
 
 deploy-testnet dango_image_tag bots_image_tag:

@@ -21,3 +21,7 @@ grug-types       = { workspace = true }
 grug-app         = { workspace = true }
 pyth-types       = { workspace = true }
 tracing          = { workspace = true }
+
+[dev-dependencies]
+dango-testing = { workspace = true }
+tokio         = { workspace = true, features = ["full"] }
