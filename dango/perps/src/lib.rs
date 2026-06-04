@@ -145,6 +145,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             },
             MaintainerMsg::Liquidate { user } => maintain::liquidate(ctx, user),
             MaintainerMsg::Donate {} => maintain::donate(ctx),
+            MaintainerMsg::WithdrawTreasury {} => maintain::withdraw_treasury(ctx),
             MaintainerMsg::SetFeeRateOverride {
                 user,
                 maker_taker_fee_rates,

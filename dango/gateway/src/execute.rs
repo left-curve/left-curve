@@ -8,12 +8,11 @@ use {
             Remote, SetPersonalQuotaRequest, Traceable, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
-        taxman::{self, FeeType},
     },
     grug_math::{IsZero, Number, NumberConst, Uint128},
     grug_types::{
         Addr, Coins, Denom, Inner, Message, MutableCtx, Op, Order, QuerierExt, Response, StdError,
-        StdResult, Storage, SudoCtx, btree_map, coins,
+        StdResult, Storage, SudoCtx, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -308,11 +307,11 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         remaining,
     )?;
 
-    let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
+    let (bank, owner) = ctx.querier.query_bank_and_owner()?;
 
     // 1. Call the bridge contract to make the remote transfer.
     // 2. Burn the alloyed token to be transferred (only if the token is not native on Dango).
-    // 3. Pay fee to the taxman.
+    // 3. Send the withdrawal fee to the chain owner.
     Ok(Response::new()
         .add_message(Message::execute(
             bridge,
@@ -336,16 +335,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             None
         })
         .may_add_message(if let Some(fee) = maybe_fee {
-            Some(Message::execute(
-                taxman,
-                &taxman::ExecuteMsg::Pay {
-                    ty: FeeType::Withdraw,
-                    payments: btree_map! {
-                        ctx.sender => coins! { coin.denom.clone() => fee },
-                    },
-                },
-                coins! { coin.denom => fee },
-            )?)
+            Some(Message::transfer(owner, coins! { coin.denom => fee })?)
         } else {
             None
         }))

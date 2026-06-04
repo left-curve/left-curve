@@ -242,6 +242,8 @@ export {
   usePerpsUserState,
   perpsUserStateStore,
   perpsMarginAsset,
+  getPerpsAssetClass,
+  type PerpsAssetClass,
 } from "./hooks/usePerpsUserState.js";
 export {
   usePerpsUserStateExtended,
@@ -297,6 +299,11 @@ export {
 } from "./hooks/useCurrentEpoch.js";
 
 export {
+  type UseBoostedPairsParameters,
+  useBoostedPairs,
+} from "./hooks/useBoostedPairs.js";
+
+export {
   type UsePredictPointsParameters,
   usePredictPoints,
 } from "./hooks/usePredictPoints.js";
@@ -308,17 +315,11 @@ export {
 } from "./hooks/useBoxes.js";
 
 export {
-  type UseOatsParameters,
-  type OATStatus,
-  useOats,
-} from "./hooks/useOats.js";
-
-export {
-  type UseRegisterOatParameters,
-  useRegisterOat,
-  OatRateLimitError,
-  NoOatsFoundError,
-} from "./hooks/useRegisterOat.js";
+  type UseBoostersParameters,
+  type UseBoostersReturnType,
+  type HuntedBooster,
+  useBoosters,
+} from "./hooks/useBoosters.js";
 
 export {
   type Points,
@@ -327,7 +328,11 @@ export {
   type LeaderboardEntry,
   type BoxesResponse,
   type BoxCount,
-  type OatEntry,
+  type BoxChest,
+  type HuntedLoot,
+  type HuntedBoxEntry,
+  type HuntedLootBooster,
+  type BoostersResponse,
   type EpochInfo,
   type EpochInfoNotStarted,
   type EpochInfoActive,
@@ -337,10 +342,7 @@ export {
   fetchTotalUsersWithPoints,
   fetchUserBoxes,
   openBoxes,
-  fetchUserOats,
-  fetchCampaigns,
-  registerOat,
-  checkOat,
+  fetchBoosters,
   fetchCurrentEpoch,
 } from "./hooks/pointsApi.js";
 

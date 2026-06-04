@@ -1,4 +1,12 @@
-import { useAppConfig, useConfig, perpsMarginAsset, useFavPairs } from "@left-curve/store";
+import {
+  getPerpsAssetClass,
+  perpsMarginAsset,
+  useAppConfig,
+  useBoostedPairs,
+  useConfig,
+  useCurrentEpoch,
+  useFavPairs,
+} from "@left-curve/store";
 import { useMemo, useRef, useState } from "react";
 
 import { IconSearch, Input, Popover, Tab, Tabs, useMediaQuery } from "@left-curve/applets-kit";
@@ -49,6 +57,9 @@ export type SearchTokenRow = {
   pairKey: string;
   perpsPairId: string;
   isFavorite: boolean;
+  /** Perps weight multiplier (e.g. "2.000000") when this pair is currently
+   * boosted; undefined otherwise. */
+  boostMultiplier?: string;
 };
 
 const PERPS_QUOTE_COIN: AnyCoin = {
@@ -87,7 +98,7 @@ function normalizeRows(
   return rows;
 }
 
-type SearchTokenTab = "all" | "favorites" | "crypto";
+type SearchTokenTab = "all" | "favorites" | "crypto" | "commodities";
 
 const SearchTokenMenu: React.FC<{
   pairId: PairId;
@@ -98,6 +109,9 @@ const SearchTokenMenu: React.FC<{
   const { data: config } = useAppConfig();
   const { coins } = useConfig();
   const { hasFavPair, favPairs } = useFavPairs();
+  const pointsUrl = window.dango.urls.pointsUrl;
+  const { currentEpoch } = useCurrentEpoch({ pointsUrl });
+  const { boostByPairId } = useBoostedPairs({ pointsUrl, currentEpoch });
 
   const allRows = useMemo(() => normalizeRows(config, coins), [config, coins]);
 
@@ -107,8 +121,11 @@ const SearchTokenMenu: React.FC<{
         .filter((row) => {
           switch (activeTab) {
             case "all":
-            case "crypto":
               return true;
+            case "crypto":
+              return getPerpsAssetClass(row.baseCoin.symbol) === "crypto";
+            case "commodities":
+              return getPerpsAssetClass(row.baseCoin.symbol) === "commodity";
             case "favorites":
               return hasFavPair(row.pairKey);
             default:
@@ -124,8 +141,12 @@ const SearchTokenMenu: React.FC<{
             row.pairKey.toUpperCase().includes(upper)
           );
         })
-        .map((row) => ({ ...row, isFavorite: hasFavPair(row.pairKey) })),
-    [allRows, activeTab, searchText, hasFavPair],
+        .map((row) => ({
+          ...row,
+          isFavorite: hasFavPair(row.pairKey),
+          boostMultiplier: boostByPairId[row.perpsPairId],
+        })),
+    [allRows, activeTab, searchText, hasFavPair, boostByPairId],
   );
 
   const showFavoritesEmpty = activeTab === "favorites" && favPairs.length === 0;
@@ -157,6 +178,7 @@ const SearchTokenMenu: React.FC<{
           <Tab title="all">{m["dex.protrade.searchPairTable.tabs.all"]()}</Tab>
           <Tab title="favorites">{m["dex.protrade.searchPairTable.tabs.favorites"]()}</Tab>
           <Tab title="crypto">{m["dex.protrade.searchPairTable.tabs.crypto"]()}</Tab>
+          <Tab title="commodities">{m["dex.protrade.searchPairTable.tabs.commodities"]()}</Tab>
         </Tabs>
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>

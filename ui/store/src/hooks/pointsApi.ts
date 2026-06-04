@@ -38,42 +38,31 @@ export type BoxCount = {
   opened: number;
 };
 
-export type BoxesResponse = Record<string, Record<string, BoxCount>>;
+export type BoxChest = "bronze" | "silver" | "gold" | "crystal";
 
-export type OatEntry = {
-  collection_id: number;
-  token_id: string;
-  /** Seconds with nanosecond decimal precision, serialized as a string by the backend (e.g. "1743460800.000000000") */
-  registered_at: string;
-  /** Seconds with nanosecond decimal precision — may be clamped to the epoch window by the backend */
-  expired_at: string;
+export type HuntedLoot = "bronze_shell" | "silver_shell" | "golden_shell" | "pearl_dango";
+
+export type HuntedBoxEntry = {
+  chest: BoxChest;
+  loot: HuntedLoot;
+  epoch: number;
+  opened: boolean;
 };
 
-export class OatRateLimitError extends Error {
-  retryAfterSeconds: number;
+export type BoxesResponse = {
+  chests: Record<string, Record<string, BoxCount>>;
+  hunted: HuntedBoxEntry[];
+};
 
-  constructor(retryAfterSeconds: number) {
-    super(`Address already linked recently. Retry in ${retryAfterSeconds} seconds.`);
-    this.name = "OatRateLimitError";
-    this.retryAfterSeconds = retryAfterSeconds;
-  }
-}
+export type HuntedLootBooster = {
+  loot: HuntedLoot;
+  epoch: number;
+  multiplier: string;
+};
 
-export class NoOatsFoundError extends Error {
-  constructor() {
-    super("No OATs found for this address");
-    this.name = "NoOatsFoundError";
-  }
-}
-
-function parseRetrySeconds(message: string): number {
-  const match = message.match(/retry in (\d+) second/i);
-  return match ? Number.parseInt(match[1], 10) : 60;
-}
-
-function isNoOatsFoundError(text: string): boolean {
-  return text.includes("empty_address_or_galxe_id");
-}
+export type BoostersResponse = {
+  hunted_loots: HuntedLootBooster[];
+};
 
 export const fetchUserStats = async (baseUrl: string, userIndex: number): Promise<UserPoints> => {
   const res = await fetch(`${baseUrl}/stats/user/${userIndex}`);
@@ -125,66 +114,32 @@ export const fetchUserBoxes = async (
 export const openBoxes = async (
   baseUrl: string,
   userIndex: number,
-  boxes: Record<string, Record<string, number>>,
+  boxes: Record<string, Record<string, number>> | undefined,
+  hunted?: ReadonlyArray<{ epoch: number; loot: HuntedLoot }>,
 ): Promise<{ success: boolean }> => {
+  const body: {
+    user_index: number;
+    boxes?: Record<string, Record<string, number>>;
+    hunted?: ReadonlyArray<{ epoch: number; loot: HuntedLoot }>;
+  } = { user_index: userIndex };
+  if (boxes && Object.keys(boxes).length > 0) body.boxes = boxes;
+  if (hunted && hunted.length > 0) body.hunted = hunted;
+
   const res = await fetch(`${baseUrl}/boxes/open`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_index: userIndex, boxes }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Failed to open boxes: ${res.status}`);
   return res.json();
 };
 
-export const fetchUserOats = async (baseUrl: string, userIndex: number): Promise<OatEntry[]> => {
-  const res = await fetch(`${baseUrl}/oat/user/${userIndex}`);
-  if (!res.ok) throw new Error(`Failed to fetch OATs: ${res.status}`);
-  return res.json();
-};
-
-export const fetchCampaigns = async (baseUrl: string): Promise<[string, number][]> => {
-  const res = await fetch(`${baseUrl}/oat/campaigns`);
-  if (!res.ok) throw new Error(`Failed to fetch campaigns: ${res.status}`);
-  return res.json();
-};
-
-export const registerOat = async (
+export const fetchBoosters = async (
   baseUrl: string,
-  body: {
-    user_index: number;
-    evm_address: string;
-    signature: unknown;
-  },
-): Promise<unknown> => {
-  const res = await fetch(`${baseUrl}/oat/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-
-    if (res.status === 429) {
-      throw new OatRateLimitError(parseRetrySeconds(text));
-    }
-
-    if (isNoOatsFoundError(text)) {
-      throw new NoOatsFoundError();
-    }
-
-    throw new Error(`Failed to register OAT: ${res.status}`);
-  }
-
-  return res.json();
-};
-
-export const checkOat = async (
-  baseUrl: string,
-  evmAddress: string,
-): Promise<Record<number, string>> => {
-  const res = await fetch(`${baseUrl}/oat/check/${evmAddress}`);
-  if (!res.ok) throw new Error(`Failed to check OAT: ${res.status}`);
+  userIndex: number,
+): Promise<BoostersResponse> => {
+  const res = await fetch(`${baseUrl}/boosters/${userIndex}`);
+  if (!res.ok) throw new Error(`Failed to fetch boosters: ${res.status}`);
   return res.json();
 };
 
@@ -211,5 +166,19 @@ export type EpochInfo = EpochInfoNotStarted | EpochInfoActive;
 export const fetchCurrentEpoch = async (baseUrl: string): Promise<EpochInfo> => {
   const res = await fetch(`${baseUrl}/event/epoch`);
   if (!res.ok) throw new Error(`Failed to fetch current epoch: ${res.status}`);
+  return res.json();
+};
+
+/** Subset of the `/config` response used by the UI. The full payload contains
+ * `bot_config`, `referral_config`, `compensation`, etc. — extend as needed. */
+export type PointsConfigResponse = {
+  boost_config?: {
+    pair?: Record<string, Record<string, string>>;
+  };
+};
+
+export const fetchPointsConfig = async (baseUrl: string): Promise<PointsConfigResponse> => {
+  const res = await fetch(`${baseUrl}/config`);
+  if (!res.ok) throw new Error(`Failed to fetch points config: ${res.status}`);
   return res.json();
 };

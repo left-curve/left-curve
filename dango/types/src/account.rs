@@ -1,5 +1,6 @@
 use {
     crate::auth::{AccountStatus, Nonce},
+    grug_types::ByteArray,
     std::collections::BTreeSet,
 };
 
@@ -16,7 +17,12 @@ pub enum QueryMsg {
     /// Query the account's status.
     #[returns(AccountStatus)]
     Status {},
-    /// Query the most recent transaction nonces that have been recorded.
+    /// Query the most recent transaction nonces recorded for standard
+    /// (master-key) credentials.
     #[returns(BTreeSet<Nonce>)]
     SeenNonces {},
+    /// Query the most recent transaction nonces recorded for the given session
+    /// key.
+    #[returns(BTreeSet<Nonce>)]
+    SessionSeenNonces { session_key: ByteArray<33> },
 }
