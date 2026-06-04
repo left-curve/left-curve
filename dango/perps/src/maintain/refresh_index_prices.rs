@@ -20,7 +20,8 @@ pub fn refresh_index_prices(ctx: MutableCtx) -> anyhow::Result<Response> {
     );
 
     let oracle_addr = oracle(ctx.querier);
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_addr, ctx.querier);
+    let mut oracle_querier =
+        OracleQuerier::new_remote(oracle_addr, ctx.querier, ctx.block.timestamp);
 
     process_index_price(ctx.storage, ctx.block.timestamp, &mut oracle_querier)?;
 

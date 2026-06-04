@@ -3,7 +3,9 @@ use {
     dango_testing::{TestSuite, setup_test},
     dango_types::{
         constants::perp_btc,
-        oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
+        oracle::{
+            ExecuteMsg, PriceConfig, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest,
+        },
     },
     grug_db_memory::MemDb,
     grug_types::{
@@ -46,6 +48,7 @@ async fn proposal_pyth() {
             })
             .should_succeed()
             .into_values()
+            .flat_map(|config| config.feeds())
             .collect::<Vec<_>>();
 
         // Create cache for ids if not present.
@@ -64,7 +67,7 @@ async fn proposal_pyth() {
     let oracle = contracts.oracle;
 
     let price_source = btree_map!(
-        perp_btc::DENOM.clone() => PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel }
+        perp_btc::DENOM.clone() => PriceConfig::single(PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel })
     );
 
     let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
@@ -136,15 +139,16 @@ async fn proposal_pyth() {
             .should_fail_with_error("data not found");
 
         // Verify the NOT_USED_ID is not in the oracle.
-        let _ = suite
+        suite
             .query_wasm_smart(contracts.oracle, QueryPriceSourcesRequest {
                 start_after: None,
                 limit: Some(u32::MAX),
             })
             .should_succeed()
             .values()
-            .map(|price_source| {
-                assert_ne!(price_source.id, NOT_USED_ID_LAZER.id);
+            .flat_map(|config| config.feeds())
+            .for_each(|source| {
+                assert_ne!(source.id, NOT_USED_ID_LAZER.id);
             });
 
         // Push NOT_USED_ID to the oracle.
@@ -152,10 +156,12 @@ async fn proposal_pyth() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &ExecuteMsg::RegisterPriceSources(btree_map!( test_denom.clone() => PriceSource {
-                    id: NOT_USED_ID_LAZER.id,
-                    channel: NOT_USED_ID_LAZER.channel,
-                })),
+                &ExecuteMsg::RegisterPriceSources(
+                    btree_map!( test_denom.clone() => PriceConfig::single(PriceSource {
+                        id: NOT_USED_ID_LAZER.id,
+                        channel: NOT_USED_ID_LAZER.channel,
+                    })),
+                ),
                 Coins::new(),
             )
             .await

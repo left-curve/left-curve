@@ -1,6 +1,6 @@
 use {
     crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_TRUSTED_SIGNERS},
-    dango_types::oracle::{Price, PriceSource, QueryMsg},
+    dango_types::oracle::{Price, PriceConfig, QueryMsg},
     grug_types::{
         Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Timestamp,
@@ -52,7 +52,7 @@ fn query_trusted_signers(
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<Price> {
-    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage);
+    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage, ctx.block.timestamp);
     oracle_querier.query_price(&denom, None)
 }
 
@@ -61,7 +61,7 @@ fn query_prices(
     start_after: Option<Denom>,
     limit: Option<u32>,
 ) -> anyhow::Result<BTreeMap<Denom, Price>> {
-    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage);
+    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage, ctx.block.timestamp);
 
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
@@ -70,19 +70,17 @@ fn query_prices(
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .filter_map(|res| {
-            // Here we consider the situation where a price source exists, but
+            // Here we consider the situation where a price config exists, but
             // no price has been uploaded onchain yet.
             // Instead of throwing a "data not found" error, we simply skip it.
-            let (denom, price_source) = res.ok()?;
-            let price = oracle_querier
-                .query_price(&denom, Some(price_source))
-                .ok()?;
+            let (denom, config) = res.ok()?;
+            let price = oracle_querier.query_price(&denom, Some(config)).ok()?;
             Some((denom, price))
         })
         .collect())
 }
 
-fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<PriceSource> {
+fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<PriceConfig> {
     PRICE_SOURCES.load(ctx.storage, &denom)
 }
 
@@ -90,7 +88,7 @@ fn query_price_sources(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Denom, PriceSource>> {
+) -> StdResult<BTreeMap<Denom, PriceConfig>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 

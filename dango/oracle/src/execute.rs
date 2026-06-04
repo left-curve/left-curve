@@ -1,7 +1,7 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource},
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceConfig, RollScheduleUpdate},
     grug_types::{
         Api, AuthCtx, AuthMode, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
         QuerierExt, Response, Storage, Timestamp, Tx,
@@ -11,8 +11,9 @@ use {
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (denom, price_source) in msg.price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    for (denom, config) in msg.price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
     }
 
     for (public_key, expires_at) in msg.trusted_signers {
@@ -63,6 +64,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
             register_price_sources(ctx, price_sources)
         },
+        ExecuteMsg::UpdateRollSchedules(updates) => update_roll_schedules(ctx, updates),
         ExecuteMsg::RegisterTrustedSigner {
             public_key,
             expires_at,
@@ -74,7 +76,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn register_price_sources(
     ctx: MutableCtx,
-    price_sources: BTreeMap<Denom, PriceSource>,
+    price_sources: BTreeMap<Denom, PriceConfig>,
 ) -> anyhow::Result<Response> {
     // Only chain owner can register a denom.
     ensure!(
@@ -82,11 +84,52 @@ fn register_price_sources(
         "you don't have the right, O you don't have the right"
     );
 
-    for (denom, price_source) in price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    for (denom, config) in price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
     }
 
     Ok(Response::new())
+}
+
+fn update_roll_schedules(
+    ctx: MutableCtx,
+    updates: BTreeMap<Denom, RollScheduleUpdate>,
+) -> anyhow::Result<Response> {
+    // Only the chain owner can update roll schedules.
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    for (denom, update) in updates {
+        let mut config = PRICE_SOURCES.load(ctx.storage, &denom)?;
+        apply_roll_update(&mut config, update, &denom)?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
+    }
+
+    Ok(Response::new())
+}
+
+/// Apply a roll-schedule update to a price config in place, then validate the
+/// whole config so a bad schedule (out-of-order, overlapping, or repeating a
+/// contract) is rejected.
+fn apply_roll_update(
+    config: &mut PriceConfig,
+    update: RollScheduleUpdate,
+    denom: &Denom,
+) -> anyhow::Result<()> {
+    match config {
+        PriceConfig::Roll(roll) => match update {
+            RollScheduleUpdate::Append(rolls) => roll.upcoming.extend(rolls),
+            RollScheduleUpdate::Override(rolls) => roll.upcoming = rolls.into(),
+        },
+        PriceConfig::Single(_) => {
+            bail!("denom `{denom}` is not priced from a futures roll; cannot schedule rolls")
+        },
+    }
+
+    config.validate()
 }
 
 fn register_trusted_signer(
@@ -194,6 +237,97 @@ mod tests {
         pyth_types::{LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
+
+    #[test]
+    fn apply_roll_update_appends_overrides_and_validates() {
+        use {
+            dango_order_book::Dimensionless,
+            dango_types::oracle::{Fixing, PriceSource, RollState, ScheduledRoll},
+            grug_types::{Denom, Timestamp},
+            pyth_types::Channel,
+            std::collections::VecDeque,
+        };
+
+        let src = |id| PriceSource {
+            id,
+            channel: Channel::RealTime,
+        };
+        let fixing = |secs: u128, pct: i128| Fixing {
+            at: Timestamp::from_seconds(secs),
+            next_weight: Dimensionless::new_percent(pct),
+        };
+        let denom = Denom::from_str("perp/oil").unwrap();
+        let base = || {
+            PriceConfig::Roll(RollState {
+                current: src(1),
+                next: src(2),
+                fixings: vec![fixing(100, 100)],
+                upcoming: VecDeque::new(),
+            })
+        };
+
+        // Append a valid scheduled roll.
+        let mut config = base();
+        apply_roll_update(
+            &mut config,
+            RollScheduleUpdate::Append(vec![ScheduledRoll {
+                contract: src(3),
+                fixings: vec![fixing(200, 100)],
+            }]),
+            &denom,
+        )
+        .unwrap();
+        let PriceConfig::Roll(roll) = &config else {
+            panic!("expected a roll");
+        };
+        assert_eq!(roll.upcoming.len(), 1);
+        assert_eq!(roll.upcoming[0].contract, src(3));
+
+        // Append an out-of-order roll: rejected by validation.
+        let mut config = base();
+        let err = apply_roll_update(
+            &mut config,
+            RollScheduleUpdate::Append(vec![ScheduledRoll {
+                contract: src(3),
+                fixings: vec![fixing(50, 100)], // before the current roll's last fixing
+            }]),
+            &denom,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("after the previous"));
+
+        // Override replaces the whole queue.
+        let mut config = base();
+        apply_roll_update(
+            &mut config,
+            RollScheduleUpdate::Append(vec![ScheduledRoll {
+                contract: src(3),
+                fixings: vec![fixing(200, 100)],
+            }]),
+            &denom,
+        )
+        .unwrap();
+        apply_roll_update(
+            &mut config,
+            RollScheduleUpdate::Override(vec![ScheduledRoll {
+                contract: src(4),
+                fixings: vec![fixing(300, 100)],
+            }]),
+            &denom,
+        )
+        .unwrap();
+        let PriceConfig::Roll(roll) = &config else {
+            panic!("expected a roll");
+        };
+        assert_eq!(roll.upcoming.len(), 1);
+        assert_eq!(roll.upcoming[0].contract, src(4));
+
+        // Updating a single-source config is rejected.
+        let mut single = PriceConfig::single(src(9));
+        let err =
+            apply_roll_update(&mut single, RollScheduleUpdate::Append(vec![]), &denom).unwrap_err();
+        assert!(err.to_string().contains("not priced from a futures roll"));
+    }
 
     #[test]
     fn test_verify_pyth_lazer_message() {
