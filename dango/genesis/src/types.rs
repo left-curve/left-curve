@@ -5,7 +5,7 @@ use {
         bank,
         config::Hyperlane,
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
-        oracle::PriceSource,
+        oracle::PriceConfig,
         perps::{self, PairParam},
         taxman,
     },
@@ -132,7 +132,7 @@ pub struct HyperlaneOption {
 
 pub struct OracleOption {
     /// Oracle price sources.
-    pub pyth_price_sources: BTreeMap<Denom, PriceSource>,
+    pub pyth_price_sources: BTreeMap<Denom, PriceConfig>,
     /// Pyth Lazer trusted signers: public key and expiration timestamp.
     pub pyth_trusted_signers: BTreeMap<Binary, Timestamp>,
 }
