@@ -1,16 +1,20 @@
-import { Cell, IconStar, Table, twMerge } from "@left-curve/applets-kit";
+import { Cell, IconStar, Pagination, Table, twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { formatDistanceToNow } from "date-fns";
 import {
   type HuntedLatestEntry,
   type HuntedLoot,
   useHuntedLatest,
   useHuntedMultipliers,
 } from "@left-curve/store";
+import { useState } from "react";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
 
 import { type Decimal, formatUsername } from "@left-curve/utils";
+
+const PAGE_SIZE = 10;
 
 const REWARD_META: Record<HuntedLoot, { color: string; star?: boolean }> = {
   pearl_dango: { color: "text-utility-blue-600", star: true },
@@ -36,6 +40,11 @@ export const RecentHuntDropsTable: React.FC = () => {
   const pointsUrl = window.dango.urls.pointsUrl;
   const { entries, isLoading, isFetching } = useHuntedLatest({ pointsUrl });
   const { resolveMultiplier } = useHuntedMultipliers({ pointsUrl });
+
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageEntries = entries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const columns: TableColumn<HuntedLatestEntry> = [
     {
@@ -77,12 +86,13 @@ export const RecentHuntDropsTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <div className="flex justify-end">
-          <Cell.Age
-            date={new Date(Number.parseFloat(row.original.block_timestamp) * 1000)}
-            addSuffix
-          />
-        </div>
+        <Cell.Text
+          className="text-right"
+          text={formatDistanceToNow(
+            new Date(Number.parseFloat(row.original.block_timestamp) * 1000),
+            { addSuffix: true },
+          )}
+        />
       ),
     },
   ];
@@ -90,13 +100,14 @@ export const RecentHuntDropsTable: React.FC = () => {
   return (
     <div className="p-4">
       <Table
-        data={entries}
+        data={pageEntries}
         columns={columns}
         style="default"
         isLoading={(isLoading || isFetching) && entries.length === 0}
         classNames={{
           base: "shadow-none p-0 pt-0 bg-surface-primary-gray",
           row: "border-b border-outline-secondary-gray",
+          header: "px-6",
           cell: "px-6 py-4",
         }}
         emptyComponent={
@@ -105,6 +116,11 @@ export const RecentHuntDropsTable: React.FC = () => {
               {m["points.leaderboard.recentDrops.empty"]()}
             </p>
           </div>
+        }
+        bottomContent={
+          totalPages > 1 ? (
+            <Pagination totalPages={totalPages} currentPage={currentPage} onPageChange={setPage} />
+          ) : null
         }
       />
     </div>

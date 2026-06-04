@@ -226,6 +226,7 @@ export const LeaderboardTable: React.FC = () => {
         classNames={{
           base: "shadow-none p-0 pt-0 bg-surface-primary-gray",
           row: "border-b border-outline-secondary-gray",
+          header: "px-6",
           cell: "px-6 py-4",
         }}
         emptyComponent={
