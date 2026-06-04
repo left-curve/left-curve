@@ -40,3 +40,17 @@ export function truncateAddress(address: string, substring = 4): string {
 export function camelToTitleCase(str: string): string {
   return str.replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
 }
+
+/**
+ * Format a user's display name with a `User #N` fallback when missing
+ * or when the backend returned its auto-generated `user_<index>` form.
+ */
+export function formatUsername(
+  username: string | null | undefined,
+  userIndex: number | string,
+): string {
+  if (!username) return `User #${userIndex}`;
+  const match = username.match(/^user_(\d+)$/);
+  if (match) return `User #${match[1]}`;
+  return username;
+}

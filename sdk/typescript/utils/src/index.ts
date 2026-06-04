@@ -4,6 +4,7 @@ export {
   capitalize,
   truncateAddress,
   camelToTitleCase,
+  formatUsername,
 } from "./strings.js";
 
 export {

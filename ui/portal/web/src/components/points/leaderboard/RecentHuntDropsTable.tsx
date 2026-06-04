@@ -10,56 +10,26 @@ import {
 import type { TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
 
-import type { Decimal } from "@left-curve/utils";
+import { type Decimal, formatUsername } from "@left-curve/utils";
 
-import { formatUsername } from "./utils";
-
-type RewardMeta = {
-  label: () => string;
-  // Hard-coded literal strings so Tailwind's JIT picks them up.
-  colorClass: string;
-  withStar: boolean;
+const REWARD_META: Record<HuntedLoot, { color: string; star?: boolean }> = {
+  pearl_dango: { color: "text-utility-blue-600", star: true },
+  silver_shell: { color: "text-utility-green-500" },
+  bronze_shell: { color: "text-utility-error-400" },
+  golden_shell: { color: "text-utility-warning-500" },
 };
 
-const REWARD_META: Record<HuntedLoot, RewardMeta> = {
-  pearl_dango: {
-    label: () => m["points.leaderboard.recentDrops.rewards.pearl_dango"](),
-    colorClass: "text-utility-blue-600",
-    withStar: true,
-  },
-  silver_shell: {
-    label: () => m["points.leaderboard.recentDrops.rewards.silver_shell"](),
-    colorClass: "text-utility-green-500",
-    withStar: false,
-  },
-  bronze_shell: {
-    label: () => m["points.leaderboard.recentDrops.rewards.bronze_shell"](),
-    colorClass: "text-utility-error-400",
-    withStar: false,
-  },
-  golden_shell: {
-    label: () => m["points.leaderboard.recentDrops.rewards.golden_shell"](),
-    colorClass: "text-utility-warning-500",
-    withStar: false,
-  },
+const REWARD_LABELS: Record<HuntedLoot, () => string> = {
+  pearl_dango: m["points.leaderboard.recentDrops.rewards.pearl_dango"],
+  silver_shell: m["points.leaderboard.recentDrops.rewards.silver_shell"],
+  bronze_shell: m["points.leaderboard.recentDrops.rewards.bronze_shell"],
+  golden_shell: m["points.leaderboard.recentDrops.rewards.golden_shell"],
 };
 
 function formatBoost(multiplier: InstanceType<typeof Decimal> | null): string {
   if (!multiplier) return "—";
   const pct = multiplier.minus(1).times(100);
-  // Trim trailing zeros — "+50%" rather than "+50.00%".
   return `+${pct.toFixed(2).replace(/\.?0+$/, "")}%`;
-}
-
-/**
- * `grug_types::Timestamp` serializes as `"seconds.nanoseconds"` (e.g.
- * `"1732770602.144737024"`). `new Date(...)` on that string yields Invalid Date,
- * so we parse it as a float and multiply by 1000 to feed Date(ms).
- */
-function parseGrugTimestamp(raw: string): Date | null {
-  const seconds = Number.parseFloat(raw);
-  if (!Number.isFinite(seconds)) return null;
-  return new Date(seconds * 1000);
 }
 
 export const RecentHuntDropsTable: React.FC = () => {
@@ -81,11 +51,11 @@ export const RecentHuntDropsTable: React.FC = () => {
       header: m["points.leaderboard.recentDrops.columns.rewardType"](),
       enableSorting: false,
       cell: ({ row }) => {
-        const meta = REWARD_META[row.original.loot];
+        const { color, star } = REWARD_META[row.original.loot];
         return (
-          <div className={`flex items-center gap-1 diatype-m-medium ${meta.colorClass}`}>
-            <span>{meta.label()}</span>
-            {meta.withStar ? <IconStar className="w-4 h-4" /> : null}
+          <div className={`flex items-center gap-1 diatype-m-medium ${color}`}>
+            <span>{REWARD_LABELS[row.original.loot]()}</span>
+            {star ? <IconStar className="w-4 h-4" /> : null}
           </div>
         );
       },
@@ -106,14 +76,14 @@ export const RecentHuntDropsTable: React.FC = () => {
         </span>
       ),
       enableSorting: false,
-      cell: ({ row }) => {
-        const date = parseGrugTimestamp(row.original.block_timestamp);
-        return (
-          <div className="flex justify-end">
-            {date ? <Cell.Age date={date} addSuffix /> : <Cell.Text text="—" />}
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <Cell.Age
+            date={new Date(Number.parseFloat(row.original.block_timestamp) * 1000)}
+            addSuffix
+          />
+        </div>
+      ),
     },
   ];
 

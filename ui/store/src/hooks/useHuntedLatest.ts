@@ -13,7 +13,6 @@ export type UseHuntedLatestParameters = {
   pointsUrl: string;
   limit?: number;
   enabled?: boolean;
-  /** Override polling interval. Defaults to 60s for the "Live" feel. */
   refetchInterval?: number | false;
 };
 
@@ -47,11 +46,6 @@ export type UseHuntedMultipliersParameters = {
   enabled?: boolean;
 };
 
-/**
- * Reads `/config -> boost_config.hunted` and exposes a resolver that returns
- * the multiplier (as `Decimal`) for a given loot variant and epoch. Keys in
- * the config map are epoch ranges using the formats `"N"`, `"N-M"` or `"N-"`.
- */
 export function useHuntedMultipliers(parameters: UseHuntedMultipliersParameters) {
   const { pointsUrl, enabled = true } = parameters;
 

@@ -1,5 +1,6 @@
 import { toAccount } from "@left-curve/sdk";
 import { getAccountStatus, getUser } from "@left-curve/sdk/actions";
+import { formatUsername } from "@left-curve/utils";
 
 import type { Address } from "@left-curve/types";
 import { type Config, ConnectionStatus, type StoreUser } from "../types/store.js";
@@ -76,7 +77,7 @@ export async function reconnect<config extends Config>(
     userIndex !== undefined
       ? {
           index: userIndex,
-          username: user?.name ?? `User #${userIndex}`,
+          username: formatUsername(user?.name, userIndex),
           status: userStatus,
         }
       : undefined;

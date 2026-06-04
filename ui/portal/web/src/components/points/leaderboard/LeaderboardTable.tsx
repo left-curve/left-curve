@@ -15,8 +15,9 @@ import type { TableColumn } from "@left-curve/applets-kit";
 import type { LeaderboardTimeframe } from "@left-curve/store";
 import type React from "react";
 
+import { formatUsername } from "@left-curve/utils";
+
 import { useUserPoints } from "../useUserPoints";
-import { formatUsername } from "./utils";
 
 type LeaderboardRow = {
   ranking: number | null;
