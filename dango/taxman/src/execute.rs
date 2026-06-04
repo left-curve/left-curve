@@ -3,14 +3,13 @@ use {
     anyhow::ensure,
     dango_types::{
         DangoQuerier, bank,
-        taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
+        taxman::{Config, ExecuteMsg, InstantiateMsg},
     },
     grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Uint128},
     grug_types::{
-        Addr, AuthCtx, AuthMode, Coins, ContractEvent, Message, MutableCtx, QuerierExt, Response,
-        StdResult, Tx, TxOutcome, coins,
+        AuthCtx, AuthMode, Coins, Message, MutableCtx, QuerierExt, Response, StdResult, Tx,
+        TxOutcome, coins,
     },
-    std::collections::BTreeMap,
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
@@ -22,7 +21,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
-        ExecuteMsg::Pay { ty, payments } => pay(ctx, ty, payments),
     }
 }
 
@@ -36,45 +34,6 @@ fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     CONFIG.save(ctx.storage, &new_cfg)?;
 
     Ok(Response::new())
-}
-
-fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow::Result<Response> {
-    ensure!(ctx.funds.is_non_empty(), "funds cannot be empty!");
-
-    // Ensure funds add up to the total amount of payments.
-    let total = payments
-        .values()
-        .try_fold(Coins::new(), |mut acc, coins| -> StdResult<_> {
-            acc.insert_many(coins.clone())?;
-            Ok(acc)
-        })?;
-
-    for coin in total {
-        let paid = ctx.funds.amount_of(&coin.denom);
-        ensure!(
-            paid >= coin.amount,
-            "sent fund is less than declared payment! denom: {}, declared: {}, paid: {}",
-            coin.denom,
-            coin.amount,
-            paid
-        );
-    }
-
-    // For now, nothing to do.
-    // In the future, we will implement affiliate fees.
-    let events = payments
-        .into_iter()
-        .map(|(user, amount)| {
-            ContractEvent::new(&ReceiveFee {
-                handler: ctx.sender,
-                user,
-                ty,
-                amount,
-            })
-        })
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(Response::new().add_events(events)?)
 }
 
 // TODO: exempt the account factory from paying fee.
