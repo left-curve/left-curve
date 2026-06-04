@@ -1644,7 +1644,7 @@
     },
     "boosters": {
       "title": "Boosters",
-      "description": "A limited-time points multiplier for eligible NFT holders.",
+      "description": "Rare Boosters found in Silver Boxes that multiply your points for the current epoch.",
       "multiplierLabel": "{multiplier}x Boost",
       "locked": "--"
     },
