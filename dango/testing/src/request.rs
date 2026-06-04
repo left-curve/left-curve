@@ -554,7 +554,7 @@ where
     G: Clone + 'static,
 {
     build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
-        config_app(app_ctx, graphql_schema)
+        config_app(app_ctx, graphql_schema, 128 * 1024)
     })
 }
 

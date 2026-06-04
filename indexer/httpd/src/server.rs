@@ -28,7 +28,11 @@ use {
 #[cfg(feature = "metrics")]
 use {crate::middlewares::metrics::init_httpd_metrics, actix_web_metrics::ActixWebMetricsBuilder};
 
-pub fn config_app<G>(app_ctx: FullContext, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
+pub fn config_app<G>(
+    app_ctx: FullContext,
+    graphql_schema: G,
+    max_body_bytes: usize,
+) -> Box<dyn Fn(&mut ServiceConfig)>
 where
     G: Clone + 'static,
 {
@@ -59,6 +63,7 @@ where
 
         service_config
             .default_service(web::to(routes::index::not_found_handler))
+            .app_data(web::PayloadConfig::default().limit(max_body_bytes))
             .app_data(web::Data::new(app_ctx.db.clone()))
             .app_data(web::Data::new(app_ctx.base.clone()))
             .app_data(web::Data::new(app_ctx.clone()))
@@ -106,6 +111,7 @@ pub async fn run_server(
     ));
 
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
+    let graphql_max_body_bytes = httpd_config.graphql_max_body_bytes;
     let shutdown_flag_clone = shutdown_flag.clone();
     let server = HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -139,7 +145,11 @@ pub async fn run_server(
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
             .app_data(web::Data::new(graphql_request_timeout))
-            .configure(config_app(context.clone(), graphql_schema.clone()))
+            .configure(config_app(
+                context.clone(),
+                graphql_schema.clone(),
+                graphql_max_body_bytes,
+            ))
     })
     .workers(httpd_config.workers)
     .max_connections(httpd_config.max_connections)
@@ -206,6 +216,7 @@ pub async fn run_minimal_server(
     ));
 
     let cors_allowed_origin = httpd_config.cors_allowed_origin.clone();
+    let graphql_max_body_bytes = httpd_config.graphql_max_body_bytes;
     let shutdown_flag_clone = shutdown_flag.clone();
     HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -239,6 +250,7 @@ pub async fn run_minimal_server(
 
         app.app_data(web::Data::new(subscription_limiter.clone()))
             .app_data(web::Data::new(graphql_request_timeout))
+            .app_data(web::PayloadConfig::default().limit(graphql_max_body_bytes))
             .service(crate::routes::index::index)
             .service(crate::routes::index::minimal_up)
             .service(crate::routes::index::requester_ip)

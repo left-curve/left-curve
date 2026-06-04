@@ -17,6 +17,7 @@ pub struct HttpdConfig {
     pub max_subscriptions_per_connection: usize,
     pub max_subscriptions_global: usize,
     pub graphql_request_timeout_secs: u64,
+    pub graphql_max_body_bytes: usize,
 }
 
 impl Default for HttpdConfig {
@@ -37,6 +38,7 @@ impl Default for HttpdConfig {
             max_subscriptions_per_connection: 25,
             max_subscriptions_global: 5000,
             graphql_request_timeout_secs: 30,
+            graphql_max_body_bytes: 128 * 1024,
         }
     }
 }
