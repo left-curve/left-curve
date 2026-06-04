@@ -1563,7 +1563,24 @@
         "oneMonth": "1M"
       },
       "you": "(You)",
-      "userFallback": "User #{index}"
+      "userFallback": "User #{index}",
+      "recentDrops": {
+        "title": "Recent Hunt Drops",
+        "live": "Live",
+        "columns": {
+          "user": "User",
+          "rewardType": "Reward Type",
+          "boost": "Boost",
+          "dropped": "Dropped"
+        },
+        "rewards": {
+          "pearl_dango": "Pearl Dango",
+          "silver_shell": "Silver Shell",
+          "bronze_shell": "Bronze Shell",
+          "golden_shell": "Golden Shell"
+        },
+        "empty": "No recent drops yet"
+      }
     },
     "profile": {
       "pointHistory": "Point History",

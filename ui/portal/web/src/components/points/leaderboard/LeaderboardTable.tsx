@@ -1,4 +1,12 @@
-import { Cell, FormattedNumber, Pagination, SortHeader, Tab, Table, Tabs } from "@left-curve/applets-kit";
+import {
+  Cell,
+  FormattedNumber,
+  Pagination,
+  SortHeader,
+  Tab,
+  Table,
+  Tabs,
+} from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useLeaderboard } from "@left-curve/store";
 import { useMemo } from "react";
@@ -8,6 +16,7 @@ import type { LeaderboardTimeframe } from "@left-curve/store";
 import type React from "react";
 
 import { useUserPoints } from "../useUserPoints";
+import { formatUsername } from "./utils";
 
 type LeaderboardRow = {
   ranking: number | null;
@@ -28,13 +37,6 @@ const TIMEFRAME_TABS: { label: string; value: LeaderboardTimeframe }[] = [
 
 function totalPoints(points: { vault: string; perps: string; referral: string }): number {
   return Number(points.vault) + Number(points.perps) + Number(points.referral);
-}
-
-function formatUsername(username: string | null, userIndex: number): string {
-  if (!username) return m["points.leaderboard.userFallback"]({ index: String(userIndex) });
-  const match = username.match(/^user_(\d+)$/);
-  if (match) return m["points.leaderboard.userFallback"]({ index: match[1] });
-  return username;
 }
 
 export const LeaderboardTable: React.FC = () => {
@@ -137,7 +139,15 @@ export const LeaderboardTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text text={<FormattedNumber number={row.original.volume} formatOptions={{ currency: "USD" }} as="span" />} />
+        <Cell.Text
+          text={
+            <FormattedNumber
+              number={row.original.volume}
+              formatOptions={{ currency: "USD" }}
+              as="span"
+            />
+          }
+        />
       ),
     },
     {
@@ -151,7 +161,15 @@ export const LeaderboardTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text text={<FormattedNumber number={row.original.pnl} formatOptions={{ currency: "USD" }} as="span" />} />
+        <Cell.Text
+          text={
+            <FormattedNumber
+              number={row.original.pnl}
+              formatOptions={{ currency: "USD" }}
+              as="span"
+            />
+          }
+        />
       ),
     },
     {
@@ -166,13 +184,24 @@ export const LeaderboardTable: React.FC = () => {
       ),
       enableSorting: false,
       cell: ({ row }) => (
-        <Cell.Text text={<><FormattedNumber number={row.original.points} formatOptions={{ fractionDigits: 0 }} as="span" /> {m["points.header.points"]()}</>} />
+        <Cell.Text
+          text={
+            <>
+              <FormattedNumber
+                number={row.original.points}
+                formatOptions={{ fractionDigits: 0 }}
+                as="span"
+              />{" "}
+              {m["points.header.points"]()}
+            </>
+          }
+        />
       ),
     },
   ];
 
   return (
-    <div className="p-4 lg:p-8 flex flex-col gap-4 min-h-[45.5rem]">
+    <div className="p-4 flex flex-col gap-4 min-h-[45.5rem]">
       <Tabs
         layoutId="leaderboard-timeframe-tabs"
         selectedTab={String(timeframe ?? "all")}
