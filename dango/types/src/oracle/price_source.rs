@@ -18,6 +18,7 @@ pub type PriceSource = pyth_types::PythLazerSubscriptionDetails;
 pub enum PriceConfig {
     /// Priced from a single feed. The common case (crypto, spot).
     Single(PriceSource),
+
     /// Priced from a two-contract futures roll, blended by the block timestamp.
     Roll(RollState),
 }
@@ -34,8 +35,10 @@ pub enum PriceConfig {
 pub struct RollState {
     /// The contract being rolled out of (the front month).
     pub current: PriceSource,
+
     /// The contract being rolled into (the next month).
     pub next: PriceSource,
+
     /// Discrete roll fixings, strictly ascending in time. Each entry sets the
     /// weight on `next` at or after its timestamp; the last entry must carry
     /// weight one.
@@ -51,11 +54,6 @@ pub struct Fixing {
 }
 
 impl PriceConfig {
-    /// Construct a single-feed config (the common case).
-    pub fn single(source: PriceSource) -> Self {
-        PriceConfig::Single(source)
-    }
-
     /// The feeds to blend at `now`, paired with their weights. Always one or two
     /// entries, and the weights always sum to one. Zero-weight components are
     /// omitted, so an expired contract whose feed has gone stale is not fetched
@@ -127,9 +125,7 @@ impl RollState {
             "roll `current` and `next` must be different feeds"
         );
 
-        validate_fixings(&self.fixings)?;
-
-        Ok(())
+        validate_fixings(&self.fixings)
     }
 }
 
@@ -145,6 +141,7 @@ fn validate_fixings(fixings: &[Fixing]) -> anyhow::Result<()> {
             "roll fixing weight must be in (0, 1], got `{}`",
             fixing.next_weight
         );
+
         if let Some(prev) = prev {
             ensure!(
                 fixing.at > prev.at,
@@ -155,6 +152,7 @@ fn validate_fixings(fixings: &[Fixing]) -> anyhow::Result<()> {
                 "roll fixing weights must be strictly ascending"
             );
         }
+
         prev = Some(fixing);
     }
 
@@ -170,7 +168,7 @@ fn validate_fixings(fixings: &[Fixing]) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, pyth_types::Channel};
+    use {super::*, grug_types::JsonSerExt, pyth_types::Channel};
 
     fn src(id: u32) -> PriceSource {
         PriceSource {
@@ -210,11 +208,13 @@ mod tests {
             roll.next_weight_at(Timestamp::from_seconds(50)),
             Dimensionless::ZERO
         );
+
         // On a fixing boundary the new weight takes effect (inclusive).
         assert_eq!(
             roll.next_weight_at(Timestamp::from_seconds(100)),
             Dimensionless::new_percent(20)
         );
+
         // Held flat between fixings (no interpolation).
         assert_eq!(
             roll.next_weight_at(Timestamp::from_seconds(199)),
@@ -224,6 +224,7 @@ mod tests {
             roll.next_weight_at(Timestamp::from_seconds(200)),
             Dimensionless::new_percent(40)
         );
+
         // After the last fixing: full weight, held forever.
         assert_eq!(
             roll.next_weight_at(Timestamp::from_seconds(10_000)),
@@ -259,19 +260,18 @@ mod tests {
 
     #[test]
     fn single_is_full_weight_at_any_time() {
-        let config = PriceConfig::single(src(7));
+        let config = PriceConfig::Single(src(7));
         assert_eq!(
             config.components_at(Timestamp::from_seconds(123)).unwrap(),
             vec![(src(7), Dimensionless::ONE),]
         );
     }
 
+    /// Confirms the on-chain/genesis JSON shape of a single-source config.
     #[test]
     fn single_serializes_externally_tagged() {
-        use grug_types::JsonSerExt;
-        // Confirms the on-chain/genesis JSON shape of a single-source config.
         assert_eq!(
-            PriceConfig::single(src(1)).to_json_string().unwrap(),
+            PriceConfig::Single(src(1)).to_json_string().unwrap(),
             r#"{"single":{"id":1,"channel":"real_time"}}"#
         );
     }
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn validate_accepts_a_well_formed_roll() {
         PriceConfig::Roll(five_step_roll()).validate().unwrap();
-        PriceConfig::single(src(1)).validate().unwrap();
+        PriceConfig::Single(src(1)).validate().unwrap();
     }
 
     #[test]

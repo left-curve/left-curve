@@ -164,7 +164,7 @@ fn build_register_price_sources(
         .map(|(denom, e)| {
             (
                 denom.clone(),
-                PriceConfig::single(PriceSource {
+                PriceConfig::Single(PriceSource {
                     id: e.pyth_id,
                     channel: Channel::RealTime,
                 }),

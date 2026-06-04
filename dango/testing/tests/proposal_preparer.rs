@@ -67,7 +67,7 @@ async fn proposal_pyth() {
     let oracle = contracts.oracle;
 
     let price_source = btree_map!(
-        perp_btc::DENOM.clone() => PriceConfig::single(PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel })
+        perp_btc::DENOM.clone() => PriceConfig::Single(PriceSource { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel })
     );
 
     let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
@@ -156,12 +156,12 @@ async fn proposal_pyth() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &ExecuteMsg::RegisterPriceSources(
-                    btree_map!( test_denom.clone() => PriceConfig::single(PriceSource {
+                &ExecuteMsg::RegisterPriceSources(btree_map! {
+                    test_denom.clone() => PriceConfig::Single(PriceSource {
                         id: NOT_USED_ID_LAZER.id,
                         channel: NOT_USED_ID_LAZER.channel,
-                    })),
-                ),
+                    }),
+                }),
                 Coins::new(),
             )
             .await

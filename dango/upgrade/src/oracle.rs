@@ -22,9 +22,7 @@ mod legacy_oracle {
 pub fn do_oracle_upgrades(storage: Box<dyn Storage>) -> AppResult<()> {
     let mut oracle_storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &ORACLE]);
 
-    migrate_price_sources(&mut oracle_storage)?;
-
-    Ok(())
+    migrate_price_sources(&mut oracle_storage)
 }
 
 /// Migrate the oracle's price sources from a single source per denom to the new
@@ -40,14 +38,11 @@ fn migrate_price_sources(storage: &mut dyn Storage) -> AppResult<()> {
     // `PriceSource`, so rather than swallowing that decode error below we detect
     // "already migrated" up front: the first entry decodes cleanly under the new
     // shape.
-    let already_migrated = matches!(
-        dango_oracle::PRICE_SOURCES
-            .range(storage, None, None, Order::Ascending)
-            .next(),
-        Some(Ok(_))
-    );
-
-    if already_migrated {
+    if dango_oracle::PRICE_SOURCES
+        .range(storage, None, None, Order::Ascending)
+        .next()
+        .is_some_and(|res| res.is_ok())
+    {
         return Ok(());
     }
 
@@ -58,7 +53,7 @@ fn migrate_price_sources(storage: &mut dyn Storage) -> AppResult<()> {
         .collect::<StdResult<Vec<_>>>()?;
 
     for (denom, source) in legacy {
-        dango_oracle::PRICE_SOURCES.save(storage, &denom, &PriceConfig::single(source))?;
+        dango_oracle::PRICE_SOURCES.save(storage, &denom, &PriceConfig::Single(source))?;
     }
 
     Ok(())
@@ -102,14 +97,14 @@ mod tests {
         // Each denom now maps to a `Single` config holding the original source.
         assert_eq!(
             dango_oracle::PRICE_SOURCES.load(&storage, &btc).unwrap(),
-            PriceConfig::single(PriceSource {
+            PriceConfig::Single(PriceSource {
                 id: 1,
                 channel: Channel::RealTime,
             }),
         );
         assert_eq!(
             dango_oracle::PRICE_SOURCES.load(&storage, &eth).unwrap(),
-            PriceConfig::single(PriceSource {
+            PriceConfig::Single(PriceSource {
                 id: 2,
                 channel: Channel::RealTime,
             }),

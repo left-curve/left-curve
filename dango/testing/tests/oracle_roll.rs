@@ -29,25 +29,26 @@ async fn roll_price_blends_over_the_schedule() {
     let t0 = suite.block.timestamp;
 
     // 100% current until t0+100, 40% on next from t0+100, 100% next from t0+200.
-    let roll = PriceConfig::Roll(RollState {
-        current: source(9001),
-        next: source(9002),
-        fixings: vec![
-            Fixing {
-                at: t0 + Duration::from_seconds(100),
-                next_weight: Dimensionless::new_percent(40),
-            },
-            Fixing {
-                at: t0 + Duration::from_seconds(200),
-                next_weight: Dimensionless::ONE,
-            },
-        ],
-    });
     suite
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::RegisterPriceSources(btree_map! { denom.clone() => roll }),
+            &ExecuteMsg::RegisterPriceSources(btree_map! {
+               denom.clone() => PriceConfig::Roll(RollState {
+                   current: source(9001),
+                   next: source(9002),
+                   fixings: vec![
+                       Fixing {
+                           at: t0 + Duration::from_seconds(100),
+                           next_weight: Dimensionless::new_percent(40),
+                       },
+                       Fixing {
+                           at: t0 + Duration::from_seconds(200),
+                           next_weight: Dimensionless::ONE,
+                       },
+                   ],
+               }),
+            }),
             Coins::new(),
         )
         .await

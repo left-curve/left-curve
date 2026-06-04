@@ -93,8 +93,7 @@ impl<'a> OracleQuerierNoCache<'a> {
         for (source, weight) in &components {
             let price = self.ctx.get_price(source.id)?;
 
-            humanized_price =
-                humanized_price.checked_add(price.humanized_price.checked_mul(*weight)?)?;
+            humanized_price.checked_add_assign(price.humanized_price.checked_mul(*weight)?)?;
 
             // The combined price is only as fresh as its oldest component.
             timestamp = Some(match timestamp {
@@ -263,7 +262,7 @@ mod tests {
     fn single_source_passthrough() {
         query_local(
             &eth::DENOM,
-            PriceConfig::single(source(1)),
+            PriceConfig::Single(source(1)),
             vec![(1, price(2_000, 1_000, MarketSession::Regular))],
             9_999,
         )
@@ -311,7 +310,7 @@ mod tests {
     fn rejects_non_positive_price() {
         query_local(
             &eth::DENOM,
-            PriceConfig::single(source(1)),
+            PriceConfig::Single(source(1)),
             vec![(1, price(-5, 1_000, MarketSession::Regular))],
             1_000,
         )

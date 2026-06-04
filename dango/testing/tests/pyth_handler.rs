@@ -38,7 +38,7 @@ async fn handler() {
         .address;
 
     let price_source = btree_map!(
-        perp_btc::DENOM.clone() => PriceConfig::single(PriceSource {
+        perp_btc::DENOM.clone() => PriceConfig::Single(PriceSource {
             id: 1,
             channel: Channel::RealTime,
         }),

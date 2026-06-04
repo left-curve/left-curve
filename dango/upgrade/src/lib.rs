@@ -14,7 +14,5 @@ pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> 
     taxman::sweep_fees_to_owner(storage.clone())?;
 
     // Migrate the oracle's price sources to the new `PriceConfig` shape.
-    oracle::do_oracle_upgrades(storage)?;
-
-    Ok(())
+    oracle::do_oracle_upgrades(storage)
 }
