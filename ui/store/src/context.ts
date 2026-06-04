@@ -4,7 +4,6 @@ import { type PropsWithChildren, createContext, createElement } from "react";
 import { Hydrate } from "./hydrate.js";
 import { createConfig } from "./createConfig.js";
 import { createTransport } from "@left-curve/sdk";
-import { formatUsername } from "@left-curve/utils";
 import { remote } from "./connectors/remote.js";
 
 import { ConnectionStatus, type Config, type State } from "./types/store.js";
@@ -55,7 +54,7 @@ export const DangoRemoteProvider: React.FC<React.PropsWithChildren> = (parameter
         current: connector.uid,
         user: {
           index: connection.account.owner,
-          username: formatUsername(undefined, connection.account.owner),
+          username: `User #${connection.account.owner}`,
           status: "active" as const,
         },
         connectors: new Map([[connector.uid, { ...connection, connector }]]),
