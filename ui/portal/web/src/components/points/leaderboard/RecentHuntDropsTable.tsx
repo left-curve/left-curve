@@ -1,4 +1,4 @@
-import { Cell, IconStar, Table } from "@left-curve/applets-kit";
+import { Cell, IconStar, Table, twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import {
   type HuntedLatestEntry,
@@ -53,7 +53,7 @@ export const RecentHuntDropsTable: React.FC = () => {
       cell: ({ row }) => {
         const { color, star } = REWARD_META[row.original.loot];
         return (
-          <div className={`flex items-center gap-1 diatype-m-medium ${color}`}>
+          <div className={twMerge("flex items-center gap-1 diatype-m-medium", color)}>
             <span>{REWARD_LABELS[row.original.loot]()}</span>
             {star ? <IconStar className="w-4 h-4" /> : null}
           </div>
