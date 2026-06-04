@@ -328,9 +328,12 @@ export function PerpsTradeHistory() {
         </div>
       )}
 
-      <div className="flex flex-col w-full max-h-[31vh] overflow-x-auto scrollbar-none">
+      <div
+        ref={scrollRef}
+        className="w-full max-h-[31vh] overflow-auto scrollbar-none"
+      >
         <div
-          className="grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
+          className="sticky top-0 z-10 grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
           style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}
         >
           {columns.map((col) => (
@@ -340,11 +343,7 @@ export function PerpsTradeHistory() {
           ))}
         </div>
 
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto scrollbar-none"
-          style={{ minWidth: "fit-content" }}
-        >
+        <div style={{ minWidth: "fit-content" }}>
           {showEmpty ? (
             <EmptyPlaceholder
               component={m["dex.protrade.history.noOpenOrders"]()}

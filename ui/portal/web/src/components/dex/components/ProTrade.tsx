@@ -220,7 +220,7 @@ const ProTradeHistory: React.FC = () => {
   const openOrdersCount = Object.keys(perpsOrders ?? {}).length;
 
   return (
-    <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
+    <div className="flex-1 max-w-[100vw] lg:max-w-none p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative flex items-center justify-between">
         <Tabs
           color="line-red"
