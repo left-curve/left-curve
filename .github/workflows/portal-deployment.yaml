@@ -298,12 +298,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          curl -sSf -X PUT \
-            -H "Authorization: token ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${GH_REPO}/environments/${GITHUB_ENVIRONMENT}" \
-            -d '{"wait_timer":0,"reviewers":[],"deployment_branch_policy":null}'
-
           deployment_body="$(jq -n \
             --arg ref "$GIT_COMMIT" \
             --arg environment "$GITHUB_ENVIRONMENT" \
