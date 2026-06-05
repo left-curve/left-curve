@@ -44,7 +44,8 @@ RUN pnpm build:portal-web
 FROM nginx:1.28.3-alpine
 
 # Fix CVE-2025-58050 in pcre2 (require >=10.46)
-RUN apk add --no-cache 'pcre2>=10.46-r0' jq
+RUN apk upgrade --no-cache \
+  && apk add --no-cache 'pcre2>=10.46-r0' 'jq=1.8.1-r0'
 
 ARG GIT_COMMIT
 
