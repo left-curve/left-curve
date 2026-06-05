@@ -148,6 +148,16 @@ const setStableR2AssetRulePublicPath = (rules: AssetRule[] | undefined) => {
 };
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
+const imagePathTransformLoader = path.resolve(__dirname, "scripts/image-path-transform-loader.cjs");
+const imagePathTransformIncludes = [
+  path.resolve(__dirname, "constants.config.ts"),
+  path.resolve(__dirname, "store.config.ts"),
+  path.resolve(__dirname, "src"),
+  path.resolve(__dirname, "node_modules", "@left-curve", "foundation"),
+  path.resolve(__dirname, "node_modules", "@left-curve", "store", "src"),
+  path.resolve(workspaceRoot, "ui/foundation"),
+  path.resolve(workspaceRoot, "ui/store/src"),
+];
 
 const tradingViewPath = path.resolve(
   workspaceRoot,
@@ -418,6 +428,15 @@ export default defineConfig({
   tools: {
     rspack: (config, { rspack }) => {
       config.output ??= {};
+      config.module ??= {};
+      config.module.rules ??= [];
+
+      config.module.rules.unshift({
+        test: /\.[cm]?[jt]sx?$/,
+        include: imagePathTransformIncludes,
+        enforce: "pre",
+        loader: imagePathTransformLoader,
+      });
 
       const fallbackAssetModuleFilename = config.output.assetModuleFilename as
         | AssetModuleFilename
@@ -433,7 +452,6 @@ export default defineConfig({
       }) as NonNullable<NonNullable<Rspack.Configuration["output"]>["assetModuleFilename"]>;
 
       if (useR2Assets) {
-        config.module ??= {};
         config.module.generator ??= {};
 
         const assetGenerator = (config.module.generator.asset || {}) as AssetGenerator;

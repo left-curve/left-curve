@@ -19,7 +19,6 @@ import {
   huntedDisplay,
   nftDisplay,
 } from "./loot";
-import { imageUrl } from "~/asset-url";
 
 export type { LootDisplay };
 export type { LootBucket } from "./LootSummary";
@@ -88,12 +87,11 @@ const prefetchImages = () => {
   ];
 
   images.forEach((src) => {
-    const resolvedSrc = imageUrl(src);
     const img = new Image();
-    if (resolvedSrc.startsWith("http")) {
+    if (src.startsWith("http")) {
       img.crossOrigin = "anonymous";
     }
-    img.src = resolvedSrc;
+    img.src = src;
     prefetchedImages.push(img);
   });
 };
