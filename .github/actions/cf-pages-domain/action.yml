@@ -237,7 +237,7 @@ runs:
             --arg type "CNAME" \
             --arg name "$CF_HOSTNAME" \
             --arg content "$CF_TARGET" \
-            '{type: $type, name: $name, content: $content, ttl: 1, proxied: true}')"
+            '{type: $type, name: $name, content: $content, ttl: 1, proxied: false}')"
 
           if [ -n "$dns_record_id" ]; then
             dns_change="updated"
