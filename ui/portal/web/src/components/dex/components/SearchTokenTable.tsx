@@ -33,15 +33,27 @@ const PerpsPairNameWithFav: React.FC<{
   boostMultiplier?: string;
 }> = memo(({ baseCoin, quoteCoin, pairKey, boostMultiplier }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
+  const isFav = hasFavPair(pairKey);
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
-      <StarToggleButton isActive={hasFavPair(pairKey)} onToggle={() => toggleFavPair(pairKey)} />
+      <StarToggleButton
+        isActive={isFav}
+        onToggle={() => toggleFavPair(pairKey)}
+        className={isFav ? "text-primitives-warning-500" : "text-fg-secondary-500"}
+      />
       <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
       <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <Badge text="Perp" color="green" size="s" />
       {boostMultiplier ? (
-        <Tooltip title={`${formatMultiplier(boostMultiplier)}x points`}>
+        <Tooltip
+          className="min-w-0 rounded-md"
+          content={
+            <div className="diatype-sm-regular text-primitives-gray-dark-200">
+              {`${formatMultiplier(boostMultiplier)}x points`}
+            </div>
+          }
+        >
           <IconFlame className="text-primitives-red-light-500 w-4 h-4" />
         </Tooltip>
       ) : null}
