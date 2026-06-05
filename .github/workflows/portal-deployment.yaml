@@ -211,16 +211,27 @@ jobs:
           enabled_features_json="$(jq -cn --arg csv "$ENABLED_FEATURES" '$csv | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')"
 
           DANGO_CONFIG_JSON="$(jq -c -n \
-            --slurpfile chain sdk/typescript/dango/src/chains/definitions/devnet.json \
             --arg chain_id "pr-${PR_NUMBER}" \
             --arg chain_name "PR ${PR_NUMBER}" \
+            --arg explorer_name "PR ${PR_NUMBER} Explorer" \
             --arg api_url "$api_url" \
             --arg faucet_url "$faucet_url" \
             --arg up_url "$up_url" \
             --arg banner "Preview app from PR ${PR_NUMBER}" \
             --argjson enabled_features "$enabled_features_json" \
             '{
-              chain: ($chain[0] | .id = $chain_id | .name = $chain_name | .url = $api_url),
+              chain: {
+                id: $chain_id,
+                name: $chain_name,
+                nativeCoin: "dango",
+                url: $api_url,
+                blockExplorer: {
+                  name: $explorer_name,
+                  txPage: "/tx/${txHash}",
+                  accountPage: "/account/${address}",
+                  contractPage: "/contract/${address}"
+                }
+              },
               urls: {
                 faucetUrl: $faucet_url,
                 questUrl: "https://quest-bot-devnet.dango.zone/check_username",
