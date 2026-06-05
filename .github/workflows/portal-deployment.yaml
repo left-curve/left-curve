@@ -272,7 +272,6 @@ jobs:
           accountId: ${{ env.CF_ACCOUNT_ID }}
           workingDirectory: ui/portal/web
           command: pages deploy ./build --project-name=${{ env.CF_PAGES_PROJECT }} --branch=${{ steps.pages.outputs.deploy_branch }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bind PR Pages custom domain
         if: github.event_name == 'pull_request'
