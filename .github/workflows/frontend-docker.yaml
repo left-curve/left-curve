@@ -179,6 +179,10 @@ jobs:
           set -euo pipefail
           for image in "${FRONTEND_IMAGE}:${GIT_COMMIT}" "${FRONTEND_IMAGE}:latest"; do
             digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
+            if [ -z "$digest" ]; then
+              echo "Unable to determine digest for $image" >&2
+              exit 1
+            fi
             cosign verify \
               --certificate-identity "$COSIGN_IDENTITY" \
               --certificate-oidc-issuer https://token.actions.githubusercontent.com \

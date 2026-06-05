@@ -1238,6 +1238,7 @@ jobs:
           else
             FRONTEND_MODE="container"
           fi
+          echo "FRONTEND_MODE=$FRONTEND_MODE (app=$FRONTEND_APP_CHANGED, docker=$FRONTEND_DOCKER_CHANGED)"
 
           {
             echo "LOCALDANGO_DANGO_PORT=$DANGO_PORT"
@@ -1255,7 +1256,11 @@ jobs:
               docker compose --profile frontend -f docker-compose.yml pull frontend
             fi
 
-            docker compose --profile frontend -f docker-compose.yml up -d --wait --force-recreate --no-deps frontend
+            docker compose --profile frontend -f docker-compose.yml up -d --wait --force-recreate --no-deps frontend || {
+              docker compose --profile frontend -f docker-compose.yml logs frontend --tail=100
+              docker compose --profile frontend -f docker-compose.yml ps
+              exit 1
+            }
           fi
 
           docker compose ps
@@ -1274,7 +1279,7 @@ jobs:
           if [ "$FRONTEND_MODE" = "container" ]; then
             FRONTEND_URL="http://localhost:5081"
             echo "Frontend config.js chain id snippet:"
-            curl -sSf "$FRONTEND_URL/config.js" | grep -o '"id":"[^"]*"' | head -n1 || true
+            curl -sSf "$FRONTEND_URL/config.js" | grep -o '"id":"[^"]*"' | head -n1
             echo "Frontend /up status code:"
             curl -sS -o /dev/null -w "%{http_code}\n" "$FRONTEND_URL/up"
           fi

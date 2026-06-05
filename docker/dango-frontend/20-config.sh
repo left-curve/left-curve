@@ -1,4 +1,5 @@
 #!/bin/sh
+set -eu
 
 csv_to_json_array() {
   # Convert a comma-separated string into a JSON array of trimmed strings.
@@ -26,15 +27,18 @@ CONFIG_FILE=/usr/share/nginx/html/config.js
 HTML_FILE=/usr/share/nginx/html/index.html
 
 if [ -n "${DANGO_CONFIG_JSON:-}" ]; then
-cat > "$CONFIG_FILE" <<EOF
+  printf '%s' "$DANGO_CONFIG_JSON" | jq -e . >/dev/null
+  cat > "$CONFIG_FILE" <<EOF
 window.dango=${DANGO_CONFIG_JSON};
 EOF
 else
-cat > "$CONFIG_FILE" <<EOF
-window.dango={"chain":{"id":"${CHAIN_ID:-localdango-1}","name":"Local","nativeCoin":"dango","url":"${INDEXER_URL:-http://localhost:8080}","blockExplorer":{"name":"Local Explorer","txPage":"/tx/\${txHash}","accountPage":"/account/\${address}","contractPage":"/contract/\${address}"}},"urls":{"faucetUrl":"${FAUCET_URL:-http://localhost:8082/mint}","questUrl":"${QUEST_URL:-http://localhost:8081/check_username}","upUrl":"${UP_URL:-http://localhost:8080/up}","pointsUrl":"${POINTS_URL:-http://localhost:8083/points-api}"},"banner":"${BANNER}","enabledFeatures":${enabled_features_json}};
+  cat > "$CONFIG_FILE" <<EOF
+window.dango={"chain":{"id":"${CHAIN_ID:-localdango-1}","name":"Local","nativeCoin":"dango","url":"${INDEXER_URL:-http://localhost:8080}","blockExplorer":{"name":"Local Explorer","txPage":"/tx/\${txHash}","accountPage":"/account/\${address}","contractPage":"/contract/\${address}"}},"urls":{"faucetUrl":"${FAUCET_URL:-http://localhost:8082/mint}","questUrl":"${QUEST_URL:-http://localhost:8081/check_username}","upUrl":"${UP_URL:-http://localhost:8080/up}","pointsUrl":"${POINTS_URL:-http://localhost:8083/points-api}"},"banner":"${BANNER:-}","enabledFeatures":${enabled_features_json}};
 EOF
 fi
 
 # Cache-bust: update the config.js query hash in index.html
 CONFIG_HASH=$(md5sum "$CONFIG_FILE" | cut -c1-8)
+grep -Eq 'config\.js\?v=[a-f0-9]+' "$HTML_FILE"
 sed -i "s|config\.js?v=[a-f0-9]*|config.js?v=$CONFIG_HASH|g" "$HTML_FILE"
+grep -q "config.js?v=$CONFIG_HASH" "$HTML_FILE"

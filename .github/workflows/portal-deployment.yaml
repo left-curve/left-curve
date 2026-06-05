@@ -232,7 +232,9 @@ jobs:
 
           printf 'window.dango = %s;\n' "$DANGO_CONFIG_JSON" > ui/portal/web/build/config.js
           config_hash="$(md5sum ui/portal/web/build/config.js | cut -c1-8)"
+          grep -Eq 'config\.js\?v=[a-f0-9]+' ui/portal/web/build/index.html
           sed -i "s|config\.js?v=[a-f0-9]*|config.js?v=${config_hash}|g" ui/portal/web/build/index.html
+          grep -q "config.js?v=${config_hash}" ui/portal/web/build/index.html
 
       - name: Upload assets to R2
         if: steps.pages.outputs.upload_r2 == 'true'
@@ -290,6 +292,7 @@ jobs:
           GITHUB_ENVIRONMENT: ${{ steps.pages.outputs.github_environment }}
           DEPLOYMENT_URL: ${{ steps.pages.outputs.frontend_url }}
           DEPLOYMENT_DESCRIPTION: ${{ steps.pages.outputs.deployment_description }}
+          PAGES_DEPLOY_BRANCH: ${{ steps.pages.outputs.deploy_branch }}
         run: |
           set -euo pipefail
 
@@ -310,6 +313,10 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${GH_REPO}/deployments" \
             -d "$deployment_body" | jq -r '.id')"
+          if [ -z "$deployment_id" ] || [ "$deployment_id" = "null" ]; then
+            echo "::error::GitHub deployment creation did not return an id"
+            exit 1
+          fi
 
           status_body="$(jq -n \
             --arg target_url "$DEPLOYMENT_URL" \
@@ -330,7 +337,7 @@ jobs:
             echo "| **Status** | ✅ |"
             echo "| **Environment** | \`${GITHUB_ENVIRONMENT}\` |"
             echo "| **URL** | [${DEPLOYMENT_URL}](${DEPLOYMENT_URL}) |"
-            echo "| **Pages branch** | \`${{ steps.pages.outputs.deploy_branch }}\` |"
+            echo "| **Pages branch** | \`${PAGES_DEPLOY_BRANCH}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save pnpm cache
