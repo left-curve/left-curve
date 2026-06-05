@@ -2,6 +2,7 @@ import { IconClock, IconFlash, twMerge, useApp } from "@left-curve/applets-kit";
 import type { HuntedLoot } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 function formatBoostEndsAt(date: Date, locale: string, timeZone: string): string {
   const tz = timeZone === "local" ? undefined : timeZone;
@@ -66,7 +67,7 @@ export const BoosterCard: React.FC<BoosterCardProps> = ({
       )}
     >
       <div className="relative">
-        <img
+        <Image
           src={BOOSTER_IMAGE[loot]}
           alt={m["points.boosters.multiplierLabel"]({ multiplier: displayMultiplier })}
           className={twMerge(

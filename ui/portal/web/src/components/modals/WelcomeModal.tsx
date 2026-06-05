@@ -5,6 +5,7 @@ import { Button, twMerge, useApp } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 export const WelcomeModal: React.FC = () => {
   const { chain } = useConfig();
@@ -23,7 +24,7 @@ export const WelcomeModal: React.FC = () => {
       <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice rounded-xl border border-outline-secondary-gray max-w-2xl">
         <div className="flex flex-col gap-4 p-4 border-b border-b-secondary-gray">
           <div className="w-12 h-12 rounded-full flex items-center justify-center">
-            <img
+            <Image
               src="/favicon.svg"
               alt="dango logo"
               className={

@@ -5,6 +5,7 @@ import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
 import { formatUnits } from "@left-curve/utils";
+import { Image } from "~/components/foundation/Image";
 
 import type { Coin } from "@left-curve/types";
 
@@ -29,7 +30,7 @@ const Spot: React.FC<SpotProps> = ({ coin }) => {
             {coinInfo.type === "lp" ? (
               <PairAssets assets={[coinInfo.base, coinInfo.quote]} />
             ) : (
-              <img src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />
+              <Image src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />
             )}
           </div>
           <div className="flex flex-col">
@@ -60,7 +61,11 @@ const Perp: React.FC<PerpsProps> = ({ amount }) => {
       <div className={twMerge("flex items-center justify-between transition-all")}>
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
-            <img src={perpsMarginAsset.logoURI} className="h-8 w-8" alt={perpsMarginAsset.symbol} />
+            <Image
+              src={perpsMarginAsset.logoURI}
+              className="h-8 w-8"
+              alt={perpsMarginAsset.symbol}
+            />
           </div>
           <div className="flex flex-col">
             <p className="text-ink-primary-900 diatype-m-bold">{perpsMarginAsset.name}</p>
@@ -85,17 +90,11 @@ const Vault: React.FC<VaultProps> = ({ shares, usdValue }) => {
       <div className={twMerge("flex items-center justify-between transition-all")}>
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
-            <img
-              src={perpsMarginAsset.logoURI}
-              className="h-8 w-8"
-              alt="DLP"
-            />
+            <Image src={perpsMarginAsset.logoURI} className="h-8 w-8" alt="DLP" />
           </div>
           <div className="flex flex-col">
             <p className="text-ink-primary-900 diatype-m-bold">DLP</p>
-            <p className="text-ink-tertiary-500 diatype-m-regular">
-              Dango Liquidity Provider
-            </p>
+            <p className="text-ink-tertiary-500 diatype-m-regular">Dango Liquidity Provider</p>
           </div>
         </div>
         <div className="flex flex-col items-end text-ink-primary-900">

@@ -18,6 +18,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 import type { ActivityRecord } from "@left-curve/store";
+import { Image } from "~/components/foundation/Image";
 
 type ActivitiesProps = {
   className?: string;
@@ -59,7 +60,7 @@ export const Activities: React.FC<ActivitiesProps> = (props) => {
   if (!hasActivities) {
     return (
       <div className="px-4 flex flex-col gap-6 items-center">
-        <img
+        <Image
           src="/images/emojis/detailed/hamster.svg"
           alt="hamster"
           className="mx-auto h-[125px] w-auto"

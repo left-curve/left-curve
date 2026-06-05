@@ -1,10 +1,17 @@
-import { Button, IconButton, IconClose, IconWarningTriangle, useApp } from "@left-curve/applets-kit";
+import {
+  Button,
+  IconButton,
+  IconClose,
+  IconWarningTriangle,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import { forwardRef, useImperativeHandle } from "react";
 
 import { formatNumber } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 type VaultWithdrawLiquidityWithPenaltyProps = {
   confirmWithdrawal: () => void;
@@ -53,11 +60,7 @@ export const VaultWithdrawLiquidityWithPenalty = forwardRef(
           <div className="w-10 h-10 rounded-full bg-primitives-red-light-100 flex items-center justify-center">
             <IconWarningTriangle className="w-5 h-5 text-primitives-red-light-600" />
           </div>
-          <IconButton
-            className="hidden md:block"
-            variant="link"
-            onClick={handleCancel}
-          >
+          <IconButton className="hidden md:block" variant="link" onClick={handleCancel}>
             <IconClose />
           </IconButton>
         </div>
@@ -80,7 +83,7 @@ export const VaultWithdrawLiquidityWithPenalty = forwardRef(
               <p className="text-ink-secondary-700 h3-bold">
                 {formatNumber(usdToWithdraw, { ...formatNumberOptions, currency: "USD" })}
               </p>
-              <img src="/images/coins/usd.svg" alt="USD" className="w-8 h-8" />
+              <Image src="/images/coins/usd.svg" alt="USD" className="w-8 h-8" />
             </div>
           </div>
 
@@ -99,7 +102,10 @@ export const VaultWithdrawLiquidityWithPenalty = forwardRef(
               {m["vaultLiquidity.modal.youReceive"]()}
             </p>
             <p className="text-ink-secondary-700 h3-bold">
-              {formatNumber(String(amountAfterPenalty), { ...formatNumberOptions, currency: "USD" })}
+              {formatNumber(String(amountAfterPenalty), {
+                ...formatNumberOptions,
+                currency: "USD",
+              })}
             </p>
           </div>
 

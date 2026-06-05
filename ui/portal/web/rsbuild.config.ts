@@ -50,6 +50,102 @@ const gitCommit = (() => {
 
 const r2AssetsPrefix = process.env.R2_ASSETS_PREFIX || "/";
 const useR2Assets = r2AssetsPrefix !== "/";
+const stableR2AssetsPrefix = (() => {
+  if (!useR2Assets) return "/";
+  try {
+    return new URL("/", r2AssetsPrefix).toString();
+  } catch {
+    return "/";
+  }
+})();
+
+const stableR2AssetTypes = {
+  font: new Set([".eot", ".otf", ".ttf", ".woff", ".woff2"]),
+  image: new Set([
+    ".apng",
+    ".avif",
+    ".bmp",
+    ".cur",
+    ".gif",
+    ".ico",
+    ".jfif",
+    ".jpg",
+    ".jpeg",
+    ".pjp",
+    ".pjpeg",
+    ".png",
+    ".tif",
+    ".tiff",
+    ".webp",
+  ]),
+  svg: new Set([".svg"]),
+} as const;
+
+type StableR2AssetType = keyof typeof stableR2AssetTypes;
+
+type AssetPathData = {
+  filename?: string;
+  module?: {
+    matchResource?: string;
+    nameForCondition?: () => string | null;
+    resource?: string;
+  };
+};
+
+type AssetInfo = unknown;
+type AssetModuleFilename = string | ((pathData: AssetPathData, assetInfo?: AssetInfo) => string);
+type AssetGenerator = {
+  publicPath?: string | ((pathData: AssetPathData, assetInfo?: AssetInfo) => string);
+};
+
+type AssetRule = {
+  generator?: AssetGenerator;
+  oneOf?: AssetRule[];
+  rules?: AssetRule[];
+  type?: string;
+};
+
+const getAssetSource = (pathData: AssetPathData) =>
+  pathData.filename ||
+  pathData.module?.matchResource ||
+  pathData.module?.resource ||
+  pathData.module?.nameForCondition?.() ||
+  "";
+
+const getStableR2AssetType = (pathData: AssetPathData): StableR2AssetType | null => {
+  const assetPath = getAssetSource(pathData).split(/[?#]/)[0];
+  const extension = path.extname(assetPath).toLowerCase();
+
+  return (
+    (Object.entries(stableR2AssetTypes) as [StableR2AssetType, Set<string>][]).find(
+      ([, extensions]) => extensions.has(extension),
+    )?.[0] || null
+  );
+};
+
+const getStableR2AssetFilename = (pathData: AssetPathData) => {
+  const assetType = getStableR2AssetType(pathData);
+  return assetType ? `static/${assetType}/[name].[contenthash:8][ext][query]` : null;
+};
+
+const getStableR2AssetPublicPath = (pathData: AssetPathData) =>
+  getStableR2AssetType(pathData) ? stableR2AssetsPrefix : r2AssetsPrefix;
+
+const setStableR2AssetRulePublicPath = (rules: AssetRule[] | undefined) => {
+  if (!rules) return;
+
+  for (const rule of rules) {
+    if (rule.type === "asset" || rule.type === "asset/resource") {
+      rule.generator = {
+        ...rule.generator,
+        publicPath: getStableR2AssetPublicPath,
+      };
+    }
+
+    setStableR2AssetRulePublicPath(rule.rules);
+    setStableR2AssetRulePublicPath(rule.oneOf);
+  }
+};
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
@@ -289,10 +385,12 @@ export default defineConfig({
     ],
   },
   performance: {
-    prefetch: {
-      type: "all-assets",
-      include: [/.*\.woff2$/],
-    },
+    prefetch: useR2Assets
+      ? undefined
+      : {
+          type: "all-assets",
+          include: [/.*\.woff2$/],
+        },
   },
   output: {
     assetPrefix: r2AssetsPrefix,
@@ -319,6 +417,41 @@ export default defineConfig({
   ],
   tools: {
     rspack: (config, { rspack }) => {
+      config.output ??= {};
+
+      const fallbackAssetModuleFilename = config.output.assetModuleFilename as
+        | AssetModuleFilename
+        | undefined;
+
+      config.output.assetModuleFilename = ((pathData: AssetPathData, assetInfo?: AssetInfo) => {
+        const stableFilename = getStableR2AssetFilename(pathData);
+        if (stableFilename) return stableFilename;
+        if (typeof fallbackAssetModuleFilename === "function") {
+          return fallbackAssetModuleFilename(pathData, assetInfo);
+        }
+        return fallbackAssetModuleFilename || "static/assets/[name].[contenthash:8][ext][query]";
+      }) as NonNullable<NonNullable<Rspack.Configuration["output"]>["assetModuleFilename"]>;
+
+      if (useR2Assets) {
+        config.module ??= {};
+        config.module.generator ??= {};
+
+        const assetGenerator = (config.module.generator.asset || {}) as AssetGenerator;
+        config.module.generator.asset = {
+          ...assetGenerator,
+          publicPath: getStableR2AssetPublicPath,
+        };
+
+        const assetResourceGenerator = (config.module.generator["asset/resource"] ||
+          {}) as AssetGenerator;
+        config.module.generator["asset/resource"] = {
+          ...assetResourceGenerator,
+          publicPath: getStableR2AssetPublicPath,
+        };
+
+        setStableR2AssetRulePublicPath(config.module.rules as AssetRule[] | undefined);
+      }
+
       config.plugins ??= [];
 
       config.plugins.push(

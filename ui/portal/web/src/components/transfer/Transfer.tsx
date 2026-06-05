@@ -46,6 +46,7 @@ import { perpsMarginAsset } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { WarningTransferAccounts } from "~/components/transfer/WarningTransferAccounts";
+import { Image } from "~/components/foundation/Image";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
@@ -185,7 +186,9 @@ const TransferSend: React.FC = () => {
 
   if (action !== "send") return null;
 
-  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split("{app}");
+  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split(
+    "{app}",
+  );
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -193,7 +196,14 @@ const TransferSend: React.FC = () => {
         description={
           <p>
             {transferHintParts[0]}
-            <Button as={Link} to="/bridge" search={{ action: "withdraw" } as any} variant="link" size="xs" className="p-0 h-fit m-0 inline">
+            <Button
+              as={Link}
+              to="/bridge"
+              search={{ action: "withdraw" } as any}
+              variant="link"
+              size="xs"
+              className="p-0 h-fit m-0 inline"
+            >
               {m["transfer.warning.withdraw"]()}
             </Button>
             {transferHintParts[1]}
@@ -406,7 +416,7 @@ const TransferSpotPerp: React.FC = () => {
             startContent={
               <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
                 <div className="flex gap-2 items-center font-semibold">
-                  <img
+                  <Image
                     src={isSpotToPerp ? perpsMarginAsset.logoURI : usdcCoin.logoURI}
                     alt={isSpotToPerp ? perpsMarginAsset.symbol : usdcCoin.symbol}
                     className="w-8 h-8"

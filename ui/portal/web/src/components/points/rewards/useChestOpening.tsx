@@ -1,7 +1,7 @@
 import { createContext } from "@left-curve/applets-kit";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
-import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type PropsWithChildren, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -19,6 +19,7 @@ import {
   huntedDisplay,
   nftDisplay,
 } from "./loot";
+import { imageUrl } from "~/asset-url";
 
 export type { LootDisplay };
 export type { LootBucket } from "./LootSummary";
@@ -87,11 +88,12 @@ const prefetchImages = () => {
   ];
 
   images.forEach((src) => {
+    const resolvedSrc = imageUrl(src);
     const img = new Image();
-    if (src.startsWith("http")) {
+    if (resolvedSrc.startsWith("http")) {
       img.crossOrigin = "anonymous";
     }
-    img.src = src;
+    img.src = resolvedSrc;
     prefetchedImages.push(img);
   });
 };

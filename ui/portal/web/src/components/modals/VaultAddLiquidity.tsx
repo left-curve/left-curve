@@ -5,6 +5,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import { formatNumber } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 type VaultAddLiquidityProps = {
   confirmAddLiquidity: () => void;
@@ -50,7 +51,7 @@ export const VaultAddLiquidity = forwardRef(
               <p className="text-ink-secondary-700 h3-bold">
                 {formatNumber(amount, { ...formatNumberOptions, currency: "USD" })}
               </p>
-              <img src="/images/coins/usd.svg" alt="USD" className="w-8 h-8" />
+              <Image src="/images/coins/usd.svg" alt="USD" className="w-8 h-8" />
             </div>
           </div>
 
@@ -58,9 +59,7 @@ export const VaultAddLiquidity = forwardRef(
             <p className="text-ink-tertiary-500 exposure-sm-italic">
               {m["vaultLiquidity.modal.destination"]()}
             </p>
-            <p className="text-ink-secondary-700 diatype-m-bold">
-              {m["vaultLiquidity.title"]()}
-            </p>
+            <p className="text-ink-secondary-700 diatype-m-bold">{m["vaultLiquidity.title"]()}</p>
           </div>
 
           <div className="flex items-center justify-between">
