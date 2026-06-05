@@ -38,6 +38,7 @@ services:
 
   frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
+    profiles: ["frontend"]
     labels:
       <<: *common-labels
     ports:
@@ -48,6 +49,7 @@ services:
       - FAUCET_URL=${FAUCET_URL:-http://localhost:8082/mint}
       - QUEST_URL=${QUEST_URL:-http://localhost:8081/check_username}
       - UP_URL=${UP_URL:-http://localhost:8080/up}
+      - DANGO_CONFIG_JSON=${DANGO_CONFIG_JSON:-}
       # Set to "true" to enable JSON access logs
       - NGINX_JSON_LOGS=${NGINX_JSON_LOGS:-}
     healthcheck:

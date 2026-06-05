@@ -1,0 +1,293 @@
+name: Frontend Docker
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GIT_COMMIT: ${{ github.sha }}
+  FRONTEND_IMAGE: ghcr.io/left-curve/left-curve/dango-frontend
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/frontend-docker.yaml"
+      - "docker/dango-frontend/**"
+      - "sdk/typescript/**"
+      - "ui/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".force_frontend_rebuild"
+
+jobs:
+  zizmor:
+    uses: ./.github/workflows/zizmor.yml
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+  frontend-build:
+    needs: [zizmor]
+    if: github.ref == 'refs/heads/main'
+    environment: ci
+    permissions:
+      packages: write
+      contents: read
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: [self-hosted]
+          # NOTE: building arm on `self-hosted` is very very slow
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    name: Build frontend for ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    runs-on: ${{ matrix.runner }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.ref }}
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set build config
+        id: config
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          if [[ "$MATRIX_ARCH" == "amd64" ]]; then
+            echo "platform=linux/amd64" >> "$GITHUB_OUTPUT"
+            echo "suffix=amd64" >> "$GITHUB_OUTPUT"
+          elif [[ "$MATRIX_ARCH" == "arm64" ]]; then
+            echo "platform=linux/arm64" >> "$GITHUB_OUTPUT"
+            echo "suffix=arm64" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unsupported matrix $MATRIX_ARCH"
+            exit 1
+          fi
+
+      - name: Build and push frontend image
+        env:
+          BUILD_PLATFORM: ${{ steps.config.outputs.platform }}
+          BUILD_SUFFIX: ${{ steps.config.outputs.suffix }}
+          PRIVY_APP_ID: ${{ vars.PRIVY_APP_ID_DEV }}
+          PRIVY_CLIENT_ID: ${{ vars.PRIVY_CLIENT_ID_DEV }}
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --push \
+            --platform "$BUILD_PLATFORM" \
+            --build-arg GIT_COMMIT="$GIT_COMMIT" \
+            --build-arg GITHUB_TOKEN="$GITHUB_TOKEN" \
+            --build-arg PRIVY_APP_ID="$PRIVY_APP_ID" \
+            --build-arg PRIVY_CLIENT_ID="$PRIVY_CLIENT_ID" \
+            --provenance=false \
+            -t "${FRONTEND_IMAGE}:${GIT_COMMIT}-${BUILD_SUFFIX}" \
+            -f docker/dango-frontend/Dockerfile .
+
+  frontend-push-manifest:
+    needs: [frontend-build]
+    if: github.ref == 'refs/heads/main'
+    environment: ci
+    permissions:
+      packages: write
+      id-token: write
+      contents: read
+    runs-on: [self-hosted]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch Docker manifests
+        run: |
+          set -euo pipefail
+
+          docker manifest create "${FRONTEND_IMAGE}:${GIT_COMMIT}" \
+            --amend "${FRONTEND_IMAGE}:${GIT_COMMIT}-amd64" \
+            --amend "${FRONTEND_IMAGE}:${GIT_COMMIT}-arm64"
+          docker manifest push --purge "${FRONTEND_IMAGE}:${GIT_COMMIT}"
+
+          docker manifest create "${FRONTEND_IMAGE}:latest" \
+            --amend "${FRONTEND_IMAGE}:${GIT_COMMIT}-amd64" \
+            --amend "${FRONTEND_IMAGE}:${GIT_COMMIT}-arm64"
+          docker manifest push --purge "${FRONTEND_IMAGE}:latest"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+
+      - name: Sign frontend images
+        id: sign-frontend
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/frontend-docker.yaml@${{ github.ref }}"
+        run: |
+          set -euo pipefail
+
+          images=("${FRONTEND_IMAGE}:${GIT_COMMIT}" "${FRONTEND_IMAGE}:latest")
+          tmp_markdown="$(mktemp)"
+          {
+            echo "| Image | Digest |"
+            echo "| ---- | ------ |"
+          } > "$tmp_markdown"
+
+          for image in "${images[@]}"; do
+            digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
+            if [ -z "$digest" ]; then
+              echo "Unable to determine digest for $image" >&2
+              exit 1
+            fi
+            cosign sign "$image@$digest"
+            printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
+          done
+
+          {
+            echo "digest_table<<EOF"
+            cat "$tmp_markdown"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify frontend signatures
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/frontend-docker.yaml@${{ github.ref }}"
+        run: |
+          set -euo pipefail
+          for image in "${FRONTEND_IMAGE}:${GIT_COMMIT}" "${FRONTEND_IMAGE}:latest"; do
+            digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
+            if [ -z "$digest" ]; then
+              echo "Unable to determine digest for $image" >&2
+              exit 1
+            fi
+            cosign verify \
+              --certificate-identity "$COSIGN_IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$image@$digest" >/dev/null
+          done
+
+      - name: Frontend Docker summary
+        env:
+          DIGEST_TABLE: ${{ steps.sign-frontend.outputs.digest_table }}
+        run: |
+          echo "# 🎨 Frontend Docker Multi-arch Manifest" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Name | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ---- | ------ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Commit** | \`$GIT_COMMIT\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Status** | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Image URL** | [${FRONTEND_IMAGE}:${GIT_COMMIT}](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-frontend) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Latest tag** | [${FRONTEND_IMAGE}:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-frontend) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Architectures** | amd64, arm64 |" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$DIGEST_TABLE" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "## 🔏 Signed Image Digests" >> "$GITHUB_STEP_SUMMARY"
+            echo "$DIGEST_TABLE" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  security-artifacts:
+    name: Generate Frontend SBOM and Scan Image
+    needs: [frontend-push-manifest]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - name: Install Syft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! command -v syft >/dev/null 2>&1; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+          fi
+
+      - name: Install Grype
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! command -v grype >/dev/null 2>&1; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SBOM and scan
+        env:
+          SBOM_DIR: sbom
+          REPORT_DIR: vuln-reports
+          SARIF_DIR: sarif
+          IMAGE: ${{ env.FRONTEND_IMAGE }}:${{ env.GIT_COMMIT }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$SBOM_DIR" "$REPORT_DIR" "$SARIF_DIR"
+
+          safe_name="$(echo "$IMAGE" | tr '/:@' '___')"
+          sbom_file="$SBOM_DIR/${safe_name}.cdx.json"
+          report_file="$REPORT_DIR/${safe_name}.txt"
+          sarif_file="$SARIF_DIR/${safe_name}.sarif"
+
+          syft scan "$IMAGE" -o cyclonedx-json > "$sbom_file"
+          grype "$IMAGE" --add-cpes-if-none -o sarif > "$sarif_file"
+          if ! grype "$IMAGE" --fail-on high --only-fixed --add-cpes-if-none > "$report_file"; then
+            echo "::warning::High severity vulnerabilities detected for $IMAGE"
+            touch "$REPORT_DIR/.failed"
+          fi
+
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-security-artifacts-${{ github.run_id }}
+          path: |
+            sbom
+            vuln-reports
+
+      - name: Upload Grype SARIF
+        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # v4.31.10
+        with:
+          sarif_file: sarif
+          category: grype-frontend
+
+      - name: Enforce vulnerability policy
+        run: |
+          if [ -f vuln-reports/.failed ]; then
+            echo "::error::Critical vulnerabilities detected in frontend container image"
+            exit 1
+          fi
+
+      - name: Document security summary
+        run: |
+          echo "## 🔐 Frontend Supply Chain Security" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SBOM generated with Syft" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Vulnerability scan performed with Grype (fail-on=HIGH, only-fixed)" >> "$GITHUB_STEP_SUMMARY"

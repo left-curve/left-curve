@@ -8,7 +8,6 @@ services:
       - "{{ wireguard_ip }}:8888:8888"
       # devnet
       - "8080:8080"
-      - "8081:8081"
       - "8082:8082"
       - "{{ wireguard_ip }}:26657:26657"
       - "{{ wireguard_ip }}:26660:26660"
@@ -22,7 +21,6 @@ services:
       - "{{ tailscale_ip }}:8085:8085"
       # testnet
       - "8050:8050"
-      - "8051:8051"
       - "8052:8052"
       - "{{ wireguard_ip }}:36657:36657"
       - "{{ wireguard_ip }}:36660:36660"
@@ -36,7 +34,6 @@ services:
       - "{{ tailscale_ip }}:8055:8055"
       # mainnet
       - "8030:8030"
-      - "8031:8031"
       - "8032:8032"
       - "{{ wireguard_ip }}:46657:46657"
       - "{{ wireguard_ip }}:46660:46660"

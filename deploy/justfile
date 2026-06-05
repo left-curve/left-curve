@@ -92,8 +92,7 @@ provision:
 deploy-devnet:
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}' \
-      -e frontend_enabled_features='points' \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "system_wide_directories": true}' \
       --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-devnet.log
 
@@ -101,8 +100,7 @@ reset-and-deploy-devnet:
   just stop-devnet
   mkdir -p {{justfile_directory()}}/logs \
     && uv run ansible-playbook full-app.yml \
-      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true, "reset_data": true}' \
-      -e frontend_enabled_features='points' \
+      -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "perps_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "system_wide_directories": true, "reset_data": true}' \
       --limit {{ovh1}},{{ovh2}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-reset-and-deploy-devnet.log
 
@@ -246,8 +244,6 @@ deploy-testnet dango_image_tag bots_image_tag:
       -e dex_bot_tag={{bots_image_tag}} \
       -e perps_bot_tag={{bots_image_tag}} \
       -e perp_liquidator_tag={{bots_image_tag}} \
-      -e frontend_image_tag=latest \
-      -e frontend_enabled_features='points' \
       --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-testnet.log
 
@@ -290,7 +286,6 @@ deploy-mainnet dango_image_tag bots_image_tag:
       -e dex_bot_tag={{bots_image_tag}} \
       -e perps_bot_tag={{bots_image_tag}} \
       -e perp_liquidator_tag={{bots_image_tag}} \
-      -e frontend_image_tag=latest \
       --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-mainnet.log
 
@@ -324,7 +319,6 @@ deploy-preview-latest:
       -e deploy_env=preview \
       -e dango_image_tag=latest \
       -e dango_network=previewnet \
-      -e frontend_image_tag=latest \
       -e chain_id=preview \
       --limit {{ovh1}},{{ovh2}},{{ovh3}} \
       2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-preview-latest.log

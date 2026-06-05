@@ -14,7 +14,6 @@ sudo_users:
 dango_domain: "dango.zone"
 ports:
   dango_port: 8080
-  dango_frontend_port: 8081
   faucet_port: 8082
   quest_port: 8083
   cometbft_p2p_port: 26656
@@ -34,7 +33,6 @@ traefik:
   devnet:
     ports:
       dango_port: 8080
-      dango_frontend_port: 8081
       faucet_port: 8082
       graphiql_port: 8086
       cometbft_rpc_port: 26657
@@ -43,7 +41,6 @@ traefik:
   testnet:
     ports:
       dango_port: 8050
-      dango_frontend_port: 8051
       faucet_port: 8052
       graphiql_port: 8056
       cometbft_rpc_port: 36657
@@ -52,7 +49,6 @@ traefik:
   mainnet:
     ports:
       dango_port: 8030
-      dango_frontend_port: 8031
       faucet_port: 8032
       graphiql_port: 8036
       cometbft_rpc_port: 46657

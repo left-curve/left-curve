@@ -140,28 +140,28 @@ const banner = {
   test: "You are using testnet",
 }[environment];
 
-const envConfig = `window.dango = ${JSON.stringify(
-  {
-    chain: isLocal
-      ? {
-          ...chain,
-          url: `http://localhost:${PORT}`,
-        }
-      : chain,
-    urls: isLocal
-      ? {
-          faucetUrl: `http://localhost:${PORT}/faucet`,
-          questUrl: `http://localhost:${PORT}/quest`,
-          upUrl: `http://localhost:${PORT}/up`,
-          pointsUrl: `http://localhost:${PORT}/points-api`,
-        }
-      : urls,
-    banner,
-    enabledFeatures,
-  },
-  null,
-  2,
-)};`;
+const defaultDangoConfig = {
+  chain: isLocal
+    ? {
+        ...chain,
+        url: `http://localhost:${PORT}`,
+      }
+    : chain,
+  urls: isLocal
+    ? {
+        faucetUrl: `http://localhost:${PORT}/faucet`,
+        questUrl: `http://localhost:${PORT}/quest`,
+        upUrl: `http://localhost:${PORT}/up`,
+        pointsUrl: `http://localhost:${PORT}/points-api`,
+      }
+    : urls,
+  banner,
+  enabledFeatures,
+};
+
+const envConfig = `window.dango = ${
+  process.env.DANGO_CONFIG_JSON || JSON.stringify(defaultDangoConfig, null, 2)
+};`;
 
 const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
 
