@@ -233,11 +233,13 @@ runs:
         fi
 
         if [ "$CF_ACTION" = "bind" ]; then
+          # Pages branch custom domains require a proxied CNAME; DNS-only records
+          # are routed to the production branch instead of the preview alias.
           dns_body="$(jq -n \
             --arg type "CNAME" \
             --arg name "$CF_HOSTNAME" \
             --arg content "$CF_TARGET" \
-            '{type: $type, name: $name, content: $content, ttl: 1, proxied: false}')"
+            '{type: $type, name: $name, content: $content, ttl: 1, proxied: true}')"
 
           if [ -n "$dns_record_id" ]; then
             dns_change="updated"
