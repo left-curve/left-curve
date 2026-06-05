@@ -251,6 +251,7 @@ jobs:
           api-token: ${{ secrets.CF_TOKEN }}
           account-id: 9f30716e11f27c296dfbadb7b7571ae6
           zone: dango.zone
+          zone-id: ${{ vars.CF_ZONE_ID }}
           project-name: dango-portal
           hostname: pr-${{ github.event.pull_request.number }}.dango.zone
           target: pr-${{ github.event.pull_request.number }}.dango-portal.pages.dev

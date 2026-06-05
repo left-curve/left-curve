@@ -1273,8 +1273,8 @@ jobs:
           set -euo pipefail
           cd localdango
           echo "Dango endpoint: http://localhost:$LOCALDANGO_DANGO_PORT"
-          echo "Dango /status chain_id:"
-          curl -sSf "http://localhost:$LOCALDANGO_DANGO_PORT/status" | jq -r '.result.node_info.network'
+          echo "Dango /up chain_id:"
+          curl -sSf "http://localhost:$LOCALDANGO_DANGO_PORT/up" | jq -r '.chain_id'
 
           if [ "$FRONTEND_MODE" = "container" ]; then
             FRONTEND_URL="http://localhost:5081"

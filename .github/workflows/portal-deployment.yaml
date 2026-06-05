@@ -11,6 +11,7 @@ env:
   CF_ACCOUNT_ID: 9f30716e11f27c296dfbadb7b7571ae6
   CF_PAGES_PROJECT: dango-portal
   CF_ZONE: dango.zone
+  CF_ZONE_ID: ${{ vars.CF_ZONE_ID }}
   PR_PREVIEW_HOST: ovh2
 
 on:
@@ -280,6 +281,7 @@ jobs:
           api-token: ${{ secrets.CF_TOKEN }}
           account-id: ${{ env.CF_ACCOUNT_ID }}
           zone: ${{ env.CF_ZONE }}
+          zone-id: ${{ env.CF_ZONE_ID }}
           project-name: ${{ env.CF_PAGES_PROJECT }}
           hostname: pr-${{ github.event.pull_request.number }}.dango.zone
           target: pr-${{ github.event.pull_request.number }}.dango-portal.pages.dev
