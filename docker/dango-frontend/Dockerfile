@@ -41,11 +41,10 @@ RUN pnpm i --frozen-lockfile
 RUN pnpm build:portal-web
 
 # Production stage
-FROM nginx:1.28.3-alpine
+FROM nginx:1.30.2-alpine
 
 # Fix CVE-2025-58050 in pcre2 (require >=10.46)
-RUN apk upgrade --no-cache \
-  && apk add --no-cache 'pcre2>=10.46-r0' 'jq=1.8.1-r0'
+RUN apk add --no-cache 'pcre2>=10.46-r0' 'jq=1.8.1-r0'
 
 ARG GIT_COMMIT
 
