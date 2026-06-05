@@ -258,7 +258,7 @@ jobs:
 
           syft scan "$IMAGE" -o cyclonedx-json > "$sbom_file"
           grype "$IMAGE" --add-cpes-if-none -o sarif > "$sarif_file"
-          if ! grype "$IMAGE" --fail-on high --only-fixed --add-cpes-if-none > "$report_file"; then
+          if ! grype "$IMAGE" --fail-on high --only-fixed --add-cpes-if-none | tee "$report_file"; then
             echo "::warning::High severity vulnerabilities detected for $IMAGE"
             touch "$REPORT_DIR/.failed"
           fi
@@ -280,7 +280,13 @@ jobs:
       - name: Enforce vulnerability policy
         run: |
           if [ -f vuln-reports/.failed ]; then
-            echo "::error::Critical vulnerabilities detected in frontend container image"
+            echo "::group::Frontend vulnerability report"
+            for report_file in vuln-reports/*.txt; do
+              echo "$report_file"
+              cat "$report_file"
+            done
+            echo "::endgroup::"
+            echo "::error::Fixed high or critical vulnerabilities detected in frontend container image"
             exit 1
           fi
 
