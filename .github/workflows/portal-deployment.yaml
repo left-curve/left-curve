@@ -31,7 +31,6 @@ on:
       - "pnpm-workspace.yaml"
       - "turbo.json"
       - "biome.json"
-      - ".force_frontend_rebuild"
   pull_request:
     paths:
       - ".github/workflows/portal-deployment.yaml"
@@ -52,7 +51,6 @@ on:
       - "turbo.json"
       - "biome.json"
       - ".force_backend_rebuild"
-      - ".force_frontend_rebuild"
       - ".force_deploy"
 
 jobs:

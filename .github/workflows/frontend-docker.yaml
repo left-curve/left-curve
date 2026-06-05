@@ -24,7 +24,6 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
-      - ".force_frontend_rebuild"
 
 jobs:
   zizmor:

@@ -41,7 +41,6 @@ on:
       - "clippy.toml"
       - "rustfmt.toml"
       - ".force_backend_rebuild"
-      - ".force_frontend_rebuild"
       - ".force_localdango"
       - ".force_deploy"
       - "localdango/**"
@@ -73,7 +72,6 @@ on:
       - "clippy.toml"
       - "rustfmt.toml"
       - ".force_backend_rebuild"
-      - ".force_frontend_rebuild"
       - ".force_localdango"
       - ".force_deploy"
       - "localdango/**"
@@ -124,7 +122,6 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - 'biome.json'
-              - '.force_frontend_rebuild'
             frontend_docker:
               - 'docker/dango-frontend/**'
             localdango:
