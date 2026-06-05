@@ -27,6 +27,11 @@ jobs:
       deployments: write
 
     steps:
+      - name: Git Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
       - name: Delete PR deployments
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -204,7 +209,7 @@ jobs:
           FAILED_DELETIONS=0
 
           # Delete pr-latest tags
-          PACKAGES=("left-curve%2Fdango" "left-curve%2Fdango-frontend")
+          PACKAGES=("left-curve%2Fdango")
           for package in "${PACKAGES[@]}"; do
             TOTAL_ATTEMPTS=$((TOTAL_ATTEMPTS + 1))
             if delete_image_versions "$package" "pr-${PR_NUMBER}-latest"; then
@@ -239,6 +244,17 @@ jobs:
           else
             echo "SUCCESS: All cleanup operations completed successfully"
           fi
+
+      - name: Unbind Pages preview domain
+        uses: ./.github/actions/cf-pages-domain
+        with:
+          api-token: ${{ secrets.CF_TOKEN }}
+          account-id: 9f30716e11f27c296dfbadb7b7571ae6
+          zone: dango.zone
+          project-name: dango-portal
+          hostname: pr-${{ github.event.pull_request.number }}.dango.zone
+          target: pr-${{ github.event.pull_request.number }}.dango-portal.pages.dev
+          action: unbind
 
       - name: Install Ansible
         run: |

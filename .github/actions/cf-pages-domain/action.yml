@@ -1,0 +1,149 @@
+name: Cloudflare Pages domain
+description: Bind or unbind a Cloudflare Pages custom domain and DNS CNAME.
+
+inputs:
+  api-token:
+    description: Cloudflare API token.
+    required: true
+  account-id:
+    description: Cloudflare account ID.
+    required: true
+  zone:
+    description: Cloudflare zone name, for example dango.zone.
+    required: true
+  project-name:
+    description: Cloudflare Pages project name.
+    required: true
+  hostname:
+    description: Custom hostname to bind or unbind.
+    required: true
+  target:
+    description: CNAME target for bind operations.
+    required: false
+  action:
+    description: Either bind or unbind.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Manage Pages domain
+      shell: bash
+      env:
+        CF_API_TOKEN: ${{ inputs.api-token }}
+        CF_ACCOUNT_ID: ${{ inputs.account-id }}
+        CF_ZONE: ${{ inputs.zone }}
+        CF_PROJECT_NAME: ${{ inputs.project-name }}
+        CF_HOSTNAME: ${{ inputs.hostname }}
+        CF_TARGET: ${{ inputs.target }}
+        CF_ACTION: ${{ inputs.action }}
+      run: |
+        set -euo pipefail
+
+        api_base="https://api.cloudflare.com/client/v4"
+
+        cf_api() {
+          curl -sS \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "$@"
+        }
+
+        require_success() {
+          local response="$1"
+          local context="$2"
+          if [ "$(jq -r '.success' <<< "$response")" != "true" ]; then
+            echo "::error::Cloudflare API request failed: ${context}"
+            jq -r '.errors[]?.message // empty' <<< "$response"
+            exit 1
+          fi
+        }
+
+        is_not_found_response() {
+          local response="$1"
+          local message
+          message="$(jq -r '[.errors[]?.message] | join(" ")' <<< "$response")"
+          grep -Eiq 'not found|does not exist|cannot find' <<< "$message"
+        }
+
+        if [ "$CF_ACTION" != "bind" ] && [ "$CF_ACTION" != "unbind" ]; then
+          echo "::error::action must be bind or unbind"
+          exit 1
+        fi
+
+        if [ "$CF_ACTION" = "bind" ] && [ -z "$CF_TARGET" ]; then
+          echo "::error::target is required when action=bind"
+          exit 1
+        fi
+
+        zone_response="$(cf_api "${api_base}/zones?name=${CF_ZONE}")"
+        require_success "$zone_response" "lookup zone ${CF_ZONE}"
+        zone_id="$(jq -r '.result[0].id // empty' <<< "$zone_response")"
+        if [ -z "$zone_id" ]; then
+          echo "::error::Cloudflare zone not found: ${CF_ZONE}"
+          exit 1
+        fi
+
+        dns_response="$(cf_api "${api_base}/zones/${zone_id}/dns_records?type=CNAME&name=${CF_HOSTNAME}")"
+        require_success "$dns_response" "lookup DNS record ${CF_HOSTNAME}"
+        dns_record_id="$(jq -r '.result[0].id // empty' <<< "$dns_response")"
+
+        if [ "$CF_ACTION" = "bind" ]; then
+          dns_body="$(jq -n \
+            --arg type "CNAME" \
+            --arg name "$CF_HOSTNAME" \
+            --arg content "$CF_TARGET" \
+            '{type: $type, name: $name, content: $content, ttl: 1, proxied: true}')"
+
+          if [ -n "$dns_record_id" ]; then
+            update_response="$(cf_api -X PUT "${api_base}/zones/${zone_id}/dns_records/${dns_record_id}" --data "$dns_body")"
+            require_success "$update_response" "update DNS record ${CF_HOSTNAME}"
+            echo "Updated CNAME ${CF_HOSTNAME} -> ${CF_TARGET}"
+          else
+            create_response="$(cf_api -X POST "${api_base}/zones/${zone_id}/dns_records" --data "$dns_body")"
+            require_success "$create_response" "create DNS record ${CF_HOSTNAME}"
+            echo "Created CNAME ${CF_HOSTNAME} -> ${CF_TARGET}"
+          fi
+
+          domain_response="$(cf_api "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains/${CF_HOSTNAME}")"
+          if [ "$(jq -r '.success' <<< "$domain_response")" = "true" ]; then
+            echo "Pages domain ${CF_HOSTNAME} is already bound"
+            exit 0
+          fi
+
+          pages_body="$(jq -n --arg name "$CF_HOSTNAME" '{name: $name}')"
+          create_domain_response="$(cf_api -X POST "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains" --data "$pages_body")"
+          if [ "$(jq -r '.success' <<< "$create_domain_response")" != "true" ]; then
+            message="$(jq -r '[.errors[]?.message] | join(" ")' <<< "$create_domain_response")"
+            if grep -Eiq 'already|exist|bound' <<< "$message"; then
+              echo "Pages domain ${CF_HOSTNAME} was already bound"
+            else
+              echo "::error::Failed to add Pages domain ${CF_HOSTNAME}"
+              jq -r '.errors[]?.message // empty' <<< "$create_domain_response"
+              exit 1
+            fi
+          else
+            echo "Bound Pages domain ${CF_HOSTNAME}"
+          fi
+        else
+          domain_response="$(cf_api "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains/${CF_HOSTNAME}")"
+          if [ "$(jq -r '.success' <<< "$domain_response")" = "true" ]; then
+            delete_domain_response="$(cf_api -X DELETE "${api_base}/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/domains/${CF_HOSTNAME}")"
+            require_success "$delete_domain_response" "delete Pages domain ${CF_HOSTNAME}"
+            echo "Deleted Pages domain ${CF_HOSTNAME}"
+          elif is_not_found_response "$domain_response"; then
+            echo "Pages domain ${CF_HOSTNAME} is already absent"
+          else
+            echo "::error::Failed to look up Pages domain ${CF_HOSTNAME}"
+            jq -r '.errors[]?.message // empty' <<< "$domain_response"
+            exit 1
+          fi
+
+          if [ -n "$dns_record_id" ]; then
+            delete_dns_response="$(cf_api -X DELETE "${api_base}/zones/${zone_id}/dns_records/${dns_record_id}")"
+            require_success "$delete_dns_response" "delete DNS record ${CF_HOSTNAME}"
+            echo "Deleted DNS record ${CF_HOSTNAME}"
+          else
+            echo "DNS record ${CF_HOSTNAME} is already absent"
+          fi
+        fi

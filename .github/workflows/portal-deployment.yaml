@@ -8,6 +8,10 @@ concurrency:
 
 env:
   GIT_COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
+  CF_ACCOUNT_ID: 9f30716e11f27c296dfbadb7b7571ae6
+  CF_PAGES_PROJECT: dango-portal
+  CF_ZONE: dango.zone
+  PR_PREVIEW_HOST: ovh2
 
 on:
   workflow_dispatch:
@@ -18,21 +22,37 @@ on:
       - "ui/release"
     paths:
       - ".github/workflows/portal-deployment.yaml"
+      - ".github/actions/cf-pages-domain/**"
       - "sdk/typescript/**"
-      - "ui/store/**"
-      - "ui/foundation/**"
-      - "ui/portal/**"
-      - "ui/applets/**"
-      - "ui/config/**"
+      - "ui/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - "biome.json"
+      - ".force_frontend_rebuild"
   pull_request:
     paths:
       - ".github/workflows/portal-deployment.yaml"
+      - ".github/actions/cf-pages-domain/**"
+      - ".github/workflows/rust.yml"
+      - "deploy/**"
+      - "dango/**"
+      - "docker/dango/**"
+      - "grug/**"
+      - "hyperlane/**"
+      - "indexer/**"
+      - "pyth/**"
       - "sdk/typescript/**"
-      - "ui/store/**"
-      - "ui/foundation/**"
-      - "ui/portal/**"
-      - "ui/applets/**"
-      - "ui/config/**"
+      - "ui/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - "biome.json"
+      - ".force_backend_rebuild"
+      - ".force_frontend_rebuild"
+      - ".force_deploy"
 
 jobs:
   zizmor:
@@ -85,6 +105,72 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-
 
+      - name: Set Pages context
+        id: pages
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          deploy_branch="$REF_NAME"
+          config_environment="dev"
+          sentry_environment="dev"
+          frontend_url="https://dev.dango.exchange"
+          github_environment="dango-frontend"
+          enabled_features=""
+          deployment_description="Frontend ${REF_NAME}"
+          upload_r2="false"
+          r2_prefix="/"
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            deploy_branch="pr-${PR_NUMBER}"
+            frontend_url="https://pr-${PR_NUMBER}.dango.zone"
+            github_environment="preview-dango-frontend"
+            sentry_environment="preview"
+            deployment_description="PR ${PR_NUMBER} - Frontend"
+          else
+            upload_r2="true"
+            r2_prefix="https://assets.dango.exchange/portal/${GIT_COMMIT}/"
+
+            case "$REF_NAME" in
+              main)
+                config_environment="dev"
+                sentry_environment="dev"
+                frontend_url="https://dev.dango.exchange"
+                enabled_features="points,referral"
+                ;;
+              ui/testnet)
+                config_environment="test"
+                sentry_environment="test"
+                frontend_url="https://test.dango.exchange"
+                enabled_features="points,referral"
+                ;;
+              ui/release)
+                config_environment="prod"
+                sentry_environment="production"
+                frontend_url="https://dango.exchange"
+                ;;
+              *)
+                echo "::error::Unsupported Pages ref: ${REF_NAME}"
+                exit 1
+                ;;
+            esac
+          fi
+
+          {
+            printf 'deploy_branch=%s\n' "$deploy_branch"
+            printf 'config_environment=%s\n' "$config_environment"
+            printf 'sentry_environment=%s\n' "$sentry_environment"
+            printf 'frontend_url=%s\n' "$frontend_url"
+            printf 'github_environment=%s\n' "$github_environment"
+            printf 'enabled_features=%s\n' "$enabled_features"
+            printf 'deployment_description=%s\n' "$deployment_description"
+            printf 'upload_r2=%s\n' "$upload_r2"
+            printf 'r2_prefix=%s\n' "$r2_prefix"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Linter checks
         run: pnpm lint
 
@@ -94,37 +180,62 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      - name: Set R2 assets prefix
-        id: r2_prefix
-        env:
-          BRANCH_NAME: ${{ github.ref_name }}
-        run: |
-          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "ui/testnet" || "$BRANCH_NAME" == "ui/release" ]]; then
-            printf 'prefix=https://assets.dango.exchange/portal/%s/\n' "$GIT_COMMIT" >> "$GITHUB_OUTPUT"
-            printf 'upload=true\n' >> "$GITHUB_OUTPUT"
-          else
-            printf 'prefix=/\n' >> "$GITHUB_OUTPUT"
-            printf 'upload=false\n' >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build Portal
         run: pnpm build:portal-web
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONFIG_ENVIRONMENT: ${{ github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'ui/release' && 'prod' || 'dev' }}
+          CONFIG_ENVIRONMENT: ${{ steps.pages.outputs.config_environment }}
           PUBLIC_WS_URI: ${{ vars.WS_URI }}
           PUBLIC_SENTRY_DSN: ${{ vars.SENTRY_PORTAL_WEB_DSN }}
-          PUBLIC_SENTRY_ENVIRONMENT: ${{ github.ref_name == 'ui/release' && 'production' || github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'main' && 'dev' }}
+          PUBLIC_SENTRY_ENVIRONMENT: ${{ steps.pages.outputs.sentry_environment }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PORTAL_WEB_PROJECT_ID }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          PUBLIC_PRIVY_APP_ID: ${{ github.ref_name == 'ui/release' && vars.PRIVY_APP_ID_PROD || vars.PRIVY_APP_ID_DEV }}
-          PUBLIC_PRIVY_CLIENT_ID: ${{ github.ref_name == 'ui/release' && vars.PRIVY_CLIENT_ID_PROD || vars.PRIVY_CLIENT_ID_DEV }}
-          ENABLED_FEATURES: ${{ (github.ref_name == 'main' || github.ref_name == 'ui/testnet') && 'points,referral' || '' }}
-          R2_ASSETS_PREFIX: ${{ steps.r2_prefix.outputs.prefix }}
+          PUBLIC_PRIVY_APP_ID: ${{ steps.pages.outputs.config_environment == 'prod' && vars.PRIVY_APP_ID_PROD || vars.PRIVY_APP_ID_DEV }}
+          PUBLIC_PRIVY_CLIENT_ID: ${{ steps.pages.outputs.config_environment == 'prod' && vars.PRIVY_CLIENT_ID_PROD || vars.PRIVY_CLIENT_ID_DEV }}
+          ENABLED_FEATURES: ${{ steps.pages.outputs.enabled_features }}
+          R2_ASSETS_PREFIX: ${{ steps.pages.outputs.r2_prefix }}
+
+      - name: Patch PR runtime config
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ENABLED_FEATURES: ${{ steps.pages.outputs.enabled_features }}
+        run: |
+          set -euo pipefail
+
+          api_url="https://api-pr-${PR_NUMBER}-${PR_PREVIEW_HOST}.dango.zone"
+          faucet_url="https://faucet-pr-${PR_NUMBER}-${PR_PREVIEW_HOST}.dango.zone/mint"
+          up_url="${api_url}/up"
+          enabled_features_json="$(jq -cn --arg csv "$ENABLED_FEATURES" '$csv | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')"
+
+          DANGO_CONFIG_JSON="$(jq -c -n \
+            --slurpfile chain sdk/typescript/dango/src/chains/definitions/devnet.json \
+            --arg chain_id "pr-${PR_NUMBER}" \
+            --arg chain_name "PR ${PR_NUMBER}" \
+            --arg api_url "$api_url" \
+            --arg faucet_url "$faucet_url" \
+            --arg up_url "$up_url" \
+            --arg banner "Preview app from PR ${PR_NUMBER}" \
+            --argjson enabled_features "$enabled_features_json" \
+            '{
+              chain: ($chain[0] | .id = $chain_id | .name = $chain_name | .url = $api_url),
+              urls: {
+                faucetUrl: $faucet_url,
+                questUrl: "https://quest-bot-devnet.dango.zone/check_username",
+                upUrl: $up_url,
+                pointsUrl: "https://points-devnet.dango.zone"
+              },
+              banner: $banner,
+              enabledFeatures: $enabled_features
+            }')"
+
+          printf 'window.dango = %s;\n' "$DANGO_CONFIG_JSON" > ui/portal/web/build/config.js
+          config_hash="$(md5sum ui/portal/web/build/config.js | cut -c1-8)"
+          sed -i "s|config\.js?v=[a-f0-9]*|config.js?v=${config_hash}|g" ui/portal/web/build/index.html
 
       - name: Upload assets to R2
-        if: steps.r2_prefix.outputs.upload == 'true'
+        if: steps.pages.outputs.upload_r2 == 'true'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -148,17 +259,79 @@ jobs:
           fi
 
       - name: Strip static assets moved to R2
-        if: steps.r2_prefix.outputs.upload == 'true'
+        if: steps.pages.outputs.upload_r2 == 'true'
         run: rm -rf ./ui/portal/web/build/static
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CF_TOKEN }}
-          accountId: 9f30716e11f27c296dfbadb7b7571ae6
+          accountId: ${{ env.CF_ACCOUNT_ID }}
           workingDirectory: ui/portal/web
-          command: pages deploy ./build --project-name=dango-portal --branch=${{ github.ref_name }}
+          command: pages deploy ./build --project-name=${{ env.CF_PAGES_PROJECT }} --branch=${{ steps.pages.outputs.deploy_branch }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bind PR Pages custom domain
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/cf-pages-domain
+        with:
+          api-token: ${{ secrets.CF_TOKEN }}
+          account-id: ${{ env.CF_ACCOUNT_ID }}
+          zone: ${{ env.CF_ZONE }}
+          project-name: ${{ env.CF_PAGES_PROJECT }}
+          hostname: pr-${{ github.event.pull_request.number }}.dango.zone
+          target: pr-${{ github.event.pull_request.number }}.dango-portal.pages.dev
+          action: bind
+
+      - name: Record GitHub deployment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          GITHUB_ENVIRONMENT: ${{ steps.pages.outputs.github_environment }}
+          DEPLOYMENT_URL: ${{ steps.pages.outputs.frontend_url }}
+          DEPLOYMENT_DESCRIPTION: ${{ steps.pages.outputs.deployment_description }}
+        run: |
+          set -euo pipefail
+
+          curl -sSf -X PUT \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${GH_REPO}/environments/${GITHUB_ENVIRONMENT}" \
+            -d '{"wait_timer":0,"reviewers":[],"deployment_branch_policy":null}'
+
+          deployment_body="$(jq -n \
+            --arg ref "$GIT_COMMIT" \
+            --arg environment "$GITHUB_ENVIRONMENT" \
+            --arg description "$DEPLOYMENT_DESCRIPTION" \
+            '{ref: $ref, environment: $environment, description: $description, auto_merge: false, required_contexts: []}')"
+
+          deployment_id="$(curl -sSf -X POST \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${GH_REPO}/deployments" \
+            -d "$deployment_body" | jq -r '.id')"
+
+          status_body="$(jq -n \
+            --arg target_url "$DEPLOYMENT_URL" \
+            --arg environment_url "$DEPLOYMENT_URL" \
+            --arg description "Frontend ready" \
+            '{state: "success", target_url: $target_url, environment_url: $environment_url, description: $description}')"
+
+          curl -sSf -X POST \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${GH_REPO}/deployments/${deployment_id}/statuses" \
+            -d "$status_body"
+
+          {
+            echo "# 🚀 Frontend Deployment"
+            echo "| Name | Result |"
+            echo "| ---- | ------ |"
+            echo "| **Status** | ✅ |"
+            echo "| **Environment** | \`${GITHUB_ENVIRONMENT}\` |"
+            echo "| **URL** | [${DEPLOYMENT_URL}](${DEPLOYMENT_URL}) |"
+            echo "| **Pages branch** | \`${{ steps.pages.outputs.deploy_branch }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save pnpm cache
         if: github.event_name == 'push'
@@ -173,75 +346,3 @@ jobs:
         with:
           path: .turbo
           key: turbo-${{ runner.os }}-${{ github.sha }}
-
-  docker-build:
-    needs: [zizmor]
-    environment: ci
-    permissions:
-      contents: read
-      packages: write
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: [self-hosted]
-          # NOTE: building arm on `self-hosted` is very very slow
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
-    runs-on: ${{ matrix.runner }}
-    env:
-      GITHUB_USER: ${{ github.actor }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-          persist-credentials: false
-
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set build config
-        id: config
-        env:
-          MATRIX_ARCH: ${{ matrix.arch }}
-        run: |
-          set -euo pipefail
-          if [[ "$MATRIX_ARCH" == "amd64" ]]; then
-            echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
-            echo "platform=linux/amd64" >> $GITHUB_OUTPUT
-            echo "suffix=amd64" >> $GITHUB_OUTPUT
-          elif [[ "$MATRIX_ARCH" == "arm64" ]]; then
-            echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
-            echo "platform=linux/arm64" >> $GITHUB_OUTPUT
-            echo "suffix=arm64" >> $GITHUB_OUTPUT
-          else
-              echo "Unsupported matrix $MATRIX_ARCH"
-              exit 1
-          fi
-
-      - name: build docker image
-        env:
-          BUILD_PLATFORM: ${{ steps.config.outputs.platform }}
-          BUILD_TARGET: ${{ steps.config.outputs.target }}
-          BUILD_GIT_COMMIT: ${{ env.GIT_COMMIT }}
-          BUILD_GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
-          BUILD_SUFFIX: ${{ steps.config.outputs.suffix }}
-        run: |
-          set -euo pipefail
-          docker buildx build \
-            --platform "$BUILD_PLATFORM" \
-            --build-arg TARGET_ARCH="$BUILD_TARGET" \
-            --build-arg GIT_COMMIT="$BUILD_GIT_COMMIT" \
-            --build-arg GITHUB_TOKEN="$BUILD_GITHUB_TOKEN" \
-            --provenance=false \
-            -t "ghcr.io/left-curve/left-curve/dango-frontend:${BUILD_GIT_COMMIT}-${BUILD_SUFFIX}" \
-            -f docker/dango-frontend/Dockerfile .
