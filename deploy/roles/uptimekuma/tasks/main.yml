@@ -21,6 +21,7 @@
     recreate: always
 
 - name: Install systemd unit for Uptime Kuma compose
+  when: uptimekuma_manage_systemd | bool
   become: true
   become_user: root
   template:
@@ -30,6 +31,7 @@
   notify: Reload systemd
 
 - name: Enable and start uptimekuma-compose service
+  when: uptimekuma_manage_systemd | bool
   become: true
   become_user: root
   systemd:
