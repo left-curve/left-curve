@@ -186,9 +186,7 @@ const TransferSend: React.FC = () => {
 
   if (action !== "send") return null;
 
-  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split(
-    "{app}",
-  );
+  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split("{app}");
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -196,14 +194,7 @@ const TransferSend: React.FC = () => {
         description={
           <p>
             {transferHintParts[0]}
-            <Button
-              as={Link}
-              to="/bridge"
-              search={{ action: "withdraw" } as any}
-              variant="link"
-              size="xs"
-              className="p-0 h-fit m-0 inline"
-            >
+            <Button as={Link} to="/bridge" search={{ action: "withdraw" } as any} variant="link" size="xs" className="p-0 h-fit m-0 inline">
               {m["transfer.warning.withdraw"]()}
             </Button>
             {transferHintParts[1]}

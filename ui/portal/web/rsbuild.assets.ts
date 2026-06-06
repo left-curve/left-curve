@@ -145,8 +145,10 @@ const getImagePathTransformIncludes = (portalRoot: string, workspaceRoot: string
   path.resolve(portalRoot, "constants.config.ts"),
   path.resolve(portalRoot, "store.config.ts"),
   path.resolve(portalRoot, "src"),
+  path.resolve(portalRoot, "node_modules", "@left-curve", "applets-kit"),
   path.resolve(portalRoot, "node_modules", "@left-curve", "foundation"),
   path.resolve(portalRoot, "node_modules", "@left-curve", "store", "src"),
+  path.resolve(workspaceRoot, "ui/applets/kit/src"),
   path.resolve(workspaceRoot, "ui/foundation"),
   path.resolve(workspaceRoot, "ui/store/src"),
 ];

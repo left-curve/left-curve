@@ -111,12 +111,7 @@ function LayoutApp() {
   const effectiveIsScrolled = isSidebarVisible ? lockedY > headerThreshold : isScrolled;
 
   return (
-    <main
-      className={twMerge(
-        "flex flex-col w-full min-h-[100svh] relative pb-[3rem] max-w-screen bg-surface-primary-rice text-ink-secondary-700",
-        isProSwap ? "lg:pb-0" : "lg:pb-10",
-      )}
-    >
+    <main className={twMerge("flex flex-col w-full min-h-[100svh] relative pb-[3rem] max-w-screen bg-surface-primary-rice text-ink-secondary-700", isProSwap ? "lg:pb-0" : "lg:pb-10")}>
       <Image
         src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"

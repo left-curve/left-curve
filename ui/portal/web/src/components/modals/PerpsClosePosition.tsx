@@ -8,13 +8,7 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import {
-  useAccount,
-  useConfig,
-  useSigningClient,
-  useStorage,
-  useSubmitTx,
-} from "@left-curve/store";
+import { useAccount, useConfig, useSigningClient, useStorage, useSubmitTx } from "@left-curve/store";
 import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useCallback, useMemo, useState } from "react";

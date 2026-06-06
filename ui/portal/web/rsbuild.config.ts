@@ -56,8 +56,12 @@ const stableR2AssetsPrefix = (() => {
   if (!useR2Assets) return "/";
   try {
     return new URL("/", r2AssetsPrefix).toString();
-  } catch {
-    return "/";
+  } catch (error) {
+    throw new Error(
+      `Invalid R2_ASSETS_PREFIX "${r2AssetsPrefix}": ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
 })();
 

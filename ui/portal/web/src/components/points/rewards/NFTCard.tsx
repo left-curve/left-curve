@@ -24,6 +24,15 @@ const RarityLabels: Record<NFTRarity, () => string> = {
   mythic: () => m["points.rewards.nfts.rarities.mythic"](),
 };
 
+const RarityColors: Record<NFTRarity, string> = {
+  common: "text-[#453d39]",
+  uncommon: "text-[#fafafa]",
+  rare: "text-[#fafafa]",
+  epic: "text-[#fafafa]",
+  legendary: "text-[#fafafa]",
+  mythic: "text-[#fafafa]",
+};
+
 export const NFTCard: React.FC<NFTCardProps> = ({
   rarity,
   quantity,
@@ -33,6 +42,7 @@ export const NFTCard: React.FC<NFTCardProps> = ({
   isLocked = false,
 }) => {
   const label = RarityLabels[rarity]();
+  const labelColor = RarityColors[rarity];
 
   return (
     <div

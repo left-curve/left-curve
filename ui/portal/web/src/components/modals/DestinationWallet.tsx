@@ -94,7 +94,11 @@ export const DestinationWallet = forwardRef<ModalRef, DestinationWalletProps>(
                 <span>{connector.name}</span>
               </Button>
             ))}
-            <Button variant="secondary" fullWidth onClick={() => setStep("warning")}>
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => setStep("warning")}
+            >
               {m["bridge.enterAddressManually"]()}
             </Button>
           </div>
@@ -150,7 +154,11 @@ export const DestinationWallet = forwardRef<ModalRef, DestinationWalletProps>(
           value={address}
           onChange={(e) => setAddress(ethAddressMask(e.target.value, address))}
         />
-        <Button fullWidth onClick={handleConfirm} isDisabled={!isValidAddress(address)}>
+        <Button
+          fullWidth
+          onClick={handleConfirm}
+          isDisabled={!isValidAddress(address)}
+        >
           {m["bridge.confirm"]()}
         </Button>
       </div>

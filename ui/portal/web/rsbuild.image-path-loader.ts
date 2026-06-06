@@ -27,6 +27,8 @@ type LoaderCallback = (error: Error | null, source?: string, inputMap?: unknown)
 type LoaderContext = {
   async: () => LoaderCallback;
   cacheable?: () => void;
+  emitError?: (error: Error) => void;
+  emitWarning?: (warning: Error) => void;
   resourcePath: string;
 };
 
@@ -109,6 +111,7 @@ const shouldSkipStringLiteral = (path: ImagePathNodePath<StringLiteralNode>) => 
 
   if (!parent) return false;
   if (parent.type === "Directive") return true;
+  if (parent.type.startsWith("TS")) return true;
 
   if (
     (parent.type === "ImportDeclaration" ||
@@ -168,6 +171,14 @@ export default function imagePathTransformLoader(
     return identifier;
   };
 
+  const emitTemplateWarning = (node: SourceNode, message: string) => {
+    const range = getRange(node);
+    const position = range ? ` at offset ${range[0]}` : "";
+    const warning = new Error(`${message} in ${this.resourcePath}${position}`);
+    this.emitWarning?.(warning);
+    if (process.env.CI === "true") this.emitError?.(warning);
+  };
+
   const getContextHelperIdentifier = (
     publicDir: string,
     contextRegExpSource: string,
@@ -217,7 +228,7 @@ export default function imagePathTransformLoader(
     const firstValue = firstQuasi.value.cooked || firstQuasi.value.raw;
     const lastValue = lastQuasi.value.cooked || lastQuasi.value.raw;
 
-    if (!firstValue.startsWith(IMAGE_PATH_PREFIX) || !getImageExtension(lastValue)) {
+    if (!firstValue.startsWith(IMAGE_PATH_PREFIX)) {
       return;
     }
 
@@ -226,13 +237,27 @@ export default function imagePathTransformLoader(
       return;
     }
 
+    const extension = getImageExtension(lastValue);
+    if (!extension) {
+      emitTemplateWarning(node, "Dynamic image template must end with a supported image extension");
+      return;
+    }
+
     const lastStaticSlash = firstValue.lastIndexOf("/");
-    if (lastStaticSlash < "/images".length) return;
+    if (lastStaticSlash < "/images".length) {
+      emitTemplateWarning(node, "Dynamic image template must include a static image directory");
+      return;
+    }
 
     const publicDir = firstValue.slice(0, lastStaticSlash);
     const firstKeyValue = firstValue.slice(lastStaticSlash + 1);
-    const extension = getImageExtension(lastValue);
-    if (!extension) return;
+    if (publicDir === "/images" && firstKeyValue === "") {
+      emitTemplateWarning(
+        node,
+        "Root image templates must include a static filename prefix before interpolation",
+      );
+      return;
+    }
 
     const firstKeyStart = firstQuasi.value.raw.length - firstKeyValue.length;
     const keyQuasis = [firstQuasi.value.raw.slice(firstKeyStart)];
@@ -245,16 +270,23 @@ export default function imagePathTransformLoader(
     const contextRegExpSource = getContextRegExpSource(keyQuasis, extension);
     const helperIdentifier = getContextHelperIdentifier(publicDir, contextRegExpSource, recursive);
     let keyTemplate = "`";
+    let canBuildKeyTemplate = true;
 
     node.expressions.forEach((expression, index) => {
       const expressionRange = getRange(expression);
-      if (!expressionRange) return;
+      if (!expressionRange) {
+        emitTemplateWarning(node, "Dynamic image template expression is missing source range data");
+        canBuildKeyTemplate = false;
+        return;
+      }
 
       keyTemplate += keyQuasis[index];
       keyTemplate += "${";
       keyTemplate += source.slice(expressionRange[0], expressionRange[1]);
       keyTemplate += "}";
     });
+
+    if (!canBuildKeyTemplate) return;
 
     keyTemplate += keyQuasis.at(-1);
     keyTemplate += "`";
@@ -301,6 +333,10 @@ export default function imagePathTransformLoader(
     header += `import ${identifier} from ${JSON.stringify(publicPathToRequest(publicPath))};\n`;
   }
 
+  if (contexts.size > 0) {
+    header += 'import * as __dangoImageAssetSentry from "@sentry/react";\n';
+  }
+
   for (const {
     contextRegExpSource,
     contextIdentifier,
@@ -310,8 +346,15 @@ export default function imagePathTransformLoader(
   } of contexts.values()) {
     header += `const ${contextIdentifier} = require.context(${JSON.stringify(publicDirToRequest(publicDir))}, ${recursive}, /${contextRegExpSource}/i);\n`;
     header += `const ${helperIdentifier} = (path) => {\n`;
-    header += `  const mod = ${contextIdentifier}(\`./\${path}\`);\n`;
-    header += '  return typeof mod === "string" ? mod : mod.default;\n';
+    header += `  const fallbackPath = ${JSON.stringify(`${publicDir}/`)} + path;\n`;
+    header += "  try {\n";
+    header += `    const mod = ${contextIdentifier}(\`./\${path}\`);\n`;
+    header += '    return typeof mod === "string" ? mod : mod.default;\n';
+    header += "  } catch (error) {\n";
+    header +=
+      '    __dangoImageAssetSentry.captureException(error, { extra: { imagePath: fallbackPath }, tags: { source: "image-path-loader" } });\n';
+    header += "    return fallbackPath;\n";
+    header += "  }\n";
     header += "};\n";
   }
 
