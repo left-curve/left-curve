@@ -5,10 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import {
   Button,
+  Checkbox,
   createContext,
   ensureErrorMessage,
   ExpandOptions,
+  IconAlert,
   IconButton,
+  IconChecked,
   IconClose,
   IconEmail,
   IconKey,
@@ -19,7 +22,7 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 import { secp256k1ParsePubKey } from "@left-curve/crypto";
-import { encodeBase64 } from "@left-curve/encoding";
+import { encodeBase64, encodeHex } from "@left-curve/encoding";
 import { createKeyHash } from "@left-curve/sdk";
 import { AuthOptions } from "../auth/AuthOptions";
 import { PasskeyCredential } from "../auth/PasskeyCredential";
@@ -44,17 +47,20 @@ type AddKeyScreen =
   | "email-otp"
   | "wallets"
   | "public-key-warning"
-  | "public-key-input";
+  | "public-key-input"
+  | "public-key-summary";
 
 interface AddKeyState {
   screen: AddKeyScreen;
   email: string;
+  publicKeyInput: string;
   isPending: boolean;
 }
 
 interface AddKeyActions {
   setScreen: (screen: AddKeyScreen) => void;
   setEmail: (email: string) => void;
+  setPublicKeyInput: (publicKeyInput: string) => void;
   linkEmailKey: () => Promise<void>;
   addKey: (connectorId: string) => Promise<void>;
   addPublicKey: (publicKey: string) => Promise<void>;
@@ -74,6 +80,7 @@ const [AddKeyContextProvider, , AddKeyContext] = createContext<AddKeyContextValu
 function AddKeyProvider({ children }: { children: React.ReactNode }) {
   const [screen, setScreen] = useState<AddKeyScreen>("options");
   const [email, setEmail] = useState("");
+  const [publicKeyInput, setPublicKeyInput] = useState("");
   const connectors = useConnectors();
   const { account, username, userIndex } = useAccount();
   const { data: signingClient } = useSigningClient();
@@ -235,11 +242,13 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
         state: {
           screen,
           email,
+          publicKeyInput,
           isPending: isAddingKey || isLinkingEmailKey || isAddingPublicKey,
         },
         actions: {
           setScreen,
           setEmail,
+          setPublicKeyInput,
           linkEmailKey: safeLinkEmailKey,
           addKey,
           addPublicKey,
@@ -262,12 +271,13 @@ function AddKeyFrame({ children }: { children: React.ReactNode }) {
 interface AddKeyHeaderProps {
   title: string;
   description?: React.ReactNode;
-  variant?: "key" | "warning";
+  variant?: "key" | "warning" | "success";
 }
 
 function AddKeyHeader({ title, description, variant = "key" }: AddKeyHeaderProps) {
   const { hideModal } = useApp();
-  const Icon = variant === "warning" ? IconWarningTriangle : IconKey;
+  const Icon =
+    variant === "warning" ? IconWarningTriangle : variant === "success" ? IconChecked : IconKey;
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -386,38 +396,71 @@ function AddKeyPublicKeyOption() {
 }
 
 function AddKeyPublicKeyWarning() {
+  const [acknowledgements, setAcknowledgements] = useState({
+    generated: false,
+    privateKey: false,
+    authority: false,
+  });
   const {
     actions: { setScreen },
   } = use(AddKeyContext);
+  const canContinue = Object.values(acknowledgements).every(Boolean);
+  const setAcknowledgement = (key: keyof typeof acknowledgements) => (checked: boolean) =>
+    setAcknowledgements((current) => ({ ...current, [key]: checked }));
 
   return (
-    <div className="flex flex-col gap-5 w-full">
-      <div className="flex flex-col gap-3 text-ink-tertiary-500 diatype-m-regular">
-        <p>{m["settings.keyManagement.publicKey.warning.recommended"]()}</p>
-        <p>{m["settings.keyManagement.publicKey.warning.control"]()}</p>
-        <p>{m["settings.keyManagement.publicKey.warning.generated"]()}</p>
+    <div className="flex flex-col gap-4 w-full">
+      <div className="rounded-xl bg-surface-primary-red text-ink-tertiary-red shadow-account-card px-3 py-2 flex gap-2 diatype-sm-medium">
+        <IconAlert className="w-5 h-5 shrink-0 text-primitives-red-light-600" />
         <p>{m["settings.keyManagement.publicKey.warning.scam"]()}</p>
       </div>
+      <div className="flex flex-col gap-2">
+        <Checkbox
+          color="grey"
+          radius="md"
+          size="sm"
+          checked={acknowledgements.generated}
+          onChange={setAcknowledgement("generated")}
+          label={m["settings.keyManagement.publicKey.warning.confirmations.generated"]()}
+        />
+        <Checkbox
+          color="grey"
+          radius="md"
+          size="sm"
+          checked={acknowledgements.privateKey}
+          onChange={setAcknowledgement("privateKey")}
+          label={m["settings.keyManagement.publicKey.warning.confirmations.privateKey"]()}
+        />
+        <Checkbox
+          color="grey"
+          radius="md"
+          size="sm"
+          checked={acknowledgements.authority}
+          onChange={setAcknowledgement("authority")}
+          label={m["settings.keyManagement.publicKey.warning.confirmations.authority"]()}
+        />
+      </div>
       <div className="flex flex-col gap-3">
-        <Button fullWidth onClick={() => setScreen("public-key-input")}>
-          {m["settings.keyManagement.publicKey.warning.understand"]()}
-        </Button>
-        <Button fullWidth variant="link" onClick={() => setScreen("options")}>
-          {m["common.cancel"]()}
-        </Button>
+        <div className="flex gap-3">
+          <Button fullWidth variant="secondary" onClick={() => setScreen("options")}>
+            {m["common.cancel"]()}
+          </Button>
+          <Button fullWidth isDisabled={!canContinue} onClick={() => setScreen("public-key-input")}>
+            {m["common.continue"]()}
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
 
 function AddKeyPublicKeyInput() {
-  const [publicKey, setPublicKey] = useState("");
   const {
-    state: { isPending },
-    actions: { addPublicKey },
+    state: { publicKeyInput, isPending },
+    actions: { setPublicKeyInput, setScreen },
   } = use(AddKeyContext);
-  const parsedPublicKey = useMemo(() => secp256k1ParsePubKey(publicKey), [publicKey]);
-  const showError = publicKey.trim().length > 0 && !parsedPublicKey;
+  const parsedPublicKey = useMemo(() => secp256k1ParsePubKey(publicKeyInput), [publicKeyInput]);
+  const showError = publicKeyInput.trim().length > 0 && !parsedPublicKey;
 
   return (
     <form
@@ -425,7 +468,7 @@ function AddKeyPublicKeyInput() {
       onSubmit={(event) => {
         event.preventDefault();
         if (!parsedPublicKey) return;
-        addPublicKey(publicKey).catch(() => undefined);
+        setScreen("public-key-summary");
       }}
     >
       <div className="flex flex-col gap-1 relative text-ink-secondary-700">
@@ -436,7 +479,7 @@ function AddKeyPublicKeyInput() {
           className={twMerge(
             "relative w-full inline-flex tap-highlight-transparent flex-row items-start shadow-account-card gap-2 z-10",
             "bg-surface-secondary-rice hover:bg-surface-tertiary-rice border border-transparent active:border-surface-quaternary-rice",
-            "px-4 py-[13px] rounded-lg min-h-[112px]",
+            "px-4 py-[13px] rounded-lg min-h-[64px]",
             showError ? "border-status-fail" : null,
             isPending
               ? "pointer-events-none bg-surface-disabled-gray placeholder:text-fg-disabled text-fg-disabled"
@@ -445,15 +488,18 @@ function AddKeyPublicKeyInput() {
         >
           <textarea
             id="secp256k1-public-key"
-            value={publicKey}
+            value={publicKeyInput}
             disabled={isPending}
             autoComplete="off"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
             placeholder={m["settings.keyManagement.publicKey.input.placeholder"]()}
-            onChange={(event) => setPublicKey(event.target.value)}
-            className="flex-1 min-h-[86px] resize-y diatype-m-regular bg-transparent outline-none placeholder:text-ink-tertiary-500 text-ink-secondary-700 relative z-10"
+            onChange={(event) => setPublicKeyInput(event.target.value)}
+            className={twMerge(
+              "flex-1 min-h-[38px] resize-y diatype-m-regular bg-transparent outline-none placeholder:text-ink-tertiary-500 text-ink-secondary-700 relative z-10",
+              showError ? "text-status-fail" : null,
+            )}
           />
         </div>
         {showError ? (
@@ -461,17 +507,86 @@ function AddKeyPublicKeyInput() {
             {m["settings.keyManagement.publicKey.input.error"]()}
           </span>
         ) : null}
+        {parsedPublicKey ? (
+          <span className="diatype-sm-regular text-primitives-green-light-600">
+            {m["settings.keyManagement.publicKey.input.valid"]()}
+          </span>
+        ) : null}
       </div>
-      <Button
-        fullWidth
-        type="submit"
-        isLoading={isPending}
-        isDisabled={!parsedPublicKey || isPending}
-      >
-        {m["settings.keyManagement.publicKey.input.submit"]()}
-      </Button>
+      <div className="flex gap-3">
+        <Button
+          fullWidth
+          type="button"
+          variant="secondary"
+          onClick={() => setScreen("public-key-warning")}
+        >
+          {m["common.back"]()}
+        </Button>
+        <Button
+          fullWidth
+          type="submit"
+          isLoading={isPending}
+          isDisabled={!parsedPublicKey || isPending}
+        >
+          {m["settings.keyManagement.publicKey.input.submit"]()}
+        </Button>
+      </div>
     </form>
   );
+}
+
+function AddKeyPublicKeySummary() {
+  const {
+    state: { publicKeyInput, isPending },
+    actions: { addPublicKey, setScreen },
+  } = use(AddKeyContext);
+  const parsedPublicKey = useMemo(() => secp256k1ParsePubKey(publicKeyInput), [publicKeyInput]);
+  const keyLabel = parsedPublicKey ? formatPublicKeySummary(parsedPublicKey) : "-";
+
+  return (
+    <div className="flex flex-col gap-4 w-full">
+      <div className="rounded-lg border border-outline-secondary-gray bg-surface-secondary-rice shadow-account-card overflow-hidden diatype-sm-regular text-ink-secondary-700">
+        <SummaryRow label={m["settings.keyManagement.publicKey.summary.key"]()} value={keyLabel} />
+        <SummaryRow
+          label={m["settings.keyManagement.publicKey.summary.type"]()}
+          value={m["settings.keyManagement.publicKey.summary.typeValue"]()}
+        />
+        <SummaryRow
+          label={m["settings.keyManagement.publicKey.summary.signedBy"]()}
+          value={m["settings.keyManagement.publicKey.summary.signedByValue"]()}
+        />
+      </div>
+      <div className="flex gap-3">
+        <Button fullWidth variant="secondary" onClick={() => setScreen("public-key-input")}>
+          {m["common.back"]()}
+        </Button>
+        <Button
+          fullWidth
+          isLoading={isPending}
+          isDisabled={!parsedPublicKey || isPending}
+          onClick={() => {
+            addPublicKey(publicKeyInput).catch(() => undefined);
+          }}
+        >
+          {m["settings.keyManagement.publicKey.summary.confirm"]()}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[minmax(72px,1fr)_minmax(0,2fr)] gap-3 border-b border-outline-secondary-gray last:border-b-0 px-3 py-2">
+      <span>{label}</span>
+      <span className="text-right diatype-sm-bold truncate">{value}</span>
+    </div>
+  );
+}
+
+function formatPublicKeySummary(publicKey: Uint8Array) {
+  const publicKeyHex = encodeHex(publicKey);
+  return `${publicKeyHex.slice(0, 10)} ... ${publicKeyHex.slice(-4)}`;
 }
 
 function AddKeyEmailInput() {
@@ -516,6 +631,7 @@ export const AddKey = {
   Advanced: AddKeyAdvanced,
   PublicKeyWarning: AddKeyPublicKeyWarning,
   PublicKeyInput: AddKeyPublicKeyInput,
+  PublicKeySummary: AddKeyPublicKeySummary,
   EmailInput: AddKeyEmailInput,
   EmailOtp: AddKeyEmailOtp,
   Context: AddKeyContext,

@@ -56,10 +56,26 @@ function AddKeyModalContent() {
       <AddKey.Frame>
         <AddKey.Header
           title={m["settings.keyManagement.publicKey.warning.title"]()}
+          description={m["settings.keyManagement.publicKey.warning.description"]()}
           variant="warning"
         />
         <AddKey.Options>
           <AddKey.PublicKeyWarning />
+        </AddKey.Options>
+      </AddKey.Frame>
+    );
+  }
+
+  if (screen === "public-key-summary") {
+    return (
+      <AddKey.Frame>
+        <AddKey.Header
+          title={m["settings.keyManagement.publicKey.summary.title"]()}
+          description={m["settings.keyManagement.publicKey.summary.description"]()}
+          variant="success"
+        />
+        <AddKey.Options>
+          <AddKey.PublicKeySummary />
         </AddKey.Options>
       </AddKey.Frame>
     );

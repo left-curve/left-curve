@@ -1136,19 +1136,32 @@
         "option": "Public key",
         "warning": {
           "title": "Warning",
-          "recommended": "This feature is recommended only for knowledgeable algo traders.",
-          "control": "Anyone who owns this key will be able to send transactions on your behalf.",
-          "generated": "Make sure it is a key that you generated yourself and have not shared with anyone else.",
-          "scam": "If someone provided you a key and asked you to add it to your account, it's probably a scam. Be careful.",
-          "understand": "I understand what I'm doing"
+          "description": "Anyone who owns this key can send transactions on your behalf. Only proceed if you generated this key yourself and have not shared it.",
+          "scam": "If someone gave you this key and told you to add it, STOP. This is a scam.",
+          "confirmations": {
+            "generated": "I generated this key myself",
+            "privateKey": "I have not shared the private key with anyone",
+            "authority": "I understand this key can sign transactions on my behalf"
+          }
         },
         "input": {
-          "title": "Add a public key",
+          "title": "Add a Public Key",
           "description": "Paste a secp256k1 public key in hex or base64. You'll keep the private key; we never see it.",
-          "label": "Public key",
+          "label": "Public Key",
           "placeholder": "Paste hex or base64...",
-          "error": "Not a valid secp256k1 public key",
+          "valid": "Secp256k1 - hex - 33 bytes (compressed)",
+          "error": "This doesn't look like a valid secp256k1 key. Please check and try again.",
           "submit": "Add key"
+        },
+        "summary": {
+          "title": "Review Before Signing",
+          "description": "Verify these details before your passkey signs the transaction.",
+          "key": "Key",
+          "type": "Type",
+          "typeValue": "secp256k1 (Public key)",
+          "signedBy": "Signed by",
+          "signedByValue": "Your active passkey",
+          "confirm": "Confirm & Sign"
         }
       }
     }
