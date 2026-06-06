@@ -1,7 +1,7 @@
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
-import { encodeHex, hexToBigInt, isHex } from "@left-curve/encoding";
+import { decodeBase64, decodeHex, encodeHex, hexToBigInt, isHex } from "@left-curve/encoding";
 
 import type { Hex, RawSignature } from "@left-curve/types";
 import type { KeyPair } from "./keypair.js";
@@ -51,6 +51,56 @@ export function secp256k1CompressPubKey(pubKey: Uint8Array, compress: boolean): 
   if (compress && pubKey.length === 33) return pubKey;
   if (!compress && pubKey.length === 65) return pubKey;
   return secp256k1.ProjectivePoint.fromHex(pubKey).toRawBytes(compress);
+}
+
+/**
+ * Parse a secp256k1 public key from hex or base64 and normalize it to compressed bytes.
+ * @param pubKey - The public key encoded as hex or base64.
+ * @returns The compressed public key bytes, or null if the input is not a valid secp256k1 public key.
+ */
+export function secp256k1ParsePubKey(pubKey: string): Uint8Array | null {
+  const normalizedPubKey = pubKey.trim().replace(/\s+/g, "");
+  if (!normalizedPubKey) return null;
+
+  const hasHexPrefix = normalizedPubKey.startsWith("0x") || normalizedPubKey.startsWith("0X");
+  const mayBeHex = hasHexPrefix || /^[0-9a-fA-F]+$/.test(normalizedPubKey);
+
+  if (mayBeHex) {
+    try {
+      const hex = hasHexPrefix ? `0x${normalizedPubKey.slice(2)}` : normalizedPubKey;
+      return secp256k1NormalizePubKey(decodeHex(hex as Hex));
+    } catch {
+      if (hasHexPrefix) return null;
+    }
+  }
+
+  try {
+    return secp256k1NormalizePubKey(decodeBase64(padBase64(normalizedPubKey)));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normalize a secp256k1 public key to compressed bytes.
+ * @param pubKey - A compressed or uncompressed secp256k1 public key.
+ * @returns The compressed public key bytes.
+ */
+export function secp256k1NormalizePubKey(pubKey: Uint8Array): Uint8Array {
+  const uncompressedPubKey = secp256k1CompressPubKey(pubKey, false);
+  const compressedPubKey = secp256k1CompressPubKey(uncompressedPubKey, true);
+
+  if (compressedPubKey.length !== 33) {
+    throw new Error(`Invalid secp256k1 public key length: ${compressedPubKey.length}`);
+  }
+
+  return compressedPubKey;
+}
+
+function padBase64(input: string) {
+  const remainder = input.length % 4;
+  if (remainder === 0 || remainder === 1) return input;
+  return input.padEnd(input.length + 4 - remainder, "=");
 }
 
 /**

@@ -18,11 +18,12 @@ import {
   twMerge,
   useApp,
 } from "@left-curve/applets-kit";
+import { secp256k1ParsePubKey } from "@left-curve/crypto";
+import { encodeBase64 } from "@left-curve/encoding";
 import { createKeyHash } from "@left-curve/sdk";
 import { AuthOptions } from "../auth/AuthOptions";
 import { PasskeyCredential } from "../auth/PasskeyCredential";
 import { EmailCredential } from "../auth/EmailCredential";
-import { parseSecp256k1PublicKey } from "~/utils/secp256k1PublicKey";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -187,21 +188,22 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
       mutationFn: async (publicKeyInput: string) => {
         if (!account || !signingClient) throw new Error("We couldn't process the request");
 
-        const parsedKey = parseSecp256k1PublicKey(publicKeyInput);
-        if (!parsedKey) {
+        const publicKey = secp256k1ParsePubKey(publicKeyInput);
+        if (!publicKey) {
           throw new Error(m["settings.keyManagement.publicKey.input.error"]());
         }
 
-        const keyExists = userKeys?.some((k) => k.keyHash === parsedKey.keyHash);
+        const keyHash = createKeyHash(publicKey);
+        const keyExists = userKeys?.some((k) => k.keyHash === keyHash);
         if (keyExists) {
           throw new KeyAlreadyExistsError();
         }
 
         await signingClient.updateKey({
-          keyHash: parsedKey.keyHash,
+          keyHash,
           sender: account.address,
           action: {
-            insert: { secp256k1: parsedKey.publicKeyBase64 },
+            insert: { secp256k1: encodeBase64(publicKey) },
           },
         });
       },
@@ -414,7 +416,7 @@ function AddKeyPublicKeyInput() {
     state: { isPending },
     actions: { addPublicKey },
   } = use(AddKeyContext);
-  const parsedPublicKey = useMemo(() => parseSecp256k1PublicKey(publicKey), [publicKey]);
+  const parsedPublicKey = useMemo(() => secp256k1ParsePubKey(publicKey), [publicKey]);
   const showError = publicKey.trim().length > 0 && !parsedPublicKey;
 
   return (
