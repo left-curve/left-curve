@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import type React from "react";
 
 import type { LootDisplay } from "./loot";
+import { Image } from "~/components/foundation/Image";
 
 export type LootBucket = { display: LootDisplay; count: number };
 
@@ -68,7 +69,7 @@ export const LootSummary: React.FC<LootSummaryProps> = ({ buckets, onClose }) =>
                   bucket.count === 0 && "opacity-50",
                 )}
               >
-                <img
+                <Image
                   src={bucket.display.frameSrc}
                   alt={bucket.display.label}
                   crossOrigin="anonymous"

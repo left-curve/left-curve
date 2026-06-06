@@ -4,6 +4,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 type TierKey = "bronze" | "silver" | "gold" | "crystal";
 
@@ -122,7 +123,7 @@ const ChestCard: React.FC<ChestCardProps> = ({ tierKey, isReached, className }) 
       className,
     )}
   >
-    <img
+    <Image
       src={`/images/points/boxes/${tierKey}.png`}
       alt={`${tierKey} chest`}
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[65%] size-full scale-150 object-contain pointer-events-none"
@@ -144,7 +145,7 @@ const StepMarker: React.FC<{ isReached: boolean }> = ({ isReached }) => (
 );
 
 const StartFlag: React.FC<{ className?: string }> = ({ className }) => (
-  <img
+  <Image
     src="/images/points/points-flag.png"
     alt="Start"
     className={twMerge("object-contain", className)}
@@ -169,7 +170,7 @@ type ProgressThumbProps = {
 };
 
 const ProgressThumb: React.FC<ProgressThumbProps> = ({ progress }) => (
-  <img
+  <Image
     src="/images/points/pointBarThumb.png"
     alt="Progress"
     className="absolute top-1/2 -translate-y-1/2 w-10 h-10 select-none pointer-events-none transition-all duration-300 z-10"

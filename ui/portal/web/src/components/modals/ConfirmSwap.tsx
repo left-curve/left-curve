@@ -13,6 +13,7 @@ import { formatUnits } from "@left-curve/utils";
 import { useConfig, usePrices } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import type { Coin } from "@left-curve/types";
 import type { ModalRef } from "./RootModal";
@@ -70,7 +71,7 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
               <p className="text-ink-secondary-700 h3-bold">
                 {inputAmount} {inputCoin.symbol}
               </p>
-              <img className="h-8 w-8" src={inputCoin.logoURI} alt={inputCoin.symbol} />
+              <Image className="h-8 w-8" src={inputCoin.logoURI} alt={inputCoin.symbol} />
             </div>
             <FormattedNumber
               number={getPrice(inputAmount, inputCoin.denom)}
@@ -87,7 +88,7 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
               <p className="text-ink-secondary-700 h3-bold">
                 {outputAmount} {outputCoin.symbol}
               </p>
-              <img className="h-8 w-8" src={outputCoin.logoURI} alt={outputCoin.symbol} />
+              <Image className="h-8 w-8" src={outputCoin.logoURI} alt={outputCoin.symbol} />
             </div>
             <FormattedNumber
               number={getPrice(outputAmount, outputCoin.denom)}

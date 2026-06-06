@@ -46,6 +46,7 @@ import { perpsMarginAsset } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { WarningTransferAccounts } from "~/components/transfer/WarningTransferAccounts";
+import { Image } from "~/components/foundation/Image";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
@@ -406,7 +407,7 @@ const TransferSpotPerp: React.FC = () => {
             startContent={
               <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
                 <div className="flex gap-2 items-center font-semibold">
-                  <img
+                  <Image
                     src={isSpotToPerp ? perpsMarginAsset.logoURI : usdcCoin.logoURI}
                     alt={isSpotToPerp ? perpsMarginAsset.symbol : usdcCoin.symbol}
                     className="w-8 h-8"

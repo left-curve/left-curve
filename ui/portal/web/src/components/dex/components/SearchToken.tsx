@@ -14,6 +14,7 @@ import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
 import type { GetAppConfigData } from "@left-curve/store";
@@ -38,7 +39,7 @@ const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId }) => {
 
   return (
     <div className="flex gap-2 items-center">
-      <img
+      <Image
         src={baseCoin?.logoURI}
         alt={baseCoin?.symbol}
         className="h-6 w-6 drag-none select-none"

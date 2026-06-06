@@ -12,6 +12,7 @@ import {
 } from "@left-curve/applets-kit";
 import { memo, useCallback, useMemo } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
@@ -19,7 +20,7 @@ import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
 
 const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
-  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+  <Image src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
 ));
 
 // `Udec128_6` arrives as a stringified decimal like "2.000000". Trim trailing
