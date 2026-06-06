@@ -1,4 +1,4 @@
-import { use, useState } from "react";
+import { use, useMemo, useState } from "react";
 import { useAccount, useConnectors, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { getUserEmbeddedEthereumWallet, getEntropyDetailsFromUser } from "@privy-io/js-sdk-core";
 import { useQuery } from "@tanstack/react-query";
@@ -12,12 +12,17 @@ import {
   IconClose,
   IconEmail,
   IconKey,
+  IconLeft,
+  IconWallet,
+  IconWarningTriangle,
+  twMerge,
   useApp,
 } from "@left-curve/applets-kit";
 import { createKeyHash } from "@left-curve/sdk";
 import { AuthOptions } from "../auth/AuthOptions";
 import { PasskeyCredential } from "../auth/PasskeyCredential";
 import { EmailCredential } from "../auth/EmailCredential";
+import { parseSecp256k1PublicKey } from "~/utils/secp256k1PublicKey";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -32,7 +37,13 @@ class KeyAlreadyExistsError extends Error {
   }
 }
 
-type AddKeyScreen = "options" | "email-input" | "email-otp";
+type AddKeyScreen =
+  | "options"
+  | "email-input"
+  | "email-otp"
+  | "wallets"
+  | "public-key-warning"
+  | "public-key-input";
 
 interface AddKeyState {
   screen: AddKeyScreen;
@@ -45,6 +56,7 @@ interface AddKeyActions {
   setEmail: (email: string) => void;
   linkEmailKey: () => Promise<void>;
   addKey: (connectorId: string) => Promise<void>;
+  addPublicKey: (publicKey: string) => Promise<void>;
 }
 
 interface AddKeyContextValue {
@@ -169,8 +181,41 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
+  const { mutateAsync: submitPublicKey, isPending: isAddingPublicKey } = useSubmitTx({
+    mutation: {
+      invalidateKeys: [["user_keys"], ["quests", username]],
+      mutationFn: async (publicKeyInput: string) => {
+        if (!account || !signingClient) throw new Error("We couldn't process the request");
+
+        const parsedKey = parseSecp256k1PublicKey(publicKeyInput);
+        if (!parsedKey) {
+          throw new Error(m["settings.keyManagement.publicKey.input.error"]());
+        }
+
+        const keyExists = userKeys?.some((k) => k.keyHash === parsedKey.keyHash);
+        if (keyExists) {
+          throw new KeyAlreadyExistsError();
+        }
+
+        await signingClient.updateKey({
+          keyHash: parsedKey.keyHash,
+          sender: account.address,
+          action: {
+            insert: { secp256k1: parsedKey.publicKeyBase64 },
+          },
+        });
+      },
+      onSuccess: handleSuccess,
+      onError: handleError,
+    },
+  });
+
   const addKey = async (connectorId: string) => {
     await submitKey(connectorId);
+  };
+
+  const addPublicKey = async (publicKeyInput: string) => {
+    await submitPublicKey(publicKeyInput);
   };
 
   const safeLinkEmailKey = async () => {
@@ -185,8 +230,18 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
   return (
     <AddKeyContextProvider
       value={{
-        state: { screen, email, isPending: isAddingKey || isLinkingEmailKey },
-        actions: { setScreen, setEmail, linkEmailKey: safeLinkEmailKey, addKey },
+        state: {
+          screen,
+          email,
+          isPending: isAddingKey || isLinkingEmailKey || isAddingPublicKey,
+        },
+        actions: {
+          setScreen,
+          setEmail,
+          linkEmailKey: safeLinkEmailKey,
+          addKey,
+          addPublicKey,
+        },
       }}
     >
       {children}
@@ -204,11 +259,13 @@ function AddKeyFrame({ children }: { children: React.ReactNode }) {
 
 interface AddKeyHeaderProps {
   title: string;
-  description: string;
+  description?: React.ReactNode;
+  variant?: "key" | "warning";
 }
 
-function AddKeyHeader({ title, description }: AddKeyHeaderProps) {
+function AddKeyHeader({ title, description, variant = "key" }: AddKeyHeaderProps) {
   const { hideModal } = useApp();
+  const Icon = variant === "warning" ? IconWarningTriangle : IconKey;
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -219,12 +276,21 @@ function AddKeyHeader({ title, description }: AddKeyHeaderProps) {
       >
         <IconClose />
       </IconButton>
-      <div className="w-12 h-12 rounded-full bg-surface-secondary-green flex items-center justify-center text-primitives-green-light-600">
-        <IconKey />
+      <div
+        className={twMerge(
+          "w-12 h-12 rounded-full flex items-center justify-center",
+          variant === "warning"
+            ? "bg-utility-warning-100 text-utility-warning-500"
+            : "bg-surface-secondary-green text-primitives-green-light-600",
+        )}
+      >
+        <Icon />
       </div>
       <div className="flex flex-col gap-2">
         <h3 className="h4-bold text-ink-primary-900">{title}</h3>
-        <p className="text-ink-tertiary-500 diatype-m-regular">{description}</p>
+        {description ? (
+          <p className="text-ink-tertiary-500 diatype-m-regular">{description}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -268,14 +334,141 @@ function AddKeyEmail() {
 
 function AddKeyWallets() {
   const {
-    state: { isPending },
-    actions: { addKey },
+    actions: { setScreen },
   } = use(AddKeyContext);
 
   return (
-    <ExpandOptions showOptionText={m["auth.wallets"]()} showLine>
+    <Button variant="secondary" fullWidth onClick={() => setScreen("wallets")}>
+      <IconWallet />
+      {m["auth.wallets"]()}
+    </Button>
+  );
+}
+
+function AddKeyWalletsPicker() {
+  const {
+    state: { isPending },
+    actions: { addKey, setScreen },
+  } = use(AddKeyContext);
+
+  return (
+    <div className="flex flex-col gap-4 w-full items-center">
       <AuthOptions action={addKey} isPending={isPending} />
+      <Button size="sm" variant="link" onClick={() => setScreen("options")}>
+        <IconLeft className="w-[22px] h-[22px]" />
+        <span>{m["common.back"]()}</span>
+      </Button>
+    </div>
+  );
+}
+
+function AddKeyAdvanced() {
+  return (
+    <ExpandOptions showOptionText={m["settings.keyManagement.advanced"]()} showLine>
+      <AddKeyPublicKeyOption />
     </ExpandOptions>
+  );
+}
+
+function AddKeyPublicKeyOption() {
+  const {
+    actions: { setScreen },
+  } = use(AddKeyContext);
+
+  return (
+    <Button variant="secondary" fullWidth onClick={() => setScreen("public-key-warning")}>
+      <IconKey />
+      {m["settings.keyManagement.publicKey.option"]()}
+    </Button>
+  );
+}
+
+function AddKeyPublicKeyWarning() {
+  const {
+    actions: { setScreen },
+  } = use(AddKeyContext);
+
+  return (
+    <div className="flex flex-col gap-5 w-full">
+      <div className="flex flex-col gap-3 text-ink-tertiary-500 diatype-m-regular">
+        <p>{m["settings.keyManagement.publicKey.warning.recommended"]()}</p>
+        <p>{m["settings.keyManagement.publicKey.warning.control"]()}</p>
+        <p>{m["settings.keyManagement.publicKey.warning.generated"]()}</p>
+        <p>{m["settings.keyManagement.publicKey.warning.scam"]()}</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        <Button fullWidth onClick={() => setScreen("public-key-input")}>
+          {m["settings.keyManagement.publicKey.warning.understand"]()}
+        </Button>
+        <Button fullWidth variant="link" onClick={() => setScreen("options")}>
+          {m["common.cancel"]()}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AddKeyPublicKeyInput() {
+  const [publicKey, setPublicKey] = useState("");
+  const {
+    state: { isPending },
+    actions: { addPublicKey },
+  } = use(AddKeyContext);
+  const parsedPublicKey = useMemo(() => parseSecp256k1PublicKey(publicKey), [publicKey]);
+  const showError = publicKey.trim().length > 0 && !parsedPublicKey;
+
+  return (
+    <form
+      className="flex flex-col gap-4 w-full"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!parsedPublicKey) return;
+        addPublicKey(publicKey).catch(() => undefined);
+      }}
+    >
+      <div className="flex flex-col gap-1 relative text-ink-secondary-700">
+        <label className="exposure-sm-italic text-ink-secondary-700" htmlFor="secp256k1-public-key">
+          {m["settings.keyManagement.publicKey.input.label"]()}
+        </label>
+        <div
+          className={twMerge(
+            "relative w-full inline-flex tap-highlight-transparent flex-row items-start shadow-account-card gap-2 z-10",
+            "bg-surface-secondary-rice hover:bg-surface-tertiary-rice border border-transparent active:border-surface-quaternary-rice",
+            "px-4 py-[13px] rounded-lg min-h-[112px]",
+            showError ? "border-status-fail" : null,
+            isPending
+              ? "pointer-events-none bg-surface-disabled-gray placeholder:text-fg-disabled text-fg-disabled"
+              : null,
+          )}
+        >
+          <textarea
+            id="secp256k1-public-key"
+            value={publicKey}
+            disabled={isPending}
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder={m["settings.keyManagement.publicKey.input.placeholder"]()}
+            onChange={(event) => setPublicKey(event.target.value)}
+            className="flex-1 min-h-[86px] resize-y diatype-m-regular bg-transparent outline-none placeholder:text-ink-tertiary-500 text-ink-secondary-700 relative z-10"
+          />
+        </div>
+        {showError ? (
+          <span className="diatype-sm-regular text-status-fail">
+            {m["settings.keyManagement.publicKey.input.error"]()}
+          </span>
+        ) : null}
+      </div>
+      <Button
+        fullWidth
+        type="submit"
+        isLoading={isPending}
+        isDisabled={!parsedPublicKey || isPending}
+      >
+        {m["settings.keyManagement.publicKey.input.submit"]()}
+      </Button>
+    </form>
   );
 }
 
@@ -317,6 +510,10 @@ export const AddKey = {
   Passkey: AddKeyPasskey,
   Email: AddKeyEmail,
   Wallets: AddKeyWallets,
+  WalletsPicker: AddKeyWalletsPicker,
+  Advanced: AddKeyAdvanced,
+  PublicKeyWarning: AddKeyPublicKeyWarning,
+  PublicKeyInput: AddKeyPublicKeyInput,
   EmailInput: AddKeyEmailInput,
   EmailOtp: AddKeyEmailOtp,
   Context: AddKeyContext,

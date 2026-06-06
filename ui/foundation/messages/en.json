@@ -1101,19 +1101,20 @@
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Security",
-      "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
+      "description": "Add or delete keys to manage access to your account. Each key can authorize account activity, so keep only the keys you trust.",
       "add": "Add",
+      "advanced": "Advanced",
       "management": {
         "add": {
-          "title": "Add new credential",
-          "description": "Choose a credential. You can add or remove credentials later.",
+          "title": "Add a new key",
+          "description": "Choose how you want to add a key.",
           "success": {
-            "title": "Credential added",
-            "description": "Your new credential has been successfully linked to your account."
+            "title": "Key added",
+            "description": "Your new key has been linked to your account."
           },
           "error": {
-            "title": "Failed to add credential",
-            "alreadyExists": "This credential is already linked to your account."
+            "title": "Failed to add key",
+            "alreadyExists": "Key already exists."
           }
         },
         "delete": {
@@ -1126,6 +1127,29 @@
         "title": "Link Email",
         "description": "We'll send a verification code to your email",
         "alreadyLinked": "This email is already linked to your account"
+      },
+      "wallets": {
+        "title": "Connect a wallet",
+        "description": "Choose a wallet to add as a key."
+      },
+      "publicKey": {
+        "option": "Public key",
+        "warning": {
+          "title": "Warning",
+          "recommended": "This feature is recommended only for knowledgeable algo traders.",
+          "control": "Anyone who owns this key will be able to send transactions on your behalf.",
+          "generated": "Make sure it is a key that you generated yourself and have not shared with anyone else.",
+          "scam": "If someone provided you a key and asked you to add it to your account, it's probably a scam. Be careful.",
+          "understand": "I understand what I'm doing"
+        },
+        "input": {
+          "title": "Add a public key",
+          "description": "Paste a secp256k1 public key in hex or base64. You'll keep the private key; we never see it.",
+          "label": "Public key",
+          "placeholder": "Paste hex or base64...",
+          "error": "Not a valid secp256k1 public key",
+          "submit": "Add key"
+        }
       }
     }
   },

@@ -12,6 +12,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@left-curve/crypto": path.resolve(root, "sdk/typescript/crypto/src/index.ts"),
+      "@left-curve/encoding": path.resolve(root, "sdk/typescript/encoding/src/index.ts"),
+      "@left-curve/types": path.resolve(root, "sdk/typescript/types/src/index.ts"),
+      "@left-curve/utils": path.resolve(root, "sdk/typescript/utils/src/index.ts"),
       "@left-curve/sdk/utils": path.resolve(root, "sdk/typescript/dango/src/utils/index.ts"),
       "@left-curve/sdk/types": path.resolve(root, "sdk/typescript/dango/src/types/index.ts"),
       "@left-curve/sdk": path.resolve(root, "sdk/typescript/dango/src/index.ts"),
