@@ -18,11 +18,99 @@ const mocks = vi.hoisted(() => ({
   useQuery: vi.fn(),
 }));
 
-vi.mock("@left-curve/applets-kit", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@left-curve/applets-kit")>();
+vi.mock("@left-curve/applets-kit", async () => {
+  const React = await import("react");
+  const Icon = () => <span aria-hidden="true" />;
 
   return {
-    ...actual,
+    Button: ({
+      as: Component = "button",
+      children,
+      fullWidth: _fullWidth,
+      isDisabled,
+      isLoading,
+      radius: _radius,
+      size: _size,
+      variant: _variant,
+      ...props
+    }: React.ComponentProps<"button"> & {
+      as?: React.ElementType;
+      fullWidth?: boolean;
+      isDisabled?: boolean;
+      isLoading?: boolean;
+      radius?: string;
+      size?: string;
+      variant?: string;
+    }) => (
+      <Component {...props} disabled={isDisabled || isLoading}>
+        {children}
+      </Component>
+    ),
+    Checkbox: ({
+      checked,
+      label,
+      onChange,
+    }: {
+      checked: boolean;
+      label: string;
+      onChange: (checked: boolean) => void;
+    }) => (
+      <label>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+        {label}
+      </label>
+    ),
+    createContext: <ContextType,>({
+      errorMessage = "Context is missing",
+    }: {
+      errorMessage?: string;
+      name?: string;
+      strict?: boolean;
+    } = {}) => {
+      const Context = React.createContext<ContextType | undefined>(undefined);
+      const useContext = () => {
+        const value = React.useContext(Context);
+        if (!value) throw new Error(errorMessage);
+        return value;
+      };
+
+      return [Context.Provider, useContext, Context];
+    },
+    ensureErrorMessage: (error: unknown) =>
+      error instanceof Error ? error.message : String(error),
+    ExpandOptions: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    IconAlert: Icon,
+    IconButton: ({
+      children,
+      isDisabled,
+      isLoading,
+      variant: _variant,
+      ...props
+    }: React.ComponentProps<"button"> & {
+      isDisabled?: boolean;
+      isLoading?: boolean;
+      variant?: string;
+    }) => (
+      <button {...props} disabled={isDisabled || isLoading}>
+        {children}
+      </button>
+    ),
+    IconChecked: Icon,
+    IconClose: Icon,
+    IconEmail: Icon,
+    IconKey: Icon,
+    IconLeft: Icon,
+    IconWallet: Icon,
+    IconWarningTriangle: Icon,
+    Input: (props: React.ComponentProps<"input">) => <input {...props} />,
+    OtpInput: (props: React.ComponentProps<"input">) => <input {...props} />,
+    Spinner: () => <span>Loading</span>,
+    twMerge: (...classes: Array<string | null | undefined | false>) =>
+      classes.filter(Boolean).join(" "),
     useApp: () => ({
       hideModal: mocks.hideModal,
       toast: {
@@ -32,6 +120,21 @@ vi.mock("@left-curve/applets-kit", async (importOriginal) => {
     }),
   };
 });
+
+vi.mock("../auth/AuthOptions", () => ({
+  AuthOptions: () => null,
+}));
+
+vi.mock("../auth/EmailCredential", () => ({
+  EmailCredential: {
+    Email: () => null,
+    OTP: () => null,
+  },
+}));
+
+vi.mock("../auth/PasskeyCredential", () => ({
+  PasskeyCredential: () => null,
+}));
 
 vi.mock("@left-curve/store", () => ({
   useAccount: mocks.useAccount,
