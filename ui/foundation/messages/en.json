@@ -1133,7 +1133,7 @@
         "description": "Choose a wallet to add as a key."
       },
       "publicKey": {
-        "option": "Public key",
+        "option": "Secp256k1 Public Key",
         "warning": {
           "title": "Warning",
           "description": "Anyone who owns this key can send transactions on your behalf. Only proceed if you generated this key yourself and have not shared it.",
@@ -1158,9 +1158,7 @@
           "description": "Verify these details before your passkey signs the transaction.",
           "key": "Key",
           "type": "Type",
-          "typeValue": "secp256k1 (Public key)",
-          "signedBy": "Signed by",
-          "signedByValue": "Your active passkey",
+          "typeValue": "Secp256k1 Public Key",
           "confirm": "Confirm & Sign"
         }
       }

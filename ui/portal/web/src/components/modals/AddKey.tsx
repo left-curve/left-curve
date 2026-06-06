@@ -551,10 +551,6 @@ function AddKeyPublicKeySummary() {
           label={m["settings.keyManagement.publicKey.summary.type"]()}
           value={m["settings.keyManagement.publicKey.summary.typeValue"]()}
         />
-        <SummaryRow
-          label={m["settings.keyManagement.publicKey.summary.signedBy"]()}
-          value={m["settings.keyManagement.publicKey.summary.signedByValue"]()}
-        />
       </div>
       <div className="flex gap-3">
         <Button fullWidth variant="secondary" onClick={() => setScreen("public-key-input")}>
