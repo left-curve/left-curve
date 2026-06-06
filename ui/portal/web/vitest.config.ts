@@ -19,6 +19,8 @@ export default defineConfig({
       "@left-curve/sdk/utils": path.resolve(root, "sdk/typescript/dango/src/utils/index.ts"),
       "@left-curve/sdk/types": path.resolve(root, "sdk/typescript/dango/src/types/index.ts"),
       "@left-curve/sdk": path.resolve(root, "sdk/typescript/dango/src/index.ts"),
+      "~/constants": path.resolve(__dirname, "constants.config.ts"),
+      "~": path.resolve(__dirname, "src"),
     },
   },
 });

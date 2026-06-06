@@ -54,6 +54,7 @@ interface AddKeyState {
   screen: AddKeyScreen;
   email: string;
   publicKeyInput: string;
+  publicKey: Uint8Array | null;
   isPending: boolean;
 }
 
@@ -61,9 +62,10 @@ interface AddKeyActions {
   setScreen: (screen: AddKeyScreen) => void;
   setEmail: (email: string) => void;
   setPublicKeyInput: (publicKeyInput: string) => void;
+  setPublicKey: (publicKey: Uint8Array | null) => void;
   linkEmailKey: () => Promise<void>;
   addKey: (connectorId: string) => Promise<void>;
-  addPublicKey: (publicKey: string) => Promise<void>;
+  addPublicKey: (publicKey: Uint8Array) => Promise<void>;
 }
 
 interface AddKeyContextValue {
@@ -81,6 +83,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
   const [screen, setScreen] = useState<AddKeyScreen>("options");
   const [email, setEmail] = useState("");
   const [publicKeyInput, setPublicKeyInput] = useState("");
+  const [publicKey, setPublicKey] = useState<Uint8Array | null>(null);
   const connectors = useConnectors();
   const { account, username, userIndex } = useAccount();
   const { data: signingClient } = useSigningClient();
@@ -192,13 +195,8 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
   const { mutateAsync: submitPublicKey, isPending: isAddingPublicKey } = useSubmitTx({
     mutation: {
       invalidateKeys: [["user_keys"], ["quests", username]],
-      mutationFn: async (publicKeyInput: string) => {
+      mutationFn: async (publicKey: Uint8Array) => {
         if (!account || !signingClient) throw new Error("We couldn't process the request");
-
-        const publicKey = secp256k1ParsePubKey(publicKeyInput);
-        if (!publicKey) {
-          throw new Error(m["settings.keyManagement.publicKey.input.error"]());
-        }
 
         const keyHash = createKeyHash(publicKey);
         const keyExists = userKeys?.some((k) => k.keyHash === keyHash);
@@ -219,14 +217,6 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const addKey = async (connectorId: string) => {
-    await submitKey(connectorId);
-  };
-
-  const addPublicKey = async (publicKeyInput: string) => {
-    await submitPublicKey(publicKeyInput);
-  };
-
   const safeLinkEmailKey = async () => {
     try {
       await linkEmailKey();
@@ -243,15 +233,17 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
           screen,
           email,
           publicKeyInput,
+          publicKey,
           isPending: isAddingKey || isLinkingEmailKey || isAddingPublicKey,
         },
         actions: {
           setScreen,
           setEmail,
           setPublicKeyInput,
+          setPublicKey,
           linkEmailKey: safeLinkEmailKey,
-          addKey,
-          addPublicKey,
+          addKey: submitKey,
+          addPublicKey: submitPublicKey,
         },
       }}
     >
@@ -457,7 +449,7 @@ function AddKeyPublicKeyWarning() {
 function AddKeyPublicKeyInput() {
   const {
     state: { publicKeyInput, isPending },
-    actions: { setPublicKeyInput, setScreen },
+    actions: { setPublicKey, setPublicKeyInput, setScreen },
   } = use(AddKeyContext);
   const parsedPublicKey = useMemo(() => secp256k1ParsePubKey(publicKeyInput), [publicKeyInput]);
   const showError = publicKeyInput.trim().length > 0 && !parsedPublicKey;
@@ -468,6 +460,7 @@ function AddKeyPublicKeyInput() {
       onSubmit={(event) => {
         event.preventDefault();
         if (!parsedPublicKey) return;
+        setPublicKey(parsedPublicKey);
         setScreen("public-key-summary");
       }}
     >
@@ -495,7 +488,10 @@ function AddKeyPublicKeyInput() {
             autoCorrect="off"
             spellCheck={false}
             placeholder={m["settings.keyManagement.publicKey.input.placeholder"]()}
-            onChange={(event) => setPublicKeyInput(event.target.value)}
+            onChange={(event) => {
+              setPublicKeyInput(event.target.value);
+              setPublicKey(null);
+            }}
             className={twMerge(
               "flex-1 min-h-[38px] resize-y diatype-m-regular bg-transparent outline-none placeholder:text-ink-tertiary-500 text-ink-secondary-700 relative z-10",
               showError ? "text-status-fail" : null,
@@ -537,11 +533,10 @@ function AddKeyPublicKeyInput() {
 
 function AddKeyPublicKeySummary() {
   const {
-    state: { publicKeyInput, isPending },
+    state: { publicKey, isPending },
     actions: { addPublicKey, setScreen },
   } = use(AddKeyContext);
-  const parsedPublicKey = useMemo(() => secp256k1ParsePubKey(publicKeyInput), [publicKeyInput]);
-  const keyLabel = parsedPublicKey ? formatPublicKeySummary(parsedPublicKey) : "-";
+  const keyLabel = publicKey ? formatPublicKeySummary(publicKey) : "-";
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -559,9 +554,10 @@ function AddKeyPublicKeySummary() {
         <Button
           fullWidth
           isLoading={isPending}
-          isDisabled={!parsedPublicKey || isPending}
+          isDisabled={!publicKey || isPending}
           onClick={() => {
-            addPublicKey(publicKeyInput).catch(() => undefined);
+            if (!publicKey) return;
+            addPublicKey(publicKey).catch(() => undefined);
           }}
         >
           {m["settings.keyManagement.publicKey.summary.confirm"]()}

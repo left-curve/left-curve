@@ -56,7 +56,7 @@ export function secp256k1CompressPubKey(pubKey: Uint8Array, compress: boolean): 
 /**
  * Parse a secp256k1 public key from hex or base64 and normalize it to compressed bytes.
  * @param pubKey - The public key encoded as hex or base64.
- * @returns The compressed public key bytes, or null if the input is not a valid secp256k1 public key.
+ * @returns The compressed public key bytes, or null if the input is empty or invalid.
  */
 export function secp256k1ParsePubKey(pubKey: string): Uint8Array | null {
   const normalizedPubKey = pubKey.trim().replace(/\s+/g, "");
@@ -66,41 +66,46 @@ export function secp256k1ParsePubKey(pubKey: string): Uint8Array | null {
   const mayBeHex = hasHexPrefix || /^[0-9a-fA-F]+$/.test(normalizedPubKey);
 
   if (mayBeHex) {
-    try {
-      const hex = hasHexPrefix ? `0x${normalizedPubKey.slice(2)}` : normalizedPubKey;
-      return secp256k1NormalizePubKey(decodeHex(hex as Hex));
-    } catch {
-      if (hasHexPrefix) return null;
-    }
+    const hex = hasHexPrefix ? `0x${normalizedPubKey.slice(2)}` : normalizedPubKey;
+    return parseSecp256k1HexPubKey(hex as Hex);
   }
 
+  return parseSecp256k1Base64PubKey(normalizedPubKey);
+}
+
+function parseSecp256k1HexPubKey(pubKey: Hex) {
   try {
-    return secp256k1NormalizePubKey(decodeBase64(padBase64(normalizedPubKey)));
-  } catch {
-    return null;
+    return secp256k1NormalizePubKey(decodeHex(pubKey));
+  } catch (error) {
+    if (error instanceof Error) return null;
+    throw error;
   }
+}
+
+function parseSecp256k1Base64PubKey(pubKey: string) {
+  try {
+    return secp256k1NormalizePubKey(decodeBase64(padBase64(pubKey)));
+  } catch (error) {
+    if (error instanceof Error) return null;
+    throw error;
+  }
+}
+
+function padBase64(input: string) {
+  const remainder = input.length % 4;
+  if (remainder === 0) return input;
+  return input.padEnd(input.length + 4 - remainder, "=");
 }
 
 /**
  * Normalize a secp256k1 public key to compressed bytes.
  * @param pubKey - A compressed or uncompressed secp256k1 public key.
  * @returns The compressed public key bytes.
+ * @throws If the input is not a valid secp256k1 public key.
  */
 export function secp256k1NormalizePubKey(pubKey: Uint8Array): Uint8Array {
   const uncompressedPubKey = secp256k1CompressPubKey(pubKey, false);
-  const compressedPubKey = secp256k1CompressPubKey(uncompressedPubKey, true);
-
-  if (compressedPubKey.length !== 33) {
-    throw new Error(`Invalid secp256k1 public key length: ${compressedPubKey.length}`);
-  }
-
-  return compressedPubKey;
-}
-
-function padBase64(input: string) {
-  const remainder = input.length % 4;
-  if (remainder === 0 || remainder === 1) return input;
-  return input.padEnd(input.length + 4 - remainder, "=");
+  return secp256k1CompressPubKey(uncompressedPubKey, true);
 }
 
 /**
