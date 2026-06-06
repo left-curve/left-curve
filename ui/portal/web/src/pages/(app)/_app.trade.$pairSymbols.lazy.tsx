@@ -3,6 +3,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useConfig } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useHeaderHeight } from "@left-curve/applets-kit";
+import { useCallback } from "react";
 
 import { ProTrade } from "~/components/dex/components/ProTrade";
 import {
@@ -21,31 +22,40 @@ function ProTradeApplet() {
   const { action = "buy", order_type = "market" } = Route.useSearch();
   const headerHeight = useHeaderHeight();
 
-  const onChangePairId = (pairSymbols: string) => {
-    navigate({
-      to: "/trade/$pairSymbols",
-      params: { pairSymbols },
-      replace: true,
-    });
-  };
+  const onChangePairId = useCallback(
+    (pairSymbols: string) => {
+      navigate({
+        to: "/trade/$pairSymbols",
+        params: { pairSymbols },
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
-  const onChangeAction = (action: "buy" | "sell") => {
-    navigate({
-      to: "/trade/$pairSymbols",
-      params: { pairSymbols },
-      replace: true,
-      search: { order_type, action },
-    });
-  };
+  const onChangeAction = useCallback(
+    (action: "buy" | "sell") => {
+      navigate({
+        to: "/trade/$pairSymbols",
+        params: { pairSymbols },
+        replace: true,
+        search: { order_type, action },
+      });
+    },
+    [navigate, order_type, pairSymbols],
+  );
 
-  const onChangeOrderType = (order_type: "limit" | "market") => {
-    navigate({
-      to: "/trade/$pairSymbols",
-      params: { pairSymbols },
-      replace: true,
-      search: { order_type, action },
-    });
-  };
+  const onChangeOrderType = useCallback(
+    (order_type: "limit" | "market") => {
+      navigate({
+        to: "/trade/$pairSymbols",
+        params: { pairSymbols },
+        replace: true,
+        search: { order_type, action },
+      });
+    },
+    [action, navigate, pairSymbols],
+  );
 
   const { baseSymbol = "", quoteSymbol = "" } = parseTradePairSymbols(pairSymbols) ?? {};
 

@@ -8,15 +8,14 @@ import {
   useAppConfig,
   useConfig,
   usePrices,
-  TradePairStore,
-  tradeInfoStore,
-  useTradeCoins,
+  useTradeAccountCoins,
+  useTradePairCoins,
   usePerpsMaxSize,
   usePerpsSubmission,
-  perpsUserStateStore,
-  perpsUserStateExtendedStore,
   perpsTradeSettingsStore,
-  allPerpsPairStatsStore,
+  useAllPerpsPairStats,
+  usePerpsUserState,
+  usePerpsUserStateExtended,
   computeLiquidationPrice,
   useVolume,
   useFeeRateOverride,
@@ -58,6 +57,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useGeoblock } from "~/components/foundation/hooks/useGeoblock";
 import { computeOtherPairsUsedMargin } from "../helpers/math";
 import { useTPSLPriceSync } from "../hooks/useTPSLPriceSync";
+import { useProTrade } from "./ProTrade";
 
 import type React from "react";
 
@@ -132,12 +132,13 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const { data: appConfig } = useAppConfig();
 
-  const pairId = TradePairStore((s) => s.pairId);
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
-  const action = tradeInfoStore((s) => s.action);
-  const operation = tradeInfoStore((s) => s.operation);
+  const { pairId, perpsPairId, action, orderType: operation, accountAddress } = useProTrade();
 
-  const { baseCoin, quoteCoin } = useTradeCoins();
+  const { baseCoin, quoteCoin } = useTradeAccountCoins({
+    pairId,
+    accountAddress,
+    enabled: isConnected,
+  });
   const { getPrice } = usePrices();
   const { account } = useAccount();
 
@@ -165,8 +166,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const isBaseSize = sizeCoinDenom === baseCoin.denom;
 
-  const statsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
-  const perpsPairId = getPerpsPairId();
+  const statsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId);
 
   const currentPrice = useMemo(() => {
     const fromStats = Number(statsByPairId[perpsPairId]?.currentPrice ?? 0);
@@ -177,10 +177,17 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const params = appConfig.perpsPairs[perpsPairId];
 
-  const userState = perpsUserStateStore((s) => s.userState);
-  const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
-
-  const equity = perpsUserStateExtendedStore((s) => s.equity) ?? "0";
+  const userState = usePerpsUserState((s) => s.userState, {
+    accountAddress,
+    enabled: isConnected,
+  });
+  const extendedState = usePerpsUserStateExtended(
+    (s) => ({ positions: s.positions, equity: s.equity }),
+    { accountAddress, enabled: isConnected },
+    (previous, next) => previous.positions === next.positions && previous.equity === next.equity,
+  );
+  const extendedPositions = extendedState.positions;
+  const equity = extendedState.equity ?? "0";
   const reservedMargin = userState?.reservedMargin ?? "0";
 
   const { coins: allCoins } = useConfig();
@@ -206,9 +213,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   ]);
 
   const position = useMemo(() => {
-    if (!userState?.positions?.[getPerpsPairId()]) return null;
-    return userState.positions[getPerpsPairId()];
-  }, [userState, pairId]);
+    if (!userState?.positions?.[perpsPairId]) return null;
+    return userState.positions[perpsPairId];
+  }, [userState, perpsPairId]);
 
   const maxLeverage = useMemo(() => {
     const ratio = Number(params.initialMarginRatio);
@@ -340,7 +347,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const queryClient = useQueryClient();
 
   const submission = usePerpsSubmission({
-    perpsPairId: getPerpsPairId(),
+    perpsPairId,
     action,
     operation,
     sizeValue,
@@ -641,7 +648,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               </Tooltip>
               <div className="flex items-center gap-1">
                 <p className="diatype-xs-medium text-ink-secondary-700">
-                  {m["dex.protrade.perps.slippageDisplay"]({ max: Decimal(maxSlippage).mul(100).toFixed(2) })}
+                  {m["dex.protrade.perps.slippageDisplay"]({
+                    max: Decimal(maxSlippage).mul(100).toFixed(2),
+                  })}
                 </p>
                 <IconEdit
                   className="w-4 h-4 text-ink-tertiary-500 hover:text-ink-secondary-700 cursor-pointer"
@@ -736,10 +745,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 const PerpsTopPills: React.FC = () => {
   const { showModal } = useApp();
   const { data: appConfig } = useAppConfig();
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
-  const { baseCoin, quoteCoin } = useTradeCoins();
+  const { pairId, perpsPairId } = useProTrade();
+  const { baseCoin, quoteCoin } = useTradePairCoins({ pairId });
 
-  const perpsPairId = getPerpsPairId();
   const params = appConfig.perpsPairs[perpsPairId];
 
   const maxLeverage = useMemo(() => {
@@ -792,10 +800,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
 
-  const action = tradeInfoStore((s) => s.action);
-  const operation = tradeInfoStore((s) => s.operation);
-  const setAction = tradeInfoStore((s) => s.setAction);
-  const setOperation = tradeInfoStore((s) => s.setOperation);
+  const { action, orderType: operation, onChangeAction, onChangeOrderType } = useProTrade();
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
@@ -806,7 +811,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
           selectedTab={operation}
           keys={["market", "limit"]}
           fullWidth
-          onTabChange={(tab) => setOperation(tab as "market" | "limit")}
+          onTabChange={(tab) => onChangeOrderType(tab as "market" | "limit")}
           color="line-red"
           classNames={{ button: "exposure-xs-italic" }}
         />
@@ -827,7 +832,7 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
           keys={["buy", "sell"]}
           fullWidth
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
-          onTabChange={(tab) => setAction(tab as "sell" | "buy")}
+          onTabChange={(tab) => onChangeAction(tab as "sell" | "buy")}
           color={action === "sell" ? "red" : "light-green"}
         />
         <IconButton

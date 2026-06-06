@@ -2,18 +2,16 @@ import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-c
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
-import type { PairId } from "@left-curve/types";
 import {
-  livePerpsTradesStore,
+  useLivePerpsTrades,
   useCurrentPrice,
-  useTradeCoins,
+  useTradePairCoins,
   useAppConfig,
-  perpsLiquidityDepthStore,
   useStorage,
-  TradePairStore,
   usePerpsLiquidityDepth,
-  perpsOrdersByUserStore,
+  usePerpsOrdersByUser,
 } from "@left-curve/store";
+import { useProTrade } from "./ProTrade";
 import { bucketSizeToFractionDigits, Decimal, formatNumber } from "@left-curve/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
@@ -22,6 +20,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 import type { AnyCoin } from "@left-curve/store/types";
 import type { Controllers } from "@left-curve/applets-kit";
+import type { PerpsLiquidityDepthResponse } from "@left-curve/types";
 
 type OrderBookOverviewProps = {
   controllers: Controllers;
@@ -32,13 +31,12 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
 
   const { isLg, is3XlTall } = useMediaQuery();
 
-  const pairId = TradePairStore((s) => s.pairId);
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+  const { pairId, perpsPairId, accountAddress } = useProTrade();
   const { data: appConfig } = useAppConfig();
 
-  const { baseCoin, quoteCoin } = useTradeCoins();
+  const { baseCoin, quoteCoin } = useTradePairCoins({ pairId });
 
-  const pairInfo = appConfig.perpsPairs[getPerpsPairId()];
+  const pairInfo = appConfig.perpsPairs[perpsPairId];
 
   const bucketSizes: string[] = pairInfo.bucketSizes;
 
@@ -47,12 +45,6 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
   useEffect(() => {
     setBucketSize(bucketSizes[0]);
   }, [bucketSizes]);
-
-  usePerpsLiquidityDepth({
-    pairId: getPerpsPairId(),
-    bucketSize,
-    subscribe: true,
-  });
 
   useEffect(() => {
     if (is3XlTall) {
@@ -102,11 +94,12 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
               bucketSize={bucketSize}
               setBucketSize={setBucketSize}
               bucketRecords={bucketRecords}
-              pairId={pairId}
+              perpsPairId={perpsPairId}
+              accountAddress={accountAddress}
               controllers={controllers}
             />
           )}
-          {activeTab === "trades" && <LiveTrades baseCoin={baseCoin} />}
+          {activeTab === "trades" && <LiveTrades baseCoin={baseCoin} perpsPairId={perpsPairId} />}
         </>
       )}
       {is3XlTall && (
@@ -119,7 +112,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
             fullWidth
             classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
           />
-          <LiveTrades baseCoin={baseCoin} />
+          <LiveTrades baseCoin={baseCoin} perpsPairId={perpsPairId} />
         </>
       )}
     </ResizerContainer>
@@ -219,7 +212,8 @@ type OrderBookProps = {
   bucketSize: string;
   setBucketSize: (size: string) => void;
   bucketRecords: number;
-  pairId: PairId;
+  perpsPairId: string;
+  accountAddress?: string;
   controllers: Controllers;
 };
 
@@ -230,7 +224,8 @@ const OrderBook: React.FC<OrderBookProps> = ({
   bucketSize,
   setBucketSize,
   bucketRecords,
-  pairId,
+  perpsPairId,
+  accountAddress,
   controllers,
 }) => {
   const [perpsDisplayModeRaw, setPerpsDisplayMode] = useStorage<"base" | "quote">(
@@ -241,10 +236,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
 
   const bucketSizeSymbol = perpsDisplayMode === "quote" ? "USD" : baseCoin.symbol;
 
-  const priceFractionDigits = useMemo(
-    () => bucketSizeToFractionDigits(bucketSize),
-    [bucketSize],
-  );
+  const priceFractionDigits = useMemo(() => bucketSizeToFractionDigits(bucketSize), [bucketSize]);
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center h-full">
@@ -282,7 +274,9 @@ const OrderBook: React.FC<OrderBookProps> = ({
         </p>
       </div>
       <LiquidityDepth
-        pairId={pairId}
+        perpsPairId={perpsPairId}
+        accountAddress={accountAddress}
+        bucketSize={bucketSize}
         bucketRecords={bucketRecords}
         base={baseCoin}
         quote={quoteCoin}
@@ -296,15 +290,16 @@ const OrderBook: React.FC<OrderBookProps> = ({
 
 type LiveTradesProps = {
   baseCoin: AnyCoin & { amount: string };
+  perpsPairId: string;
 };
 
-const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin }) => {
+const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, perpsPairId }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { is3XlTall } = useMediaQuery();
   const { timeFormat } = settings;
 
-  const livePerps = livePerpsTradesStore((s) => s.trades);
+  const livePerps = useLivePerpsTrades((s) => s.trades, { perpsPairId });
   const perpsTrades = useDeferredValue(livePerps);
 
   return (
@@ -357,7 +352,9 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin }) => {
 };
 
 type LiquidityDepthProps = {
-  pairId: PairId;
+  perpsPairId: string;
+  accountAddress?: string;
+  bucketSize: string;
   bucketRecords: number;
   base: AnyCoin;
   quote: AnyCoin;
@@ -367,28 +364,32 @@ type LiquidityDepthProps = {
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
+  perpsPairId,
+  accountAddress,
+  bucketSize,
   bucketRecords,
   onSelectPrice,
   displayMode,
   priceFractionDigits,
 }) => {
   const { isLg } = useMediaQuery();
-  const perpsDepthData = perpsLiquidityDepthStore((s) => s.liquidityDepth);
+  const perpsDepthData = usePerpsLiquidityDepth((s) => s.liquidityDepth, {
+    perpsPairId,
+    bucketSize,
+  });
 
-  const perpsOrdersData = perpsOrdersByUserStore((s) => s.orders);
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+  const perpsOrdersData = usePerpsOrdersByUser((s) => s.orders, { accountAddress });
 
   const userOrderPrices = useMemo(() => {
     const prices = new Set<string>();
     if (perpsOrdersData) {
-      const currentPerpsPair = getPerpsPairId();
       for (const o of Object.values(perpsOrdersData)) {
-        if (o.pairId !== currentPerpsPair) continue;
+        if (o.pairId !== perpsPairId) continue;
         prices.add(Decimal(o.limitPrice).toFixed(priceFractionDigits));
       }
     }
     return prices;
-  }, [perpsOrdersData, priceFractionDigits, getPerpsPairId]);
+  }, [perpsOrdersData, priceFractionDigits, perpsPairId]);
 
   const liquidityDepth = useMemo(() => {
     if (!perpsDepthData) return null;
@@ -445,7 +446,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
         ))}
       </div>
 
-      <Spread />
+      <Spread perpsPairId={perpsPairId} perpsDepth={perpsDepthData} />
 
       <div className="bid-container flex flex-1 flex-col w-full gap-[2px] order-1 lg:order-3">
         {[...bids.records].map((bid, i) => (
@@ -465,12 +466,14 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   );
 };
 
-const Spread: React.FC = () => {
+const Spread: React.FC<{
+  perpsPairId: string;
+  perpsDepth: PerpsLiquidityDepthResponse | null;
+}> = ({ perpsPairId, perpsDepth }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { currentPrice, previousPrice } = useCurrentPrice();
-  const perpsDepth = perpsLiquidityDepthStore((s) => s.liquidityDepth);
+  const { currentPrice, previousPrice } = useCurrentPrice({ perpsPairId });
 
   const { spread, spreadPercent } = useMemo(() => {
     if (!perpsDepth) return { spread: null, spreadPercent: null };

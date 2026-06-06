@@ -16,47 +16,72 @@ export function subscriptionsStore(client: PublicClient, options?: Subscriptions
   const { onError } = options ?? {};
   const activeExecutors: Map<string, () => void> = new Map();
   const listeners = new Map<string, Set<(...args: any[]) => void>>();
+  const errorListeners = new Map<string, Set<(error: unknown) => void>>();
 
   const subscribe = <K extends SubscriptionKey>(
     key: K,
-    { params, listener }: SubscribeArguments<K>,
+    { params, listener, onError: listenerOnError }: SubscribeArguments<K>,
   ): (() => void) => {
     const saveKey = JSON.stringify({ key, params });
+    if (listenerOnError) {
+      const currentErrorListeners = errorListeners.get(saveKey) || new Set();
+      currentErrorListeners.add(listenerOnError);
+      errorListeners.set(saveKey, currentErrorListeners);
+    }
+
     if (activeExecutors.has(saveKey)) {
       const currentListeners = listeners.get(saveKey) || new Set();
       currentListeners.add(listener);
       listeners.set(saveKey, currentListeners);
-      return () => unsubscribe(saveKey, listener);
+      return () => unsubscribe(saveKey, listener, listenerOnError);
     }
 
     listeners.set(saveKey, new Set([listener]));
 
     const executor = SubscriptionExecutors[key as keyof typeof SubscriptionExecutors];
 
-    const executorUnsubscribeFn = executor({
-      client,
-      params,
-      getListeners: () => listeners.get(saveKey),
-      onError,
-    } as never);
+    try {
+      const executorUnsubscribeFn = executor({
+        client,
+        params,
+        getListeners: () => listeners.get(saveKey),
+        onError: (error: unknown) => {
+          onError?.(error);
+          const currentErrorListeners = errorListeners.get(saveKey);
+          currentErrorListeners?.forEach((listener) => listener(error));
+        },
+      } as never);
 
-    activeExecutors.set(saveKey, executorUnsubscribeFn);
-    return () => unsubscribe(saveKey, listener);
+      activeExecutors.set(saveKey, executorUnsubscribeFn);
+    } catch (error) {
+      listeners.delete(saveKey);
+      errorListeners.delete(saveKey);
+      throw error;
+    }
+
+    return () => unsubscribe(saveKey, listener, listenerOnError);
   };
 
   const unsubscribe = <K extends SubscriptionKey>(
     key: string,
     listener: GetSubscriptionDef<K>["listener"],
+    listenerOnError?: (error: unknown) => void,
   ): void => {
     if (!activeExecutors.has(key)) return;
 
     const currentListeners = listeners.get(key);
+    const currentErrorListeners = errorListeners.get(key);
+    if (listenerOnError) {
+      currentErrorListeners?.delete(listenerOnError);
+      if (currentErrorListeners?.size === 0) errorListeners.delete(key);
+    }
     if (currentListeners) {
       currentListeners.delete(listener);
       if (currentListeners.size === 0) {
         activeExecutors.get(key)?.();
         activeExecutors.delete(key);
         listeners.delete(key);
+        errorListeners.delete(key);
       }
     }
   };
@@ -214,11 +239,12 @@ const queryAppSubscriptionExecutor: SubscriptionExecutor<"queryApp"> = ({
 
 const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairStats"> = ({
   client,
+  params,
   getListeners,
   onError,
 }) => {
   return client.allPerpsPairStatsSubscription({
-    httpInterval: 5_000,
+    ...params,
     next: (event) => {
       const currentListeners = getListeners();
       currentListeners.forEach((listener) => listener(event));

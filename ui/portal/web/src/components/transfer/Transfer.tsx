@@ -10,7 +10,6 @@ import {
   useWatchEffect,
 } from "@left-curve/applets-kit";
 import {
-  perpsUserStateExtendedStore,
   useAccount,
   useBalances,
   useConfig,
@@ -186,7 +185,9 @@ const TransferSend: React.FC = () => {
 
   if (action !== "send") return null;
 
-  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split("{app}");
+  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split(
+    "{app}",
+  );
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -194,7 +195,14 @@ const TransferSend: React.FC = () => {
         description={
           <p>
             {transferHintParts[0]}
-            <Button as={Link} to="/bridge" search={{ action: "withdraw" } as any} variant="link" size="xs" className="p-0 h-fit m-0 inline">
+            <Button
+              as={Link}
+              to="/bridge"
+              search={{ action: "withdraw" } as any}
+              variant="link"
+              size="xs"
+              className="p-0 h-fit m-0 inline"
+            >
               {m["transfer.warning.withdraw"]()}
             </Button>
             {transferHintParts[1]}
@@ -271,8 +279,10 @@ const TransferSpotPerp: React.FC = () => {
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
 
-  usePerpsUserStateExtended();
-  const availableMargin = perpsUserStateExtendedStore((s) => s.availableMargin);
+  const availableMargin = usePerpsUserStateExtended((s) => s.availableMargin, {
+    accountAddress: account?.address,
+    enabled: isConnected,
+  });
 
   const { inputs, reset } = controllers;
 
