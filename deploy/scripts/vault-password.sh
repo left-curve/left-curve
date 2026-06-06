@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-if [ -n "$ANSIBLE_VAULT_PASSWORD" ]; then
+if [ -n "${ANSIBLE_VAULT_PASSWORD:-}" ]; then
   # Use cached environment variable (set by just add-passwords or CI)
   echo "$ANSIBLE_VAULT_PASSWORD"
 elif command -v pass >/dev/null 2>&1; then

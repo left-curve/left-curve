@@ -1,0 +1,126 @@
+# SOPS configuration template for deploy secrets.
+#
+# Do not use this file as-is. Copy it to .sops.yaml only after replacing every
+# placeholder with a real public age/YubiKey recipient. The placeholders are
+# intentionally invalid so accidental SOPS use fails closed.
+#
+# Team policy:
+# - one YubiKey-backed age recipient per user
+# - no backup age key per user
+# - deploy-ci is generated on a trusted desktop
+# - deploy-ci is included only for routine deploy files in phase 1
+# - deploy-ci is intentionally excluded from root/debian files in phase 1
+#
+# Placeholder map:
+# - age1PLACEHOLDER_PENSO_YUBIKEY      # penso
+# - age1PLACEHOLDER_LARRY_YUBIKEY      # larry
+# - age1PLACEHOLDER_RHAKI_YUBIKEY      # rhaki
+# - age1PLACEHOLDER_ZEXSOR_YUBIKEY     # zexsor
+# - age1PLACEHOLDER_J0NL1_YUBIKEY      # j0nl1
+# - age1PLACEHOLDER_KYAR1S_YUBIKEY     # kyar1s
+# - age1PLACEHOLDER_DEPLOY_CI_DESKTOP  # deploy-ci public recipient
+
+creation_rules:
+  # Routine deploy files: penso, larry, rhaki, zexsor, j0nl1, kyar1s, deploy-ci.
+  - path_regex: ^(deploy/)?group_vars/all/vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?group_vars/all/deploy_key\.sops$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?group_vars/dango-assistant/vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?group_vars/hyperlane/vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?group_vars/perps-bot/vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?group_vars/points-bot/vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?host_vars/100\.107\.248\.71/vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?host_vars/100\.122\.37\.57/main\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?host_vars/100\.96\.253\.40/vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1PLACEHOLDER_ZEXSOR_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  # Root/debian files: penso, larry, j0nl1 only. No deploy-ci in phase 1.
+  - path_regex: ^(deploy/)?vaults/debian/debian_key\.sops$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY
+
+  - path_regex: ^(deploy/)?vaults/debian/root_vault\.sops\.yml$
+    age: >-
+      age1PLACEHOLDER_PENSO_YUBIKEY,
+      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1PLACEHOLDER_J0NL1_YUBIKEY

@@ -192,7 +192,7 @@ security add-generic-password \
 This shows you have the right password:
 
 ```bash
-❯ ./vault-password.sh | sha256
+❯ ./scripts/vault-password.sh | sha256
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
 ```
 
@@ -229,7 +229,7 @@ security add-generic-password \
 This shows you have the right password:
 
 ```bash
-❯ ./debian-password.sh | sha256
+❯ ./scripts/debian-password.sh | sha256
 b82a3865821fb1c7072cf58ca641811fd814c892109963f54fce675e7e9cfca5
 ```
 
