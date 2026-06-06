@@ -2,7 +2,7 @@ export type LiveResourceStatus = "idle" | "connecting" | "ready" | "error";
 
 export type LiveResourceSnapshot = {
   status: LiveResourceStatus;
-  error: unknown | null;
+  error: Error | null;
 };
 
 export type LiveResourceCachePolicy = "delete-on-release" | "keep";
@@ -35,9 +35,3 @@ export type LiveResourceDebugState = {
     }
   >;
 };
-
-declare global {
-  interface Window {
-    __DANGO_LIVE_RESOURCES__?: LiveResourceDebugState;
-  }
-}

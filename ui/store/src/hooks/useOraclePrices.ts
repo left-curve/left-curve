@@ -43,13 +43,7 @@ function equalPrice(previous: Price, next: Price) {
 }
 
 function equalOraclePricesSnapshot(previous: OraclePricesSnapshot, next: OraclePricesSnapshot) {
-  if (
-    previous.status !== next.status ||
-    previous.error !== next.error ||
-    previous.lastUpdatedBlockHeight !== next.lastUpdatedBlockHeight
-  ) {
-    return false;
-  }
+  if (previous.status !== next.status || previous.error !== next.error) return false;
 
   const previousEntries = Object.entries(previous.prices);
   const nextEntries = Object.entries(next.prices);

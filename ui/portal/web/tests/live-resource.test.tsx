@@ -87,6 +87,100 @@ describe("createLiveResource", () => {
     releaseA();
     expect(resource.getSnapshot({ id: "a" }).value).toBe(1);
   });
+
+  it("stores runtime errors on the latest snapshot and notifies subscribers", () => {
+    let reportError: ((error: unknown) => void) | undefined;
+    const updates: TestSnapshot[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveRuntimeError",
+      cache: "keep",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        context.emit({ status: "ready", error: null, value: 7 });
+        reportError = context.error;
+        return () => {};
+      },
+    });
+
+    const release = resource.acquire({ id: "a" });
+    const unsubscribe = resource.subscribe({ id: "a" }, () => {
+      updates.push(resource.getSnapshot({ id: "a" }));
+    });
+
+    const runtimeError = new Error("boom");
+    reportError?.(runtimeError);
+
+    expect(resource.getSnapshot({ id: "a" })).toEqual({
+      status: "error",
+      error: runtimeError,
+      value: 7,
+    });
+    expect(updates).toEqual([{ status: "error", error: runtimeError, value: 7 }]);
+
+    unsubscribe();
+    release();
+  });
+
+  it("logs and ignores late errors after delete-on-release eviction", () => {
+    let reportError: ((error: unknown) => void) | undefined;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveLateError",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        reportError = context.error;
+        return () => {};
+      },
+    });
+
+    const release = resource.acquire({ id: "a" });
+    release();
+
+    const lateError = new Error("late");
+    reportError?.(lateError);
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[live-resource:primitiveLateError] dropped error after release",
+      lateError,
+    );
+    expect(resource.getDebugState().entries).toHaveLength(0);
+
+    consoleError.mockRestore();
+  });
+
+  it("supports key-only subscriptions for existing entries without creating missing entries", () => {
+    let emit: ((snapshot: TestSnapshot) => void) | undefined;
+    const listener = vi.fn();
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveKeyOnlySubscribe",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        emit = context.emit;
+        return () => {};
+      },
+    });
+
+    const unsubscribeMissing = resource.subscribeKey("missing", listener);
+    unsubscribeMissing();
+
+    expect(resource.getDebugState().entries).toHaveLength(0);
+
+    const release = resource.acquire({ id: "a" });
+    const unsubscribe = resource.subscribeKey("a", listener);
+
+    emit?.({ status: "ready", error: null, value: 3 });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    release();
+  });
 });
 
 describe("useLiveResource", () => {
@@ -222,6 +316,51 @@ describe("useLiveResource", () => {
     rendered.unmount();
     expect(stops).toEqual(["a", "b"]);
   });
+
+  it("starts and stops when enabled toggles", async () => {
+    let starts = 0;
+    let stops = 0;
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactEnabledToggle",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: () => {
+        starts += 1;
+        return () => {
+          stops += 1;
+        };
+      },
+    });
+
+    function Consumer({ enabled }: { enabled: boolean }) {
+      const value = useLiveResource({
+        resource,
+        params: { id: "toggle" },
+        enabled,
+        selector: (snapshot) => snapshot.value,
+      });
+
+      return <div data-testid="toggle">{value}</div>;
+    }
+
+    const rendered = render(<Consumer enabled={false} />);
+
+    expect(screen.getByTestId("toggle")).toHaveTextContent("0");
+    expect(starts).toBe(0);
+
+    rendered.rerender(<Consumer enabled />);
+    await waitFor(() => expect(starts).toBe(1));
+
+    rendered.rerender(<Consumer enabled={false} />);
+    await waitFor(() => expect(stops).toBe(1));
+
+    rendered.rerender(<Consumer enabled />);
+    await waitFor(() => expect(starts).toBe(2));
+
+    rendered.unmount();
+    expect(stops).toBe(2);
+  });
 });
 
 describe("subscriptionsStore", () => {
@@ -259,5 +398,55 @@ describe("subscriptionsStore", () => {
     expect(secondErrorListener).toHaveBeenCalledTimes(1);
 
     unsubscribe();
+  });
+
+  it("routes listener exceptions through global and subscription error handlers", () => {
+    let emitBlock: ((event: unknown) => void) | undefined;
+    const globalError = vi.fn();
+
+    const store = subscriptionsStore(
+      {
+        blockSubscription: ({ next }: { next: (event: unknown) => void }) => {
+          emitBlock = next;
+          return () => {};
+        },
+      } as never,
+      { onError: globalError },
+    );
+
+    const listenerError = new Error("listener failed");
+    const listenerOnError = vi.fn();
+
+    store.subscribe("block", {
+      listener: () => {
+        throw listenerError;
+      },
+      onError: listenerOnError,
+    });
+
+    emitBlock?.({ block: { height: 1 } });
+
+    expect(globalError).toHaveBeenCalledWith(listenerError);
+    expect(listenerOnError).toHaveBeenCalledWith(listenerError);
+  });
+
+  it("routes emit listener exceptions through global and subscription error handlers", () => {
+    const globalError = vi.fn();
+    const listenerError = new Error("emit listener failed");
+    const listenerOnError = vi.fn();
+
+    const store = subscriptionsStore({} as never, { onError: globalError });
+
+    store.subscribe("submitTx", {
+      listener: () => {
+        throw listenerError;
+      },
+      onError: listenerOnError,
+    });
+
+    store.emit({ key: "submitTx" }, { status: "pending" });
+
+    expect(globalError).toHaveBeenCalledWith(listenerError);
+    expect(listenerOnError).toHaveBeenCalledWith(listenerError);
   });
 });

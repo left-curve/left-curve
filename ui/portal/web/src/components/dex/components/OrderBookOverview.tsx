@@ -26,6 +26,15 @@ type OrderBookOverviewProps = {
   controllers: Controllers;
 };
 
+type LiveResourceErrorSnapshot = {
+  status: "idle" | "connecting" | "ready" | "error";
+  error: Error | null;
+};
+
+function selectLiveResourceError(snapshot: LiveResourceErrorSnapshot) {
+  return snapshot.status === "error" ? snapshot.error : null;
+}
+
 export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controllers }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
@@ -377,6 +386,10 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
     perpsPairId,
     bucketSize,
   });
+  const perpsDepthError = usePerpsLiquidityDepth(selectLiveResourceError, {
+    perpsPairId,
+    bucketSize,
+  });
 
   const perpsOrdersData = usePerpsOrdersByUser((s) => s.orders, { accountAddress });
 
@@ -420,6 +433,14 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
     return new Map(counters);
   }, [liquidityDepth]);
+
+  if (perpsDepthError) {
+    return (
+      <div className="flex h-full min-h-[12rem] w-full items-center justify-center p-4 text-center diatype-xs-medium text-utility-error-600">
+        Order book unavailable
+      </div>
+    );
+  }
 
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
 

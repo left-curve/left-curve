@@ -36,6 +36,12 @@ type LiveResourceEntry<Params, Snapshot extends LiveResourceSnapshot> = {
   updateCount: number;
 };
 
+function normalizeError(error: unknown) {
+  if (error instanceof Error) return error;
+  if (typeof error === "string") return new Error(error);
+  return new Error("Unknown live resource error", { cause: error });
+}
+
 export type LiveResource<Params, Snapshot extends LiveResourceSnapshot> = {
   name: string;
   acquire: (params: Params) => () => void;
@@ -104,6 +110,9 @@ export function createLiveResource<Params, Snapshot extends LiveResourceSnapshot
     nextSnapshot: Snapshot,
     options?: LiveResourceEmitOptions,
   ) {
+    if (entries.get(entry.key) !== entry) return;
+
+    // Transports can deliver late HTTP polls or out-of-order stream events after a fresher emit.
     if (
       options?.version !== undefined &&
       entry.version !== undefined &&
@@ -126,12 +135,18 @@ export function createLiveResource<Params, Snapshot extends LiveResourceSnapshot
   }
 
   function setConnecting(entry: LiveResourceEntry<Params, Snapshot>) {
+    // Keep ready snapshots stable across duplicate acquires; only idle/error states need a spinner.
     if (entry.snapshot.status !== "idle" && entry.snapshot.status !== "error") return;
     setSnapshot(entry, { ...entry.snapshot, status: "connecting", error: null } as Snapshot);
   }
 
   function setError(entry: LiveResourceEntry<Params, Snapshot>, error: unknown) {
-    setSnapshot(entry, { ...entry.snapshot, status: "error", error } as Snapshot);
+    const normalizedError = normalizeError(error);
+    if (entries.get(entry.key) !== entry) {
+      console.error(`[live-resource:${name}] dropped error after release`, normalizedError);
+      return;
+    }
+    setSnapshot(entry, { ...entry.snapshot, status: "error", error: normalizedError } as Snapshot);
   }
 
   function startEntry(entry: LiveResourceEntry<Params, Snapshot>) {
@@ -175,6 +190,7 @@ export function createLiveResource<Params, Snapshot extends LiveResourceSnapshot
       entry.refCount = Math.max(0, entry.refCount - 1);
       if (entry.refCount === 0) {
         stopEntry(entry);
+        // Delete only after the last listener has unsubscribed; React can unsubscribe after release.
         if (entry.listeners.size === 0 && cache === "delete-on-release") entries.delete(key);
       }
       syncLiveResourceDebug();
@@ -191,6 +207,7 @@ export function createLiveResource<Params, Snapshot extends LiveResourceSnapshot
     return () => {
       entry.listeners.delete(listener);
       if (entry.refCount === 0 && entry.listeners.size === 0 && cache === "delete-on-release") {
+        // Both lifecycle ownership and React subscriptions are gone, so the entry is unreachable.
         entries.delete(key);
       }
       syncLiveResourceDebug();

@@ -39,8 +39,8 @@ pub enum Side {
 ///   Treated as zero when the user has no position in the traded pair.
 /// - `price_j`: the **oracle price** for pair `j`, as returned by
 ///   [`OracleQuerier::query_price`]. Dango uses the oracle price
-///   as the mark price, so this is the same number the frontend reads off
-///   live all-pair stats current price. It is neither the
+///   as the mark price, so this is the same number the frontend reads from
+///   `useAllPerpsPairStats(...).currentPrice`. It is neither the
 ///   orderbook best-bid/ask nor the position's entry price.
 /// - `price`: shorthand for `price_j` where `j == current_pair_id`.
 /// - `IMR_pair_j`: the **fixed** initial-margin ratio for pair `j` from

@@ -13,12 +13,16 @@ import {
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   getPerpsPairIdFromPairId,
+  useLivePerpsTrades,
   useConfig,
+  useOraclePrices,
   usePerpsUserState,
   usePerpsUserStateExtended,
   usePerpsOrdersByUser,
   useAllPerpsPairStats,
   useCurrentPrice,
+  usePerpsPairState,
+  usePerpsState,
   useTradePairCoins,
   useAccount,
 } from "@left-curve/store";
@@ -36,6 +40,7 @@ import {
 } from "@left-curve/applets-kit";
 import { CountBadge } from "../../foundation/CountBadge";
 import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
+import { reportStoreError } from "../../../app.sentry";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
@@ -46,6 +51,22 @@ import { PerpsTradeHistory } from "./TradeHistory";
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { ConditionalOrder, PairId } from "@left-curve/types";
+
+const PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID = "protrade-live-resource-error";
+
+type LiveResourceErrorSnapshot = {
+  status: "idle" | "connecting" | "ready" | "error";
+  error: Error | null;
+};
+
+type LiveResourceErrorSource = {
+  name: string;
+  error: Error | null;
+};
+
+function selectLiveResourceError(snapshot: LiveResourceErrorSnapshot) {
+  return snapshot.status === "error" ? snapshot.error : null;
+}
 
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;
@@ -89,6 +110,80 @@ const TradeDocumentTitle: React.FC = () => {
       document.title = previousTitle;
     };
   }, [pairId, baseCoin.symbol, currentPrice]);
+
+  return null;
+};
+
+const ProTradeErrorFallback: React.FC = () => {
+  return (
+    <div className="flex h-full min-h-[24rem] w-full items-center justify-center bg-surface-primary-rice p-6 text-center diatype-sm-medium text-ink-tertiary-500">
+      Market data unavailable
+    </div>
+  );
+};
+
+const ProTradeLiveResourceErrors: React.FC = () => {
+  const { toast } = useApp();
+  const { accountAddress, perpsPairId } = useProTrade();
+
+  const allPairStatsError = useAllPerpsPairStats(selectLiveResourceError);
+  const liveTradesError = useLivePerpsTrades(selectLiveResourceError, { perpsPairId });
+  const oraclePricesError = useOraclePrices(selectLiveResourceError);
+  const pairStateError = usePerpsPairState(selectLiveResourceError, { perpsPairId });
+  const perpsStateError = usePerpsState(selectLiveResourceError);
+  const userStateError = usePerpsUserState(selectLiveResourceError, { accountAddress });
+  const userStateExtendedError = usePerpsUserStateExtended(selectLiveResourceError, {
+    accountAddress,
+  });
+  const userOrdersError = usePerpsOrdersByUser(selectLiveResourceError, { accountAddress });
+
+  const activeError = useMemo<LiveResourceErrorSource | null>(() => {
+    const errors: LiveResourceErrorSource[] = [
+      { name: "market stats", error: allPairStatsError },
+      { name: "live trades", error: liveTradesError },
+      { name: "oracle prices", error: oraclePricesError },
+      { name: "pair state", error: pairStateError },
+      { name: "perps state", error: perpsStateError },
+      { name: "account state", error: userStateError },
+      { name: "account margin", error: userStateExtendedError },
+      { name: "open orders", error: userOrdersError },
+    ];
+
+    return errors.find(({ error }) => error) ?? null;
+  }, [
+    allPairStatsError,
+    liveTradesError,
+    oraclePricesError,
+    pairStateError,
+    perpsStateError,
+    userStateError,
+    userStateExtendedError,
+    userOrdersError,
+  ]);
+
+  useEffect(() => {
+    if (!activeError?.error) {
+      toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
+      return;
+    }
+
+    reportStoreError(activeError.error);
+    toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
+    toast.error(
+      {
+        title: m["common.error"](),
+        description: `Live ${activeError.name} error: ${activeError.error.message}`,
+      },
+      {
+        id: PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID,
+        duration: Number.POSITIVE_INFINITY,
+      },
+    );
+  }, [activeError, toast]);
+
+  useEffect(() => {
+    return () => toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
+  }, [toast]);
 
   return null;
 };
@@ -144,8 +239,14 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
 
   return (
     <ProTradeProvider value={contextValue}>
-      <TradeDocumentTitle />
-      {children}
+      <ErrorBoundary
+        fallback={<ProTradeErrorFallback />}
+        resetKeys={[pairId.baseDenom, pairId.quoteDenom, perpsPairId]}
+      >
+        <ProTradeLiveResourceErrors />
+        <TradeDocumentTitle />
+        {children}
+      </ErrorBoundary>
     </ProTradeProvider>
   );
 };

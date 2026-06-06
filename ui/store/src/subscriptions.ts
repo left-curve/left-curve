@@ -12,11 +12,33 @@ export type SubscriptionsStoreOptions = {
   onError?: (error: unknown) => void;
 };
 
+function dispatchListeners(
+  currentListeners: Set<(...args: any[]) => void> | undefined,
+  event: unknown,
+  onError?: (error: unknown) => void,
+) {
+  if (!currentListeners) return;
+
+  for (const listener of currentListeners) {
+    try {
+      listener(event);
+    } catch (error) {
+      onError?.(error);
+    }
+  }
+}
+
 export function subscriptionsStore(client: PublicClient, options?: SubscriptionsStoreOptions) {
   const { onError } = options ?? {};
   const activeExecutors: Map<string, () => void> = new Map();
   const listeners = new Map<string, Set<(...args: any[]) => void>>();
   const errorListeners = new Map<string, Set<(error: unknown) => void>>();
+
+  const notifyError = (saveKey: string, error: unknown) => {
+    onError?.(error);
+    const currentErrorListeners = errorListeners.get(saveKey);
+    currentErrorListeners?.forEach((listener) => listener(error));
+  };
 
   const subscribe = <K extends SubscriptionKey>(
     key: K,
@@ -45,11 +67,7 @@ export function subscriptionsStore(client: PublicClient, options?: Subscriptions
         client,
         params,
         getListeners: () => listeners.get(saveKey),
-        onError: (error: unknown) => {
-          onError?.(error);
-          const currentErrorListeners = errorListeners.get(saveKey);
-          currentErrorListeners?.forEach((listener) => listener(error));
-        },
+        onError: (error: unknown) => notifyError(saveKey, error),
       } as never);
 
       activeExecutors.set(saveKey, executorUnsubscribeFn);
@@ -91,10 +109,7 @@ export function subscriptionsStore(client: PublicClient, options?: Subscriptions
     event: SubscriptionEvent<K>,
   ): void => {
     const saveKey = JSON.stringify({ key, params });
-    const currentListeners = listeners.get(saveKey);
-    if (currentListeners) {
-      currentListeners.forEach((listener) => listener(event));
-    }
+    dispatchListeners(listeners.get(saveKey), event, (error) => notifyError(saveKey, error));
   };
 
   return {
@@ -110,8 +125,7 @@ const blockSubscriptionExecutor: SubscriptionExecutor<"block"> = ({
 }) => {
   const unsubscribe = client.blockSubscription({
     next: ({ block }) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(block));
+      dispatchListeners(getListeners(), block, onError);
     },
     error: onError,
   });
@@ -127,8 +141,7 @@ const eventsSubscriptionExecutor: SubscriptionExecutor<"events"> = ({
   return client.eventsSubscription({
     ...params,
     next: ({ events }) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(events));
+      dispatchListeners(getListeners(), events, onError);
     },
     error: onError,
   });
@@ -143,8 +156,7 @@ const eventsByAddressesSubscriptionExecutor: SubscriptionExecutor<"eventsByAddre
   return client.eventsByAddressesSubscription({
     ...params,
     next: ({ eventByAddresses }) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(eventByAddresses));
+      dispatchListeners(getListeners(), eventByAddresses, onError);
     },
     error: onError,
   });
@@ -159,8 +171,7 @@ const transferSubscriptionExecutor: SubscriptionExecutor<"transfer"> = ({
   return client.transferSubscription({
     ...params,
     next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
+      dispatchListeners(getListeners(), event, onError);
     },
     error: onError,
   });
@@ -175,10 +186,7 @@ const accountSubscriptionExecutor: SubscriptionExecutor<"account"> = ({
   return client.accountSubscription({
     ...params,
     next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => {
-        listener(event);
-      });
+      dispatchListeners(getListeners(), event, onError);
     },
     error: onError,
   });
@@ -193,8 +201,7 @@ const perpsCandlesSubscriptionExecutor: SubscriptionExecutor<"perpsCandles"> = (
   return client.perpsCandlesSubscription({
     ...params,
     next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
+      dispatchListeners(getListeners(), event, onError);
     },
     error: onError,
   });
@@ -209,8 +216,7 @@ const perpsTradesSubscriptionExecutor: SubscriptionExecutor<"perpsTrades"> = ({
   return client.perpsTradesSubscription({
     ...params,
     next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
+      dispatchListeners(getListeners(), event, onError);
     },
     error: onError,
   });
@@ -230,8 +236,7 @@ const queryAppSubscriptionExecutor: SubscriptionExecutor<"queryApp"> = ({
   return client.queryAppSubscription({
     ...params,
     next: ({ queryApp }) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(queryApp));
+      dispatchListeners(getListeners(), queryApp, onError);
     },
     error: onError,
   });
@@ -246,8 +251,7 @@ const allPerpsPairStatsSubscriptionExecutor: SubscriptionExecutor<"allPerpsPairS
   return client.allPerpsPairStatsSubscription({
     ...params,
     next: (event) => {
-      const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
+      dispatchListeners(getListeners(), event, onError);
     },
     error: onError,
   });

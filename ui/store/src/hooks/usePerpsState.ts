@@ -1,6 +1,7 @@
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { createLiveResource } from "../live/createLiveResource.js";
+import { equalLiveResourcePayload } from "../live/equality.js";
 import { useLiveResource } from "../live/useLiveResource.js";
 
 import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
@@ -38,6 +39,7 @@ const perpsStateResource = createLiveResource<PerpsStateResourceParams, PerpsSta
   name: "perpsState",
   getKey: ({ chainId, perpsContract }) => `perpsState:${chainId}:${perpsContract}`,
   getInitialSnapshot: () => initialPerpsStateSnapshot,
+  equal: (previous, next) => equalLiveResourcePayload(previous, next, ["state"]),
   start: ({ perpsContract, subscriptions }, { emit, error }) =>
     subscriptions.subscribe("queryApp", {
       params: {

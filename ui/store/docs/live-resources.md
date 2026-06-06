@@ -16,6 +16,10 @@ Rules:
   singletons.
 - The resource primitive owns acquire/release, ref counting, cache policy, status/error, version
   guarding, equality, and metadata-only browser instrumentation.
+- Resource equality should compare status/error and stable payload fields. Block-height-only updates
+  should not wake selectors unless a resource explicitly exposes block height as meaningful data.
+- Runtime listener errors must flow through the resource error callback so route-level consumers can
+  surface stale-data risk.
 - The React adapter can restart a same-key resource through `restartToken` when runtime handles
   change without changing domain identity.
 - Do not split "start subscription" from "read state" for subscription-backed live data.

@@ -18,6 +18,7 @@ export function useLiveResource<Params, Snapshot extends LiveResourceSnapshot, S
 ): Selection {
   const { resource, params, enabled, selector, equalityFn = Object.is, restartToken } = parameters;
   const paramsRef = useRef(params);
+  // The effect subscribes by stable key, but start needs the latest params after React commits.
   paramsRef.current = params;
 
   const key = useMemo(
