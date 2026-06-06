@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { Rspack } from "@rsbuild/core";
+import fs from "fs-extra";
 
 const stableR2AssetTypes = {
   font: new Set([".eot", ".otf", ".ttf", ".woff", ".woff2"]),
@@ -53,6 +54,49 @@ type PortalAssetOptions = {
   stableR2AssetsPrefix: string;
   useR2Assets: boolean;
   workspaceRoot: string;
+};
+
+const publicImageAssets = [
+  { source: "dark-frame-rounded-mobile.svg", publicPath: "images/dark-frame-rounded-mobile.svg" },
+  { source: "dark-frame-rounded.svg", publicPath: "images/dark-frame-rounded.svg" },
+  { source: "frame-rounded-mobile.svg", publicPath: "images/frame-rounded-mobile.svg" },
+  { source: "frame-rounded.svg", publicPath: "images/frame-rounded.svg" },
+  { source: "notifications/bubble-bg.svg", publicPath: "images/notifications/bubble-bg.svg" },
+  { source: "warning-banner.svg", publicPath: "images/warning-banner.svg" },
+  { source: "pwa.png", publicPath: "pwa.png" },
+  { source: "touch-icons/ipad-76x76.png", publicPath: "touch-icons/ipad-76x76.png" },
+  {
+    source: "touch-icons/ipad-retina-152x152.png",
+    publicPath: "touch-icons/ipad-retina-152x152.png",
+  },
+  { source: "touch-icons/iphone-60x60.png", publicPath: "touch-icons/iphone-60x60.png" },
+  {
+    source: "touch-icons/iphone-retina-120x120.png",
+    publicPath: "touch-icons/iphone-retina-120x120.png",
+  },
+] as const;
+
+export const copyPortalPublicAssets = (portalRoot: string) => {
+  const foundationImagesRoot = path.resolve(
+    portalRoot,
+    "node_modules",
+    "@left-curve",
+    "foundation",
+    "images",
+  );
+  const publicRoot = path.resolve(portalRoot, "public");
+
+  fs.removeSync(path.resolve(publicRoot, "images"));
+  fs.removeSync(path.resolve(publicRoot, "touch-icons"));
+  fs.removeSync(path.resolve(publicRoot, "pwa.png"));
+
+  for (const asset of publicImageAssets) {
+    fs.copySync(
+      path.resolve(foundationImagesRoot, asset.source),
+      path.resolve(publicRoot, asset.publicPath),
+      { overwrite: true },
+    );
+  }
 };
 
 const getAssetSource = (pathData: AssetPathData) =>
@@ -118,7 +162,7 @@ const addImagePathTransformRule = (
     test: /\.[cm]?[jt]sx?$/,
     include: getImagePathTransformIncludes(portalRoot, workspaceRoot),
     enforce: "pre",
-    loader: path.resolve(portalRoot, "scripts/image-path-transform-loader.cjs"),
+    loader: path.resolve(portalRoot, "rsbuild.image-path-loader.ts"),
   });
 };
 

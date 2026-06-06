@@ -1,13 +1,13 @@
-const parser = require("@babel/parser");
-const traverse = require("@babel/traverse").default;
-const MagicString = require("magic-string");
+import { parse, type ParserPlugin } from "@babel/parser";
+import traverse, { type NodePath } from "@babel/traverse";
+import MagicString from "magic-string";
 
 const IMAGE_PATH_PREFIX = "/images/";
 const IMAGE_REQUEST_PREFIX = "~/images";
 const IMAGE_EXTENSION_PATTERN =
   /\.(apng|avif|bmp|cur|gif|ico|jfif|jpe?g|pjpe?g|png|svg|tiff?|webp)([?#].*)?$/i;
 
-const PARSER_PLUGINS = [
+const PARSER_PLUGINS: ParserPlugin[] = [
   "jsx",
   "typescript",
   "importAttributes",
@@ -19,31 +19,93 @@ const PARSER_PLUGINS = [
   "importMeta",
 ];
 
-const isImagePath = (value) =>
+const traverseAst = ((traverse as unknown as { default?: typeof traverse }).default ??
+  traverse) as typeof traverse;
+
+type LoaderCallback = (error: Error | null, source?: string, inputMap?: unknown) => void;
+
+type LoaderContext = {
+  async: () => LoaderCallback;
+  cacheable?: () => void;
+  resourcePath: string;
+};
+
+type ImageAssetContext = {
+  contextIdentifier: string;
+  contextRegExpSource: string;
+  helperIdentifier: string;
+  publicDir: string;
+  recursive: boolean;
+};
+
+type SourceNode = {
+  end?: number | null;
+  start?: number | null;
+  type?: string;
+};
+
+type ImagePathNodePath<TNode extends SourceNode = SourceNode> = NodePath & {
+  node: TNode;
+  parent?: SourceNode | null;
+};
+
+type StringLiteralNode = SourceNode & {
+  value: string;
+};
+
+type TemplateElementNode = {
+  value: {
+    cooked?: string | null;
+    raw: string;
+  };
+};
+
+type TemplateLiteralNode = SourceNode & {
+  expressions: SourceNode[];
+  quasis: TemplateElementNode[];
+};
+
+const isImagePath = (value: unknown): value is string =>
   typeof value === "string" &&
   value.startsWith(IMAGE_PATH_PREFIX) &&
   IMAGE_EXTENSION_PATTERN.test(value);
 
-const getImageExtension = (value) => {
+const getImageExtension = (value: string) => {
   const match = value.match(IMAGE_EXTENSION_PATTERN);
   return match ? match[1].toLowerCase() : null;
 };
 
-const publicPathToRequest = (publicPath) =>
+const publicPathToRequest = (publicPath: string) =>
   `${IMAGE_REQUEST_PREFIX}/${publicPath.slice(IMAGE_PATH_PREFIX.length)}`;
 
-const publicDirToRequest = (publicDir) =>
+const publicDirToRequest = (publicDir: string) =>
   `${IMAGE_REQUEST_PREFIX}${publicDir.slice("/images".length)}`;
 
-const normalizeRegExpExtension = (extension) => {
+const escapeRegExp = (value: string) =>
+  value.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&").replace(/\//g, "\\/");
+
+const normalizeRegExpExtension = (extension: string) => {
   if (extension === "jpg" || extension === "jpeg") return "jpe?g";
   if (extension === "pjp" || extension === "pjpeg") return "pjpe?g";
   if (extension === "tif" || extension === "tiff") return "tiff?";
-  return extension.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return escapeRegExp(extension);
 };
 
-const shouldSkipStringLiteral = (path) => {
+const getContextRegExpSource = (keyQuasis: string[], extension: string) => {
+  const staticSource = keyQuasis.map(escapeRegExp).join(".*");
+  if (staticSource) return `^\\.\\/${staticSource}$`;
+
+  return `\\.${normalizeRegExpExtension(extension)}$`;
+};
+
+const getRange = (node: SourceNode) => {
+  if (typeof node.start !== "number" || typeof node.end !== "number") return null;
+  return [node.start, node.end] as const;
+};
+
+const shouldSkipStringLiteral = (path: ImagePathNodePath<StringLiteralNode>) => {
   const parent = path.parent;
+  const parentRecord = parent as unknown as Record<string, unknown> | null | undefined;
 
   if (!parent) return false;
   if (parent.type === "Directive") return true;
@@ -52,7 +114,7 @@ const shouldSkipStringLiteral = (path) => {
     (parent.type === "ImportDeclaration" ||
       parent.type === "ExportAllDeclaration" ||
       parent.type === "ExportNamedDeclaration") &&
-    parent.source === path.node
+    parentRecord?.source === path.node
   ) {
     return true;
   }
@@ -64,8 +126,8 @@ const shouldSkipStringLiteral = (path) => {
       parent.type === "ClassMethod" ||
       parent.type === "MemberExpression" ||
       parent.type === "OptionalMemberExpression") &&
-    parent.key === path.node &&
-    !parent.computed
+    parentRecord?.key === path.node &&
+    !parentRecord.computed
   ) {
     return true;
   }
@@ -73,10 +135,16 @@ const shouldSkipStringLiteral = (path) => {
   return false;
 };
 
-const isJsxAttributeValue = (path) =>
-  path.parent?.type === "JSXAttribute" && path.parent.value === path.node;
+const isJsxAttributeValue = (path: ImagePathNodePath) => {
+  const parentRecord = path.parent as unknown as Record<string, unknown> | null | undefined;
+  return path.parent?.type === "JSXAttribute" && parentRecord?.value === path.node;
+};
 
-module.exports = function imagePathTransformLoader(source, inputMap) {
+export default function imagePathTransformLoader(
+  this: LoaderContext,
+  source: string,
+  inputMap: unknown,
+) {
   this.cacheable?.();
 
   if (!source.includes(IMAGE_PATH_PREFIX) && !source.includes("`/images/")) {
@@ -85,13 +153,13 @@ module.exports = function imagePathTransformLoader(source, inputMap) {
 
   const callback = this.async();
   const magic = new MagicString(source);
-  const imports = new Map();
-  const contexts = new Map();
+  const imports = new Map<string, string>();
+  const contexts = new Map<string, ImageAssetContext>();
   let importCount = 0;
   let contextCount = 0;
   let changed = false;
 
-  const getImportIdentifier = (publicPath) => {
+  const getImportIdentifier = (publicPath: string) => {
     const existing = imports.get(publicPath);
     if (existing) return existing;
 
@@ -100,8 +168,12 @@ module.exports = function imagePathTransformLoader(source, inputMap) {
     return identifier;
   };
 
-  const getContextHelperIdentifier = (publicDir, extension, recursive) => {
-    const contextKey = `${publicDir}|${extension}|${recursive}`;
+  const getContextHelperIdentifier = (
+    publicDir: string,
+    contextRegExpSource: string,
+    recursive: boolean,
+  ) => {
+    const contextKey = `${publicDir}|${contextRegExpSource}|${recursive}`;
     const existing = contexts.get(contextKey);
     if (existing) return existing.helperIdentifier;
 
@@ -110,8 +182,8 @@ module.exports = function imagePathTransformLoader(source, inputMap) {
     const helperIdentifier = `__dangoImageAssetUrl${index}`;
 
     contexts.set(contextKey, {
+      contextRegExpSource,
       contextIdentifier,
-      extension,
       helperIdentifier,
       publicDir,
       recursive,
@@ -120,20 +192,26 @@ module.exports = function imagePathTransformLoader(source, inputMap) {
     return helperIdentifier;
   };
 
-  const replaceStaticPath = (path, publicPath) => {
+  const replaceStaticPath = (path: ImagePathNodePath, publicPath: string) => {
+    const range = getRange(path.node);
+    if (!range) return;
+
     const identifier = getImportIdentifier(publicPath);
 
     if (isJsxAttributeValue(path)) {
-      magic.overwrite(path.node.start, path.node.end, `{${identifier}}`);
+      magic.overwrite(range[0], range[1], `{${identifier}}`);
     } else {
-      magic.overwrite(path.node.start, path.node.end, identifier);
+      magic.overwrite(range[0], range[1], identifier);
     }
 
     changed = true;
   };
 
-  const replaceTemplatePath = (path) => {
+  const replaceTemplatePath = (path: ImagePathNodePath<TemplateLiteralNode>) => {
     const node = path.node;
+    const range = getRange(node);
+    if (!range) return;
+
     const firstQuasi = node.quasis[0];
     const lastQuasi = node.quasis[node.quasis.length - 1];
     const firstValue = firstQuasi.value.cooked || firstQuasi.value.raw;
@@ -164,46 +242,51 @@ module.exports = function imagePathTransformLoader(source, inputMap) {
     }
 
     const recursive = keyQuasis.some((value) => value.includes("/"));
-    const helperIdentifier = getContextHelperIdentifier(publicDir, extension, recursive);
+    const contextRegExpSource = getContextRegExpSource(keyQuasis, extension);
+    const helperIdentifier = getContextHelperIdentifier(publicDir, contextRegExpSource, recursive);
     let keyTemplate = "`";
 
     node.expressions.forEach((expression, index) => {
+      const expressionRange = getRange(expression);
+      if (!expressionRange) return;
+
       keyTemplate += keyQuasis[index];
       keyTemplate += "${";
-      keyTemplate += source.slice(expression.start, expression.end);
+      keyTemplate += source.slice(expressionRange[0], expressionRange[1]);
       keyTemplate += "}";
     });
 
     keyTemplate += keyQuasis.at(-1);
     keyTemplate += "`";
 
-    magic.overwrite(node.start, node.end, `${helperIdentifier}(${keyTemplate})`);
+    magic.overwrite(range[0], range[1], `${helperIdentifier}(${keyTemplate})`);
     changed = true;
   };
 
-  let ast;
+  let ast: ReturnType<typeof parse>;
 
   try {
-    ast = parser.parse(source, {
+    ast = parse(source, {
       sourceType: "unambiguous",
       plugins: PARSER_PLUGINS,
     });
   } catch (error) {
-    callback(error);
+    callback(error instanceof Error ? error : new Error(String(error)));
     return;
   }
 
-  traverse(ast, {
+  traverseAst(ast, {
     StringLiteral(path) {
-      if (shouldSkipStringLiteral(path)) return;
+      const stringPath = path as ImagePathNodePath<StringLiteralNode>;
+      if (shouldSkipStringLiteral(stringPath)) return;
 
-      const { value } = path.node;
+      const { value } = stringPath.node;
       if (!isImagePath(value)) return;
 
-      replaceStaticPath(path, value);
+      replaceStaticPath(stringPath, value);
     },
     TemplateLiteral(path) {
-      replaceTemplatePath(path);
+      replaceTemplatePath(path as ImagePathNodePath<TemplateLiteralNode>);
     },
   });
 
@@ -219,13 +302,13 @@ module.exports = function imagePathTransformLoader(source, inputMap) {
   }
 
   for (const {
+    contextRegExpSource,
     contextIdentifier,
-    extension,
     helperIdentifier,
     publicDir,
     recursive,
   } of contexts.values()) {
-    header += `const ${contextIdentifier} = require.context(${JSON.stringify(publicDirToRequest(publicDir))}, ${recursive}, /\\.${normalizeRegExpExtension(extension)}$/i);\n`;
+    header += `const ${contextIdentifier} = require.context(${JSON.stringify(publicDirToRequest(publicDir))}, ${recursive}, /${contextRegExpSource}/i);\n`;
     header += `const ${helperIdentifier} = (path) => {\n`;
     header += `  const mod = ${contextIdentifier}(\`./\${path}\`);\n`;
     header += '  return typeof mod === "string" ? mod : mod.default;\n';
@@ -235,4 +318,4 @@ module.exports = function imagePathTransformLoader(source, inputMap) {
   magic.prepend(`${header}\n`);
 
   callback(null, magic.toString(), magic.generateMap({ hires: true, source: this.resourcePath }));
-};
+}

@@ -15,7 +15,7 @@ import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
-import { configurePortalAssets } from "./rsbuild.assets";
+import { configurePortalAssets, copyPortalPublicAssets } from "./rsbuild.assets";
 
 import devnet from "@left-curve/sdk/chains/devnet.json" with { type: "json" };
 import local from "@left-curve/sdk/chains/local.json" with { type: "json" };
@@ -77,11 +77,7 @@ const tvVersion = (
     : "unknown"
 ).replace(/\./g, "_");
 
-fs.copySync(
-  path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
-  path.resolve(__dirname, "public/images"),
-  { overwrite: true },
-);
+copyPortalPublicAssets(__dirname);
 
 const hyperlaneConfig = async () => {
   const mainFiles = {
