@@ -1,0 +1,6 @@
+---
+- name: Deploy referral-dashboard instances
+  include_tasks: deploy-instance.yml
+  loop: "{{ referral_dashboard_networks }}"
+  loop_control:
+    loop_var: network
