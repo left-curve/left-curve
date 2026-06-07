@@ -74,11 +74,13 @@ export function session(parameters: SessionConnectorParameters = {}) {
         emitter.emit("disconnect");
       },
       async getClient() {
+        const provider = await this.getProvider();
         return createSignerClient({
           signer: this,
           chain,
           type: "session",
           transport,
+          sessionKey: provider.sessionInfo.sessionKey,
         });
       },
       async getKeyHash() {

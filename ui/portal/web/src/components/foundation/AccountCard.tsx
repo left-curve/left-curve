@@ -1,5 +1,4 @@
 import { useBalances, usePrices } from "@left-curve/store";
-import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { Account } from "@left-curve/types";
@@ -17,6 +16,7 @@ import {
   twMerge,
   useApp,
 } from "@left-curve/applets-kit";
+import { Image } from "~/components/foundation/Image";
 
 const accountCardStyle = {
   badge: "blue",
@@ -56,7 +56,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
         !isUserActive && "opacity-50",
       )}
     >
-      <img
+      <Image
         src={img}
         alt="account-card-dog"
         className={twMerge("absolute right-0 bottom-0 select-none drag-none", imgClassName)}

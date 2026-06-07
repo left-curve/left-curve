@@ -1,6 +1,7 @@
 import { type MotionValue, motion, useMotionValue, useTransform } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Image } from "~/components/foundation/Image";
 
 export type NFTItem = {
   id: string;
@@ -65,11 +66,7 @@ const NFTCard: React.FC<NFTCardProps> = ({ nft, index, motionX, itemTotalWidth }
       }}
     >
       <div className="w-full h-[284px] lg:h-[374px] rounded-2xl overflow-hidden shadow-xl">
-        <img
-          src={nft.frameSrc}
-          alt={nft.label}
-          className="w-full h-full object-cover"
-        />
+        <Image src={nft.frameSrc} alt={nft.label} className="w-full h-full object-cover" />
       </div>
     </motion.div>
   );
@@ -191,7 +188,7 @@ export const NFTCarousel: React.FC<NFTCarouselProps> = ({
   return (
     <div className="relative flex flex-col items-center w-screen -mx-4 overflow-x-clip overflow-y-visible">
       <div className="relative z-20 top-8">
-        <img src="/images/points/carousel-union.png" alt="" className="w-8 h-auto" />
+        <Image src="/images/points/carousel-union.png" alt="" className="w-8 h-auto" />
       </div>
 
       <div className="relative w-full">
@@ -218,7 +215,7 @@ export const NFTCarousel: React.FC<NFTCarouselProps> = ({
       </div>
 
       <div className="relative z-20 bottom-8">
-        <img src="/images/points/carousel-union.png" alt="" className="w-8 h-auto rotate-180" />
+        <Image src="/images/points/carousel-union.png" alt="" className="w-8 h-auto rotate-180" />
       </div>
 
       <div className="hidden lg:block absolute left-0 inset-y-0 w-48 bg-gradient-to-r from-[#1a1714] via-[#1a1714]/80 to-transparent z-30 pointer-events-none" />

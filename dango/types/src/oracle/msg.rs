@@ -1,5 +1,5 @@
 use {
-    crate::oracle::{Price, PriceSource},
+    crate::oracle::{Price, PriceConfig},
     grug_types::{Binary, Denom, Timestamp},
     pyth_types::PriceUpdate,
     std::collections::BTreeMap,
@@ -7,7 +7,7 @@ use {
 
 #[grug_types::derive(Serde)]
 pub struct InstantiateMsg {
-    pub price_sources: BTreeMap<Denom, PriceSource>,
+    pub price_sources: BTreeMap<Denom, PriceConfig>,
     /// Pyth Lazer trusted signers: public keys and expiration timestamps.
     pub trusted_signers: BTreeMap<Binary, Timestamp>,
 }
@@ -15,7 +15,7 @@ pub struct InstantiateMsg {
 #[grug_types::derive(Serde)]
 pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
-    RegisterPriceSources(BTreeMap<Denom, PriceSource>),
+    RegisterPriceSources(BTreeMap<Denom, PriceConfig>),
     /// Register a trusted signer for Pyth Lazer.
     RegisterTrustedSigner {
         public_key: Binary,
@@ -44,11 +44,11 @@ pub enum QueryMsg {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },
-    /// Query the price source of the given denom.
-    #[returns(PriceSource)]
+    /// Query the price config of the given denom.
+    #[returns(PriceConfig)]
     PriceSource { denom: Denom },
-    /// Enumerate the price sources of all supported denoms.
-    #[returns(BTreeMap<Denom, PriceSource>)]
+    /// Enumerate the price configs of all supported denoms.
+    #[returns(BTreeMap<Denom, PriceConfig>)]
     PriceSources {
         start_after: Option<Denom>,
         limit: Option<u32>,

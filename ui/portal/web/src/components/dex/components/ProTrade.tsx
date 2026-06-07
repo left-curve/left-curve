@@ -48,12 +48,7 @@ import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
 import { TradeHeader } from "./TradeHeader";
 import { ErrorBoundary } from "react-error-boundary";
-import {
-  LegacyPerpsTradeHistory,
-  PerpsTradeHistory,
-  TradeHistoryFilterProvider,
-} from "./TradeHistory";
-import { isFeatureEnabled } from "../../../featureFlags";
+import { PerpsTradeHistory } from "./TradeHistory";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
@@ -220,7 +215,7 @@ const ProTradeHistory: React.FC = () => {
   const openOrdersCount = Object.keys(perpsOrders ?? {}).length;
 
   return (
-    <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
+    <div className="flex-1 max-w-[100vw] lg:max-w-none p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative flex items-center justify-between">
         <Tabs
           color="line-red"
@@ -246,17 +241,9 @@ const ProTradeHistory: React.FC = () => {
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
       {activeTab === "trade-history" ? (
-        isFeatureEnabled("trade_history_export") ? (
-          <TradeHistoryFilterProvider>
-            <div className="w-full h-full relative">
-              <PerpsTradeHistory />
-            </div>
-          </TradeHistoryFilterProvider>
-        ) : (
-          <div className="w-full h-full relative">
-            <LegacyPerpsTradeHistory />
-          </div>
-        )
+        <div className="w-full h-full relative">
+          <PerpsTradeHistory />
+        </div>
       ) : (
         <div className="w-full h-full relative">
           {activeTab === "positions" ? <PerpsPositionsTable /> : null}

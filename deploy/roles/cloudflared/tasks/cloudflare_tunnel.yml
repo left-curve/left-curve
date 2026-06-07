@@ -140,7 +140,7 @@
     proxied: true
     state: present
     api_token: "{{ cloudflare_api_token }}"
-  loop: "{{ dango_networks | product(['api','www','faucet','graphiql']) | list }}"
+  loop: "{{ dango_networks | product(['api','faucet','graphiql']) | list }}"
   when: (item.1 != 'faucet') or (faucet_bot_enabled | default(false))
   retries: 3
   delay: 5
@@ -168,7 +168,7 @@
     proxied: true
     state: present
     api_token: "{{ cloudflare_api_token }}"
-  loop: "{{ dango_networks | product(['api','www','faucet']) | list }}"
+  loop: "{{ dango_networks | product(['api','faucet']) | list }}"
   when:
     - not cloudflare_lb_enabled
     - (item.1 != 'faucet') or (faucet_bot_enabled | default(false))
@@ -184,7 +184,7 @@
     proxied: true
     state: present
     api_token: "{{ cloudflare_api_token }}"
-  loop: "{{ dango_networks | product(['api', 'www', 'faucet']) | list }}"
+  loop: "{{ dango_networks | product(['api', 'faucet']) | list }}"
   when:
     - cloudflare_lb_enabled
     - item.1 in (lb_exclude[item.0] | default([]))

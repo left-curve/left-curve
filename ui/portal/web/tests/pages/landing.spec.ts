@@ -1,5 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { getStoredFavorites, waitForStorageHydration } from "../utils/indexeddb";
+
+const SEARCH_INPUT_LABEL = "Search for apps";
+
+async function openSearchMenu(page: Page) {
+  await page.getByRole("button", { name: /^Search for/ }).click();
+}
+
+function getSearchInput(page: Page) {
+  return page.getByRole("combobox", { name: SEARCH_INPUT_LABEL });
+}
 
 test.describe("Landing Page - Not Authenticated", () => {
   test.beforeEach(async ({ page }) => {
@@ -9,14 +19,12 @@ test.describe("Landing Page - Not Authenticated", () => {
 
   test.describe("Search Bar Functionality", () => {
     test("clicking search bar expands container", async ({ page }) => {
-      // Try keyboard shortcut first as it's more reliable
-      await page.keyboard.press("k");
-      await page.waitForTimeout(500);
+      await openSearchMenu(page);
 
       // Verify menu expanded - should show applet groups or input
       const favoriteApplets = page.getByText("Favorite Applets");
       const appletsGroup = page.getByText("Applets", { exact: true });
-      const searchInput = page.locator("input").first();
+      const searchInput = getSearchInput(page);
 
       const menuExpanded =
         (await favoriteApplets.isVisible()) ||
@@ -27,12 +35,10 @@ test.describe("Landing Page - Not Authenticated", () => {
     });
 
     test("search bar filters applets by text", async ({ page }) => {
-      // Open search menu using keyboard
-      await page.keyboard.press("k");
-      await page.waitForTimeout(300);
+      await openSearchMenu(page);
 
       // Type in search
-      const searchInput = page.locator("input").first();
+      const searchInput = getSearchInput(page);
       await searchInput.fill("trade");
       await page.waitForTimeout(500);
 
@@ -150,7 +156,7 @@ test.describe("Landing Page - Not Authenticated", () => {
         await page.waitForTimeout(300);
 
         // Search menu should be open
-        const searchInput = page.locator("input").first();
+        const searchInput = getSearchInput(page);
         await expect(searchInput).toBeVisible();
       }
     });

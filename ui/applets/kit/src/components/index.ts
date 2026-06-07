@@ -94,6 +94,7 @@ export { IconCloseCircle } from "./icons/IconCloseCircle";
 export { IconClock } from "./icons/IconClock";
 export { IconStar } from "./icons/IconStar";
 export { IconEmptyStar } from "./icons/IconEmptyStar";
+export { IconFlame } from "./icons/IconFlame";
 export { IconCheckedCircle } from "./icons/IconCheckedCircle";
 export { IconChecked } from "./icons/IconChecked";
 export { IconAlert } from "./icons/IconAlert";

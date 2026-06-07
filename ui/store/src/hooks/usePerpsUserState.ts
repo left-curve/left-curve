@@ -15,6 +15,14 @@ export const perpsMarginAsset = {
   decimals: 6,
 } as const;
 
+export type PerpsAssetClass = "crypto" | "commodity";
+
+const PERPS_COMMODITY_BASE_SYMBOLS: ReadonlySet<string> = new Set(["XAU", "XAG"]);
+
+export function getPerpsAssetClass(baseSymbol: string): PerpsAssetClass {
+  return PERPS_COMMODITY_BASE_SYMBOLS.has(baseSymbol.toUpperCase()) ? "commodity" : "crypto";
+}
+
 export const perpsUserStateStore = createBlockStore({
   initialState: { userState: null as PerpsUserState | null },
 });

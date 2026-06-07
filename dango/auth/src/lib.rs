@@ -15,8 +15,8 @@ use {
     data_encoding::BASE64URL_NOPAD,
     grug_storage::StorageQuerier,
     grug_types::{
-        Api, AuthCtx, AuthMode, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt, JsonSerExt,
-        MutableCtx, SignData, StdError, StdResult, Storage, Tx,
+        Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt,
+        JsonSerExt, MutableCtx, SignData, StdError, StdResult, Storage, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -35,8 +35,8 @@ pub mod account_factory {
 /// The expected storage layout of the account contract.
 pub mod account {
     use {
-        dango_types::auth::{AccountStatus, Nonce},
-        grug_storage::Item,
+        dango_types::auth::{AccountStatus, Nonce, SessionKey},
+        grug_storage::{Item, Map},
         std::collections::BTreeSet,
     };
 
@@ -50,11 +50,23 @@ pub mod account {
     /// If this storage slot is empty, it's default to the `Inactive` state.
     pub const STATUS: Item<AccountStatus> = Item::new("status");
 
-    /// The most recent nonces that have been used to send transactions.
+    /// The most recent nonces used by *standard* (master-key) credentials.
     ///
-    /// Both account types (single, multi) store their nonces in this same
-    /// storage slot.
+    /// Both account types (single, multi) store their standard nonces in this
+    /// same storage slot. Session credentials instead use
+    /// [`SESSION_SEEN_NONCES`], keyed by the session public key, so that
+    /// independent session keys (e.g. one per trading bot) don't collide in a
+    /// shared window.
     pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
+
+    /// The most recent nonces used by each *session* key, keyed by the session
+    /// public key.
+    ///
+    /// Each session key gets its own sliding window, with the same semantics as
+    /// `SEEN_NONCES`. Entries are never pruned; each window is bounded at
+    /// `MAX_SEEN_NONCES` nonces.
+    pub const SESSION_SEEN_NONCES: Map<SessionKey, BTreeSet<Nonce>> =
+        Map::new("session_seen_nonces");
 }
 
 /// The [EIP-155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
@@ -90,6 +102,74 @@ pub const MAX_SEEN_NONCES: usize = 20;
 /// much bigger than the biggest nonce seen so far.
 pub const MAX_NONCE_INCREASE: Nonce = 100;
 
+// -------------------------------- nonce logic --------------------------------
+
+/// Check whether `nonce` is acceptable against the sliding window `set`, and if
+/// so, record it (evicting the oldest entry when the window is full).
+///
+/// `may_load_floor` is invoked lazily — only when `set` is empty — and returns
+/// the account's standard-nonce high-water mark, if any. When present, the
+/// first nonce in a fresh window must exceed it; this rejects replays of
+/// pre-split session transactions (whose nonces previously lived in the shared
+/// `SEEN_NONCES`) while letting clients that pick `max + 1` continue seamlessly.
+/// When absent (the account has never transacted), the original "first nonce
+/// close to zero" rule applies.
+fn check_and_record_nonce<F>(
+    set: &mut BTreeSet<Nonce>,
+    nonce: Nonce,
+    may_load_floor: F,
+) -> anyhow::Result<()>
+where
+    F: FnOnce() -> StdResult<Option<Nonce>>,
+{
+    if let Some(&oldest) = set.first() {
+        // The nonce must not have been seen, and must be newer than the oldest
+        // nonce still in the window.
+        ensure!(!set.contains(&nonce), "nonce is already seen: {}", nonce);
+
+        ensure!(nonce > oldest, "nonce is too old: {} < {}", nonce, oldest);
+
+        // The nonce must not be too much bigger than the biggest nonce seen so
+        // far. See the documentation for `MAX_NONCE_INCREASE` for the rationale.
+        // Popping the oldest (smallest) entry below doesn't change the largest,
+        // so it's safe to read it here.
+        let newest = *set.last().unwrap();
+        ensure!(
+            nonce <= newest.saturating_add(MAX_NONCE_INCREASE),
+            "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
+            nonce,
+            newest,
+            MAX_NONCE_INCREASE
+        );
+
+        // Remove the oldest nonce if max capacity is reached.
+        if set.len() == MAX_SEEN_NONCES {
+            set.pop_first();
+        }
+    } else {
+        // The window is empty. Apply the floor if there is one; otherwise
+        // require the first nonce to be close to zero.
+        match may_load_floor()? {
+            Some(hwm) => ensure!(
+                nonce > hwm,
+                "first session nonce is too old: {} <= account high-water mark {}",
+                nonce,
+                hwm
+            ),
+            None => ensure!(
+                nonce < MAX_NONCE_INCREASE,
+                "first nonce is too big: {} >= MAX_NONCE_INCREASE ({})",
+                nonce,
+                MAX_NONCE_INCREASE
+            ),
+        }
+    }
+
+    set.insert(nonce);
+
+    Ok(())
+}
+
 /// Query the account's status.
 pub fn query_status(storage: &dyn Storage) -> StdResult<AccountStatus> {
     account::STATUS
@@ -97,10 +177,20 @@ pub fn query_status(storage: &dyn Storage) -> StdResult<AccountStatus> {
         .map(|opt| opt.unwrap_or_default()) // default to to `Inactive` state
 }
 
-/// Query the set of most recent nonce tracked.
+/// Query the set of most recent nonces tracked (standard credentials).
 pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
     account::SEEN_NONCES
         .may_load(storage)
+        .map(|opt| opt.unwrap_or_default()) // default to an empty B-tree set
+}
+
+/// Query the set of most recent nonces tracked for a given session key.
+pub fn query_session_seen_nonces(
+    storage: &dyn Storage,
+    session_key: ByteArray<33>,
+) -> StdResult<BTreeSet<Nonce>> {
+    account::SESSION_SEEN_NONCES
+        .may_load(storage, session_key)
         .map(|opt| opt.unwrap_or_default()) // default to an empty B-tree set
 }
 
@@ -250,68 +340,9 @@ pub fn verify_nonce_and_signature(
 
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => {
-            // Verify nonce.
-            account::SEEN_NONCES.may_update(ctx.storage, |maybe_nonces| {
-                let mut nonces = maybe_nonces.unwrap_or_default();
-
-                if let Some(&first) = nonces.first() {
-                    // If there are nonces, we verify the nonce is not yet
-                    // included as seen nonce and it is bigger than the
-                    // oldest nonce.
-                    ensure!(
-                        !nonces.contains(&metadata.nonce),
-                        "nonce is already seen: {}",
-                        metadata.nonce
-                    );
-
-                    ensure!(
-                        metadata.nonce > first,
-                        "nonce is too old: {} < {}",
-                        metadata.nonce,
-                        first
-                    );
-
-                    // Remove the oldest nonce if max capacity is reached.
-                    if nonces.len() == MAX_SEEN_NONCES {
-                        nonces.pop_first();
-                    }
-                } else {
-                    // Ensure the first nonce is close to zero.
-                    ensure!(
-                        metadata.nonce < MAX_NONCE_INCREASE,
-                        "first nonce is too big: {} >= MAX_NONCE_INCREASE ({})",
-                        metadata.nonce,
-                        MAX_NONCE_INCREASE
-                    );
-                }
-
-                // The nonce must not be too much bigger than the biggest nonce
-                // seen so far.
-                //
-                // See the documentation for `MAX_NONCE_INCREASE` for the rationale.
-                if let Some(max) = nonces.last() {
-                    ensure!(
-                        metadata.nonce <= max.saturating_add(MAX_NONCE_INCREASE),
-                        "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
-                        metadata.nonce,
-                        max,
-                        MAX_NONCE_INCREASE
-                    );
-                }
-
-                nonces.insert(metadata.nonce);
-
-                Ok(nonces)
-            })?;
-
-            // Verify tx expiration.
-            if let Some(expiry) = metadata.expiry {
-                ensure!(
-                    expiry > ctx.block.timestamp,
-                    "transaction expired at {expiry:?}"
-                );
-            }
-
+            // Deserialize the credential first, so we can pick the nonce
+            // namespace: standard (master-key) credentials and session keys
+            // track their nonces in separate windows.
             let (
                 StandardCredential {
                     key_hash,
@@ -322,6 +353,49 @@ pub fn verify_nonce_and_signature(
                 Credential::Session(c) => (c.authorization.clone(), Some(c)),
                 Credential::Standard(c) => (c, None),
             };
+
+            // Verify and record the nonce in the appropriate window.
+            match &session_credential {
+                // Session credential: each session key gets its own sliding
+                // window, so independent session keys (e.g. one per bot) don't
+                // collide. The floor closure is evaluated only when this key's
+                // window is empty (its first use).
+                Some(session) => {
+                    let session_key = session.session_info.session_key;
+
+                    let mut nonces = account::SESSION_SEEN_NONCES
+                        .may_load(ctx.storage, session_key)?
+                        .unwrap_or_default();
+
+                    let may_load_floor = || {
+                        account::SEEN_NONCES
+                            .may_load(ctx.storage)
+                            .map(|opt| opt.and_then(|set| set.last().copied()))
+                    };
+
+                    check_and_record_nonce(&mut nonces, metadata.nonce, may_load_floor)?;
+
+                    account::SESSION_SEEN_NONCES.save(ctx.storage, session_key, &nonces)?;
+                },
+                // Standard credential: the account-wide window (unchanged).
+                None => {
+                    let mut nonces = account::SEEN_NONCES
+                        .may_load(ctx.storage)?
+                        .unwrap_or_default();
+
+                    check_and_record_nonce(&mut nonces, metadata.nonce, || Ok(None))?;
+
+                    account::SEEN_NONCES.save(ctx.storage, &nonces)?;
+                },
+            }
+
+            // Verify tx expiration.
+            if let Some(expiry) = metadata.expiry {
+                ensure!(
+                    expiry > ctx.block.timestamp,
+                    "transaction expired at {expiry:?}"
+                );
+            }
 
             // Query the key by key hash and user index.
             let key = user

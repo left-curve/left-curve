@@ -1297,7 +1297,8 @@
         "tabs": {
           "all": "All",
           "favorites": "Favorites",
-          "crypto": "Crypto"
+          "crypto": "Crypto",
+          "commodities": "Commodities"
         },
         "emptyFavorites": "You haven't added any favorites yet. Tap the star next to a pair to add it."
       },
@@ -1562,7 +1563,23 @@
         "oneMonth": "1M"
       },
       "you": "(You)",
-      "userFallback": "User #{index}"
+      "recentDrops": {
+        "title": "Recent Hunt Drops",
+        "live": "Live",
+        "columns": {
+          "user": "User",
+          "rewardType": "Reward Type",
+          "boost": "Boost",
+          "dropped": "Dropped"
+        },
+        "rewards": {
+          "pearl_dango": "Pearl Dango",
+          "silver_shell": "Silver Shell",
+          "bronze_shell": "Bronze Shell",
+          "golden_shell": "Golden Shell"
+        },
+        "empty": "No recent drops yet"
+      }
     },
     "profile": {
       "pointHistory": "Point History",
@@ -1643,25 +1660,25 @@
     },
     "boosters": {
       "title": "Boosters",
-      "description": "A limited-time points multiplier to reward early testnet users.",
-      "linkEvmWallet": "Link EVM Wallet",
-      "pointsBoost": "+{pointsBoost}% Points",
-      "toast": {
-        "successTitle": "Wallet Linked",
-        "successDescription": "Your EVM wallet has been linked successfully.",
-        "errorTitle": "Linking Failed",
-        "errorDescription": "Failed to link your EVM wallet. Please try again.",
-        "rateLimitTitle": "Address Already Linked",
-        "rateLimitDescription": "This address was linked recently. You can relink it in {seconds} seconds.",
-        "noOatsTitle": "No OATs Found",
-        "noOatsDescription": "This address doesn't have any Dango OATs. Make sure you've minted your OATs on Galxe."
-      },
-      "oats": {
-        "hurrah": "The Last Hurrah",
-        "trader": "Testnet Trader",
-        "wizard": "Testnet Wizard",
-        "supporter": "Early Supporter"
-      }
+      "description": "Rare Boosters found in Silver Boxes that multiply your points for the current epoch.",
+      "multiplierLabel": "{multiplier}x Boost",
+      "locked": "--"
+    },
+    "chestOpening": {
+      "summaryTitle": "Your Loot",
+      "nftCardTitle": "NFT Card",
+      "boosterTitle": "Booster",
+      "spinToWin": "Spin to win",
+      "spinNow": "Spin Now!",
+      "spinning": "Spinning...",
+      "back": "← Back",
+      "done": "Done",
+      "next": "Next",
+      "shareToX": "Share to X",
+      "closeLabel": "Close",
+      "shareBoostText": "I just won a {multiplier}x points booster on Dango!",
+      "shareNftText": "I just won {article} {label} NFT on Dango!",
+      "shareBulkText": "I just opened {count} chests on Dango!"
     },
     "leagues": {
       "title": "Leagues",

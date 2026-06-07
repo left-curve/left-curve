@@ -1,7 +1,7 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource},
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceConfig},
     grug_types::{
         Api, AuthCtx, AuthMode, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
         QuerierExt, Response, Storage, Timestamp, Tx,
@@ -11,8 +11,9 @@ use {
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (denom, price_source) in msg.price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    for (denom, config) in msg.price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
     }
 
     for (public_key, expires_at) in msg.trusted_signers {
@@ -74,7 +75,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn register_price_sources(
     ctx: MutableCtx,
-    price_sources: BTreeMap<Denom, PriceSource>,
+    price_sources: BTreeMap<Denom, PriceConfig>,
 ) -> anyhow::Result<Response> {
     // Only chain owner can register a denom.
     ensure!(
@@ -82,8 +83,9 @@ fn register_price_sources(
         "you don't have the right, O you don't have the right"
     );
 
-    for (denom, price_source) in price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    for (denom, config) in price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
     }
 
     Ok(Response::new())

@@ -3,7 +3,9 @@ use {
     dango_testing::{TestAccounts, TestSuiteNaive, setup_test_naive},
     dango_types::{
         constants::{eth, perp_btc},
-        oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryTrustedSignersRequest},
+        oracle::{
+            ExecuteMsg, PriceConfig, PriceSource, QueryPriceRequest, QueryTrustedSignersRequest,
+        },
     },
     grug_math::Dec128_6,
     grug_types::{
@@ -46,8 +48,8 @@ async fn pyth_lazer() {
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RegisterPriceSources(btree_map! {
-                perp_btc::DENOM.clone() => PriceSource { id: 1, channel: Channel::RealTime },
-                eth::DENOM.clone() => PriceSource { id: 2, channel: Channel::RealTime },
+                perp_btc::DENOM.clone() => PriceConfig::Single(PriceSource { id: 1, channel: Channel::RealTime }),
+                eth::DENOM.clone() => PriceConfig::Single(PriceSource { id: 2, channel: Channel::RealTime }),
             }),
             Coins::default(),
         )

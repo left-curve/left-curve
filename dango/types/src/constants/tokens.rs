@@ -57,10 +57,12 @@ macro_rules! define_perp_denom {
 }
 
 define_perp_denom! {
-    perp_btc  => "btcusd",
-    perp_eth  => "ethusd",
-    perp_sol  => "solusd",
-    perp_hype => "hypeusd",
-    perp_xau  => "xauusd",
-    perp_xag  => "xagusd",
+    perp_btc   => "btcusd",
+    perp_eth   => "ethusd",
+    perp_sol   => "solusd",
+    perp_hype  => "hypeusd",
+    perp_xau   => "xauusd",
+    perp_xag   => "xagusd",
+    perp_brent => "brentusd",
+    perp_wti   => "wtiusd",
 }

@@ -57,3 +57,87 @@ pub const XAG_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetail
     id: 345,
     channel: Channel::FixedRate(FixedRate::RATE_200_MS),
 };
+
+// https://docs.pyth.network/price-feeds/pro/price-feed-ids?search=brent
+
+/// Pyth ID for Brent oil futures contracts maturing by the end of June 2026.
+///
+/// - **Name**: BRENTQ6
+/// - **Symbol**: Commodities.BRENTQ6/USD
+/// - **Description**: PYTH PRICE IN USD FOR BRENT 30 JUNE 2026
+pub const BRENT_2026_06_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3042,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};
+
+/// Pyth ID for Brent oil futures contracts maturing by the end of July 2026.
+///
+/// - **Name**: BRENTU6
+/// - **Symbol**: Commodities.BRENTU6/USD
+/// - **Description**: PYTH PRICE IN USD FOR BRENT 31 JULY 2026
+pub const BRENT_2026_07_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3043,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};
+
+/// Pyth ID for Brent oil futures contracts maturing by the end of August 2026.
+///
+/// - **Name**: BRENTV6
+/// - **Symbol**: Commodities.BRENTV6/USD
+/// - **Description**: PYTH PRICE IN USD FOR BRENT 28 AUGUST 2026
+pub const BRENT_2026_08_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3044,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};
+
+/// Pyth ID for Brent oil futures contracts maturing by the end of September 2026.
+///
+/// - **Name**: BRENTX6
+/// - **Symbol**: Commodities.BRENTX6/USD
+/// - **Description**: PYTH PRICE IN USD FOR BRENT 30 SEPTEMBER 2026
+pub const BRENT_2026_09_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3045,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};
+
+// https://docs.pyth.network/price-feeds/pro/price-feed-ids?search=wti
+
+/// Pyth ID for WTI oil futures contracts maturing by the end of June 2026.
+///
+/// - **Name**: WTIN6
+/// - **Symbol**: Commodities.WTIN6/USD
+/// - **Description**: PYTH PRICE IN USD FOR WTI 22 JUNE 2026
+pub const WTI_2026_06_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3068,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};
+
+/// Pyth ID for WTI oil futures contracts maturing by the end of July 2026.
+///
+/// - **Name**: WTIQ6
+/// - **Symbol**: Commodities.WTIQ6/USD
+/// - **Description**: PYTH PRICE IN USD FOR WTI 21 JULY 2026
+pub const WTI_2026_07_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3069,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};
+
+/// Pyth ID for WTI oil futures contracts maturing by the end of August 2026.
+///
+/// - **Name**: WTIU6
+/// - **Symbol**: Commodities.WTIU6/USD
+/// - **Description**: PYTH PRICE IN USD FOR WTI 20 AUGUST 2026
+pub const WTI_2026_08_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3070,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};
+
+/// Pyth ID for WTI oil futures contracts maturing by the end of September 2026.
+///
+/// - **Name**: WTIV6
+/// - **Symbol**: Commodities.WTIV6/USD
+/// - **Description**: PYTH PRICE IN USD FOR WTI 22 SEPTEMBER 2026
+pub const WTI_2026_09_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 3071,
+    channel: Channel::FixedRate(FixedRate::RATE_50_MS),
+};

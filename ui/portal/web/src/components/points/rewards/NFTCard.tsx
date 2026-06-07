@@ -1,6 +1,7 @@
 import { IconLock, twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 export type NFTRarity = "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 
@@ -57,13 +58,13 @@ export const NFTCard: React.FC<NFTCardProps> = ({
         )}
       >
         <div className="absolute inset-0 flex items-center justify-center">
-          <img
+          <Image
             src={imageSrc}
             alt={`${label} NFT`}
             className="w-[92px] h-[92px] object-cover select-none drag-none [filter:drop-shadow(0px_4px_100px_rgba(227,189,102,0.5))_drop-shadow(0px_1px_24px_rgba(220,165,67,0.3))]"
           />
         </div>
-        <img
+        <Image
           src={frameSrc}
           alt=""
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"

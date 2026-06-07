@@ -155,7 +155,7 @@ services:
       - name: "Frontend"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/reactjs.png"
         tag: "testnet"
-        url: "https://www-testnet.dango.zone"
+        url: "https://test.dango.exchange"
         target: "_blank"
 
       - name: "Dango API"
@@ -203,7 +203,7 @@ services:
       - name: "Frontend"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/reactjs.png"
         tag: "devnet"
-        url: "https://www-devnet.dango.zone"
+        url: "https://dev.dango.exchange"
         target: "_blank"
 
       - name: "Dango API"

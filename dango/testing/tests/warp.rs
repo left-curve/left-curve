@@ -71,7 +71,7 @@ async fn sending_remote() {
 
     suite
         .balances()
-        .record_many([&accounts.user1.address(), &contracts.taxman]);
+        .record_many([&accounts.user1.address(), &accounts.owner.address()]);
 
     // User1 sends USDC to Ethereum.
     suite
@@ -119,12 +119,10 @@ async fn sending_remote() {
         usdc::DENOM.clone() => BalanceChange::Decreased(SEND_AMOUNT),
     });
 
-    // Taxman should have received the fee.
-    suite
-        .balances()
-        .should_change(&contracts.taxman, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
-        });
+    // The chain owner should have received the fee.
+    suite.balances().should_change(&accounts.owner, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
+    });
 
     // Gateway contract should not hold any of the synth token (should be burned).
     suite
@@ -156,7 +154,7 @@ async fn sending_remote() {
 
     // There should have been two transfers:
     // 1. Before fee amount from user to Gateway;
-    // 2. Withdrawal fee from Gateway to taxman.
+    // 2. Withdrawal fee from Gateway to the chain owner.
     assert_that!(transfers).has_length(2);
 
     assert_that!(

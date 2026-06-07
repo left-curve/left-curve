@@ -76,8 +76,12 @@ pub fn configure(
             } else {
                 // Post-genesis, the oracle must have a price. Defaulting to
                 // zero would break margin and PnL calculations.
-                let price = OracleQuerier::new_remote(oracle(ctx.querier), ctx.querier)
-                    .query_price(pair_id, None)?;
+                let price = OracleQuerier::new_remote(
+                    oracle(ctx.querier),
+                    ctx.querier,
+                    ctx.block.timestamp,
+                )
+                .query_price(pair_id, None)?;
 
                 // Use the oracle's own timestamp so that last_index_time
                 // reflects when the price was actually observed.

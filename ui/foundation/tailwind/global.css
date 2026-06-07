@@ -155,6 +155,30 @@
   --color-utility-warning-900: theme("colors.primitives.warning.900");
   --color-utility-warning-950: theme("colors.primitives.warning.950");
 
+  --color-utility-blue-50: theme("colors.primitives.blue.light.50");
+  --color-utility-blue-100: theme("colors.primitives.blue.light.100");
+  --color-utility-blue-200: theme("colors.primitives.blue.light.200");
+  --color-utility-blue-300: theme("colors.primitives.blue.light.300");
+  --color-utility-blue-400: theme("colors.primitives.blue.light.400");
+  --color-utility-blue-500: theme("colors.primitives.blue.light.500");
+  --color-utility-blue-600: theme("colors.primitives.blue.light.600");
+  --color-utility-blue-700: theme("colors.primitives.blue.light.700");
+  --color-utility-blue-800: theme("colors.primitives.blue.light.800");
+  --color-utility-blue-900: theme("colors.primitives.blue.light.900");
+  --color-utility-blue-950: theme("colors.primitives.blue.light.950");
+
+  --color-utility-green-50: theme("colors.primitives.green.light.50");
+  --color-utility-green-100: theme("colors.primitives.green.light.100");
+  --color-utility-green-200: theme("colors.primitives.green.light.200");
+  --color-utility-green-300: theme("colors.primitives.green.light.300");
+  --color-utility-green-400: theme("colors.primitives.green.light.400");
+  --color-utility-green-500: theme("colors.primitives.green.light.500");
+  --color-utility-green-600: theme("colors.primitives.green.light.600");
+  --color-utility-green-700: theme("colors.primitives.green.light.700");
+  --color-utility-green-800: theme("colors.primitives.green.light.800");
+  --color-utility-green-900: theme("colors.primitives.green.light.900");
+  --color-utility-green-950: theme("colors.primitives.green.light.950");
+
   /* Status */
   --color-status-fail: #e71818;
   --color-status-success: #25b12a;
@@ -352,6 +376,30 @@
   --color-utility-warning-800: theme("colors.primitives.warning.100");
   --color-utility-warning-900: theme("colors.primitives.warning.50");
   --color-utility-warning-950: theme("colors.primitives.warning.25");
+
+  --color-utility-blue-50: theme("colors.primitives.blue.light.950");
+  --color-utility-blue-100: theme("colors.primitives.blue.light.900");
+  --color-utility-blue-200: theme("colors.primitives.blue.light.800");
+  --color-utility-blue-300: theme("colors.primitives.blue.light.700");
+  --color-utility-blue-400: theme("colors.primitives.blue.light.600");
+  --color-utility-blue-500: theme("colors.primitives.blue.light.500");
+  --color-utility-blue-600: theme("colors.primitives.blue.light.400");
+  --color-utility-blue-700: theme("colors.primitives.blue.light.300");
+  --color-utility-blue-800: theme("colors.primitives.blue.light.200");
+  --color-utility-blue-900: theme("colors.primitives.blue.light.100");
+  --color-utility-blue-950: theme("colors.primitives.blue.light.50");
+
+  --color-utility-green-50: theme("colors.primitives.green.light.950");
+  --color-utility-green-100: theme("colors.primitives.green.light.900");
+  --color-utility-green-200: theme("colors.primitives.green.light.800");
+  --color-utility-green-300: theme("colors.primitives.green.light.700");
+  --color-utility-green-400: theme("colors.primitives.green.light.600");
+  --color-utility-green-500: theme("colors.primitives.green.light.500");
+  --color-utility-green-600: theme("colors.primitives.green.light.400");
+  --color-utility-green-700: theme("colors.primitives.green.light.300");
+  --color-utility-green-800: theme("colors.primitives.green.light.200");
+  --color-utility-green-900: theme("colors.primitives.green.light.100");
+  --color-utility-green-950: theme("colors.primitives.green.light.50");
 
   /* Status */
   --color-status-fail: #ff6b6b;

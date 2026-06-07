@@ -15,6 +15,7 @@ import { forwardRef, useCallback, useMemo, useState } from "react";
 import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 type PerpsClosePositionProps = {
   pairId: string;
@@ -140,7 +141,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
           startText="right"
           startContent={
             <div className="flex items-center gap-2 pl-4">
-              {logoURI && <img src={logoURI} alt={symbol} className="w-8 h-8 rounded-full" />}
+              {logoURI && <Image src={logoURI} alt={symbol} className="w-8 h-8 rounded-full" />}
               <p className="text-ink-tertiary-500 diatype-lg-medium">{symbol}</p>
             </div>
           }

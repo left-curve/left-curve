@@ -3,13 +3,16 @@ import {
   Badge,
   Cell,
   FormattedNumber,
+  IconFlame,
   PairStatValue,
   SortHeader,
   StarToggleButton,
   Table,
+  Tooltip,
 } from "@left-curve/applets-kit";
 import { memo, useCallback, useMemo } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
@@ -17,22 +20,44 @@ import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
 
 const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
-  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+  <Image src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
 ));
+
+// `Udec128_6` arrives as a stringified decimal like "2.000000". Trim trailing
+// zeros (and the dangling dot) for display: "2.000000" → "2", "2.500000" → "2.5".
+const formatMultiplier = (raw: string) => raw.replace(/\.?0+$/, "") || raw;
 
 const PerpsPairNameWithFav: React.FC<{
   baseCoin: { symbol: string; logoURI?: string };
   quoteCoin: { symbol: string };
   pairKey: string;
-}> = memo(({ baseCoin, quoteCoin, pairKey }) => {
+  boostMultiplier?: string;
+}> = memo(({ baseCoin, quoteCoin, pairKey, boostMultiplier }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
+  const isFav = hasFavPair(pairKey);
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
-      <StarToggleButton isActive={hasFavPair(pairKey)} onToggle={() => toggleFavPair(pairKey)} />
+      <StarToggleButton
+        isActive={isFav}
+        onToggle={() => toggleFavPair(pairKey)}
+        className={isFav ? "text-primitives-warning-500" : "text-fg-secondary-500"}
+      />
       <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
       <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <Badge text="Perp" color="green" size="s" />
+      {boostMultiplier ? (
+        <Tooltip
+          className="min-w-0 rounded-md"
+          content={
+            <div className="diatype-sm-regular text-primitives-gray-dark-200">
+              {`${formatMultiplier(boostMultiplier)}x points`}
+            </div>
+          }
+        >
+          <IconFlame className="text-primitives-red-light-500 w-4 h-4" />
+        </Tooltip>
+      ) : null}
     </div>
   );
 });
@@ -124,6 +149,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             baseCoin={row.original.baseCoin}
             quoteCoin={row.original.quoteCoin}
             pairKey={row.original.pairKey}
+            boostMultiplier={row.original.boostMultiplier}
           />
         ),
         filterFn: (row, _, value) => {

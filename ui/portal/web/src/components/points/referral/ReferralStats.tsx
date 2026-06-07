@@ -33,6 +33,7 @@ import {
   useVolume,
   useCommissionRateOverride,
 } from "@left-curve/store";
+import { Image } from "~/components/foundation/Image";
 
 type ReferralMode = "affiliate" | "trader";
 
@@ -137,7 +138,7 @@ const AffiliateLockedBanner: React.FC<AffiliateLockedBannerProps> = ({
         </Button>
       )}
     </div>
-    <img
+    <Image
       src="/images/points/referral-banner.svg"
       alt="Referral banner"
       className="absolute bottom-0 right-1/2 translate-x-1/2 lg:right-[3rem] lg:translate-x-0 w-[200px] lg:w-auto h-auto object-contain pointer-events-none"
@@ -634,7 +635,7 @@ export const TraderStats: React.FC = () => {
                 </Button>
               )}
             </div>
-            <img
+            <Image
               src="/images/characters/friends.svg"
               alt="Refer friends"
               className="absolute bottom-[-5rem] lg:bottom-[-6rem] right-1/2 translate-x-1/2 lg:right-[3rem] lg:translate-x-0 w-[260px] lg:w-[320px] h-auto object-contain pointer-events-none"
