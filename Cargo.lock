@@ -4012,19 +4012,8 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "dango-bank",
- "dango-gateway",
- "dango-oracle",
- "dango-order-book",
- "dango-perps",
- "dango-testing",
- "dango-types",
  "grug-app",
- "grug-math",
- "grug-storage",
  "grug-types",
- "pyth-types",
- "tokio",
  "tracing",
 ]
 
