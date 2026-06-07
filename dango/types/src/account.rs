@@ -11,6 +11,20 @@ pub struct InstantiateMsg {
     pub activate: bool,
 }
 
+/// Execute messages for the single-signature account.
+///
+/// All variants are restricted to the chain's owner.
+#[grug_types::derive(Serde)]
+pub enum ExecuteMsg {
+    /// Freeze the account, preventing it from sending transactions or
+    /// receiving transfers. Requires the account to currently be in the
+    /// `Active` state.
+    Freeze {},
+    /// Unfreeze the account, restoring it to the `Active` state. Requires
+    /// the account to currently be in the `Frozen` state.
+    Unfreeze {},
+}
+
 /// Query messages for the single-signature account
 #[grug_types::derive(Serde, QueryRequest)]
 pub enum QueryMsg {

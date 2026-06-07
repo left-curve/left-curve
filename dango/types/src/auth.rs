@@ -19,7 +19,8 @@ pub enum AccountStatus {
     Inactive,
     /// An account is activated once it receives a sufficient initial deposit.
     Active,
-    /// an account may be frozen by the chain's owner. This feature is not implemented yet.
+    /// An account may be frozen by the chain's owner. While frozen, the
+    /// account cannot send transactions or receive transfers.
     Frozen,
 }
 

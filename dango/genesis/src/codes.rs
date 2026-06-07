@@ -32,6 +32,7 @@ impl GenesisCodes for RustVm {
         let account = ContractBuilder::new(Box::new(dango_account::instantiate))
             .with_authenticate(Box::new(dango_account::authenticate))
             .with_receive(Box::new(dango_account::receive))
+            .with_execute(Box::new(dango_account::execute))
             .with_query(Box::new(dango_account::query))
             .build();
 
