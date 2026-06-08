@@ -3,6 +3,7 @@ import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { useStorage } from "../../../store/src/hooks/useStorage";
+import { createBroadcastStorage } from "../../../store/src/storages/broadcastStorage";
 import { createAsyncStorage, createStorage } from "../../../store/src/storages/createStorage";
 import { createMemoryStorage } from "../../../store/src/storages/memoryStorage";
 
@@ -77,6 +78,29 @@ describe("storage adapters", () => {
     storage.setItem("setting", { enabled: true });
 
     expect(listener).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it("keeps raw storage methods bound to their original receiver", () => {
+    const rawStorage: AbstractStorage & { value: string | null } = {
+      value: null,
+      getItem(_key) {
+        if (this !== rawStorage) throw new TypeError("invalid receiver");
+        return this.value;
+      },
+      removeItem(_key) {
+        if (this !== rawStorage) throw new TypeError("invalid receiver");
+        this.value = null;
+      },
+      setItem(_key, value) {
+        if (this !== rawStorage) throw new TypeError("invalid receiver");
+        this.value = value;
+      },
+    };
+    const storage = createBroadcastStorage({ storage: rawStorage });
+
+    storage.setItem("key", "value");
+
+    expect(storage.getItem("key")).toBe("value");
   });
 });
 

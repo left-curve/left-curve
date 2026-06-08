@@ -64,7 +64,9 @@ export function createBroadcastStorage(
 
   return {
     ...storage,
-    getItem: storage.getItem,
+    getItem(key) {
+      return storage.getItem(key);
+    },
     removeItem(key) {
       const result = storage.removeItem(key);
       void Promise.resolve(result)
