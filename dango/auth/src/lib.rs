@@ -227,9 +227,16 @@ pub fn create_account(ctx: MutableCtx, activate: bool) -> anyhow::Result<()> {
 
 pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
     match query_status(ctx.storage)? {
-        // If the account is inactive: query the minimum deposit from app-config.
-        // Activate the account is the deposit is sufficient.
+        // If the account is inactive: only the gateway may deposit into it.
+        // Reject transfers from any other sender. A sufficient deposit from
+        // the gateway flips the account to `Active`.
         AccountStatus::Inactive => {
+            let gateway = ctx.querier.query_gateway()?;
+            ensure!(
+                ctx.sender == gateway,
+                "account {} is not active, only the gateway can deposit into it",
+                ctx.contract
+            );
             let minimum = ctx.querier.query_minimum_deposit()?;
             if is_sufficient(&ctx.funds, &minimum) {
                 account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
