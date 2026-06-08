@@ -15,10 +15,6 @@ export default defineConfig({
       "@left-curve/crypto": path.resolve(root, "sdk/typescript/crypto/src/index.ts"),
       "@left-curve/encoding": path.resolve(root, "sdk/typescript/encoding/src/index.ts"),
       "@left-curve/applets-kit": path.resolve(root, "ui/applets/kit/src/index.ts"),
-      "@left-curve/foundation/paraglide/messages.js": path.resolve(
-        __dirname,
-        "tests/mocks/foundationMessages.ts",
-      ),
       "@left-curve/store": path.resolve(root, "ui/store/src/index.ts"),
       "@left-curve/store/types": path.resolve(root, "ui/store/src/types/index.ts"),
       "@left-curve/types": path.resolve(root, "sdk/typescript/types/src/index.ts"),

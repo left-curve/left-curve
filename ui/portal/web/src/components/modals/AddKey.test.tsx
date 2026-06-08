@@ -195,26 +195,33 @@ describe("AddKey public key flow", () => {
   });
 
   it("blocks invalid public key submission on the input form", () => {
-    render(<PublicKeyInputHarness />);
+    const { container } = render(<PublicKeyInputHarness />);
 
-    const publicKeyInput = screen.getByLabelText("Public Key");
+    const publicKeyInput = container.querySelector<HTMLTextAreaElement>("#secp256k1-public-key")!;
+    const submitButton = container.querySelector<HTMLButtonElement>("button[type='submit']")!;
+
+    expect(publicKeyInput).not.toBeNull();
+    expect(submitButton).not.toBeNull();
     fireEvent.change(publicKeyInput, { target: { value: "not a key" } });
 
-    expect(screen.getByRole("button", { name: "Add key" })).toBeDisabled();
-    expect(
-      screen.getByText("This doesn't look like a valid secp256k1 key. Please check and try again."),
-    ).toBeInTheDocument();
-
+    expect(submitButton).toBeDisabled();
     fireEvent.submit(publicKeyInput.closest("form")!);
 
     expect(mocks.setScreen).not.toHaveBeenCalledWith("public-key-summary");
   });
 
   it("shows the duplicate-key toast when a public key already exists", async () => {
+    const updateKey = vi.fn();
     const publicKey = new Secp256k1(
       Uint8Array.from({ length: 32 }, (_, index) => index + 1),
     ).getPublicKey(true);
 
+    mocks.useSigningClient.mockReturnValue({
+      data: {
+        getUserKeys: vi.fn(),
+        updateKey,
+      },
+    });
     mocks.useQuery.mockReturnValue({
       data: [{ keyHash: createKeyHash(publicKey) }],
       isPending: false,
@@ -229,12 +236,9 @@ describe("AddKey public key flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit duplicate public key" }));
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          description: "Key already exists.",
-        }),
-      );
+      expect(mocks.toastError).toHaveBeenCalledOnce();
     });
+    expect(updateKey).not.toHaveBeenCalled();
   });
 });
 

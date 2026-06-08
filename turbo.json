@@ -42,12 +42,10 @@
         "PUBLIC_PRIVY_CLIENT_ID",
         "ENABLED_FEATURES"
       ]
+    },
+    "@left-curve/portal-web#test": {
+      "dependsOn": ["@left-curve/foundation#build"]
     }
   },
-  "globalPassThroughEnv": [
-    "GIT_COMMIT",
-    "R2_ASSETS_PREFIX",
-    "GITHUB_TOKEN",
-    "SENTRY_AUTH_TOKEN"
-  ]
+  "globalPassThroughEnv": ["GIT_COMMIT", "R2_ASSETS_PREFIX", "GITHUB_TOKEN", "SENTRY_AUTH_TOKEN"]
 }
