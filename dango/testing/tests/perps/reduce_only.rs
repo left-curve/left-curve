@@ -21,14 +21,23 @@
 //!   dynamic re-size has run, each reduce-only maker fill is re-clamped against
 //!   the maker's running position.
 //!
+//! Test convention: the reduce-only order under test is owned by `user2`. That
+//! owner moves its own position either as a **taker** (it submits the
+//! position-changing order itself — `submit_order.rs` re-sizes the sender) or as
+//! a **maker** (a different user's taker fills one of user2's *other* orders —
+//! the sender's maker loop re-sizes filled makers). The re-size fires in both
+//! cases. A comment that says "user2 sells/buys …" means user2 is acting as the
+//! taker, even though user2 is the maker of the reduce-only order being asserted.
+//!
 //! See `dango/perps/src/trade/resize_reduce_only.rs`, `submit_order.rs`, and
 //! `dango/order-book/src/matching_engine.rs`.
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
     dango_order_book::{
-        Dimensionless, OrderId, OrderKind, OrderRemoved, OrderResized, PairId, Quantity,
-        QueryOrdersByUserResponseItem, ReasonForOrderRemoval, TimeInForce, UsdPrice,
+        ChildOrder, Dimensionless, OrderId, OrderKind, OrderRemoved, OrderResized, PairId,
+        Quantity, QueryOrdersByUserResponseItem, ReasonForOrderRemoval, TimeInForce,
+        TriggerDirection, UsdPrice,
     },
     dango_testing::{TestAccount, TestOption, TestSuiteNaive, pair_id, setup_test_naive},
     dango_types::{
@@ -37,8 +46,8 @@ use {
     },
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, CheckedContractEvent, Coins, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, btree_map,
+        Addr, Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, NonEmpty, QuerierExt,
+        ResultExt, SearchEvent, btree_map,
     },
     std::collections::BTreeMap,
 };
@@ -525,7 +534,8 @@ async fn reduce_only_resize_on_taker_fill_then_clamp_is_noop() {
 
     let reserved_before = user_state(&suite, perps, accounts.user2.address()).reserved_margin;
 
-    // Maker shrinks the long to 4 by selling 6 into user4's bid.
+    // The owner (user2), acting as the taker, shrinks its own long to 4 by
+    // selling 6 into user4's bid.
     rest_limit(
         &mut suite,
         &mut accounts.user4,
@@ -674,6 +684,16 @@ async fn reduce_only_resize_on_maker_fill_shrinks_order() {
     assert_eq!(resized[0].user, accounts.user2.address());
     assert_eq!(resized[0].old_size, Quantity::new_int(-10));
     assert_eq!(resized[0].new_size, Quantity::new_int(-4));
+    // The remaining event fields identify the order: it is the reduce-only sell
+    // still resting at 2_003, placed without a client_order_id.
+    assert_eq!(resized[0].pair_id, pair);
+    assert_eq!(resized[0].client_order_id, None);
+    let resized_order_id = open_orders(&suite, perps, accounts.user2.address())
+        .into_iter()
+        .find(|(_, o)| o.limit_price == UsdPrice::new_int(2_003))
+        .map(|(id, _)| id)
+        .expect("reduce-only order still resting at 2_003");
+    assert_eq!(resized[0].order_id, resized_order_id);
 }
 
 /// When the owner's position flips, every reduce-only order is on the wrong side
@@ -717,7 +737,8 @@ async fn reduce_only_resize_cancels_on_flip() {
     )
     .await;
 
-    // Maker flips to a 5-unit short by selling 15 into user4's bid.
+    // The owner (user2), acting as the taker, flips its own position to a
+    // 5-unit short by selling 15 into user4's bid.
     rest_limit(
         &mut suite,
         &mut accounts.user4,
@@ -835,7 +856,16 @@ async fn reduce_only_resize_after_earlier_order_flips_maker() {
     )
     .await;
 
-    market_fill(&mut suite, &mut accounts.user1, perps, &pair, 20, false).await;
+    let events = suite
+        .execute(
+            &mut accounts.user1,
+            perps,
+            &market(&pair, 20, false),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
 
     // A flipped the maker 5 -> -5; B (reduce-only) was skipped then cancelled.
     assert_eq!(
@@ -850,6 +880,25 @@ async fn reduce_only_resize_after_earlier_order_flips_maker() {
         open_orders(&suite, perps, accounts.user2.address()).is_empty(),
         "the inert reduce-only order is cancelled by re-sizing"
     );
+
+    // The cancel here is caused by a MAKER fill (user2's senior order flips the
+    // position mid-sweep), not a taker action — assert the post-sweep re-size
+    // emitted `OrderRemoved{ReduceOnlyResized}` for user2's inert order.
+    let removed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_removed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderRemoved>().unwrap())
+        .filter(|e| e.reason == ReasonForOrderRemoval::ReduceOnlyResized)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        removed.len(),
+        1,
+        "one reduce-only order cancelled by re-sizing"
+    );
+    assert_eq!(removed[0].user, accounts.user2.address());
 
     let ps = pair_state(&suite, perps, &pair);
     assert_eq!(ps.long_oi, Quantity::new_int(10));
@@ -1075,7 +1124,8 @@ async fn reduce_only_position_growth_leaves_order() {
     )
     .await;
 
-    // Maker grows the long to 10 by buying 5 from user4.
+    // The owner (user2), acting as the taker, grows its own long to 10 by
+    // buying 5 from user4.
     rest_limit(
         &mut suite,
         &mut accounts.user4,
@@ -1321,5 +1371,982 @@ async fn reduce_only_resize_on_adl_counterparty() {
     assert_eq!(
         user_state(&suite, perps, accounts.user3.address()).open_order_count,
         1
+    );
+}
+
+// ------------------------- short-maker dynamic re-size -----------------------
+
+/// Short-maker mirror of [`reduce_only_resize_on_maker_fill_shrinks_order`]: a
+/// SHORT maker's reduce-only BUY is shrunk when its position is reduced by one
+/// of its own non-reduce-only orders filling. Closes the bid-side gap left by
+/// the rewrite (every other dynamic test uses a long maker / reduce-only sells).
+#[tokio::test]
+async fn reduce_only_resize_short_maker_buy_shrinks() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user1, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+
+    // user2 opens a 10-unit short against user3's bid.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, -10, false).await;
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        Some(Quantity::new_int(-10))
+    );
+
+    // Non-reduce-only BUY of 6 (senior, best bid 1999) and reduce-only BUY of 10.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        6,
+        1_999,
+        false,
+    )
+    .await;
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        10,
+        1_997,
+        true,
+    )
+    .await;
+
+    // Taker sells 6 — fills only the non-RO buy, lifting the short to -4.
+    let events = suite
+        .execute(
+            &mut accounts.user1,
+            perps,
+            &market(&pair, -6, false),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        Some(Quantity::new_int(-4))
+    );
+
+    // The non-RO buy filled and was removed; the reduce-only buy resized 10 -> 4.
+    assert!(order_at(&suite, perps, accounts.user2.address(), 1_999).is_none());
+    assert_eq!(
+        order_at(&suite, perps, accounts.user2.address(), 1_997)
+            .unwrap()
+            .size,
+        Quantity::new_int(4),
+        "short maker's reduce-only buy tracks the reduced short"
+    );
+    assert_eq!(
+        user_state(&suite, perps, accounts.user2.address()).open_order_count,
+        1
+    );
+
+    let resized = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_resized")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderResized>().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(resized.len(), 1);
+    assert_eq!(resized[0].old_size, Quantity::new_int(10));
+    assert_eq!(resized[0].new_size, Quantity::new_int(4));
+}
+
+/// Short-maker mirror of [`reduce_only_resize_cancels_on_flip`]: when a short
+/// flips to long, the reduce-only BUY is on the wrong side (buys grow a long)
+/// and is cancelled.
+#[tokio::test]
+async fn reduce_only_resize_short_maker_cancels_on_flip() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+
+    // user2 opens a 10-unit short and rests a reduce-only buy of 10.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, -10, false).await;
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        10,
+        1_998,
+        true,
+    )
+    .await;
+
+    // The owner (user2), acting as the taker, flips its short to a 5-unit long by
+    // buying 15 from user4's ask.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user4,
+        perps,
+        &pair,
+        -15,
+        1_999,
+        false,
+    )
+    .await;
+    let events = suite
+        .execute(
+            &mut accounts.user2,
+            perps,
+            &market(&pair, 15, false),
+            Coins::new(),
+        )
+        .await
+        .should_succeed()
+        .events;
+
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        Some(Quantity::new_int(5))
+    );
+    assert!(
+        open_orders(&suite, perps, accounts.user2.address()).is_empty(),
+        "the wrong-side reduce-only buy is cancelled on the flip"
+    );
+
+    let removed = events
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_removed")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderRemoved>().unwrap())
+        .filter(|e| e.reason == ReasonForOrderRemoval::ReduceOnlyResized)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        removed.len(),
+        1,
+        "one reduce-only order cancelled by re-sizing"
+    );
+    assert_eq!(removed[0].user, accounts.user2.address());
+}
+
+// ------------------------------ batch + rollback -----------------------------
+
+/// `batch_update_orders` runs the same re-size hook as a plain submit: an action
+/// that reduces the sender's position inside a batch shrinks its resting
+/// reduce-only order.
+#[tokio::test]
+async fn reduce_only_resize_within_batch() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+
+    // user2 opens a 10-unit long and rests a reduce-only sell of 10.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, 10, false).await;
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        -10,
+        2_002,
+        true,
+    )
+    .await;
+
+    // user4 rests a bid so the batch's sell can fill on the book.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user4,
+        perps,
+        &pair,
+        6,
+        1_999,
+        false,
+    )
+    .await;
+
+    // A batch whose action reduces user2's long to 4 must trigger the re-size
+    // hook reached via BatchUpdateOrders -> _submit_order.
+    suite
+        .execute(
+            &mut accounts.user2,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
+                NonEmpty::new(vec![perps::SubmitOrCancelOrderRequest::Submit(
+                    perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(-6),
+                        kind: OrderKind::Market {
+                            max_slippage: Dimensionless::new_percent(50),
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    },
+                )])
+                .unwrap(),
+            )),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        Some(Quantity::new_int(4))
+    );
+    assert_eq!(
+        order_at(&suite, perps, accounts.user2.address(), 2_002)
+            .unwrap()
+            .size,
+        Quantity::new_int(-4),
+        "reduce-only sell re-sized inside the batch"
+    );
+    assert_eq!(
+        user_state(&suite, perps, accounts.user2.address()).open_order_count,
+        1
+    );
+}
+
+/// A reduce-only placement rejection rolls back the *whole* batch, including an
+/// earlier action's fill. Single-submit can't reach this (a filling reduce-only
+/// order is always best-priced, so it is kept, never rejected); the batch makes
+/// the fill and the rejected post-only separate actions.
+#[tokio::test]
+async fn reduce_only_batch_rejection_rolls_back_fill() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+
+    // user2 long 10 with a reduce-only sell of 10 at the better price 2001.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, 10, false).await;
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        -10,
+        2_001,
+        true,
+    )
+    .await;
+
+    // user4 bid for the batch's first action to fill against.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user4,
+        perps,
+        &pair,
+        4,
+        1_999,
+        false,
+    )
+    .await;
+
+    // Batch: action 1 sells 4 (fills user4, long 10 -> 6, re-sizes the 2001 order
+    // to -6); action 2 is a post-only reduce-only sell at the WORSE price 2005,
+    // which the now-exhausted budget (6, fully held by the 2001 order) zeroes ->
+    // reject. The reject must roll back action 1's fill too.
+    suite
+        .execute(
+            &mut accounts.user2,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::BatchUpdateOrders(
+                NonEmpty::new(vec![
+                    perps::SubmitOrCancelOrderRequest::Submit(perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(-4),
+                        kind: OrderKind::Market {
+                            max_slippage: Dimensionless::new_percent(50),
+                        },
+                        reduce_only: false,
+                        tp: None,
+                        sl: None,
+                    }),
+                    perps::SubmitOrCancelOrderRequest::Submit(perps::SubmitOrderRequest {
+                        pair_id: pair.clone(),
+                        size: Quantity::new_int(-10),
+                        kind: OrderKind::Limit {
+                            limit_price: UsdPrice::new_int(2_005),
+                            time_in_force: TimeInForce::PostOnly,
+                            client_order_id: None,
+                        },
+                        reduce_only: true,
+                        tp: None,
+                        sl: None,
+                    }),
+                ])
+                .unwrap(),
+            )),
+            Coins::new(),
+        )
+        .await
+        .should_fail_with_error("reduce-only order would exceed position size");
+
+    // Whole batch rolled back: position still 10, the RO sell still -10 at 2001,
+    // and user4's bid untouched (the fill was undone).
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        Some(Quantity::new_int(10))
+    );
+    assert_eq!(
+        order_at(&suite, perps, accounts.user2.address(), 2_001)
+            .unwrap()
+            .size,
+        Quantity::new_int(-10)
+    );
+    assert_eq!(
+        user_state(&suite, perps, accounts.user2.address()).open_order_count,
+        1
+    );
+    assert_eq!(
+        order_at(&suite, perps, accounts.user4.address(), 1_999)
+            .unwrap()
+            .size,
+        Quantity::new_int(4),
+        "user4's bid fill was rolled back"
+    );
+}
+
+/// A single GTC reduce-only order that partially fills is necessarily the
+/// best-priced reduce-only order, so the sum-clamp keeps it and EVICTS the
+/// user's older worse-priced one — it is never itself rejected, and the fill
+/// stands. (Complements the post-only eviction test, which never fills.)
+#[tokio::test]
+async fn reduce_only_partial_fill_evicts_worse_order() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+
+    // user2 long 10 with a reduce-only sell of 10 at the WORSE price 2003.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, 10, false).await;
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        -10,
+        2_003,
+        true,
+    )
+    .await;
+
+    // user3 rests a bid of 3 at 2000 for the new order to partially fill against.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        3,
+        2_000,
+        false,
+    )
+    .await;
+
+    // user2 submits a GTC reduce-only sell of 10 at the BETTER price 1999: it
+    // crosses the bid (fills 3, long 10 -> 7) and rests the remaining 7.
+    suite
+        .execute(
+            &mut accounts.user2,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(1_999),
+                    time_in_force: TimeInForce::GoodTilCanceled,
+                    client_order_id: None,
+                },
+                reduce_only: true,
+                tp: None,
+                sl: None,
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        Some(Quantity::new_int(7)),
+        "the partial fill stands"
+    );
+    assert_eq!(
+        order_at(&suite, perps, accounts.user2.address(), 1_999)
+            .unwrap()
+            .size,
+        Quantity::new_int(-7),
+        "the new order rests at its remainder"
+    );
+    assert!(
+        order_at(&suite, perps, accounts.user2.address(), 2_003).is_none(),
+        "the older worse-priced order was evicted"
+    );
+    assert_eq!(
+        user_state(&suite, perps, accounts.user2.address()).open_order_count,
+        1
+    );
+}
+
+// -------------------------- depth / zombie guards ----------------------------
+
+/// After a reduce-only order is shrunk, the book really holds only the shrunk
+/// size at that price — a taker that tries to fill the original size gets only
+/// the smaller amount.
+#[tokio::test]
+async fn reduce_only_depth_correct_after_shrink() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user1, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+
+    // user2 long 10, reduce-only sell of 10 at 2002.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, 10, false).await;
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        -10,
+        2_002,
+        true,
+    )
+    .await;
+
+    // user2 sells 6 (as taker) into user4's bid -> long 4, RO sell shrinks to -4.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user4,
+        perps,
+        &pair,
+        6,
+        2_001,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, -6, false).await;
+    assert_eq!(
+        order_at(&suite, perps, accounts.user2.address(), 2_002)
+            .unwrap()
+            .size,
+        Quantity::new_int(-4)
+    );
+
+    // A taker buying 10 gets only the shrunk 4 — the book holds 4 at 2002, not
+    // the pre-shrink 10. The remaining 6 finds no liquidity (discarded).
+    market_fill(&mut suite, &mut accounts.user1, perps, &pair, 10, false).await;
+    assert_eq!(
+        position(&suite, perps, accounts.user1.address(), &pair),
+        Some(Quantity::new_int(4)),
+        "only the shrunk 4 was available"
+    );
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        None,
+        "user2 closed flat"
+    );
+    assert!(open_orders(&suite, perps, accounts.user2.address()).is_empty());
+
+    let ps = pair_state(&suite, perps, &pair);
+    assert_eq!(ps.long_oi, ps.short_oi, "OI must net");
+}
+
+/// Regression guard: after a position-changing tx leaves the owner flat, no
+/// stale reduce-only order is left behind (the inert-cleanup must not depend on
+/// the reduce-only order itself having filled).
+#[tokio::test]
+async fn reduce_only_no_zombie_after_position_change() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+
+    // user2 long 5 with a reduce-only sell parked high (won't fill).
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -5,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, 5, false).await;
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        -5,
+        2_005,
+        true,
+    )
+    .await;
+
+    // user2 closes its long to flat via a SEPARATE non-RO sell (not the RO order
+    // filling) -> the now-stale reduce-only sell must be cancelled.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user4,
+        perps,
+        &pair,
+        5,
+        1_999,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, -5, false).await;
+
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        None,
+        "user2 is flat"
+    );
+    assert!(
+        open_orders(&suite, perps, accounts.user2.address()).is_empty(),
+        "no zombie reduce-only order remains after closing to flat"
+    );
+}
+
+// ----------------------- conditional-order trigger path ----------------------
+
+/// A conditional (TP) trigger that partially closes a position re-sizes the
+/// owner's *other* resting reduce-only order. Covers the
+/// `process_conditional_orders` hook, which no other test exercises.
+#[tokio::test]
+async fn reduce_only_resize_on_conditional_trigger() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user1, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+
+    // user1 opens a 10-unit long.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user1, perps, &pair, 10, false).await;
+
+    // user1 rests a reduce-only sell of 10 above the TP maker bid (won't fill).
+    rest_limit(
+        &mut suite,
+        &mut accounts.user1,
+        perps,
+        &pair,
+        -10,
+        2_150,
+        true,
+    )
+    .await;
+
+    // user1 attaches a partial take-profit: sell 6 when oracle >= 2100.
+    suite
+        .execute(
+            &mut accounts.user1,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitConditionalOrder {
+                pair_id: pair.clone(),
+                size: Some(Quantity::new_int(-6)),
+                trigger_price: UsdPrice::new_int(2_100),
+                trigger_direction: TriggerDirection::Above,
+                max_slippage: Dimensionless::new_percent(1),
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // user2 rests a bid of 6 at 2100 for the triggered market sell to fill.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user2,
+        perps,
+        &pair,
+        6,
+        2_100,
+        false,
+    )
+    .await;
+
+    // Oracle rises to the trigger and a block fires the cron. (`increase_time`
+    // discards the outcome, so inline its body to read the cron events.)
+    register_oracle_prices(&mut suite, &mut accounts, 2_100).await;
+    let old_block_time = suite.block_time;
+    suite.block_time = Duration::from_minutes(2);
+    let outcome = suite.make_empty_block().await;
+    suite.block_time = old_block_time;
+
+    // TP closed 6 of user1's long; the reduce-only sell re-sized 10 -> 4.
+    assert_eq!(
+        position(&suite, perps, accounts.user1.address(), &pair),
+        Some(Quantity::new_int(4))
+    );
+    assert_eq!(
+        order_at(&suite, perps, accounts.user1.address(), 2_150)
+            .unwrap()
+            .size,
+        Quantity::new_int(-4),
+        "reduce-only sell tracks the TP-reduced position"
+    );
+
+    // The trigger and the re-size both surfaced in the cron block. (`search_event`
+    // consumes the outcome, so clone it for the first of the two searches.)
+    let triggered = outcome
+        .block_outcome
+        .clone()
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "conditional_order_triggered")
+        .take()
+        .all();
+    assert_eq!(triggered.len(), 1, "the TP fired");
+    let resized = outcome
+        .block_outcome
+        .search_event::<CheckedContractEvent>()
+        .with_predicate(|e| e.ty == "order_resized")
+        .take()
+        .all()
+        .into_iter()
+        .map(|e| e.event.data.deserialize_json::<OrderResized>().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(resized.len(), 1);
+    assert_eq!(resized[0].new_size, Quantity::new_int(-4));
+}
+
+// --------------------------- liquidation book fill ---------------------------
+
+/// A maker who provides BOOK liquidity for a liquidation (not ADL) has its own
+/// position reduced by that fill, re-sizing its resting reduce-only order. The
+/// existing liquidation test only covers the ADL counter-party path.
+#[tokio::test]
+async fn reduce_only_resize_on_liquidation_book_maker() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    // Widen the band so Carol's far-OTM reduce-only ask survives the oracle move.
+    suite
+        .execute(
+            &mut accounts.owner,
+            perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        max_limit_price_deviation: Dimensionless::new_permille(999),
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user1, perps, 700_000_000).await;
+
+    // Carol (user3) long 5; user1 short 3, user4 short 2.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        5,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user1, perps, &pair, -3, false).await;
+    market_fill(&mut suite, &mut accounts.user4, perps, &pair, -2, false).await;
+    assert_eq!(
+        position(&suite, perps, accounts.user3.address(), &pair),
+        Some(Quantity::new_int(5))
+    );
+
+    // Carol rests a reduce-only sell of 5 far OTM (won't fill).
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -5,
+        3_900,
+        true,
+    )
+    .await;
+
+    // Oracle rises: user1's short is now underwater.
+    register_oracle_prices(&mut suite, &mut accounts, 2_300).await;
+
+    // Carol rests an IN-RANGE regular ask of 3 (below the liquidation buy target),
+    // so user1's liquidation fills on the BOOK rather than ADL.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -3,
+        2_250,
+        false,
+    )
+    .await;
+
+    // Liquidate user1: it buys 3, filling Carol's 2250 ask -> Carol long 5 -> 2.
+    suite
+        .execute(
+            &mut accounts.owner,
+            perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Liquidate {
+                user: accounts.user1.address(),
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    assert_eq!(
+        position(&suite, perps, accounts.user3.address(), &pair),
+        Some(Quantity::new_int(2)),
+        "Carol's long was reduced to 2 by the book fill"
+    );
+    // The book fill consumed Carol's 2250 ask (proves book path, not ADL)...
+    assert!(
+        order_at(&suite, perps, accounts.user3.address(), 2_250).is_none(),
+        "the in-range ask was filled by the liquidation (book path)"
+    );
+    // ...and her reduce-only order tracked the reduced position.
+    assert_eq!(
+        order_at(&suite, perps, accounts.user3.address(), 3_900)
+            .unwrap()
+            .size,
+        Quantity::new_int(-2),
+        "the reduce-only order tracks the book-fill-reduced position"
+    );
+    assert_eq!(
+        user_state(&suite, perps, accounts.user3.address()).open_order_count,
+        1
+    );
+}
+
+// ------------------------------- child orders --------------------------------
+
+/// A reduce-only order carrying tp/sl child orders keeps them through a shrink
+/// and is cleanly removed (no orphan) on cancel.
+#[tokio::test]
+async fn reduce_only_child_orders_on_resized_order() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+    register_oracle_prices(&mut suite, &mut accounts, 2_000).await;
+
+    let perps = contracts.perps;
+    let pair = pair_id();
+
+    deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
+    deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+
+    // user2 opens a 10-unit long.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user3,
+        perps,
+        &pair,
+        -10,
+        2_000,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, 10, false).await;
+
+    // user2 rests a reduce-only sell of 10 carrying tp/sl child orders.
+    suite
+        .execute(
+            &mut accounts.user2,
+            perps,
+            &perps::ExecuteMsg::Trade(perps::TraderMsg::SubmitOrder(perps::SubmitOrderRequest {
+                pair_id: pair.clone(),
+                size: Quantity::new_int(-10),
+                kind: OrderKind::Limit {
+                    limit_price: UsdPrice::new_int(2_002),
+                    time_in_force: TimeInForce::PostOnly,
+                    client_order_id: None,
+                },
+                reduce_only: true,
+                tp: Some(ChildOrder {
+                    trigger_price: UsdPrice::new_int(2_500),
+                    max_slippage: Dimensionless::new_percent(1),
+                    size: None,
+                }),
+                sl: Some(ChildOrder {
+                    trigger_price: UsdPrice::new_int(1_500),
+                    max_slippage: Dimensionless::new_percent(1),
+                    size: None,
+                }),
+            })),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+    assert!(
+        order_at(&suite, perps, accounts.user2.address(), 2_002)
+            .unwrap()
+            .tp
+            .is_some(),
+        "child orders attached to the resting reduce-only order"
+    );
+
+    // Shrink it: user2 sells 6 (as taker) into user4's bid -> long 4, RO -> -4.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user4,
+        perps,
+        &pair,
+        6,
+        2_001,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, -6, false).await;
+    let shrunk = order_at(&suite, perps, accounts.user2.address(), 2_002).unwrap();
+    assert_eq!(shrunk.size, Quantity::new_int(-4));
+    assert!(
+        shrunk.tp.is_some() && shrunk.sl.is_some(),
+        "child orders are preserved through a shrink"
+    );
+
+    // Close to flat: the reduce-only order (with its children) is cleanly removed.
+    rest_limit(
+        &mut suite,
+        &mut accounts.user4,
+        perps,
+        &pair,
+        4,
+        1_999,
+        false,
+    )
+    .await;
+    market_fill(&mut suite, &mut accounts.user2, perps, &pair, -4, false).await;
+    assert_eq!(
+        position(&suite, perps, accounts.user2.address(), &pair),
+        None
+    );
+    assert!(
+        open_orders(&suite, perps, accounts.user2.address()).is_empty(),
+        "no orphan order or child left after cancel"
     );
 }

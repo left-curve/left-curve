@@ -600,4 +600,170 @@ mod tests {
             total_resting_reserved(&ctx.storage)
         );
     }
+
+    /// Short-maker mirror of [`shrink_worst_first_clamps_the_sum`]: two
+    /// reduce-only BUYS summing over the (short) position. Exercises the
+    /// bid-side shrink path — a bid being shrunk (not merely kept or cancelled)
+    /// — which the other tests never hit (they all use long makers / asks).
+    #[test]
+    fn shrink_bid_for_short_maker() {
+        let mut ctx = MockContext::new();
+
+        // Short 4; two reduce-only buys of 3 each (each ≤ 4, together 6 > 4).
+        save_ro_bid(&mut ctx.storage, &pair(), 1, 1_999, 3, 30);
+        save_ro_bid(&mut ctx.storage, &pair(), 2, 1_998, 3, 30);
+        let user_state = user_state_with(-4, 60, 2);
+
+        let outcome =
+            compute_resize_reduce_only_outcome(&mut ctx.storage, USER, &pair(), &user_state, None)
+                .unwrap();
+
+        // @1999 (best bid = highest real price) keeps 3; @1998 shrinks to 1.
+        assert!(outcome.removed.is_empty());
+        assert_eq!(
+            load_bid(&ctx.storage, &pair(), 1_999, 1).unwrap().size,
+            Quantity::new_int(3)
+        );
+        let shrunk = load_bid(&ctx.storage, &pair(), 1_998, 2).unwrap();
+        assert_eq!(shrunk.size, Quantity::new_int(1));
+        // Reserved released proportionally: 30 × 2/3 = 20, leaving 10.
+        assert_eq!(shrunk.reserved_margin, UsdValue::new_int(10));
+        assert_eq!(outcome.user_state.reserved_margin, UsdValue::new_int(40));
+        assert_eq!(
+            outcome.user_state.reserved_margin,
+            total_resting_reserved(&ctx.storage)
+        );
+        assert_eq!(outcome.user_state.open_order_count, 2);
+    }
+
+    /// Bid-side mirror of [`cancel_all_when_flat`]: a flat position cancels
+    /// reduce-only *buys* too (the only flat/wrong-side test otherwise uses
+    /// asks).
+    #[test]
+    fn cancel_wrong_side_bids_when_flat() {
+        let mut ctx = MockContext::new();
+
+        save_ro_bid(&mut ctx.storage, &pair(), 1, 1_999, 3, 30);
+        save_ro_bid(&mut ctx.storage, &pair(), 2, 1_998, 3, 30);
+        let user_state = user_state_with(0, 60, 2);
+
+        let outcome =
+            compute_resize_reduce_only_outcome(&mut ctx.storage, USER, &pair(), &user_state, None)
+                .unwrap();
+
+        assert_eq!(outcome.removed.len(), 2);
+        assert!(outcome.removed.contains(&Uint64::new(1)));
+        assert!(outcome.removed.contains(&Uint64::new(2)));
+        assert!(load_bid(&ctx.storage, &pair(), 1_999, 1).is_none());
+        assert!(load_bid(&ctx.storage, &pair(), 1_998, 2).is_none());
+        assert_eq!(outcome.user_state.reserved_margin, UsdValue::ZERO);
+        assert_eq!(outcome.user_state.open_order_count, 0);
+    }
+
+    /// Three reduce-only orders summing over the budget in a single pass:
+    /// keep the best, shrink the middle, cancel the worst. The 2-order tests
+    /// never exercise keep+shrink+cancel together.
+    #[test]
+    fn shrink_and_cancel_across_three_orders() {
+        let mut ctx = MockContext::new();
+
+        // Long 5; three reduce-only sells of 3 each (Σ9 > 5).
+        save_ro_ask(&mut ctx.storage, &pair(), 1, 2_001, -3, 30);
+        save_ro_ask(&mut ctx.storage, &pair(), 2, 2_002, -3, 30);
+        save_ro_ask(&mut ctx.storage, &pair(), 3, 2_003, -3, 30);
+        let user_state = user_state_with(5, 90, 3);
+
+        let outcome =
+            compute_resize_reduce_only_outcome(&mut ctx.storage, USER, &pair(), &user_state, None)
+                .unwrap();
+
+        // @2001 keeps 3 (budget 5→2); @2002 shrinks to 2 (budget 2→0); @2003
+        // gets nothing and is cancelled.
+        assert_eq!(outcome.removed, vec![Uint64::new(3)]);
+        assert_eq!(
+            load_ask(&ctx.storage, &pair(), 2_001, 1).unwrap().size,
+            Quantity::new_int(-3)
+        );
+        assert_eq!(
+            load_ask(&ctx.storage, &pair(), 2_002, 2).unwrap().size,
+            Quantity::new_int(-2)
+        );
+        assert!(load_ask(&ctx.storage, &pair(), 2_003, 3).is_none());
+        // 90 − (10 released on the shrink) − (30 released on the cancel) = 50.
+        assert_eq!(outcome.user_state.reserved_margin, UsdValue::new_int(50));
+        assert_eq!(
+            outcome.user_state.reserved_margin,
+            total_resting_reserved(&ctx.storage)
+        );
+        assert_eq!(outcome.user_state.open_order_count, 2);
+    }
+
+    /// Two reduce-only orders at the SAME price: the budget is allocated by
+    /// price-time priority, and ties break on ascending `order_id` (older
+    /// first). The older order is kept, the newer one shrunk.
+    #[test]
+    fn tie_break_keeps_older_order_at_same_price() {
+        let mut ctx = MockContext::new();
+
+        // Long 4; two reduce-only sells of 3 each at the identical price 2_001.
+        save_ro_ask(&mut ctx.storage, &pair(), 1, 2_001, -3, 30);
+        save_ro_ask(&mut ctx.storage, &pair(), 2, 2_001, -3, 30);
+        let user_state = user_state_with(4, 60, 2);
+
+        let outcome =
+            compute_resize_reduce_only_outcome(&mut ctx.storage, USER, &pair(), &user_state, None)
+                .unwrap();
+
+        // Order id 1 (older) keeps 3; order id 2 (newer) shrinks to 1.
+        assert!(outcome.removed.is_empty());
+        assert_eq!(
+            load_ask(&ctx.storage, &pair(), 2_001, 1).unwrap().size,
+            Quantity::new_int(-3)
+        );
+        assert_eq!(
+            load_ask(&ctx.storage, &pair(), 2_001, 2).unwrap().size,
+            Quantity::new_int(-1)
+        );
+        assert_eq!(outcome.user_state.open_order_count, 2);
+    }
+
+    /// Margin conservation holds even when the proportional release truncates.
+    /// Shrinking a `-3` order to `-1` releases `10 × 2/3 = 6.666666` (Dec128_6
+    /// truncates `6.6666…`), leaving `10 − 6.666666 = 3.333334`. Because the
+    /// kept value is a single subtraction of the one truncated release (not a
+    /// second division), `kept + released == reserved` exactly and no margin is
+    /// stranded — the aggregate still equals the sum of resting reserved.
+    #[test]
+    fn shrink_margin_conserved_with_truncating_division() {
+        let mut ctx = MockContext::new();
+
+        // Long 4; two reduce-only sells of 3, each reserving an indivisible 10.
+        save_ro_ask(&mut ctx.storage, &pair(), 1, 2_001, -3, 10);
+        save_ro_ask(&mut ctx.storage, &pair(), 2, 2_002, -3, 10);
+        let user_state = user_state_with(4, 20, 2);
+
+        let outcome =
+            compute_resize_reduce_only_outcome(&mut ctx.storage, USER, &pair(), &user_state, None)
+                .unwrap();
+
+        // @2001 keeps its 10; @2002 shrinks 3→1, keeping 10 − 6.666666.
+        assert_eq!(
+            load_ask(&ctx.storage, &pair(), 2_001, 1)
+                .unwrap()
+                .reserved_margin,
+            UsdValue::new_int(10)
+        );
+        let shrunk = load_ask(&ctx.storage, &pair(), 2_002, 2).unwrap();
+        assert_eq!(shrunk.size, Quantity::new_int(-1));
+        assert_eq!(shrunk.reserved_margin, UsdValue::new_raw(3_333_334));
+        // Aggregate == Σ resting (no stranded margin) and == 10 + 3.333334.
+        assert_eq!(
+            outcome.user_state.reserved_margin,
+            UsdValue::new_raw(13_333_334)
+        );
+        assert_eq!(
+            outcome.user_state.reserved_margin,
+            total_resting_reserved(&ctx.storage)
+        );
+    }
 }
