@@ -26,8 +26,8 @@ use {
     dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
     grug_math::{MathResult, Number, NumberConst},
     grug_types::{
-        Addr, EventBuilder, MutableCtx, Order as IterationOrder, QuerierWrapper, Response, Storage,
-        Timestamp,
+        Addr, EventBuilder, MutableCtx, Order as IterationOrder, QuerierWrapper, Response,
+        StdResult, Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -743,6 +743,23 @@ pub fn match_order(
     // PnL settlement, OI bookkeeping, OrderFilled / OrderRemoved
     // events) in the same chronological order, matching the legacy
     // interleaved engine's event sequence byte-for-byte.
+    //
+    // Reduce-only maker orders must never flip the maker's position. The
+    // walker re-clamps each reduce-only maker fill against the maker's current
+    // position; give it a lookup that mirrors the maker-state source used by
+    // the settlement loop below (`maker_states` first, then `USER_STATES`,
+    // default zero) so the walk's simulation matches what `settle_fill` sees.
+    let maker_position = |addr: Addr| -> StdResult<Quantity> {
+        if let Some(s) = maker_states.get(&addr) {
+            Ok(s.positions.get(pair_id).map(|p| p.size).unwrap_or_default())
+        } else {
+            Ok(USER_STATES
+                .may_load(storage, addr)?
+                .map(|s| s.positions.get(pair_id).map(|p| p.size).unwrap_or_default())
+                .unwrap_or_default())
+        }
+    };
+
     let WalkBookOutcome {
         steps,
         remaining_size,
@@ -756,6 +773,7 @@ pub fn match_order(
         oracle_price,
         max_limit_price_deviation,
         remaining_size,
+        maker_position,
     )?;
 
     for step in steps {

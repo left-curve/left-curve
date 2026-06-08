@@ -15,6 +15,7 @@ mod conditional_orders;
 mod index_price;
 mod liquidation;
 mod price_band;
+mod reduce_only;
 mod referral;
 mod trading;
 mod vault;
