@@ -47,7 +47,7 @@ use {
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, NonEmpty, QuerierExt,
-        ResultExt, SearchEvent, btree_map,
+        ResultExt, SearchEvent, btree_map, btree_set,
     },
     std::collections::BTreeMap,
 };
@@ -1871,8 +1871,8 @@ async fn reduce_only_partial_fill_evicts_worse_order() {
 // -------------------------- depth / zombie guards ----------------------------
 
 /// After a reduce-only order is shrunk, the book really holds only the shrunk
-/// size at that price — a taker that tries to fill the original size gets only
-/// the smaller amount.
+/// size at that price. Asserts the liquidity-depth map directly — it reports 4,
+/// not the pre-shrink 10 — and that a taker can fill only the smaller amount.
 #[tokio::test]
 async fn reduce_only_depth_correct_after_shrink() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
@@ -1881,10 +1881,44 @@ async fn reduce_only_depth_correct_after_shrink() {
     let perps = contracts.perps;
     let pair = pair_id();
 
+    // Configure a $1 depth bucket so an order's price is its own bucket key.
+    suite
+        .execute(
+            &mut accounts.owner,
+            perps,
+            &perps::ExecuteMsg::Maintain(perps::MaintainerMsg::Configure {
+                param: default_param(),
+                pair_params: btree_map! {
+                    pair.clone() => PairParam {
+                        bucket_sizes: btree_set! { UsdPrice::new_int(1) },
+                        ..default_pair_param()
+                    },
+                },
+            }),
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
     deposit(&mut suite, &mut accounts.user1, perps, DEPOSIT).await;
     deposit(&mut suite, &mut accounts.user2, perps, DEPOSIT).await;
     deposit(&mut suite, &mut accounts.user3, perps, DEPOSIT).await;
     deposit(&mut suite, &mut accounts.user4, perps, DEPOSIT).await;
+
+    // Absolute ask depth at `price` (the $1 bucket key is the price itself), or
+    // `None` if the book holds nothing there.
+    let ask_depth_at = |suite: &TestSuiteNaive, price: i128| -> Option<Quantity> {
+        suite
+            .query_wasm_smart(perps, perps::QueryLiquidityDepthRequest {
+                pair_id: pair.clone(),
+                bucket_size: UsdPrice::new_int(1),
+                limit: None,
+            })
+            .should_succeed()
+            .asks
+            .get(&UsdPrice::new_int(price))
+            .map(|d| d.size)
+    };
 
     // user2 long 10, reduce-only sell of 10 at 2002.
     rest_limit(
@@ -1909,6 +1943,9 @@ async fn reduce_only_depth_correct_after_shrink() {
     )
     .await;
 
+    // The depth map reports the full 10 at the 2002 ask bucket.
+    assert_eq!(ask_depth_at(&suite, 2_002), Some(Quantity::new_int(10)));
+
     // user2 sells 6 (as taker) into user4's bid -> long 4, RO sell shrinks to -4.
     rest_limit(
         &mut suite,
@@ -1928,8 +1965,15 @@ async fn reduce_only_depth_correct_after_shrink() {
         Quantity::new_int(-4)
     );
 
-    // A taker buying 10 gets only the shrunk 4 — the book holds 4 at 2002, not
-    // the pre-shrink 10. The remaining 6 finds no liquidity (discarded).
+    // The depth map now reports only 4 at 2002 — the shrink decremented it.
+    assert_eq!(
+        ask_depth_at(&suite, 2_002),
+        Some(Quantity::new_int(4)),
+        "liquidity depth tracks the shrunk size"
+    );
+
+    // And behaviourally: a taker buying 10 fills only the shrunk 4; the remaining
+    // 6 finds no liquidity (discarded).
     market_fill(&mut suite, &mut accounts.user1, perps, &pair, 10, false).await;
     assert_eq!(
         position(&suite, perps, accounts.user1.address(), &pair),
@@ -1942,6 +1986,13 @@ async fn reduce_only_depth_correct_after_shrink() {
         "user2 closed flat"
     );
     assert!(open_orders(&suite, perps, accounts.user2.address()).is_empty());
+
+    // The order fully filled, so the book holds nothing at 2002 now.
+    assert_eq!(
+        ask_depth_at(&suite, 2_002),
+        None,
+        "depth cleared after the fill"
+    );
 
     let ps = pair_state(&suite, perps, &pair);
     assert_eq!(ps.long_oi, ps.short_oi, "OI must net");
