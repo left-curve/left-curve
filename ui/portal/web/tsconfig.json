@@ -17,6 +17,9 @@
       "path": "../../applets/kit"
     },
     {
+      "path": "../../../sdk/typescript/crypto"
+    },
+    {
       "path": "../../../sdk/typescript/dango"
     },
     {

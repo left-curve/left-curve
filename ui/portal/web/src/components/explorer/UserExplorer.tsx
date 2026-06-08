@@ -199,7 +199,7 @@ const AccountsStack: React.FC = () => {
 
 const KeyTypeTranslation = {
   secp256r1: "Passkey",
-  secp256k1: "Wallet",
+  secp256k1: "Secp256k1 Public Key",
   ethereum: "Ethereum Wallet",
 } as const;
 

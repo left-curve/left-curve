@@ -18,6 +18,8 @@ export {
   Secp256k1,
   secp256k1RecoverPubKey,
   secp256k1CompressPubKey,
+  secp256k1NormalizePubKey,
+  secp256k1ParsePubKey,
   secp256k1VerifySignature,
   Ed25519,
   ed25519VerifySignature,

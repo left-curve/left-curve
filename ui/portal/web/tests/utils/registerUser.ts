@@ -6,10 +6,7 @@ export interface RegisterUserOptions {
   privateKey?: Hex;
 }
 
-export async function dismissActivateAccountModal(
-  page: Page,
-  timeout = 2_000,
-): Promise<void> {
+export async function dismissActivateAccountModal(page: Page, timeout = 2_000): Promise<void> {
   const heading = page.getByRole("heading", { name: "Activate Account" });
 
   const isVisible = await heading
@@ -21,7 +18,9 @@ export async function dismissActivateAccountModal(
     return;
   }
 
-  await page.getByText("do this later", { exact: false }).click();
+  const laterButton = page.getByRole("button", { name: /do this later/i });
+  await laterButton.waitFor({ state: "visible", timeout: 10_000 });
+  await laterButton.dispatchEvent("click");
   await heading.waitFor({ state: "hidden", timeout: 10_000 });
 }
 
@@ -74,10 +73,13 @@ export async function registerUser(page: Page, options: RegisterUserOptions = {}
   }
 
   // Wait for login to complete (header shows account info)
-  await page.locator("[dng-connect-button]").filter({ hasText: /Account #/ }).waitFor({
-    state: "visible",
-    timeout: 30_000,
-  });
+  await page
+    .locator("[dng-connect-button]")
+    .filter({ hasText: /Account #/ })
+    .waitFor({
+      state: "visible",
+      timeout: 30_000,
+    });
 
   // Auto-dismiss ActivateAccount modal whenever it appears.
   // The modal re-triggers on every full navigation (page.goto) because the
