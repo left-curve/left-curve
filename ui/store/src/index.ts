@@ -438,8 +438,13 @@ export { rehydrate } from "./rehydrate.js";
 /* -------------------------------------------------------------------------- */
 
 export { createMemoryStorage } from "./storages/memoryStorage.js";
+export {
+  createBroadcastStorage,
+  type CreateBroadcastStorageParameters,
+} from "./storages/broadcastStorage.js";
 export { createStorage } from "./storages/createStorage.js";
 export { createAsyncStorage } from "./storages/createStorage.js";
+export { sessionStorage } from "./storages/sessionStorage.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Connectors                                 */
