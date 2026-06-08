@@ -2,13 +2,14 @@ mod batch_update_orders;
 mod cancel_conditional_order;
 mod cancel_order;
 mod deposit;
+mod resize_reduce_only;
 mod submit_conditional_order;
 mod submit_order;
 mod withdraw;
 
 pub use {
     batch_update_orders::*, cancel_conditional_order::*, cancel_order::*, deposit::*,
-    submit_conditional_order::*, submit_order::*, withdraw::*,
+    resize_reduce_only::*, submit_conditional_order::*, submit_order::*, withdraw::*,
 };
 
 use {

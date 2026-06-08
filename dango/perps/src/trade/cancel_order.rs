@@ -64,7 +64,7 @@ pub(crate) fn _cancel_one_order(
 ///   to the user state before saving.
 /// - Remove the order from the `BIDS` or `ASKS` map.
 /// - Remove liquidity depth contributed by this order.
-fn compute_cancel_one_order_outcome<F>(
+pub(crate) fn compute_cancel_one_order_outcome<F>(
     storage: &mut dyn Storage,
     user_state: &mut UserState,
     order_key: OrderKey,
