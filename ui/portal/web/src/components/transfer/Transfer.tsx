@@ -11,8 +11,10 @@ import {
 } from "@left-curve/applets-kit";
 import {
   useAccount,
+  useAppConfig,
   useBalances,
   useConfig,
+  invalidatePerpsAccountResources,
   usePerpsUserStateExtended,
   usePublicClient,
   useSigningClient,
@@ -276,7 +278,9 @@ const TransferSpotPerp: React.FC = () => {
   const [direction, setDirection] = useState<SpotPerpDirection>("spot-to-perp");
 
   const { account, isConnected } = useAccount();
-  const { coins } = useConfig();
+  const config = useConfig();
+  const { coins } = config;
+  const { data: appConfig } = useAppConfig();
   const { data: signingClient } = useSigningClient();
 
   const availableMargin = usePerpsUserStateExtended((s) => s.availableMargin, {
@@ -350,6 +354,11 @@ const TransferSpotPerp: React.FC = () => {
       onSuccess: () => {
         reset();
         refreshBalances();
+        invalidatePerpsAccountResources({
+          chainId: config.chain.id,
+          perpsContract: appConfig.addresses.perps,
+          accountAddress: account?.address,
+        });
       },
     },
   });

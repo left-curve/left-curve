@@ -2,6 +2,10 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { createLiveResource } from "../../../store/src/live/createLiveResource";
+import {
+  createLiveResourceInvalidator,
+  useLiveResourceInvalidationRevision,
+} from "../../../store/src/live/invalidation";
 import { useLiveResource } from "../../../store/src/live/useLiveResource";
 import { subscriptionsStore } from "../../../store/src/subscriptions";
 
@@ -360,6 +364,75 @@ describe("useLiveResource", () => {
 
     rendered.unmount();
     expect(stops).toBe(2);
+  });
+});
+
+describe("live resource invalidation", () => {
+  it("partitions revisions by key and restarts same-key resources", async () => {
+    const invalidator = createLiveResourceInvalidator();
+    const starts: string[] = [];
+    const stops: string[] = [];
+
+    const resource = createLiveResource<{ id: string; revision: number }, TestSnapshot>({
+      name: "reactInvalidationRestart",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: ({ id, revision }, context) => {
+        starts.push(`${id}:${revision}`);
+        context.emit({ status: "ready", error: null, value: revision });
+        return () => {
+          stops.push(`${id}:${revision}`);
+        };
+      },
+    });
+
+    function Consumer({ scope }: { scope: string }) {
+      const revision = useLiveResourceInvalidationRevision(invalidator, scope);
+      const value = useLiveResource({
+        resource,
+        params: { id: scope, revision },
+        enabled: true,
+        selector: (snapshot) => snapshot.value,
+        restartToken: revision,
+      });
+
+      return (
+        <>
+          <div data-testid={`${scope}-revision`}>{revision}</div>
+          <div data-testid={`${scope}-value`}>{value}</div>
+        </>
+      );
+    }
+
+    render(
+      <>
+        <Consumer scope="a" />
+        <Consumer scope="b" />
+      </>,
+    );
+
+    await waitFor(() => expect(starts).toEqual(["a:0", "b:0"]));
+    expect(screen.getByTestId("a-revision")).toHaveTextContent("0");
+    expect(screen.getByTestId("b-revision")).toHaveTextContent("0");
+
+    act(() => {
+      invalidator.invalidate("a");
+    });
+
+    await waitFor(() => expect(starts).toEqual(["a:0", "b:0", "a:1"]));
+    expect(stops).toEqual(["a:0"]);
+    expect(screen.getByTestId("a-revision")).toHaveTextContent("1");
+    expect(screen.getByTestId("b-revision")).toHaveTextContent("0");
+    expect(screen.getByTestId("a-value")).toHaveTextContent("1");
+    expect(screen.getByTestId("b-value")).toHaveTextContent("0");
+
+    act(() => {
+      invalidator.invalidate("b");
+    });
+
+    await waitFor(() => expect(screen.getByTestId("b-revision")).toHaveTextContent("1"));
+    expect(starts).toEqual(["a:0", "b:0", "a:1", "b:1"]);
+    expect(stops).toEqual(["a:0", "b:0"]);
   });
 });
 

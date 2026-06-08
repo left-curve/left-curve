@@ -256,6 +256,10 @@ export {
   type PerpsUserStateExtendedSnapshot,
   type UsePerpsUserStateExtendedParameters,
 } from "./hooks/usePerpsUserStateExtended.js";
+export {
+  invalidatePerpsAccountResources,
+  type PerpsAccountResourceInvalidationParameters,
+} from "./hooks/perpsAccountResourceInvalidation.js";
 export { computeLiquidationPrice } from "./hooks/computeLiquidationPrice.js";
 export {
   useLivePerpsTrades,
