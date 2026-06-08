@@ -12,22 +12,19 @@ import {
 } from "@left-curve/applets-kit";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  getPerpsPairIdFromPairId,
+  useLivePerpsTrades,
   useConfig,
-  useLivePerpsTradesState,
+  useOraclePrices,
   usePerpsUserState,
   usePerpsUserStateExtended,
   usePerpsOrdersByUser,
-  perpsOrdersByUserStore,
-  perpsUserStateStore,
-  perpsUserStateExtendedStore,
-  TradePairStore,
-  tradeInfoStore,
-  useTradeCoins,
-  usePerpsPairState,
   useAllPerpsPairStats,
-  allPerpsPairStatsStore,
   useCurrentPrice,
-  useOraclePrices,
+  usePerpsPairState,
+  usePerpsState,
+  useTradePairCoins,
+  useAccount,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
@@ -43,6 +40,7 @@ import {
 } from "@left-curve/applets-kit";
 import { CountBadge } from "../../foundation/CountBadge";
 import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
+import { reportStoreError } from "../../../app.sentry";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
@@ -54,9 +52,32 @@ import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { ConditionalOrder, PairId } from "@left-curve/types";
 
+const PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID = "protrade-live-resource-error";
+
+type LiveResourceErrorSnapshot = {
+  status: "idle" | "connecting" | "ready" | "error";
+  error: Error | null;
+};
+
+type LiveResourceErrorSource = {
+  name: string;
+  error: Error | null;
+};
+
+function selectLiveResourceError(snapshot: LiveResourceErrorSnapshot) {
+  return snapshot.status === "error" ? snapshot.error : null;
+}
+
 const [ProTradeProvider, useProTrade] = createContext<{
   controllers: ReturnType<typeof useInputs>;
+  pairId: PairId;
+  perpsPairId: string;
+  action: "buy" | "sell";
+  orderType: "limit" | "market";
+  accountAddress?: string;
   onChangePairId: (pairSymbols: string) => void;
+  onChangeAction: (action: "buy" | "sell") => void;
+  onChangeOrderType: (orderType: "limit" | "market") => void;
 }>({
   name: "ProTradeContext",
 });
@@ -64,9 +85,9 @@ const [ProTradeProvider, useProTrade] = createContext<{
 export { useProTrade };
 
 const TradeDocumentTitle: React.FC = () => {
-  const pairId = TradePairStore((s) => s.pairId);
-  const { baseCoin } = useTradeCoins();
-  const { currentPrice } = useCurrentPrice();
+  const { pairId, perpsPairId } = useProTrade();
+  const { baseCoin } = useTradePairCoins({ pairId });
+  const { currentPrice } = useCurrentPrice({ perpsPairId });
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -93,17 +114,76 @@ const TradeDocumentTitle: React.FC = () => {
   return null;
 };
 
-const TradeSubscriptions: React.FC = () => {
-  useLivePerpsTradesState({ subscribe: true });
+const ProTradeErrorFallback: React.FC = () => {
+  return (
+    <div className="flex h-full min-h-[24rem] w-full items-center justify-center bg-surface-primary-rice p-6 text-center diatype-sm-medium text-ink-tertiary-500">
+      Market data unavailable
+    </div>
+  );
+};
 
-  usePerpsUserState({ subscribe: true });
-  usePerpsUserStateExtended({ subscribe: true });
-  usePerpsPairState({ subscribe: true });
-  usePerpsOrdersByUser({ subscribe: true });
+const ProTradeLiveResourceErrors: React.FC = () => {
+  const { toast } = useApp();
+  const { accountAddress, perpsPairId } = useProTrade();
 
-  useOraclePrices({ subscribe: true });
+  const allPairStatsError = useAllPerpsPairStats(selectLiveResourceError);
+  const liveTradesError = useLivePerpsTrades(selectLiveResourceError, { perpsPairId });
+  const oraclePricesError = useOraclePrices(selectLiveResourceError);
+  const pairStateError = usePerpsPairState(selectLiveResourceError, { perpsPairId });
+  const perpsStateError = usePerpsState(selectLiveResourceError);
+  const userStateError = usePerpsUserState(selectLiveResourceError, { accountAddress });
+  const userStateExtendedError = usePerpsUserStateExtended(selectLiveResourceError, {
+    accountAddress,
+  });
+  const userOrdersError = usePerpsOrdersByUser(selectLiveResourceError, { accountAddress });
 
-  useAllPerpsPairStats();
+  const activeError = useMemo<LiveResourceErrorSource | null>(() => {
+    const errors: LiveResourceErrorSource[] = [
+      { name: "market stats", error: allPairStatsError },
+      { name: "live trades", error: liveTradesError },
+      { name: "oracle prices", error: oraclePricesError },
+      { name: "pair state", error: pairStateError },
+      { name: "perps state", error: perpsStateError },
+      { name: "account state", error: userStateError },
+      { name: "account margin", error: userStateExtendedError },
+      { name: "open orders", error: userOrdersError },
+    ];
+
+    return errors.find(({ error }) => error) ?? null;
+  }, [
+    allPairStatsError,
+    liveTradesError,
+    oraclePricesError,
+    pairStateError,
+    perpsStateError,
+    userStateError,
+    userStateExtendedError,
+    userOrdersError,
+  ]);
+
+  useEffect(() => {
+    if (!activeError?.error) {
+      toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
+      return;
+    }
+
+    reportStoreError(activeError.error);
+    toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
+    toast.error(
+      {
+        title: m["common.error"](),
+        description: `Live ${activeError.name} error: ${activeError.error.message}`,
+      },
+      {
+        id: PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID,
+        duration: Number.POSITIVE_INFINITY,
+      },
+    );
+  }, [activeError, toast]);
+
+  useEffect(() => {
+    return () => toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
+  }, [toast]);
 
   return null;
 };
@@ -127,33 +207,46 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   children,
 }) => {
   const controllers = useInputs();
+  const { coins } = useConfig();
+  const { account } = useAccount();
+  const perpsPairId = useMemo(() => getPerpsPairIdFromPairId(pairId, coins), [pairId, coins]);
+  const contextValue = useMemo(
+    () => ({
+      controllers,
+      pairId,
+      perpsPairId,
+      action,
+      orderType,
+      accountAddress: account?.address,
+      onChangePairId,
+      onChangeAction,
+      onChangeOrderType,
+    }),
+    [
+      controllers,
+      pairId,
+      perpsPairId,
+      action,
+      orderType,
+      account?.address,
+      onChangePairId,
+      onChangeAction,
+      onChangeOrderType,
+    ],
+  );
 
-  useEffect(() => {
-    TradePairStore.getState().setPair(pairId);
-  }, [pairId]);
-
-  useEffect(() => {
-    tradeInfoStore.getState().setAction(action);
-  }, [action]);
-
-  useEffect(() => {
-    tradeInfoStore.getState().setOperation(orderType);
-  }, [orderType]);
-
-  useEffect(() => {
-    return tradeInfoStore.subscribe((state, prev) => {
-      if (state.action !== prev.action) onChangeAction(state.action);
-      if (state.operation !== prev.operation) onChangeOrderType(state.operation);
-    });
-  }, [onChangeAction, onChangeOrderType]);
-
-  if (TradePairStore.getState().pairId.baseDenom === "") return null;
+  if (!pairId.baseDenom || !pairId.quoteDenom || !perpsPairId) return null;
 
   return (
-    <ProTradeProvider value={{ controllers, onChangePairId }}>
-      <TradeSubscriptions />
-      <TradeDocumentTitle />
-      {children}
+    <ProTradeProvider value={contextValue}>
+      <ErrorBoundary
+        fallback={<ProTradeErrorFallback />}
+        resetKeys={[pairId.baseDenom, pairId.quoteDenom, perpsPairId]}
+      >
+        <ProTradeLiveResourceErrors />
+        <TradeDocumentTitle />
+        {children}
+      </ErrorBoundary>
     </ProTradeProvider>
   );
 };
@@ -173,8 +266,9 @@ const TradingView = lazy(() =>
 
 const ProTradeChart: React.FC = () => {
   const { isLg } = useMediaQuery();
+  const { pairId, perpsPairId, accountAddress } = useProTrade();
 
-  const { baseCoin, quoteCoin } = useTradeCoins();
+  const { baseCoin, quoteCoin } = useTradePairCoins({ pairId });
 
   const mobileContainer = usePortalTarget("#chart-container-mobile");
 
@@ -182,7 +276,11 @@ const ProTradeChart: React.FC = () => {
     <Suspense fallback={<Spinner color="pink" size="md" fullContainer />}>
       <div className="flex w-full lg:min-h-[32.875rem] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
-          <TradingView coins={{ base: baseCoin, quote: quoteCoin }} />
+          <TradingView
+            coins={{ base: baseCoin, quote: quoteCoin }}
+            perpsPairId={perpsPairId}
+            accountAddress={accountAddress}
+          />
         </ErrorBoundary>
       </div>
     </Suspense>
@@ -207,9 +305,10 @@ type BottomTab = "positions" | "open-orders" | "trade-history";
 
 const ProTradeHistory: React.FC = () => {
   const [activeTab, setActiveTab] = useState<BottomTab>("positions");
+  const { accountAddress } = useProTrade();
 
-  const userState = perpsUserStateStore((s) => s.userState);
-  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
+  const userState = usePerpsUserState((s) => s.userState, { accountAddress });
+  const perpsOrders = usePerpsOrdersByUser((s) => s.orders, { accountAddress });
 
   const positionsCount = Object.keys(userState?.positions ?? {}).length;
   const openOrdersCount = Object.keys(perpsOrders ?? {}).length;
@@ -270,12 +369,12 @@ const PerpsPositionsTable: React.FC = () => {
   const { showModal, settings } = useApp();
   const { coins } = useConfig();
   const { formatNumberOptions } = settings;
-  const { onChangePairId } = useProTrade();
+  const { accountAddress, onChangePairId } = useProTrade();
 
-  const userState = perpsUserStateStore((s) => s.userState);
-  const extendedPositions = perpsUserStateExtendedStore((s) => s.positions);
-  const equity = perpsUserStateExtendedStore((s) => s.equity);
-  const perpsStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
+  const userState = usePerpsUserState((s) => s.userState, { accountAddress });
+  const extendedPositions = usePerpsUserStateExtended((s) => s.positions, { accountAddress });
+  const equity = usePerpsUserStateExtended((s) => s.equity, { accountAddress });
+  const perpsStatsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId);
 
   const symbolToDenom = useMemo(() => {
     const map: Record<string, string> = {};
@@ -586,17 +685,11 @@ type OpenOrder = {
 
 const OpenOrders: React.FC = () => {
   const { showModal } = useApp();
-
-  const { baseCoin } = useTradeCoins();
+  const { accountAddress, perpsPairId } = useProTrade();
 
   const [showAllPairs, setShowAllPairs] = useState(true);
 
-  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
-
-  const currentPerpsPairId = useMemo(() => {
-    const base = baseCoin.symbol?.toLowerCase() ?? "";
-    return `perp/${base}usd`;
-  }, [baseCoin.symbol]);
+  const perpsOrders = usePerpsOrdersByUser((s) => s.orders, { accountAddress });
 
   const rows = useMemo(() => {
     const result: OpenOrder[] = [];
@@ -605,7 +698,7 @@ const OpenOrders: React.FC = () => {
     const allPerpsOrders = Object.entries(perpsOrders);
     const filtered = showAllPairs
       ? allPerpsOrders
-      : allPerpsOrders.filter(([, o]) => o.pairId === currentPerpsPairId);
+      : allPerpsOrders.filter(([, o]) => o.pairId === perpsPairId);
 
     for (const [orderId, order] of filtered) {
       const label = order.pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
@@ -623,7 +716,7 @@ const OpenOrders: React.FC = () => {
     }
 
     return result;
-  }, [perpsOrders, showAllPairs, currentPerpsPairId]);
+  }, [perpsOrders, showAllPairs, perpsPairId]);
 
   const columns: TableColumn<OpenOrder> = [
     {

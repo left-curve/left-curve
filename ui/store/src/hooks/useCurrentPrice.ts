@@ -1,8 +1,18 @@
-import { livePerpsTradesStore } from "./useLivePerpsTradesState.js";
+import { useLivePerpsTrades } from "./useLivePerpsTrades.js";
 
-export function useCurrentPrice() {
-  const currentPrice = livePerpsTradesStore((s) => s.currentPrice);
-  const previousPrice = livePerpsTradesStore((s) => s.previousPrice);
+export type UseCurrentPriceParameters = {
+  perpsPairId?: string;
+  enabled?: boolean;
+};
 
-  return { currentPrice, previousPrice };
+export function useCurrentPrice(parameters: UseCurrentPriceParameters) {
+  return useLivePerpsTrades(
+    (state) => ({
+      currentPrice: state.currentPrice,
+      previousPrice: state.previousPrice,
+    }),
+    parameters,
+    (previous, next) =>
+      previous.currentPrice === next.currentPrice && previous.previousPrice === next.previousPrice,
+  );
 }

@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 import { useApp, useTheme } from "@left-curve/applets-kit";
 import {
   usePublicClient,
-  perpsUserStateExtendedStore,
-  perpsOrdersByUserStore,
+  usePerpsUserStateExtended,
+  usePerpsOrdersByUser,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -16,14 +16,31 @@ import type { AnyCoin } from "@left-curve/store/types";
 
 type TradingViewProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
+  perpsPairId: string;
+  accountAddress?: string;
 };
 
-export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
+export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, accountAddress }) => {
   const pairSymbol = `${coins.base.symbol}-USD`;
-  const perpsPairId = `perp/${coins.base.symbol.toLowerCase()}usd`;
 
-  const positions = perpsUserStateExtendedStore((s) => s.positions);
-  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
+  const position = usePerpsUserStateExtended((s) => s.positions[perpsPairId], { accountAddress });
+  const perpsOrders = usePerpsOrdersByUser(
+    (s) => {
+      if (!s.orders) return null;
+      return Object.fromEntries(
+        Object.entries(s.orders).filter(([, order]) => order.pairId === perpsPairId),
+      );
+    },
+    { accountAddress },
+    (previous, next) => {
+      if (previous === next) return true;
+      if (!previous || !next) return previous === next;
+      const previousEntries = Object.entries(previous);
+      const nextEntries = Object.entries(next);
+      if (previousEntries.length !== nextEntries.length) return false;
+      return previousEntries.every(([id, order]) => next[id] === order);
+    },
+  );
 
   const { theme } = useTheme();
   const publicClient = usePublicClient();
@@ -188,20 +205,19 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
     if (chart.symbol() !== pairSymbol) {
       chart.setSymbol(pairSymbol, () => {});
     }
-  }, [coins]);
+  }, [pairSymbol]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
 
-    const position = positions[perpsPairId];
     const lines = [
       ...(position ? buildPositionLines(position) : []),
       ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, perpsPairId) : []),
     ];
 
     drawLines(chart, lines);
-  }, [positions, perpsOrders, perpsPairId]);
+  }, [position, perpsOrders, perpsPairId]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

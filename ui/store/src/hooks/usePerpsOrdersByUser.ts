@@ -1,41 +1,60 @@
-import { useEffect } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
-import { useAccount } from "./useAccount.js";
-import { createBlockStore } from "./createBlockStore.js";
+import { createLiveResource } from "../live/createLiveResource.js";
+import { equalLiveResourcePayload } from "../live/equality.js";
+import { useLiveResource } from "../live/useLiveResource.js";
 
 import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
 
 import type { PerpsOrdersByUserResponse, QueryRequest } from "@left-curve/types";
+import type { Config } from "../types/store.js";
+import type { LiveResourceSnapshot } from "../live/types.js";
 
-export const perpsOrdersByUserStore = createBlockStore({
-  initialState: { orders: null as PerpsOrdersByUserResponse | null },
-});
+const PERPS_ORDERS_BY_USER_INTERVAL = 5;
+const PERPS_ORDERS_BY_USER_HTTP_INTERVAL = 5_000;
 
-type UsePerpsOrdersByUserParameters = {
-  subscribe?: boolean;
+export type PerpsOrdersByUserSnapshot = LiveResourceSnapshot & {
+  orders: PerpsOrdersByUserResponse | null;
+  lastUpdatedBlockHeight: number;
 };
 
-export function usePerpsOrdersByUser(parameters?: UsePerpsOrdersByUserParameters) {
-  const { subscribe = true } = parameters ?? {};
-  const { subscriptions } = useConfig();
-  const { data: appConfig } = useAppConfig();
-  const { account } = useAccount();
+export type UsePerpsOrdersByUserParameters = {
+  accountAddress?: string;
+  enabled?: boolean;
+};
 
-  const { setState } = perpsOrdersByUserStore();
+type PerpsOrdersByUserResourceParams = {
+  chainId: Config["chain"]["id"];
+  accountAddress: string;
+  perpsContract: string;
+  subscriptions: Config["subscriptions"];
+};
 
-  useEffect(() => {
-    if (!appConfig || !subscribe || !account) return;
-    const { addresses } = appConfig;
+const initialPerpsOrdersByUserSnapshot: PerpsOrdersByUserSnapshot = {
+  status: "idle",
+  error: null,
+  orders: null,
+  lastUpdatedBlockHeight: 0,
+};
 
-    const unsubscribe = subscriptions.subscribe("queryApp", {
+const perpsOrdersByUserResource = createLiveResource<
+  PerpsOrdersByUserResourceParams,
+  PerpsOrdersByUserSnapshot
+>({
+  name: "perpsOrdersByUser",
+  getKey: ({ chainId, perpsContract, accountAddress }) =>
+    `perpsOrdersByUser:${chainId}:${perpsContract}:${accountAddress}`,
+  getInitialSnapshot: () => initialPerpsOrdersByUserSnapshot,
+  equal: (previous, next) => equalLiveResourcePayload(previous, next, ["orders"]),
+  start: ({ accountAddress, perpsContract, subscriptions }, { emit, error }) =>
+    subscriptions.subscribe("queryApp", {
       params: {
-        interval: 5,
-        httpInterval: 5_000,
+        interval: PERPS_ORDERS_BY_USER_INTERVAL,
+        httpInterval: PERPS_ORDERS_BY_USER_HTTP_INTERVAL,
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
-            contract: addresses.perps,
-            msg: { ordersByUser: { user: account.address } },
+            contract: perpsContract,
+            msg: { ordersByUser: { user: accountAddress } },
           },
         }),
       },
@@ -45,12 +64,40 @@ export function usePerpsOrdersByUser(parameters?: UsePerpsOrdersByUserParameters
           blockHeight: number;
         };
         const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
-        setState({ orders: response.wasmSmart, blockHeight });
+        emit(
+          {
+            status: "ready",
+            error: null,
+            orders: response.wasmSmart,
+            lastUpdatedBlockHeight: blockHeight,
+          },
+          { version: blockHeight },
+        );
       },
-    });
+      onError: error,
+    }),
+});
 
-    return () => unsubscribe();
-  }, [appConfig, subscribe, account]);
+export function usePerpsOrdersByUser<Selection>(
+  selector: (snapshot: PerpsOrdersByUserSnapshot) => Selection,
+  parameters: UsePerpsOrdersByUserParameters,
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+): Selection {
+  const { accountAddress, enabled = true } = parameters;
+  const config = useConfig();
+  const { data: appConfig } = useAppConfig();
 
-  return { perpsOrdersByUserStore };
+  return useLiveResource({
+    resource: perpsOrdersByUserResource,
+    params: {
+      chainId: config.chain.id,
+      accountAddress: accountAddress ?? "",
+      perpsContract: appConfig.addresses.perps,
+      subscriptions: config.subscriptions,
+    },
+    enabled: enabled && !!accountAddress,
+    selector,
+    equalityFn,
+    restartToken: config.subscriptions,
+  });
 }

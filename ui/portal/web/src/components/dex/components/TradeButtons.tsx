@@ -7,9 +7,10 @@ import {
   useApp,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { useAccount, tradeInfoStore, useTradeCoins } from "@left-curve/store";
+import { useAccount, useTradePairCoins } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
+import { useProTrade } from "./ProTrade";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -19,9 +20,9 @@ export const TradeButtons: React.FC = () => {
   const navigate = useNavigate();
   const { setTradeBarVisibility, showModal } = useApp();
   const { isConnected } = useAccount();
+  const { pairId, onChangeAction } = useProTrade();
 
-  const { baseCoin } = useTradeCoins();
-  const changeAction = tradeInfoStore((s) => s.setAction);
+  const { baseCoin } = useTradePairCoins({ pairId });
 
   const container = usePortalTarget("#trade-buttons");
 
@@ -47,7 +48,7 @@ export const TradeButtons: React.FC = () => {
                     variant="tertiary"
                     onClick={() => {
                       setTradeBarVisibility(true);
-                      changeAction("buy");
+                      onChangeAction("buy");
                     }}
                   >
                     {m["proSwap.buy"]()} {baseCoin.symbol}
@@ -57,7 +58,7 @@ export const TradeButtons: React.FC = () => {
                     fullWidth
                     onClick={() => {
                       setTradeBarVisibility(true);
-                      changeAction("sell");
+                      onChangeAction("sell");
                     }}
                   >
                     {m["proSwap.sell"]()} {baseCoin.symbol}
