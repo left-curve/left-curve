@@ -80,9 +80,28 @@ fn sweep_reduce_only_orders(storage: &mut dyn Storage) -> StdResult<()> {
         // order count are account-wide, so thread the running `state` across all
         // pairs and persist once at the end.
         for pair in pairs {
-            let ResizeReduceOnlyOutcome { user_state, .. } =
-                compute_resize_reduce_only_outcome(storage, user, pair, &state, None)?;
+            let ResizeReduceOnlyOutcome {
+                user_state,
+                removed,
+            } = compute_resize_reduce_only_outcome(storage, user, pair, &state, None)?;
+
             state = user_state;
+
+            // Audit trail of what the sweep cancelled (shrinks are not reported
+            // in `removed`). Skipped when nothing was cancelled, to avoid a log
+            // line per (user, pair) — most users hold no reduce-only orders.
+            if !removed.is_empty() {
+                // `OrderId`'s derived `Debug` renders `Int(123)`; map to the
+                // inner number so the log reads `[123, 456]`.
+                let cancelled = removed.iter().map(|id| id.0).collect::<Vec<u64>>();
+
+                tracing::info!(
+                    user = %user,
+                    pair = %pair,
+                    ?cancelled,
+                    "cancelled reduce-only orders during upgrade sweep"
+                );
+            }
         }
 
         // Only write back users we actually changed — most hold no reduce-only
