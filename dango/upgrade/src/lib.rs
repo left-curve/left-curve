@@ -5,10 +5,10 @@ use {
     grug_types::{BlockInfo, Storage},
 };
 
-pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
-    tracing::info!("running perps reduce-only order cleanup migration");
+pub fn do_upgrade<VM>(_storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {
+    // Call relevant upgrade functions here.
 
-    perps::do_perps_upgrades(storage)?;
+    tracing::info!("Nothing to do for this upgrade");
 
     Ok(())
 }
