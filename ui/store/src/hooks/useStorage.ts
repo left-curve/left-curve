@@ -1,19 +1,43 @@
-import { create } from "zustand";
-import { persist, type PersistStorage } from "zustand/middleware";
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useConfig } from "./useConfig.js";
 
 import type { Storage } from "../types/storage.js";
 
-interface StorageState<T> {
-  value: T;
-  setHydrated: (hydrated: boolean) => void;
-  setValue: (valOrFunc: T | ((prev: T) => T)) => void;
-  version: number;
-  _hasHydrated: boolean;
-}
+type StorageSetter<T> = (valOrFunc: T | ((prev: T) => T)) => void;
+type StorageErrorHandler = (error: unknown) => void;
 
-const storeCache = new Map<string, any>();
+type PersistedStorageState<T> = {
+  value: T;
+  version?: number;
+};
+
+type PersistedStoragePayload<T> = {
+  state?: PersistedStorageState<T>;
+  version?: number;
+};
+
+type StorageSnapshot<T> = {
+  hasHydrated: boolean;
+  value: T;
+};
+
+type StorageEntryOptions<T> = {
+  initialValue: T;
+  migrations: Record<number | string, (data: any) => T>;
+  onError?: StorageErrorHandler;
+  version: number;
+};
+
+type StorageEntry<T> = {
+  configure: (options: StorageEntryOptions<T>) => void;
+  getSnapshot: () => StorageSnapshot<T>;
+  hydrate: () => void;
+  setValue: (valOrFunc: T | ((prev: T) => T)) => void;
+  startSync: (onError?: StorageErrorHandler) => () => void;
+  subscribe: (listener: () => void) => () => void;
+};
+
+const storageEntries = new WeakMap<Storage, Map<string, StorageEntry<unknown>>>();
 
 export type UseStorageOptions<T> = {
   enabled?: boolean;
@@ -22,112 +46,243 @@ export type UseStorageOptions<T> = {
   version?: number;
   migrations?: Record<number | string, (data: any) => T>;
   sync?: boolean;
+  onError?: StorageErrorHandler;
 };
+
+function isFunction<T>(value: T | ((prev: T) => T)): value is (prev: T) => T {
+  return typeof value === "function";
+}
+
+function getInitialValue<T>(initialValue: T | (() => T) | undefined): T {
+  return typeof initialValue === "function" ? (initialValue as () => T)() : (initialValue as T);
+}
+
+function toPersistedPayload<T>(value: T, version: number): PersistedStoragePayload<T> {
+  return {
+    state: {
+      value,
+      version,
+    },
+    version,
+  };
+}
+
+function getPersistedVersion<T>(payload: PersistedStoragePayload<T>): number {
+  return payload.version ?? payload.state?.version ?? 0;
+}
+
+function getPersistedValue<T>(
+  payload: PersistedStoragePayload<T> | null,
+  options: StorageEntryOptions<T>,
+): { migrated: boolean; value: T } {
+  if (!payload?.state) return { migrated: false, value: options.initialValue };
+
+  const persistedVersion = getPersistedVersion(payload);
+  const persistedValue = payload.state.value;
+
+  if (persistedVersion === options.version) return { migrated: false, value: persistedValue };
+
+  const migration = options.migrations["*"] ?? options.migrations[persistedVersion];
+  if (!migration) return { migrated: false, value: persistedValue };
+
+  return { migrated: true, value: migration(persistedValue) };
+}
+
+function getStorageEntry<T>(
+  storage: Storage,
+  key: string,
+  options: StorageEntryOptions<T>,
+): StorageEntry<T> {
+  let entries = storageEntries.get(storage);
+  if (!entries) {
+    entries = new Map();
+    storageEntries.set(storage, entries);
+  }
+
+  const cached = entries.get(key);
+  if (cached) return cached as StorageEntry<T>;
+
+  const entry = createStorageEntry(storage, key, options);
+  entries.set(key, entry as StorageEntry<unknown>);
+  return entry;
+}
+
+function createStorageEntry<T>(
+  storage: Storage,
+  key: string,
+  options: StorageEntryOptions<T>,
+): StorageEntry<T> {
+  let currentOptions = options;
+  let value = options.initialValue;
+  let snapshot: StorageSnapshot<T> = { hasHydrated: false, value };
+  let revision = 0;
+  let hydration: Promise<void> | undefined;
+  let syncCount = 0;
+  let stopSync: (() => void) | undefined;
+  const listeners = new Set<() => void>();
+  const syncErrorHandlers = new Set<StorageErrorHandler>();
+
+  function notify() {
+    snapshot = { hasHydrated: snapshot.hasHydrated, value };
+    for (const listener of listeners) listener();
+  }
+
+  function setHydrated(hasHydrated: boolean) {
+    if (snapshot.hasHydrated === hasHydrated) return;
+    snapshot = { hasHydrated, value };
+    for (const listener of listeners) listener();
+  }
+
+  function reportSyncError(error: unknown) {
+    for (const handler of syncErrorHandlers) handler(error);
+  }
+
+  function configure(nextOptions: StorageEntryOptions<T>) {
+    currentOptions = nextOptions;
+  }
+
+  function persist(nextValue: T, version: number, onError?: StorageErrorHandler) {
+    const persisted = storage.setItem(key, toPersistedPayload(nextValue, version));
+    void Promise.resolve(persisted).catch((error) => onError?.(error));
+  }
+
+  function applyPayload(
+    payload: PersistedStoragePayload<T> | null,
+    options: StorageEntryOptions<T>,
+    persistMigration: boolean,
+  ) {
+    const result = getPersistedValue(payload, options);
+    value = result.value;
+    notify();
+
+    if (result.migrated && persistMigration) {
+      persist(result.value, options.version, options.onError);
+    }
+  }
+
+  return {
+    configure,
+    getSnapshot: () => snapshot,
+    hydrate() {
+      if (snapshot.hasHydrated || hydration) return;
+
+      const startRevision = revision;
+
+      hydration = Promise.resolve(storage.getItem(key))
+        .then((payload) => {
+          if (revision === startRevision) {
+            applyPayload(payload as PersistedStoragePayload<T> | null, currentOptions, true);
+          }
+        })
+        .catch((error) => currentOptions.onError?.(error))
+        .finally(() => {
+          hydration = undefined;
+          setHydrated(true);
+        });
+    },
+    setValue(valOrFunc) {
+      const nextValue = isFunction(valOrFunc) ? valOrFunc(value) : valOrFunc;
+      revision += 1;
+      value = nextValue;
+      notify();
+      persist(nextValue, currentOptions.version, currentOptions.onError);
+    },
+    startSync(onError) {
+      if (onError) syncErrorHandlers.add(onError);
+      syncCount += 1;
+
+      if (syncCount === 1) {
+        try {
+          stopSync = storage.subscribe?.(key, (payload) => {
+            try {
+              revision += 1;
+              applyPayload(payload as PersistedStoragePayload<T> | null, currentOptions, false);
+              setHydrated(true);
+            } catch (error) {
+              reportSyncError(error);
+            }
+          });
+        } catch (error) {
+          reportSyncError(error);
+        }
+      }
+
+      return () => {
+        syncCount -= 1;
+        if (onError) syncErrorHandlers.delete(onError);
+        if (syncCount > 0) return;
+
+        stopSync?.();
+        stopSync = undefined;
+      };
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+}
 
 export function useStorage<T>(
   key: string,
   options: UseStorageOptions<T> = {},
-): [T, (valOrFunc: T | ((t: T) => T)) => void, boolean] {
+): [T, StorageSetter<T>, boolean] {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   const { storage: defaultStorage } = useConfig();
-  const [channel] = useState(() => {
-    try {
-      return new BroadcastChannel(`dango.storage.${key}`);
-    } catch {
-      return null;
-    }
-  });
 
   const {
     enabled = true,
     sync = false,
-    initialValue: _initialValue_,
+    initialValue: rawInitialValue,
     storage = defaultStorage,
     version = 1,
     migrations = {},
+    onError,
   } = options;
 
-  const initialValue =
-    typeof _initialValue_ === "function" ? (_initialValue_ as () => T)() : _initialValue_;
+  const initialValue = getInitialValue(rawInitialValue);
+  const entry = getStorageEntry<T>(storage, key, {
+    initialValue,
+    migrations,
+    onError,
+    version,
+  });
 
-  if (!storeCache.has(key)) {
-    const store = create<StorageState<T>>()(
-      persist(
-        (set, get) => ({
-          value: initialValue as T,
-          version: version,
-          _hasHydrated: false,
-          setHydrated: (hydrated: boolean) => set({ _hasHydrated: hydrated }),
-          setValue: (valOrFunc) => {
-            const currentValue = get().value;
-            const newValue =
-              typeof valOrFunc === "function"
-                ? (valOrFunc as (prev: T) => T)(currentValue)
-                : valOrFunc;
+  const snapshot = useSyncExternalStore(entry.subscribe, entry.getSnapshot, () => ({
+    hasHydrated: true,
+    value: initialValue,
+  }));
 
-            set({ value: newValue });
-            return newValue;
-          },
-        }),
-        {
-          name: key,
-          version: version,
-          storage: storage as PersistStorage<StorageState<T>>,
-          migrate: (persistedState: any, version: number) => {
-            const state = persistedState as StorageState<T>;
-
-            if (migrations["*"]) {
-              const migratedValue = migrations["*"](state.value);
-              return { ...state, value: migratedValue, version };
-            }
-
-            if (migrations[version]) {
-              const migratedValue = migrations[version](state.value);
-              return { ...state, value: migratedValue, version };
-            }
-
-            return state;
-          },
-          onRehydrateStorage: (state) => () => state.setHydrated(true),
-        },
-      ),
-    );
-
-    storeCache.set(key, store);
-  }
-
-  const store = storeCache.get(key)!;
-
-  const value = store((state: StorageState<T>) => state.value);
-  const _setValue = store((state: StorageState<T>) => state.setValue);
-  const hasHydrated = store((state: StorageState<T>) => state._hasHydrated);
-
-  const setValue = useCallback(
-    (valOrFunc: T | ((t: T) => void)) => {
-      const newState = _setValue(valOrFunc);
-      if (sync) channel?.postMessage(newState);
+  const setValue = useCallback<StorageSetter<T>>(
+    (valOrFunc) => {
+      entry.configure({
+        initialValue,
+        migrations,
+        onError,
+        version,
+      });
+      entry.setValue(valOrFunc);
     },
-    [storage, channel],
+    [entry, initialValue, migrations, onError, version],
   );
 
   useEffect(() => {
-    if (!sync || !channel) return;
-    function updateStorage(event: MessageEvent) {
-      _setValue(() => event.data);
-    }
-    channel.addEventListener("message", updateStorage);
+    entry.configure({ initialValue, migrations, onError, version });
+    if (!enabled) return;
+    entry.hydrate();
+  }, [enabled, entry, initialValue, migrations, onError, version]);
 
-    return () => {
-      channel.removeEventListener("message", updateStorage);
-    };
-  }, []);
+  useEffect(() => {
+    if (!enabled || !sync) return;
+    return entry.startSync(onError);
+  }, [enabled, entry, onError, sync]);
 
-  if (!isMounted) return [initialValue as T, setValue, true];
-  if (!enabled) return [initialValue as T, setValue, false];
+  if (!isMounted) return [initialValue, setValue, true];
+  if (!enabled) return [initialValue, setValue, false];
 
-  return [value as T, setValue, hasHydrated];
+  return [snapshot.value, setValue, snapshot.hasHydrated];
 }
