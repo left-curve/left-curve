@@ -20,7 +20,6 @@ HTTP_EVENTS_FIELDS = """
   count
   dimensions {
     datetime
-    rayName
     clientIP
     clientRequestHTTPHost
     clientRequestHTTPMethodName
@@ -42,7 +41,6 @@ LOAD_BALANCER_FIELDS = """
   lbName
   selectedPoolName
   selectedPoolId
-  selectedOriginName
   selectedOriginIndex
   selectedPoolHealthy
   selectedPoolHealthChecksEnabled
@@ -50,10 +48,12 @@ LOAD_BALANCER_FIELDS = """
   sessionAffinityStatus
   steeringPolicy
   origins {
-    name
+    originName
     fqdn
+    health
     ipv4
     ipv6
+    selected
   }
   pools {
     poolName
@@ -129,15 +129,6 @@ def gql_string(value):
     return json.dumps(str(value))
 
 
-def normalize_ray_id(ray_name, colo):
-    if not ray_name:
-        return ""
-    # GraphQL rayName omits the colo suffix; browser headers include it.
-    if "-" in ray_name or not colo or colo == "unknown":
-        return ray_name
-    return f"{ray_name}-{colo}"
-
-
 class Observer:
     def __init__(self, config, token, metrics):
         self.config = config
@@ -188,8 +179,9 @@ class Observer:
         while not self.stop_event.is_set():
             started = time.time()
             try:
-                self.poll_once()
-                self.metrics.set("cloudflare_edge_observer_last_success_timestamp_seconds", int(time.time()))
+                target_errors = self.poll_once()
+                if target_errors == 0:
+                    self.metrics.set("cloudflare_edge_observer_last_success_timestamp_seconds", int(time.time()))
             except Exception as exc:
                 self.metrics.inc("cloudflare_edge_observer_poll_errors_total")
                 log("error", "poll failed", error=str(exc))
@@ -204,6 +196,7 @@ class Observer:
         lookback = int(self.config.get("lookback_seconds", 300))
         start = end - dt.timedelta(seconds=lookback)
         all_events = []
+        target_errors = 0
 
         for target in self.config.get("targets", []):
             labels = {
@@ -214,6 +207,7 @@ class Observer:
             try:
                 rows = self.query_http_events(zone_id, target, start, end)
             except Exception as exc:
+                target_errors += 1
                 self.metrics.inc("cloudflare_edge_observer_target_poll_errors_total", labels)
                 log("error", "target poll failed", target=target.get("host"), error=str(exc))
                 continue
@@ -245,6 +239,7 @@ class Observer:
 
         self.prune_seen(lookback * 4)
         self.save_state()
+        return target_errors
 
     def zone_id(self):
         configured = self.config.get("zone_id") or self.state.get("zone_id")
@@ -298,8 +293,6 @@ class Observer:
         edge_status = dimensions.get("edgeResponseStatus")
         host = dimensions.get("clientRequestHTTPHost") or target.get("host")
         colo = dimensions.get("coloCode") or "unknown"
-        ray_name = dimensions.get("rayName") or ""
-        ray_id = normalize_ray_id(ray_name, colo)
 
         if not event_time or not edge_status:
             return None
@@ -309,8 +302,8 @@ class Observer:
             "source": "cloudflare",
             "zone": self.config.get("zone_name"),
             "datetime": event_time,
-            "ray_id": ray_id,
-            "ray_name": ray_name,
+            "ray_id": "",
+            "ray_name": "",
             "network": target.get("network"),
             "service": target.get("service"),
             "mode": target.get("mode"),
@@ -382,13 +375,17 @@ class Observer:
                 key=lambda row: abs((parse_time(row.get("datetime")) or event_time) - event_time),
             )
         row = rows[0]
-        selected_origin = row.get("selectedOriginName")
+        selected_origin = None
         selected_index = row.get("selectedOriginIndex")
         origins = row.get("origins") or []
         # Some LB analytics rows expose only selectedOriginIndex plus origins[].
         if selected_origin is None and isinstance(selected_index, int) and 0 <= selected_index < len(origins):
             selected = origins[selected_index]
-            selected_origin = selected.get("name") or selected.get("originName")
+            selected_origin = selected.get("originName")
+        if selected_origin is None:
+            selected = next((origin for origin in origins if origin.get("selected") is True), None)
+            if selected:
+                selected_origin = selected.get("originName")
 
         return {
             "lb_correlation": "matched",
@@ -491,7 +488,14 @@ class Observer:
                 str(event.get("ray_id") or ""),
                 str(event.get("datetime") or ""),
                 str(event.get("host") or ""),
+                str(event.get("path") or ""),
+                str(event.get("method") or ""),
                 str(event.get("edge_status") or ""),
+                str(event.get("origin_status") or ""),
+                str(event.get("colo") or ""),
+                str(event.get("client_ip") or ""),
+                str(event.get("origin_ip") or ""),
+                str(event.get("cache_status") or ""),
             ]
         )
 

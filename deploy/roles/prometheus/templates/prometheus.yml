@@ -43,6 +43,8 @@ scrape_configs:
 {% for host in groups['cloudflared'] | default([]) %}
 {%   set hn = hostvars[host].hostname | default(host) %}
 {%   set networks = hostvars[host].dango_networks | default([]) %}
+{%   set metrics_enabled = hostvars[host].cloudflared_metrics_enabled | default('mainnet' not in networks) %}
+{%   if metrics_enabled %}
       - targets: ['{{ hn }}:{{ cloudflared_metrics_port | default(2000) }}']
         labels:
           service: 'cloudflared'
@@ -50,6 +52,7 @@ scrape_configs:
           network: '{{ networks | join(",") if (networks | length > 0) else "system" }}'
           dango_network: '{{ networks | join(",") if (networks | length > 0) else "system" }}'
           cloudflare_lb_enabled: '{{ (hostvars[host].cloudflare_lb_enabled | default(false)) | string | lower }}'
+{%   endif %}
 {% endfor %}
 
   - job_name: 'cloudflare-edge-observer'
