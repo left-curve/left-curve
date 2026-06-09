@@ -53,9 +53,7 @@ Each entry in the close schedule is executed in two phases:
 
 ### 3a. Order book matching
 
-The close is submitted as a **market order** against the on-chain order book. It matches resting limit orders at price-time priority. Any filled amount is settled normally (mark-to-market PnL between the entry price and the fill price).
-
-The order carries a price limit: the **bankruptcy price** (defined in [§3b](#3b-auto-deleveraging-adl)) when the account is solvent ($\mathtt{equity} > 0$), or the **oracle price** when insolvent. Resting orders on the wrong side of the limit are not matched — this prevents the close from sweeping through stale or absurdly-priced orders.
+The close is submitted as an **immediate-or-cancel (IOC) limit order** against the on-chain order book. The order's limit price is the **bankruptcy price** (defined in [§3b](#3b-auto-deleveraging-adl)) when the account is solvent ($\mathtt{equity} > 0$), or the **oracle price** when insolvent. It matches resting limit orders at price-time priority. Any filled amount is settled normally (mark-to-market PnL between the entry price and the fill price).
 
 ### 3b. Auto-deleveraging (ADL)
 
@@ -80,7 +78,7 @@ The divisor is always the position's **full current size**, even when the close 
 - If the user is **solvent** ($\mathtt{equity} > 0$), the BP sits slightly on the favourable side of the oracle for the counter-party (below oracle when closing a long, above when closing a short). The counter-party receives the user's per-unit equity share as compensation for the forced close; the user keeps the equity attributable to the unclosed remainder, and never goes negative.
 - If the user is **insolvent** ($\mathtt{equity} \le 0$), the BP overshoots the oracle in the user's favour (above oracle when closing a long, below when closing a short). The counter-party is force-closed at a worse-than-oracle price — it absorbs what would otherwise be bad debt. The close schedule fully closes every position of an insolvent account, so a pure-ADL liquidation leaves the account at exactly zero equity.
 
-The counter-party's resting limit orders are not affected by ADL; only their position is force-reduced.
+ADL does not fill the counter-party's resting limit orders; their position is force-reduced directly. The shrunken position can, however, cause their resting **reduce-only** orders to be resized or cancelled, maintaining the invariant that the total size of a user's reduce-only orders never exceeds their position size.
 
 Liquidation fills (both order-book and ADL) carry **zero trading fees** for both taker and maker.
 
@@ -152,9 +150,15 @@ All examples use:
 | Liquidation buffer ratio ($b$) | 0                                     |
 | Settlement currency            | USDC at \$1                           |
 
-Cast: **Alice** is the account being liquidated. **Bob** holds the exact opposite position(s), opened against Alice at her entry price — being the most profitable counter-position, he is the ADL counter-party. **Carol** is a third-party maker who supplies order-book liquidity where stated.
+Cast:
+
+- **Alice** is the account being liquidated.
+- **Bob** holds the exact opposite position(s), opened against Alice at her entry price — being the most profitable counter-position, he is the ADL counter-party.
+- **Carol** is a third-party maker who supplies order-book liquidity where stated.
 
 Examples 1–6 cover a single position, ordered from the most ideal situation to the least: Alice solvent (1–3) then insolvent (4–6), with the order book absorbing all (1, 4), part (2, 5), or none (3, 6) of the close. Examples 7–8 cover an account with two positions.
+
+All eight examples — plus mirrored variants with the sides flipped — are implemented as end-to-end tests in [`dango/testing/tests/perps/liquidation_spec.rs`](https://github.com/left-curve/left-curve/blob/main/dango/testing/tests/perps/liquidation_spec.rs), asserting every figure below exactly.
 
 ### Example 1 — Solvent; close fully absorbed by the book
 
@@ -198,7 +202,7 @@ $$
 \mathtt{bp} = \$1{,}800 - \frac{\$180}{10} = \$1{,}782
 $$
 
-Alice is solvent, so the close order's price limit is the BP.
+Alice is solvent, so the close order's limit price is the BP.
 
 _Execution_
 
@@ -337,7 +341,7 @@ $$
 \mathtt{bp} = \$1{,}700 - \frac{-\$200}{10} = \$1{,}720
 $$
 
-Alice is insolvent, so the close order's price limit is the oracle price (\$1,700), not the BP.
+Alice is insolvent, so the close order's limit price is the oracle price (\$1,700), not the BP.
 
 _Execution_
 
