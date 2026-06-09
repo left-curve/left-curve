@@ -95,7 +95,7 @@ describe("fill markers", () => {
     expect(marker?.text).toContain("Maker");
   });
 
-  it("skips non-fill events and malformed fill values", () => {
+  it("skips non-fill events and zero-size fills", () => {
     expect(
       buildFillMarker(makeEvent({ eventType: "liquidated" }), {
         resolution: "5",
@@ -108,20 +108,6 @@ describe("fill markers", () => {
           data: {
             ...baseFillData,
             fill_size: "0",
-          },
-        }),
-        {
-          resolution: "5",
-        },
-      ),
-    ).toBeNull();
-
-    expect(
-      buildFillMarker(
-        makeEvent({
-          data: {
-            ...baseFillData,
-            fill_price: "not-a-price",
           },
         }),
         {

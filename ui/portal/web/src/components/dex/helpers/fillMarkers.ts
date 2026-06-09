@@ -65,16 +65,6 @@ function buildMarkerText(event: PerpsEvent, values: MarkerTextValues): string[] 
   return text;
 }
 
-function parseDecimalOrNull(value: string | undefined): DecimalValue | null {
-  if (!value) return null;
-
-  try {
-    return Decimal(value);
-  } catch {
-    return null;
-  }
-}
-
 export function buildFillMarker(
   event: PerpsEvent,
   parameters: BuildFillMarkerParameters,
@@ -85,9 +75,11 @@ export function buildFillMarker(
   const fillTimeMs = Date.parse(event.createdAt);
   if (!Number.isFinite(fillTimeMs)) return null;
 
-  const size = parseDecimalOrNull(fields.size);
-  const price = parseDecimalOrNull(fields.price);
-  if (!size || !price || size.isZero() || !Number.isFinite(price.toNumber())) return null;
+  if (!fields.size || !fields.price) return null;
+
+  const size = Decimal(fields.size);
+  const price = Decimal(fields.price);
+  if (size.isZero() || !Number.isFinite(price.toNumber())) return null;
 
   const time = getChartResolutionBarTime(fillTimeMs, parameters.resolution);
   if (time === undefined) return null;
