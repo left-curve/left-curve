@@ -1,4 +1,5 @@
 import { CandleInterval } from "@left-curve/types";
+import { buildFillMarker, type FillMarker } from "./src/components/dex/helpers/fillMarkers";
 
 import type { CandleIntervals, PerpsCandle } from "@left-curve/types";
 import type { PublicClient } from "@left-curve/sdk";
@@ -13,7 +14,21 @@ import type {
   ResolveCallback,
   SubscribeBarsCallback,
   IBasicDataFeed,
+  GetMarksCallback,
+  Mark,
 } from "@left-curve/tradingview";
+
+const FILL_MARKERS_LIMIT = 500;
+
+type PerpsDataFeed = IBasicDataFeed & {
+  getMarks?: (
+    symbolInfo: LibrarySymbolInfo,
+    from: number,
+    to: number,
+    onDataCallback: GetMarksCallback<Mark>,
+    resolution: ResolutionString,
+  ) => void;
+};
 
 function convertResolutionToCandleInterval(resolution: ResolutionString): CandleIntervals {
   if (resolution.includes("S")) return CandleInterval.OneSecond;
@@ -54,6 +69,7 @@ type CreatePerpsDataFeedParameters = {
   client: PublicClient;
   queryClient: QueryClient;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
+  getAccountAddress?: () => string | undefined;
 };
 
 function perpsSymbolToPairId(symbolName: string): string {
@@ -61,8 +77,8 @@ function perpsSymbolToPairId(symbolName: string): string {
   return `perp/${base.toLowerCase()}usd`;
 }
 
-export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): IBasicDataFeed {
-  const { client, queryClient, subscriptions } = parameters;
+export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): PerpsDataFeed {
+  const { client, queryClient, subscriptions, getAccountAddress } = parameters;
 
   let _unsubscribe: () => void = () => {};
 
@@ -85,7 +101,8 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
               "1D",
               "1W",
             ] as ResolutionString[],
-          }),
+            supports_marks: true,
+          } as Parameters<OnReadyCallback>[0]),
         0,
       );
     },
@@ -185,6 +202,63 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
           }
         },
       });
+    },
+
+    getMarks: (
+      symbolInfo: LibrarySymbolInfo,
+      from: number,
+      to: number,
+      onDataCallback: GetMarksCallback<Mark>,
+      resolution: ResolutionString,
+    ) => {
+      const accountAddress = getAccountAddress?.();
+      if (!accountAddress) {
+        onDataCallback([]);
+        return;
+      }
+
+      const currentPairId = perpsSymbolToPairId(symbolInfo.name);
+      const earlierThan = new Date(to * 1000);
+      const laterThan = new Date(from * 1000);
+
+      queryClient
+        .fetchQuery({
+          queryKey: [
+            "perpsTradeHistory",
+            accountAddress,
+            "fillMarkers",
+            currentPairId,
+            from,
+            to,
+            resolution,
+          ],
+          queryFn: () =>
+            client.queryPerpsEvents({
+              userAddr: accountAddress,
+              pairId: currentPairId,
+              eventType: "order_filled",
+              sortBy: "BLOCK_HEIGHT_DESC",
+              first: FILL_MARKERS_LIMIT,
+              earlierThan: earlierThan.toJSON(),
+              laterThan: laterThan.toJSON(),
+            }),
+        })
+        .then(({ nodes }) => {
+          const markers = nodes
+            .map((event) =>
+              buildFillMarker(event, {
+                resolution,
+              }),
+            )
+            .filter((marker): marker is FillMarker => marker !== null)
+            .sort((a, b) => a.time - b.time);
+
+          onDataCallback(markers);
+        })
+        .catch((error: any) => {
+          console.error("Failed to fetch perps fill markers:", error);
+          onDataCallback([]);
+        });
     },
 
     searchSymbols: () => {},

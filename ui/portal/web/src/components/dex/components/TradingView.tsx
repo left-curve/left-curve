@@ -23,6 +23,11 @@ type TradingViewProps = {
   accountAddress?: string;
 };
 
+type ChartWithMarks = TV.IChartWidgetApi & {
+  clearMarks?: () => void;
+  refreshMarks?: () => void;
+};
+
 export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, accountAddress }) => {
   const pairSymbol = `${coins.base.symbol}-USD`;
 
@@ -49,6 +54,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
   const readyRef = useRef(false);
+  const accountAddressRef = useRef(accountAddress);
+  accountAddressRef.current = accountAddress;
 
   useEffect(() => {
     try {
@@ -65,6 +72,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
       client: publicClient,
       queryClient,
       subscriptions,
+      getAccountAddress: () => accountAddressRef.current,
     });
 
     const widget = new TV.widget({
@@ -200,9 +208,18 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
     if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
     if (chart.symbol() !== pairSymbol) {
-      chart.setSymbol(pairSymbol, () => {});
+      chart.setSymbol(pairSymbol, () => {
+        (chart as ChartWithMarks).refreshMarks?.();
+      });
     }
   }, [pairSymbol]);
+
+  useEffect(() => {
+    if (!widgetRef.current) return;
+    const chart = widgetRef.current.chart() as ChartWithMarks;
+    if (accountAddress) chart.refreshMarks?.();
+    else chart.clearMarks?.();
+  }, [accountAddress]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
@@ -214,7 +231,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
     ];
 
     drawLines(chart, lines);
-  }, [position, perpsOrders, perpsPairId]);
+    if (accountAddress) (chart as ChartWithMarks).refreshMarks?.();
+  }, [position, perpsOrders, perpsPairId, accountAddress]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };
