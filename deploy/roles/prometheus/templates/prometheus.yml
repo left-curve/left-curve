@@ -38,6 +38,29 @@ scrape_configs:
       - targets: ['hetzner5:8888']
       - targets: ['hetzner6:8888']
 
+  - job_name: 'cloudflared'
+    static_configs:
+{% for host in groups['cloudflared'] | default([]) %}
+{%   set hn = hostvars[host].hostname | default(host) %}
+{%   set networks = hostvars[host].dango_networks | default([]) %}
+      - targets: ['{{ hn }}:{{ cloudflared_metrics_port | default(2000) }}']
+        labels:
+          service: 'cloudflared'
+          environment: 'production'
+          network: '{{ networks | join(",") if (networks | length > 0) else "system" }}'
+          dango_network: '{{ networks | join(",") if (networks | length > 0) else "system" }}'
+          cloudflare_lb_enabled: '{{ (hostvars[host].cloudflare_lb_enabled | default(false)) | string | lower }}'
+{% endfor %}
+
+  - job_name: 'cloudflare-edge-observer'
+    static_configs:
+      - targets: ['cloudflare-edge-observer:{{ cloudflare_edge_observer_port | default(9210) }}']
+        labels:
+          service: 'cloudflare-edge-observer'
+          environment: 'production'
+          network: 'system'
+          dango_network: 'system'
+
   - job_name: 'alertmanager'
     static_configs:
       - targets: ['alertmanager:9093']

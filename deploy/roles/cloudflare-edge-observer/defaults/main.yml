@@ -1,0 +1,10 @@
+---
+cloudflare_edge_observer_dir: "{{ deploy_home }}/cloudflare-edge-observer"
+cloudflare_edge_observer_port: 9210
+cloudflare_edge_observer_poll_interval_seconds: 60
+cloudflare_edge_observer_lookback_seconds: 300
+cloudflare_edge_observer_status_min: 520
+cloudflare_edge_observer_status_lt: 600
+cloudflare_edge_observer_services:
+  - api
+cloudflare_edge_observer_loki_url: "http://loki:3100/loki/api/v1/push"
