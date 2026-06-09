@@ -16,7 +16,7 @@ use {
     grug_storage::StorageQuerier,
     grug_types::{
         Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt,
-        JsonSerExt, MutableCtx, SignData, StdError, StdResult, Storage, Tx,
+        JsonSerExt, MutableCtx, QuerierExt, SignData, StdError, StdResult, Storage, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -237,8 +237,28 @@ pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
                 "account {} is not active, only the gateway can deposit into it",
                 ctx.contract
             );
+            // Activation is based on the account's *balance* after this
+            // deposit, not the size of this single deposit. This lets a
+            // sequence of sub-minimum gateway deposits accumulate until the
+            // threshold is met.
             let minimum = ctx.querier.query_minimum_deposit()?;
-            if is_sufficient(&ctx.funds, &minimum) {
+            let sufficient = if minimum.is_empty() {
+                true
+            } else {
+                let mut found = false;
+                for coin in &minimum {
+                    if ctx
+                        .querier
+                        .query_balance(ctx.contract, coin.denom.clone())?
+                        >= *coin.amount
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                found
+            };
+            if sufficient {
                 account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
                 // TODO: emit an event?
             }

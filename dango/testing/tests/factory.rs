@@ -378,6 +378,96 @@ async fn gateway_transfer_to_inactive_account_is_accepted() {
         .should_succeed_and_equal(Uint128::new(1_000_000));
 }
 
+/// Multiple sub-minimum gateway deposits to an inactive account must
+/// accumulate: once the balance reaches the minimum, the next deposit (even
+/// a small one) flips the account to `Active`.
+#[tokio::test]
+async fn gateway_deposits_accumulate_to_activate() {
+    let (suite, mut accounts, codes, contracts, validator_sets) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            account: AccountOption {
+                minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    suite.make_empty_block().await;
+
+    let chain_id = suite.chain_id.clone();
+
+    let user = TestAccount::new_random().predict_address(
+        contracts.account_factory,
+        3,
+        codes.account.to_bytes().hash256(),
+        true,
+    );
+
+    // Register the user without a deposit. The account starts as `Inactive`.
+    suite
+        .execute(
+            &mut Factory::new(contracts.account_factory),
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 3,
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        chain_id: chain_id.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 3,
+                        referrer: None,
+                    })
+                    .unwrap(),
+                referrer: None,
+            },
+            Coins::new(),
+        )
+        .await
+        .should_succeed();
+
+    // First sub-minimum deposit (6 USDC < 10 USDC). Account stays inactive.
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            &user,
+            6_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
+        .should_succeed_and_equal(AccountStatus::Inactive);
+
+    // Second sub-minimum deposit (4 USDC). On its own it wouldn't activate,
+    // but combined with the first the balance now reaches 10 USDC, so the
+    // account must flip to `Active`.
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            &user,
+            4_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(user.address(), account::QueryStatusRequest {})
+        .should_succeed_and_equal(AccountStatus::Active);
+
+    suite
+        .query_balance(&user, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::new(10_000_000));
+}
+
 /// If minimum deposit is zero, then the account is automatically activated.
 /// No need to make a deposit.
 #[tokio::test]
