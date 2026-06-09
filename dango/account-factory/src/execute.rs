@@ -36,7 +36,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
                 user.key,
                 user.key_hash,
                 user.seed,
-                Coins::default(),
             )?;
 
             Ok((msg, (user_registered, account_registered)))
@@ -129,6 +128,14 @@ fn register_user(
     signature: Signature,
     referrer: Option<UserIndex>,
 ) -> anyhow::Result<Response> {
+    // The account being registered is inactive and cannot use any funds; reject
+    // deposits to avoid locking tokens in it.
+    ensure!(
+        ctx.funds.is_empty(),
+        "no funds expected during user registration: {}",
+        ctx.funds
+    );
+
     // Verify the signature is valid.
     // All registration parameters are bound in the signed data to prevent
     // front-running attacks.
@@ -146,7 +153,7 @@ fn register_user(
     )?;
 
     let (msg, user_registered, account_registered) =
-        onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed, ctx.funds)?;
+        onboard_new_user(ctx.storage, ctx.contract, key, key_hash, seed)?;
 
     // If a referrer is provided, send a message to the perps contract to
     // register the referral relationship.
@@ -184,7 +191,6 @@ fn onboard_new_user(
     key: Key,
     key_hash: Hash256,
     seed: u32,
-    funds: Coins,
 ) -> StdResult<(Message, UserRegistered, AccountRegistered)> {
     // A new user's 1st account is always a single-signature account.
     let code_hash = CODE_HASH.load(storage)?;
@@ -223,7 +229,7 @@ fn onboard_new_user(
             salt,
             Some(format!("dango/account/single/{account_index}")),
             Some(factory),
-            funds, // Foward the funds received to the account.
+            Coins::default(),
         )?,
         UserRegistered {
             user_index,

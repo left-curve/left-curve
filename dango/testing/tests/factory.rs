@@ -324,6 +324,49 @@ async fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
         .should_succeed_and_equal(Uint128::new(10_000_000));
 }
 
+/// Sending funds along with the `RegisterUser` message must be rejected: the
+/// new account is created inactive and can't use the funds, so they would be
+/// locked.
+#[tokio::test]
+async fn onboarding_with_funds_attached_is_rejected() {
+    let (mut suite, mut accounts, codes, contracts, _) = setup_test_naive(Default::default());
+
+    let chain_id = suite.chain_id.clone();
+
+    let user = TestAccount::new_random().predict_address(
+        contracts.account_factory,
+        3,
+        codes.account.to_bytes().hash256(),
+        true,
+    );
+
+    let funds = coins! { usdc::DENOM.clone() => 1 };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 3,
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        chain_id,
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 3,
+                        referrer: None,
+                    })
+                    .unwrap(),
+                referrer: None,
+            },
+            funds,
+        )
+        .await
+        .should_fail_with_error("no funds expected during user registration");
+}
+
 #[tokio::test]
 async fn update_key() {
     let (mut suite, _, codes, contracts, _) = setup_test_naive(Default::default());
