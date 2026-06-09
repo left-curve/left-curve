@@ -31,6 +31,26 @@ export function getPerpsPairId({ baseSymbol, quoteSymbol }: TradePairSymbols): s
   return `perp/${baseSymbol.toLowerCase()}${quoteSymbol.toLowerCase()}`;
 }
 
+export function getPerpsPairQuoteSymbol(pairId: string): string {
+  const symbol = pairId.replace("perp/", "").toUpperCase();
+  if (symbol.endsWith("USDC")) return "USDC";
+  return DEFAULT_QUOTE_SYMBOL;
+}
+
+export function getPerpsPairSymbol(pairId: string): string {
+  const symbol = pairId.replace("perp/", "").toUpperCase();
+  const quoteSymbol = getPerpsPairQuoteSymbol(pairId);
+  return symbol.endsWith(quoteSymbol) ? symbol.slice(0, -quoteSymbol.length) : symbol;
+}
+
+export function getPerpsPairLabel(pairId: string): string {
+  return `${getPerpsPairSymbol(pairId)}/${getPerpsPairQuoteSymbol(pairId)}`;
+}
+
+export function getPerpsPairTicker(pairId: string): string {
+  return `${getPerpsPairSymbol(pairId)}${getPerpsPairQuoteSymbol(pairId)}`;
+}
+
 export function getTradeQuoteDenom(
   quoteSymbol: string,
   bySymbol: Record<string, { denom: string }>,

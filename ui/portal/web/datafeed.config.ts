@@ -1,7 +1,14 @@
-import { CandleInterval } from "@left-curve/types";
+import {
+  CHART_RESOLUTIONS,
+  convertResolutionToCandleInterval,
+} from "./src/components/dex/helpers/chartResolution";
 import { buildFillMarker, type FillMarker } from "./src/components/dex/helpers/fillMarkers";
+import {
+  getPerpsPairId,
+  parseTradePairSymbols,
+} from "./src/components/dex/helpers/tradePairSymbols";
 
-import type { CandleIntervals, PerpsCandle } from "@left-curve/types";
+import type { PerpsCandle } from "@left-curve/types";
 import type { PublicClient } from "@left-curve/sdk";
 import type { useConfig } from "@left-curve/store";
 import type { QueryClient } from "@tanstack/react-query";
@@ -19,40 +26,7 @@ import type {
 } from "@left-curve/tradingview";
 
 const FILL_MARKERS_LIMIT = 500;
-
-type PerpsDataFeed = IBasicDataFeed & {
-  getMarks?: (
-    symbolInfo: LibrarySymbolInfo,
-    from: number,
-    to: number,
-    onDataCallback: GetMarksCallback<Mark>,
-    resolution: ResolutionString,
-  ) => void;
-};
-
-function convertResolutionToCandleInterval(resolution: ResolutionString): CandleIntervals {
-  if (resolution.includes("S")) return CandleInterval.OneSecond;
-  if (resolution.includes("W")) return CandleInterval.OneWeek;
-  if (resolution.includes("D")) return CandleInterval.OneDay;
-
-  const minutes = parseInt(resolution);
-  if (Number.isNaN(minutes)) throw new Error(`Unsupported resolution: ${resolution}`);
-
-  switch (minutes) {
-    case 1:
-      return CandleInterval.OneMinute;
-    case 5:
-      return CandleInterval.FiveMinutes;
-    case 15:
-      return CandleInterval.FifteenMinutes;
-    case 60:
-      return CandleInterval.OneHour;
-    case 240:
-      return CandleInterval.FourHours;
-    default:
-      throw new Error(`Unsupported resolution in minutes: ${minutes}`);
-  }
-}
+const FILL_MARKERS_RANGE_BUCKET_SECONDS = 24 * 60 * 60;
 
 function perpsCandlesToTradingViewBar(candles: PerpsCandle[]) {
   return candles.reverse().map((candle) => ({
@@ -73,11 +47,23 @@ type CreatePerpsDataFeedParameters = {
 };
 
 function perpsSymbolToPairId(symbolName: string): string {
-  const [base] = symbolName.split("-");
-  return `perp/${base.toLowerCase()}usd`;
+  const parsed = parseTradePairSymbols(symbolName);
+  if (!parsed) throw new Error(`Unsupported perps symbol: ${symbolName}`);
+  return getPerpsPairId(parsed);
 }
 
-export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): PerpsDataFeed {
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getFillMarkerRangeBucket(from: number, to: number) {
+  return {
+    from: Math.floor(from / FILL_MARKERS_RANGE_BUCKET_SECONDS) * FILL_MARKERS_RANGE_BUCKET_SECONDS,
+    to: Math.ceil(to / FILL_MARKERS_RANGE_BUCKET_SECONDS) * FILL_MARKERS_RANGE_BUCKET_SECONDS,
+  };
+}
+
+export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): IBasicDataFeed {
   const { client, queryClient, subscriptions, getAccountAddress } = parameters;
 
   let _unsubscribe: () => void = () => {};
@@ -91,18 +77,9 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       setTimeout(
         () =>
           callback({
-            supported_resolutions: [
-              "1S",
-              "1",
-              "5",
-              "15",
-              "60",
-              "240",
-              "1D",
-              "1W",
-            ] as ResolutionString[],
+            supported_resolutions: [...CHART_RESOLUTIONS],
             supports_marks: true,
-          } as Parameters<OnReadyCallback>[0]),
+          }),
         0,
       );
     },
@@ -129,16 +106,7 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
         pricescale: 100,
         minmov: 1,
         has_intraday: true,
-        supported_resolutions: [
-          "1S",
-          "1",
-          "5",
-          "15",
-          "60",
-          "240",
-          "1D",
-          "1W",
-        ] as ResolutionString[],
+        supported_resolutions: [...CHART_RESOLUTIONS],
         volume_precision: 2,
         data_status: "streaming",
       };
@@ -177,9 +145,9 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
             onHistoryCallback([], { noData: true });
           }
         })
-        .catch((error: any) => {
+        .catch((error: unknown) => {
           console.error("Failed to fetch perps bars:", error);
-          onErrorCallback(error?.message || String(error));
+          onErrorCallback(getErrorMessage(error));
         });
     },
 
@@ -218,8 +186,9 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       }
 
       const currentPairId = perpsSymbolToPairId(symbolInfo.name);
-      const earlierThan = new Date(to * 1000);
-      const laterThan = new Date(from * 1000);
+      const rangeBucket = getFillMarkerRangeBucket(from, to);
+      const earlierThan = new Date(rangeBucket.to * 1000);
+      const laterThan = new Date(rangeBucket.from * 1000);
 
       queryClient
         .fetchQuery({
@@ -228,10 +197,11 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
             accountAddress,
             "fillMarkers",
             currentPairId,
-            from,
-            to,
+            rangeBucket.from,
+            rangeBucket.to,
             resolution,
           ],
+          staleTime: 10_000,
           queryFn: () =>
             client.queryPerpsEvents({
               userAddr: accountAddress,
@@ -251,11 +221,12 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
               }),
             )
             .filter((marker): marker is FillMarker => marker !== null)
+            .filter((marker) => marker.time >= from && marker.time <= to)
             .sort((a, b) => a.time - b.time);
 
           onDataCallback(markers);
         })
-        .catch((error: any) => {
+        .catch((error: unknown) => {
           console.error("Failed to fetch perps fill markers:", error);
           onDataCallback([]);
         });

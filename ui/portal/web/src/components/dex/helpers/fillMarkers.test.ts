@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildFillMarker, getFillMarkerBarTime } from "./fillMarkers";
+import { buildFillMarker } from "./fillMarkers";
 
 import type { OrderFilledData, PerpsEvent } from "@left-curve/types";
 
@@ -35,19 +35,19 @@ function makeEvent(overrides: Partial<PerpsEvent> = {}): PerpsEvent {
 
 describe("fill markers", () => {
   it("buckets fill time to the visible chart resolution", () => {
-    const fillTimeMs = Date.parse("2026-06-09T00:07:12.000Z");
+    const marker = buildFillMarker(makeEvent(), {
+      resolution: "5",
+    });
 
-    expect(getFillMarkerBarTime(fillTimeMs, "5")).toBe(
-      Date.parse("2026-06-09T00:05:00.000Z") / 1000,
-    );
+    expect(marker?.time).toBe(Date.parse("2026-06-09T00:05:00.000Z") / 1000);
   });
 
   it("buckets weekly fills to the indexer's Sunday UTC week start", () => {
-    const fillTimeMs = Date.parse("2026-06-09T00:07:12.000Z");
+    const marker = buildFillMarker(makeEvent(), {
+      resolution: "1W",
+    });
 
-    expect(getFillMarkerBarTime(fillTimeMs, "1W")).toBe(
-      Date.parse("2026-06-07T00:00:00.000Z") / 1000,
-    );
+    expect(marker?.time).toBe(Date.parse("2026-06-07T00:00:00.000Z") / 1000);
   });
 
   it("builds a buy marker from an order_filled event", () => {
@@ -56,7 +56,7 @@ describe("fill markers", () => {
     });
 
     expect(marker).toMatchObject({
-      id: "0x1234567890abcdef1234567890abcdef12345678:7:42:17",
+      id: "0x1234567890abcdef1234567890abcdef12345678:7",
       label: "B",
       labelFontColor: "#FFFCF6",
       minSize: 16,

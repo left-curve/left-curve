@@ -23,11 +23,6 @@ type TradingViewProps = {
   accountAddress?: string;
 };
 
-type ChartWithMarks = TV.IChartWidgetApi & {
-  clearMarks?: () => void;
-  refreshMarks?: () => void;
-};
-
 export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, accountAddress }) => {
   const pairSymbol = `${coins.base.symbol}-USD`;
 
@@ -54,6 +49,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
   const readyRef = useRef(false);
+  // The datafeed is created with the widget; this keeps getMarks pointed at the live account.
   const accountAddressRef = useRef(accountAddress);
   accountAddressRef.current = accountAddress;
 
@@ -207,19 +203,19 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
   useEffect(() => {
     if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
-    if (chart.symbol() !== pairSymbol) {
-      chart.setSymbol(pairSymbol, () => {
-        (chart as ChartWithMarks).refreshMarks?.();
-      });
-    }
-  }, [pairSymbol]);
 
-  useEffect(() => {
-    if (!widgetRef.current) return;
-    const chart = widgetRef.current.chart() as ChartWithMarks;
-    if (accountAddress) chart.refreshMarks?.();
-    else chart.clearMarks?.();
-  }, [accountAddress]);
+    const syncMarks = () => {
+      if (accountAddress) chart.refreshMarks();
+      else chart.clearMarks();
+    };
+
+    if (chart.symbol() !== pairSymbol) {
+      chart.setSymbol(pairSymbol, syncMarks);
+      return;
+    }
+
+    syncMarks();
+  }, [accountAddress, pairSymbol]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
@@ -231,8 +227,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
     ];
 
     drawLines(chart, lines);
-    if (accountAddress) (chart as ChartWithMarks).refreshMarks?.();
-  }, [position, perpsOrders, perpsPairId, accountAddress]);
+  }, [position, perpsOrders, perpsPairId]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

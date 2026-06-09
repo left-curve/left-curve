@@ -4,6 +4,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { FormattedNumber } from "@left-curve/applets-kit";
 
 import { OrderActivity } from "./OrderActivity";
+import { getPerpsPairLabel, getPerpsPairSymbol } from "../dex/helpers/tradePairSymbols";
 
 import type { ActivityRef } from "./Activity";
 import type { ActivityRecord } from "@left-curve/store";
@@ -17,8 +18,8 @@ export const ActivityPerpDeleveraged = forwardRef<ActivityRef, ActivityPerpDelev
     const { pair_id, closing_size, fill_price, realized_pnl } = activity.data;
 
     const absSize = closing_size.startsWith("-") ? closing_size.slice(1) : closing_size;
-    const baseSymbol = pair_id.replace("perp/", "").replace("usd", "").toUpperCase();
-    const pairLabel = `${baseSymbol}/USD`;
+    const baseSymbol = getPerpsPairSymbol(pair_id);
+    const pairLabel = getPerpsPairLabel(pair_id);
 
     useImperativeHandle(ref, () => ({
       onClick: () => {},
@@ -42,7 +43,11 @@ export const ActivityPerpDeleveraged = forwardRef<ActivityRef, ActivityPerpDelev
             <div className="flex w-full gap-1">
               <span>{m["activities.activity.perpOrderFilled.atPrice"]()}</span>
               <span className="diatype-m-bold">
-                <FormattedNumber number={fill_price} formatOptions={{ currency: "USD" }} as="span" />
+                <FormattedNumber
+                  number={fill_price}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
               </span>
             </div>
 

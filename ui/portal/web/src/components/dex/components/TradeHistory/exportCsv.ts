@@ -2,7 +2,8 @@ import { Decimal } from "@left-curve/utils";
 
 import type { PerpsEvent } from "@left-curve/types";
 
-import { normalizePerpsEvent } from "./normalizePerpsEvent";
+import { normalizePerpsEvent } from "../../helpers/normalizePerpsEvent";
+import { getPerpsPairLabel, getPerpsPairSymbol } from "../../helpers/tradePairSymbols";
 import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
 
 export type PerpsCsvHeaders = {
@@ -52,8 +53,8 @@ export function buildPerpsTradeHistoryCsv(
 
   const rows: string[][] = events.map((event) => {
     const norm = normalizePerpsEvent(event);
-    const pair = event.pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
-    const baseSymbol = event.pairId.replace("perp/", "").replace(/usd$/i, "").toUpperCase();
+    const baseSymbol = getPerpsPairSymbol(event.pairId);
+    const pair = getPerpsPairLabel(event.pairId);
     const eventLabel = getPerpsEventLabel(event.eventType);
 
     const isShort = norm.size?.startsWith("-") ?? false;

@@ -15,6 +15,7 @@ import { SearchTokenTable } from "./SearchTokenTable";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Image } from "~/components/foundation/Image";
+import { getPerpsPairSymbol } from "../helpers/tradePairSymbols";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
 import type { GetAppConfigData } from "@left-curve/store";
@@ -80,9 +81,7 @@ function normalizeRows(
 
   const perpsPairs = config?.perpsPairs ?? {};
   for (const [perpsPairId] of Object.entries(perpsPairs)) {
-    const symbol = perpsPairId.replace("perp/", "").toUpperCase();
-
-    const baseSym = symbol.replace(/USDC$|USD$/, "");
+    const baseSym = getPerpsPairSymbol(perpsPairId);
     const base = coins.bySymbol[baseSym];
     if (!base) continue;
 

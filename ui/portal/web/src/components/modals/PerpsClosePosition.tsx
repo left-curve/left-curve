@@ -8,7 +8,13 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import { useAccount, useConfig, useSigningClient, useStorage, useSubmitTx } from "@left-curve/store";
+import {
+  useAccount,
+  useConfig,
+  useSigningClient,
+  useStorage,
+  useSubmitTx,
+} from "@left-curve/store";
 import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useCallback, useMemo, useState } from "react";
@@ -16,6 +22,7 @@ import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Image } from "~/components/foundation/Image";
+import { getPerpsPairSymbol } from "../dex/helpers/tradePairSymbols";
 
 type PerpsClosePositionProps = {
   pairId: string;
@@ -36,7 +43,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
   const sizeNum = Math.abs(Number(size));
   const isLong = Number(size) > 0;
 
-  const baseSymbol = pairId.replace("perp/", "").replace(/usd$/i, "");
+  const baseSymbol = getPerpsPairSymbol(pairId).toLowerCase();
   const baseCoin = Object.values(coins.byDenom).find((c) => c.symbol.toLowerCase() === baseSymbol);
   const symbol = baseCoin?.symbol ?? baseSymbol.toUpperCase();
   const logoURI = baseCoin?.logoURI;

@@ -1,6 +1,9 @@
-import { Decimal } from "@left-curve/utils";
+import { Decimal, truncateAddress } from "@left-curve/utils";
+import { getChartResolutionBarTime } from "./chartResolution";
+import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
+import { getPerpsPairSymbol } from "./tradePairSymbols";
 
-import type { OrderFilledData, PerpsEvent } from "@left-curve/types";
+import type { PerpsEvent } from "@left-curve/types";
 
 const BUY_COLOR = "#27AE60";
 const SELL_COLOR = "#EB5757";
@@ -25,76 +28,51 @@ type BuildFillMarkerParameters = {
   resolution: string;
 };
 
-function resolutionToMilliseconds(resolution: string): number | undefined {
-  if (resolution.includes("S")) {
-    const seconds = Number.parseInt(resolution, 10);
-    return (Number.isNaN(seconds) ? 1 : seconds) * 1_000;
-  }
+type DecimalValue = ReturnType<typeof Decimal>;
 
-  if (resolution.includes("W")) return 7 * 24 * 60 * 60 * 1_000;
-  if (resolution.includes("D")) return 24 * 60 * 60 * 1_000;
+type MarkerTextValues = {
+  fields: NormalizedFields;
+  side: FillMarkerSide;
+  size: DecimalValue;
+  price: DecimalValue;
+};
 
-  const minutes = Number.parseInt(resolution, 10);
-  if (Number.isNaN(minutes)) return undefined;
-  return minutes * 60 * 1_000;
-}
-
-export function getFillMarkerBarTime(fillTimeMs: number, resolution: string): number | undefined {
-  const intervalMs = resolutionToMilliseconds(resolution);
-  if (!intervalMs || !Number.isFinite(fillTimeMs)) {
-    return undefined;
-  }
-
-  if (resolution.includes("W")) {
-    const fillDate = new Date(fillTimeMs);
-    const daysSinceSunday = fillDate.getUTCDay();
-    const dayStartMs = Date.UTC(
-      fillDate.getUTCFullYear(),
-      fillDate.getUTCMonth(),
-      fillDate.getUTCDate(),
-    );
-    return Math.floor((dayStartMs - daysSinceSunday * 24 * 60 * 60 * 1_000) / 1_000);
-  }
-
-  return Math.floor(Math.floor(fillTimeMs / intervalMs) * intervalMs) / 1_000;
-}
-
-function getPairSymbol(pairId: string): string {
-  return pairId.replace("perp/", "").replace("usd", "").toUpperCase();
-}
-
-function shortHash(hash: string): string {
-  if (hash.length <= 14) return hash;
-  return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
-}
-
-function buildMarkerText(
-  event: PerpsEvent,
-  data: OrderFilledData,
-  side: FillMarkerSide,
-  absSize: string,
-  price: string,
-): string[] {
-  const pairSymbol = getPairSymbol(event.pairId);
+function buildMarkerText(event: PerpsEvent, values: MarkerTextValues): string[] {
+  const { fields, side, size, price } = values;
+  const pairSymbol = getPerpsPairSymbol(event.pairId);
   const sideLabel = side === "buy" ? "Buy" : "Sell";
-  const text = [
-    `${sideLabel} ${absSize} ${pairSymbol} at $${price}`,
-    `Fee: $${data.fee}`,
-    `Realized PnL: ${data.realized_pnl}`,
-  ];
+  const text = [`${sideLabel} ${size.abs().toFixed()} ${pairSymbol} at $${price.toFixed()}`];
 
-  if (data.realized_funding !== undefined && data.realized_funding !== null) {
-    text.push(`Funding: ${data.realized_funding}`);
+  if (fields.fee !== undefined) {
+    text.push(`Fee: $${fields.fee}`);
   }
 
-  if (data.is_maker !== undefined && data.is_maker !== null) {
-    text.push(data.is_maker ? "Maker" : "Taker");
+  if (fields.pnl !== undefined) {
+    text.push(`Realized PnL: ${fields.pnl}`);
+  }
+
+  if (fields.funding !== undefined) {
+    text.push(`Funding: ${fields.funding}`);
+  }
+
+  if (fields.isMaker !== undefined) {
+    text.push(fields.isMaker ? "Maker" : "Taker");
   }
 
   text.push(`Time: ${event.createdAt}`);
-  if (event.txHash) text.push(`Tx: ${shortHash(event.txHash)}`);
+  if (event.txHash) text.push(`Tx: ${truncateAddress(event.txHash, 6)}`);
 
   return text;
+}
+
+function parseDecimalOrNull(value: string | undefined): DecimalValue | null {
+  if (!value) return null;
+
+  try {
+    return Decimal(value);
+  } catch {
+    return null;
+  }
 }
 
 export function buildFillMarker(
@@ -103,37 +81,30 @@ export function buildFillMarker(
 ): FillMarker | null {
   if (event.eventType !== "order_filled") return null;
 
-  const data = event.data as OrderFilledData;
+  const fields = normalizePerpsEvent(event);
   const fillTimeMs = Date.parse(event.createdAt);
   if (!Number.isFinite(fillTimeMs)) return null;
 
-  try {
-    const size = Decimal(data.fill_size);
-    const price = Decimal(data.fill_price);
-    const priceNumber = price.toNumber();
-    if (size.isZero() || !Number.isFinite(priceNumber)) return null;
+  const size = parseDecimalOrNull(fields.size);
+  const price = parseDecimalOrNull(fields.price);
+  if (!size || !price || size.isZero() || !Number.isFinite(price.toNumber())) return null;
 
-    const time = getFillMarkerBarTime(fillTimeMs, parameters.resolution);
-    if (time === undefined) return null;
+  const time = getChartResolutionBarTime(fillTimeMs, parameters.resolution);
+  if (time === undefined) return null;
 
-    const side: FillMarkerSide = size.gt(0) ? "buy" : "sell";
-    const color = side === "buy" ? BUY_COLOR : SELL_COLOR;
-    const absSize = size.abs().toFixed();
-    const fillPrice = price.toFixed();
+  const side: FillMarkerSide = size.gt(0) ? "buy" : "sell";
+  const color = side === "buy" ? BUY_COLOR : SELL_COLOR;
 
-    return {
-      id: `${event.txHash}:${event.idx}:${data.order_id}:${data.fill_id ?? ""}`,
-      time,
-      color: {
-        border: color,
-        background: color,
-      },
-      text: buildMarkerText(event, data, side, absSize, fillPrice).join("\n"),
-      label: side === "buy" ? "B" : "S",
-      labelFontColor: LABEL_COLOR,
-      minSize: 16,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    id: `${event.txHash}:${event.idx}`,
+    time,
+    color: {
+      border: color,
+      background: color,
+    },
+    text: buildMarkerText(event, { fields, side, size, price }).join("\n"),
+    label: side === "buy" ? "B" : "S",
+    labelFontColor: LABEL_COLOR,
+    minSize: 16,
+  };
 }

@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   getDefaultTradePairSymbols,
   getPerpsPairId,
+  getPerpsPairLabel,
+  getPerpsPairSymbol,
+  getPerpsPairTicker,
   getTradeQuoteDenom,
   normalizeTradePairSymbols,
   parseTradePairSymbols,
@@ -34,6 +37,19 @@ describe("trade pair symbols", () => {
   it("derives perps pair ids from parsed symbols", () => {
     expect(getPerpsPairId({ baseSymbol: "ETH", quoteSymbol: "USD" })).toBe("perp/ethusd");
     expect(getPerpsPairId({ baseSymbol: "BTC", quoteSymbol: "USDC" })).toBe("perp/btcusdc");
+  });
+
+  it("derives base symbols from perps pair ids", () => {
+    expect(getPerpsPairSymbol("perp/ethusd")).toBe("ETH");
+    expect(getPerpsPairSymbol("perp/btcusd")).toBe("BTC");
+    expect(getPerpsPairSymbol("perp/btcusdc")).toBe("BTC");
+  });
+
+  it("formats perps pair labels and tickers", () => {
+    expect(getPerpsPairLabel("perp/ethusd")).toBe("ETH/USD");
+    expect(getPerpsPairLabel("perp/btcusdc")).toBe("BTC/USDC");
+    expect(getPerpsPairTicker("perp/ethusd")).toBe("ETHUSD");
+    expect(getPerpsPairTicker("perp/btcusdc")).toBe("BTCUSDC");
   });
 
   it("uses the synthetic USD quote denom for perps", () => {
