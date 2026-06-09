@@ -5,6 +5,7 @@ import { useAnimationFrame, useMotionValue, useTransform, useReducedMotion } fro
 
 import { motion } from "framer-motion";
 import { twMerge } from "@left-curve/foundation";
+import { roundMeasuredLayoutValue } from "../utils/measurement.js";
 
 import type React from "react";
 
@@ -34,8 +35,11 @@ export const Marquee: React.FC<MarqueeProps> = ({
     if (!c || !b) return;
 
     const measure = () => {
-      setContainerW(c.getBoundingClientRect().width);
-      setContentW(b.getBoundingClientRect().width);
+      const nextContainerW = roundMeasuredLayoutValue(c.getBoundingClientRect().width);
+      const nextContentW = roundMeasuredLayoutValue(b.getBoundingClientRect().width);
+
+      setContainerW(nextContainerW);
+      setContentW(nextContentW);
     };
 
     measure();

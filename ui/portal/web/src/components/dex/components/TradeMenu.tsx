@@ -14,6 +14,7 @@ import {
   usePerpsSubmission,
   perpsTradeSettingsStore,
   useAllPerpsPairStats,
+  usePerpsPairStatsByPairId,
   usePerpsUserState,
   usePerpsUserStateExtended,
   computeLiquidationPrice,
@@ -50,7 +51,7 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Decimal, formatNumber, resolveRateSchedule } from "@left-curve/utils";
+import { Decimal, formatNumber, resolveRateSchedule, shallowEqual } from "@left-curve/utils";
 import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import type { PerpsTimeInForce } from "@left-curve/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -81,7 +82,7 @@ const TradeSubmitButton: React.FC<{
   onSubmit: () => void;
 }> = ({ action, label, isDisabled, isPending, isRestricted, onSubmit }) => {
   const { isConnected } = useAccount();
-  const { showModal } = useApp();
+  const showModal = useApp((state) => state.showModal);
 
   if (!isConnected) {
     return (
@@ -126,8 +127,8 @@ export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
 
 const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const { isConnected } = useAccount();
-  const { settings, showModal } = useApp();
-  const { formatNumberOptions } = settings;
+  const showModal = useApp((state) => state.showModal);
+  const formatNumberOptions = useApp((state) => state.settings.formatNumberOptions);
   const isGeoblocked = useGeoblock();
 
   const { data: appConfig } = useAppConfig();
@@ -166,34 +167,52 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const isBaseSize = sizeCoinDenom === baseCoin.denom;
 
-  const statsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId);
+  const activePairStats = usePerpsPairStatsByPairId({ pairId: perpsPairId });
 
   const currentPrice = useMemo(() => {
-    const fromStats = Number(statsByPairId[perpsPairId]?.currentPrice ?? 0);
+    const fromStats = Number(activePairStats?.currentPrice ?? 0);
     if (fromStats > 0) return fromStats;
     const oraclePrice = Number(getPrice(1, baseCoin.denom) ?? 0);
     return Number.isFinite(oraclePrice) ? oraclePrice : 0;
-  }, [statsByPairId, perpsPairId, getPrice, baseCoin.denom]);
+  }, [activePairStats?.currentPrice, getPrice, baseCoin.denom]);
 
   const params = appConfig.perpsPairs[perpsPairId];
 
-  const userState = usePerpsUserState((s) => s.userState, {
-    accountAddress,
-    enabled: isConnected,
+  const accountState = usePerpsUserState(
+    (s) => ({
+      positions: s.userState?.positions,
+      margin: s.userState?.margin ?? "0",
+      reservedMargin: s.userState?.reservedMargin ?? "0",
+    }),
+    {
+      accountAddress,
+      enabled: isConnected,
+    },
+    shallowEqual,
+  );
+  const hasOtherPairPositions = useMemo(
+    () => Object.keys(accountState.positions ?? {}).some((pairId) => pairId !== perpsPairId),
+    [accountState.positions, perpsPairId],
+  );
+  const statsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId, {
+    enabled: isConnected && hasOtherPairPositions,
   });
   const extendedState = usePerpsUserStateExtended(
     (s) => ({ positions: s.positions, equity: s.equity }),
-    { accountAddress, enabled: isConnected },
-    (previous, next) => previous.positions === next.positions && previous.equity === next.equity,
+    {
+      accountAddress,
+      enabled: isConnected,
+    },
+    shallowEqual,
   );
   const extendedPositions = extendedState.positions;
   const equity = extendedState.equity ?? "0";
-  const reservedMargin = userState?.reservedMargin ?? "0";
+  const reservedMargin = accountState.reservedMargin;
 
   const { coins: allCoins } = useConfig();
 
   const otherPairsUsedMargin = useMemo(() => {
-    const positions = userState?.positions;
+    const positions = accountState.positions;
     if (!positions) return 0;
 
     return computeOtherPairsUsedMargin(positions, perpsPairId, appConfig.perpsPairs, (pid) => {
@@ -204,7 +223,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
       return denom ? Decimal(getPrice(1, denom) ?? 0) : Decimal(0);
     });
   }, [
-    userState?.positions,
+    accountState.positions,
     perpsPairId,
     appConfig.perpsPairs,
     statsByPairId,
@@ -213,9 +232,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   ]);
 
   const position = useMemo(() => {
-    if (!userState?.positions?.[perpsPairId]) return null;
-    return userState.positions[perpsPairId];
-  }, [userState, perpsPairId]);
+    if (!accountState.positions?.[perpsPairId]) return null;
+    return accountState.positions[perpsPairId];
+  }, [accountState.positions, perpsPairId]);
 
   const maxLeverage = useMemo(() => {
     const ratio = Number(params.initialMarginRatio);
@@ -397,7 +416,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     const newSize = action === "buy" ? baseSize : -baseSize;
 
     return computeLiquidationPrice({
-      margin: Number(userState?.margin ?? 0),
+      margin: Number(accountState.margin),
       size: newSize,
       entryPrice,
       mmr: Number(params.maintenanceMarginRatio ?? 0),
@@ -415,7 +434,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     currentPrice,
     params,
     isBaseSize,
-    userState?.margin,
+    accountState.margin,
     extendedPositions,
     statsByPairId,
     perpsPairId,
@@ -743,7 +762,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 };
 
 const PerpsTopPills: React.FC = () => {
-  const { showModal } = useApp();
+  const showModal = useApp((state) => state.showModal);
   const { data: appConfig } = useAppConfig();
   const { pairId, perpsPairId } = useProTrade();
   const { baseCoin, quoteCoin } = useTradePairCoins({ pairId });
@@ -798,7 +817,8 @@ const PerpsTopPills: React.FC = () => {
 
 const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
   const { isLg } = useMediaQuery();
-  const { setTradeBarVisibility, setSidebarVisibility } = useApp();
+  const setTradeBarVisibility = useApp((state) => state.setTradeBarVisibility);
+  const setSidebarVisibility = useApp((state) => state.setSidebarVisibility);
 
   const { action, orderType: operation, onChangeAction, onChangeOrderType } = useProTrade();
 
@@ -851,7 +871,8 @@ const Menu: React.FC<TradeMenuProps> = ({ controllers, className }) => {
 };
 
 const MenuMobile: React.FC<TradeMenuProps> = (props) => {
-  const { isTradeBarVisible, setTradeBarVisibility } = useApp();
+  const isTradeBarVisible = useApp((state) => state.isTradeBarVisible);
+  const setTradeBarVisibility = useApp((state) => state.setTradeBarVisibility);
   const portalTarget = usePortalTarget("#root");
 
   if (!portalTarget) return null;

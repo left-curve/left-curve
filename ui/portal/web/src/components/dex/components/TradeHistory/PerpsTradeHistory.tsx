@@ -260,7 +260,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
 
 export function PerpsTradeHistory() {
   const navigate = useNavigate();
-  const { showModal } = useApp();
+  const showModal = useApp((state) => state.showModal);
   const { isMd } = useMediaQuery();
   const isAdvancedEnabled = isFeatureEnabled("trade_history_export");
   const { filter, setPreset, setCustomRange, queryRange } = useTradeHistoryFilter();
@@ -345,10 +345,7 @@ export function PerpsTradeHistory() {
         )
       ) : null}
 
-      <div
-        ref={scrollRef}
-        className="w-full max-h-[31vh] overflow-auto scrollbar-none"
-      >
+      <div ref={scrollRef} className="w-full max-h-[31vh] overflow-auto scrollbar-none">
         <div
           className="sticky top-0 z-10 grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
           style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}

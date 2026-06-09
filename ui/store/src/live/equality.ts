@@ -1,4 +1,4 @@
-import { assertDeepEqual } from "@left-curve/utils";
+import { deepEqual } from "@left-curve/utils";
 
 import type { LiveResourceSnapshot } from "./types.js";
 
@@ -13,7 +13,7 @@ export function equalLiveResourcePayload<
   if (!equalLiveResourceState(previous, next)) return false;
 
   for (const key of keys) {
-    if (!assertDeepEqual(previous[key], next[key])) return false;
+    if (!deepEqual(previous[key], next[key])) return false;
   }
 
   return true;

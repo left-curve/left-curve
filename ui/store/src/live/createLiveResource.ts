@@ -105,6 +105,10 @@ export function createLiveResource<Params, Snapshot extends LiveResourceSnapshot
     syncLiveResourceDebug();
   }
 
+  function canDeleteEntry(entry: LiveResourceEntry<Params, Snapshot>) {
+    return entry.refCount === 0 && entry.listeners.size === 0;
+  }
+
   function setSnapshot(
     entry: LiveResourceEntry<Params, Snapshot>,
     nextSnapshot: Snapshot,
@@ -191,7 +195,7 @@ export function createLiveResource<Params, Snapshot extends LiveResourceSnapshot
       if (entry.refCount === 0) {
         stopEntry(entry);
         // Delete only after the last listener has unsubscribed; React can unsubscribe after release.
-        if (entry.listeners.size === 0 && cache === "delete-on-release") entries.delete(key);
+        if (canDeleteEntry(entry) && cache === "delete-on-release") entries.delete(key);
       }
       syncLiveResourceDebug();
     };
@@ -206,7 +210,7 @@ export function createLiveResource<Params, Snapshot extends LiveResourceSnapshot
 
     return () => {
       entry.listeners.delete(listener);
-      if (entry.refCount === 0 && entry.listeners.size === 0 && cache === "delete-on-release") {
+      if (canDeleteEntry(entry) && cache === "delete-on-release") {
         // Both lifecycle ownership and React subscriptions are gone, so the entry is unreachable.
         entries.delete(key);
       }

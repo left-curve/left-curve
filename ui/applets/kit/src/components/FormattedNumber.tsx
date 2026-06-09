@@ -1,8 +1,8 @@
 import { useApp } from "@left-curve/foundation";
-import { useId } from "react";
+import { memo, useId } from "react";
 import { twMerge } from "@left-curve/foundation";
 
-import { Decimal, formatDisplayNumber } from "@left-curve/utils";
+import { Decimal, formatDisplayNumber, shallowEqual } from "@left-curve/utils";
 
 import type React from "react";
 import type { FormatNumberOptions } from "@left-curve/utils";
@@ -15,7 +15,14 @@ type FormattedNumberProps = {
   tabular?: boolean;
 };
 
-export const FormattedNumber: React.FC<FormattedNumberProps> = ({
+// formatOptions is often passed inline; compare its fields instead of its object identity.
+const equalFormattedNumberProps = (
+  { formatOptions: previousFormatOptions, ...previousProps }: FormattedNumberProps,
+  { formatOptions: nextFormatOptions, ...nextProps }: FormattedNumberProps,
+) =>
+  shallowEqual(previousProps, nextProps) && shallowEqual(previousFormatOptions, nextFormatOptions);
+
+const FormattedNumberComponent: React.FC<FormattedNumberProps> = ({
   number,
   formatOptions,
   className,
@@ -23,8 +30,7 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
   tabular = false,
 }) => {
   const id = useId();
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
+  const formatNumberOptions = useApp((state) => state.settings.formatNumberOptions);
 
   const Component = as;
 
@@ -66,3 +72,6 @@ export const FormattedNumber: React.FC<FormattedNumberProps> = ({
     </Component>
   );
 };
+
+export const FormattedNumber = memo(FormattedNumberComponent, equalFormattedNumberProps);
+FormattedNumber.displayName = "FormattedNumber";

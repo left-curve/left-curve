@@ -21,9 +21,11 @@ export {
   assertNumber,
   assertArray,
   assertDeepEqual,
+  deepEqual,
   assertNotEmpty,
   assertObject,
   assertSet,
+  shallowEqual,
 } from "./asserts.js";
 
 export {

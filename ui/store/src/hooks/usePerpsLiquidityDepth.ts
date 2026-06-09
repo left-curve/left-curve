@@ -23,6 +23,7 @@ export type UsePerpsLiquidityDepthParameters = {
   bucketSize: string;
   limit?: number;
   enabled?: boolean;
+  notifyIntervalMs?: number;
 };
 
 type PerpsLiquidityDepthResourceParams = {
@@ -96,7 +97,7 @@ export function usePerpsLiquidityDepth<Selection>(
   parameters: UsePerpsLiquidityDepthParameters,
   equalityFn?: (previous: Selection, next: Selection) => boolean,
 ): Selection {
-  const { perpsPairId, bucketSize, limit = 20, enabled = true } = parameters;
+  const { perpsPairId, bucketSize, limit = 20, enabled = true, notifyIntervalMs } = parameters;
   const config = useConfig();
   const { data: appConfig } = useAppConfig();
 
@@ -113,6 +114,7 @@ export function usePerpsLiquidityDepth<Selection>(
     enabled: enabled && !!perpsPairId && !!bucketSize,
     selector,
     equalityFn,
+    notifyIntervalMs,
     restartToken: config.subscriptions,
   });
 }

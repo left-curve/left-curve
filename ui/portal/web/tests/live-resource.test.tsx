@@ -6,6 +6,10 @@ import {
   createLiveResourceInvalidator,
   useLiveResourceInvalidationRevision,
 } from "../../../store/src/live/invalidation";
+import {
+  handlePerpsUserStateError,
+  isPerpsUserStateNotFoundError,
+} from "../../../store/src/hooks/perpsUserStateErrors";
 import { useLiveResource } from "../../../store/src/live/useLiveResource";
 import { subscriptionsStore } from "../../../store/src/subscriptions";
 
@@ -21,6 +25,41 @@ const initialSnapshot: TestSnapshot = {
   error: null,
   value: 0,
 };
+
+describe("perps user state error normalization", () => {
+  it("classifies missing perps user state as an empty account state", () => {
+    expect(
+      isPerpsUserStateNotFoundError(
+        new Error(
+          "contract returned error! data not found! type: dango_types::perps::UserState, storage key: user",
+        ),
+      ),
+    ).toBe(true);
+
+    expect(isPerpsUserStateNotFoundError(new Error("contract returned error! unauthorized"))).toBe(
+      false,
+    );
+  });
+
+  it("routes missing perps user state to the empty-state handler", () => {
+    const onNotFound = vi.fn();
+    const onError = vi.fn();
+
+    handlePerpsUserStateError(
+      new Error(
+        "contract returned error! data not found! type: dango_types::perps::UserState, storage key: user",
+      ),
+      { onNotFound, onError },
+    );
+    handlePerpsUserStateError(new Error("contract returned error! unauthorized"), {
+      onNotFound,
+      onError,
+    });
+
+    expect(onNotFound).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("createLiveResource", () => {
   it("starts once for duplicate acquires and stops after the final release", () => {
@@ -90,6 +129,40 @@ describe("createLiveResource", () => {
 
     releaseA();
     expect(resource.getSnapshot({ id: "a" }).value).toBe(1);
+  });
+
+  it("accepts unversioned emissions after versioned snapshots", () => {
+    let emit: ((snapshot: TestSnapshot, options?: LiveResourceEmitOptions) => void) | undefined;
+    const updates: number[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveUnversionedTransition",
+      cache: "keep",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      equal: (previous, next) =>
+        previous.status === next.status &&
+        previous.error === next.error &&
+        previous.value === next.value,
+      start: (_params, context) => {
+        emit = context.emit;
+        return () => {};
+      },
+    });
+
+    const release = resource.acquire({ id: "a" });
+    const unsubscribe = resource.subscribe({ id: "a" }, () => {
+      updates.push(resource.getSnapshot({ id: "a" }).value);
+    });
+
+    emit?.({ status: "ready", error: null, value: 7 }, { version: 5 });
+    emit?.({ status: "ready", error: null, value: 0 });
+
+    expect(resource.getSnapshot({ id: "a" }).value).toBe(0);
+    expect(updates).toEqual([7, 0]);
+
+    unsubscribe();
+    release();
   });
 
   it("stores runtime errors on the latest snapshot and notifies subscribers", () => {
@@ -268,6 +341,136 @@ describe("useLiveResource", () => {
 
     rendered.unmount();
     expect(stops).toBe(1);
+  });
+
+  it("throttles React notifications while keeping the latest snapshot", async () => {
+    let starts = 0;
+    let emit: ((snapshot: TestSnapshot) => void) | undefined;
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactThrottledNotifications",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        starts += 1;
+        emit = context.emit;
+        return () => {};
+      },
+    });
+
+    function Consumer() {
+      const value = useLiveResource({
+        resource,
+        params: { id: "throttled" },
+        enabled: true,
+        selector: (snapshot) => snapshot.value,
+        notifyIntervalMs: 100,
+      });
+
+      return <div data-testid="throttled">{value}</div>;
+    }
+
+    const rendered = render(<Consumer />);
+    await waitFor(() => expect(starts).toBe(1));
+
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+
+    try {
+      act(() => {
+        emit?.({ status: "ready", error: null, value: 1 });
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("1");
+
+      act(() => {
+        emit?.({ status: "ready", error: null, value: 2 });
+        emit?.({ status: "ready", error: null, value: 3 });
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("1");
+
+      act(() => {
+        vi.advanceTimersByTime(99);
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("1");
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("3");
+    } finally {
+      rendered.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("lets consumers select error state without re-rendering on data-only updates", async () => {
+    let starts = 0;
+    let emit: ((snapshot: TestSnapshot) => void) | undefined;
+    let reportError: ((error: unknown) => void) | undefined;
+    const renderedErrors: (string | null)[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactErrorSelector",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        starts += 1;
+        emit = context.emit;
+        reportError = context.error;
+        return () => {};
+      },
+    });
+
+    function Consumer() {
+      const errorMessage = useLiveResource({
+        resource,
+        params: { id: "watched" },
+        enabled: true,
+        selector: (snapshot) => snapshot.error?.message ?? null,
+      });
+
+      renderedErrors.push(errorMessage);
+
+      return <div data-testid="resource-error">{errorMessage ?? "ok"}</div>;
+    }
+
+    const rendered = render(<Consumer />);
+    await waitFor(() => expect(starts).toBe(1));
+
+    expect(resource.getDebugState().entries).toEqual([
+      expect.objectContaining({
+        key: "watched",
+        listenerCount: 1,
+      }),
+    ]);
+
+    act(() => {
+      emit?.({ status: "ready", error: null, value: 1 });
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("ok");
+    expect(renderedErrors).toEqual([null]);
+
+    const runtimeError = new Error("boom");
+    act(() => {
+      reportError?.(runtimeError);
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("boom");
+    expect(renderedErrors).toEqual([null, "boom"]);
+
+    act(() => {
+      emit?.({ status: "ready", error: null, value: 2 });
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("ok");
+    expect(renderedErrors).toEqual([null, "boom", null]);
+
+    const secondError = new Error("still broken");
+    act(() => {
+      reportError?.(secondError);
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("still broken");
+    expect(renderedErrors).toEqual([null, "boom", null, "still broken"]);
+
+    rendered.unmount();
   });
 
   it("restarts same-key resources when the restart token changes", async () => {
