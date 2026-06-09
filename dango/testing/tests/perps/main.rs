@@ -15,6 +15,7 @@ mod client_order_id;
 mod conditional_orders;
 mod index_price;
 mod liquidation;
+mod liquidation_spec;
 mod price_band;
 mod reduce_only;
 mod referral;
