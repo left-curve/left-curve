@@ -159,8 +159,6 @@ const Transactions: React.FC = () => {
   );
 };
 
-const formatPairLabel = (pairId: string) => getPerpsPairLabel(pairId);
-
 type PerpsBalanceItem = {
   label: string;
   value: string;
@@ -238,7 +236,7 @@ const PerpsPositions: React.FC = () => {
     {
       header: m["explorer.accounts.perps.positions.pair"](),
       cell: ({ row }) => (
-        <Cell.Text text={formatPairLabel(row.original.pairId)} className="diatype-xs-medium" />
+        <Cell.Text text={getPerpsPairLabel(row.original.pairId)} className="diatype-xs-medium" />
       ),
     },
     {
@@ -358,7 +356,7 @@ const PerpsOrders: React.FC = () => {
     {
       header: m["explorer.accounts.perps.orders.pair"](),
       cell: ({ row }) => (
-        <Cell.Text text={formatPairLabel(row.original.pairId)} className="diatype-xs-medium" />
+        <Cell.Text text={getPerpsPairLabel(row.original.pairId)} className="diatype-xs-medium" />
       ),
     },
     {

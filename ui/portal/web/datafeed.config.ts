@@ -199,7 +199,6 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
             currentPairId,
             rangeBucket.from,
             rangeBucket.to,
-            resolution,
           ],
           staleTime: 10_000,
           queryFn: () =>
@@ -221,7 +220,6 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
               }),
             )
             .filter((marker): marker is FillMarker => marker !== null)
-            .filter((marker) => marker.time >= from && marker.time <= to)
             .sort((a, b) => a.time - b.time);
 
           onDataCallback(markers);

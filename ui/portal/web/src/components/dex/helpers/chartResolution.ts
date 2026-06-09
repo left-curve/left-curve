@@ -7,7 +7,16 @@ const SECOND_MS = 1_000;
 const MINUTE_MS = 60 * SECOND_MS;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
-export const CHART_RESOLUTIONS = ["1S", "1", "5", "15", "60", "240", "1D", "1W"] as const;
+export const CHART_RESOLUTIONS = [
+  "1S",
+  "1",
+  "5",
+  "15",
+  "60",
+  "240",
+  "1D",
+  "1W",
+] as readonly ResolutionString[];
 
 export function convertResolutionToCandleInterval(resolution: ResolutionString): CandleIntervals {
   if (resolution.includes("S")) return CandleInterval.OneSecond;
