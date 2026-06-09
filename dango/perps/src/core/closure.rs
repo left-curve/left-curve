@@ -181,17 +181,27 @@ pub fn compute_user_equity_with_pnl(
     Ok(equity)
 }
 
-/// Compute the bankruptcy price for a position being closed during liquidation.
+/// Compute the bankruptcy price for a liquidatable position.
 ///
 /// This is the fill price at which the user's total equity would be exactly
-/// zero after closing `close_amount` of the position.
+/// zero after closing the **entire** position in `pair_id`. The denominator is
+/// the full position size, _not_ the (possibly partial) liquidation close
+/// amount.
 ///
-/// For longs:  bp = oracle_price - equity / close_amount
-/// For shorts: bp = oracle_price + equity / close_amount
+/// For longs:  bp = oracle_price - equity / |size|
+/// For shorts: bp = oracle_price + equity / |size|
+///
+/// Using the full size keeps `bp` bounded: a liquidatable account has
+/// `equity < maintenance_margin = |size| * oracle * mmr`, so the offset
+/// `equity / |size|` stays within `mmr` of oracle for a single-position
+/// account. A multi-position account divides whole-account equity by one
+/// pair's size and may deviate further; a caller that uses `bp` as an actual
+/// fill price — rather than a bound — must account for this. The liquidation
+/// engine only uses `bp` as a fill price for insolvent accounts, where the
+/// counterparty is meant to absorb the deficit.
 pub fn compute_bankruptcy_price(
     user_state: &UserState,
     pair_id: &PairId,
-    close_amount: Quantity,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     user_pnl: UsdValue,
     user_fees: UsdValue,
@@ -200,7 +210,7 @@ pub fn compute_bankruptcy_price(
 
     let position = &user_state.positions[pair_id];
     let oracle_price = oracle_prices[pair_id];
-    let offset = equity.checked_div(close_amount)?;
+    let offset = equity.checked_div(position.size.checked_abs()?)?;
 
     if position.size.is_positive() {
         oracle_price.checked_sub(offset)
@@ -1058,7 +1068,6 @@ mod tests {
         let bp = compute_bankruptcy_price(
             &user_state,
             &pair_btc(),
-            Quantity::new_int(1),
             &oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
@@ -1090,7 +1099,6 @@ mod tests {
         let bp = compute_bankruptcy_price(
             &user_state,
             &pair_btc(),
-            Quantity::new_int(1),
             &oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
@@ -1137,7 +1145,6 @@ mod tests {
         let bp = compute_bankruptcy_price(
             &user_state,
             &pair_btc(),
-            Quantity::new_int(1),
             &oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
@@ -1145,5 +1152,43 @@ mod tests {
         .unwrap();
 
         assert_eq!(bp, UsdPrice::new_int(43_000));
+    }
+
+    // Solvent account (equity > 0, below MM only because the position is
+    // large): the bankruptcy price uses the FULL position size, keeping it
+    // within ~mmr of oracle. This is the single-position case the old
+    // partial-`close_amount` denominator drove far from oracle.
+    //
+    // Long 10 BTC @ $50k, margin $41,600, oracle $48k, mmr 5%.
+    // equity = 41,600 + 10*(48,000 - 50,000) = 21,600 (> 0, < MM = 24,000).
+    // bp = 48,000 - 21,600/10 = 45,840, which is >= oracle*(1 - mmr) = 45,600.
+    #[test]
+    fn bankruptcy_price_solvent_bounded_by_full_size() {
+        let user_state = UserState {
+            margin: UsdValue::new_int(41_600),
+            positions: BTreeMap::from([(pair_btc(), Position {
+                size: Quantity::new_int(10),
+                entry_price: UsdPrice::new_int(50_000),
+                entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
+            })]),
+            ..Default::default()
+        };
+
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(48_000))]);
+
+        let bp = compute_bankruptcy_price(
+            &user_state,
+            &pair_btc(),
+            &oracle_prices,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        assert_eq!(bp, UsdPrice::new_int(45_840));
+        // Single-position bound: within mmr of oracle (oracle*(1 - 0.05)).
+        assert!(bp >= UsdPrice::new_int(45_600));
     }
 }

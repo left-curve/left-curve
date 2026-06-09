@@ -35,8 +35,10 @@ use {
 
 /// Liquidate an underwater trader by closing their positions.
 ///
-/// Unfilled positions are ADL'd against counter-parties at the bankruptcy price.
-/// Any remaining bad debt is absorbed by the insurance fund.
+/// Unfilled positions are ADL'd against counter-parties: at the oracle price
+/// for a solvent account (which keeps its residual equity), or at the
+/// bankruptcy price for an insolvent one (the counter-party absorbs the
+/// deficit). Any remaining bad debt is absorbed by the insurance fund.
 ///
 /// Mutates: `STATE`, `PAIR_STATES`, `USER_STATES` (liquidated user + makers +
 /// ADL counter-parties), `LONGS`, `SHORTS`.
@@ -511,28 +513,38 @@ fn execute_close_schedule(
 
         let taker_is_bid = close_size.is_positive();
 
-        // Compute the bankruptcy price BEFORE book fills, using the total
-        // scheduled close amount. This price serves two roles:
+        // Compute the bankruptcy price BEFORE book fills.
+        // `compute_bankruptcy_price` divides whole-account equity by the
+        // position's FULL size, so `bp` is the price at which closing the
+        // entire position would zero the account's equity.
         //
-        // 1. When equity > 0 (timely liquidation): bp sits between oracle and
-        //    the entry price, and is used as both the target_price for book
-        //    matching AND the ADL fill price. This prevents matching against
-        //    absurd resting orders and guarantees equity_after >= 0.
+        // How `bp` and the oracle price are used depends on solvency:
         //
-        // 2. When equity <= 0 (late liquidation): bp overshoots oracle (above
-        //    oracle for longs, below for shorts), which would block valid
-        //    oracle-adjacent book fills. In this case we fall back to the
-        //    oracle price as target_price and use bp only for ADL.
+        // - target_price (the book-match limit):
+        //     * Solvent (equity > 0): `bp`, a bounded floor within ~mmr of
+        //       oracle for a single-position account. Refuses fills against
+        //       resting orders priced far from oracle and keeps the book leg
+        //       from creating bad debt.
+        //     * Insolvent (equity <= 0): oracle. `bp` overshoots oracle here
+        //       (above oracle for longs, below for shorts) and would block
+        //       valid oracle-adjacent book fills.
         //
-        // Per-fill settlement inside `match_order` has already applied
-        // realized PnLs and fees (zero during liquidation) from earlier
-        // pairs to `user_state.margin`, so the "pre" PnL / fee deltas
-        // passed to equity helpers are zero — user_state is already up
-        // to date.
+        // - adl_fill_price (the ADL leg, on the unfilled remainder):
+        //     * Solvent: oracle. The close is partial, so zeroing the whole
+        //       account's equity would be confiscation; instead the account
+        //       keeps its residual equity and the counterparty closes at fair
+        //       value.
+        //     * Insolvent: `bp`. The close is the full position; the
+        //       counterparty absorbs the deficit and the account's equity is
+        //       zeroed by construction (no bad debt from the ADL leg).
+        //
+        // Per-fill settlement inside `match_order` has already applied realized
+        // PnLs and fees (zero during liquidation) from earlier pairs to
+        // `user_state.margin`, so the "pre" PnL / fee deltas passed to the
+        // equity helpers are zero — user_state is already up to date.
         let bankruptcy_price = compute_bankruptcy_price(
             user_state,
             pair_id,
-            close_size.checked_abs()?,
             oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
@@ -545,10 +557,12 @@ fn execute_close_schedule(
             UsdValue::ZERO,
         )?;
 
-        let target_price = if equity.is_positive() {
-            bankruptcy_price
+        // Solvent -> (book target = bp floor, ADL = oracle); insolvent ->
+        // (book target = oracle, ADL = bp). See the comment above.
+        let (target_price, adl_fill_price) = if equity.is_positive() {
+            (bankruptcy_price, oracle_price)
         } else {
-            oracle_price
+            (oracle_price, bankruptcy_price)
         };
 
         // `match_order` settles fees and PnLs on margins per-fill; destructure
@@ -633,7 +647,7 @@ fn execute_close_schedule(
         closed_notional.checked_add_assign(filled.checked_abs()?.checked_mul(oracle_price)?)?;
 
         // ADL: if there is unfilled remainder, ADL against counter-positions
-        // at the bankruptcy price.
+        // at `adl_fill_price` (oracle if solvent, bankruptcy price if insolvent).
         if unfilled.is_non_zero() {
             // Snapshot the user's margin before ADL to measure the realized
             // PnL delta for the `Liquidated` event (liq trading fees are
@@ -651,7 +665,7 @@ fn execute_close_schedule(
                 user_state,
                 maker_states,
                 unfilled,
-                bankruptcy_price,
+                adl_fill_price,
                 &mut all_volumes,
                 &mut all_index_updates,
                 events,
@@ -711,7 +725,7 @@ fn execute_close_schedule(
 
 /// ADL the unfilled remainder of a liquidation against counter-positions.
 ///
-/// Returns: `(total_adl_size, bankruptcy_price, total_user_funding)` —
+/// Returns: `(total_adl_size, adl_fill_price, total_user_funding)` —
 /// where `total_user_funding` is the funding settled on the liquidated
 /// user's position across all of this call's per-fill `settle_fill`s,
 /// summed into a single value for `Liquidated.adl_realized_funding`.
@@ -730,7 +744,7 @@ fn execute_adl(
     user_state: &mut UserState,
     maker_states: &mut BTreeMap<Addr, UserState>,
     unfilled: Quantity,
-    bankruptcy_price: UsdPrice,
+    adl_fill_price: UsdPrice,
     all_volumes: &mut BTreeMap<Addr, UsdValue>,
     index_updates: &mut Vec<PositionIndexUpdate>,
     events: &mut EventBuilder,
@@ -807,7 +821,7 @@ fn execute_adl(
             user_state,
             user,
             user_close,
-            bankruptcy_price,
+            adl_fill_price,
             Dimensionless::ZERO,
             None,
         )?;
@@ -837,7 +851,7 @@ fn execute_adl(
             &mut counter_state,
             counter_user,
             user_close.checked_neg()?,
-            bankruptcy_price,
+            adl_fill_price,
             Dimensionless::ZERO,
             None,
         )?;
@@ -893,7 +907,7 @@ fn execute_adl(
             user: counter_user,
             pair_id: pair_id.clone(),
             closing_size: user_close.checked_neg()?,
-            fill_price: bankruptcy_price,
+            fill_price: adl_fill_price,
             realized_pnl: counter_settlement.pnl.closing,
             realized_funding: Some(counter_settlement.pnl.funding),
         })?;
@@ -905,7 +919,7 @@ fn execute_adl(
         maker_states.insert(counter_user, counter_state);
     }
 
-    Ok((total_adl_size, bankruptcy_price, total_user_funding))
+    Ok((total_adl_size, adl_fill_price, total_user_funding))
 }
 
 /// Compute the liquidation fee, capped at the user's remaining margin.
@@ -937,7 +951,7 @@ mod tests {
         },
         dango_types::perps::{PairParam, PairState, Param, Position, State, UserState},
         grug_math::Uint64,
-        grug_types::{Addr, Coins, MockContext, Storage, Timestamp},
+        grug_types::{Addr, Coins, JsonDeExt, MockContext, Storage, Timestamp},
         std::collections::BTreeMap,
     };
 
@@ -975,6 +989,39 @@ mod tests {
             max_market_slippage: Dimensionless::new_permille(500),       // 50%
             ..Default::default()
         }
+    }
+
+    fn pair_eth() -> PairId {
+        "perp/ethusd".parse().unwrap()
+    }
+
+    fn eth_pair_param() -> PairParam {
+        PairParam {
+            initial_margin_ratio: Dimensionless::new_permille(100), // 10%
+            maintenance_margin_ratio: Dimensionless::new_permille(50), // 5%
+            max_abs_oi: Quantity::new_int(1_000_000),
+            max_limit_price_deviation: Dimensionless::new_permille(500), // 50%
+            max_market_slippage: Dimensionless::new_permille(500),       // 50%
+            ..Default::default()
+        }
+    }
+
+    /// Zero the liquidation fee so equity changes reflect only the fill price,
+    /// isolating the ADL-pricing behaviour under test from the separate fee path.
+    fn param_no_liq_fee() -> Param {
+        Param {
+            liquidation_fee_rate: Dimensionless::ZERO,
+            ..default_param()
+        }
+    }
+
+    /// Consume an `EventBuilder` and return its `Liquidated` events.
+    fn liquidated_events(events: EventBuilder) -> Vec<Liquidated> {
+        events
+            .into_iter()
+            .filter(|e| e.ty == "liquidated")
+            .map(|e| e.data.deserialize_json::<Liquidated>().unwrap())
+            .collect()
     }
 
     /// Set up the contract storage with pair params, pair states, and global params.
@@ -1289,6 +1336,452 @@ mod tests {
                     < Quantity::new_int(10),
             "counter-party position should be reduced"
         );
+    }
+
+    /// Solvent account (equity > 0, below MM only because the position is
+    /// large) liquidated into an empty book: the ADL remainder fills at the
+    /// ORACLE price and the account keeps its residual equity. This is the
+    /// class of bug behind the testnet/mainnet ADL incidents, where a solvent
+    /// partial close was ADL'd at a confiscatory bankruptcy price.
+    ///
+    /// USER long 10 BTC @ $50k, margin $41,600, oracle $48k, mmr 5%:
+    ///   equity = 41,600 + 10*(48,000-50,000) = 21,600 (0 < equity < MM=24,000)
+    ///   deficit = 24,000 - 21,600 = 2,400 -> close exactly 1 BTC (partial)
+    /// Empty book -> 1 BTC ADL'd at oracle $48,000 against COUNTER.
+    ///
+    /// Post-fix: adl_price = $48,000, USER margin 39,600, keeps 9 BTC, equity
+    /// preserved at $21,600. (Old code ADL'd at bp = 48,000 - 21,600/1 =
+    /// $26,400, confiscating equity to $0.)
+    #[test]
+    fn solvent_partial_close_adl_at_oracle() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = param_no_liq_fee();
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            short_oi: Quantity::new_int(10),
+            index_price: UsdPrice::new_int(48_000),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        save_position(&mut ctx.storage, USER, &pair_btc(), 10, 50_000);
+
+        // Profitable counter-party (short) with deep margin; empty book -> ADL.
+        save_position(&mut ctx.storage, COUNTER, &pair_btc(), -10, 55_000);
+        let mut counter_state = USER_STATES.load(&ctx.storage, COUNTER).unwrap();
+        counter_state.margin = UsdValue::new_int(100_000);
+        USER_STATES
+            .save(&mut ctx.storage, COUNTER, &counter_state)
+            .unwrap();
+
+        let pair_params = BTreeMap::from([(pair_btc(), btc_pair_param())]);
+        let pair_states = BTreeMap::from([(pair_btc(), pair_state)]);
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(48_000))]);
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(41_600);
+
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let mut events = EventBuilder::new();
+        let LiquidateOutcome {
+            user_state: final_user,
+            maker_states,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut events,
+        )
+        .expect("liquidation should succeed");
+
+        let liquidated = liquidated_events(events);
+        assert_eq!(liquidated.len(), 1);
+        // ADL at oracle, not a confiscatory bankruptcy price.
+        assert_eq!(liquidated[0].adl_price, Some(UsdPrice::new_int(48_000)));
+        assert_eq!(liquidated[0].adl_size, Quantity::new_int(-1));
+
+        // USER keeps 9 BTC; margin 41,600 + 1*(48,000-50,000) = 39,600;
+        // equity 39,600 + 9*(48,000-50,000) = 21,600 (preserved).
+        assert_eq!(final_user.positions[&pair_btc()].size, Quantity::new_int(9));
+        assert_eq!(final_user.margin, UsdValue::new_int(39_600));
+
+        // COUNTER reduced from -10 to -9 (closed 1 at oracle).
+        assert_eq!(
+            maker_states[&COUNTER].positions[&pair_btc()].size,
+            Quantity::new_int(-9)
+        );
+    }
+
+    /// Regression for the negative ADL price seen on testnet. A solvent account
+    /// large enough that the bankruptcy price computed with the *partial* close
+    /// amount would go negative is now ADL'd at the oracle price.
+    ///
+    /// USER long 100 BTC @ $50k, margin $437,600, oracle $48k:
+    ///   equity = 437,600 + 100*(48,000-50,000) = 237,600 (< MM = 240,000)
+    ///   deficit = 2,400 -> close 1 BTC.
+    /// Old code: bp = 48,000 - 237,600/1 = -$189,600 (negative!). Post-fix the
+    /// ADL fills at oracle $48,000.
+    #[test]
+    fn solvent_liquidation_never_prices_negative() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = param_no_liq_fee();
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(100),
+            short_oi: Quantity::new_int(100),
+            index_price: UsdPrice::new_int(48_000),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        save_position(&mut ctx.storage, USER, &pair_btc(), 100, 50_000);
+
+        save_position(&mut ctx.storage, COUNTER, &pair_btc(), -100, 55_000);
+        let mut counter_state = USER_STATES.load(&ctx.storage, COUNTER).unwrap();
+        counter_state.margin = UsdValue::new_int(10_000_000);
+        USER_STATES
+            .save(&mut ctx.storage, COUNTER, &counter_state)
+            .unwrap();
+
+        let pair_params = BTreeMap::from([(pair_btc(), btc_pair_param())]);
+        let pair_states = BTreeMap::from([(pair_btc(), pair_state)]);
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(48_000))]);
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(437_600);
+
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let mut events = EventBuilder::new();
+        _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut events,
+        )
+        .expect("liquidation should succeed");
+
+        let liquidated = liquidated_events(events);
+        assert_eq!(liquidated.len(), 1);
+        let adl_price = liquidated[0].adl_price.unwrap();
+        assert_eq!(adl_price, UsdPrice::new_int(48_000));
+        assert!(
+            adl_price > UsdPrice::ZERO,
+            "ADL price must never be negative for a solvent account"
+        );
+        assert_eq!(liquidated[0].adl_size, Quantity::new_int(-1));
+    }
+
+    /// A solvent liquidation refuses to fill against a resting order priced
+    /// below the bankruptcy-price floor and ADLs the remainder at oracle.
+    ///
+    /// USER long 10 BTC @ $50k, margin $41,600, oracle $48k (solvent, close 1
+    /// BTC; floor bp_full = 48,000 - 21,600/10 = $45,840). MAKER rests a bid at
+    /// $30,000 — a legal order (37.5% below oracle, inside the pair's 50% band)
+    /// but below the liquidation floor. The bid is skipped; the 1 BTC ADLs at
+    /// oracle. (Old code's floor was bp = $26,400, so the $30k bid filled,
+    /// shaving equity instead of preserving it.)
+    #[test]
+    fn solvent_skips_below_floor_book_order_and_adls_at_oracle() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = param_no_liq_fee();
+        let pair_state = PairState {
+            long_oi: Quantity::new_int(10),
+            short_oi: Quantity::new_int(10),
+            index_price: UsdPrice::new_int(48_000),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[(
+            pair_btc(),
+            btc_pair_param(),
+            pair_state.clone(),
+        )]);
+
+        save_position(&mut ctx.storage, USER, &pair_btc(), 10, 50_000);
+
+        // Resting bid far below oracle (legal: within the 50% band) but below
+        // the solvent liquidation floor of $45,840.
+        let maker_state = UserState {
+            margin: UsdValue::new_int(100_000),
+            open_order_count: 1,
+            ..Default::default()
+        };
+        USER_STATES
+            .save(&mut ctx.storage, MAKER, &maker_state)
+            .unwrap();
+        save_bid(&mut ctx.storage, &pair_btc(), 1, MAKER, 1, 30_000);
+
+        // Counter-party for the ADL leg.
+        save_position(&mut ctx.storage, COUNTER, &pair_btc(), -10, 55_000);
+        let mut counter_state = USER_STATES.load(&ctx.storage, COUNTER).unwrap();
+        counter_state.margin = UsdValue::new_int(100_000);
+        USER_STATES
+            .save(&mut ctx.storage, COUNTER, &counter_state)
+            .unwrap();
+
+        let pair_params = BTreeMap::from([(pair_btc(), btc_pair_param())]);
+        let pair_states = BTreeMap::from([(pair_btc(), pair_state)]);
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(48_000))]);
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(41_600);
+
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let mut events = EventBuilder::new();
+        let LiquidateOutcome {
+            user_state: final_user,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut events,
+        )
+        .expect("liquidation should succeed");
+
+        let liquidated = liquidated_events(events);
+        assert_eq!(liquidated.len(), 1);
+        // The whole close went to ADL (book bid skipped) at the oracle price.
+        assert_eq!(liquidated[0].adl_size, Quantity::new_int(-1));
+        assert_eq!(liquidated[0].adl_price, Some(UsdPrice::new_int(48_000)));
+        // Equity preserved: margin 39,600, keeps 9 BTC.
+        assert_eq!(final_user.margin, UsdValue::new_int(39_600));
+        assert_eq!(final_user.positions[&pair_btc()].size, Quantity::new_int(9));
+    }
+
+    /// Multi-position solvent account: the would-be book floor (bankruptcy
+    /// price) for the closed pair sits far from oracle because whole-account
+    /// equity is divided by one pair's size, yet the ADL still fills at oracle.
+    ///
+    /// USER BTC long 1 @ $50k + ETH long 10 @ $3k; oracle BTC $48k, ETH $2,800,
+    /// margin $7,600:
+    ///   equity = 7,600 + 1*(48,000-50,000) + 10*(2,800-3,000) = 3,600 (solvent)
+    ///   MM_BTC = 2,400 > MM_ETH = 1,400; deficit = 200 -> BTC partially closed,
+    ///   ETH untouched.
+    /// bp_full(BTC) = 48,000 - 3,600/1 = $44,400 (7.5% below oracle) — but the
+    /// ADL fills at oracle $48,000 because the account is solvent.
+    #[test]
+    fn multi_position_solvent_adl_at_oracle() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = param_no_liq_fee();
+        let btc_state = PairState {
+            long_oi: Quantity::new_int(1),
+            short_oi: Quantity::new_int(1),
+            index_price: UsdPrice::new_int(48_000),
+            ..Default::default()
+        };
+        let eth_state = PairState {
+            long_oi: Quantity::new_int(10),
+            index_price: UsdPrice::new_int(2_800),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[
+            (pair_btc(), btc_pair_param(), btc_state.clone()),
+            (pair_eth(), eth_pair_param(), eth_state.clone()),
+        ]);
+
+        save_position(&mut ctx.storage, USER, &pair_btc(), 1, 50_000);
+        save_position(&mut ctx.storage, USER, &pair_eth(), 10, 3_000);
+
+        // BTC counter-party for the ADL leg.
+        save_position(&mut ctx.storage, COUNTER, &pair_btc(), -1, 55_000);
+        let mut counter_state = USER_STATES.load(&ctx.storage, COUNTER).unwrap();
+        counter_state.margin = UsdValue::new_int(100_000);
+        USER_STATES
+            .save(&mut ctx.storage, COUNTER, &counter_state)
+            .unwrap();
+
+        let pair_params = BTreeMap::from([
+            (pair_btc(), btc_pair_param()),
+            (pair_eth(), eth_pair_param()),
+        ]);
+        let pair_states = BTreeMap::from([(pair_btc(), btc_state), (pair_eth(), eth_state)]);
+        let oracle_prices = BTreeMap::from([
+            (pair_btc(), UsdPrice::new_int(48_000)),
+            (pair_eth(), UsdPrice::new_int(2_800)),
+        ]);
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(7_600);
+
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let mut events = EventBuilder::new();
+        let LiquidateOutcome {
+            user_state: final_user,
+            ..
+        } = _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut events,
+        )
+        .expect("liquidation should succeed");
+
+        // Only BTC is in the close schedule (the deficit is cured by it).
+        let liquidated = liquidated_events(events);
+        assert_eq!(liquidated.len(), 1);
+        assert_eq!(liquidated[0].pair_id, pair_btc());
+        // ADL at oracle ($48,000), NOT the far-from-oracle bp_full ($44,400).
+        assert_eq!(liquidated[0].adl_price, Some(UsdPrice::new_int(48_000)));
+
+        // ETH untouched; BTC reduced below its original size of 1.
+        assert_eq!(
+            final_user.positions[&pair_eth()].size,
+            Quantity::new_int(10)
+        );
+        let btc_size = final_user.positions[&pair_btc()].size;
+        assert!(btc_size.is_positive() && btc_size < Quantity::new_int(1));
+    }
+
+    /// Multi-position insolvent account: the bankruptcy price is recomputed per
+    /// pair against the running (post-fill) equity. The largest-MM pair absorbs
+    /// the whole-account deficit at its bankruptcy price; the next pair, now at
+    /// ~zero equity, settles at oracle. Insolvent accounts are unchanged by the
+    /// solvent-pricing fix — this locks that.
+    ///
+    /// USER BTC long 10 @ $50k + ETH long 100 @ $3k; oracle BTC $40k, ETH $2.5k,
+    /// margin $100k:
+    ///   equity = 100,000 - 100,000 - 50,000 = -50,000 (insolvent) -> full close.
+    ///   BTC first (MM 20,000 > 12,500): bp = 40,000 - (-50,000)/10 = $45,000,
+    ///     after which running equity is ~0.
+    ///   ETH next: bp = 2,500 - 0/100 = $2,500 (= oracle).
+    #[test]
+    fn multi_position_insolvent_recompute() {
+        let mut ctx = MockContext::new()
+            .with_contract(CONTRACT)
+            .with_funds(Coins::default());
+
+        let param = param_no_liq_fee();
+        let btc_state = PairState {
+            long_oi: Quantity::new_int(10),
+            short_oi: Quantity::new_int(10),
+            index_price: UsdPrice::new_int(40_000),
+            ..Default::default()
+        };
+        let eth_state = PairState {
+            long_oi: Quantity::new_int(100),
+            short_oi: Quantity::new_int(100),
+            index_price: UsdPrice::new_int(2_500),
+            ..Default::default()
+        };
+
+        setup_storage(&mut ctx.storage, &param, &[
+            (pair_btc(), btc_pair_param(), btc_state.clone()),
+            (pair_eth(), eth_pair_param(), eth_state.clone()),
+        ]);
+
+        save_position(&mut ctx.storage, USER, &pair_btc(), 10, 50_000);
+        save_position(&mut ctx.storage, USER, &pair_eth(), 100, 3_000);
+
+        // One counter-party shorts both pairs (deeply profitable; big margin).
+        save_position(&mut ctx.storage, COUNTER, &pair_btc(), -10, 55_000);
+        save_position(&mut ctx.storage, COUNTER, &pair_eth(), -100, 3_500);
+        let mut counter_state = USER_STATES.load(&ctx.storage, COUNTER).unwrap();
+        counter_state.margin = UsdValue::new_int(1_000_000);
+        USER_STATES
+            .save(&mut ctx.storage, COUNTER, &counter_state)
+            .unwrap();
+
+        let pair_params = BTreeMap::from([
+            (pair_btc(), btc_pair_param()),
+            (pair_eth(), eth_pair_param()),
+        ]);
+        let pair_states = BTreeMap::from([(pair_btc(), btc_state), (pair_eth(), eth_state)]);
+        let oracle_prices = BTreeMap::from([
+            (pair_btc(), UsdPrice::new_int(40_000)),
+            (pair_eth(), UsdPrice::new_int(2_500)),
+        ]);
+
+        let mut user_state = USER_STATES.load(&ctx.storage, USER).unwrap();
+        user_state.margin = UsdValue::new_int(100_000);
+
+        let state = STATE.load(&ctx.storage).unwrap();
+
+        let mut events = EventBuilder::new();
+        _liquidate(
+            &ctx.storage,
+            USER,
+            CONTRACT,
+            Timestamp::ZERO,
+            &param,
+            &state,
+            &pair_params,
+            &pair_states,
+            &user_state,
+            &oracle_prices,
+            &mut events,
+        )
+        .expect("liquidation should succeed");
+
+        let liquidated = liquidated_events(events);
+        let btc = liquidated
+            .iter()
+            .find(|l| l.pair_id == pair_btc())
+            .expect("BTC Liquidated event");
+        let eth = liquidated
+            .iter()
+            .find(|l| l.pair_id == pair_eth())
+            .expect("ETH Liquidated event");
+
+        // Largest-MM pair absorbs the deficit at its bankruptcy price ...
+        assert_eq!(btc.adl_price, Some(UsdPrice::new_int(45_000)));
+        // ... and the next pair, now at ~zero equity, settles at oracle.
+        assert_eq!(eth.adl_price, Some(UsdPrice::new_int(2_500)));
     }
 
     #[test]
