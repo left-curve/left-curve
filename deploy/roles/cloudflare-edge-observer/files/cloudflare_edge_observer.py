@@ -16,6 +16,52 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 GRAPHQL_URL = "https://api.cloudflare.com/client/v4/graphql"
 API_BASE_URL = "https://api.cloudflare.com/client/v4"
 UTC = dt.timezone.utc
+HTTP_EVENTS_FIELDS = """
+  count
+  dimensions {
+    datetime
+    rayName
+    clientIP
+    clientRequestHTTPHost
+    clientRequestHTTPMethodName
+    clientRequestPath
+    coloCode
+    edgeResponseStatus
+    originResponseStatus
+    originIP
+    cacheStatus
+  }
+  avg {
+    edgeTimeToFirstByteMs
+    originResponseDurationMs
+  }
+"""
+LOAD_BALANCER_FIELDS = """
+  datetime
+  coloCode
+  lbName
+  selectedPoolName
+  selectedPoolId
+  selectedOriginName
+  selectedOriginIndex
+  selectedPoolHealthy
+  selectedPoolHealthChecksEnabled
+  sessionAffinity
+  sessionAffinityStatus
+  steeringPolicy
+  origins {
+    name
+    fqdn
+    ipv4
+    ipv6
+  }
+  pools {
+    poolName
+    healthy
+    healthCheckEnabled
+    avgRttMs
+  }
+"""
 
 
 class CloudflareError(RuntimeError):
@@ -47,31 +93,6 @@ class Metrics:
                     label_text = "{" + ",".join(parts) + "}"
                 lines.append(f"{name}{label_text} {value}")
             return "\n".join(lines) + "\n"
-
-
-class MetricsHandler(BaseHTTPRequestHandler):
-    metrics = None
-
-    def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"ok\n")
-            return
-        if self.path != "/metrics":
-            self.send_response(404)
-            self.end_headers()
-            return
-
-        payload = self.metrics.render().encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain; version=0.0.4")
-        self.send_header("Content-Length", str(len(payload)))
-        self.end_headers()
-        self.wfile.write(payload)
-
-    def log_message(self, _format, *_args):
-        return
 
 
 def escape_label(value):
@@ -108,6 +129,15 @@ def gql_string(value):
     return json.dumps(str(value))
 
 
+def normalize_ray_id(ray_name, colo):
+    if not ray_name:
+        return ""
+    # GraphQL rayName omits the colo suffix; browser headers include it.
+    if "-" in ray_name or not colo or colo == "unknown":
+        return ray_name
+    return f"{ray_name}-{colo}"
+
+
 class Observer:
     def __init__(self, config, token, metrics):
         self.config = config
@@ -121,13 +151,28 @@ class Observer:
         try:
             with open(self.state_path, "r", encoding="utf-8") as handle:
                 state = json.load(handle)
-                if isinstance(state, dict):
-                    return state
+                if not isinstance(state, dict):
+                    raise ValueError("state root is not a JSON object")
+                if not isinstance(state.get("seen"), dict):
+                    state["seen"] = {}
+                state.setdefault("zone_id", "")
+                return state
         except FileNotFoundError:
             pass
         except Exception as exc:
-            log("warning", "failed to read state", error=str(exc), path=self.state_path)
+            log("error", "failed to read state; quarantining", error=str(exc), path=self.state_path)
+            self.quarantine_state()
         return {"seen": {}, "zone_id": ""}
+
+    def quarantine_state(self):
+        corrupt_path = f"{self.state_path}.corrupt.{int(time.time())}"
+        try:
+            os.replace(self.state_path, corrupt_path)
+            log("warning", "quarantined unreadable state", path=self.state_path, corrupt_path=corrupt_path)
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            log("warning", "failed to quarantine unreadable state", error=str(exc), path=self.state_path)
 
     def save_state(self):
         directory = os.path.dirname(self.state_path)
@@ -139,7 +184,6 @@ class Observer:
         os.replace(tmp_path, self.state_path)
 
     def run(self):
-        self.metrics.set("cloudflare_edge_observer_up", 1)
         self.metrics.set("cloudflare_edge_observer_configured_targets", len(self.config.get("targets", [])))
         while not self.stop_event.is_set():
             started = time.time()
@@ -197,7 +241,6 @@ class Observer:
                     "colo": event.get("colo", "unknown"),
                 }
                 self.metrics.inc("cloudflare_edge_observer_events_total", event_labels)
-            self.save_state()
             log("info", "pushed cloudflare events", count=len(all_events))
 
         self.prune_seen(lookback * 4)
@@ -220,61 +263,7 @@ class Observer:
         return zone_id
 
     def query_http_events(self, zone_id, target, start, end):
-        try:
-            return self.query_http_events_detailed(zone_id, target, start, end)
-        except CloudflareError as exc:
-            log("warning", "detailed http query failed; retrying minimal query", target=target.get("host"), error=str(exc))
-            return self.query_http_events_minimal(zone_id, target, start, end)
-
-    def query_http_events_detailed(self, zone_id, target, start, end):
-        query = self.http_query(
-            zone_id,
-            target,
-            start,
-            end,
-            """
-              count
-              dimensions {
-                datetime
-                rayName
-                clientIP
-                clientRequestHTTPHost
-                clientRequestHTTPMethodName
-                clientRequestPath
-                coloCode
-                edgeResponseStatus
-                originResponseStatus
-                originIP
-                cacheStatus
-              }
-              avg {
-                edgeTimeToFirstByteMs
-                originResponseDurationMs
-              }
-            """,
-        )
-        return self.extract_zone_rows(self.cloudflare_graphql(query), "httpRequestsAdaptiveGroups")
-
-    def query_http_events_minimal(self, zone_id, target, start, end):
-        query = self.http_query(
-            zone_id,
-            target,
-            start,
-            end,
-            """
-              count
-              dimensions {
-                datetime
-                rayName
-                clientRequestHTTPHost
-                clientRequestHTTPMethodName
-                clientRequestPath
-                coloCode
-                edgeResponseStatus
-                originResponseStatus
-              }
-            """,
-        )
+        query = self.http_query(zone_id, target, start, end, HTTP_EVENTS_FIELDS)
         return self.extract_zone_rows(self.cloudflare_graphql(query), "httpRequestsAdaptiveGroups")
 
     def http_query(self, zone_id, target, start, end, fields):
@@ -310,7 +299,7 @@ class Observer:
         host = dimensions.get("clientRequestHTTPHost") or target.get("host")
         colo = dimensions.get("coloCode") or "unknown"
         ray_name = dimensions.get("rayName") or ""
-        ray_id = f"{ray_name}-{colo}" if ray_name and "-" not in ray_name and colo != "unknown" else ray_name
+        ray_id = normalize_ray_id(ray_name, colo)
 
         if not event_time or not edge_status:
             return None
@@ -343,75 +332,20 @@ class Observer:
 
     def correlate_load_balancer(self, zone_id, target, event):
         try:
-            return self.query_load_balancer_detailed(zone_id, target, event)
+            rows = self.query_load_balancer(zone_id, target, event)
         except CloudflareError as exc:
-            log("warning", "detailed lb query failed; retrying minimal query", ray_id=event.get("ray_id"), error=str(exc))
-            try:
-                return self.query_load_balancer_minimal(zone_id, target, event)
-            except CloudflareError as fallback_exc:
-                return {"lb_correlation": "error", "lb_correlation_error": str(fallback_exc)}
-
-    def query_load_balancer_detailed(self, zone_id, target, event):
-        rows = self.query_load_balancer(
-            zone_id,
-            target,
-            event,
-            """
-              datetime
-              coloCode
-              lbName
-              selectedPoolName
-              selectedPoolId
-              selectedOriginName
-              selectedOriginIndex
-              selectedPoolHealthy
-              selectedPoolHealthChecksEnabled
-              sessionAffinity
-              sessionAffinityStatus
-              steeringPolicy
-              origins {
-                name
-                fqdn
-                ipv4
-                ipv6
-              }
-              pools {
-                poolName
-                healthy
-                healthCheckEnabled
-                avgRttMs
-              }
-            """,
-        )
+            return {"lb_correlation": "error", "lb_correlation_error": str(exc)}
         return self.lb_event_fields(event, rows)
 
-    def query_load_balancer_minimal(self, zone_id, target, event):
-        rows = self.query_load_balancer(
-            zone_id,
-            target,
-            event,
-            """
-              datetime
-              coloCode
-              lbName
-              selectedPoolName
-              pools {
-                poolName
-                healthy
-                healthCheckEnabled
-                avgRttMs
-              }
-            """,
-        )
-        return self.lb_event_fields(event, rows)
-
-    def query_load_balancer(self, zone_id, target, event, fields):
+    def query_load_balancer(self, zone_id, target, event):
         event_time = parse_time(event.get("datetime"))
         if not event_time:
             return []
         start = event_time - dt.timedelta(seconds=5)
         end = event_time + dt.timedelta(seconds=5)
-        lb_name = target.get("lb_name") or target.get("host")
+        lb_name = target.get("lb_name")
+        if not lb_name:
+            raise CloudflareError(f"load-balanced target is missing lb_name: {target.get('host')}")
         filter_parts = [
             f"datetime_geq: {gql_string(format_time(start))}",
             f"datetime_leq: {gql_string(format_time(end))}",
@@ -429,7 +363,7 @@ class Observer:
                 filter: {{ {" ".join(filter_parts)} }}
                 orderBy: [datetime_DESC]
               ) {{
-                {fields}
+                {LOAD_BALANCER_FIELDS}
               }}
             }}
           }}
@@ -451,6 +385,7 @@ class Observer:
         selected_origin = row.get("selectedOriginName")
         selected_index = row.get("selectedOriginIndex")
         origins = row.get("origins") or []
+        # Some LB analytics rows expose only selectedOriginIndex plus origins[].
         if selected_origin is None and isinstance(selected_index, int) and 0 <= selected_index < len(origins):
             selected = origins[selected_index]
             selected_origin = selected.get("name") or selected.get("originName")
@@ -561,20 +496,40 @@ class Observer:
         )
 
     def is_seen(self, event):
-        return self.seen_key(event) in self.state.setdefault("seen", {})
+        return self.seen_key(event) in self.state["seen"]
 
     def mark_seen(self, event, seen_at):
-        self.state.setdefault("seen", {})[self.seen_key(event)] = seen_at
+        self.state["seen"][self.seen_key(event)] = seen_at
 
     def prune_seen(self, max_age_seconds):
         cutoff = int(time.time()) - max_age_seconds
-        seen = self.state.setdefault("seen", {})
-        self.state["seen"] = {key: value for key, value in seen.items() if value >= cutoff}
+        self.state["seen"] = {key: value for key, value in self.state["seen"].items() if value >= cutoff}
 
 
 def start_metrics_server(metrics, port):
-    MetricsHandler.metrics = metrics
-    server = ThreadingHTTPServer(("0.0.0.0", port), MetricsHandler)
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health":
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok\n")
+                return
+            if self.path != "/metrics":
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            payload = metrics.render().encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, _format, *_args):
+            return
+
+    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server
