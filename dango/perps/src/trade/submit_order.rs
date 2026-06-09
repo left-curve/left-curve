@@ -12,6 +12,7 @@ use {
         query::query_volume,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
+        trade::resize_reduce_only_orders,
     },
     anyhow::{bail, ensure},
     dango_order_book::{
@@ -26,8 +27,8 @@ use {
     dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
     grug_math::{MathResult, Number, NumberConst},
     grug_types::{
-        Addr, EventBuilder, MutableCtx, Order as IterationOrder, QuerierWrapper, Response, Storage,
-        Timestamp,
+        Addr, EventBuilder, MutableCtx, Order as IterationOrder, QuerierWrapper, Response,
+        StdResult, Storage, Timestamp,
     },
     std::collections::{BTreeMap, btree_map::Entry},
 };
@@ -215,6 +216,15 @@ pub(crate) fn _submit_order(
         }
     }
 
+    // Capture the just-placed reduce-only order's id before `order_to_store` is
+    // consumed, so the dynamic re-size below can tell whether the sum-clamp
+    // evicted it (in which case the whole placement is rejected).
+    let new_reduce_only_order_id = if reduce_only {
+        order_to_store.as_ref().map(|(_, order_id, _)| *order_id)
+    } else {
+        None
+    };
+
     if let Some((stored_price, order_id, order)) = order_to_store {
         let is_bid = size.is_positive();
         let limit_price = may_invert_price(stored_price, is_bid);
@@ -238,6 +248,42 @@ pub(crate) fn _submit_order(
             size: order.size,
             client_order_id: order.client_order_id,
         })?;
+    }
+
+    // ---------- Step 9. Dynamic re-size of reduce-only orders ----------------
+    //
+    // Every fill in this transaction may have moved a user's position, so each
+    // affected user's resting reduce-only orders are re-clamped so their sizes
+    // sum to no more than the new position (cancelling those left on the wrong
+    // side). The affected users are exactly the keys of `maker_states`:
+    // settlement inserts the taker (see `maker_states.insert(sender, ..)`
+    // above) and every filled maker into it to persist their state.
+    //
+    // We iterate `maker_states.keys()` rather than the `index_updates` the
+    // matching loop also produced. `compute_position_diff` returns `None`
+    // whenever `(entry_price, is_positive())` is unchanged, and a pure reduction
+    // changes neither — so a maker shrinking long 10 -> 3 yields no index entry,
+    // exactly the case re-sizing exists for. Over-scanning `maker_states` is
+    // complete and safe: re-sizing a user whose position did not change is a
+    // no-op because the invariant already held for them. Do NOT replace this
+    // with the index diff.
+
+    // Re-size the sender first so its just-placed order can be rejected before
+    // any other user's state is touched. A reduce-only placement whose
+    // sum-clamp leaves the new order no budget evicts it here, which we surface
+    // as a rejection (the bail rolls back the whole transaction).
+    let removed = resize_reduce_only_orders(storage, sender, &pair_id, events)?;
+    if let Some(new_order_id) = new_reduce_only_order_id
+        && removed.contains(&new_order_id)
+    {
+        bail!("reduce-only order would exceed position size");
+    }
+
+    for maker in maker_states.keys() {
+        if *maker == sender {
+            continue;
+        }
+        resize_reduce_only_orders(storage, *maker, &pair_id, events)?;
     }
 
     #[cfg(feature = "tracing")]
@@ -743,6 +789,23 @@ pub fn match_order(
     // PnL settlement, OI bookkeeping, OrderFilled / OrderRemoved
     // events) in the same chronological order, matching the legacy
     // interleaved engine's event sequence byte-for-byte.
+    //
+    // Reduce-only maker orders must never flip the maker's position. The
+    // walker re-clamps each reduce-only maker fill against the maker's current
+    // position; give it a lookup that mirrors the maker-state source used by
+    // the settlement loop below (`maker_states` first, then `USER_STATES`,
+    // default zero) so the walk's simulation matches what `settle_fill` sees.
+    let maker_position = |addr: Addr| -> StdResult<Quantity> {
+        if let Some(s) = maker_states.get(&addr) {
+            Ok(s.positions.get(pair_id).map(|p| p.size).unwrap_or_default())
+        } else {
+            Ok(USER_STATES
+                .may_load(storage, addr)?
+                .map(|s| s.positions.get(pair_id).map(|p| p.size).unwrap_or_default())
+                .unwrap_or_default())
+        }
+    };
+
     let WalkBookOutcome {
         steps,
         remaining_size,
@@ -756,6 +819,7 @@ pub fn match_order(
         oracle_price,
         max_limit_price_deviation,
         remaining_size,
+        maker_position,
     )?;
 
     for step in steps {

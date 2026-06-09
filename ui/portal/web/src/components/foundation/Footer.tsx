@@ -6,7 +6,7 @@ import {
   Marquee,
   twMerge,
 } from "@left-curve/applets-kit";
-import { allPerpsPairStatsStore, useAllPerpsPairStats } from "@left-curve/store";
+import { useAllPerpsPairStats } from "@left-curve/store";
 import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
@@ -18,8 +18,7 @@ function Footer() {
   const router = useRouter();
   const isTradeRoute = router.state.location.pathname.includes("trade");
 
-  useAllPerpsPairStats();
-  const perpsPairStats = allPerpsPairStatsStore((s) => s.perpsPairStats);
+  const perpsPairStats = useAllPerpsPairStats((s) => s.perpsPairStats);
 
   return (
     <footer

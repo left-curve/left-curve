@@ -21,10 +21,11 @@
 use {
     crate::{
         ASKS, BIDS, ClientOrderId, Dimensionless, LimitOrder, OrderId, PairId, Quantity,
-        ReasonForOrderRemoval, TriggerDirection, UsdPrice, check_price_band,
+        ReasonForOrderRemoval, TriggerDirection, UsdPrice, check_price_band, decompose_fill,
         is_price_constraint_violated, may_invert_price,
     },
     grug_types::{Addr, Order as IterationOrder, StdResult, Storage},
+    std::collections::BTreeMap,
 };
 
 /// One match produced by [`walk_book`] — pure data, no perp settlement
@@ -182,6 +183,24 @@ pub struct WalkBookOutcome {
 /// - `remaining_size` — signed taker-perspective size to fill. The
 ///   walk decrements this in place and returns the unfilled remainder
 ///   in `outcome.remaining_size`.
+/// - `maker_position` — returns a maker's *current* signed position size
+///   in this pair (positive long, negative short, zero if none). Used to
+///   re-clamp reduce-only maker orders so they can only move the maker's
+///   position toward zero, never grow or flip it. Must report positions
+///   from the same source the caller settles against, so the walk's
+///   simulated positions match what settlement actually applies.
+///
+/// # Reduce-only makers
+///
+/// A reduce-only maker order may only reduce the maker's position. Its size
+/// was clamped to the position when it was placed, but the position may have
+/// shrunk since (other fills, liquidation, ADL), and one taker order can
+/// sweep several of the same maker's orders. So each reduce-only maker fill
+/// is re-clamped here against the maker's *current* position (the pre-walk
+/// position from `maker_position` plus the fills already applied earlier in
+/// this same walk). A reduce-only order with nothing left to close is
+/// skipped and left resting — it must never fill, as that would open the
+/// opposite side.
 ///
 /// # Termination
 ///
@@ -202,6 +221,7 @@ pub fn walk_book(
     oracle_price: UsdPrice,
     max_limit_price_deviation: Dimensionless,
     mut remaining_size: Quantity,
+    maker_position: impl Fn(Addr) -> StdResult<Quantity>,
 ) -> StdResult<WalkBookOutcome> {
     let maker_book = if taker_is_bid {
         ASKS
@@ -215,6 +235,14 @@ pub fn walk_book(
             .range(storage, None, None, IterationOrder::Ascending);
 
     let mut steps: Vec<WalkStep> = Vec::new();
+
+    // Cumulative maker-side fill applied so far in this walk, per maker (the
+    // maker fills the opposite of the taker: -taker_fill_size). Used by the
+    // reduce-only clamp below: a maker's current position is the pre-walk
+    // position from `maker_position` plus this delta. Tracked for *every*
+    // filled maker so a later reduce-only order of the same maker reflects
+    // earlier fills, including non-reduce-only ones.
+    let mut maker_fill_deltas: BTreeMap<Addr, Quantity> = BTreeMap::new();
 
     for record in maker_orders {
         let ((stored_price, maker_order_id), maker_order) = record?;
@@ -287,8 +315,37 @@ pub fn walk_book(
         // The maker's signed size is the negative of what the taker needs:
         // a maker bid has positive size and matches a taker ask (negative
         // remaining_size), and vice versa.
+        //
+        // Reduce-only makers are additionally clamped to their current
+        // position (see the "Reduce-only makers" doc section): only the
+        // portion of the order that closes the maker's position is fillable,
+        // computed against the pre-walk position plus the fills already
+        // applied to this maker earlier in the walk.
 
-        let opposite = maker_order.size.checked_neg()?;
+        let maker_user = maker_order.user;
+
+        let fillable_maker_size = if maker_order.reduce_only {
+            let delta = maker_fill_deltas
+                .get(&maker_user)
+                .copied()
+                .unwrap_or(Quantity::ZERO);
+            let current_position = maker_position(maker_user)?.checked_add(delta)?;
+
+            let (closing, _opening) = decompose_fill(maker_order.size, current_position);
+            closing
+        } else {
+            maker_order.size
+        };
+
+        // A reduce-only order with nothing left to close is inert: skip it,
+        // leaving it resting (cleanup of such dead/oversized orders is done
+        // separately via dynamic re-sizing on position changes). It must not
+        // fill — that would open a new position.
+        if fillable_maker_size.is_zero() {
+            continue;
+        }
+
+        let opposite = fillable_maker_size.checked_neg()?;
 
         let taker_fill_size = if taker_is_bid {
             remaining_size.min(opposite)
@@ -307,7 +364,7 @@ pub fn walk_book(
 
         steps.push(WalkStep::Fill(RawFill {
             maker_order_id,
-            maker_addr: maker_order.user,
+            maker_addr: maker_user,
             maker_client_order_id: maker_order.client_order_id,
             maker_pre_fill_size: pre_fill_abs_size,
             maker_post_fill_size: post_fill_abs,
@@ -316,6 +373,14 @@ pub fn walk_book(
             fill_size: taker_fill_size,
             maker_order,
         }));
+
+        // Record this fill against the maker's running position so a later
+        // reduce-only order of the same maker clamps against the reduced
+        // size. The maker fills the opposite of the taker: -taker_fill_size.
+        maker_fill_deltas
+            .entry(maker_user)
+            .or_insert(Quantity::ZERO)
+            .checked_add_assign(taker_fill_size.checked_neg()?)?;
 
         remaining_size.checked_sub_assign(taker_fill_size)?;
     }

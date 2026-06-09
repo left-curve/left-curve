@@ -46,7 +46,7 @@ presentation.
 | ------------- | ------------------------------------------------------------------------- |
 | `equity`      | Total user equity (from the extended perps user-state).                   |
 | `reserved`    | USD margin locked by the user's open GTC limit orders (`userState.reservedMargin`, summed across both sides). Clamped ≥ 0. |
-| `otherIM`     | `Σ(j ≠ currentPair) abs(pos_j) · price_j · IMR_pair_j` — IM held by positions in pairs other than the one being traded, at each pair's fixed on-chain `initialMarginRatio`. Sourced from `userState.positions` × `allPerpsPairStatsStore` (with oracle price fallback) × `appConfig.perpsPairs[pid].initialMarginRatio`. Clamped ≥ 0. |
+| `otherIM`     | `Σ(j ≠ currentPair) abs(pos_j) · price_j · IMR_pair_j` — IM held by positions in pairs other than the one being traded, at each pair's fixed on-chain `initialMarginRatio`. Sourced from live perps user-state positions × all-pair stats (with oracle price fallback) × `appConfig.perpsPairs[pid].initialMarginRatio`. Clamped ≥ 0. |
 | `pos`         | Signed base-unit size of the position in the traded pair.                 |
 | `mark`        | Mark price (pair stats first, oracle fallback).                           |
 | `L`           | User-selected leverage in the UI (not the pair's max).                    |

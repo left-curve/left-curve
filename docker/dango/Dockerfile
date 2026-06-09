@@ -12,6 +12,7 @@ ENV GIT_COMMIT=$GIT_COMMIT
 # ENV USERNAME=${USERNAME}
 
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y libssl-dev pkg-config libsqlite3-0 ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
 

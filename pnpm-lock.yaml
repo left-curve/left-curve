@@ -558,6 +558,9 @@ importers:
       '@left-curve/applets-kit':
         specifier: workspace:^
         version: link:../../applets/kit
+      '@left-curve/crypto':
+        specifier: workspace:^
+        version: link:../../../sdk/typescript/crypto
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../../sdk/typescript/encoding

@@ -22,7 +22,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
-  secp256k1: "Wallet",
+  secp256k1: "Secp256k1 Public Key",
   ethereum: "Ethereum Wallet",
 };
 

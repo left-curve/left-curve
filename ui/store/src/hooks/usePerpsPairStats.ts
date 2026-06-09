@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { create } from "zustand";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
+import { createLiveResource } from "../live/createLiveResource.js";
+import { useLiveResource } from "../live/useLiveResource.js";
 
 import { Decimal } from "@left-curve/utils";
 
 import type { PerpsPairStats } from "@left-curve/types";
+import type { Config } from "../types/store.js";
+import type { LiveResourceSnapshot } from "../live/types.js";
 
 export type NormalizedPerpsPairStats = {
   pairId: string;
@@ -25,23 +27,24 @@ export type UseAllPerpsPairStatsParameters = {
   enabled?: boolean;
 };
 
-type AllPerpsPairStatsStoreState = {
+export type AllPerpsPairStatsSnapshot = LiveResourceSnapshot & {
   perpsPairStats: NormalizedPerpsPairStats[];
   perpsPairStatsByPairId: Record<string, NormalizedPerpsPairStats>;
-  setPerpsPairStats: (stats: NormalizedPerpsPairStats[]) => void;
 };
 
-export const allPerpsPairStatsStore = create<AllPerpsPairStatsStoreState>((set) => ({
+const ALL_PERPS_PAIR_STATS_HTTP_INTERVAL = 5_000;
+
+type AllPerpsPairStatsResourceParams = {
+  chainId: Config["chain"]["id"];
+  subscriptions: Config["subscriptions"];
+};
+
+const initialAllPerpsPairStatsSnapshot: AllPerpsPairStatsSnapshot = {
+  status: "idle",
+  error: null,
   perpsPairStats: [],
   perpsPairStatsByPairId: {},
-  setPerpsPairStats: (perpsPairStats) =>
-    set({
-      perpsPairStats,
-      perpsPairStatsByPairId: Object.fromEntries(
-        perpsPairStats.map((stats) => [stats.pairId, stats]),
-      ),
-    }),
-}));
+};
 
 function asDecimal(value: string | null | undefined) {
   if (!value) return null;
@@ -72,6 +75,63 @@ function normalizePerpsPairStats(stats: PerpsPairStats): NormalizedPerpsPairStat
   };
 }
 
+function buildStatsByPairId(stats: NormalizedPerpsPairStats[]) {
+  return Object.fromEntries(stats.map((stats) => [stats.pairId, stats]));
+}
+
+function equalNormalizedStats(previous: NormalizedPerpsPairStats, next: NormalizedPerpsPairStats) {
+  return (
+    previous.pairId === next.pairId &&
+    previous.currentPrice === next.currentPrice &&
+    previous.price24HAgo === next.price24HAgo &&
+    previous.volume24H === next.volume24H &&
+    previous.priceChange24H === next.priceChange24H
+  );
+}
+
+function equalAllPerpsPairStatsSnapshot(
+  previous: AllPerpsPairStatsSnapshot,
+  next: AllPerpsPairStatsSnapshot,
+) {
+  if (previous.status !== next.status || previous.error !== next.error) return false;
+  if (previous.perpsPairStats.length !== next.perpsPairStats.length) return false;
+
+  for (let index = 0; index < previous.perpsPairStats.length; index += 1) {
+    if (!equalNormalizedStats(previous.perpsPairStats[index], next.perpsPairStats[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+const allPerpsPairStatsResource = createLiveResource<
+  AllPerpsPairStatsResourceParams,
+  AllPerpsPairStatsSnapshot
+>({
+  name: "allPerpsPairStats",
+  cache: "keep",
+  getKey: ({ chainId }) => `allPerpsPairStats:${chainId}`,
+  getInitialSnapshot: () => initialAllPerpsPairStatsSnapshot,
+  equal: equalAllPerpsPairStatsSnapshot,
+  start: ({ subscriptions }, { emit, error }) =>
+    subscriptions.subscribe("allPerpsPairStats", {
+      params: {
+        httpInterval: ALL_PERPS_PAIR_STATS_HTTP_INTERVAL,
+      },
+      listener: ({ allPerpsPairStats }) => {
+        const perpsPairStats = allPerpsPairStats.map(normalizePerpsPairStats);
+        emit({
+          status: "ready",
+          error: null,
+          perpsPairStats,
+          perpsPairStatsByPairId: buildStatsByPairId(perpsPairStats),
+        });
+      },
+      onError: error,
+    }),
+});
+
 export function usePerpsPairStats(parameters: UsePerpsPairStatsParameters) {
   const { pairId, enabled = true } = parameters;
   const client = usePublicClient();
@@ -89,18 +149,23 @@ export function usePerpsPairStats(parameters: UsePerpsPairStatsParameters) {
   });
 }
 
-export function useAllPerpsPairStats(parameters: UseAllPerpsPairStatsParameters = {}): void {
+export function useAllPerpsPairStats<Selection>(
+  selector: (snapshot: AllPerpsPairStatsSnapshot) => Selection,
+  parameters: UseAllPerpsPairStatsParameters = {},
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+): Selection {
   const { enabled = true } = parameters;
-  const { subscriptions } = useConfig();
+  const config = useConfig();
 
-  useEffect(() => {
-    if (!enabled) return;
-    const unsubscribe = subscriptions.subscribe("allPerpsPairStats", {
-      listener: ({ allPerpsPairStats }) =>
-        allPerpsPairStatsStore
-          .getState()
-          .setPerpsPairStats(allPerpsPairStats.map(normalizePerpsPairStats)),
-    });
-    return () => unsubscribe();
-  }, [enabled, subscriptions]);
+  return useLiveResource({
+    resource: allPerpsPairStatsResource,
+    params: {
+      chainId: config.chain.id,
+      subscriptions: config.subscriptions,
+    },
+    enabled,
+    selector,
+    equalityFn,
+    restartToken: config.subscriptions,
+  });
 }
