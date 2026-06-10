@@ -20,8 +20,13 @@ import { isFeatureEnabled } from "../../../../featureFlags";
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 import { ExportCsvButton } from "./ExportCsvButton";
 import { TradeHistoryToolbar } from "./TradeHistoryToolbar";
-import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
-import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
+import { normalizePerpsEvent, type NormalizedFields } from "../../helpers/normalizePerpsEvent";
+import {
+  getMakerTakerLabel,
+  getPerpsEventLabel,
+  getSideLabel,
+} from "../../helpers/perpsEventLabels";
+import { getPerpsPairLabel, getPerpsPairSymbol } from "../../helpers/tradePairSymbols";
 import { type QueryRange, useTradeHistoryFilter } from "./useTradeHistoryFilter";
 import { usePerpsTradeHistory } from "./usePerpsTradeHistory";
 
@@ -51,7 +56,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       header: m["dex.protrade.tradeHistory.pair"](),
       width: "minmax(80px, 1fr)",
       render: (event) => {
-        const pair = event.pairId.replace("perp/", "").replace("usd", "/USD").toUpperCase();
+        const pair = getPerpsPairLabel(event.pairId);
         return <Cell.Text text={pair} className="diatype-xs-medium" />;
       },
     },
@@ -83,7 +88,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       render: (event, { size }) => {
         if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         const abs = size.startsWith("-") ? size.slice(1) : size;
-        const baseSymbol = event.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
+        const baseSymbol = getPerpsPairSymbol(event.pairId);
         return (
           <Cell.Text
             text={
@@ -274,7 +279,7 @@ export function PerpsTradeHistory() {
     () =>
       buildColumns((event, fields) => {
         if (!fields.size || !fields.price || !fields.pnl) return;
-        const baseSymbol = event.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
+        const baseSymbol = getPerpsPairSymbol(event.pairId);
         showModal(Modals.PnlShare, {
           mode: "fill",
           pairId: event.pairId,

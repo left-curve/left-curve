@@ -42,6 +42,7 @@ import { TradeMenu } from "./TradeMenu";
 import { TradeHeader } from "./TradeHeader";
 import { ErrorBoundary } from "react-error-boundary";
 import { PerpsTradeHistory } from "./TradeHistory";
+import { getPerpsPairLabel, getPerpsPairSymbol } from "../helpers/tradePairSymbols";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
@@ -332,7 +333,7 @@ const PerpsPositionsTable: React.FC = () => {
     if (!positions) return result;
 
     for (const [pairId, pos] of Object.entries(positions)) {
-      const baseSymbol = pairId.replace("perp/", "").replace(/usd$/i, "");
+      const baseSymbol = getPerpsPairSymbol(pairId).toLowerCase();
       const baseDenom = symbolToDenom[baseSymbol] ?? baseSymbol;
       const coinSymbol = coins.byDenom[baseDenom]?.symbol ?? baseSymbol.toUpperCase();
       const markPrice = Number(perpsStatsByPairId[pairId]?.currentPrice ?? pos.entryPrice);
@@ -362,10 +363,7 @@ const PerpsPositionsTable: React.FC = () => {
       {
         header: m["dex.protrade.positions.pair"](),
         cell: ({ row }) => {
-          const label = row.original.pairId
-            .replace("perp/", "")
-            .replace(/usd$/i, "/USD")
-            .toUpperCase();
+          const label = getPerpsPairLabel(row.original.pairId);
           return <Cell.Text text={label} className="diatype-xs-medium" />;
         },
       },
@@ -644,7 +642,7 @@ const OpenOrders: React.FC = () => {
       : allPerpsOrders.filter(([, o]) => o.pairId === perpsPairId);
 
     for (const [orderId, order] of filtered) {
-      const label = order.pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
+      const label = getPerpsPairLabel(order.pairId);
       const isLong = Number(order.size) > 0;
 
       result.push({

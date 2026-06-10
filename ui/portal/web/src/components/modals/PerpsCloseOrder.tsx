@@ -5,6 +5,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
+import { perpsTradeHistoryKeys } from "../dex/helpers/perpsTradeHistoryKeys";
 
 export const PerpsCloseOrder = forwardRef<void, { orderId: string }>(({ orderId }) => {
   const { hideModal } = useApp();
@@ -24,7 +25,9 @@ export const PerpsCloseOrder = forwardRef<void, { orderId: string }>(({ orderId 
         });
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+        queryClient.invalidateQueries({
+          queryKey: perpsTradeHistoryKeys.account(account?.address),
+        });
         hideModal();
       },
     },

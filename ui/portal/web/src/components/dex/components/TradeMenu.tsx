@@ -57,6 +57,7 @@ import type { PerpsTimeInForce } from "@left-curve/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useGeoblock } from "~/components/foundation/hooks/useGeoblock";
 import { computeOtherPairsUsedMargin } from "../helpers/math";
+import { perpsTradeHistoryKeys } from "../helpers/perpsTradeHistoryKeys";
 import { useTPSLPriceSync } from "../hooks/useTPSLPriceSync";
 import { useProTrade } from "./ProTrade";
 
@@ -378,7 +379,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     timeInForce: operation === "limit" ? timeInForce : undefined,
     controllers,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+      queryClient.invalidateQueries({
+        queryKey: perpsTradeHistoryKeys.account(account?.address),
+      });
       queryClient.invalidateQueries({ queryKey: ["perpsVolume", account?.address] });
       setVolumeRefreshKey((k) => k + 1);
     },

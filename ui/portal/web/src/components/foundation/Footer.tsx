@@ -12,6 +12,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
 import { StatusBadge } from "./StatusBadge";
 import { memo } from "react";
+import { getPerpsPairTicker } from "../dex/helpers/tradePairSymbols";
 
 import type { NormalizedPerpsPairStats } from "@left-curve/store";
 
@@ -103,9 +104,7 @@ const TickerItem = memo(function TickerItem({ stats }: TickerItemProps) {
 
   return (
     <div className="flex items-center gap-1 diatype-xs-regular shrink-0 w-[8.5rem]">
-      <span className="text-ink-secondary-700">
-        {stats.pairId.replace("perp/", "").toUpperCase()}
-      </span>
+      <span className="text-ink-secondary-700">{getPerpsPairTicker(stats.pairId)}</span>
       <span className={isPositive ? "text-utility-success-600" : "text-utility-error-600"}>
         {priceChange ? `${isPositive ? "+" : ""}` : ""}
         {priceChange ? (

@@ -14,6 +14,7 @@ import * as TV from "@left-curve/tradingview";
 import { deepEqual } from "@left-curve/utils";
 import { createPerpsDataFeed } from "~/datafeed";
 import { buildPositionLines, buildPerpsOrderLines, drawLines } from "../helpers/chartLines";
+import { isPerpsTradeHistoryAccountKey } from "../helpers/perpsTradeHistoryKeys";
 
 import type { AnyCoin } from "@left-curve/store/types";
 
@@ -49,6 +50,12 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
   const readyRef = useRef(false);
+  // The datafeed is created with the widget; this keeps getMarks pointed at the live account.
+  const accountAddressRef = useRef(accountAddress);
+
+  useEffect(() => {
+    accountAddressRef.current = accountAddress;
+  }, [accountAddress]);
 
   useEffect(() => {
     try {
@@ -65,6 +72,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
       client: publicClient,
       queryClient,
       subscriptions,
+      getAccountAddress: () => accountAddressRef.current,
     });
 
     const widget = new TV.widget({
@@ -199,10 +207,43 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
   useEffect(() => {
     if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
+
+    const syncMarks = () => {
+      if (accountAddress) chart.refreshMarks();
+      else chart.clearMarks();
+    };
+
     if (chart.symbol() !== pairSymbol) {
-      chart.setSymbol(pairSymbol, () => {});
+      chart.setSymbol(pairSymbol, syncMarks);
+      return;
     }
-  }, [pairSymbol]);
+
+    syncMarks();
+  }, [accountAddress, pairSymbol]);
+
+  useEffect(() => {
+    if (!accountAddress) return;
+
+    let subscribed = true;
+    let refreshQueued = false;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== "updated" || event.action.type !== "invalidate") return;
+      if (!isPerpsTradeHistoryAccountKey(event.query.queryKey, accountAddress)) return;
+      if (refreshQueued) return;
+
+      refreshQueued = true;
+      queueMicrotask(() => {
+        refreshQueued = false;
+        if (!subscribed) return;
+        widgetRef.current?.chart().refreshMarks();
+      });
+    });
+
+    return () => {
+      subscribed = false;
+      unsubscribe();
+    };
+  }, [accountAddress, queryClient]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
