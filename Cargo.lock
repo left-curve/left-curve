@@ -3858,6 +3858,7 @@ dependencies = [
  "dango-types",
  "error-backtrace",
  "eth-utils",
+ "futures",
  "graphql-ws-client",
  "graphql_client",
  "grug-types",
