@@ -1,6 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { registerUser } from "../utils/registerUser";
 import { waitForStorageHydration } from "../utils/indexeddb";
+import { message } from "../utils/messages";
+
+const referralLabels = {
+  commissionRate: message("referral.stats.commissionRate"),
+  logIn: message("referral.affiliateSection.logIn"),
+  myReferralCode: message("referral.stats.myReferralCode"),
+  myReferralLink: message("referral.stats.myReferralLink"),
+};
 
 async function enableReferralFeature(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -46,9 +54,13 @@ test.describe("Referral Page", () => {
 
     test("shows the locked banner instead of referral credentials", async ({ page }) => {
       await expect(page.getByAltText("Referral banner")).toBeVisible();
-      await expect(getLockedBannerButton(page)).toHaveText(/log in|sign in/i);
-      await expect(page.getByText("My Referral Link", { exact: true })).toHaveCount(0);
-      await expect(page.getByText("My Referral Code", { exact: true })).toHaveCount(0);
+      await expect(getLockedBannerButton(page)).toHaveText(referralLabels.logIn);
+      await expect(page.getByText(referralLabels.myReferralLink, { exact: true })).toHaveCount(
+        0,
+      );
+      await expect(page.getByText(referralLabels.myReferralCode, { exact: true })).toHaveCount(
+        0,
+      );
     });
   });
 
@@ -75,9 +87,13 @@ test.describe("Referral Page", () => {
 
       // This test requires the user to be a referrer (has trading volume and commission settings).
       // The edit icon only appears when the user has reached the volume threshold.
-      // Look for the edit icon (SVG) next to Commission Rate - if not found, skip the test.
-      const commissionRateLabel = sharedPage.getByText("Commission Rate", { exact: false }).first();
-      const editIcon = commissionRateLabel.locator("xpath=preceding-sibling::div//*[name()='svg']").first();
+      // Look for the edit icon (SVG) next to the commission rate - if not found, skip the test.
+      const commissionRateLabel = sharedPage
+        .getByText(referralLabels.commissionRate, { exact: false })
+        .first();
+      const editIcon = commissionRateLabel
+        .locator("xpath=preceding-sibling::div//*[name()='svg']")
+        .first();
 
       const isEditIconVisible = await editIcon
         .waitFor({ state: "visible", timeout: 5000 })
@@ -91,7 +107,9 @@ test.describe("Referral Page", () => {
 
       await editIcon.click();
 
-      const refereeReceivesInput = sharedPage.locator('.fixed.z-\\[60\\] input[type="number"]').first();
+      const refereeReceivesInput = sharedPage
+        .locator('.fixed.z-\\[60\\] input[type="number"]')
+        .first();
       await expect(refereeReceivesInput).toBeVisible();
 
       await refereeReceivesInput.fill("");
