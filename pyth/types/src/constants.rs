@@ -60,7 +60,11 @@ pub const XAG_USD_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDetail
 
 // https://docs.pyth.network/price-feeds/pro/price-feed-ids?search=brent
 
-/// Pyth ID for Brent oil futures contracts maturing by the end of June 2026.
+/// Pyth ID for the Brent oil futures contract that ends trading in June 2026.
+///
+/// Delivery is in August 2026; the `Q` in the contract name is the futures
+/// month code for August. Do not confuse this with the contract that delivers
+/// in June 2026 (`BRENTM6`), which already ended trading on April 30, 2026.
 ///
 /// - **Name**: BRENTQ6
 /// - **Symbol**: Commodities.BRENTQ6/USD
@@ -70,7 +74,12 @@ pub const BRENT_2026_06_ID: PythLazerSubscriptionDetails = PythLazerSubscription
     channel: Channel::FixedRate(FixedRate::RATE_50_MS),
 };
 
-/// Pyth ID for Brent oil futures contracts maturing by the end of July 2026.
+/// Pyth ID for the Brent oil futures contract that ends trading in July 2026.
+///
+/// Delivery is in September 2026; the `U` in the contract name is the futures
+/// month code for September. Do not confuse this with the contract that
+/// delivers in July 2026 (`BRENTN6`), which already ended trading on May 29,
+/// 2026.
 ///
 /// - **Name**: BRENTU6
 /// - **Symbol**: Commodities.BRENTU6/USD
@@ -80,7 +89,13 @@ pub const BRENT_2026_07_ID: PythLazerSubscriptionDetails = PythLazerSubscription
     channel: Channel::FixedRate(FixedRate::RATE_50_MS),
 };
 
-/// Pyth ID for Brent oil futures contracts maturing by the end of August 2026.
+/// Pyth ID for the Brent oil futures contract that ends trading in August
+/// 2026.
+///
+/// Delivery is in October 2026; the `V` in the contract name is the futures
+/// month code for October. Do not confuse this with the contract that
+/// delivers in August 2026 — that one is [`BRENT_2026_06_ID`] (`BRENTQ6`),
+/// which ends trading on June 30, 2026.
 ///
 /// - **Name**: BRENTV6
 /// - **Symbol**: Commodities.BRENTV6/USD
@@ -90,7 +105,13 @@ pub const BRENT_2026_08_ID: PythLazerSubscriptionDetails = PythLazerSubscription
     channel: Channel::FixedRate(FixedRate::RATE_50_MS),
 };
 
-/// Pyth ID for Brent oil futures contracts maturing by the end of September 2026.
+/// Pyth ID for the Brent oil futures contract that ends trading in September
+/// 2026.
+///
+/// Delivery is in November 2026; the `X` in the contract name is the futures
+/// month code for November. Do not confuse this with the contract that
+/// delivers in September 2026 — that one is [`BRENT_2026_07_ID`] (`BRENTU6`),
+/// which ends trading on July 31, 2026.
 ///
 /// - **Name**: BRENTX6
 /// - **Symbol**: Commodities.BRENTX6/USD
@@ -102,7 +123,11 @@ pub const BRENT_2026_09_ID: PythLazerSubscriptionDetails = PythLazerSubscription
 
 // https://docs.pyth.network/price-feeds/pro/price-feed-ids?search=wti
 
-/// Pyth ID for WTI oil futures contracts maturing by the end of June 2026.
+/// Pyth ID for the WTI oil futures contract that ends trading in June 2026.
+///
+/// Delivery is in July 2026; the `N` in the contract name is the futures
+/// month code for July. Do not confuse this with the contract that delivers
+/// in June 2026 (`WTIM6`), which already ended trading on May 19, 2026.
 ///
 /// - **Name**: WTIN6
 /// - **Symbol**: Commodities.WTIN6/USD
@@ -112,7 +137,12 @@ pub const WTI_2026_06_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDe
     channel: Channel::FixedRate(FixedRate::RATE_50_MS),
 };
 
-/// Pyth ID for WTI oil futures contracts maturing by the end of July 2026.
+/// Pyth ID for the WTI oil futures contract that ends trading in July 2026.
+///
+/// Delivery is in August 2026; the `Q` in the contract name is the futures
+/// month code for August. Do not confuse this with the contract that delivers
+/// in July 2026 — that one is [`WTI_2026_06_ID`] (`WTIN6`), which ends
+/// trading on June 22, 2026.
 ///
 /// - **Name**: WTIQ6
 /// - **Symbol**: Commodities.WTIQ6/USD
@@ -122,7 +152,12 @@ pub const WTI_2026_07_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDe
     channel: Channel::FixedRate(FixedRate::RATE_50_MS),
 };
 
-/// Pyth ID for WTI oil futures contracts maturing by the end of August 2026.
+/// Pyth ID for the WTI oil futures contract that ends trading in August 2026.
+///
+/// Delivery is in September 2026; the `U` in the contract name is the futures
+/// month code for September. Do not confuse this with the contract that
+/// delivers in August 2026 — that one is [`WTI_2026_07_ID`] (`WTIQ6`), which
+/// ends trading on July 21, 2026.
 ///
 /// - **Name**: WTIU6
 /// - **Symbol**: Commodities.WTIU6/USD
@@ -132,7 +167,13 @@ pub const WTI_2026_08_ID: PythLazerSubscriptionDetails = PythLazerSubscriptionDe
     channel: Channel::FixedRate(FixedRate::RATE_50_MS),
 };
 
-/// Pyth ID for WTI oil futures contracts maturing by the end of September 2026.
+/// Pyth ID for the WTI oil futures contract that ends trading in September
+/// 2026.
+///
+/// Delivery is in October 2026; the `V` in the contract name is the futures
+/// month code for October. Do not confuse this with the contract that
+/// delivers in September 2026 — that one is [`WTI_2026_08_ID`] (`WTIU6`),
+/// which ends trading on August 20, 2026.
 ///
 /// - **Name**: WTIV6
 /// - **Symbol**: Commodities.WTIV6/USD
