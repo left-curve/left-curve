@@ -1,6 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
-import { registerUser } from "../utils/registerUser";
+
+import { dismissActivateAccountModal, registerUser } from "../utils/registerUser";
 import { waitForStorageHydration } from "../utils/indexeddb";
+import { message } from "../utils/messages";
+
+const transferLabels = {
+  from: message("transfer.spotPerp.from"),
+  perpAccount: message("accountMenu.perpAccount"),
+  send: message("common.send"),
+  spotAccount: message("accountMenu.spotAccount"),
+  spotPerp: message("accountMenu.spotPerp"),
+  to: message("transfer.spotPerp.to"),
+  youReceive: message("transfer.spotPerp.youReceive"),
+};
 
 test.describe("Transfer Applet", () => {
   test.describe("Not Authenticated", () => {
@@ -10,26 +22,21 @@ test.describe("Transfer Applet", () => {
     });
 
     test("only send tab is visible", async ({ page }) => {
-      // When not authenticated, only "send" tab/button is visible
-      // Use exact: true to distinguish from "Send" submit button
-      const sendTab = page.getByRole("button", { name: "Send" }).first();
+      const sendTab = page.getByRole("button", { name: transferLabels.send }).first();
       await expect(sendTab).toBeVisible();
 
-      // Spot-Perp tab should NOT be visible
-      const spotPerpTab = page.getByRole("button", { name: /spot.*perp/i });
+      const spotPerpTab = page.getByRole("button", { name: transferLabels.spotPerp });
       await expect(spotPerpTab).not.toBeVisible();
     });
 
     test("send button is disabled", async ({ page }) => {
-      // The submit button says "Send" and should be disabled
-      const sendButton = page.locator("form").getByRole("button", { name: "Send" });
+      const sendButton = page.locator("form").getByRole("button", { name: transferLabels.send });
       await expect(sendButton).toBeVisible();
       await expect(sendButton).toBeDisabled();
     });
 
-    test("you're sending label is visible", async ({ page }) => {
-      const label = page.getByText("You're sending");
-      await expect(label).toBeVisible();
+    test("amount input is visible", async ({ page }) => {
+      await expect(page.locator('input[name="amount"]')).toBeVisible();
     });
   });
 
@@ -51,10 +58,10 @@ test.describe("Transfer Applet", () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      const sendTab = sharedPage.getByRole("button", { name: "Send" }).first();
+      const sendTab = sharedPage.getByRole("button", { name: transferLabels.send }).first();
       await expect(sendTab).toBeVisible();
 
-      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      const spotPerpTab = sharedPage.getByRole("button", { name: transferLabels.spotPerp });
       await expect(spotPerpTab).toBeVisible();
     });
 
@@ -62,8 +69,9 @@ test.describe("Transfer Applet", () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      // Send form should be visible
-      const sendButton = sharedPage.locator("form").getByRole("button", { name: "Send" });
+      const sendButton = sharedPage
+        .locator("form")
+        .getByRole("button", { name: transferLabels.send });
       await expect(sendButton).toBeVisible();
 
       const amountInput = sharedPage.getByRole("textbox").first();
@@ -74,15 +82,13 @@ test.describe("Transfer Applet", () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      const spotPerpTab = sharedPage.getByRole("button", { name: transferLabels.spotPerp });
       await spotPerpTab.click();
       await sharedPage.waitForTimeout(500);
 
-      // From and To labels should be visible
-      await expect(sharedPage.getByText("From")).toBeVisible();
-      await expect(sharedPage.getByText("To").first()).toBeVisible();
+      await expect(sharedPage.locator('input[name="from"]')).toBeVisible();
+      await expect(sharedPage.locator('input[name="to"]')).toBeVisible();
 
-      // Flip direction button (wrapping IconTwoArrows svg) should be visible
       const flipButton = sharedPage.getByTestId("flip-direction");
       await expect(flipButton).toBeVisible();
     });
@@ -91,33 +97,33 @@ test.describe("Transfer Applet", () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      const spotPerpTab = sharedPage.getByRole("button", { name: transferLabels.spotPerp });
       await spotPerpTab.click();
       await sharedPage.waitForTimeout(500);
 
-      // Default direction is spot-to-perp
-      await expect(sharedPage.locator('input[name="from"]')).toHaveValue("Spot Account");
-      await expect(sharedPage.locator('input[name="to"]')).toHaveValue("Perp Account");
+      await expect(sharedPage.locator('input[name="from"]')).toHaveValue(
+        transferLabels.spotAccount,
+      );
+      await expect(sharedPage.locator('input[name="to"]')).toHaveValue(
+        transferLabels.perpAccount,
+      );
     });
 
     test("spot-perp direction can be flipped", async () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      const spotPerpTab = sharedPage.getByRole("button", { name: transferLabels.spotPerp });
       await spotPerpTab.click();
       await sharedPage.waitForTimeout(500);
 
-      // Get the From/To input values before flip
       const fromInput = sharedPage.locator("input[readonly]").first();
       const initialFromValue = await fromInput.inputValue();
 
-      // Click the flip direction button
       const flipButton = sharedPage.getByTestId("flip-direction");
       await flipButton.click();
       await sharedPage.waitForTimeout(300);
 
-      // After flip, the from value should have changed
       const newFromValue = await fromInput.inputValue();
       expect(newFromValue).not.toBe(initialFromValue);
     });
@@ -125,33 +131,30 @@ test.describe("Transfer Applet", () => {
     test("spot-perp tab shows amount input and receive preview", async () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
+      await dismissActivateAccountModal(sharedPage);
 
-      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      const spotPerpTab = sharedPage.getByRole("button", { name: transferLabels.spotPerp });
       await spotPerpTab.click();
       await sharedPage.waitForTimeout(500);
 
-      // Amount input should be visible
       const amountInput = sharedPage.getByRole("textbox").first();
       await expect(amountInput).toBeVisible();
 
-      // "You receive" label should be visible
-      await expect(sharedPage.getByText("You receive")).toBeVisible();
+      await expect(sharedPage.getByText(transferLabels.youReceive)).toBeVisible();
     });
 
     test("can switch between send and spot-perp tabs", async () => {
       await sharedPage.goto("/transfer");
       await waitForStorageHydration(sharedPage);
 
-      const sendTab = sharedPage.getByRole("button", { name: "Send" }).first();
-      const spotPerpTab = sharedPage.getByRole("button", { name: /spot.*perp/i });
+      const sendTab = sharedPage.getByRole("button", { name: transferLabels.send }).first();
+      const spotPerpTab = sharedPage.getByRole("button", { name: transferLabels.spotPerp });
 
-      // Switch to spot-perp
       await spotPerpTab.click();
       await sharedPage.waitForTimeout(300);
 
-      await expect(sharedPage.getByText("From")).toBeVisible();
+      await expect(sharedPage.locator('input[name="from"]')).toBeVisible();
 
-      // Switch back to send
       await sendTab.click();
       await sharedPage.waitForTimeout(300);
 

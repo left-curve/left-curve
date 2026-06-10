@@ -1,6 +1,9 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { createBlockStore } from "../../../store/src/hooks/createBlockStore";
+import { useSyncExternalStoreWithTracked } from "../../../store/src/hooks/useSyncExternalStoreWithTRacked";
 import { createLiveResource } from "../../../store/src/live/createLiveResource";
 import {
   createLiveResourceInvalidator,
@@ -18,6 +21,12 @@ import type { LiveResourceEmitOptions } from "../../../store/src/live/types";
 
 type TestSnapshot = LiveResourceSnapshot & {
   value: number;
+};
+
+type TrackedSnapshot = {
+  count: number;
+  label: string;
+  onSelect: () => string;
 };
 
 const initialSnapshot: TestSnapshot = {
@@ -61,6 +70,25 @@ describe("perps user state error normalization", () => {
   });
 });
 
+function createTrackedStore(initial: TrackedSnapshot) {
+  let snapshot = initial;
+  const listeners = new Set<() => void>();
+
+  return {
+    emit: (nextSnapshot: TrackedSnapshot) => {
+      snapshot = nextSnapshot;
+      for (const listener of listeners) listener();
+    },
+    getSnapshot: () => snapshot,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
 describe("createLiveResource", () => {
   it("starts once for duplicate acquires and stops after the final release", () => {
     let starts = 0;
@@ -86,6 +114,10 @@ describe("createLiveResource", () => {
 
     releaseA();
     expect(stops).toBe(0);
+
+    releaseB();
+    expect(stops).toBe(1);
+    expect(resource.getDebugState().entries).toHaveLength(0);
 
     releaseB();
     expect(stops).toBe(1);
@@ -198,6 +230,45 @@ describe("createLiveResource", () => {
 
     unsubscribe();
     release();
+  });
+
+  it("stores start failures as error snapshots without throwing to the caller", () => {
+    const startError = new Error("stream failed to open");
+    const updates: TestSnapshot[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveStartError",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: () => {
+        throw startError;
+      },
+    });
+
+    const unsubscribe = resource.subscribe({ id: "a" }, () => {
+      updates.push(resource.getSnapshot({ id: "a" }));
+    });
+
+    expect(() => resource.acquire({ id: "a" })).not.toThrow();
+    expect(resource.getSnapshot({ id: "a" })).toEqual({
+      status: "error",
+      error: startError,
+      value: 0,
+    });
+    expect(updates).toEqual([
+      {
+        status: "connecting",
+        error: null,
+        value: 0,
+      },
+      {
+        status: "error",
+        error: startError,
+        value: 0,
+      },
+    ]);
+
+    unsubscribe();
   });
 
   it("logs and ignores late errors after delete-on-release eviction", () => {
@@ -639,7 +710,266 @@ describe("live resource invalidation", () => {
   });
 });
 
+describe("useSyncExternalStoreWithTracked", () => {
+  it("rerenders consumers only when accessed object keys change", () => {
+    const store = createTrackedStore({
+      count: 1,
+      label: "first",
+      onSelect: () => "first",
+    });
+
+    function Consumer() {
+      const renders = useRef(0);
+      renders.current += 1;
+
+      const snapshot = useSyncExternalStoreWithTracked(store.subscribe, store.getSnapshot);
+
+      return (
+        <>
+          <div data-testid="count">{snapshot.count}</div>
+          <div data-testid="renders">{renders.current}</div>
+        </>
+      );
+    }
+
+    render(<Consumer />);
+
+    expect(screen.getByTestId("count")).toHaveTextContent("1");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+
+    act(() => {
+      store.emit({
+        count: 1,
+        label: "second",
+        onSelect: () => "second",
+      });
+    });
+
+    expect(screen.getByTestId("count")).toHaveTextContent("1");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+
+    act(() => {
+      store.emit({
+        count: 2,
+        label: "second",
+        onSelect: () => "second",
+      });
+    });
+
+    expect(screen.getByTestId("count")).toHaveTextContent("2");
+    expect(screen.getByTestId("renders")).toHaveTextContent("2");
+  });
+
+  it("does not rerender when only a tracked function identity changes", () => {
+    const store = createTrackedStore({
+      count: 1,
+      label: "first",
+      onSelect: () => "first",
+    });
+
+    function Consumer() {
+      const renders = useRef(0);
+      renders.current += 1;
+
+      const snapshot = useSyncExternalStoreWithTracked(store.subscribe, store.getSnapshot);
+
+      snapshot.onSelect();
+
+      return (
+        <>
+          <div data-testid="label">{snapshot.label}</div>
+          <div data-testid="renders">{renders.current}</div>
+        </>
+      );
+    }
+
+    render(<Consumer />);
+
+    expect(screen.getByTestId("label")).toHaveTextContent("first");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+
+    act(() => {
+      store.emit({
+        count: 1,
+        label: "first",
+        onSelect: () => "second",
+      });
+    });
+
+    expect(screen.getByTestId("label")).toHaveTextContent("first");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+  });
+});
+
+describe("createBlockStore", () => {
+  it("applies only newer block updates and derives previous state before accepted writes", () => {
+    const store = createBlockStore({
+      initialState: {
+        currentPrice: "0",
+        previousPrice: "0",
+      },
+      beforeUpdate: (previous) => ({
+        previousPrice: previous.currentPrice,
+      }),
+    });
+
+    store.getState().setState({
+      blockHeight: 8,
+      currentPrice: "100",
+    });
+
+    expect(store.getState()).toMatchObject({
+      currentPrice: "100",
+      previousPrice: "0",
+      lastUpdatedBlockHeight: 8,
+    });
+
+    store.getState().setState({
+      blockHeight: 7,
+      currentPrice: "90",
+    });
+    store.getState().setState({
+      blockHeight: 8,
+      currentPrice: "101",
+    });
+
+    expect(store.getState()).toMatchObject({
+      currentPrice: "100",
+      previousPrice: "0",
+      lastUpdatedBlockHeight: 8,
+    });
+
+    store.getState().setState({
+      blockHeight: 9,
+      currentPrice: "110",
+    });
+
+    expect(store.getState()).toMatchObject({
+      currentPrice: "110",
+      previousPrice: "100",
+      lastUpdatedBlockHeight: 9,
+    });
+  });
+
+  it("accepts zero-height polling updates even after a block-backed update", () => {
+    const store = createBlockStore({
+      initialState: {
+        liquidityDepth: "empty",
+      },
+    });
+
+    store.getState().setState({
+      blockHeight: 12,
+      liquidityDepth: "block-12",
+    });
+    store.getState().setState({
+      blockHeight: 0,
+      liquidityDepth: "polling-snapshot",
+    });
+
+    expect(store.getState()).toMatchObject({
+      liquidityDepth: "polling-snapshot",
+    });
+  });
+});
+
 describe("subscriptionsStore", () => {
+  it("shares one backend executor for duplicate subscriptions until the final unsubscribe", () => {
+    let emitBlock: ((block: unknown) => void) | undefined;
+    const stop = vi.fn();
+    const client = {
+      blockSubscription: vi.fn(({ next }: { next: (event: { block: unknown }) => void }) => {
+        emitBlock = (block: unknown) => next({ block });
+        return stop;
+      }),
+    };
+    const store = subscriptionsStore(client as never);
+    const firstListener = vi.fn();
+    const secondListener = vi.fn();
+
+    const unsubscribeFirst = store.subscribe("block", {
+      listener: firstListener,
+    });
+    const unsubscribeSecond = store.subscribe("block", {
+      listener: secondListener,
+    });
+
+    expect(client.blockSubscription).toHaveBeenCalledOnce();
+
+    emitBlock?.({ height: 1 });
+
+    expect(firstListener).toHaveBeenCalledWith({ height: 1 });
+    expect(secondListener).toHaveBeenCalledWith({ height: 1 });
+
+    unsubscribeFirst();
+    expect(stop).not.toHaveBeenCalled();
+
+    emitBlock?.({ height: 2 });
+
+    expect(firstListener).toHaveBeenCalledTimes(1);
+    expect(secondListener).toHaveBeenCalledWith({ height: 2 });
+
+    unsubscribeSecond();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it("keeps backend executors isolated by subscription params", () => {
+    const eventsByHeight = new Map<number | undefined, (events: unknown[]) => void>();
+    const stops = new Map<number | undefined, ReturnType<typeof vi.fn>>();
+    const client = {
+      eventsSubscription: vi.fn(
+        ({
+          next,
+          sinceBlockHeight,
+        }: {
+          next: (event: { events: unknown[] }) => void;
+          sinceBlockHeight?: number;
+        }) => {
+          eventsByHeight.set(sinceBlockHeight, (events: unknown[]) => next({ events }));
+          const stop = vi.fn();
+          stops.set(sinceBlockHeight, stop);
+          return stop;
+        },
+      ),
+    };
+    const store = subscriptionsStore(client as never);
+    const firstListener = vi.fn();
+    const secondListener = vi.fn();
+
+    const unsubscribeFirst = store.subscribe("events", {
+      params: {
+        sinceBlockHeight: 10,
+      },
+      listener: firstListener,
+    });
+    const unsubscribeSecond = store.subscribe("events", {
+      params: {
+        sinceBlockHeight: 20,
+      },
+      listener: secondListener,
+    });
+
+    expect(client.eventsSubscription).toHaveBeenCalledTimes(2);
+
+    eventsByHeight.get(10)?.([{ id: "first" }]);
+    eventsByHeight.get(20)?.([{ id: "second" }]);
+
+    expect(firstListener).toHaveBeenCalledWith([{ id: "first" }]);
+    expect(firstListener).not.toHaveBeenCalledWith([{ id: "second" }]);
+    expect(secondListener).toHaveBeenCalledWith([{ id: "second" }]);
+    expect(secondListener).not.toHaveBeenCalledWith([{ id: "first" }]);
+
+    unsubscribeFirst();
+    expect(stops.get(10)).toHaveBeenCalledOnce();
+    expect(stops.get(20)).not.toHaveBeenCalled();
+
+    eventsByHeight.get(20)?.([{ id: "second-after-first-stop" }]);
+    expect(secondListener).toHaveBeenCalledWith([{ id: "second-after-first-stop" }]);
+
+    unsubscribeSecond();
+    expect(stops.get(20)).toHaveBeenCalledOnce();
+  });
+
   it("removes listener state when executor startup throws", () => {
     const startupError = new Error("startup failed");
     let calls = 0;
@@ -674,6 +1004,45 @@ describe("subscriptionsStore", () => {
     expect(secondErrorListener).toHaveBeenCalledTimes(1);
 
     unsubscribe();
+  });
+
+  it("removes a subscriber error handler while keeping shared executors alive", () => {
+    let emitRuntimeError: ((error: unknown) => void) | undefined;
+    const stop = vi.fn();
+    const globalError = vi.fn();
+    const client = {
+      blockSubscription: vi.fn(({ error }: { error: (error: unknown) => void }) => {
+        emitRuntimeError = error;
+        return stop;
+      }),
+    };
+    const store = subscriptionsStore(client as never, { onError: globalError });
+    const firstErrorListener = vi.fn();
+    const secondErrorListener = vi.fn();
+
+    const unsubscribeFirst = store.subscribe("block", {
+      listener: vi.fn(),
+      onError: firstErrorListener,
+    });
+    const unsubscribeSecond = store.subscribe("block", {
+      listener: vi.fn(),
+      onError: secondErrorListener,
+    });
+
+    expect(client.blockSubscription).toHaveBeenCalledOnce();
+
+    unsubscribeFirst();
+    expect(stop).not.toHaveBeenCalled();
+
+    const runtimeError = new Error("runtime failed after first unsubscribe");
+    emitRuntimeError?.(runtimeError);
+
+    expect(globalError).toHaveBeenCalledWith(runtimeError);
+    expect(firstErrorListener).not.toHaveBeenCalled();
+    expect(secondErrorListener).toHaveBeenCalledWith(runtimeError);
+
+    unsubscribeSecond();
+    expect(stop).toHaveBeenCalledOnce();
   });
 
   it("routes listener exceptions through global and subscription error handlers", () => {
