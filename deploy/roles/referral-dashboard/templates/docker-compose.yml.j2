@@ -1,0 +1,27 @@
+name: referral-dashboard-{{ network }}
+
+services:
+  referral-dashboard:
+    image: {{ referral_dashboard_image }}:{{ referral_dashboard_tag }}
+    pull_policy: always
+    container_name: referral-dashboard-{{ network }}
+    restart: always
+    ports:
+      - "{{ tailscale_ip }}:{{ referral_dashboard_http_port }}:{{ referral_dashboard_http_port }}"
+    environment:
+      - http_url=http://dango:8080
+      - from_block={{ referral_dashboard_from_blocks[network] }}
+      - db_url=postgres://{{ referral_dashboard_db_user | urlencode }}:{{ referral_dashboard_db_password | urlencode }}@{{ referral_dashboard_db_host }}:{{ referral_dashboard_db_port }}/{{ referral_dashboard_db_name }}
+      - http_port={{ referral_dashboard_http_port }}
+      - block_fetcher__initial_loops={{ referral_dashboard_block_fetcher_initial_loops }}
+      - block_fetcher__max_loops={{ referral_dashboard_block_fetcher_max_loops }}
+      - block_fetcher__timeout={{ referral_dashboard_block_fetcher_timeout }}
+    networks:
+      - traefik
+      - postgres
+
+networks:
+  traefik:
+    external: true
+  postgres:
+    external: true

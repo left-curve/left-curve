@@ -183,6 +183,37 @@ drop-all-dbs-points-bot network tag="latest":
       --limit points-bot-{{network}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-all-dbs-points-bot.log"
 
+# ----------------------------- Referral Dashboard -----------------------------
+
+# Deploy referral-dashboard for a network on a specific server.
+# `server` is the tailscale IP (or any inventory host pattern within the
+# referral-dashboard group) — pin to a single host so you can test on devnet
+# before mainnet.
+# Usage: just deploy-referral-dashboard devnet 100.107.248.71
+#        just deploy-referral-dashboard testnet 100.109.200.70 v1.2.3
+#        just deploy-referral-dashboard mainnet 100.76.197.30
+deploy-referral-dashboard network server tag="latest":
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook referral-dashboard.yml \
+      -e '{"referral_dashboard_networks": ["{{network}}"], "referral_dashboard_tag": "{{tag}}"}' \
+      --limit {{server}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-referral-dashboard.log
+
+stop-referral-dashboard network server:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook stop-referral-dashboard.yml \
+      -e '{"referral_dashboard_networks": ["{{network}}"]}' \
+      --limit {{server}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-stop-referral-dashboard.log
+
+# Drop and recreate the referral-dashboard postgres database (full reindex on next deploy).
+drop-db-referral-dashboard network server:
+  mkdir -p {{justfile_directory()}}/logs \
+    && uv run ansible-playbook drop-db-referral-dashboard.yml \
+      -e '{"referral_dashboard_networks": ["{{network}}"]}' \
+      --limit {{server}} \
+      2>&1 | tee {{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-drop-db-referral-dashboard.log
+
 
 # -------------------------------- Perps Bot ----------------------------------
 
