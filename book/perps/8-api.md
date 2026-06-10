@@ -559,7 +559,7 @@ Creating a new user profile is a two-step process:
 
 A master account is created in the **inactive** state (for the purpose of spam prevention). The new account address is returned in the transaction events.
 
-**Step 2 — Activate.** Send at least the `minimum_deposit` (10 USDC = `10000000` `bridge/usdc` on mainnet) to the new master account address. The transfer can either come from an existing Dango account, or from another chain via Hyperlane bridging. Upon receipt, the account activates itself and becomes ready to use.
+**Step 2 — Activate.** Send at least the `minimum_deposit` (10 USDC = `10000000` `bridge/usdc` on mainnet) to the new master account address. The transfer can either come from an existing Dango account, or from another chain via Hyperlane bridging. Upon receipt, the account activates itself and becomes ready to use. To programmatically confirm that a bridged transfer has arrived, see [§3.10](#310-query-bridge-deposit-delivery).
 
 #### 3.1.1 Funding a new account via the faucet (testnet)
 
@@ -856,6 +856,63 @@ query {
 ```
 
 Filter by `userIndex` to get all accounts for a specific user, or by `address` for a specific account.
+
+### 3.10 Query bridge deposit delivery
+
+Deposits bridged in from another chain (see [§3.1](#31-register-user) Step 2) arrive as Hyperlane **warp route** transfers: the warp contract on the origin chain dispatches a Hyperlane message, an off-chain relayer submits it to the Dango **mailbox** contract, and the mailbox verifies the message, records it as delivered, and credits the bridged tokens to the recipient account — all within a single transaction.
+
+To monitor a pending deposit, query the mailbox's `delivered` method with the Hyperlane message ID:
+
+```graphql
+query {
+  queryApp(request: {
+    wasm_smart: {
+      contract: "MAILBOX_CONTRACT",
+      msg: {
+        delivered: {
+          message_id: "A1B2C3D4...64HEX"
+        }
+      }
+    }
+  })
+}
+```
+
+| Parameter    | Type      | Description                                           |
+| ------------ | --------- | ----------------------------------------------------- |
+| `message_id` | `Hash256` | Hyperlane message ID of the warp transfer (see below) |
+
+**Response:** `true` if the message has been delivered, `false` otherwise. Delivery and crediting are atomic, so once the query returns `true` the tokens are spendable in the recipient account — and if this was the activating deposit of a new master account, the account is active. Deliveries are recorded permanently, so the result never reverts to `false`.
+
+**Obtaining the message ID.** The message ID is the keccak256 hash of the encoded Hyperlane message. The mailbox on the origin chain returns it from the `dispatch()` call and emits it in the `DispatchId` event, so it can be read from the origin-chain transaction receipt.
+
+**Encoding.** `Hash256` is parsed strictly as 64 hex characters, **uppercase, without the `0x` prefix** (see [§10.2](#102-identifiers)). EVM tooling typically displays message IDs as `0x`-prefixed lowercase — strip the prefix and uppercase the rest, otherwise the query fails with a deserialization error.
+
+For continuous monitoring, poll this query at a block interval using the `queryApp` subscription ([§8.3](#83-contract-query-polling)). Alternatively, subscribe to the event stream ([§8.5](#85-event-stream)) filtered to the `mailbox_process_id` event, which the mailbox emits upon delivery; the filter value must use the same uppercase, unprefixed format:
+
+```graphql
+subscription {
+  events(
+    filter: [
+      {
+        type: "mailbox_process_id",
+        data: [
+          {
+            path: ["message_id"],
+            checkMode: EQUAL,
+            value: ["A1B2C3D4...64HEX"]
+          }
+        ]
+      }
+    ]
+  ) {
+    type
+    data
+    blockHeight
+    createdAt
+  }
+}
+```
 
 ## 4. Market data
 
@@ -1683,6 +1740,8 @@ Deposit USDC into the trading margin account:
 ```
 
 The deposited USDC is converted to USD at a fixed rate of \$1 per USDC and credited to `user_state.margin`. In this example, `1000000000` base units = 1,000 USDC = \$1,000.
+
+USDC bridged in from another chain must arrive in the account before it can be deposited; to confirm delivery of a bridge transfer, see [§3.10](#310-query-bridge-deposit-delivery).
 
 ### 6.2 Withdraw margin
 
@@ -2689,6 +2748,7 @@ The testnet **faucet** is served separately at `https://faucet-testnet.dango.zon
 | Name                       | Mainnet                                      | Testnet                                      |
 | -------------------------- | -------------------------------------------- | -------------------------------------------- |
 | `ACCOUNT_FACTORY_CONTRACT` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` | `0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b` |
+| `MAILBOX_CONTRACT`         | `0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7` | `0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7` |
 | `ORACLE_CONTRACT`          | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` | `0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d` |
 | `PERPS_CONTRACT`           | `0x90bc84df68d1aa59a857e04ed529e9a26edbea4f` | `0xf6344c5e2792e8f9202c58a2d88fbbde4cd3142f` |
 
