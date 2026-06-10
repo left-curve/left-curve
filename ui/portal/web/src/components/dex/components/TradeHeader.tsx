@@ -19,16 +19,19 @@ import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { useCurrentPrice, useOraclePrices, useAllPerpsPairStats } from "@left-curve/store";
+import { useCurrentPrice, useOraclePrices, usePerpsPairStatsByPairId } from "@left-curve/store";
 import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
+import type { NormalizedPerpsPairStats } from "@left-curve/store";
 
 export const TradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
 
   const { pairId, perpsPairId, onChangePairId } = useProTrade();
-  const pairStatsData = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId[perpsPairId]);
+  const pairStatsData = usePerpsPairStatsByPairId({
+    pairId: perpsPairId,
+  });
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -80,7 +83,7 @@ export const TradeHeader: React.FC = () => {
 };
 
 type HeaderMetricsScrollerProps = {
-  pairStatsData: any;
+  pairStatsData: NormalizedPerpsPairStats | null;
   perpsPairId: string;
 };
 
@@ -89,15 +92,25 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
   perpsPairId,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [{ canScrollLeft, canScrollRight }, setScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const hasOverflow = el.scrollWidth > el.clientWidth;
-    setCanScrollLeft(hasOverflow && el.scrollLeft > 1);
-    setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+    const nextScrollState = {
+      canScrollLeft: hasOverflow && el.scrollLeft > 1,
+      canScrollRight: hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 1,
+    };
+    setScrollState((previous) =>
+      previous.canScrollLeft === nextScrollState.canScrollLeft &&
+      previous.canScrollRight === nextScrollState.canScrollRight
+        ? previous
+        : nextScrollState,
+    );
   }, []);
 
   useEffect(() => {

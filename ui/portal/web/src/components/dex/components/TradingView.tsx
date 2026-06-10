@@ -1,7 +1,9 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useApp, useTheme } from "@left-curve/applets-kit";
+import { useTheme } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
 import {
+  useConfig,
   usePublicClient,
   usePerpsUserStateExtended,
   usePerpsOrdersByUser,
@@ -9,6 +11,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
+import { deepEqual } from "@left-curve/utils";
 import { createPerpsDataFeed } from "~/datafeed";
 import { buildPositionLines, buildPerpsOrderLines, drawLines } from "../helpers/chartLines";
 
@@ -32,21 +35,15 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
       );
     },
     { accountAddress },
-    (previous, next) => {
-      if (previous === next) return true;
-      if (!previous || !next) return previous === next;
-      const previousEntries = Object.entries(previous);
-      const nextEntries = Object.entries(next);
-      if (previousEntries.length !== nextEntries.length) return false;
-      return previousEntries.every(([id, order]) => next[id] === order);
-    },
+    deepEqual,
   );
 
   const { theme } = useTheme();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
-  const { subscriptions, settings } = useApp();
-  const { timeFormat, timeZone } = settings;
+  const { subscriptions } = useConfig();
+  const timeFormat = useApp((state) => state.settings.timeFormat);
+  const timeZone = useApp((state) => state.settings.timeZone);
 
   const storageKey = `tv_v4.${pairSymbol}_perps`;
 

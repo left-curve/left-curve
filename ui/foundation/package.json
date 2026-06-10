@@ -46,7 +46,8 @@
     "tailwind-variants": "catalog:",
     "@left-curve/types": "workspace:^",
     "@left-curve/encoding": "workspace:^",
-    "@left-curve/utils": "workspace:^"
+    "@left-curve/utils": "workspace:^",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "react": "catalog:",

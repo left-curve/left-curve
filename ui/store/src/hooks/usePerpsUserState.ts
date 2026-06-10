@@ -1,17 +1,15 @@
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
-import { createLiveResource } from "../live/createLiveResource.js";
-import { equalLiveResourcePayload } from "../live/equality.js";
 import { useLiveResource } from "../live/useLiveResource.js";
 import { usePerpsAccountResourceRevision } from "./perpsAccountResourceInvalidation.js";
+import { createPerpsUserResource } from "./createPerpsUserResource.js";
 
-import { camelCaseJsonDeserialization, snakeCaseJsonSerialization } from "@left-curve/encoding";
+import { snakeCaseJsonSerialization } from "@left-curve/encoding";
 import { useMemo } from "react";
 
-import type { PublicClient } from "@left-curve/sdk";
-import type { PerpsUserState, QueryRequest, QueryResponse } from "@left-curve/types";
-import type { Config } from "../types/store.js";
+import type { PerpsUserResourceParams } from "./createPerpsUserResource.js";
+import type { PerpsUserState, QueryRequest } from "@left-curve/types";
 import type { LiveResourceSnapshot } from "../live/types.js";
 
 export const perpsMarginAsset = {
@@ -42,14 +40,6 @@ export type UsePerpsUserStateParameters = {
   enabled?: boolean;
 };
 
-type PerpsUserStateResourceParams = {
-  chainId: Config["chain"]["id"];
-  accountAddress: string;
-  perpsContract: string;
-  publicClient: PublicClient;
-  subscriptions: Config["subscriptions"];
-};
-
 const initialPerpsUserStateSnapshot: PerpsUserStateSnapshot = {
   status: "idle",
   error: null,
@@ -60,7 +50,7 @@ const initialPerpsUserStateSnapshot: PerpsUserStateSnapshot = {
 function buildPerpsUserStateRequest({
   accountAddress,
   perpsContract,
-}: Pick<PerpsUserStateResourceParams, "accountAddress" | "perpsContract">) {
+}: Pick<PerpsUserResourceParams, "accountAddress" | "perpsContract">) {
   return snakeCaseJsonSerialization<QueryRequest>({
     wasmSmart: {
       contract: perpsContract,
@@ -69,76 +59,19 @@ function buildPerpsUserStateRequest({
   });
 }
 
-function getPerpsUserStateResponse(response: QueryResponse) {
-  if (!("wasmSmart" in response)) {
-    throw new Error(`expecting wasm smart response, got ${JSON.stringify(response)}`);
-  }
-
-  return response.wasmSmart as PerpsUserState | null;
-}
-
-const perpsUserStateResource = createLiveResource<
-  PerpsUserStateResourceParams,
-  PerpsUserStateSnapshot
->({
+const perpsUserStateResource = createPerpsUserResource<PerpsUserState, PerpsUserStateSnapshot>({
   name: "perpsUserState",
-  getKey: ({ chainId, perpsContract, accountAddress }) =>
-    `perpsUserState:${chainId}:${perpsContract}:${accountAddress}`,
-  getInitialSnapshot: () => initialPerpsUserStateSnapshot,
-  equal: (previous, next) => equalLiveResourcePayload(previous, next, ["userState"]),
-  start: ({ accountAddress, perpsContract, publicClient, subscriptions }, { emit, error }) => {
-    const request = buildPerpsUserStateRequest({ accountAddress, perpsContract });
-    let stopped = false;
-    let receivedSubscriptionEvent = false;
-
-    const emitUserState = (
-      userState: PerpsUserState | null,
-      blockHeight: number,
-      options?: { version: number },
-    ) =>
-      emit(
-        {
-          status: "ready",
-          error: null,
-          userState,
-          lastUpdatedBlockHeight: blockHeight,
-        },
-        options,
-      );
-
-    void publicClient
-      .queryApp({ query: request })
-      .then((response) => {
-        if (stopped || receivedSubscriptionEvent) return;
-        emitUserState(getPerpsUserStateResponse(response), 0);
-      })
-      .catch((caught) => {
-        if (!stopped) error(caught);
-      });
-
-    const unsubscribe = subscriptions.subscribe("queryApp", {
-      params: {
-        interval: PERPS_USER_STATE_INTERVAL,
-        httpInterval: PERPS_USER_STATE_HTTP_INTERVAL,
-        request,
-      },
-      listener: (event) => {
-        type Event = {
-          response: { wasmSmart: PerpsUserState | null };
-          blockHeight: number;
-        };
-        const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
-        receivedSubscriptionEvent = true;
-        emitUserState(response.wasmSmart, blockHeight, { version: blockHeight });
-      },
-      onError: error,
-    });
-
-    return () => {
-      stopped = true;
-      unsubscribe();
-    };
-  },
+  initialSnapshot: initialPerpsUserStateSnapshot,
+  payloadKeys: ["userState"],
+  interval: PERPS_USER_STATE_INTERVAL,
+  httpInterval: PERPS_USER_STATE_HTTP_INTERVAL,
+  buildRequest: buildPerpsUserStateRequest,
+  mapResponse: (userState, blockHeight) => ({
+    status: "ready",
+    error: null,
+    userState,
+    lastUpdatedBlockHeight: blockHeight,
+  }),
 });
 
 export function usePerpsUserState<Selection>(

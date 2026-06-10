@@ -18,7 +18,8 @@ import type React from "react";
 
 export const TradeButtons: React.FC = () => {
   const navigate = useNavigate();
-  const { setTradeBarVisibility, showModal } = useApp();
+  const setTradeBarVisibility = useApp((state) => state.setTradeBarVisibility);
+  const showModal = useApp((state) => state.showModal);
   const { isConnected } = useAccount();
   const { pairId, onChangeAction } = useProTrade();
 

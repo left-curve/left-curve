@@ -179,11 +179,11 @@ export {
 } from "./hooks/useVaultSnapshots.js";
 
 export {
-  type UsePerpsPairStatsParameters,
   type UseAllPerpsPairStatsParameters,
+  type UsePerpsPairStatsByPairIdParameters,
   type NormalizedPerpsPairStats,
   type AllPerpsPairStatsSnapshot,
-  usePerpsPairStats,
+  usePerpsPairStatsByPairId,
   useAllPerpsPairStats,
 } from "./hooks/usePerpsPairStats.js";
 

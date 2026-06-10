@@ -1,5 +1,5 @@
-import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { FormattedNumber, Select, Spinner, useMediaQuery } from "@left-curve/applets-kit";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import {
@@ -12,30 +12,23 @@ import {
   usePerpsOrdersByUser,
 } from "@left-curve/store";
 import { useProTrade } from "./ProTrade";
-import { bucketSizeToFractionDigits, Decimal, formatNumber } from "@left-curve/utils";
+import { bucketSizeToFractionDigits, Decimal, formatNumber, shallowEqual } from "@left-curve/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 import type { AnyCoin } from "@left-curve/store/types";
-import type { Controllers } from "@left-curve/applets-kit";
 import type { PerpsLiquidityDepthResponse } from "@left-curve/types";
 
 type OrderBookOverviewProps = {
-  controllers: Controllers;
+  onSelectPrice: (price: string) => void;
 };
 
-type LiveResourceErrorSnapshot = {
-  status: "idle" | "connecting" | "ready" | "error";
-  error: Error | null;
-};
+const ORDER_BOOK_VISUAL_UPDATE_MS = 500;
 
-function selectLiveResourceError(snapshot: LiveResourceErrorSnapshot) {
-  return snapshot.status === "error" ? snapshot.error : null;
-}
-
-export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controllers }) => {
+const OrderBookOverviewComponent: React.FC<OrderBookOverviewProps> = ({ onSelectPrice }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg, is3XlTall } = useMediaQuery();
@@ -105,7 +98,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
               bucketRecords={bucketRecords}
               perpsPairId={perpsPairId}
               accountAddress={accountAddress}
-              controllers={controllers}
+              onSelectPrice={onSelectPrice}
             />
           )}
           {activeTab === "trades" && <LiveTrades baseCoin={baseCoin} perpsPairId={perpsPairId} />}
@@ -128,6 +121,9 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ controller
   );
 };
 
+export const OrderBookOverview = memo(OrderBookOverviewComponent);
+OrderBookOverview.displayName = "OrderBookOverview";
+
 type OrderBookRowProps = {
   price: string;
   size: string;
@@ -137,10 +133,10 @@ type OrderBookRowProps = {
   priceFractionDigits: number;
   onSelectPrice: (price: string) => void;
   flashKey?: number;
-  userOrderPrices: Set<string>;
+  hasUserOrder: boolean;
 };
 
-const OrderRow: React.FC<OrderBookRowProps> = (props) => {
+const OrderRowComponent: React.FC<OrderBookRowProps> = (props) => {
   const {
     price,
     size,
@@ -150,10 +146,9 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
     priceFractionDigits,
     onSelectPrice,
     flashKey,
-    userOrderPrices,
+    hasUserOrder,
   } = props;
   const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed();
-  const hasUserOrder = userOrderPrices.has(Decimal(price).toFixed(priceFractionDigits));
 
   const depthBarClass =
     type === "bid"
@@ -214,6 +209,9 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
   );
 };
 
+const OrderRow = memo(OrderRowComponent);
+OrderRow.displayName = "OrderRow";
+
 type OrderBookProps = {
   baseCoin: AnyCoin & { amount: string };
   quoteCoin: AnyCoin & { amount: string };
@@ -223,7 +221,7 @@ type OrderBookProps = {
   bucketRecords: number;
   perpsPairId: string;
   accountAddress?: string;
-  controllers: Controllers;
+  onSelectPrice: (price: string) => void;
 };
 
 const OrderBook: React.FC<OrderBookProps> = ({
@@ -235,7 +233,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
   bucketRecords,
   perpsPairId,
   accountAddress,
-  controllers,
+  onSelectPrice,
 }) => {
   const [perpsDisplayModeRaw, setPerpsDisplayMode] = useStorage<"base" | "quote">(
     "perps-order-book-display-mode",
@@ -246,11 +244,15 @@ const OrderBook: React.FC<OrderBookProps> = ({
   const bucketSizeSymbol = perpsDisplayMode === "quote" ? "USD" : baseCoin.symbol;
 
   const priceFractionDigits = useMemo(() => bucketSizeToFractionDigits(bucketSize), [bucketSize]);
+  const handleDisplayModeChange = useCallback(
+    (key: string) => setPerpsDisplayMode(key as "base" | "quote"),
+    [setPerpsDisplayMode],
+  );
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center h-full">
       <div className="flex items-center justify-between w-full px-4">
-        <Select value={bucketSize} onChange={(key) => setBucketSize(key)} variant="plain">
+        <Select value={bucketSize} onChange={setBucketSize} variant="plain">
           {bucketSizes.map((size: string) => (
             <Select.Item key={`bucket-${size}`} value={size}>
               {size}
@@ -259,7 +261,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
         </Select>
         <Select
           value={perpsDisplayMode}
-          onChange={(key) => setPerpsDisplayMode(key as "base" | "quote")}
+          onChange={handleDisplayModeChange}
           variant="plain"
           classNames={{ listboxWrapper: "right-0 left-auto" }}
         >
@@ -289,7 +291,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
         bucketRecords={bucketRecords}
         base={baseCoin}
         quote={quoteCoin}
-        onSelectPrice={(price) => controllers.setValue("price", price)}
+        onSelectPrice={onSelectPrice}
         displayMode={perpsDisplayMode}
         priceFractionDigits={priceFractionDigits}
       />
@@ -304,9 +306,8 @@ type LiveTradesProps = {
 
 const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, perpsPairId }) => {
   const { navigate } = useRouter();
-  const { settings } = useApp();
+  const timeFormat = useApp((state) => state.settings.timeFormat);
   const { is3XlTall } = useMediaQuery();
-  const { timeFormat } = settings;
 
   const livePerps = useLivePerpsTrades((s) => s.trades, { perpsPairId });
   const perpsTrades = useDeferredValue(livePerps);
@@ -382,27 +383,31 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   priceFractionDigits,
 }) => {
   const { isLg } = useMediaQuery();
-  const perpsDepthData = usePerpsLiquidityDepth((s) => s.liquidityDepth, {
-    perpsPairId,
-    bucketSize,
-  });
-  const perpsDepthError = usePerpsLiquidityDepth(selectLiveResourceError, {
-    perpsPairId,
-    bucketSize,
-  });
+  const { liquidityDepth: perpsDepthData, error: perpsDepthError } = usePerpsLiquidityDepth(
+    (s) => ({ liquidityDepth: s.liquidityDepth, error: s.error }),
+    {
+      perpsPairId,
+      bucketSize,
+      notifyIntervalMs: ORDER_BOOK_VISUAL_UPDATE_MS,
+    },
+    shallowEqual,
+  );
 
-  const perpsOrdersData = usePerpsOrdersByUser((s) => s.orders, { accountAddress });
-
-  const userOrderPrices = useMemo(() => {
-    const prices = new Set<string>();
-    if (perpsOrdersData) {
-      for (const o of Object.values(perpsOrdersData)) {
-        if (o.pairId !== perpsPairId) continue;
-        prices.add(Decimal(o.limitPrice).toFixed(priceFractionDigits));
+  const userOrderPrices = usePerpsOrdersByUser(
+    (s) => {
+      if (!s.orders) return [];
+      const prices = new Set<string>();
+      for (const order of Object.values(s.orders)) {
+        if (order.pairId !== perpsPairId) continue;
+        prices.add(Decimal(order.limitPrice).toFixed(priceFractionDigits));
       }
-    }
-    return prices;
-  }, [perpsOrdersData, priceFractionDigits, perpsPairId]);
+      return [...prices].sort();
+    },
+    { accountAddress },
+    shallowEqual,
+  );
+
+  const userOrderPriceSet = useMemo(() => new Set(userOrderPrices), [userOrderPrices]);
 
   const liquidityDepth = useMemo(() => {
     if (!perpsDepthData) return null;
@@ -434,6 +439,11 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
     return new Map(counters);
   }, [liquidityDepth]);
 
+  const asksOrdered = useMemo(() => {
+    if (!liquidityDepth) return [];
+    return isLg ? [...liquidityDepth.asks.records].reverse() : liquidityDepth.asks.records;
+  }, [liquidityDepth, isLg]);
+
   if (perpsDepthError) {
     return (
       <div className="flex h-full min-h-[12rem] w-full items-center justify-center p-4 text-center diatype-xs-medium text-utility-error-600">
@@ -446,23 +456,21 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
   const { bids, asks } = liquidityDepth;
 
-  const asksOrdered = isLg ? [...asks.records].reverse() : [...asks.records];
-
   const max = Decimal.max(bids.highestSize, asks.highestSize).toFixed();
 
   return (
     <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full">
       <div className="asks-container flex flex-1 flex-col w-full gap-[2px] order-2 lg:order-1 lg:justify-end">
-        {asksOrdered.map((ask, i) => (
+        {asksOrdered.map((ask) => (
           <OrderRow
-            key={`ask-${ask.price}-${i}`}
+            key={`ask-${ask.price}`}
             type="ask"
             {...ask}
             max={max}
             priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
             flashKey={flashKeys.get(ask.price)}
-            userOrderPrices={userOrderPrices}
+            hasUserOrder={userOrderPriceSet.has(Decimal(ask.price).toFixed(priceFractionDigits))}
           />
         ))}
       </div>
@@ -470,16 +478,16 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
       <Spread perpsPairId={perpsPairId} perpsDepth={perpsDepthData} />
 
       <div className="bid-container flex flex-1 flex-col w-full gap-[2px] order-1 lg:order-3">
-        {[...bids.records].map((bid, i) => (
+        {bids.records.map((bid) => (
           <OrderRow
-            key={`bid-${bid.price}-${i}`}
+            key={`bid-${bid.price}`}
             type="bid"
             {...bid}
             max={max}
             priceFractionDigits={priceFractionDigits}
             onSelectPrice={onSelectPrice}
             flashKey={flashKeys.get(bid.price)}
-            userOrderPrices={userOrderPrices}
+            hasUserOrder={userOrderPriceSet.has(Decimal(bid.price).toFixed(priceFractionDigits))}
           />
         ))}
       </div>
@@ -491,8 +499,7 @@ const Spread: React.FC<{
   perpsPairId: string;
   perpsDepth: PerpsLiquidityDepthResponse | null;
 }> = ({ perpsPairId, perpsDepth }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
+  const formatNumberOptions = useApp((state) => state.settings.formatNumberOptions);
 
   const { currentPrice, previousPrice } = useCurrentPrice({ perpsPairId });
 
