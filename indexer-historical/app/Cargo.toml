@@ -18,11 +18,16 @@ metrics = ["dep:metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
-anyhow                            = { workspace = true }
-futures                           = { workspace = true }
-indexer-historical-block-source   = { workspace = true }
-indexer-historical-projection     = { workspace = true }
-indexer-historical-types          = { workspace = true }
-metrics                           = { workspace = true, optional = true }
-tokio                             = { workspace = true }
-tracing                           = { workspace = true, optional = true }
+anyhow                          = { workspace = true }
+async-trait                     = { workspace = true }
+chrono                          = { workspace = true }
+clickhouse                      = { workspace = true }
+futures                         = { workspace = true }
+indexer-historical-block-source = { workspace = true }
+indexer-historical-projection   = { workspace = true }
+indexer-historical-types        = { workspace = true }
+metrics                         = { workspace = true, optional = true }
+sea-orm                         = { workspace = true }
+sea-orm-migration               = { workspace = true }
+tokio                           = { workspace = true }
+tracing                         = { workspace = true, optional = true }

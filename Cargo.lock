@@ -6266,11 +6266,16 @@ name = "indexer-historical-app"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "chrono",
+ "clickhouse",
  "futures",
  "indexer-historical-block-source",
  "indexer-historical-projection",
  "indexer-historical-types",
  "metrics",
+ "sea-orm",
+ "sea-orm-migration",
  "tokio",
  "tracing",
 ]
@@ -6305,8 +6310,12 @@ name = "indexer-historical-projection"
 version = "0.0.0"
 dependencies = [
  "async-trait",
+ "clickhouse",
+ "futures",
  "indexer-historical-types",
  "metrics",
+ "sea-orm",
+ "sea-orm-migration",
  "tracing",
 ]
 

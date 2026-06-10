@@ -1,33 +1,49 @@
 use {
-    crate::projection_loop, anyhow::Context, futures::future::try_join_all,
-    indexer_historical_block_source::BlockSource, indexer_historical_projection::Projection,
-    indexer_historical_types::AnyResult, std::sync::Arc,
+    crate::projection_loop,
+    anyhow::Context,
+    futures::future::try_join_all,
+    indexer_historical_block_source::BlockSource,
+    indexer_historical_projection::{Committer, Projection},
+    indexer_historical_types::AnyResult,
+    std::sync::Arc,
 };
 
-/// Top-level orchestrator: owns a single [`BlockSource`] and a fixed set of
-/// [`Projection`]s, spawns the source's `run()` task plus one
-/// [`projection_loop`] per projection, and waits for all of them.
+/// Top-level orchestrator: owns a single [`BlockSource`], the [`Committer`]
+/// shared by all projections, and a fixed set of [`Projection`]s. Spawns
+/// the source's `run()` task plus one [`projection_loop`] per projection,
+/// and waits for all of them.
 ///
 /// Construct with [`App::new`] and drive with [`App::run`].
 pub struct App {
     source: Arc<dyn BlockSource>,
+    committer: Arc<dyn Committer>,
     projections: Vec<Arc<dyn Projection>>,
 }
 
 impl App {
-    pub fn new(source: Arc<dyn BlockSource>, projections: Vec<Arc<dyn Projection>>) -> Self {
+    pub fn new(
+        source: Arc<dyn BlockSource>,
+        committer: Arc<dyn Committer>,
+        projections: Vec<Arc<dyn Projection>>,
+    ) -> Self {
         Self {
             source,
+            committer,
             projections,
         }
     }
 
-    /// Spawn the source + all projection loops and wait for them.
+    /// Migrate storage, then spawn the source + all projection loops and
+    /// wait for them.
     ///
     /// Returns when any task finishes (cleanly or with error). The current
     /// `LocalBlockSource::run` loops forever, so in practice this only
     /// returns on a panic or an unrecoverable error from one of the tasks.
     pub async fn run(&self) -> AnyResult<()> {
+        // Boot: the committer derives every owner's migrations from the
+        // registered projections and applies them before any task starts.
+        self.committer.migrate(&self.projections).await?;
+
         let mut handles = Vec::with_capacity(self.projections.len() + 1);
 
         handles.push(tokio::spawn(self.source.clone().run()));
@@ -36,6 +52,7 @@ impl App {
             handles.push(tokio::spawn(projection_loop(
                 p.clone(),
                 self.source.clone(),
+                self.committer.clone(),
             )));
         }
 

@@ -19,6 +19,10 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 async-trait              = { workspace = true }
+clickhouse               = { workspace = true }
+futures                  = { workspace = true }
 indexer-historical-types = { workspace = true }
 metrics                  = { workspace = true, optional = true }
+sea-orm                  = { workspace = true }
+sea-orm-migration        = { workspace = true }
 tracing                  = { workspace = true, optional = true }

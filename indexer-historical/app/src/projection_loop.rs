@@ -1,8 +1,8 @@
 use {
     anyhow::bail,
     indexer_historical_block_source::BlockSource,
-    indexer_historical_projection::Projection,
-    indexer_historical_types::AnyResult,
+    indexer_historical_projection::{Committer, Projection},
+    indexer_historical_types::{AnyResult, BlockData},
     std::{cmp::Ordering, sync::Arc},
     tokio::sync::broadcast,
 };
@@ -13,9 +13,10 @@ use {
 pub async fn projection_loop(
     p: Arc<dyn Projection>,
     source: Arc<dyn BlockSource>,
+    committer: Arc<dyn Committer>,
 ) -> AnyResult<()> {
-    let mut cursor = p
-        .last_processed_height()
+    let mut cursor = committer
+        .cursor(p.id())
         .await?
         .map(|h| h + 1)
         .unwrap_or_else(|| p.min_height());
@@ -30,7 +31,7 @@ pub async fn projection_loop(
         // no block at `cursor` (i.e. we caught up to whatever it can serve
         // right now).
         while let Some(block) = source.get(cursor).await? {
-            p.process(&block).await?;
+            process_one(p.as_ref(), committer.as_ref(), &block).await?;
             cursor += 1;
         }
 
@@ -39,12 +40,12 @@ pub async fn projection_loop(
         // PHASE 2 — live tail via broadcast.
         loop {
             match rx.recv().await {
-                Ok(block) => match block.block.info.height.cmp(&cursor) {
+                Ok(block) => match block.height().cmp(&cursor) {
                     Ordering::Less => {
                         continue;
                     },
                     Ordering::Equal => {
-                        p.process(&block).await?;
+                        process_one(p.as_ref(), committer.as_ref(), &block).await?;
                         cursor += 1;
                     },
                     Ordering::Greater => {
@@ -76,4 +77,18 @@ pub async fn projection_loop(
             }
         }
     }
+}
+
+/// One unit of work: open a write context, let the projection stage this
+/// block's writes, then commit through the committer — ClickHouse flush +
+/// ack first, then the Postgres transaction carrying the domain writes
+/// together with the cursor update. See `DESIGN.md` § Commit protocol.
+async fn process_one(
+    p: &dyn Projection,
+    committer: &dyn Committer,
+    block: &BlockData,
+) -> AnyResult<()> {
+    let mut ctx = committer.begin(p.id()).await?;
+    p.process(&mut ctx, block).await?;
+    committer.commit(ctx, p.id(), block.height()).await
 }
