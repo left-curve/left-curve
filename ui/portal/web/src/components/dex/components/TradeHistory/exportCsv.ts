@@ -3,8 +3,12 @@ import { Decimal } from "@left-curve/utils";
 import type { PerpsEvent } from "@left-curve/types";
 
 import { normalizePerpsEvent } from "../../helpers/normalizePerpsEvent";
+import {
+  getMakerTakerLabel,
+  getPerpsEventLabel,
+  getSideLabel,
+} from "../../helpers/perpsEventLabels";
 import { getPerpsPairLabel, getPerpsPairSymbol } from "../../helpers/tradePairSymbols";
-import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
 
 export type PerpsCsvHeaders = {
   pair: string;

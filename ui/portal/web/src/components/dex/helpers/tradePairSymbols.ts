@@ -31,24 +31,25 @@ export function getPerpsPairId({ baseSymbol, quoteSymbol }: TradePairSymbols): s
   return `perp/${baseSymbol.toLowerCase()}${quoteSymbol.toLowerCase()}`;
 }
 
-export function getPerpsPairQuoteSymbol(pairId: string): string {
+export function parsePerpsPairId(pairId: string): TradePairSymbols {
   const symbol = pairId.replace("perp/", "").toUpperCase();
-  if (symbol.endsWith("USDC")) return "USDC";
-  return DEFAULT_QUOTE_SYMBOL;
+  const quoteSymbol = symbol.endsWith("USDC") ? "USDC" : DEFAULT_QUOTE_SYMBOL;
+  const baseSymbol = symbol.endsWith(quoteSymbol) ? symbol.slice(0, -quoteSymbol.length) : symbol;
+  return { baseSymbol, quoteSymbol };
 }
 
 export function getPerpsPairSymbol(pairId: string): string {
-  const symbol = pairId.replace("perp/", "").toUpperCase();
-  const quoteSymbol = getPerpsPairQuoteSymbol(pairId);
-  return symbol.endsWith(quoteSymbol) ? symbol.slice(0, -quoteSymbol.length) : symbol;
+  return parsePerpsPairId(pairId).baseSymbol;
 }
 
 export function getPerpsPairLabel(pairId: string): string {
-  return `${getPerpsPairSymbol(pairId)}/${getPerpsPairQuoteSymbol(pairId)}`;
+  const { baseSymbol, quoteSymbol } = parsePerpsPairId(pairId);
+  return `${baseSymbol}/${quoteSymbol}`;
 }
 
 export function getPerpsPairTicker(pairId: string): string {
-  return `${getPerpsPairSymbol(pairId)}${getPerpsPairQuoteSymbol(pairId)}`;
+  const { baseSymbol, quoteSymbol } = parsePerpsPairId(pairId);
+  return `${baseSymbol}${quoteSymbol}`;
 }
 
 export function getTradeQuoteDenom(

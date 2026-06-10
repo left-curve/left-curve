@@ -8,6 +8,7 @@ import {
   getPerpsPairTicker,
   getTradeQuoteDenom,
   normalizeTradePairSymbols,
+  parsePerpsPairId,
   parseTradePairSymbols,
 } from "./tradePairSymbols";
 
@@ -37,6 +38,12 @@ describe("trade pair symbols", () => {
   it("derives perps pair ids from parsed symbols", () => {
     expect(getPerpsPairId({ baseSymbol: "ETH", quoteSymbol: "USD" })).toBe("perp/ethusd");
     expect(getPerpsPairId({ baseSymbol: "BTC", quoteSymbol: "USDC" })).toBe("perp/btcusdc");
+  });
+
+  it("round-trips perps pair ids through parsed symbols", () => {
+    const symbols = { baseSymbol: "BTC", quoteSymbol: "USDC" };
+
+    expect(parsePerpsPairId(getPerpsPairId(symbols))).toEqual(symbols);
   });
 
   it("derives base symbols from perps pair ids", () => {

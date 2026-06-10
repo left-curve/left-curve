@@ -22,6 +22,7 @@ import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Image } from "~/components/foundation/Image";
+import { perpsTradeHistoryKeys } from "../dex/helpers/perpsTradeHistoryKeys";
 import { getPerpsPairSymbol } from "../dex/helpers/tradePairSymbols";
 
 type PerpsClosePositionProps = {
@@ -92,7 +93,9 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["prices"] });
-        queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+        queryClient.invalidateQueries({
+          queryKey: perpsTradeHistoryKeys.account(account?.address),
+        });
         hideModal();
       },
     },

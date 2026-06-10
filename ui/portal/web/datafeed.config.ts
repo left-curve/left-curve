@@ -1,12 +1,9 @@
 import {
   CHART_RESOLUTIONS,
   convertResolutionToCandleInterval,
-} from "./src/components/dex/helpers/chartResolution";
-import { buildFillMarker, type FillMarker } from "./src/components/dex/helpers/fillMarkers";
-import {
-  getPerpsPairId,
-  parseTradePairSymbols,
-} from "./src/components/dex/helpers/tradePairSymbols";
+} from "~/components/dex/helpers/chartResolution";
+import { fetchFillMarkers } from "~/components/dex/helpers/fillMarkers";
+import { getPerpsPairId, parseTradePairSymbols } from "~/components/dex/helpers/tradePairSymbols";
 
 import type { PerpsCandle } from "@left-curve/types";
 import type { PublicClient } from "@left-curve/sdk";
@@ -25,9 +22,6 @@ import type {
   Mark,
 } from "@left-curve/tradingview";
 
-const FILL_MARKERS_LIMIT = 500;
-const FILL_MARKERS_RANGE_BUCKET_SECONDS = 24 * 60 * 60;
-
 function perpsCandlesToTradingViewBar(candles: PerpsCandle[]) {
   return candles.reverse().map((candle) => ({
     time: candle.timeStartUnix,
@@ -43,7 +37,7 @@ type CreatePerpsDataFeedParameters = {
   client: PublicClient;
   queryClient: QueryClient;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
-  getAccountAddress?: () => string | undefined;
+  getAccountAddress: () => string | undefined;
 };
 
 function perpsSymbolToPairId(symbolName: string): string {
@@ -54,13 +48,6 @@ function perpsSymbolToPairId(symbolName: string): string {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function getFillMarkerRangeBucket(from: number, to: number) {
-  return {
-    from: Math.floor(from / FILL_MARKERS_RANGE_BUCKET_SECONDS) * FILL_MARKERS_RANGE_BUCKET_SECONDS,
-    to: Math.ceil(to / FILL_MARKERS_RANGE_BUCKET_SECONDS) * FILL_MARKERS_RANGE_BUCKET_SECONDS,
-  };
 }
 
 export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): IBasicDataFeed {
@@ -179,51 +166,24 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       onDataCallback: GetMarksCallback<Mark>,
       resolution: ResolutionString,
     ) => {
-      const accountAddress = getAccountAddress?.();
+      const accountAddress = getAccountAddress();
       if (!accountAddress) {
         onDataCallback([]);
         return;
       }
 
       const currentPairId = perpsSymbolToPairId(symbolInfo.name);
-      const rangeBucket = getFillMarkerRangeBucket(from, to);
-      const earlierThan = new Date(rangeBucket.to * 1000);
-      const laterThan = new Date(rangeBucket.from * 1000);
 
-      queryClient
-        .fetchQuery({
-          queryKey: [
-            "perpsTradeHistory",
-            accountAddress,
-            "fillMarkers",
-            currentPairId,
-            rangeBucket.from,
-            rangeBucket.to,
-          ],
-          staleTime: 10_000,
-          queryFn: () =>
-            client.queryPerpsEvents({
-              userAddr: accountAddress,
-              pairId: currentPairId,
-              eventType: "order_filled",
-              sortBy: "BLOCK_HEIGHT_DESC",
-              first: FILL_MARKERS_LIMIT,
-              earlierThan: earlierThan.toJSON(),
-              laterThan: laterThan.toJSON(),
-            }),
-        })
-        .then(({ nodes }) => {
-          const markers = nodes
-            .map((event) =>
-              buildFillMarker(event, {
-                resolution,
-              }),
-            )
-            .filter((marker): marker is FillMarker => marker !== null)
-            .sort((a, b) => a.time - b.time);
-
-          onDataCallback(markers);
-        })
+      fetchFillMarkers({
+        client,
+        queryClient,
+        accountAddress,
+        pairId: currentPairId,
+        resolution,
+        from,
+        to,
+      })
+        .then(onDataCallback)
         .catch((error: unknown) => {
           console.error("Failed to fetch perps fill markers:", error);
           onDataCallback([]);

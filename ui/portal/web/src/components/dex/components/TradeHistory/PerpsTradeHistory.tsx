@@ -21,8 +21,12 @@ import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 import { ExportCsvButton } from "./ExportCsvButton";
 import { TradeHistoryToolbar } from "./TradeHistoryToolbar";
 import { normalizePerpsEvent, type NormalizedFields } from "../../helpers/normalizePerpsEvent";
+import {
+  getMakerTakerLabel,
+  getPerpsEventLabel,
+  getSideLabel,
+} from "../../helpers/perpsEventLabels";
 import { getPerpsPairLabel, getPerpsPairSymbol } from "../../helpers/tradePairSymbols";
-import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
 import { type QueryRange, useTradeHistoryFilter } from "./useTradeHistoryFilter";
 import { usePerpsTradeHistory } from "./usePerpsTradeHistory";
 

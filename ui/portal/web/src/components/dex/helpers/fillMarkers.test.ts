@@ -1,8 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { buildFillMarker } from "./fillMarkers";
+import { buildFillMarker, fetchFillMarkers } from "./fillMarkers";
 
+import type { PublicClient } from "@left-curve/sdk";
 import type { OrderFilledData, PerpsEvent } from "@left-curve/types";
+import type { ResolutionString } from "@left-curve/tradingview";
 
 const baseFillData: OrderFilledData = {
   order_id: "42",
@@ -34,6 +37,19 @@ function makeEvent(overrides: Partial<PerpsEvent> = {}): PerpsEvent {
 }
 
 describe("fill markers", () => {
+  beforeAll(() => {
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("buckets fill time to the visible chart resolution", () => {
     const marker = buildFillMarker(makeEvent(), {
       resolution: "5",
@@ -115,5 +131,27 @@ describe("fill markers", () => {
         },
       ),
     ).toBeNull();
+  });
+
+  it("pads marker event queries through the current daily bucket", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const queryPerpsEvents = vi.fn().mockResolvedValue({ nodes: [] });
+
+    await fetchFillMarkers({
+      client: { queryPerpsEvents } as unknown as PublicClient,
+      queryClient,
+      accountAddress: "0xuser",
+      pairId: "perp/btcusd",
+      resolution: "1D" as ResolutionString,
+      from: Date.parse("2026-06-09T00:00:00.000Z") / 1000,
+      to: Date.parse("2026-06-09T00:00:00.000Z") / 1000,
+    });
+
+    expect(queryPerpsEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        laterThan: "2026-06-09T00:00:00.000Z",
+        earlierThan: "2026-06-10T00:00:00.000Z",
+      }),
+    );
   });
 });

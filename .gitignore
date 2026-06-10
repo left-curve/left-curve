@@ -46,7 +46,6 @@ ui/portal/web/public/touch-icons
 # Docs (Vocs)
 sdk/docs/.vocs
 sdk/docs/.templates/review
-docs/superpowers/
 
 # UI
 **/.next

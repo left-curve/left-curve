@@ -7,16 +7,16 @@ const SECOND_MS = 1_000;
 const MINUTE_MS = 60 * SECOND_MS;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
-export const CHART_RESOLUTIONS = [
-  "1S",
-  "1",
-  "5",
-  "15",
-  "60",
-  "240",
-  "1D",
-  "1W",
-] as readonly ResolutionString[];
+export const CHART_RESOLUTIONS: readonly ResolutionString[] = [
+  "1S" as ResolutionString,
+  "1" as ResolutionString,
+  "5" as ResolutionString,
+  "15" as ResolutionString,
+  "60" as ResolutionString,
+  "240" as ResolutionString,
+  "1D" as ResolutionString,
+  "1W" as ResolutionString,
+];
 
 export function convertResolutionToCandleInterval(resolution: ResolutionString): CandleIntervals {
   if (resolution.includes("S")) return CandleInterval.OneSecond;
@@ -48,6 +48,7 @@ export function getChartResolutionBarTime(
 ): number | undefined {
   if (!Number.isFinite(fillTimeMs)) return undefined;
 
+  // Keep in sync with indexer/clickhouse/src/entities/candle_interval.rs::interval_start.
   if (resolution.includes("W")) {
     const fillDate = new Date(fillTimeMs);
     const dayStartMs = Date.UTC(
