@@ -1465,11 +1465,7 @@ where
             let res = reqs
                 .into_iter()
                 .map(|req| {
-                    if let Query::Multi(children) = &req
-                        && children
-                            .iter()
-                            .any(|child| matches!(child, Query::Multi(_)))
-                    {
+                    if matches!(req, Query::Multi(_)) {
                         return Err(AppError::nested_multi_query()).into_generic_result();
                     }
 
