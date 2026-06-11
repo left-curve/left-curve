@@ -86,22 +86,20 @@ export const drawLines = (() => {
       }
 
       for (const { price, color, linestyle } of lines) {
-        await chart.createShape(
-          { price, time: Math.floor(Date.now() / 1000) },
-          {
-            shape: "horizontal_line",
-            lock: true,
-            disableSelection: true,
-            disableSave: true,
-            overrides: {
-              showLabel: false,
-              showPrice: true,
-              linecolor: color,
-              linestyle,
-              linewidth: 1,
-            },
+        // TradingView rejects horizontal_line when a time point is included.
+        await chart.createShape({ price } as TV.ShapePoint, {
+          shape: "horizontal_line",
+          lock: true,
+          disableSelection: true,
+          disableSave: true,
+          overrides: {
+            showLabel: false,
+            showPrice: true,
+            linecolor: color,
+            linestyle,
+            linewidth: 1,
           },
-        );
+        });
       }
     });
   };
