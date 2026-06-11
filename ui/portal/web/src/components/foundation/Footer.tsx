@@ -6,20 +6,21 @@ import {
   Marquee,
   twMerge,
 } from "@left-curve/applets-kit";
-import { allPerpsPairStatsStore, useAllPerpsPairStats } from "@left-curve/store";
+import { useAllPerpsPairStats } from "@left-curve/store";
 import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
 import { StatusBadge } from "./StatusBadge";
+import { memo } from "react";
+import { getPerpsPairTicker } from "../dex/helpers/tradePairSymbols";
 
 import type { NormalizedPerpsPairStats } from "@left-curve/store";
+
+const TICKER_PRICE_CHANGE_FORMAT_OPTIONS = { fractionDigits: 2 };
 
 function Footer() {
   const router = useRouter();
   const isTradeRoute = router.state.location.pathname.includes("trade");
-
-  useAllPerpsPairStats();
-  const perpsPairStats = allPerpsPairStatsStore((s) => s.perpsPairStats);
 
   return (
     <footer
@@ -31,18 +32,7 @@ function Footer() {
       <div className="flex flex-1 items-center gap-2 min-w-0">
         <StatusBadge className="static flex" />
 
-        <Marquee
-          className="flex-1 min-w-0"
-          direction="left"
-          speed={40}
-          item={
-            <div className="flex items-center gap-3 pr-3">
-              {perpsPairStats.map((stats) => (
-                <TickerItem key={stats.pairId} stats={stats} />
-              ))}
-            </div>
-          }
-        />
+        <FooterTicker />
       </div>
 
       <div className="h-[17px] w-px bg-outline-secondary-gray shrink-0" />
@@ -85,25 +75,42 @@ function Footer() {
   );
 }
 
+const FooterTicker = memo(function FooterTicker() {
+  const perpsPairStats = useAllPerpsPairStats((s) => s.perpsPairStats);
+
+  return (
+    <Marquee
+      className="flex-1 min-w-0"
+      direction="left"
+      speed={40}
+      item={
+        <div className="flex items-center gap-3 pr-3">
+          {perpsPairStats.map((stats) => (
+            <TickerItem key={stats.pairId} stats={stats} />
+          ))}
+        </div>
+      }
+    />
+  );
+});
+
 type TickerItemProps = {
   stats: NormalizedPerpsPairStats;
 };
 
-function TickerItem({ stats }: TickerItemProps) {
+const TickerItem = memo(function TickerItem({ stats }: TickerItemProps) {
   const priceChange = stats.priceChange24H ? Decimal(stats.priceChange24H) : null;
   const isPositive = priceChange ? priceChange.gte(0) : true;
 
   return (
     <div className="flex items-center gap-1 diatype-xs-regular shrink-0 w-[8.5rem]">
-      <span className="text-ink-secondary-700">
-        {stats.pairId.replace("perp/", "").toUpperCase()}
-      </span>
+      <span className="text-ink-secondary-700">{getPerpsPairTicker(stats.pairId)}</span>
       <span className={isPositive ? "text-utility-success-600" : "text-utility-error-600"}>
         {priceChange ? `${isPositive ? "+" : ""}` : ""}
         {priceChange ? (
           <FormattedNumber
             number={priceChange.toString()}
-            formatOptions={{ fractionDigits: 2 }}
+            formatOptions={TICKER_PRICE_CHANGE_FORMAT_OPTIONS}
             as="span"
           />
         ) : (
@@ -116,6 +123,6 @@ function TickerItem({ stats }: TickerItemProps) {
       </span>
     </div>
   );
-}
+});
 
 export { Footer };

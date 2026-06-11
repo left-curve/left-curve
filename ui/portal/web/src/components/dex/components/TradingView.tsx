@@ -1,40 +1,61 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useApp, useTheme } from "@left-curve/applets-kit";
+import { useTheme } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
 import {
+  useConfig,
   usePublicClient,
-  perpsUserStateExtendedStore,
-  perpsOrdersByUserStore,
+  usePerpsUserStateExtended,
+  usePerpsOrdersByUser,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
+import { deepEqual } from "@left-curve/utils";
 import { createPerpsDataFeed } from "~/datafeed";
 import { buildPositionLines, buildPerpsOrderLines, drawLines } from "../helpers/chartLines";
+import { isPerpsTradeHistoryAccountKey } from "../helpers/perpsTradeHistoryKeys";
 
 import type { AnyCoin } from "@left-curve/store/types";
 
 type TradingViewProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
+  perpsPairId: string;
+  accountAddress?: string;
 };
 
-export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
+export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, accountAddress }) => {
   const pairSymbol = `${coins.base.symbol}-USD`;
-  const perpsPairId = `perp/${coins.base.symbol.toLowerCase()}usd`;
 
-  const positions = perpsUserStateExtendedStore((s) => s.positions);
-  const perpsOrders = perpsOrdersByUserStore((s) => s.orders);
+  const position = usePerpsUserStateExtended((s) => s.positions[perpsPairId], { accountAddress });
+  const perpsOrders = usePerpsOrdersByUser(
+    (s) => {
+      if (!s.orders) return null;
+      return Object.fromEntries(
+        Object.entries(s.orders).filter(([, order]) => order.pairId === perpsPairId),
+      );
+    },
+    { accountAddress },
+    deepEqual,
+  );
 
   const { theme } = useTheme();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
-  const { subscriptions, settings } = useApp();
-  const { timeFormat, timeZone } = settings;
+  const { subscriptions } = useConfig();
+  const timeFormat = useApp((state) => state.settings.timeFormat);
+  const timeZone = useApp((state) => state.settings.timeZone);
 
   const storageKey = `tv_v4.${pairSymbol}_perps`;
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
   const readyRef = useRef(false);
+  // The datafeed is created with the widget; this keeps getMarks pointed at the live account.
+  const accountAddressRef = useRef(accountAddress);
+
+  useEffect(() => {
+    accountAddressRef.current = accountAddress;
+  }, [accountAddress]);
 
   useEffect(() => {
     try {
@@ -51,6 +72,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
       client: publicClient,
       queryClient,
       subscriptions,
+      getAccountAddress: () => accountAddressRef.current,
     });
 
     const widget = new TV.widget({
@@ -185,23 +207,55 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins }) => {
   useEffect(() => {
     if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
+
+    const syncMarks = () => {
+      if (accountAddress) chart.refreshMarks();
+      else chart.clearMarks();
+    };
+
     if (chart.symbol() !== pairSymbol) {
-      chart.setSymbol(pairSymbol, () => {});
+      chart.setSymbol(pairSymbol, syncMarks);
+      return;
     }
-  }, [coins]);
+
+    syncMarks();
+  }, [accountAddress, pairSymbol]);
+
+  useEffect(() => {
+    if (!accountAddress) return;
+
+    let subscribed = true;
+    let refreshQueued = false;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== "updated" || event.action.type !== "invalidate") return;
+      if (!isPerpsTradeHistoryAccountKey(event.query.queryKey, accountAddress)) return;
+      if (refreshQueued) return;
+
+      refreshQueued = true;
+      queueMicrotask(() => {
+        refreshQueued = false;
+        if (!subscribed) return;
+        widgetRef.current?.chart().refreshMarks();
+      });
+    });
+
+    return () => {
+      subscribed = false;
+      unsubscribe();
+    };
+  }, [accountAddress, queryClient]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
     const chart = widgetRef.current.chart();
 
-    const position = positions[perpsPairId];
     const lines = [
       ...(position ? buildPositionLines(position) : []),
       ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, perpsPairId) : []),
     ];
 
     drawLines(chart, lines);
-  }, [positions, perpsOrders, perpsPairId]);
+  }, [position, perpsOrders, perpsPairId]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

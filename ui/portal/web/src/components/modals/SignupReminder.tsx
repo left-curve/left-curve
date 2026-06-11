@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { IconButton, IconClose, useApp } from "@left-curve/applets-kit";
+import { Image } from "~/components/foundation/Image";
 
 export const SignupReminder = forwardRef<undefined>(() => {
   const { hideModal } = useApp();
@@ -15,7 +16,7 @@ export const SignupReminder = forwardRef<undefined>(() => {
           <IconClose />
         </IconButton>
         <div className="w-12 h-12 rounded-full flex items-center justify-center">
-          <img
+          <Image
             src="/favicon.svg"
             alt="dango logo"
             className={

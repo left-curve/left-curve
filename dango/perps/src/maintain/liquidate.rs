@@ -11,8 +11,8 @@ use {
         state::{LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES},
         trade::{
             CancelAllOrdersOutcome, FeeBreakdown, MatchOrderOutcome,
-            compute_cancel_all_orders_outcome, match_order, merge_fee_breakdown, settle_fill,
-            settle_pnls,
+            compute_cancel_all_orders_outcome, match_order, merge_fee_breakdown,
+            resize_reduce_only_orders, settle_fill, settle_pnls,
         },
     },
     anyhow::ensure,
@@ -214,6 +214,23 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // -------------------- 8. Apply position index updates --------------------
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
+
+    // ---------- 9. Dynamic re-size of reduce-only orders ---------------------
+    //
+    // Liquidation forcibly reduced the positions of book-fill makers and ADL
+    // counter-parties (the liquidated user's own orders were already cancelled
+    // in step 2), so each of their resting reduce-only orders is re-clamped to
+    // its new position. The affected users are the keys of `maker_states`; the
+    // pairs are those the liquidated user held (`pair_ids`), the only pairs a
+    // fill could have touched. Over-scanning (a maker not on a given pair) is a
+    // safe no-op. We iterate the maps rather than the `index_updates`, because a
+    // pure ADL reduction leaves `(entry_price, side)` — hence the index —
+    // unchanged, which is exactly the case re-sizing must catch.
+    for pair_id in &pair_ids {
+        for maker in maker_states.keys() {
+            resize_reduce_only_orders(ctx.storage, *maker, pair_id, &mut events)?;
+        }
+    }
 
     #[cfg(feature = "tracing")]
     {

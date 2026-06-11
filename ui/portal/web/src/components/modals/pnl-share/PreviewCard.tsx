@@ -4,6 +4,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { Ref } from "react";
 
 import { CHARACTERS } from "../../foundation/CharacterSelector";
+import { Image } from "~/components/foundation/Image";
 
 export type PnlCardProps = {
   ref?: Ref<HTMLDivElement>;
@@ -47,11 +48,11 @@ export function PreviewCard({
       ref={ref}
       className="group bg-surface-secondary-rice rounded-2xl shadow-account-card p-6 relative overflow-hidden flex flex-col min-h-[345px] lg:min-w-[47rem] lg:min-h-[26.4375rem] data-[export=true]:w-[47rem] data-[export=true]:h-[26.4375rem]"
     >
-      <img src={dangoLogoSrc} alt="Dango" className="relative z-10 h-8 w-auto self-start" />
+      <Image src={dangoLogoSrc} alt="Dango" className="relative z-10 h-8 w-auto self-start" />
 
       <div className="relative z-10 flex-1 flex flex-col justify-center gap-3">
         <div className="flex items-center gap-2">
-          {logoURI && <img src={logoURI} alt={symbol} className="w-6 h-6 rounded-full" />}
+          {logoURI && <Image src={logoURI} alt={symbol} className="w-6 h-6 rounded-full" />}
           <span className="diatype-m-bold text-ink-primary-900">{symbol}</span>
           <Badge
             text={`${isLong ? "Long" : "Short"}${leverage ? ` ${leverage}x` : ""}`}
@@ -108,7 +109,7 @@ export function PreviewCard({
         )}
       </div>
 
-      <img
+      <Image
         src={characterImg}
         alt="character"
         className="absolute right-0 bottom-0 h-[60%] lg:h-full max-h-[9rem] lg:max-h-[24rem] group-data-[export=true]:h-full group-data-[export=true]:max-h-[24rem] opacity-90 pointer-events-none select-none"

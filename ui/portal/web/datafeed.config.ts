@@ -1,6 +1,11 @@
-import { CandleInterval } from "@left-curve/types";
+import {
+  CHART_RESOLUTIONS,
+  convertResolutionToCandleInterval,
+} from "~/components/dex/helpers/chartResolution";
+import { fetchFillMarkers } from "~/components/dex/helpers/fillMarkers";
+import { getPerpsPairId, parseTradePairSymbols } from "~/components/dex/helpers/tradePairSymbols";
 
-import type { CandleIntervals, PerpsCandle } from "@left-curve/types";
+import type { PerpsCandle } from "@left-curve/types";
 import type { PublicClient } from "@left-curve/sdk";
 import type { useConfig } from "@left-curve/store";
 import type { QueryClient } from "@tanstack/react-query";
@@ -13,31 +18,9 @@ import type {
   ResolveCallback,
   SubscribeBarsCallback,
   IBasicDataFeed,
+  GetMarksCallback,
+  Mark,
 } from "@left-curve/tradingview";
-
-function convertResolutionToCandleInterval(resolution: ResolutionString): CandleIntervals {
-  if (resolution.includes("S")) return CandleInterval.OneSecond;
-  if (resolution.includes("W")) return CandleInterval.OneWeek;
-  if (resolution.includes("D")) return CandleInterval.OneDay;
-
-  const minutes = parseInt(resolution);
-  if (Number.isNaN(minutes)) throw new Error(`Unsupported resolution: ${resolution}`);
-
-  switch (minutes) {
-    case 1:
-      return CandleInterval.OneMinute;
-    case 5:
-      return CandleInterval.FiveMinutes;
-    case 15:
-      return CandleInterval.FifteenMinutes;
-    case 60:
-      return CandleInterval.OneHour;
-    case 240:
-      return CandleInterval.FourHours;
-    default:
-      throw new Error(`Unsupported resolution in minutes: ${minutes}`);
-  }
-}
 
 function perpsCandlesToTradingViewBar(candles: PerpsCandle[]) {
   return candles.reverse().map((candle) => ({
@@ -54,15 +37,21 @@ type CreatePerpsDataFeedParameters = {
   client: PublicClient;
   queryClient: QueryClient;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
+  getAccountAddress: () => string | undefined;
 };
 
 function perpsSymbolToPairId(symbolName: string): string {
-  const [base] = symbolName.split("-");
-  return `perp/${base.toLowerCase()}usd`;
+  const parsed = parseTradePairSymbols(symbolName);
+  if (!parsed) throw new Error(`Unsupported perps symbol: ${symbolName}`);
+  return getPerpsPairId(parsed);
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): IBasicDataFeed {
-  const { client, queryClient, subscriptions } = parameters;
+  const { client, queryClient, subscriptions, getAccountAddress } = parameters;
 
   let _unsubscribe: () => void = () => {};
 
@@ -75,16 +64,8 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       setTimeout(
         () =>
           callback({
-            supported_resolutions: [
-              "1S",
-              "1",
-              "5",
-              "15",
-              "60",
-              "240",
-              "1D",
-              "1W",
-            ] as ResolutionString[],
+            supported_resolutions: [...CHART_RESOLUTIONS],
+            supports_marks: true,
           }),
         0,
       );
@@ -112,16 +93,7 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
         pricescale: 100,
         minmov: 1,
         has_intraday: true,
-        supported_resolutions: [
-          "1S",
-          "1",
-          "5",
-          "15",
-          "60",
-          "240",
-          "1D",
-          "1W",
-        ] as ResolutionString[],
+        supported_resolutions: [...CHART_RESOLUTIONS],
         volume_precision: 2,
         data_status: "streaming",
       };
@@ -160,9 +132,9 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
             onHistoryCallback([], { noData: true });
           }
         })
-        .catch((error: any) => {
+        .catch((error: unknown) => {
           console.error("Failed to fetch perps bars:", error);
-          onErrorCallback(error?.message || String(error));
+          onErrorCallback(getErrorMessage(error));
         });
     },
 
@@ -185,6 +157,37 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
           }
         },
       });
+    },
+
+    getMarks: (
+      symbolInfo: LibrarySymbolInfo,
+      from: number,
+      to: number,
+      onDataCallback: GetMarksCallback<Mark>,
+      resolution: ResolutionString,
+    ) => {
+      const accountAddress = getAccountAddress();
+      if (!accountAddress) {
+        onDataCallback([]);
+        return;
+      }
+
+      const currentPairId = perpsSymbolToPairId(symbolInfo.name);
+
+      fetchFillMarkers({
+        client,
+        queryClient,
+        accountAddress,
+        pairId: currentPairId,
+        resolution,
+        from,
+        to,
+      })
+        .then(onDataCallback)
+        .catch((error: unknown) => {
+          console.error("Failed to fetch perps fill markers:", error);
+          onDataCallback([]);
+        });
     },
 
     searchSymbols: () => {},

@@ -78,7 +78,9 @@ export type SubscriptionSchema = [
   },
   {
     key: "allPerpsPairStats";
-    params?: undefined;
+    params: {
+      httpInterval?: number;
+    };
     listener: (event: { allPerpsPairStats: PerpsPairStats[] }) => void;
   },
 ];
@@ -99,8 +101,16 @@ export type SubscriptionExecutor<K extends SubscriptionKey> = (context: {
 
 export type SubscribeArguments<K extends SubscriptionKey> =
   GetSubscriptionDef<K>["params"] extends undefined
-    ? { listener: GetSubscriptionDef<K>["listener"]; params?: undefined }
-    : { listener: GetSubscriptionDef<K>["listener"]; params: GetSubscriptionDef<K>["params"] };
+    ? {
+        listener: GetSubscriptionDef<K>["listener"];
+        params?: undefined;
+        onError?: (error: unknown) => void;
+      }
+    : {
+        listener: GetSubscriptionDef<K>["listener"];
+        params: GetSubscriptionDef<K>["params"];
+        onError?: (error: unknown) => void;
+      };
 
 export type SubscriptionEvent<K extends SubscriptionKey> = Parameters<
   GetSubscriptionDef<K>["listener"]

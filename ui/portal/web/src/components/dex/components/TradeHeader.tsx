@@ -19,26 +19,19 @@ import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import {
-  useCurrentPrice,
-  oraclePricesStore,
-  allPerpsPairStatsStore,
-  TradePairStore,
-} from "@left-curve/store";
+import { useCurrentPrice, useOraclePrices, usePerpsPairStatsByPairId } from "@left-curve/store";
 import type React from "react";
 import type { SearchTokenRow } from "./SearchToken";
+import type { NormalizedPerpsPairStats } from "@left-curve/store";
 
 export const TradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
 
-  const pairId = TradePairStore((s) => s.pairId);
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
-
-  const { onChangePairId } = useProTrade();
-
-  const statsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
-  const pairStatsData = statsByPairId[getPerpsPairId()];
+  const { pairId, perpsPairId, onChangePairId } = useProTrade();
+  const pairStatsData = usePerpsPairStatsByPairId({
+    pairId: perpsPairId,
+  });
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -81,10 +74,7 @@ export const TradeHeader: React.FC = () => {
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
             className="lg:flex-1 lg:min-w-0 flex items-center"
           >
-            <HeaderMetricsScroller
-              pairStatsData={pairStatsData}
-              getPerpsPairId={getPerpsPairId}
-            />
+            <HeaderMetricsScroller pairStatsData={pairStatsData} perpsPairId={perpsPairId} />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -93,24 +83,34 @@ export const TradeHeader: React.FC = () => {
 };
 
 type HeaderMetricsScrollerProps = {
-  pairStatsData: any;
-  getPerpsPairId: () => string;
+  pairStatsData: NormalizedPerpsPairStats | null;
+  perpsPairId: string;
 };
 
 const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
   pairStatsData,
-  getPerpsPairId,
+  perpsPairId,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [{ canScrollLeft, canScrollRight }, setScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const hasOverflow = el.scrollWidth > el.clientWidth;
-    setCanScrollLeft(hasOverflow && el.scrollLeft > 1);
-    setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+    const nextScrollState = {
+      canScrollLeft: hasOverflow && el.scrollLeft > 1,
+      canScrollRight: hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 1,
+    };
+    setScrollState((previous) =>
+      previous.canScrollLeft === nextScrollState.canScrollLeft &&
+      previous.canScrollRight === nextScrollState.canScrollRight
+        ? previous
+        : nextScrollState,
+    );
   }, []);
 
   useEffect(() => {
@@ -151,8 +151,8 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
         className="gap-2 xxl:gap-6 grid grid-cols-3 lg:flex lg:flex-nowrap lg:items-center overflow-x-auto overflow-y-hidden diatype-xxs-medium lg:diatype-xs-medium scrollbar-none"
       >
         <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
-        <HeaderPrice />
-        <HeaderOraclePrice denom={getPerpsPairId()} />
+        <HeaderPrice perpsPairId={perpsPairId} />
+        <HeaderOraclePrice denom={perpsPairId} />
         <Header24hChange
           currentPrice={pairStatsData?.currentPrice}
           price24HAgo={pairStatsData?.price24HAgo}
@@ -175,8 +175,8 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
   );
 };
 
-const HeaderPrice: React.FC = () => {
-  const { currentPrice, previousPrice } = useCurrentPrice();
+const HeaderPrice: React.FC<{ perpsPairId: string }> = ({ perpsPairId }) => {
+  const { currentPrice, previousPrice } = useCurrentPrice({ perpsPairId });
 
   return (
     <div className="flex gap-1 flex-col lg:w-[3.5rem] lg:shrink-0 items-start">
@@ -202,8 +202,8 @@ const HeaderPrice: React.FC = () => {
 };
 
 const HeaderOraclePrice: React.FC<{ denom: string }> = ({ denom }) => {
-  const prices = oraclePricesStore((s) => s.prices);
-  const oraclePrice = prices?.[denom]?.humanizedPrice ? Number(prices[denom].humanizedPrice) : null;
+  const oraclePriceValue = useOraclePrices((s) => s.prices[denom]?.humanizedPrice ?? null);
+  const oraclePrice = oraclePriceValue ? Number(oraclePriceValue) : null;
 
   return (
     <div className="flex gap-1 flex-col lg:w-[3.5rem] lg:shrink-0 items-start">

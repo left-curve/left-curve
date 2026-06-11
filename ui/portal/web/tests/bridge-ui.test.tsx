@@ -1,0 +1,728 @@
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+
+import type React from "react";
+
+import { Bridge } from "../src/components/bridge/Bridge";
+
+const bridgeUiMocks = vi.hoisted(() => ({
+  allowanceMutation: {
+    isPending: false,
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+  },
+  allowanceQueryData: 0n,
+  changeCoin: vi.fn(),
+  changeAction: vi.fn(),
+  chainId: "dango-dev-1",
+  connector: null as { icon: string; id: string; name: string } | null,
+  deposit: {
+    isPending: false,
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+  },
+  evmBalances: {} as Record<string, string>,
+  evmWalletAddress: "0x4444444444444444444444444444444444444444",
+  getPrice: vi.fn(),
+  hasRouter: true,
+  network: "11155111" as "11155111" | "bitcoin",
+  refetchEvmBalances: vi.fn(),
+  reset: vi.fn(),
+  setConnectorId: vi.fn(),
+  setNetwork: vi.fn(),
+  showModal: vi.fn(),
+  userStatus: "active" as "active" | "inactive",
+  withdraw: {
+    isPending: false,
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+  },
+  withdrawFeeData: "0.25",
+}));
+
+const usdcCoin = {
+  decimals: 6,
+  denom: "bridge/usdc",
+  logoURI: "/usdc.png",
+  name: "USD Coin",
+  symbol: "USDC",
+  type: "native",
+};
+
+const ethCoin = {
+  decimals: 18,
+  denom: "bridge/eth",
+  logoURI: "/eth.png",
+  name: "Ether",
+  symbol: "ETH",
+  type: "native",
+};
+
+const bridgeConfig = {
+  chain: {
+    id: 11155111,
+    name: "Sepolia",
+  },
+  router: {
+    address: "0x1111111111111111111111111111111111111111",
+    coin: "0x2222222222222222222222222222222222222222",
+    domain: 17,
+    remote: {
+      warp: {
+        contract: "0x3333333333333333333333333333333333333333",
+        domain: 17,
+      },
+    },
+  },
+};
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: React.PropsWithChildren<{ to: string }>) => <>{children}</>,
+}));
+
+vi.mock("@left-curve/applets-kit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@left-curve/applets-kit")>();
+  const React = await import("react");
+
+  return {
+    ...actual,
+    AssetInputWithRange: ({
+      asset,
+      bottomComponent,
+      controllers,
+      extendValidation,
+      label,
+      name,
+      shouldValidate,
+    }: {
+      asset: typeof usdcCoin;
+      balances: Record<string, string>;
+      bottomComponent?: React.ReactNode;
+      controllers: ReturnType<typeof actual.useInputs>;
+      extendValidation?: (value: string) => boolean | string;
+      label: React.ReactNode;
+      name: string;
+      shouldValidate?: boolean;
+      showRange?: boolean;
+    }) => (
+      <label>
+        <span>{label}</span>
+        <input
+          aria-label={typeof label === "string" ? label : name}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            controllers.setValue(name, value);
+
+            if (!shouldValidate || !extendValidation) return;
+
+            const validationResult = extendValidation(value);
+            controllers.setError(
+              name,
+              validationResult === true ? undefined : validationResult || "Value is not valid",
+            );
+          }}
+          value={controllers.inputs[name]?.value ?? ""}
+        />
+        <span>{asset.symbol}</span>
+        {controllers.errors[name] ? <p role="alert">{controllers.errors[name]}</p> : null}
+        {bottomComponent}
+      </label>
+    ),
+    CoinSelector: ({
+      coins,
+      isDisabled,
+      label,
+      onChange,
+      value,
+    }: {
+      coins: Array<typeof usdcCoin>;
+      isDisabled?: boolean;
+      label: string;
+      onChange: (denom: string) => void;
+      value?: string;
+    }) => (
+      <select
+        aria-label={label}
+        disabled={isDisabled}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        value={value}
+      >
+        {coins.map((coin) => (
+          <option key={coin.denom} value={coin.denom}>
+            {coin.symbol}
+          </option>
+        ))}
+      </select>
+    ),
+    ConnectWalletWithModal: ({ onWalletSelected }: { onWalletSelected: (id: string) => void }) => (
+      <button onClick={() => onWalletSelected("browser-wallet")} type="button">
+        connect wallet
+      </button>
+    ),
+    FormattedNumber: ({
+      as: Component = "span",
+      number,
+    }: {
+      as?: React.ElementType;
+      formatOptions?: unknown;
+      number: string | number;
+    }) => <Component>{String(number)}</Component>,
+    IconDisconnect: ({ onClick }: { className?: string; onClick?: () => void }) => (
+      <button aria-label="disconnect wallet" onClick={onClick} type="button" />
+    ),
+    Input: ({
+      bottomComponent,
+      insideBottomComponent,
+      label,
+      startContent,
+      value,
+    }: {
+      bottomComponent?: React.ReactNode;
+      classNames?: unknown;
+      insideBottomComponent?: React.ReactNode;
+      label?: React.ReactNode;
+      placeholder?: string;
+      readOnly?: boolean;
+      startContent?: React.ReactNode;
+      startText?: string;
+      value?: string;
+    }) => (
+      <label>
+        <span>{label}</span>
+        {startContent}
+        <input aria-label={typeof label === "string" ? label : "input"} readOnly value={value} />
+        {insideBottomComponent}
+        {bottomComponent}
+      </label>
+    ),
+    Modals: {
+      ...actual.Modals,
+      BridgeDeposit: "BridgeDeposit",
+      BridgeWithdraw: "BridgeWithdraw",
+      DestinationWallet: "DestinationWallet",
+    },
+    NetworkSelector: ({
+      isDisabled,
+      label,
+      networks,
+      onNetworkChange,
+      value,
+    }: {
+      isDisabled?: boolean;
+      label: string;
+      networks: Array<{ id: string; name: string }>;
+      onNetworkChange: (network: { id: string }) => void;
+      value?: string;
+    }) => (
+      <select
+        aria-label={label}
+        disabled={isDisabled}
+        onChange={(event) => onNetworkChange({ id: event.currentTarget.value })}
+        value={value}
+      >
+        {networks.map((network) => (
+          <option key={network.id} value={network.id}>
+            {network.name}
+          </option>
+        ))}
+      </select>
+    ),
+    useApp: () => ({
+      showModal: bridgeUiMocks.showModal,
+    }),
+  };
+});
+
+vi.mock("@left-curve/store", () => ({
+  useAccount: () => ({
+    account: {
+      address: "0x6272696467657573657200000000000000000000",
+    },
+    isConnected: true,
+    userStatus: bridgeUiMocks.userStatus,
+  }),
+  useAppConfig: () => ({
+    data: {
+      minimumDeposit: {
+        "bridge/usdc": "1000000",
+      },
+    },
+  }),
+  useBalances: () => ({
+    data: {
+      "bridge/usdc": "10000000",
+    },
+  }),
+  useBridgeEvmDeposit: () => ({
+    allowanceMutation: bridgeUiMocks.allowanceMutation,
+    allowanceQuery: {
+      data: bridgeUiMocks.allowanceQueryData,
+    },
+    deposit: bridgeUiMocks.deposit,
+    wallet: {
+      data: {
+        account: {
+          address: bridgeUiMocks.evmWalletAddress,
+        },
+      },
+    },
+  }),
+  useBridgeState: ({ action }: { action: "deposit" | "withdraw" }) => ({
+    action,
+    changeCoin: bridgeUiMocks.changeCoin,
+    coin: usdcCoin,
+    coins: [usdcCoin, ethCoin],
+    config: bridgeUiMocks.hasRouter ? bridgeConfig : { chain: bridgeConfig.chain },
+    connector: bridgeUiMocks.connector,
+    network: bridgeUiMocks.network,
+    networks: [
+      {
+        id: "11155111",
+        name: "Sepolia",
+      },
+      {
+        id: "bitcoin",
+        name: "Bitcoin",
+      },
+    ],
+    reset: bridgeUiMocks.reset,
+    setConnectorId: bridgeUiMocks.setConnectorId,
+    setNetwork: bridgeUiMocks.setNetwork,
+  }),
+  useBridgeWithdraw: () => ({
+    withdraw: bridgeUiMocks.withdraw,
+    withdrawFee: {
+      data: bridgeUiMocks.withdrawFeeData,
+    },
+  }),
+  useEvmBalances: () => ({
+    data: bridgeUiMocks.evmBalances,
+    refetch: bridgeUiMocks.refetchEvmBalances,
+  }),
+  useConfig: () => ({
+    chain: {
+      id: bridgeUiMocks.chainId,
+    },
+  }),
+  usePrices: () => ({
+    getPrice: bridgeUiMocks.getPrice,
+  }),
+}));
+
+function renderBridgeWithdraw() {
+  return render(
+    <Bridge action="withdraw" changeAction={bridgeUiMocks.changeAction}>
+      <Bridge.Withdraw />
+    </Bridge>,
+  );
+}
+
+function renderBridgeDeposit() {
+  return render(
+    <Bridge action="deposit" changeAction={bridgeUiMocks.changeAction}>
+      <Bridge.Deposit />
+    </Bridge>,
+  );
+}
+
+describe("bridge UI", () => {
+  beforeEach(() => {
+    class ResizeObserverMock {
+      disconnect = vi.fn();
+      observe = vi.fn();
+      unobserve = vi.fn();
+    }
+
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      configurable: true,
+      value: ResizeObserverMock,
+    });
+
+    bridgeUiMocks.allowanceQueryData = 0n;
+    bridgeUiMocks.chainId = "dango-dev-1";
+    bridgeUiMocks.connector = null;
+    bridgeUiMocks.evmBalances = {
+      "bridge/usdc": "10000000",
+    };
+    bridgeUiMocks.hasRouter = true;
+    bridgeUiMocks.network = "11155111";
+    bridgeUiMocks.userStatus = "active";
+    bridgeUiMocks.withdrawFeeData = "0.25";
+    bridgeUiMocks.getPrice.mockImplementation((amount: string, denom: string) => {
+      return `${amount}:${denom}`;
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it("connects an EVM wallet before showing the deposit form", () => {
+    renderBridgeDeposit();
+
+    fireEvent.click(screen.getByRole("button", { name: "connect wallet" }));
+
+    expect(bridgeUiMocks.setConnectorId).toHaveBeenCalledWith("browser-wallet");
+    expect(bridgeUiMocks.showModal).not.toHaveBeenCalled();
+  });
+
+  it("shows the Bitcoin deposit address without an EVM wallet flow", () => {
+    bridgeUiMocks.network = "bitcoin";
+
+    renderBridgeDeposit();
+
+    expect(screen.getByText(m["bridge.depositAddress"]())).toBeInTheDocument();
+    expect(screen.getByText("bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh")).toBeInTheDocument();
+    expect(screen.getByText(m["bridge.rateLimitWarning"]())).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "connect wallet" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: m["bridge.deposit.title"]() }),
+    ).not.toBeInTheDocument();
+    expect(bridgeUiMocks.showModal).not.toHaveBeenCalled();
+  });
+
+  it("shows an unsupported warning instead of an EVM deposit form when config has no router", () => {
+    bridgeUiMocks.hasRouter = false;
+
+    renderBridgeDeposit();
+
+    expect(screen.getByText("This network does not support this asset.")).toBeInTheDocument();
+    expect(screen.getByText(m["bridge.rateLimitWarning"]())).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "connect wallet" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: m["bridge.deposit.title"]() }),
+    ).not.toBeInTheDocument();
+    expect(bridgeUiMocks.showModal).not.toHaveBeenCalled();
+  });
+
+  it("filters Ether from mainnet deposits while keeping it available for withdrawals", () => {
+    bridgeUiMocks.chainId = "dango-1";
+
+    const { unmount } = renderBridgeDeposit();
+
+    const depositCoinSelector = screen.getByRole("combobox", {
+      name: m["bridge.selectCoin"](),
+    }) as HTMLSelectElement;
+
+    expect(Array.from(depositCoinSelector.options).map((option) => option.textContent)).toEqual([
+      "USDC",
+    ]);
+
+    unmount();
+    renderBridgeWithdraw();
+
+    const withdrawCoinSelector = screen.getByRole("combobox", {
+      name: m["bridge.selectCoin"](),
+    }) as HTMLSelectElement;
+
+    expect(Array.from(withdrawCoinSelector.options).map((option) => option.textContent)).toEqual([
+      "USDC",
+      "ETH",
+    ]);
+  });
+
+  it("routes coin and network selector changes through the bridge state callbacks", () => {
+    renderBridgeWithdraw();
+
+    fireEvent.change(screen.getByRole("combobox", { name: m["bridge.selectCoin"]() }), {
+      target: {
+        value: "bridge/eth",
+      },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: m["bridge.selectNetwork"]() }), {
+      target: {
+        value: "bitcoin",
+      },
+    });
+
+    expect(bridgeUiMocks.changeCoin).toHaveBeenCalledWith("bridge/eth");
+    expect(bridgeUiMocks.setNetwork).toHaveBeenCalledWith("bitcoin");
+  });
+
+  it("opens deposit confirmation with allowance requirement and refresh reset wiring", async () => {
+    bridgeUiMocks.allowanceQueryData = 1_000_000n;
+    bridgeUiMocks.connector = {
+      icon: "/wallet.svg",
+      id: "browser-wallet",
+      name: "Browser Wallet",
+    };
+
+    renderBridgeDeposit();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "amount" }), {
+      target: {
+        value: "3.25",
+      },
+    });
+
+    expect(screen.getByRole("textbox", { name: m["bridge.youGet"]() })).toHaveValue("3.25");
+    expect(screen.getByText("3.25:bridge/usdc")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.deposit.title"]() }));
+
+    expect(bridgeUiMocks.showModal).toHaveBeenCalledWith(
+      "BridgeDeposit",
+      expect.objectContaining({
+        allowanceMutation: bridgeUiMocks.allowanceMutation,
+        amount: "3.25",
+        coin: usdcCoin,
+        config: bridgeConfig,
+        deposit: bridgeUiMocks.deposit,
+        requiresAllowance: true,
+      }),
+    );
+
+    const [, modalProps] = bridgeUiMocks.showModal.mock.calls.at(-1) as [
+      string,
+      { reset: () => void },
+    ];
+
+    await act(async () => {
+      modalProps.reset();
+    });
+
+    expect(bridgeUiMocks.refetchEvmBalances).toHaveBeenCalledOnce();
+    expect(bridgeUiMocks.reset).toHaveBeenCalledOnce();
+  });
+
+  it("opens deposit confirmation without approval when the EVM allowance covers the parsed amount", () => {
+    bridgeUiMocks.allowanceQueryData = 5_000_000n;
+    bridgeUiMocks.connector = {
+      icon: "/wallet.svg",
+      id: "browser-wallet",
+      name: "Browser Wallet",
+    };
+
+    renderBridgeDeposit();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "amount" }), {
+      target: {
+        value: "3.25",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.deposit.title"]() }));
+
+    expect(bridgeUiMocks.showModal).toHaveBeenCalledWith(
+      "BridgeDeposit",
+      expect.objectContaining({
+        allowanceMutation: bridgeUiMocks.allowanceMutation,
+        amount: "3.25",
+        coin: usdcCoin,
+        config: bridgeConfig,
+        deposit: bridgeUiMocks.deposit,
+        requiresAllowance: false,
+      }),
+    );
+  });
+
+  it("does not open deposit confirmation for a zero amount", () => {
+    bridgeUiMocks.allowanceQueryData = 5_000_000n;
+    bridgeUiMocks.connector = {
+      icon: "/wallet.svg",
+      id: "browser-wallet",
+      name: "Browser Wallet",
+    };
+
+    renderBridgeDeposit();
+
+    const depositButton = screen.getByRole("button", { name: m["bridge.deposit.title"]() });
+
+    expect(depositButton).toBeDisabled();
+
+    fireEvent.click(depositButton);
+
+    expect(bridgeUiMocks.showModal).not.toHaveBeenCalled();
+  });
+
+  it("blocks inactive account deposits below the chain minimum and allows the configured amount", async () => {
+    bridgeUiMocks.allowanceQueryData = 5_000_000n;
+    bridgeUiMocks.connector = {
+      icon: "/wallet.svg",
+      id: "browser-wallet",
+      name: "Browser Wallet",
+    };
+    bridgeUiMocks.userStatus = "inactive";
+
+    renderBridgeDeposit();
+
+    const amountInput = screen.getByRole("textbox", { name: "amount" });
+    const depositButton = screen.getByRole("button", { name: m["bridge.deposit.title"]() });
+
+    fireEvent.change(amountInput, {
+      target: {
+        value: "0.5",
+      },
+    });
+
+    expect(
+      screen.getByRole("alert", {
+        name: "",
+      }),
+    ).toHaveTextContent(m["bridge.activeAccount"]({ amount: "1 USDC" }));
+    expect(depositButton).toBeDisabled();
+
+    fireEvent.click(depositButton);
+
+    expect(bridgeUiMocks.showModal).not.toHaveBeenCalled();
+
+    fireEvent.change(amountInput, {
+      target: {
+        value: "1",
+      },
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(depositButton).toBeEnabled();
+
+    fireEvent.click(depositButton);
+
+    expect(bridgeUiMocks.showModal).toHaveBeenCalledWith(
+      "BridgeDeposit",
+      expect.objectContaining({
+        amount: "1",
+        coin: usdcCoin,
+        config: bridgeConfig,
+        requiresAllowance: false,
+      }),
+    );
+  });
+
+  it("sets a destination address through the modal callback, subtracts fees, and opens withdraw confirmation", async () => {
+    renderBridgeWithdraw();
+
+    expect(screen.getByText(m["bridge.rateLimitWarning"]())).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.setDestinationAddress"]() }));
+
+    expect(bridgeUiMocks.showModal).toHaveBeenCalledWith(
+      "DestinationWallet",
+      expect.objectContaining({
+        network: "11155111",
+      }),
+    );
+
+    const [, destinationProps] = bridgeUiMocks.showModal.mock.calls[0];
+
+    await act(async () => {
+      destinationProps.onAddressSet(
+        "0x4444444444444444444444444444444444444444",
+        "Browser Wallet",
+        "/wallet.svg",
+      );
+    });
+
+    expect(screen.getByText("0x4444444444444444444444444444444444444444")).toBeInTheDocument();
+    expect(screen.getByText("Browser Wallet")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: m["bridge.youWithdraw"]() }), {
+      target: {
+        value: "3.25",
+      },
+    });
+
+    expect(screen.getByRole("textbox", { name: m["bridge.youGet"]() })).toHaveValue("3");
+    expect(screen.getByText("0.25")).toBeInTheDocument();
+    expect(screen.getByText("3:bridge/usdc")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.withdraw.title"]() }));
+
+    expect(bridgeUiMocks.showModal).toHaveBeenLastCalledWith("BridgeWithdraw", {
+      amount: "3.25",
+      coin: usdcCoin,
+      config: bridgeConfig,
+      fee: "0.25",
+      recipient: "0x4444444444444444444444444444444444444444",
+      withdraw: bridgeUiMocks.withdraw,
+    });
+  });
+
+  it("clamps the withdrawal receive preview to zero when backend fees exceed the amount", async () => {
+    bridgeUiMocks.withdrawFeeData = "0.25";
+
+    renderBridgeWithdraw();
+
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.setDestinationAddress"]() }));
+    const [, destinationProps] = bridgeUiMocks.showModal.mock.calls[0];
+
+    await act(async () => {
+      destinationProps.onAddressSet("0x4444444444444444444444444444444444444444");
+    });
+
+    fireEvent.change(screen.getByRole("textbox", { name: m["bridge.youWithdraw"]() }), {
+      target: {
+        value: "0.1",
+      },
+    });
+
+    expect(screen.getByRole("textbox", { name: m["bridge.youGet"]() })).toHaveValue("0");
+    expect(screen.getByText("0.25")).toBeInTheDocument();
+    expect(screen.getByText("0:bridge/usdc")).toBeInTheDocument();
+  });
+
+  it("preserves a backend zero withdrawal fee through preview and confirmation", async () => {
+    bridgeUiMocks.withdrawFeeData = "0";
+
+    renderBridgeWithdraw();
+
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.setDestinationAddress"]() }));
+    const [, destinationProps] = bridgeUiMocks.showModal.mock.calls[0];
+
+    await act(async () => {
+      destinationProps.onAddressSet("0x4444444444444444444444444444444444444444");
+    });
+
+    fireEvent.change(screen.getByRole("textbox", { name: m["bridge.youWithdraw"]() }), {
+      target: {
+        value: "3.25",
+      },
+    });
+
+    expect(screen.getByRole("textbox", { name: m["bridge.youGet"]() })).toHaveValue("3.25");
+    expect(screen.getByText("> 0")).toBeInTheDocument();
+    expect(screen.getByText("3.25:bridge/usdc")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.withdraw.title"]() }));
+
+    expect(bridgeUiMocks.showModal).toHaveBeenLastCalledWith("BridgeWithdraw", {
+      amount: "3.25",
+      coin: usdcCoin,
+      config: bridgeConfig,
+      fee: "0",
+      recipient: "0x4444444444444444444444444444444444444444",
+      withdraw: bridgeUiMocks.withdraw,
+    });
+  });
+
+  it("clears the selected destination address and recipient when disconnected", async () => {
+    renderBridgeWithdraw();
+
+    fireEvent.click(screen.getByRole("button", { name: m["bridge.setDestinationAddress"]() }));
+    const [, destinationProps] = bridgeUiMocks.showModal.mock.calls[0];
+
+    await act(async () => {
+      destinationProps.onAddressSet("0x5555555555555555555555555555555555555555");
+    });
+
+    expect(screen.getByText("0x5555555555555555555555555555555555555555")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "disconnect wallet" }));
+
+    expect(
+      screen.queryByText("0x5555555555555555555555555555555555555555"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: m["bridge.setDestinationAddress"]() }),
+    ).toBeInTheDocument();
+  });
+
+  it("routes tab changes through the bridge container action callback", () => {
+    renderBridgeWithdraw();
+
+    fireEvent.click(screen.getByRole("button", { name: "deposit" }));
+
+    expect(bridgeUiMocks.changeAction).toHaveBeenCalledWith("deposit");
+  });
+});

@@ -14,6 +14,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Badge, Cell, FormattedNumber, Table, TextCopy } from "@left-curve/applets-kit";
 import { Decimal, sharesToUsd } from "@left-curve/utils";
 import { AccountCard } from "../foundation/AccountCard";
+import { getPerpsPairLabel } from "../dex/helpers/tradePairSymbols";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 
@@ -158,9 +159,6 @@ const Transactions: React.FC = () => {
   );
 };
 
-const formatPairLabel = (pairId: string) =>
-  pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
-
 type PerpsBalanceItem = {
   label: string;
   value: string;
@@ -181,8 +179,14 @@ const PerpsBalance: React.FC = () => {
   const items: PerpsBalanceItem[] = [
     { label: m["explorer.accounts.perps.balance.margin"](), value: userState.margin },
     { label: m["explorer.accounts.perps.balance.equity"](), value: userState.equity ?? "0" },
-    { label: m["explorer.accounts.perps.balance.availableMargin"](), value: userState.availableMargin ?? "0" },
-    { label: m["explorer.accounts.perps.balance.reservedMargin"](), value: userState.reservedMargin },
+    {
+      label: m["explorer.accounts.perps.balance.availableMargin"](),
+      value: userState.availableMargin ?? "0",
+    },
+    {
+      label: m["explorer.accounts.perps.balance.reservedMargin"](),
+      value: userState.reservedMargin,
+    },
     { label: m["explorer.accounts.perps.balance.vaultShares"](), value: vaultSharesValue },
   ];
 
@@ -193,11 +197,7 @@ const PerpsBalance: React.FC = () => {
           <div key={item.label} className="flex flex-col gap-1">
             <p className="diatype-sm-medium text-ink-tertiary-500">{item.label}</p>
             <p className="diatype-sm-medium text-ink-primary-900">
-              <FormattedNumber
-                number={item.value}
-                formatOptions={{ currency: "USD" }}
-                as="span"
-              />
+              <FormattedNumber number={item.value} formatOptions={{ currency: "USD" }} as="span" />
             </p>
           </div>
         ))}
@@ -222,21 +222,21 @@ const PerpsPositions: React.FC = () => {
   const { userState } = account.perps;
   if (!userState) return null;
 
-  const rows = (
-    Object.entries(userState.positions) as [string, PerpsPositionExtended][]
-  ).map(([pairId, pos]) => ({
-    pairId,
-    size: pos.size,
-    entryPrice: pos.entryPrice,
-    unrealizedPnl: pos.unrealizedPnl,
-    liquidationPrice: pos.liquidationPrice,
-  }));
+  const rows = (Object.entries(userState.positions) as [string, PerpsPositionExtended][]).map(
+    ([pairId, pos]) => ({
+      pairId,
+      size: pos.size,
+      entryPrice: pos.entryPrice,
+      unrealizedPnl: pos.unrealizedPnl,
+      liquidationPrice: pos.liquidationPrice,
+    }),
+  );
 
   const columns: TableColumn<PerpsPositionRow> = [
     {
       header: m["explorer.accounts.perps.positions.pair"](),
       cell: ({ row }) => (
-        <Cell.Text text={formatPairLabel(row.original.pairId)} className="diatype-xs-medium" />
+        <Cell.Text text={getPerpsPairLabel(row.original.pairId)} className="diatype-xs-medium" />
       ),
     },
     {
@@ -340,23 +340,23 @@ const PerpsOrders: React.FC = () => {
   const { orders } = account.perps;
   if (!orders || Object.keys(orders).length === 0) return null;
 
-  const rows = (
-    Object.entries(orders) as [string, PerpsOrderByUserItem][]
-  ).map(([orderId, order]) => ({
-    orderId,
-    pairId: order.pairId,
-    size: order.size,
-    limitPrice: order.limitPrice,
-    reduceOnly: order.reduceOnly,
-    reservedMargin: order.reservedMargin,
-    createdAt: order.createdAt,
-  }));
+  const rows = (Object.entries(orders) as [string, PerpsOrderByUserItem][]).map(
+    ([orderId, order]) => ({
+      orderId,
+      pairId: order.pairId,
+      size: order.size,
+      limitPrice: order.limitPrice,
+      reduceOnly: order.reduceOnly,
+      reservedMargin: order.reservedMargin,
+      createdAt: order.createdAt,
+    }),
+  );
 
   const columns: TableColumn<PerpsOrderRow> = [
     {
       header: m["explorer.accounts.perps.orders.pair"](),
       cell: ({ row }) => (
-        <Cell.Text text={formatPairLabel(row.original.pairId)} className="diatype-xs-medium" />
+        <Cell.Text text={getPerpsPairLabel(row.original.pairId)} className="diatype-xs-medium" />
       ),
     },
     {
@@ -398,9 +398,7 @@ const PerpsOrders: React.FC = () => {
     },
     {
       header: m["explorer.accounts.perps.orders.reduceOnly"](),
-      cell: ({ row }) => (
-        <Cell.Text text={row.original.reduceOnly ? "Yes" : "No"} />
-      ),
+      cell: ({ row }) => <Cell.Text text={row.original.reduceOnly ? "Yes" : "No"} />,
     },
     {
       header: m["explorer.accounts.perps.orders.reservedMargin"](),

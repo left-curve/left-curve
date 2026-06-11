@@ -8,6 +8,7 @@ import {
 } from "@left-curve/applets-kit";
 import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 export const ActivityConvertModal = forwardRef(() => {
   const { hideModal } = useApp();
@@ -30,7 +31,7 @@ export const ActivityConvertModal = forwardRef(() => {
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between  h3-bold text-ink-secondary-700">
                 <p>10.00 USDC</p>
-                <img
+                <Image
                   src="https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg"
                   alt="Token"
                   className="h-8 w-8"
@@ -44,7 +45,7 @@ export const ActivityConvertModal = forwardRef(() => {
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between  h3-bold text-ink-secondary-700">
                 <p>10.00 USDC</p>
-                <img
+                <Image
                   src="https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg"
                   alt="Token"
                   className="h-8 w-8"

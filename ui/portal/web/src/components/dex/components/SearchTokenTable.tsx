@@ -1,4 +1,9 @@
-import { allPerpsPairStatsStore, TradePairStore, useFavPairs } from "@left-curve/store";
+import {
+  getPerpsPairIdFromPairId,
+  useAllPerpsPairStats,
+  useConfig,
+  useFavPairs,
+} from "@left-curve/store";
 import {
   Badge,
   Cell,
@@ -12,14 +17,16 @@ import {
 } from "@left-curve/applets-kit";
 import { memo, useCallback, useMemo } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type React from "react";
 
+import type { NormalizedPerpsPairStats } from "@left-curve/store";
 import type { SearchTokenRow } from "./SearchToken";
 
 const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
-  <img src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
+  <Image src={src} alt={alt} className="w-5 h-5 flex-shrink-0" />
 ));
 
 // `Udec128_6` arrives as a stringified decimal like "2.000000". Trim trailing
@@ -61,16 +68,7 @@ const PerpsPairNameWithFav: React.FC<{
   );
 });
 
-function useRowPairStats(row: SearchTokenRow) {
-  const perpStatsByPairId = allPerpsPairStatsStore((s) => s.perpsPairStatsByPairId);
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
-
-  return perpStatsByPairId[getPerpsPairId(row.pairId)];
-}
-
-const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const stats = useRowPairStats(row);
-
+const PriceCell = memo(({ stats }: { stats?: NormalizedPerpsPairStats }) => {
   return (
     <Cell.Text
       text={
@@ -84,9 +82,7 @@ const PriceCell = memo(({ row }: { row: SearchTokenRow }) => {
   );
 });
 
-const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const stats = useRowPairStats(row);
-
+const ChangeCell = memo(({ stats }: { stats?: NormalizedPerpsPairStats }) => {
   return (
     <div className="flex flex-col gap-1">
       <PairStatValue
@@ -99,9 +95,7 @@ const ChangeCell = memo(({ row }: { row: SearchTokenRow }) => {
   );
 });
 
-const VolumeCell = memo(({ row }: { row: SearchTokenRow }) => {
-  const stats = useRowPairStats(row);
-
+const VolumeCell = memo(({ stats }: { stats?: NormalizedPerpsPairStats }) => {
   return (
     <div className="flex flex-col gap-1">
       <PairStatValue
@@ -126,7 +120,12 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
   data: rows,
   onChangePairId,
 }) => {
-  const getPerpsPairId = TradePairStore((s) => s.getPerpsPairId);
+  const { coins } = useConfig();
+  const perpStatsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId);
+  const getPerpsPairId = useCallback(
+    (pairId: SearchTokenRow["pairId"]) => getPerpsPairIdFromPairId(pairId, coins),
+    [coins],
+  );
 
   const columns = useMemo<TableColumn<SearchTokenRow>>(
     () => [
@@ -169,10 +168,11 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             toggleSort={ctx.column.toggleSorting}
           />
         ),
-        cell: ({ row }) => <PriceCell row={row.original} />,
+        cell: ({ row }) => (
+          <PriceCell stats={perpStatsByPairId[getPerpsPairId(row.original.pairId)]} />
+        ),
         accessorFn: (row) => {
-          const stats =
-            allPerpsPairStatsStore.getState().perpsPairStatsByPairId[getPerpsPairId(row.pairId)];
+          const stats = perpStatsByPairId[getPerpsPairId(row.pairId)];
           return Number(stats?.currentPrice ?? 0);
         },
       },
@@ -185,10 +185,11 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             toggleSort={ctx.column.toggleSorting}
           />
         ),
-        cell: ({ row }) => <ChangeCell row={row.original} />,
+        cell: ({ row }) => (
+          <ChangeCell stats={perpStatsByPairId[getPerpsPairId(row.original.pairId)]} />
+        ),
         accessorFn: (row) => {
-          const stats =
-            allPerpsPairStatsStore.getState().perpsPairStatsByPairId[getPerpsPairId(row.pairId)];
+          const stats = perpStatsByPairId[getPerpsPairId(row.pairId)];
           const value = stats?.priceChange24H;
           return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
         },
@@ -203,16 +204,17 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             className="ml-auto w-full justify-end"
           />
         ),
-        cell: ({ row }) => <VolumeCell row={row.original} />,
+        cell: ({ row }) => (
+          <VolumeCell stats={perpStatsByPairId[getPerpsPairId(row.original.pairId)]} />
+        ),
         accessorFn: (row) => {
-          const stats =
-            allPerpsPairStatsStore.getState().perpsPairStatsByPairId[getPerpsPairId(row.pairId)];
+          const stats = perpStatsByPairId[getPerpsPairId(row.pairId)];
           const value = stats?.volume24H;
           return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
         },
       },
     ],
-    [getPerpsPairId],
+    [getPerpsPairId, perpStatsByPairId],
   );
 
   const getRowId = useCallback((row: SearchTokenRow) => row.pairKey, []);

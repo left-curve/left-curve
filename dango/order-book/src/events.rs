@@ -18,6 +18,32 @@ pub struct OrderPersisted {
     pub client_order_id: Option<ClientOrderId>,
 }
 
+/// Event indicating a resting order's size was reduced in place (not removed).
+///
+/// Emitted by dynamic re-sizing of reduce-only orders: when a user's position
+/// shrinks, their resting reduce-only orders are clamped so that their absolute
+/// sizes sum to no more than the new position. An order whose clamped size is
+/// still non-zero is rewritten with the smaller size rather than removed (a
+/// clamp to zero removes it instead, emitting `OrderRemoved`).
+#[grug_types::event("order_resized")]
+#[grug_types::derive(Serde)]
+pub struct OrderResized {
+    pub order_id: OrderId,
+    pub pair_id: PairId,
+    pub user: Addr,
+
+    /// Signed size before the re-size.
+    pub old_size: Quantity,
+
+    /// Signed size after the re-size. Carries the same sign as `old_size`, with
+    /// a strictly smaller absolute value.
+    pub new_size: Quantity,
+
+    /// Caller-assigned id from the originally-submitted order, or `None`
+    /// if the order was submitted without one.
+    pub client_order_id: Option<ClientOrderId>,
+}
+
 /// Event indicating an order has been removed from the order book.
 #[grug_types::event("order_removed")]
 #[grug_types::derive(Serde)]
@@ -87,6 +113,14 @@ pub enum ReasonForOrderRemoval {
 
     /// The user was hit by auto-deleveraging (ADL).
     Deleveraged,
+
+    /// A resting reduce-only order was cancelled by dynamic re-sizing because
+    /// the user's position changed: it closed or flipped (the order is now on
+    /// the wrong side), or it shrank enough that this order — the worst by
+    /// price-time priority among the user's reduce-only orders — had no
+    /// remaining position left to close. Distinct from `PositionClosed`, which
+    /// is specific to conditional (TP/SL) orders.
+    ReduceOnlyResized,
 
     /// The conditional order was triggered but could not fill within the
     /// user's max_slippage tolerance (insufficient book liquidity).

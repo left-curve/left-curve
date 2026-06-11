@@ -8,13 +8,22 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import { useAccount, useConfig, useSigningClient, useStorage, useSubmitTx } from "@left-curve/store";
+import {
+  useAccount,
+  useConfig,
+  useSigningClient,
+  useStorage,
+  useSubmitTx,
+} from "@left-curve/store";
 import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
+import { perpsTradeHistoryKeys } from "../dex/helpers/perpsTradeHistoryKeys";
+import { getPerpsPairSymbol } from "../dex/helpers/tradePairSymbols";
 
 type PerpsClosePositionProps = {
   pairId: string;
@@ -35,7 +44,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
   const sizeNum = Math.abs(Number(size));
   const isLong = Number(size) > 0;
 
-  const baseSymbol = pairId.replace("perp/", "").replace(/usd$/i, "");
+  const baseSymbol = getPerpsPairSymbol(pairId).toLowerCase();
   const baseCoin = Object.values(coins.byDenom).find((c) => c.symbol.toLowerCase() === baseSymbol);
   const symbol = baseCoin?.symbol ?? baseSymbol.toUpperCase();
   const logoURI = baseCoin?.logoURI;
@@ -84,7 +93,9 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["prices"] });
-        queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+        queryClient.invalidateQueries({
+          queryKey: perpsTradeHistoryKeys.account(account?.address),
+        });
         hideModal();
       },
     },
@@ -140,7 +151,7 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
           startText="right"
           startContent={
             <div className="flex items-center gap-2 pl-4">
-              {logoURI && <img src={logoURI} alt={symbol} className="w-8 h-8 rounded-full" />}
+              {logoURI && <Image src={logoURI} alt={symbol} className="w-8 h-8 rounded-full" />}
               <p className="text-ink-tertiary-500 diatype-lg-medium">{symbol}</p>
             </div>
           }

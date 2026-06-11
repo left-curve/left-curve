@@ -3,22 +3,17 @@ import { useMemo } from "react";
 import { Decimal, formatNumber } from "@left-curve/utils";
 import { FormattedNumber, Tooltip, twMerge } from "@left-curve/applets-kit";
 import { useApp, useCountdown } from "@left-curve/foundation";
-import {
-  perpsPairStateStore,
-  usePerpsState,
-  perpsStateStore,
-  usePerpsParam,
-} from "@left-curve/store";
+import { usePerpsState, usePerpsPairState, usePerpsParam } from "@left-curve/store";
+import { useProTrade } from "./ProTrade";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const FundingCountdown: React.FC = () => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const pairState = perpsPairStateStore((s) => s.pairState);
+  const formatNumberOptions = useApp((state) => state.settings.formatNumberOptions);
+  const { perpsPairId } = useProTrade();
 
-  usePerpsState();
-  const perpsState = perpsStateStore((s) => s.state);
+  const pairState = usePerpsPairState((s) => s.pairState, { perpsPairId });
+  const perpsState = usePerpsState((s) => s.state);
 
   const { data: perpsParam } = usePerpsParam();
 

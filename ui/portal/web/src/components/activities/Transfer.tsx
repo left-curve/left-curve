@@ -4,6 +4,7 @@ import { forwardRef, useImperativeHandle } from "react";
 
 import { formatUnits } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 import {
   AddressVisualizer,
@@ -85,7 +86,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
                     {coin.type === "lp" ? (
                       <PairAssets assets={[coin.base, coin.quote]} />
                     ) : (
-                      <img
+                      <Image
                         src={coin.logoURI}
                         alt={coin.symbol}
                         className="w-5 h-5 min-w-5 min-h-5 select-none drag-none"

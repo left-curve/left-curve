@@ -23,6 +23,7 @@ import { useEffect, useState, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 import { UserWithdrawals } from "./UserWithdrawals";
 import { VaultPerformanceChart } from "./VaultPerformanceChart";
+import { Image } from "~/components/foundation/Image";
 
 const PERIOD_DAYS: Record<VaultPerformancePeriod, number> = {
   "7D": 7,
@@ -116,7 +117,7 @@ const VaultLiquidityHeader: React.FC = () => {
       )}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative overflow-hidden">
         <div className="flex gap-2 items-center">
-          <img src="/images/coins/usd.svg" alt="vault" className="w-8 h-8 rounded-full" />
+          <Image src="/images/coins/usd.svg" alt="vault" className="w-8 h-8 rounded-full" />
           <p className="text-ink-secondary-700 h4-bold">{m["vaultLiquidity.title"]()}</p>
         </div>
         <div className="flex flex-row items-center gap-4">
@@ -156,7 +157,7 @@ const VaultLiquidityHeader: React.FC = () => {
             )}
           </div>
         </div>
-        <img
+        <Image
           src="/images/characters/hippo.svg"
           alt="dango-hippo"
           className="max-w-[200px] absolute opacity-10 right-[-2rem] bottom-0 select-none drag-none pointer-events-none"
@@ -226,7 +227,7 @@ const DepositForm: React.FC = () => {
             startText="right"
             startContent={
               <div className="flex items-center gap-2 pl-4">
-                <img
+                <Image
                   src={perpsMarginAsset.logoURI}
                   alt={perpsMarginAsset.symbol}
                   className="w-8 h-8 rounded-full"
@@ -440,7 +441,7 @@ const UserPosition: React.FC = () => {
         </p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <img
+            <Image
               src={perpsMarginAsset.logoURI}
               alt={perpsMarginAsset.symbol}
               className="w-5 h-5 rounded-full"

@@ -10,6 +10,7 @@ import {
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type React from "react";
 import { useChestOpening } from "./useChestOpening";
+import { Image } from "~/components/foundation/Image";
 
 export type BoxVariant = "bronze" | "silver" | "gold" | "crystal";
 
@@ -104,7 +105,7 @@ export const BoxCard: React.FC<BoxCardProps> = ({
           className="absolute top-2 left-2 z-20 capitalize rounded-full"
         />
         <div className="relative w-[9.6rem] h-[9.6rem] lg:w-[11.6rem] lg:h-[11.9rem] rounded-xl border border-outline-primary-gray bg-surface-secondary-rice shadow-account-card overflow-hidden">
-          <img
+          <Image
             src={`/images/points/boxes/${variant}.png`}
             alt={`${label} chest`}
             className={twMerge(

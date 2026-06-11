@@ -1,12 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { create } from "zustand";
 import { useConfig } from "./useConfig.js";
-import { usePublicClient } from "./usePublicClient.js";
+import { createLiveResource } from "../live/createLiveResource.js";
+import { useLiveResource } from "../live/useLiveResource.js";
 
-import { Decimal } from "@left-curve/utils";
+import { Decimal, shallowEqual } from "@left-curve/utils";
 
 import type { PerpsPairStats } from "@left-curve/types";
+import type { Config } from "../types/store.js";
+import type { LiveResourceSnapshot } from "../live/types.js";
 
 export type NormalizedPerpsPairStats = {
   pairId: string;
@@ -16,32 +16,33 @@ export type NormalizedPerpsPairStats = {
   priceChange24H: string | null;
 };
 
-export type UsePerpsPairStatsParameters = {
-  pairId: string;
-  enabled?: boolean;
-};
-
 export type UseAllPerpsPairStatsParameters = {
   enabled?: boolean;
 };
 
-type AllPerpsPairStatsStoreState = {
-  perpsPairStats: NormalizedPerpsPairStats[];
-  perpsPairStatsByPairId: Record<string, NormalizedPerpsPairStats>;
-  setPerpsPairStats: (stats: NormalizedPerpsPairStats[]) => void;
+export type UsePerpsPairStatsByPairIdParameters = {
+  pairId: string;
+  enabled?: boolean;
 };
 
-export const allPerpsPairStatsStore = create<AllPerpsPairStatsStoreState>((set) => ({
+export type AllPerpsPairStatsSnapshot = LiveResourceSnapshot & {
+  perpsPairStats: NormalizedPerpsPairStats[];
+  perpsPairStatsByPairId: Record<string, NormalizedPerpsPairStats>;
+};
+
+const ALL_PERPS_PAIR_STATS_HTTP_INTERVAL = 5_000;
+
+type AllPerpsPairStatsResourceParams = {
+  chainId: Config["chain"]["id"];
+  subscriptions: Config["subscriptions"];
+};
+
+const initialAllPerpsPairStatsSnapshot: AllPerpsPairStatsSnapshot = {
+  status: "idle",
+  error: null,
   perpsPairStats: [],
   perpsPairStatsByPairId: {},
-  setPerpsPairStats: (perpsPairStats) =>
-    set({
-      perpsPairStats,
-      perpsPairStatsByPairId: Object.fromEntries(
-        perpsPairStats.map((stats) => [stats.pairId, stats]),
-      ),
-    }),
-}));
+};
 
 function asDecimal(value: string | null | undefined) {
   if (!value) return null;
@@ -72,35 +73,102 @@ function normalizePerpsPairStats(stats: PerpsPairStats): NormalizedPerpsPairStat
   };
 }
 
-export function usePerpsPairStats(parameters: UsePerpsPairStatsParameters) {
-  const { pairId, enabled = true } = parameters;
-  const client = usePublicClient();
+function buildStatsByPairId(stats: NormalizedPerpsPairStats[]) {
+  return Object.fromEntries(stats.map((stats) => [stats.pairId, stats]));
+}
 
-  return useQuery({
-    enabled: enabled && !!pairId,
-    queryKey: ["perps_pair_stats", pairId],
-    queryFn: async () => {
-      const stats = await client.getPerpsPairStats({ pairId });
+function normalizeAllPerpsPairStats(
+  allPerpsPairStats: PerpsPairStats[],
+  previousByPairId: Record<string, NormalizedPerpsPairStats>,
+) {
+  const perpsPairStats = allPerpsPairStats.map((stats) => {
+    const next = normalizePerpsPairStats(stats);
+    const previous = previousByPairId[next.pairId];
+    return shallowEqual(previous, next) ? previous : next;
+  });
 
-      if (!stats) return null;
+  return {
+    perpsPairStats,
+    perpsPairStatsByPairId: buildStatsByPairId(perpsPairStats),
+  };
+}
 
-      return normalizePerpsPairStats(stats);
+function equalAllPerpsPairStatsSnapshot(
+  previous: AllPerpsPairStatsSnapshot,
+  next: AllPerpsPairStatsSnapshot,
+) {
+  if (previous.status !== next.status || previous.error !== next.error) return false;
+  if (previous.perpsPairStats.length !== next.perpsPairStats.length) return false;
+
+  for (let index = 0; index < previous.perpsPairStats.length; index += 1) {
+    if (!shallowEqual(previous.perpsPairStats[index], next.perpsPairStats[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+const allPerpsPairStatsResource = createLiveResource<
+  AllPerpsPairStatsResourceParams,
+  AllPerpsPairStatsSnapshot
+>({
+  name: "allPerpsPairStats",
+  cache: "keep",
+  getKey: ({ chainId }) => `allPerpsPairStats:${chainId}`,
+  getInitialSnapshot: () => initialAllPerpsPairStatsSnapshot,
+  equal: equalAllPerpsPairStatsSnapshot,
+  start: ({ subscriptions }, { emit, error }) => {
+    let previousByPairId: Record<string, NormalizedPerpsPairStats> = {};
+
+    return subscriptions.subscribe("allPerpsPairStats", {
+      params: {
+        httpInterval: ALL_PERPS_PAIR_STATS_HTTP_INTERVAL,
+      },
+      listener: ({ allPerpsPairStats }) => {
+        const nextStats = normalizeAllPerpsPairStats(allPerpsPairStats, previousByPairId);
+        previousByPairId = nextStats.perpsPairStatsByPairId;
+
+        emit({
+          status: "ready",
+          error: null,
+          ...nextStats,
+        });
+      },
+      onError: error,
+    });
+  },
+});
+
+export function useAllPerpsPairStats<Selection>(
+  selector: (snapshot: AllPerpsPairStatsSnapshot) => Selection,
+  parameters: UseAllPerpsPairStatsParameters = {},
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+): Selection {
+  const { enabled = true } = parameters;
+  const config = useConfig();
+
+  return useLiveResource({
+    resource: allPerpsPairStatsResource,
+    params: {
+      chainId: config.chain.id,
+      subscriptions: config.subscriptions,
     },
+    enabled,
+    selector,
+    equalityFn,
+    restartToken: config.subscriptions,
   });
 }
 
-export function useAllPerpsPairStats(parameters: UseAllPerpsPairStatsParameters = {}): void {
-  const { enabled = true } = parameters;
-  const { subscriptions } = useConfig();
+export function usePerpsPairStatsByPairId(
+  parameters: UsePerpsPairStatsByPairIdParameters,
+): NormalizedPerpsPairStats | null {
+  const { pairId, enabled = true } = parameters;
 
-  useEffect(() => {
-    if (!enabled) return;
-    const unsubscribe = subscriptions.subscribe("allPerpsPairStats", {
-      listener: ({ allPerpsPairStats }) =>
-        allPerpsPairStatsStore
-          .getState()
-          .setPerpsPairStats(allPerpsPairStats.map(normalizePerpsPairStats)),
-    });
-    return () => unsubscribe();
-  }, [enabled, subscriptions]);
+  return useAllPerpsPairStats(
+    (snapshot) => snapshot.perpsPairStatsByPairId[pairId] ?? null,
+    { enabled: enabled && !!pairId },
+    shallowEqual,
+  );
 }

@@ -37,6 +37,64 @@ function AddKeyModalContent() {
     );
   }
 
+  if (screen === "wallets") {
+    return (
+      <AddKey.Frame>
+        <AddKey.Header
+          title={m["settings.keyManagement.wallets.title"]()}
+          description={m["settings.keyManagement.wallets.description"]()}
+        />
+        <AddKey.Options>
+          <AddKey.WalletsPicker />
+        </AddKey.Options>
+      </AddKey.Frame>
+    );
+  }
+
+  if (screen === "public-key-warning") {
+    return (
+      <AddKey.Frame>
+        <AddKey.Header
+          title={m["settings.keyManagement.publicKey.warning.title"]()}
+          description={m["settings.keyManagement.publicKey.warning.description"]()}
+          variant="warning"
+        />
+        <AddKey.Options>
+          <AddKey.PublicKeyWarning />
+        </AddKey.Options>
+      </AddKey.Frame>
+    );
+  }
+
+  if (screen === "public-key-summary") {
+    return (
+      <AddKey.Frame>
+        <AddKey.Header
+          title={m["settings.keyManagement.publicKey.summary.title"]()}
+          description={m["settings.keyManagement.publicKey.summary.description"]()}
+          variant="success"
+        />
+        <AddKey.Options>
+          <AddKey.PublicKeySummary />
+        </AddKey.Options>
+      </AddKey.Frame>
+    );
+  }
+
+  if (screen === "public-key-input") {
+    return (
+      <AddKey.Frame>
+        <AddKey.Header
+          title={m["settings.keyManagement.publicKey.input.title"]()}
+          description={m["settings.keyManagement.publicKey.input.description"]()}
+        />
+        <AddKey.Options>
+          <AddKey.PublicKeyInput />
+        </AddKey.Options>
+      </AddKey.Frame>
+    );
+  }
+
   return (
     <AddKey.Frame>
       <AddKey.Header
@@ -47,6 +105,7 @@ function AddKeyModalContent() {
         <AddKey.Passkey />
         <AddKey.Email />
         <AddKey.Wallets />
+        <AddKey.Advanced />
       </AddKey.Options>
     </AddKey.Frame>
   );

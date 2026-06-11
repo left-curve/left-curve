@@ -17,6 +17,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { IndexedTransaction } from "@left-curve/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
+import { Image } from "~/components/foundation/Image";
 
 type TransactionProps = {
   txHash: string;
@@ -138,7 +139,7 @@ const Details: React.FC = () => {
           </div>
         </div>
       </div>
-      <img
+      <Image
         src="/images/emojis/detailed/map-explorer.svg"
         alt="map-emoji"
         className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] hidden md:block"

@@ -4,6 +4,7 @@ import { Button, IconButton, IconClose, TruncateResponsive, useApp } from "@left
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { AnyCoin } from "@left-curve/store/types";
 import { usePrices, type useBridgeState, type UseSubmitTxReturnType } from "@left-curve/store";
+import { Image } from "~/components/foundation/Image";
 
 interface BridgeWithdrawProps {
   coin: AnyCoin;
@@ -51,7 +52,7 @@ export const BridgeWithdraw = forwardRef((props: BridgeWithdrawProps, _ref) => {
           <p className="h3-bold">
             {amount} {coin.symbol}
           </p>
-          <img src={coin.logoURI} alt={coin.name} className="h-8 w-8" />
+          <Image src={coin.logoURI} alt={coin.name} className="h-8 w-8" />
         </div>
         <p className="diatype-sm-regular text-ink-tertiary-500">{amountPrice}</p>
       </div>
