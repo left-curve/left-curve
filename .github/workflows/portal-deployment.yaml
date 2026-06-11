@@ -20,6 +20,7 @@ on:
     branches:
       - "main"
       - "ui/testnet"
+      - "ui/staging"
       - "ui/release"
     paths:
       - ".github/workflows/portal-deployment.yaml"
@@ -146,6 +147,11 @@ jobs:
                 frontend_url="https://test.dango.exchange"
                 enabled_features="points,referral"
                 ;;
+              ui/staging)
+                config_environment="prod"
+                sentry_environment="staging"
+                frontend_url="https://staging.dango.exchange"
+                ;;
               ui/release)
                 config_environment="prod"
                 sentry_environment="production"
@@ -192,6 +198,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           PUBLIC_PRIVY_APP_ID: ${{ steps.pages.outputs.config_environment == 'prod' && vars.PRIVY_APP_ID_PROD || vars.PRIVY_APP_ID_DEV }}
           PUBLIC_PRIVY_CLIENT_ID: ${{ steps.pages.outputs.config_environment == 'prod' && vars.PRIVY_CLIENT_ID_PROD || vars.PRIVY_CLIENT_ID_DEV }}
+          SWAPPER_INTEGRATOR_ID: ${{ vars.SWAPPER_INTEGRATOR_ID }}
           ENABLED_FEATURES: ${{ steps.pages.outputs.enabled_features }}
           R2_ASSETS_PREFIX: ${{ steps.pages.outputs.r2_prefix }}
 

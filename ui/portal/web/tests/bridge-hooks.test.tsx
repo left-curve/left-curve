@@ -2,10 +2,6 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { toAddr32 } from "@left-curve/sdk/hyperlane";
-import {
-  BridgeConfigError,
-  useBridgeEvmDeposit,
-} from "../../../store/src/hooks/useBridgeEvmDeposit";
 import { useBridgeState } from "../../../store/src/hooks/useBridgeState";
 import { useBridgeWithdraw } from "../../../store/src/hooks/useBridgeWithdraw";
 import { useEvmBalances } from "../../../store/src/hooks/useEvmBalances";
@@ -13,29 +9,19 @@ import { createQueryClientWrapper } from "./utils/query-client";
 
 const hookMocks = vi.hoisted(() => ({
   createPublicClient: vi.fn(),
-  createWalletClient: vi.fn(),
-  custom: vi.fn(),
   getWithdrawalFee: vi.fn(),
   http: vi.fn(),
   publicClientGetBalance: vi.fn(),
   publicClientReadContract: vi.fn(),
-  publicClientWaitForTransactionReceipt: vi.fn(),
-  signingClientQueryWasmSmart: vi.fn(),
   transferRemote: vi.fn(),
   useAccount: vi.fn(),
-  useAppConfig: vi.fn(),
   useConfig: vi.fn(),
-  useConnectors: vi.fn(),
   usePublicClient: vi.fn(),
   useSigningClient: vi.fn(),
-  walletSwitchChain: vi.fn(),
-  walletWriteContract: vi.fn(),
 }));
 
 vi.mock("viem", () => ({
   createPublicClient: hookMocks.createPublicClient,
-  createWalletClient: hookMocks.createWalletClient,
-  custom: hookMocks.custom,
   http: hookMocks.http,
 }));
 
@@ -48,16 +34,8 @@ vi.mock("../../../store/src/hooks/useAccount.js", () => ({
   useAccount: hookMocks.useAccount,
 }));
 
-vi.mock("../../../store/src/hooks/useAppConfig.js", () => ({
-  useAppConfig: hookMocks.useAppConfig,
-}));
-
 vi.mock("../../../store/src/hooks/useConfig.js", () => ({
   useConfig: hookMocks.useConfig,
-}));
-
-vi.mock("../../../store/src/hooks/useConnectors.js", () => ({
-  useConnectors: hookMocks.useConnectors,
 }));
 
 vi.mock("../../../store/src/hooks/usePublicClient.js", () => ({
@@ -67,15 +45,6 @@ vi.mock("../../../store/src/hooks/usePublicClient.js", () => ({
 vi.mock("../../../store/src/hooks/useSigningClient.js", () => ({
   useSigningClient: hookMocks.useSigningClient,
 }));
-
-vi.mock("../../../store/src/hooks/useStorage.js", async () => {
-  const React = await import("react");
-
-  return {
-    useStorage: (_key: string, options: { initialValue?: unknown } = {}) =>
-      React.useState(options.initialValue ?? null),
-  };
-});
 
 vi.mock("../../../store/src/hooks/useSubmitTx.js", () => ({
   useSubmitTx: ({
@@ -219,33 +188,16 @@ const unsupportedEvmBridgeConfig = {
 
 describe("bridge hooks", () => {
   const dangoPublicClient = { id: "dango-public-client" };
-  const signingClient = {
-    queryWasmSmart: hookMocks.signingClientQueryWasmSmart,
-  };
+  const signingClient = { id: "signing-client" };
   const evmPublicClient = {
     getBalance: hookMocks.publicClientGetBalance,
     readContract: hookMocks.publicClientReadContract,
-    waitForTransactionReceipt: hookMocks.publicClientWaitForTransactionReceipt,
-  };
-  const walletClient = {
-    account: {
-      address: evmRecipient,
-    },
-    switchChain: hookMocks.walletSwitchChain,
-    writeContract: hookMocks.walletWriteContract,
   };
 
   beforeEach(() => {
     hookMocks.useAccount.mockReturnValue({
       account: { address: evmAccount },
       isConnected: true,
-    });
-    hookMocks.useAppConfig.mockReturnValue({
-      data: {
-        addresses: {
-          mailbox: "0x6d61696c626f7800000000000000000000000000",
-        },
-      },
     });
     hookMocks.useConfig.mockReturnValue({
       chain: {
@@ -259,7 +211,6 @@ describe("bridge hooks", () => {
         },
       },
     });
-    hookMocks.useConnectors.mockReturnValue([]);
     hookMocks.usePublicClient.mockReturnValue(dangoPublicClient);
     hookMocks.useSigningClient.mockReturnValue({
       data: signingClient,
@@ -269,15 +220,9 @@ describe("bridge hooks", () => {
       type: "http",
       url,
     }));
-    hookMocks.custom.mockImplementation((provider: unknown) => ({ provider, type: "custom" }));
     hookMocks.createPublicClient.mockReturnValue(evmPublicClient);
     hookMocks.publicClientGetBalance.mockResolvedValue(2000000000000000000n);
-    hookMocks.createWalletClient.mockReturnValue(walletClient);
     hookMocks.publicClientReadContract.mockResolvedValue(100n);
-    hookMocks.publicClientWaitForTransactionReceipt.mockResolvedValue({ status: "success" });
-    hookMocks.signingClientQueryWasmSmart.mockResolvedValue({ localDomain: 999 });
-    hookMocks.walletSwitchChain.mockResolvedValue(undefined);
-    hookMocks.walletWriteContract.mockResolvedValue("0xtransaction");
   });
 
   afterEach(() => {
@@ -315,7 +260,7 @@ describe("bridge hooks", () => {
     const { result } = renderHook(
       () =>
         useBridgeState({
-          action: "deposit",
+          action: "withdraw",
           config: bridgeEnvConfig,
           controllers,
         }),
@@ -515,7 +460,7 @@ describe("bridge hooks", () => {
     const { result } = renderHook(
       () =>
         useBridgeState({
-          action: "deposit",
+          action: "withdraw",
           config: bridgeEnvConfig,
           controllers,
         }),
@@ -567,7 +512,7 @@ describe("bridge hooks", () => {
     const { result } = renderHook(
       () =>
         useBridgeState({
-          action: "deposit",
+          action: "withdraw",
           config: bridgeEnvConfig,
           controllers,
         }),
@@ -608,7 +553,7 @@ describe("bridge hooks", () => {
     const { result } = renderHook(
       () =>
         useBridgeState({
-          action: "deposit",
+          action: "withdraw",
           config: bridgeEnvConfig,
           controllers,
         }),
@@ -656,7 +601,7 @@ describe("bridge hooks", () => {
     const { result } = renderHook(
       () =>
         useBridgeState({
-          action: "deposit",
+          action: "withdraw",
           config: {
             evm: {
               "1": mainnetBridger,
@@ -713,7 +658,7 @@ describe("bridge hooks", () => {
     const { result } = renderHook(
       () =>
         useBridgeState({
-          action: "deposit",
+          action: "withdraw",
           config: {
             evm: {
               "1": mainnetBridger,
@@ -744,7 +689,7 @@ describe("bridge hooks", () => {
     const { result } = renderHook(
       () =>
         useBridgeState({
-          action: "deposit",
+          action: "withdraw",
           config: {
             evm: {},
           },
@@ -764,12 +709,7 @@ describe("bridge hooks", () => {
     expect(result.current.config?.router).toBeUndefined();
   });
 
-  it("tracks the selected EVM connector and resets bridge form state when action or connection changes", async () => {
-    const metamask = {
-      id: "metamask",
-      name: "MetaMask",
-    };
-    hookMocks.useConnectors.mockReturnValue([metamask]);
+  it("resets bridge form state when action or connection changes", async () => {
     const controllers = {
       inputs: {},
       reset: vi.fn(),
@@ -791,9 +731,6 @@ describe("bridge hooks", () => {
 
     await waitFor(() => expect(controllers.reset).toHaveBeenCalledOnce());
 
-    act(() => result.current.setConnectorId("metamask"));
-    await waitFor(() => expect(result.current.connector).toBe(metamask));
-
     act(() => result.current.changeCoin(usdcCoin.denom));
     act(() => result.current.setNetwork("11155111"));
     await waitFor(() => expect(result.current.config?.router).toBeDefined());
@@ -801,13 +738,9 @@ describe("bridge hooks", () => {
     rerender({ action: "withdraw" });
 
     await waitFor(() => expect(controllers.reset).toHaveBeenCalledTimes(2));
-    expect(result.current.connector).toBeUndefined();
     expect(result.current.coin).toBeUndefined();
     expect(result.current.network).toBeUndefined();
     expect(result.current.config).toBeUndefined();
-
-    act(() => result.current.setConnectorId("metamask"));
-    await waitFor(() => expect(result.current.connector).toBe(metamask));
 
     hookMocks.useAccount.mockReturnValue({
       account: undefined,
@@ -816,7 +749,6 @@ describe("bridge hooks", () => {
     rerender({ action: "withdraw" });
 
     await waitFor(() => expect(controllers.reset).toHaveBeenCalledTimes(3));
-    expect(result.current.connector).toBeUndefined();
   });
 
   it("quotes withdrawal fees and submits Dango transferRemote with parsed funds", async () => {
@@ -1182,600 +1114,5 @@ describe("bridge hooks", () => {
 
     expect(hookMocks.transferRemote).not.toHaveBeenCalled();
     expect(reset).not.toHaveBeenCalled();
-  });
-
-  it("requests an EVM wallet, checks ERC20 allowance, and submits approval transactions", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() =>
-      expect(provider.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" }),
-    );
-    await waitFor(() =>
-      expect(hookMocks.publicClientReadContract).toHaveBeenCalledWith(
-        expect.objectContaining({
-          address: tokenAddress,
-          args: [evmRecipient, routerAddress],
-          functionName: "allowance",
-        }),
-      ),
-    );
-
-    await act(async () => {
-      await result.current.allowanceMutation.mutateAsync();
-    });
-
-    expect(hookMocks.createPublicClient).toHaveBeenCalledWith({
-      chain: evmBridgeConfig.chain,
-      transport: { type: "http", url: expect.any(String) },
-    });
-    expect(hookMocks.createWalletClient).toHaveBeenCalledWith({
-      account: evmRecipient,
-      chain: evmBridgeConfig.chain,
-      transport: { provider, type: "custom" },
-    });
-    expect(hookMocks.walletSwitchChain).toHaveBeenCalledWith({ id: 11155111 });
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: tokenAddress,
-        args: [routerAddress, 1500000n],
-        functionName: "approve",
-      }),
-    );
-    expect(hookMocks.publicClientWaitForTransactionReceipt).toHaveBeenCalledWith({
-      hash: "0xtransaction",
-    });
-  });
-
-  it("refreshes the ERC20 allowance from the EVM client after approval confirms", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-    hookMocks.publicClientReadContract.mockResolvedValueOnce(100n).mockResolvedValueOnce(1500000n);
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.allowanceQuery.data).toBe(100n));
-
-    await act(async () => {
-      await result.current.allowanceMutation.mutateAsync();
-    });
-
-    await waitFor(() => expect(result.current.allowanceQuery.data).toBe(1500000n));
-    expect(hookMocks.publicClientReadContract).toHaveBeenCalledTimes(2);
-    expect(hookMocks.publicClientReadContract).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        address: tokenAddress,
-        args: [evmRecipient, routerAddress],
-        functionName: "allowance",
-      }),
-    );
-    expect(hookMocks.publicClientReadContract).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        address: tokenAddress,
-        args: [evmRecipient, routerAddress],
-        functionName: "allowance",
-      }),
-    );
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: tokenAddress,
-        args: [routerAddress, 1500000n],
-        functionName: "approve",
-      }),
-    );
-  });
-
-  it("uses the latest edited amount for EVM approval and deposit transactions", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-
-    const { rerender, result } = renderHook(
-      ({ amount }: { amount: string }) =>
-        useBridgeEvmDeposit({
-          amount,
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      {
-        initialProps: {
-          amount: "1.5",
-        },
-        wrapper: createQueryClientWrapper(),
-      },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-
-    rerender({ amount: "2.75" });
-
-    await act(async () => {
-      await result.current.allowanceMutation.mutateAsync();
-    });
-
-    expect(connector.getProvider).toHaveBeenCalledOnce();
-    expect(provider.request).toHaveBeenCalledOnce();
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: tokenAddress,
-        args: [routerAddress, 2750000n],
-        functionName: "approve",
-      }),
-    );
-
-    hookMocks.walletSwitchChain.mockClear();
-    hookMocks.walletWriteContract.mockClear();
-    hookMocks.publicClientWaitForTransactionReceipt.mockClear();
-
-    await act(async () => {
-      await result.current.deposit.mutateAsync();
-    });
-
-    expect(hookMocks.signingClientQueryWasmSmart).toHaveBeenCalledWith({
-      contract: "0x6d61696c626f7800000000000000000000000000",
-      msg: { config: {} },
-    });
-    expect(hookMocks.walletSwitchChain).toHaveBeenCalledWith({ id: 11155111 });
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: routerAddress,
-        args: [999, `0x${toAddr32(evmAccount)}`, 2750000n],
-        functionName: "transferRemote",
-        value: 77n,
-      }),
-    );
-    expect(hookMocks.publicClientWaitForTransactionReceipt).toHaveBeenCalledWith({
-      hash: "0xtransaction",
-    });
-  });
-
-  it("does not submit approval or deposit transactions without a connector wallet", async () => {
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector: undefined,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    expect(result.current.allowanceQuery.data).toBe(2n ** 256n - 1n);
-
-    await expect(result.current.allowanceMutation.mutateAsync()).rejects.toThrow(
-      "Wasn't able to approve",
-    );
-    await expect(result.current.deposit.mutateAsync()).rejects.toThrow("Wasn't able to deposit");
-
-    expect(hookMocks.walletSwitchChain).not.toHaveBeenCalled();
-    expect(hookMocks.walletWriteContract).not.toHaveBeenCalled();
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-    expect(hookMocks.signingClientQueryWasmSmart).not.toHaveBeenCalled();
-  });
-
-  it("rejects EVM deposit hooks when the selected bridge config has no router", () => {
-    expect(() =>
-      renderHook(
-        () =>
-          useBridgeEvmDeposit({
-            amount: "1.5",
-            coin: usdcCoin,
-            config: unsupportedEvmBridgeConfig,
-            connector: undefined,
-          }),
-        { wrapper: createQueryClientWrapper() },
-      ),
-    ).toThrow(BridgeConfigError);
-
-    expect(hookMocks.createPublicClient).not.toHaveBeenCalled();
-    expect(hookMocks.createWalletClient).not.toHaveBeenCalled();
-    expect(hookMocks.walletWriteContract).not.toHaveBeenCalled();
-  });
-
-  it("surfaces EVM wallet acquisition failures before approval or deposit transactions", async () => {
-    const walletError = new Error("wallet provider unavailable");
-    const connector = {
-      getProvider: vi.fn().mockRejectedValue(walletError),
-      id: "metamask",
-    };
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.isError).toBe(true));
-
-    expect(connector.getProvider).toHaveBeenCalledOnce();
-    expect(result.current.wallet.error).toBe(walletError);
-    expect(result.current.allowanceQuery.data).toBe(2n ** 256n - 1n);
-
-    await expect(result.current.allowanceMutation.mutateAsync()).rejects.toThrow(
-      "Wasn't able to approve",
-    );
-    await expect(result.current.deposit.mutateAsync()).rejects.toThrow("Wasn't able to deposit");
-
-    expect(hookMocks.walletSwitchChain).not.toHaveBeenCalled();
-    expect(hookMocks.walletWriteContract).not.toHaveBeenCalled();
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-    expect(hookMocks.signingClientQueryWasmSmart).not.toHaveBeenCalled();
-  });
-
-  it("does not submit EVM deposits without a Dango signing client", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-    hookMocks.useSigningClient.mockReturnValue({
-      data: undefined,
-    });
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-
-    await expect(result.current.deposit.mutateAsync()).rejects.toThrow("Wasn't able to deposit");
-
-    expect(hookMocks.signingClientQueryWasmSmart).not.toHaveBeenCalled();
-    expect(hookMocks.walletSwitchChain).not.toHaveBeenCalled();
-    expect(hookMocks.walletWriteContract).not.toHaveBeenCalled();
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-  });
-
-  it("does not submit EVM deposits without a connected Dango account", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-    hookMocks.useAccount.mockReturnValue({
-      account: undefined,
-      isConnected: false,
-    });
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-
-    await expect(result.current.deposit.mutateAsync()).rejects.toThrow("Wasn't able to deposit");
-
-    expect(hookMocks.signingClientQueryWasmSmart).not.toHaveBeenCalled();
-    expect(hookMocks.walletSwitchChain).not.toHaveBeenCalled();
-    expect(hookMocks.walletWriteContract).not.toHaveBeenCalled();
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-  });
-
-  it("does not switch chains or write EVM deposits when the Dango mailbox config query fails", async () => {
-    const mailboxError = new Error("mailbox config unavailable");
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-    hookMocks.signingClientQueryWasmSmart.mockRejectedValueOnce(mailboxError);
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-
-    await expect(result.current.deposit.mutateAsync()).rejects.toThrow(
-      "mailbox config unavailable",
-    );
-
-    expect(hookMocks.signingClientQueryWasmSmart).toHaveBeenCalledWith({
-      contract: "0x6d61696c626f7800000000000000000000000000",
-      msg: { config: {} },
-    });
-    expect(hookMocks.walletSwitchChain).not.toHaveBeenCalled();
-    expect(hookMocks.walletWriteContract).not.toHaveBeenCalled();
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-  });
-
-  it("does not poll or refresh allowance when an EVM approval transaction is rejected", async () => {
-    const approvalError = new Error("approval rejected");
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-    hookMocks.walletWriteContract.mockRejectedValueOnce(approvalError);
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() =>
-      expect(hookMocks.publicClientReadContract).toHaveBeenCalledWith(
-        expect.objectContaining({
-          address: tokenAddress,
-          args: [evmRecipient, routerAddress],
-          functionName: "allowance",
-        }),
-      ),
-    );
-
-    await expect(result.current.allowanceMutation.mutateAsync()).rejects.toThrow(
-      "approval rejected",
-    );
-
-    expect(hookMocks.walletSwitchChain).toHaveBeenCalledWith({ id: 11155111 });
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: tokenAddress,
-        args: [routerAddress, 1500000n],
-        functionName: "approve",
-      }),
-    );
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-    expect(hookMocks.publicClientReadContract).toHaveBeenCalledOnce();
-  });
-
-  it("does not poll for an EVM deposit receipt when the Hyperlane transfer is rejected", async () => {
-    const depositError = new Error("deposit rejected");
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-    hookMocks.walletWriteContract.mockRejectedValueOnce(depositError);
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-
-    await expect(result.current.deposit.mutateAsync()).rejects.toThrow("deposit rejected");
-
-    expect(hookMocks.signingClientQueryWasmSmart).toHaveBeenCalledWith({
-      contract: "0x6d61696c626f7800000000000000000000000000",
-      msg: { config: {} },
-    });
-    expect(hookMocks.walletSwitchChain).toHaveBeenCalledWith({ id: 11155111 });
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: routerAddress,
-        args: [999, `0x${toAddr32(evmAccount)}`, 1500000n],
-        functionName: "transferRemote",
-        value: 77n,
-      }),
-    );
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-  });
-
-  it("submits EVM deposits through the Hyperlane router with mailbox domain and protocol fee", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: evmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-
-    await act(async () => {
-      await result.current.deposit.mutateAsync();
-    });
-
-    expect(hookMocks.signingClientQueryWasmSmart).toHaveBeenCalledWith({
-      contract: "0x6d61696c626f7800000000000000000000000000",
-      msg: { config: {} },
-    });
-    expect(hookMocks.walletSwitchChain).toHaveBeenCalledWith({ id: 11155111 });
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: routerAddress,
-        args: [999, `0x${toAddr32(evmAccount)}`, 1500000n],
-        functionName: "transferRemote",
-        value: 77n,
-      }),
-    );
-    expect(hookMocks.publicClientWaitForTransactionReceipt).toHaveBeenCalledWith({
-      hash: "0xtransaction",
-    });
-  });
-
-  it("preserves zero protocol fees from the backend bridge config in EVM deposits", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-    const zeroFeeBridgeConfig = {
-      ...evmBridgeConfig,
-      bridger: {
-        ...evmBridgeConfig.bridger,
-        hyperlane_protocol_fee: 0,
-      },
-    };
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "1.5",
-          coin: usdcCoin,
-          config: zeroFeeBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-
-    await act(async () => {
-      await result.current.deposit.mutateAsync();
-    });
-
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: routerAddress,
-        args: [999, `0x${toAddr32(evmAccount)}`, 1500000n],
-        functionName: "transferRemote",
-        value: 0n,
-      }),
-    );
-    expect(hookMocks.publicClientWaitForTransactionReceipt).toHaveBeenCalledWith({
-      hash: "0xtransaction",
-    });
-  });
-
-  it("submits native EVM deposits with amount plus protocol fee and skips ERC20 allowance reads", async () => {
-    const provider = {
-      request: vi.fn().mockResolvedValue([evmRecipient]),
-    };
-    const connector = {
-      getProvider: vi.fn().mockResolvedValue(provider),
-      id: "metamask",
-    };
-
-    const { result } = renderHook(
-      () =>
-        useBridgeEvmDeposit({
-          amount: "0.25",
-          coin: ethCoin,
-          config: nativeEvmBridgeConfig,
-          connector,
-        }),
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.wallet.data?.account.address).toBe(evmRecipient));
-    await waitFor(() => expect(result.current.allowanceQuery.data).toBe(2n ** 256n - 1n));
-
-    expect(hookMocks.publicClientReadContract).not.toHaveBeenCalled();
-
-    await expect(result.current.allowanceMutation.mutateAsync()).rejects.toThrow(
-      "Wasn't able to approve",
-    );
-    expect(hookMocks.walletSwitchChain).not.toHaveBeenCalled();
-    expect(hookMocks.walletWriteContract).not.toHaveBeenCalled();
-    expect(hookMocks.publicClientWaitForTransactionReceipt).not.toHaveBeenCalled();
-
-    await act(async () => {
-      await result.current.deposit.mutateAsync();
-    });
-
-    expect(hookMocks.walletSwitchChain).toHaveBeenCalledWith({ id: 11155111 });
-    expect(hookMocks.walletWriteContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: nativeRouterAddress,
-        args: [999, `0x${toAddr32(evmAccount)}`, 250000000000000000n],
-        functionName: "transferRemote",
-        value: 250000000000000077n,
-      }),
-    );
-    expect(hookMocks.publicClientWaitForTransactionReceipt).toHaveBeenCalledWith({
-      hash: "0xtransaction",
-    });
   });
 });

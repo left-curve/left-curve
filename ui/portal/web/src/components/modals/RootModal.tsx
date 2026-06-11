@@ -161,16 +161,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
-  [Modals.BridgeDeposit]: {
-    component: lazyWithRetry(() =>
-      import("./BridgeDeposit").then(({ BridgeDeposit }) => ({
-        default: BridgeDeposit,
-      })),
-    ),
-    options: {
-      disableClosing: true,
-    },
-  },
   [Modals.AddressWarning]: {
     component: lazyWithRetry(() =>
       import("./AddressWarning").then(({ AddressWarning }) => ({

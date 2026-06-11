@@ -37,7 +37,7 @@ const reviewedLocalAppletsKitMockFiles = new Set([
   "tests/mocks/transfer.tsx",
 ]);
 const reviewedLocalAppletsKitMockOverrides = [
-  "tests/bridge-ui.test.tsx:AssetInputWithRange,CoinSelector,ConnectWalletWithModal,FormattedNumber,IconDisconnect,Input,Modals,NetworkSelector,useApp",
+  "tests/bridge-ui.test.tsx:AssetInputWithRange,AuthenticatedButton,CoinSelector,FormattedNumber,IconDisconnect,Input,Modals,NetworkSelector,useApp,useTheme",
   "tests/mocks/transfer.tsx:AccountSearchInput,CoinSelector,useApp",
 ].sort();
 const reviewedExplicitSkips = [

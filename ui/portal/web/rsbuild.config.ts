@@ -238,6 +238,8 @@ export default defineConfig({
       "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "import.meta.env.TV_VERSION": `"${tvVersion}"`,
       "import.meta.env.R2_ASSETS_PREFIX": JSON.stringify(r2AssetsPrefix),
+      "import.meta.env.PUBLIC_SWAPPER_INTEGRATOR_ID":
+        JSON.stringify(process.env.SWAPPER_INTEGRATOR_ID) ?? "undefined",
       "process.env": {},
       "import.meta.env": {},
     },
