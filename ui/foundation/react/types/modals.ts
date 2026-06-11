@@ -16,7 +16,6 @@ export const Modals = {
   Authenticate: "authenticate",
   EditUsername: "edit-username",
   BridgeWithdraw: "bridge-withdraw",
-  BridgeDeposit: "bridge-deposit",
   AddressWarning: "address-warning",
   EditCommissionRate: "edit-commission-rate",
   PerpsCloseOrder: "perps-close-order",

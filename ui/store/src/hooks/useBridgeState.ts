@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useConnectors } from "./useConnectors.js";
 import { useConfig } from "./useConfig.js";
-import { useStorage } from "./useStorage.js";
 
 import { chains } from "../hyperlane.js";
 import { toAddr32 } from "@left-curve/sdk/hyperlane";
@@ -49,16 +47,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   const [coin, setCoin] = useState<AnyCoin>();
   const changeCoin = useCallback((denom: string) => setCoin(allCoins.byDenom[denom]), [allCoins]);
 
-  const connectors = useConnectors();
-  const [connectorId, setConnectorId] = useStorage<string | null>("bridge_connector", {
-    enabled: true,
-    sync: true,
-  });
-  const connector = useMemo(
-    () => connectors.find((c) => c.id === connectorId),
-    [connectorId, connectors],
-  );
-
   const coins = useMemo(() => {
     return Object.values(allCoins.byDenom).filter((c) => ["USDC", "ETH"].includes(c.symbol));
   }, [allCoins]);
@@ -100,7 +88,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
   }, [network, coin]);
 
   const reset = useCallback(() => {
-    setConnectorId(null);
     setCoin(undefined);
     setNetwork(undefined);
     controllers.reset();
@@ -119,8 +106,6 @@ export function useBridgeState(params: UseBridgeStateParameters) {
     network,
     setNetwork,
     networks,
-    connector,
-    setConnectorId,
     reset,
   };
 }

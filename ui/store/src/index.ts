@@ -219,11 +219,6 @@ export {
 } from "./hooks/useEvmBalances.js";
 
 export {
-  useBridgeEvmDeposit,
-  type UseBridgeEvmDepositParameters,
-} from "./hooks/useBridgeEvmDeposit.js";
-
-export {
   useBridgeWithdraw,
   type UseBridgeWithdrawParameters,
 } from "./hooks/useBridgeWithdraw.js";

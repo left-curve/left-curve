@@ -1,31 +1,27 @@
 import {
   useAccount,
-  useAppConfig,
   useBalances,
-  useBridgeEvmDeposit,
   useBridgeState,
   useBridgeWithdraw,
-  useConfig,
-  useEvmBalances,
   usePrices,
 } from "@left-curve/store";
 
 import {
   AssetInputWithRange,
-  ConnectWalletWithModal,
+  AuthenticatedButton,
   createContext,
-  DepositAddressBox,
   FormattedNumber,
   IconDisconnect,
   Modals,
-  TruncateText,
   useApp,
   useInputs,
+  useTheme,
 } from "@left-curve/applets-kit";
 
 import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
+import { SwapperIframe, WidgetEventName } from "@swapper-finance/deposit-sdk";
+import { Decimal } from "@left-curve/utils";
 import { Image } from "~/components/foundation/Image";
 
 import {
@@ -39,11 +35,14 @@ import {
   WarningContainer,
 } from "@left-curve/applets-kit";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { AnyCoin } from "@left-curve/store/types";
-import type { NonNullablePropertiesBy } from "@left-curve/types";
+
+const SWAPPER_DST_CHAIN_ID = "dango";
+const SWAPPER_DST_TOKEN_ADDR = "usdc";
+const SWAPPER_DEPOSIT_OPTIONS = ["transferCrypto", "depositWithCash", "walletDeposit"] as const;
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -86,36 +85,94 @@ const BridgeContainer: React.FC<PropsWithChildren<BridgeProps>> = ({
 
 const BridgeDeposit: React.FC = () => {
   const { state } = useBridge();
-  const { action, network, coin, config } = state;
+  const { action } = state;
+  const { account, isConnected, refreshUserStatus } = useAccount();
+  const { refetch: refreshBalances } = useBalances({ address: account?.address });
+  const { theme } = useTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const swapperIntegratorId = import.meta.env.PUBLIC_SWAPPER_INTEGRATOR_ID?.trim();
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const depositWalletAddress = account?.address;
+
+    if (
+      action !== "deposit" ||
+      !container ||
+      !isConnected ||
+      !depositWalletAddress ||
+      !swapperIntegratorId
+    ) {
+      return;
+    }
+
+    container.replaceChildren();
+
+    const swapper = new SwapperIframe({
+      container,
+      integratorId: swapperIntegratorId,
+      dstChainId: SWAPPER_DST_CHAIN_ID,
+      dstTokenAddr: SWAPPER_DST_TOKEN_ADDR,
+      depositWalletAddress,
+      supportedDepositOptions: [...SWAPPER_DEPOSIT_OPTIONS],
+      styles: {
+        themeMode: theme === "dark" ? "dark" : "light",
+        componentStyles: {
+          primaryColor: "#F57589",
+          primaryTextColor: "#FFFCF6",
+          accentColor: "#F57589",
+          sphereColor: "#F57589",
+        },
+      },
+      iframeAttributes: {
+        width: "100%",
+        minWidth: "0",
+        height: "620px",
+        borderRadius: "12px",
+      },
+      onEvent: (event) => {
+        if (event.type !== WidgetEventName.TRANSACTION_SUCCESS) return;
+        refreshBalances();
+        refreshUserStatus?.();
+      },
+    });
+
+    return () => {
+      swapper.destroy();
+      container.replaceChildren();
+    };
+  }, [
+    account?.address,
+    action,
+    isConnected,
+    refreshBalances,
+    refreshUserStatus,
+    swapperIntegratorId,
+    theme,
+  ]);
 
   if (action !== "deposit") return null;
 
-  const isEvmNetwork = !!network && !["bitcoin", "solana"].includes(network);
-  const showUnsupportedFallback = isEvmNetwork && !!coin && !config?.router;
+  if (!isConnected || !account?.address) {
+    return (
+      <AuthenticatedButton>
+        <Button fullWidth>{m["common.signin"]()}</Button>
+      </AuthenticatedButton>
+    );
+  }
 
-  return (
-    <>
-      <BridgeSelectors />
+  if (!swapperIntegratorId) {
+    return <WarningContainer color="error" description={m["common.failedToLoad"]()} />;
+  }
 
-      {network === "bitcoin" && <BitcoinDeposit />}
-
-      {isEvmNetwork && config?.router && <EvmDeposit />}
-
-      {showUnsupportedFallback && (
-        <WarningContainer description="This network does not support this asset." />
-      )}
-
-      <WarningContainer description={m["bridge.rateLimitWarning"]()} />
-    </>
-  );
+  return <div ref={containerRef} className="w-full" />;
 };
 
 const BridgeSelectors: React.FC = () => {
   const { isConnected } = useAccount();
-  const { chain } = useConfig();
 
   const { state } = useBridge();
-  const { coin, changeCoin, coins, network, setNetwork, networks, action } = state;
+  const { coin, changeCoin, coins, network, setNetwork, networks } = state;
 
   return (
     <>
@@ -127,11 +184,7 @@ const BridgeSelectors: React.FC = () => {
         classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
         value={coin?.denom}
         onChange={changeCoin}
-        coins={coins.filter(
-          (c) =>
-            (chain.id === "dango-1" && c.name !== "Ether" && action === "deposit") ||
-            action === "withdraw",
-        )}
+        coins={coins}
         withName
         withPrice
       />
@@ -146,155 +199,6 @@ const BridgeSelectors: React.FC = () => {
         networks={networks}
       />
     </>
-  );
-};
-
-const BitcoinDeposit: React.FC = () => {
-  const depositAddress = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
-  return <DepositAddressBox address={depositAddress} network="bitcoin" />;
-};
-
-const EvmDeposit: React.FC = () => {
-  const { userStatus } = useAccount();
-  const { getPrice } = usePrices();
-  const { showModal } = useApp();
-
-  const { controllers, state } = useBridge();
-  const { inputs, errors } = controllers;
-
-  const { data: appConfig } = useAppConfig();
-  const { minimumDeposit } = appConfig;
-
-  const { coin, connector, setConnectorId, config, reset } = state as NonNullablePropertiesBy<
-    typeof state,
-    "coin" | "config"
-  >;
-
-  const amount = inputs.amount?.value || "0";
-  const parsedAmount = BigInt(parseUnits(amount, coin.decimals));
-
-  const { wallet, allowanceQuery, allowanceMutation, deposit } = useBridgeEvmDeposit({
-    config,
-    connector,
-    coin,
-    amount,
-  });
-
-  const requiresAllowance = allowanceQuery.data < parsedAmount;
-
-  const evmAddress = wallet.data?.account.address;
-
-  const { data: balances = {}, refetch: refreshBalances } = useEvmBalances({
-    chain: config.chain,
-    address: evmAddress,
-  });
-
-  if (!connector || !coin) {
-    return <ConnectWalletWithModal fullWidth onWalletSelected={(id) => setConnectorId(id)} />;
-  }
-
-  const handleDeposit = () =>
-    showModal(Modals.BridgeDeposit, {
-      coin,
-      config,
-      amount,
-      allowanceMutation,
-      requiresAllowance,
-      deposit,
-      reset: () => {
-        refreshBalances();
-        reset();
-      },
-    });
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-6">
-      <div className="flex flex-col items-center gap-2 w-full">
-        <AssetInputWithRange
-          name="amount"
-          asset={coin}
-          balances={balances}
-          controllers={controllers}
-          showRange
-          shouldValidate
-          extendValidation={(v) => {
-            if (userStatus === "active") return true;
-            const minDeposit = minimumDeposit[coin.denom as keyof typeof minimumDeposit];
-            if (!minDeposit) return true;
-
-            const amount = formatUnits(minDeposit, coin.decimals);
-            if (Number(v) < Number(amount))
-              return m["bridge.activeAccount"]({ amount: `${amount} ${coin.symbol}` });
-            return true;
-          }}
-          label={
-            <div className="flex justify-between w-full items-center">
-              <p className="exposure-sm-italic text-ink-secondary-700">
-                {m["bridge.youDeposit"]()}
-              </p>
-
-              <div className="flex gap-2 items-center">
-                <Image src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
-                <TruncateText
-                  start={4}
-                  end={4}
-                  text={evmAddress || ""}
-                  className="diatype-sm-medium text-ink-tertiary-500"
-                />
-                <IconDisconnect
-                  className="w-4 h-4 inline-block text-ink-tertiary-500 hover:cursor-pointer hover:text-ink-primary-900"
-                  onClick={() => setConnectorId(null)}
-                />
-              </div>
-            </div>
-          }
-        />
-        <div className="flex items-center justify-center mt-2">
-          <div className="flex items-center justify-center border border-fg-tertiary-400 rounded-full h-5 w-5">
-            <IconArrowDown className="h-3 w-3 text-ink-tertiary-500" />
-          </div>
-        </div>
-        <Input
-          placeholder="0"
-          readOnly
-          label={m["bridge.youGet"]()}
-          value={amount}
-          classNames={{
-            base: "z-20",
-            inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
-            inputParent: "h-[34px] h3-bold",
-            input: "!h3-bold",
-          }}
-          startText="right"
-          startContent={
-            <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
-              <div className="flex gap-2 items-center font-semibold">
-                <Image src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
-                <p>{coin.symbol}</p>
-              </div>
-            </div>
-          }
-          insideBottomComponent={
-            <div className="flex justify-end w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-              <FormattedNumber
-                number={getPrice(amount, coin.denom)}
-                formatOptions={{ currency: "USD" }}
-                as="p"
-              />
-            </div>
-          }
-        />
-      </div>
-
-      <Button
-        fullWidth
-        onClick={handleDeposit}
-        isDisabled={!!errors.amount || amount === "0"}
-        className="mt-4"
-      >
-        {m["bridge.deposit.title"]()}
-      </Button>
-    </div>
   );
 };
 
