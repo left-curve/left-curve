@@ -21,7 +21,7 @@ export const perpsMarginAsset = {
 
 export type PerpsAssetClass = "crypto" | "commodity";
 
-const PERPS_COMMODITY_BASE_SYMBOLS: ReadonlySet<string> = new Set(["XAU", "XAG"]);
+const PERPS_COMMODITY_BASE_SYMBOLS: ReadonlySet<string> = new Set(["XAU", "XAG", "BRENT", "WTI"]);
 
 export function getPerpsAssetClass(baseSymbol: string): PerpsAssetClass {
   return PERPS_COMMODITY_BASE_SYMBOLS.has(baseSymbol.toUpperCase()) ? "commodity" : "crypto";
