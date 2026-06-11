@@ -399,6 +399,25 @@ describe("bridge UI", () => {
     expect(JSON.parse(src.searchParams.get("styles") || "{}")).toEqual({
       themeMode: "dark",
       componentStyles: {
+        primaryColor: "#F9A9B2",
+        primaryTextColor: "#302723",
+        accentColor: "#F57589",
+        sphereColor: "#F9A9B2",
+      },
+    });
+  });
+
+  it("keeps the POC Swapper colors in light mode", () => {
+    bridgeUiMocks.theme = "light";
+
+    renderBridgeDeposit();
+
+    const iframe = screen.getByTitle("Swapper Deposit Widget") as HTMLIFrameElement;
+    const src = new URL(iframe.src);
+
+    expect(JSON.parse(src.searchParams.get("styles") || "{}")).toEqual({
+      themeMode: "light",
+      componentStyles: {
         primaryColor: "#F57589",
         primaryTextColor: "#FFFCF6",
         accentColor: "#F57589",

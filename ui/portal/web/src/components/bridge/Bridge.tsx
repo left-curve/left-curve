@@ -20,7 +20,7 @@ import {
 
 import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { SwapperIframe, WidgetEventName } from "@swapper-finance/deposit-sdk";
+import { SwapperIframe, WidgetEventName, type ComponentStyles } from "@swapper-finance/deposit-sdk";
 import { Decimal } from "@left-curve/utils";
 import { Image } from "~/components/foundation/Image";
 
@@ -43,6 +43,18 @@ import type { AnyCoin } from "@left-curve/store/types";
 const SWAPPER_DST_CHAIN_ID = "dango";
 const SWAPPER_DST_TOKEN_ADDR = "usdc";
 const SWAPPER_DEPOSIT_OPTIONS = ["transferCrypto", "depositWithCash", "walletDeposit"] as const;
+const SWAPPER_LIGHT_COMPONENT_STYLES = {
+  primaryColor: "#F57589",
+  primaryTextColor: "#FFFCF6",
+  accentColor: "#F57589",
+  sphereColor: "#F57589",
+} satisfies ComponentStyles;
+const SWAPPER_DARK_COMPONENT_STYLES = {
+  primaryColor: "#F9A9B2",
+  primaryTextColor: "#302723",
+  accentColor: "#F57589",
+  sphereColor: "#F9A9B2",
+} satisfies ComponentStyles;
 
 const [BridgeProvider, useBridge] = createContext<{
   state: ReturnType<typeof useBridgeState>;
@@ -108,6 +120,8 @@ const BridgeDeposit: React.FC = () => {
 
     container.replaceChildren();
 
+    const themeMode = theme === "dark" ? "dark" : "light";
+
     const swapper = new SwapperIframe({
       container,
       integratorId: swapperIntegratorId,
@@ -116,13 +130,9 @@ const BridgeDeposit: React.FC = () => {
       depositWalletAddress,
       supportedDepositOptions: [...SWAPPER_DEPOSIT_OPTIONS],
       styles: {
-        themeMode: theme === "dark" ? "dark" : "light",
-        componentStyles: {
-          primaryColor: "#F57589",
-          primaryTextColor: "#FFFCF6",
-          accentColor: "#F57589",
-          sphereColor: "#F57589",
-        },
+        themeMode,
+        componentStyles:
+          themeMode === "dark" ? SWAPPER_DARK_COMPONENT_STYLES : SWAPPER_LIGHT_COMPONENT_STYLES,
       },
       iframeAttributes: {
         width: "100%",
