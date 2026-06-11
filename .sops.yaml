@@ -13,7 +13,7 @@
 #
 # Placeholder map:
 # - age1PLACEHOLDER_PENSO_YUBIKEY      # penso
-# - age1PLACEHOLDER_LARRY_YUBIKEY      # larry
+# - age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x      # larry
 # - age1PLACEHOLDER_RHAKI_YUBIKEY      # rhaki
 # - age1PLACEHOLDER_ZEXSOR_YUBIKEY     # zexsor
 # - age1PLACEHOLDER_J0NL1_YUBIKEY      # j0nl1
@@ -25,7 +25,7 @@ creation_rules:
   - path_regex: ^(deploy/)?group_vars/all/vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -35,7 +35,7 @@ creation_rules:
   - path_regex: ^(deploy/)?group_vars/all/deploy_key\.sops$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -45,7 +45,7 @@ creation_rules:
   - path_regex: ^(deploy/)?group_vars/dango-assistant/vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -55,7 +55,7 @@ creation_rules:
   - path_regex: ^(deploy/)?group_vars/hyperlane/vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -65,7 +65,7 @@ creation_rules:
   - path_regex: ^(deploy/)?group_vars/perps-bot/vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -75,7 +75,7 @@ creation_rules:
   - path_regex: ^(deploy/)?group_vars/points-bot/vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -85,7 +85,7 @@ creation_rules:
   - path_regex: ^(deploy/)?host_vars/100\.107\.248\.71/vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -95,7 +95,7 @@ creation_rules:
   - path_regex: ^(deploy/)?host_vars/100\.122\.37\.57/main\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -105,7 +105,7 @@ creation_rules:
   - path_regex: ^(deploy/)?host_vars/100\.96\.253\.40/vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_RHAKI_YUBIKEY,
       age1PLACEHOLDER_ZEXSOR_YUBIKEY,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
@@ -116,11 +116,11 @@ creation_rules:
   - path_regex: ^(deploy/)?vaults/debian/debian_key\.sops$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_J0NL1_YUBIKEY
 
   - path_regex: ^(deploy/)?vaults/debian/root_vault\.sops\.yml$
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
-      age1PLACEHOLDER_LARRY_YUBIKEY,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
       age1PLACEHOLDER_J0NL1_YUBIKEY
