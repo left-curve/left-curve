@@ -41,7 +41,7 @@ The code hash is the same on mainnet and testnet.
 
 ## Hyperlane deployments
 
-Dango bridges assets to and from EVM chains via [Hyperlane](https://hyperlane.xyz/) warp routes. The tables below list the relevant contracts on each chain: Ethereum and Arbitrum serve Dango mainnet; Sepolia and Arbitrum Sepolia serve Dango testnet. The first three rows of each table are contracts deployed by other parties (Circle, Hyperlane), included for reference; the rest are deployed by us. Our contracts are not deployed on Arbitrum and Arbitrum Sepolia yet (marked TBD).
+Dango bridges assets to and from EVM chains via [Hyperlane](https://hyperlane.xyz/) warp routes. The tables below list the relevant contracts on each chain: Ethereum and Arbitrum serve Dango mainnet; Sepolia and Arbitrum Sepolia serve Dango testnet. The first three rows of each table are contracts deployed by other parties (Circle, Hyperlane), included for reference; the rest are deployed by us. Our contracts are not deployed on Arbitrum yet (marked TBD), and on Arbitrum Sepolia only the USDC warp route is deployed.
 
 ### Ethereum
 
@@ -95,17 +95,14 @@ Dango bridges assets to and from EVM chains via [Hyperlane](https://hyperlane.xy
 | `FiatTokenProxy`                    | USDC token                       | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d)[^1] |
 | `Mailbox`                           | Hyperlane mailbox                | [`0x598facE78a4302f11E3de0bee1894Da0b2Cb71F8`](https://sepolia.arbiscan.io/address/0x598facE78a4302f11E3de0bee1894Da0b2Cb71F8)[^8] |
 | `StaticMessageIdMultisigIsmFactory` | Hyperlane multisig ISM factory   | [`0xF7F0DaB0BECE4498dAc7eb616e288809D4499371`](https://sepolia.arbiscan.io/address/0xF7F0DaB0BECE4498dAc7eb616e288809D4499371)[^9] |
-| `TransparentUpgradeableProxy`       | Warp-route proxy (USDC)          | TBD                                                                                                                                |
-| `HypERC20Collateral`                | Warp-route implementation (USDC) | TBD                                                                                                                                |
-| `TransparentUpgradeableProxy`       | Warp-route proxy (ETH)           | TBD                                                                                                                                |
-| `HypNative`                         | Warp-route implementation (ETH)  | TBD                                                                                                                                |
-| `ProxyAdmin`                        | Proxy administrator              | TBD                                                                                                                                |
-| `TimelockController`                | Timelock                         | TBD                                                                                                                                |
-| `SafeProxy`                         | Dango team multisig              | -                                                                                                                                  |
+| `TransparentUpgradeableProxy`       | Warp-route proxy (USDC)          | [`0x9d0ea335355dA17eE89E50DF43AB823416Cf73d4`](https://sepolia.arbiscan.io/address/0x9d0ea335355dA17eE89E50DF43AB823416Cf73d4)     |
+| `HypERC20Collateral`                | Warp-route implementation (USDC) | [`0x34DC3F292fC04e3Dcc2830AC69bb5d4cd5E8F654`](https://sepolia.arbiscan.io/address/0x34DC3F292fC04e3Dcc2830AC69bb5d4cd5E8F654)     |
+| `ProxyAdmin`                        | Proxy administrator              | [`0x947303E34C1a2B97fB00C68C1cC4cA97B3361fE6`](https://sepolia.arbiscan.io/address/0x947303E34C1a2B97fB00C68C1cC4cA97B3361fE6)     |
+| `TimelockController`                | Timelock (5 min)                 | [`0x8CD37a701a61fcEa0eb02460431275dD2Fc54bCE`](https://sepolia.arbiscan.io/address/0x8CD37a701a61fcEa0eb02460431275dD2Fc54bCE)     |
 
 ### Ownership chain
 
-The ownership structure is identical on every chain (except Arbitrum Sepolia, which has no `SafeProxy`, because the Safe frontend doesn't support that chain):
+The ownership structure is identical on every chain (except Arbitrum Sepolia, where an EOA fills the `SafeProxy` role, because the Safe frontend doesn't support that chain):
 
 ```mermaid
 graph TD
