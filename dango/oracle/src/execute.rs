@@ -7,7 +7,7 @@ use {
         QuerierExt, Response, Storage, Timestamp, Tx,
     },
     pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
@@ -64,6 +64,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
             register_price_sources(ctx, price_sources)
         },
+        ExecuteMsg::RemovePriceSources(denoms) => remove_price_sources(ctx, denoms),
         ExecuteMsg::RegisterTrustedSigner {
             public_key,
             expires_at,
@@ -86,6 +87,24 @@ fn register_price_sources(
     for (denom, config) in price_sources {
         config.validate()?;
         PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
+    }
+
+    Ok(Response::new())
+}
+
+fn remove_price_sources(ctx: MutableCtx, denoms: BTreeSet<Denom>) -> anyhow::Result<Response> {
+    // Only chain owner can remove a denom.
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // No check is performed on whether the denoms actually have a price
+    // source; `Map::remove` is a no-op for an absent key. We also trust the
+    // owner to have ensured no other contract still relies on the price
+    // sources being removed, so no usage check either.
+    for denom in denoms {
+        PRICE_SOURCES.remove(ctx.storage, &denom);
     }
 
     Ok(Response::new())

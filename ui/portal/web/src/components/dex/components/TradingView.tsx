@@ -1,7 +1,9 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useApp, useTheme } from "@left-curve/applets-kit";
+import { useTheme } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
 import {
+  useConfig,
   usePublicClient,
   usePerpsUserStateExtended,
   usePerpsOrdersByUser,
@@ -9,49 +11,59 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
+import { deepEqual } from "@left-curve/utils";
 import { createPerpsDataFeed } from "~/datafeed";
 import { buildPositionLines, buildPerpsOrderLines, drawLines } from "../helpers/chartLines";
+import { isPerpsTradeHistoryAccountKey } from "../helpers/perpsTradeHistoryKeys";
 
-import type { AnyCoin } from "@left-curve/store/types";
+import type { MarketPair } from "@left-curve/foundation/market-pair";
 
 type TradingViewProps = {
-  coins: { base: AnyCoin; quote: AnyCoin };
-  perpsPairId: string;
+  pair: MarketPair;
   accountAddress?: string;
 };
 
-export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, accountAddress }) => {
-  const pairSymbol = `${coins.base.symbol}-USD`;
+function getStorageKey(ticker: string) {
+  return `tv_v4.${ticker}_perps`;
+}
 
-  const position = usePerpsUserStateExtended((s) => s.positions[perpsPairId], { accountAddress });
+export const TradingView: React.FC<TradingViewProps> = ({ pair, accountAddress }) => {
+  const pairId = pair.id;
+  const ticker = pair.ticker;
+
+  const position = usePerpsUserStateExtended((s) => s.positions[pairId], { accountAddress });
   const perpsOrders = usePerpsOrdersByUser(
     (s) => {
       if (!s.orders) return null;
       return Object.fromEntries(
-        Object.entries(s.orders).filter(([, order]) => order.pairId === perpsPairId),
+        Object.entries(s.orders).filter(([, order]) => order.pairId === pairId),
       );
     },
     { accountAddress },
-    (previous, next) => {
-      if (previous === next) return true;
-      if (!previous || !next) return previous === next;
-      const previousEntries = Object.entries(previous);
-      const nextEntries = Object.entries(next);
-      if (previousEntries.length !== nextEntries.length) return false;
-      return previousEntries.every(([id, order]) => next[id] === order);
-    },
+    deepEqual,
   );
 
   const { theme } = useTheme();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
-  const { subscriptions, settings } = useApp();
-  const { timeFormat, timeZone } = settings;
+  const { subscriptions } = useConfig();
+  const timeFormat = useApp((state) => state.settings.timeFormat);
+  const timeZone = useApp((state) => state.settings.timeZone);
 
-  const storageKey = `tv_v4.${pairSymbol}_perps`;
+  const storageKey = getStorageKey(ticker);
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
   const readyRef = useRef(false);
+  const tickerRef = useRef(ticker);
+  const storageKeyRef = useRef(storageKey);
+  // The datafeed is created with the widget; this keeps getMarks pointed at the live account.
+  const accountAddressRef = useRef(accountAddress);
+
+  tickerRef.current = ticker;
+
+  useEffect(() => {
+    accountAddressRef.current = accountAddress;
+  }, [accountAddress]);
 
   useEffect(() => {
     try {
@@ -68,12 +80,16 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
       client: publicClient,
       queryClient,
       subscriptions,
+      getAccountAddress: () => accountAddressRef.current,
     });
+    const activeTicker = tickerRef.current;
+    const activeStorageKey = getStorageKey(activeTicker);
+    storageKeyRef.current = activeStorageKey;
 
     const widget = new TV.widget({
       container: "tv-container",
       autosize: true,
-      symbol: pairSymbol,
+      symbol: activeTicker,
       interval: "5" as TV.ResolutionString,
       locale: "en",
       library_path: `/charting_library/${import.meta.env.TV_VERSION}/`,
@@ -100,7 +116,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
         "trading_account_manager",
         "create_volume_indicator_by_default",
       ],
-      saved_data: JSON.parse(localStorage.getItem(storageKey) || "null"),
+      saved_data: JSON.parse(localStorage.getItem(activeStorageKey) || "null"),
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#27AE60",
         "mainSeriesProperties.candleStyle.downColor": "#EB5757",
@@ -152,7 +168,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
     const saveFn = () =>
       widget.save((state) => {
         try {
-          localStorage.setItem(storageKey, JSON.stringify(state));
+          localStorage.setItem(storageKeyRef.current, JSON.stringify(state));
         } catch {}
       });
 
@@ -197,15 +213,57 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
       widget.remove();
       widgetRef.current = null;
     };
-  }, [theme]);
+  }, [publicClient, queryClient, subscriptions, theme, timeFormat, timeZone]);
 
   useEffect(() => {
-    if (!widgetRef.current) return;
-    const chart = widgetRef.current.chart();
-    if (chart.symbol() !== pairSymbol) {
-      chart.setSymbol(pairSymbol, () => {});
+    const widget = widgetRef.current;
+    if (!widget) return;
+    const chart = widget.chart();
+
+    const syncMarks = () => {
+      if (accountAddress) chart.refreshMarks();
+      else chart.clearMarks();
+    };
+
+    if (chart.symbol() !== ticker) {
+      const previousStorageKey = storageKeyRef.current;
+      widget.save((state) => {
+        try {
+          localStorage.setItem(previousStorageKey, JSON.stringify(state));
+        } catch {}
+      });
+      storageKeyRef.current = storageKey;
+      chart.setSymbol(ticker, syncMarks);
+      return;
     }
-  }, [pairSymbol]);
+
+    storageKeyRef.current = storageKey;
+    syncMarks();
+  }, [accountAddress, storageKey, ticker]);
+
+  useEffect(() => {
+    if (!accountAddress) return;
+
+    let subscribed = true;
+    let refreshQueued = false;
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== "updated" || event.action.type !== "invalidate") return;
+      if (!isPerpsTradeHistoryAccountKey(event.query.queryKey, accountAddress)) return;
+      if (refreshQueued) return;
+
+      refreshQueued = true;
+      queueMicrotask(() => {
+        refreshQueued = false;
+        if (!subscribed) return;
+        widgetRef.current?.chart().refreshMarks();
+      });
+    });
+
+    return () => {
+      subscribed = false;
+      unsubscribe();
+    };
+  }, [accountAddress, queryClient]);
 
   useEffect(() => {
     if (!widgetRef.current) return;
@@ -213,11 +271,11 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, perpsPairId, ac
 
     const lines = [
       ...(position ? buildPositionLines(position) : []),
-      ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, perpsPairId) : []),
+      ...(perpsOrders ? buildPerpsOrderLines(perpsOrders, pairId) : []),
     ];
 
     drawLines(chart, lines);
-  }, [position, perpsOrders, perpsPairId]);
+  }, [position, perpsOrders, pairId]);
 
   return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

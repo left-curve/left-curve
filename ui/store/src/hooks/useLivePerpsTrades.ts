@@ -13,13 +13,12 @@ export type LivePerpsTradesSnapshot = LiveResourceSnapshot & {
 };
 
 export type UseLivePerpsTradesParameters = {
-  perpsPairId?: string;
+  pairId: string;
   enabled?: boolean;
 };
 
 type LivePerpsTradesResourceParams = {
-  chainId: Config["chain"]["id"];
-  perpsPairId: string;
+  pairId: string;
   subscriptions: Config["subscriptions"];
 };
 
@@ -36,7 +35,7 @@ const livePerpsTradesResource = createLiveResource<
   LivePerpsTradesSnapshot
 >({
   name: "livePerpsTrades",
-  getKey: ({ chainId, perpsPairId }) => `livePerpsTrades:${chainId}:${perpsPairId}`,
+  getKey: ({ pairId }) => `livePerpsTrades:${pairId}`,
   getInitialSnapshot: () => initialLivePerpsTradesSnapshot,
   equal: (previous, next) =>
     previous.status === next.status &&
@@ -44,7 +43,7 @@ const livePerpsTradesResource = createLiveResource<
     previous.currentPrice === next.currentPrice &&
     previous.previousPrice === next.previousPrice &&
     previous.trades === next.trades,
-  start: ({ perpsPairId, subscriptions }, { emit, error }) => {
+  start: ({ pairId, subscriptions }, { emit, error }) => {
     let snapshot = initialLivePerpsTradesSnapshot;
     let tradesBuffer: PerpsTrade[] = [];
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -70,7 +69,7 @@ const livePerpsTradesResource = createLiveResource<
     };
 
     const unsubscribe = subscriptions.subscribe("perpsTrades", {
-      params: { pairId: perpsPairId },
+      params: { pairId },
       listener: ({ perpsTrades: trade }) => {
         if (trade.isMaker === true) return;
         tradesBuffer.unshift(trade);
@@ -92,17 +91,16 @@ export function useLivePerpsTrades<Selection>(
   parameters: UseLivePerpsTradesParameters,
   equalityFn?: (previous: Selection, next: Selection) => boolean,
 ): Selection {
-  const { perpsPairId, enabled = true } = parameters;
+  const { pairId, enabled = true } = parameters;
   const config = useConfig();
 
   return useLiveResource({
     resource: livePerpsTradesResource,
     params: {
-      chainId: config.chain.id,
-      perpsPairId: perpsPairId ?? "",
+      pairId,
       subscriptions: config.subscriptions,
     },
-    enabled: enabled && !!perpsPairId,
+    enabled,
     selector,
     equalityFn,
     restartToken: config.subscriptions,

@@ -9,11 +9,11 @@ import { useProTrade } from "./ProTrade";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const FundingCountdown: React.FC = () => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const { perpsPairId } = useProTrade();
+  const formatNumberOptions = useApp((state) => state.settings.formatNumberOptions);
+  const { pair } = useProTrade();
+  const pairId = pair.id;
 
-  const pairState = usePerpsPairState((s) => s.pairState, { perpsPairId });
+  const pairState = usePerpsPairState((s) => s.pairState, { pairId });
   const perpsState = usePerpsState((s) => s.state);
 
   const { data: perpsParam } = usePerpsParam();

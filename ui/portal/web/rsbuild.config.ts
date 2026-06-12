@@ -121,25 +121,21 @@ const chain = {
 const urls = {
   local: {
     faucetUrl: "http://localhost:8082/mint",
-    questUrl: "http://localhost:8081/check_username",
     upUrl: "http://localhost:8080/up",
     pointsUrl: "http://localhost:8083/points-api",
   },
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
-    questUrl: "https://quest-bot-devnet.dango.zone/check_username",
     upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
     faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
-    questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-testnet.dango.zone",
   },
   prod: {
     faucetUrl: "/faucet",
-    questUrl: "/quest",
     upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-mainnet.dango.zone",
   },
@@ -160,7 +156,6 @@ const defaultDangoConfig = {
   urls: isLocal
     ? {
         faucetUrl: `http://localhost:${PORT}/faucet`,
-        questUrl: `http://localhost:${PORT}/quest`,
         upUrl: `http://localhost:${PORT}/up`,
         pointsUrl: `http://localhost:${PORT}/points-api`,
       }
@@ -255,11 +250,6 @@ export default defineConfig({
         target: urls.faucetUrl,
         changeOrigin: true,
         pathRewrite: { "^/faucet": "" },
-      },
-      "/quest": {
-        target: urls.questUrl,
-        changeOrigin: true,
-        pathRewrite: { "^/quest": "" },
       },
       "/up": {
         target: `${chain.url}/up`,

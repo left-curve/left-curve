@@ -1,0 +1,44 @@
+---
+- name: "{{ network }} - Validate required variables"
+  assert:
+    that:
+      - postgres_user is defined
+      - postgres_password is defined
+    fail_msg: "drop-db requires postgres_user and postgres_password"
+
+- name: "{{ network }} - Stop stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ referral_dashboard_dir }}/{{ network }}"
+    state: stopped
+    pull: never
+
+- name: "{{ network }} - Drop postgres database"
+  community.postgresql.postgresql_db:
+    name: "{{ referral_dashboard_db_name }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    login_host: "{{ postgres_external_host }}"
+    login_port: "{{ postgres_port }}"
+    state: absent
+
+- name: "{{ network }} - Recreate empty postgres database"
+  community.postgresql.postgresql_db:
+    name: "{{ referral_dashboard_db_name }}"
+    owner: "{{ referral_dashboard_db_user }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    login_host: "{{ postgres_external_host }}"
+    login_port: "{{ postgres_port }}"
+    state: present
+
+- name: "{{ network }} - Grant privileges on database"
+  community.postgresql.postgresql_privs:
+    type: database
+    privs: ALL
+    roles: "{{ referral_dashboard_db_user }}"
+    login_db: "{{ referral_dashboard_db_name }}"
+    login_user: "{{ postgres_user }}"
+    login_password: "{{ postgres_password }}"
+    login_host: "{{ postgres_external_host }}"
+    login_port: "{{ postgres_port }}"
+    state: present

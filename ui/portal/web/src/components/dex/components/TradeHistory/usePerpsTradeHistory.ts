@@ -2,6 +2,8 @@ import { useAccount, useInfiniteGraphqlQuery, usePublicClient } from "@left-curv
 import type { PerpsEvent } from "@left-curve/types";
 import { useCallback, useMemo } from "react";
 
+import { perpsTradeHistoryKeys } from "../../helpers/perpsTradeHistoryKeys";
+
 import type { QueryRange } from "./useTradeHistoryFilter";
 
 const PAGE_SIZE = 30;
@@ -24,7 +26,7 @@ export function usePerpsTradeHistory(queryRange: QueryRange): UsePerpsTradeHisto
     limit: PAGE_SIZE,
     query: {
       enabled: !!address,
-      queryKey: ["perpsTradeHistory", address ?? "", earlierThan ?? "", laterThan ?? ""],
+      queryKey: perpsTradeHistoryKeys.range(address, earlierThan, laterThan),
       queryFn: async ({ pageParam }) => {
         if (!address) throw new Error("missing account");
         return await publicClient.queryPerpsEvents({

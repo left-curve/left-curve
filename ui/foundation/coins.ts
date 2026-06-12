@@ -14,7 +14,6 @@ export const coins = {
     symbol: "BTC",
     denom: "bridge/btc",
     decimals: 8,
-    coingeckoId: "bitcoin",
   },
   "bridge/eth": {
     type: "native",
@@ -23,7 +22,6 @@ export const coins = {
     symbol: "ETH",
     denom: "bridge/eth",
     decimals: 18,
-    coingeckoId: "ethereum",
   },
   "bridge/xrp": {
     type: "native",
@@ -32,7 +30,6 @@ export const coins = {
     symbol: "XRP",
     denom: "bridge/xrp",
     decimals: 6,
-    coingeckoId: "ripple",
   },
   "bridge/usdc": {
     type: "native",
@@ -41,7 +38,6 @@ export const coins = {
     symbol: "USDC",
     denom: "bridge/usdc",
     decimals: 6,
-    coingeckoId: "usd-coin",
   },
   "bridge/sol": {
     type: "native",
@@ -50,7 +46,6 @@ export const coins = {
     symbol: "SOL",
     denom: "bridge/sol",
     decimals: 9,
-    coingeckoId: "solana",
   },
   "bridge/hype": {
     type: "native",

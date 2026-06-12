@@ -1,11 +1,7 @@
 import { describe, it, expect } from "vitest";
-import React from "react";
+import type { FC } from "react";
 import { render, screen } from "@testing-library/react";
-import {
-  formatDisplayNumber,
-  type FormatNumberOptions,
-  type DisplayPart,
-} from "@left-curve/utils";
+import { formatDisplayNumber, type FormatNumberOptions, type DisplayPart } from "@left-curve/utils";
 
 /**
  * Minimal replica of FormattedNumber that uses the real formatDisplayNumber
@@ -13,18 +9,23 @@ import {
  */
 const defaultOptions: FormatNumberOptions = { mask: 1, language: "en-US" };
 
-const FormattedNumber: React.FC<{
+const FormattedNumber: FC<{
   number: string | number;
   formatOptions?: Partial<FormatNumberOptions>;
 }> = ({ number, formatOptions }) => {
   const parts = formatDisplayNumber(number, { ...defaultOptions, ...formatOptions });
+  let offset = 0;
+
   return (
     <p data-testid="formatted">
-      {parts.map((part: DisplayPart, i: number) => {
+      {parts.map((part: DisplayPart) => {
+        const key = `${part.type}-${offset}-${part.value}`;
+        offset += String(part.value).length;
+
         if (part.type === "subscript") {
-          return <sub key={i}>{part.value}</sub>;
+          return <sub key={key}>{part.value}</sub>;
         }
-        return <span key={i}>{part.value}</span>;
+        return <span key={key}>{part.value}</span>;
       })}
     </p>
   );
@@ -34,9 +35,7 @@ function renderAndGetText(
   value: string | number,
   formatOptions?: Partial<FormatNumberOptions>,
 ): string {
-  const { unmount } = render(
-    <FormattedNumber number={value} formatOptions={formatOptions} />,
-  );
+  const { unmount } = render(<FormattedNumber number={value} formatOptions={formatOptions} />);
   const text = screen.getByTestId("formatted").textContent ?? "";
   unmount();
   return text;
@@ -46,12 +45,9 @@ describe("FormattedNumber component — tier rendering", () => {
   // ── Tier 1: < 0.0001 → subscript notation ──
   describe("Tier 1: < 0.0001 (subscript)", () => {
     it("renders 0.00001234 as subscript notation", () => {
-      const text = renderAndGetText("0.00001234");
       // Should be 0.0₄1234 — the text content won't show subscript styling
       // but the DOM structure should contain a <sub> element
-      const { container, unmount } = render(
-        <FormattedNumber number="0.00001234" />,
-      );
+      const { container, unmount } = render(<FormattedNumber number="0.00001234" />);
       const sub = container.querySelector("sub");
       expect(sub).toBeTruthy();
       expect(sub?.textContent).toBe("4");
@@ -59,9 +55,7 @@ describe("FormattedNumber component — tier rendering", () => {
     });
 
     it("renders 0.000000005678 with correct subscript count", () => {
-      const { container, unmount } = render(
-        <FormattedNumber number="0.000000005678" />,
-      );
+      const { container, unmount } = render(<FormattedNumber number="0.000000005678" />);
       const sub = container.querySelector("sub");
       expect(sub).toBeTruthy();
       expect(sub?.textContent).toBe("8");

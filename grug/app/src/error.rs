@@ -64,6 +64,9 @@ pub enum AppError {
 
     #[error("max message depth exceeded")]
     ExceedMaxMessageDepth,
+
+    #[error("multi query can't be nested")]
+    NestedMultiQuery,
 }
 
 impl AppError {

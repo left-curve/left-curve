@@ -1465,6 +1465,10 @@ where
             let res = reqs
                 .into_iter()
                 .map(|req| {
+                    if matches!(req, Query::Multi(_)) {
+                        return Err(AppError::nested_multi_query()).into_generic_result();
+                    }
+
                     process_query(
                         vm.clone(),
                         storage.clone(),

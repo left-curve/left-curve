@@ -12,23 +12,17 @@ import {
 } from "@left-curve/applets-kit";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  getPerpsPairIdFromPairId,
-  useLivePerpsTrades,
-  useConfig,
-  useOraclePrices,
   usePerpsUserState,
   usePerpsUserStateExtended,
   usePerpsOrdersByUser,
-  useAllPerpsPairStats,
   useCurrentPrice,
-  usePerpsPairState,
-  usePerpsState,
-  useTradePairCoins,
   useAccount,
+  useAllPerpsPairStats,
 } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { createPortal } from "react-dom";
-import { Decimal, formatNumber } from "@left-curve/utils";
+import { Decimal, formatNumber, shallowEqual } from "@left-curve/utils";
 
 import {
   Button,
@@ -40,7 +34,6 @@ import {
 } from "@left-curve/applets-kit";
 import { CountBadge } from "../../foundation/CountBadge";
 import { EmptyPlaceholder } from "../../foundation/EmptyPlaceholder";
-import { reportStoreError } from "../../../app.sentry";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
@@ -50,48 +43,41 @@ import { PerpsTradeHistory } from "./TradeHistory";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { ConditionalOrder, PairId } from "@left-curve/types";
+import type { ConditionalOrder } from "@left-curve/types";
 
-const PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID = "protrade-live-resource-error";
-
-type LiveResourceErrorSnapshot = {
-  status: "idle" | "connecting" | "ready" | "error";
-  error: Error | null;
-};
-
-type LiveResourceErrorSource = {
-  name: string;
-  error: Error | null;
-};
-
-function selectLiveResourceError(snapshot: LiveResourceErrorSnapshot) {
-  return snapshot.status === "error" ? snapshot.error : null;
-}
+const USD_MAX_FRACTION_DIGITS_FORMAT_OPTIONS = { currency: "USD", maxFractionDigits: 6 } as const;
+const MAX_FRACTION_DIGITS_FORMAT_OPTIONS = { maxFractionDigits: 6 } as const;
 
 const [ProTradeProvider, useProTrade] = createContext<{
-  controllers: ReturnType<typeof useInputs>;
-  pairId: PairId;
-  perpsPairId: string;
+  pair: MarketPair;
   action: "buy" | "sell";
   orderType: "limit" | "market";
   accountAddress?: string;
-  onChangePairId: (pairSymbols: string) => void;
+  onChangeTicker: (ticker: string) => void;
   onChangeAction: (action: "buy" | "sell") => void;
   onChangeOrderType: (orderType: "limit" | "market") => void;
 }>({
   name: "ProTradeContext",
 });
 
+const [ProTradeFormProvider, useProTradeForm] = createContext<ReturnType<typeof useInputs>>({
+  name: "ProTradeFormContext",
+});
+
+const [ProTradeFormActionsProvider, useProTradeFormActions] = createContext<{
+  setValue: ReturnType<typeof useInputs>["setValue"];
+}>({
+  name: "ProTradeFormActionsContext",
+});
+
 export { useProTrade };
 
 const TradeDocumentTitle: React.FC = () => {
-  const { pairId, perpsPairId } = useProTrade();
-  const { baseCoin } = useTradePairCoins({ pairId });
-  const { currentPrice } = useCurrentPrice({ perpsPairId });
+  const { pair } = useProTrade();
+  const { currentPrice } = useCurrentPrice({ pairId: pair.id });
 
   useEffect(() => {
     const previousTitle = document.title;
-    const symbol = `${baseCoin.symbol}-USD`;
 
     if (currentPrice) {
       const priceNum = Number(currentPrice);
@@ -101,15 +87,15 @@ const TradeDocumentTitle: React.FC = () => {
             maximumFractionDigits: priceNum < 1 ? 6 : 2,
           })
         : currentPrice;
-      document.title = `${formatted} | ${symbol} | Dango`;
+      document.title = `${formatted} | ${pair.ticker} | Dango`;
     } else {
-      document.title = `${symbol} · Dango`;
+      document.title = `${pair.ticker} · Dango`;
     }
 
     return () => {
       document.title = previousTitle;
     };
-  }, [pairId, baseCoin.symbol, currentPrice]);
+  }, [pair, currentPrice]);
 
   return null;
 };
@@ -122,131 +108,53 @@ const ProTradeErrorFallback: React.FC = () => {
   );
 };
 
-const ProTradeLiveResourceErrors: React.FC = () => {
-  const { toast } = useApp();
-  const { accountAddress, perpsPairId } = useProTrade();
-
-  const allPairStatsError = useAllPerpsPairStats(selectLiveResourceError);
-  const liveTradesError = useLivePerpsTrades(selectLiveResourceError, { perpsPairId });
-  const oraclePricesError = useOraclePrices(selectLiveResourceError);
-  const pairStateError = usePerpsPairState(selectLiveResourceError, { perpsPairId });
-  const perpsStateError = usePerpsState(selectLiveResourceError);
-  const userStateError = usePerpsUserState(selectLiveResourceError, { accountAddress });
-  const userStateExtendedError = usePerpsUserStateExtended(selectLiveResourceError, {
-    accountAddress,
-  });
-  const userOrdersError = usePerpsOrdersByUser(selectLiveResourceError, { accountAddress });
-
-  const activeError = useMemo<LiveResourceErrorSource | null>(() => {
-    const errors: LiveResourceErrorSource[] = [
-      { name: "market stats", error: allPairStatsError },
-      { name: "live trades", error: liveTradesError },
-      { name: "oracle prices", error: oraclePricesError },
-      { name: "pair state", error: pairStateError },
-      { name: "perps state", error: perpsStateError },
-      { name: "account state", error: userStateError },
-      { name: "account margin", error: userStateExtendedError },
-      { name: "open orders", error: userOrdersError },
-    ];
-
-    return errors.find(({ error }) => error) ?? null;
-  }, [
-    allPairStatsError,
-    liveTradesError,
-    oraclePricesError,
-    pairStateError,
-    perpsStateError,
-    userStateError,
-    userStateExtendedError,
-    userOrdersError,
-  ]);
-
-  useEffect(() => {
-    if (!activeError?.error) {
-      toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
-      return;
-    }
-
-    reportStoreError(activeError.error);
-    toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
-    toast.error(
-      {
-        title: m["common.error"](),
-        description: `Live ${activeError.name} error: ${activeError.error.message}`,
-      },
-      {
-        id: PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID,
-        duration: Number.POSITIVE_INFINITY,
-      },
-    );
-  }, [activeError, toast]);
-
-  useEffect(() => {
-    return () => toast.dismiss(PRO_TRADE_LIVE_RESOURCE_ERROR_TOAST_ID);
-  }, [toast]);
-
-  return null;
-};
-
 type ProTradeProps = {
   action: "buy" | "sell";
   onChangeAction: (action: "buy" | "sell") => void;
-  pairId: PairId;
-  onChangePairId: (pairSymbols: string) => void;
+  pair: MarketPair;
+  onChangeTicker: (ticker: string) => void;
   orderType: "limit" | "market";
   onChangeOrderType: (orderType: "limit" | "market") => void;
 };
 
 const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
-  pairId,
+  pair,
   action,
-  onChangePairId,
+  onChangeTicker,
   onChangeAction,
   orderType,
   onChangeOrderType,
   children,
 }) => {
-  const controllers = useInputs();
-  const { coins } = useConfig();
   const { account } = useAccount();
-  const perpsPairId = useMemo(() => getPerpsPairIdFromPairId(pairId, coins), [pairId, coins]);
+  const controllers = useInputs();
+  const formActionsContextValue = useMemo(
+    () => ({ setValue: controllers.setValue }),
+    [controllers.setValue],
+  );
   const contextValue = useMemo(
     () => ({
-      controllers,
-      pairId,
-      perpsPairId,
+      pair,
       action,
       orderType,
       accountAddress: account?.address,
-      onChangePairId,
+      onChangeTicker,
       onChangeAction,
       onChangeOrderType,
     }),
-    [
-      controllers,
-      pairId,
-      perpsPairId,
-      action,
-      orderType,
-      account?.address,
-      onChangePairId,
-      onChangeAction,
-      onChangeOrderType,
-    ],
+    [pair, action, orderType, account?.address, onChangeTicker, onChangeAction, onChangeOrderType],
   );
-
-  if (!pairId.baseDenom || !pairId.quoteDenom || !perpsPairId) return null;
 
   return (
     <ProTradeProvider value={contextValue}>
-      <ErrorBoundary
-        fallback={<ProTradeErrorFallback />}
-        resetKeys={[pairId.baseDenom, pairId.quoteDenom, perpsPairId]}
-      >
-        <ProTradeLiveResourceErrors />
-        <TradeDocumentTitle />
-        {children}
-      </ErrorBoundary>
+      <ProTradeFormProvider value={controllers}>
+        <ProTradeFormActionsProvider value={formActionsContextValue}>
+          <ErrorBoundary fallback={<ProTradeErrorFallback />} resetKeys={[pair.id]}>
+            <TradeDocumentTitle />
+            {children}
+          </ErrorBoundary>
+        </ProTradeFormActionsProvider>
+      </ProTradeFormProvider>
     </ProTradeProvider>
   );
 };
@@ -256,8 +164,10 @@ const ProTradeHeader: React.FC = () => {
 };
 
 const ProTradeOverview: React.FC = () => {
-  const { controllers } = useProTrade();
-  return <OrderBookOverview controllers={controllers} />;
+  const { setValue } = useProTradeFormActions();
+  const handleSelectPrice = useCallback((price: string) => setValue("price", price), [setValue]);
+
+  return <OrderBookOverview onSelectPrice={handleSelectPrice} />;
 };
 
 const TradingView = lazy(() =>
@@ -266,9 +176,7 @@ const TradingView = lazy(() =>
 
 const ProTradeChart: React.FC = () => {
   const { isLg } = useMediaQuery();
-  const { pairId, perpsPairId, accountAddress } = useProTrade();
-
-  const { baseCoin, quoteCoin } = useTradePairCoins({ pairId });
+  const { pair, accountAddress } = useProTrade();
 
   const mobileContainer = usePortalTarget("#chart-container-mobile");
 
@@ -276,11 +184,7 @@ const ProTradeChart: React.FC = () => {
     <Suspense fallback={<Spinner color="pink" size="md" fullContainer />}>
       <div className="flex w-full lg:min-h-[32.875rem] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
-          <TradingView
-            coins={{ base: baseCoin, quote: quoteCoin }}
-            perpsPairId={perpsPairId}
-            accountAddress={accountAddress}
-          />
+          <TradingView pair={pair} accountAddress={accountAddress} />
         </ErrorBoundary>
       </div>
     </Suspense>
@@ -291,7 +195,7 @@ const ProTradeChart: React.FC = () => {
 
 const ProTradeMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
-  const { controllers } = useProTrade();
+  const controllers = useProTradeForm();
 
   return (
     <>
@@ -307,11 +211,13 @@ const ProTradeHistory: React.FC = () => {
   const [activeTab, setActiveTab] = useState<BottomTab>("positions");
   const { accountAddress } = useProTrade();
 
-  const userState = usePerpsUserState((s) => s.userState, { accountAddress });
-  const perpsOrders = usePerpsOrdersByUser((s) => s.orders, { accountAddress });
-
-  const positionsCount = Object.keys(userState?.positions ?? {}).length;
-  const openOrdersCount = Object.keys(perpsOrders ?? {}).length;
+  const positionsCount = usePerpsUserState(
+    (s) => Object.keys(s.userState?.positions ?? {}).length,
+    { accountAddress },
+  );
+  const openOrdersCount = usePerpsOrdersByUser((s) => Object.keys(s.orders ?? {}).length, {
+    accountAddress,
+  });
 
   return (
     <div className="flex-1 max-w-[100vw] lg:max-w-none p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
@@ -354,8 +260,7 @@ const ProTradeHistory: React.FC = () => {
 };
 
 type PerpsPositionRow = {
-  pairId: string;
-  symbol: string;
+  pair: MarketPair;
   size: string;
   entryPrice: string;
   currentPrice: number;
@@ -366,32 +271,29 @@ type PerpsPositionRow = {
 };
 
 const PerpsPositionsTable: React.FC = () => {
-  const { showModal, settings } = useApp();
-  const { coins } = useConfig();
-  const { formatNumberOptions } = settings;
-  const { accountAddress, onChangePairId } = useProTrade();
+  const showModal = useApp((state) => state.showModal);
+  const formatNumberOptions = useApp((state) => state.settings.formatNumberOptions);
+  const { accountAddress, onChangeTicker } = useProTrade();
 
-  const userState = usePerpsUserState((s) => s.userState, { accountAddress });
-  const extendedPositions = usePerpsUserStateExtended((s) => s.positions, { accountAddress });
-  const equity = usePerpsUserStateExtended((s) => s.equity, { accountAddress });
-  const perpsStatsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId);
-
-  const symbolToDenom = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const [denom, coin] of Object.entries(coins.byDenom)) {
-      map[coin.symbol.toLowerCase()] = denom;
-    }
-    return map;
-  }, [coins]);
+  const positions = usePerpsUserState((s) => s.userState?.positions ?? null, { accountAddress });
+  const extendedState = usePerpsUserStateExtended(
+    (s) => ({ positions: s.positions, equity: s.equity }),
+    { accountAddress },
+    shallowEqual,
+  );
+  const extendedPositions = extendedState.positions;
+  const equity = extendedState.equity;
+  const hasPositions = Object.keys(positions ?? {}).length > 0;
+  const perpsStatsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId, {
+    enabled: hasPositions,
+  });
 
   const rows = useMemo(() => {
     const result: PerpsPositionRow[] = [];
-    if (!userState?.positions) return result;
+    if (!positions) return result;
 
-    for (const [pairId, pos] of Object.entries(userState.positions)) {
-      const baseSymbol = pairId.replace("perp/", "").replace(/usd$/i, "");
-      const baseDenom = symbolToDenom[baseSymbol] ?? baseSymbol;
-      const coinSymbol = coins.byDenom[baseDenom]?.symbol ?? baseSymbol.toUpperCase();
+    for (const [pairId, pos] of Object.entries(positions)) {
+      const pair = MarketPair.fromPairId(pairId);
       const markPrice = Number(perpsStatsByPairId[pairId]?.currentPrice ?? pos.entryPrice);
       const size = Number(pos.size);
       const pnl = size * (markPrice - Number(pos.entryPrice));
@@ -400,8 +302,7 @@ const PerpsPositionsTable: React.FC = () => {
       const estLiquidationPrice = backendLiqPrice != null ? Number(backendLiqPrice) : null;
 
       result.push({
-        pairId,
-        symbol: coinSymbol,
+        pair,
         size: pos.size,
         entryPrice: pos.entryPrice,
         currentPrice: markPrice,
@@ -412,18 +313,14 @@ const PerpsPositionsTable: React.FC = () => {
       });
     }
     return result;
-  }, [userState, extendedPositions, perpsStatsByPairId, symbolToDenom, coins.byDenom]);
+  }, [positions, extendedPositions, perpsStatsByPairId]);
 
   const columns: TableColumn<PerpsPositionRow> = useMemo(
     () => [
       {
         header: m["dex.protrade.positions.pair"](),
         cell: ({ row }) => {
-          const label = row.original.pairId
-            .replace("perp/", "")
-            .replace(/usd$/i, "/USD")
-            .toUpperCase();
-          return <Cell.Text text={label} className="diatype-xs-medium" />;
+          return <Cell.Text text={row.original.pair.ticker} className="diatype-xs-medium" />;
         },
       },
       {
@@ -449,7 +346,7 @@ const PerpsPositionsTable: React.FC = () => {
               text={
                 <>
                   <FormattedNumber number={absSize} formatOptions={formatNumberOptions} as="span" />{" "}
-                  {row.original.symbol}
+                  {row.original.pair.base.symbol}
                 </>
               }
             />
@@ -525,8 +422,8 @@ const PerpsPositionsTable: React.FC = () => {
                       e.stopPropagation();
                       showModal(Modals.PnlShare, {
                         mode: "position",
-                        pairId: row.original.pairId,
-                        symbol: row.original.symbol,
+                        pairId: row.original.pair.id,
+                        symbol: row.original.pair.base.symbol,
                         size: row.original.size,
                         entryPrice: row.original.entryPrice,
                         currentPrice: row.original.currentPrice,
@@ -589,8 +486,8 @@ const PerpsPositionsTable: React.FC = () => {
                   const hasAny = conditionalOrderAbove || conditionalOrderBelow;
                   if (hasAny) {
                     showModal(Modals.ProSwapEditedSL, {
-                      pairId: row.original.pairId,
-                      symbol: row.original.symbol,
+                      pairId: row.original.pair.id,
+                      symbol: row.original.pair.base.symbol,
                       entryPrice: row.original.entryPrice,
                       markPrice: row.original.currentPrice.toString(),
                       size: row.original.size,
@@ -599,8 +496,8 @@ const PerpsPositionsTable: React.FC = () => {
                     });
                   } else {
                     showModal(Modals.ProSwapEditTPSL, {
-                      pairId: row.original.pairId,
-                      symbol: row.original.symbol,
+                      pairId: row.original.pair.id,
+                      symbol: row.original.pair.base.symbol,
                       entryPrice: row.original.entryPrice,
                       markPrice: row.original.currentPrice.toString(),
                       size: row.original.size,
@@ -624,7 +521,7 @@ const PerpsPositionsTable: React.FC = () => {
             <Cell.Action
               action={() =>
                 showModal(Modals.PerpsClosePosition, {
-                  pairId: row.original.pairId,
+                  pairId: row.original.pair.id,
                   size: row.original.size,
                   pnl: row.original.pnl,
                 })
@@ -644,9 +541,9 @@ const PerpsPositionsTable: React.FC = () => {
 
   const handleRowClick = useCallback(
     (row: { original: PerpsPositionRow }) => {
-      onChangePairId(`${row.original.symbol}-USD`);
+      onChangeTicker(row.original.pair.ticker);
     },
-    [onChangePairId],
+    [onChangeTicker],
   );
 
   return (
@@ -675,7 +572,7 @@ const PerpsPositionsTable: React.FC = () => {
 
 type OpenOrder = {
   id: string;
-  pairDisplay: string;
+  ticker: string;
   side: "buy" | "sell";
   type: "limit";
   rawPrice: string;
@@ -684,8 +581,8 @@ type OpenOrder = {
 };
 
 const OpenOrders: React.FC = () => {
-  const { showModal } = useApp();
-  const { accountAddress, perpsPairId } = useProTrade();
+  const showModal = useApp((state) => state.showModal);
+  const { accountAddress, pair } = useProTrade();
 
   const [showAllPairs, setShowAllPairs] = useState(true);
 
@@ -698,15 +595,14 @@ const OpenOrders: React.FC = () => {
     const allPerpsOrders = Object.entries(perpsOrders);
     const filtered = showAllPairs
       ? allPerpsOrders
-      : allPerpsOrders.filter(([, o]) => o.pairId === perpsPairId);
+      : allPerpsOrders.filter(([, o]) => o.pairId === pair.id);
 
     for (const [orderId, order] of filtered) {
-      const label = order.pairId.replace("perp/", "").replace(/usd$/i, "/USD").toUpperCase();
       const isLong = Number(order.size) > 0;
 
       result.push({
         id: orderId,
-        pairDisplay: label,
+        ticker: MarketPair.fromPairId(order.pairId).ticker,
         side: isLong ? "buy" : "sell",
         type: "limit",
         rawPrice: order.limitPrice,
@@ -716,7 +612,7 @@ const OpenOrders: React.FC = () => {
     }
 
     return result;
-  }, [perpsOrders, showAllPairs, perpsPairId]);
+  }, [perpsOrders, showAllPairs, pair.id]);
 
   const columns: TableColumn<OpenOrder> = [
     {
@@ -725,9 +621,7 @@ const OpenOrders: React.FC = () => {
     },
     {
       header: m["dex.protrade.orders.pair"](),
-      cell: ({ row }) => (
-        <Cell.Text text={row.original.pairDisplay} className="diatype-xs-medium" />
-      ),
+      cell: ({ row }) => <Cell.Text text={row.original.ticker} className="diatype-xs-medium" />,
     },
     {
       header: m["dex.protrade.orders.side"](),
@@ -752,7 +646,7 @@ const OpenOrders: React.FC = () => {
           text={
             <FormattedNumber
               number={row.original.rawPrice}
-              formatOptions={{ currency: "USD", maxFractionDigits: 6 }}
+              formatOptions={USD_MAX_FRACTION_DIGITS_FORMAT_OPTIONS}
               as="span"
             />
           }
@@ -762,7 +656,7 @@ const OpenOrders: React.FC = () => {
     {
       header: m["dex.protrade.orders.size"](),
       cell: ({ row }) => (
-        <Cell.Number formatOptions={{ maxFractionDigits: 6 }} value={row.original.size} />
+        <Cell.Number formatOptions={MAX_FRACTION_DIGITS_FORMAT_OPTIONS} value={row.original.size} />
       ),
     },
     {
@@ -776,7 +670,7 @@ const OpenOrders: React.FC = () => {
             text={
               <FormattedNumber
                 number={tradeValue}
-                formatOptions={{ currency: "USD", maxFractionDigits: 6 }}
+                formatOptions={USD_MAX_FRACTION_DIGITS_FORMAT_OPTIONS}
                 as="span"
               />
             }

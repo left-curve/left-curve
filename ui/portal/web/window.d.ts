@@ -6,7 +6,6 @@ declare global {
       chain: Chain;
       urls: {
         faucetUrl: string;
-        questUrl: string;
         upUrl: string;
         pointsUrl: string;
       };

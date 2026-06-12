@@ -5,7 +5,10 @@
     "margin_usage": "50%",
     "liquidity_sleep": "5s",
     "min_order_usd": "6",
-    "max_order_usd": "7"
+    "max_order_usd": "7",
+    "pairs_filter": {
+      "blacklist": ["perp/btcusd", "perp/ethusd"]
+    }
   },
   "http_url": "https://api-mainnet.dango.zone"
 }

@@ -7,7 +7,7 @@ import {
   useApp,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { useAccount, useTradePairCoins } from "@left-curve/store";
+import { useAccount } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 import { useProTrade } from "./ProTrade";
@@ -18,11 +18,10 @@ import type React from "react";
 
 export const TradeButtons: React.FC = () => {
   const navigate = useNavigate();
-  const { setTradeBarVisibility, showModal } = useApp();
+  const setTradeBarVisibility = useApp((state) => state.setTradeBarVisibility);
+  const showModal = useApp((state) => state.showModal);
   const { isConnected } = useAccount();
-  const { pairId, onChangeAction } = useProTrade();
-
-  const { baseCoin } = useTradePairCoins({ pairId });
+  const { pair, onChangeAction } = useProTrade();
 
   const container = usePortalTarget("#trade-buttons");
 
@@ -51,7 +50,7 @@ export const TradeButtons: React.FC = () => {
                       onChangeAction("buy");
                     }}
                   >
-                    {m["proSwap.buy"]()} {baseCoin.symbol}
+                    {m["proSwap.buy"]()} {pair.base.symbol}
                   </Button>
                   <Button
                     className="h-[44px]"
@@ -61,7 +60,7 @@ export const TradeButtons: React.FC = () => {
                       onChangeAction("sell");
                     }}
                   >
-                    {m["proSwap.sell"]()} {baseCoin.symbol}
+                    {m["proSwap.sell"]()} {pair.base.symbol}
                   </Button>
                 </div>
               ) : (
