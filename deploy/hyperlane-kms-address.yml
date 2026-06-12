@@ -3,8 +3,6 @@
   hosts: localhost
   connection: local
   gather_facts: false
-  vars_files:
-    - group_vars/hyperlane/vault.yml
 
   vars:
     hyperlane_agents_network: "{{ hyperlane_agents_network | default('') }}"
@@ -22,6 +20,12 @@
             (received: {{ hyperlane_agents_network }})
           - hyperlane_validator_index must be provided (e.g. "1", "2")
             (received: {{ hyperlane_validator_index }})
+
+    # Per-validator custody: decrypting requires a YubiKey touch from one of
+    # this validator's custodians (.sops.yaml).
+    - name: Load validator secrets (custodians only)
+      community.sops.load_vars:
+        file: "{{ playbook_dir }}/vaults/hyperlane/{{ hyperlane_agents_network }}-validator-{{ hyperlane_validator_index }}.sops.yml"
 
     - name: Validate validator secrets exist in vault
       assert:

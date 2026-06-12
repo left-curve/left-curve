@@ -108,7 +108,7 @@ Swap source out, target in. From here on, source is reached only by direct SSH; 
 4. Edit `Justfile`: replace source's IP with target's IP everywhere it appears. This includes:
 
    - The four mainnet recipes' `--limit` lists (`deploy-mainnet`, `stop-mainnet`, `restart-mainnet`, `remove-deploy-lock-mainnet`).
-   - The hardcoded validator-1 IP in `deploy-hyperlane-mainnet` and `stop-hyperlane-mainnet-validators`.
+   - The hardcoded validator-1 IP in `deploy-hyperlane-mainnet-validator` and `stop-hyperlane-mainnet-validators`.
    - `# Usage:` example comments above `stop-hyperlane` and `start-dango-httpd`.
 
    The verify below catches any stragglers.

@@ -318,4 +318,4 @@ Application-level scrapes — `traefik`, `clickhouse`, `postgres`, `dango`, `com
 The host is now a fully provisioned member of the fleet but has no application services yet. From here:
 
 - **Application deploy**: run the relevant deploy recipe from `Justfile` (`just deploy-mainnet`, `just deploy-testnet`, etc.). For mainnet, also update the `--limit` list in the recipe to include the new tailscale IP.
-- **Hyperlane** (if applicable): see the `deploy-hyperlane-*` recipes — these need the new validator's KMS key set up in `group_vars/hyperlane/vault.yml`.
+- **Hyperlane** (if applicable): see the `deploy-hyperlane-*` recipes — these need the new validator's KMS key set up in the matching `vaults/hyperlane/<network>-validator-<n>.sops.yml` (only that validator's custodians can edit it; see `SOPS.md`).

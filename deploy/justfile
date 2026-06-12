@@ -56,9 +56,6 @@ add-passwords:
 edit-secrets:
   uv run ansible-vault edit group_vars/all/vault.yml
 
-edit-hyperlane-secrets:
-  uv run ansible-vault edit group_vars/hyperlane/vault.yml
-
 edit-points-bot-secrets:
   uv run ansible-vault edit group_vars/points-bot/vault.yml
 
@@ -92,8 +89,6 @@ sops-edit-secrets:
 sops-edit-deploy-key:
   sops edit group_vars/all/deploy_key.sops
 
-sops-edit-hyperlane-secrets:
-  sops edit group_vars/hyperlane/vault.sops.yml
 
 sops-edit-points-bot-secrets:
   sops edit group_vars/points-bot/vault.sops.yml
@@ -407,6 +402,15 @@ delete-pr number:
 
 # --------------------------------- Hyperlane ----------------------------------
 
+# Hyperlane validator secrets are custody-restricted: each file decrypts only
+# for that validator's custodians (see .sops.yaml and SOPS.md).
+# Usage: just sops-edit-hyperlane-validator mainnet 1
+sops-edit-hyperlane-validator network index:
+  sops edit vaults/hyperlane/{{network}}-validator-{{index}}.sops.yml
+
+sops-edit-hyperlane-relayer:
+  sops edit vaults/hyperlane/relayer.sops.yml
+
 # Deploy Hyperlane agent locally
 # Usage: just hyperlane-local testnet relayer
 #        just hyperlane-local testnet validator 1
@@ -423,11 +427,24 @@ deploy-hyperlane network agent limit index="":
       --limit {{limit}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-deploy-hyperlane.log"
 
-deploy-hyperlane-mainnet:
-  just deploy-hyperlane mainnet validator {{hetzner5}} 1
-  just deploy-hyperlane mainnet validator {{hetzner6}} 2
-  just deploy-hyperlane mainnet validator {{hetzner1}} 3
-  just deploy-hyperlane mainnet validator {{hetzner3}} 4
+# Deploy one mainnet validator as one of its custodians (YubiKey touch).
+# No single member can deploy all 4: a full mainnet redeploy takes two people —
+# penso+kyar1s, larry+j0nl1, or rhaki+zexsor together cover all validators
+# (see SOPS.md "Hyperlane validator key custody").
+# Usage: just deploy-hyperlane-mainnet-validator 1
+deploy-hyperlane-mainnet-validator index:
+  #!/bin/bash
+  set -euo pipefail
+  case "{{index}}" in
+    1) host={{hetzner5}} ;;
+    2) host={{hetzner6}} ;;
+    3) host={{hetzner1}} ;;
+    4) host={{hetzner3}} ;;
+    *) echo "invalid validator index: {{index}} (expected 1-4)" >&2; exit 1 ;;
+  esac
+  just deploy-hyperlane mainnet validator "$host" {{index}}
+
+deploy-hyperlane-mainnet-relayer:
   just deploy-hyperlane mainnet relayer {{hetzner3}}
 
 deploy-hyperlane-testnet:

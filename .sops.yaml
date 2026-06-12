@@ -10,6 +10,8 @@
 # - deploy-ci is generated on a trusted desktop
 # - deploy-ci is included only for routine deploy files in phase 1
 # - deploy-ci is intentionally excluded from root/debian files in phase 1
+# - hyperlane mainnet validator files use per-validator custody: 3 custodians
+#   per key, no deploy-ci (see deploy/SOPS.md)
 #
 # Placeholder map:
 # - age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62  # penso
@@ -52,7 +54,48 @@ creation_rules:
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
-  - path_regex: ^(deploy/)?group_vars/hyperlane/vault\.sops\.yml$
+  # Hyperlane mainnet validator credentials use per-validator custody (see
+  # deploy/SOPS.md "Hyperlane validator key custody"): each file decrypts only
+  # for its 3 custodians, never for deploy-ci. Every member holds exactly 2 of
+  # the 4 keys and all 6 member pairs are distinct, so no single member can
+  # reach the 3-of-4 ISM threshold while any 2 members together control at
+  # least 3 keys.
+  - path_regex: ^(deploy/)?vaults/hyperlane/mainnet-validator-1\.sops\.yml$
+    age: >-
+      age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce
+
+  - path_regex: ^(deploy/)?vaults/hyperlane/mainnet-validator-2\.sops\.yml$
+    age: >-
+      age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62,
+      age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
+      age1PLACEHOLDER_J0NL1_YUBIKEY
+
+  - path_regex: ^(deploy/)?vaults/hyperlane/mainnet-validator-3\.sops\.yml$
+    age: >-
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
+      age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY
+
+  - path_regex: ^(deploy/)?vaults/hyperlane/mainnet-validator-4\.sops\.yml$
+    age: >-
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY
+
+  # Hyperlane testnet validators and relayers are routine deploy files.
+  - path_regex: ^(deploy/)?vaults/hyperlane/testnet-validator-[0-9]\.sops\.yml$
+    age: >-
+      age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62,
+      age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
+      age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
+      age1PLACEHOLDER_J0NL1_YUBIKEY,
+      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1PLACEHOLDER_DEPLOY_CI_DESKTOP
+
+  - path_regex: ^(deploy/)?vaults/hyperlane/relayer\.sops\.yml$
     age: >-
       age1yubikey1q2jpj60frm2eh0lndcqf8he649yrmtp9z5n5l4l8e5rhmpncck03vsjwh62,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,

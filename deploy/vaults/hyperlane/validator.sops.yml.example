@@ -1,0 +1,37 @@
+# Template for vaults/hyperlane/<network>-validator-<n>.sops.yml
+# (e.g. mainnet-validator-1.sops.yml). One file per validator; adjust the
+# network key and index below to match the file name.
+#
+# Create it as plaintext, then encrypt in place (any team member can encrypt;
+# only the validator's custodians can decrypt afterwards — see .sops.yaml):
+#
+#   cp vaults/hyperlane/validator.sops.yml.example vaults/hyperlane/mainnet-validator-1.sops.yml
+#   $EDITOR vaults/hyperlane/mainnet-validator-1.sops.yml   # fill in values, drop these comments
+#   sops --encrypt --in-place vaults/hyperlane/mainnet-validator-1.sops.yml
+#
+# Later edits: just sops-edit-hyperlane-validator mainnet 1
+
+validator:
+  mainnet: # or "testnet", matching the file name
+    "1": # validator index as a quoted string, matching the file name
+      # IAM credentials authorizing kms:Sign with this validator's KMS key.
+      # Rotate fresh during the custody cutover — never copy from the old
+      # vault (burned in git history). Feeds AWS_ACCESS_KEY_ID /
+      # AWS_SECRET_ACCESS_KEY.
+      aws_access_key_id: AKIAXXXXXXXXXXXXXXXX
+      aws_secret_access_key: REPLACE_ME
+
+      # KMS key alias for the validator signing key. Feeds HYP_VALIDATOR_ID.
+      aws_kms_alias: alias/hyperlane-mainnet-validator-1
+
+      # Optional; only used by hyperlane-kms-address.yml (default eu-north-1).
+      # aws_region: eu-north-1
+
+      # S3 bucket for checkpoint syncing. Feeds HYP_CHECKPOINTSYNCER_BUCKET.
+      checkpoints_bucket: hyperlane-mainnet-validator-1-checkpoints
+
+      # Dango chain signer for this validator. Rotate the key during the
+      # cutover. Feeds HYP_CHAINS_DANGO_SIGNER_KEY / _ADDRESS (mainnet) or
+      # HYP_CHAINS_DANGOTESTNET_SIGNER_KEY / _ADDRESS (testnet).
+      dango_signer_key: "0xREPLACE_ME"
+      dango_signer_address: "0xREPLACE_ME"

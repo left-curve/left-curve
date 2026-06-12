@@ -25,5 +25,17 @@
         fail_msg: >-
           hyperlane_validator_index is required when hyperlane_agent_type=validator.
           Example: -e hyperlane_validator_index=1
+
+    # Per-validator custody: only this validator's SOPS file is decrypted, so
+    # deploys require a YubiKey touch from one of its custodians (.sops.yaml).
+    - name: Load validator secrets (custodians only)
+      community.sops.load_vars:
+        file: "{{ playbook_dir }}/vaults/hyperlane/{{ hyperlane_agents_network }}-validator-{{ hyperlane_validator_index }}.sops.yml"
+      when: hyperlane_agent_type == 'validator'
+
+    - name: Load relayer secrets
+      community.sops.load_vars:
+        file: "{{ playbook_dir }}/vaults/hyperlane/relayer.sops.yml"
+      when: hyperlane_agent_type == 'relayer'
   roles:
     - role: hyperlane

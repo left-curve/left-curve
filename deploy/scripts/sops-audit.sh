@@ -8,14 +8,20 @@ REPO_ROOT="$(cd -- "$DEPLOY_DIR/.." && pwd)"
 EXPECTED_FILES='deploy/group_vars/all/vault.sops.yml
 deploy/group_vars/all/deploy_key.sops
 deploy/group_vars/dango-assistant/vault.sops.yml
-deploy/group_vars/hyperlane/vault.sops.yml
 deploy/group_vars/perps-bot/vault.sops.yml
 deploy/group_vars/points-bot/vault.sops.yml
 deploy/host_vars/100.107.248.71/vault.sops.yml
 deploy/host_vars/100.122.37.57/main.sops.yml
 deploy/host_vars/100.96.253.40/vault.sops.yml
 deploy/vaults/debian/debian_key.sops
-deploy/vaults/debian/root_vault.sops.yml'
+deploy/vaults/debian/root_vault.sops.yml
+deploy/vaults/hyperlane/mainnet-validator-1.sops.yml
+deploy/vaults/hyperlane/mainnet-validator-2.sops.yml
+deploy/vaults/hyperlane/mainnet-validator-3.sops.yml
+deploy/vaults/hyperlane/mainnet-validator-4.sops.yml
+deploy/vaults/hyperlane/testnet-validator-1.sops.yml
+deploy/vaults/hyperlane/testnet-validator-2.sops.yml
+deploy/vaults/hyperlane/relayer.sops.yml'
 
 is_expected() {
   local candidate="$1"

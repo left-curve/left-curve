@@ -1,0 +1,31 @@
+# Template for vaults/hyperlane/relayer.sops.yml — one file holding both
+# networks' relayer credentials, encrypted to the routine group + deploy-ci.
+#
+# Create it as plaintext, then encrypt in place:
+#
+#   cp vaults/hyperlane/relayer.sops.yml.example vaults/hyperlane/relayer.sops.yml
+#   $EDITOR vaults/hyperlane/relayer.sops.yml   # fill in values, drop these comments
+#   sops --encrypt --in-place vaults/hyperlane/relayer.sops.yml
+#
+# Later edits: just sops-edit-hyperlane-relayer
+
+relayer:
+  mainnet:
+    # Dango chain signer. Feeds HYP_CHAINS_DANGO_SIGNER_KEY / _ADDRESS.
+    dango_signer_key: "0xREPLACE_ME"
+    dango_signer_address: "0xREPLACE_ME"
+
+    # Ethereum mainnet signer. Feeds HYP_CHAINS_ETHEREUM_SIGNER_KEY.
+    ethereum_signer_key: "0xREPLACE_ME"
+
+    # Optional custom Ethereum RPC. When set, feeds
+    # HYP_CHAINS_ETHEREUM_CUSTOMRPCURLS (consensus type "single").
+    # ethereum_rpc_url: https://eth-mainnet.example.com/v2/KEY
+
+  testnet:
+    # Dango testnet signer. Feeds HYP_CHAINS_DANGOTESTNET_SIGNER_KEY / _ADDRESS.
+    dango_signer_key: "0xREPLACE_ME"
+    dango_signer_address: "0xREPLACE_ME"
+
+    # Sepolia signer. Feeds HYP_CHAINS_SEPOLIA_SIGNER_KEY.
+    sepolia_signer_key: "0xREPLACE_ME"
