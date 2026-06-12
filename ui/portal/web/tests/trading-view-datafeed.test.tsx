@@ -27,9 +27,10 @@ function candle(overrides: Partial<PerpsCandle>): PerpsCandle {
   };
 }
 
-function createDatafeedFixture() {
+function createDatafeedFixture({ accountAddress }: { accountAddress?: string } = {}) {
   const client = {
     queryPerpsCandles: vi.fn(),
+    queryPerpsEvents: vi.fn(),
   };
   const queryClient = {
     fetchQuery: vi.fn(async ({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn()),
@@ -42,6 +43,7 @@ function createDatafeedFixture() {
     client,
     datafeed: createPerpsDataFeed({
       client: client as never,
+      getAccountAddress: () => accountAddress,
       queryClient: queryClient as never,
       subscriptions: subscriptions as never,
     }),
@@ -226,5 +228,72 @@ describe("TradingView perps datafeed", () => {
       volume: 5000,
     });
     expect(secondUnsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("returns fill marks only for connected accounts and order_filled events", async () => {
+    const { client, datafeed } = createDatafeedFixture({
+      accountAddress: "0xuser",
+    });
+    const onMarks = vi.fn();
+    client.queryPerpsEvents.mockResolvedValue({
+      nodes: [
+        {
+          blockHeight: 123,
+          createdAt: "2026-06-09T00:07:12.000Z",
+          data: {
+            closing_size: "0.000000",
+            fee: "6.500000",
+            fill_id: "17",
+            fill_price: "65000.000000",
+            fill_size: "0.100000",
+            is_maker: false,
+            opening_size: "0.100000",
+            order_id: "42",
+            pair_id: "perp/btcusd",
+            realized_funding: "0.000000",
+            realized_pnl: "0.000000",
+            user: "0xuser",
+          },
+          eventType: "order_filled",
+          idx: 7,
+          pairId: "perp/btcusd",
+          txHash: "0x1234567890abcdef1234567890abcdef12345678",
+          userAddr: "0xuser",
+        },
+      ],
+    });
+
+    datafeed.getMarks(
+      { name: "BTC-USD" } as never,
+      Date.parse("2026-06-09T00:00:00.000Z") / 1000,
+      Date.parse("2026-06-09T01:00:00.000Z") / 1000,
+      onMarks,
+      "5" as never,
+    );
+    await vi.runAllTimersAsync();
+
+    expect(client.queryPerpsEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "order_filled",
+        pairId: "perp/btcusd",
+        userAddr: "0xuser",
+      }),
+    );
+    expect(onMarks).toHaveBeenCalledWith([
+      expect.objectContaining({
+        label: "B",
+        time: Date.parse("2026-06-09T00:05:00.000Z") / 1000,
+      }),
+    ]);
+  });
+
+  it("returns no fill marks when there is no connected account", () => {
+    const { client, datafeed } = createDatafeedFixture();
+    const onMarks = vi.fn();
+
+    datafeed.getMarks({ name: "BTC-USD" } as never, 1, 2, onMarks, "5" as never);
+
+    expect(onMarks).toHaveBeenCalledWith([]);
+    expect(client.queryPerpsEvents).not.toHaveBeenCalled();
   });
 });

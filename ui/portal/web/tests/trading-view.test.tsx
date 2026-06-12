@@ -251,7 +251,6 @@ describe("TradingView", () => {
       expect(widget.chartApi.createShape).toHaveBeenCalledWith(
         {
           price: 2100,
-          time: expect.any(Number),
         },
         expect.objectContaining({
           overrides: expect.objectContaining({
@@ -263,7 +262,6 @@ describe("TradingView", () => {
       expect(widget.chartApi.createShape).toHaveBeenCalledWith(
         {
           price: 2225,
-          time: expect.any(Number),
         },
         expect.objectContaining({
           overrides: expect.objectContaining({
