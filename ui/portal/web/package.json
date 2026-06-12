@@ -9,6 +9,7 @@
     "preview": "rsbuild preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretest:e2e": "pnpm -F @left-curve/foundation exec node paraglide.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

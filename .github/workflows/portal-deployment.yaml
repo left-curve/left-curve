@@ -232,7 +232,6 @@ jobs:
               },
               urls: {
                 faucetUrl: $faucet_url,
-                questUrl: "https://quest-bot-devnet.dango.zone/check_username",
                 upUrl: $up_url,
                 pointsUrl: "https://points-devnet.dango.zone"
               },
