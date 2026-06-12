@@ -3,12 +3,11 @@ discord_username: "Deploy"
 discord_avatar_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ansible-light.svg"
 github_repo: "left-curve/left-curve"
 ssh_users:
-  - penso
+  - j0nl1
   - larry
+  - penso
   - rhaki
-  # - zexsor
-  # - j0nl1
-  # - michael
+  - zexsor
 sudo_users:
   - penso
 dango_domain: "dango.zone"

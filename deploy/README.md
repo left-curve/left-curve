@@ -159,9 +159,9 @@ flowchart TD
 
 - Add the username in `group_vars/all/main.yml` in the `ssh_users` section
 
-- Add the public key in `roles/users/files/authorized_keys/<username>.pub`
+- Add the public key(s) in `roles/users/files/authorized_keys/<username>/<key_name>.pub`. The single-file form `roles/users/files/authorized_keys/<name>.pub` is reserved for the keys used by Ansible itself (`deploy.pub`, `debian.pub`)
 
-- Run `ansible-playbook users.yml`
+- Run `just provision-users`
 
 ### Install a new server
 
