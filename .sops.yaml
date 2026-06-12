@@ -14,7 +14,7 @@
 # Placeholder map:
 # - age1PLACEHOLDER_PENSO_YUBIKEY      # penso
 # - age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x      # larry
-# - age1PLACEHOLDER_RHAKI_YUBIKEY      # rhaki
+# - age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce      # rhaki
 # - age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh     # zexsor
 # - age1PLACEHOLDER_J0NL1_YUBIKEY      # j0nl1
 # - age1PLACEHOLDER_KYAR1S_YUBIKEY     # kyar1s
@@ -26,7 +26,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -36,7 +36,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -46,7 +46,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -56,7 +56,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -66,7 +66,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -76,7 +76,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -86,7 +86,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -96,7 +96,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
@@ -106,7 +106,7 @@ creation_rules:
     age: >-
       age1PLACEHOLDER_PENSO_YUBIKEY,
       age1yubikey1qdvpvuaxnxxrhdghjzmcm2m69w6f480h9wwt8g2900mu8pm2npn32hwdz5x,
-      age1PLACEHOLDER_RHAKI_YUBIKEY,
+      age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1PLACEHOLDER_J0NL1_YUBIKEY,
       age1PLACEHOLDER_KYAR1S_YUBIKEY,
