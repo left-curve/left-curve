@@ -378,7 +378,7 @@ describe("bridge UI", () => {
     vi.unstubAllEnvs();
   });
 
-  it("embeds Swapper deposits for the connected Dango account", () => {
+  it("uses Dango dark colors for Swapper deposits in dark mode", () => {
     bridgeUiMocks.theme = "dark";
 
     renderBridgeDeposit();
@@ -399,10 +399,14 @@ describe("bridge UI", () => {
     expect(JSON.parse(src.searchParams.get("styles") || "{}")).toEqual({
       themeMode: "dark",
       componentStyles: {
-        primaryColor: "#F9A9B2",
-        primaryTextColor: "#302723",
+        primaryColor: "#F57589",
+        primaryButtonTextColor: "#2D2C2A",
         accentColor: "#F57589",
-        sphereColor: "#F9A9B2",
+        sphereColor: "#F57589",
+        backgroundColor: "#2D2C2A",
+        surfaceColor: "#363432",
+        surfaceAltColor: "#4D4B48",
+        textColor: "#FFFCF6",
       },
     });
   });
@@ -419,9 +423,13 @@ describe("bridge UI", () => {
       themeMode: "light",
       componentStyles: {
         primaryColor: "#F57589",
-        primaryTextColor: "#FFFCF6",
+        primaryButtonTextColor: "#FFFCF6",
         accentColor: "#F57589",
         sphereColor: "#F57589",
+        backgroundColor: "#fffcf6",
+        surfaceColor: "#f5efdf",
+        surfaceAltColor: "#fffaed",
+        textColor: "#292929",
       },
     });
   });
