@@ -15,8 +15,9 @@ use {
     data_encoding::BASE64URL_NOPAD,
     grug_storage::StorageQuerier,
     grug_types::{
-        Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt,
-        JsonSerExt, MutableCtx, QuerierExt, SignData, StdError, StdResult, Storage, Tx,
+        Addr, Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt,
+        JsonSerExt, MutableCtx, QuerierExt, QuerierWrapper, SignData, StdError, StdResult, Storage,
+        Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -216,7 +217,7 @@ pub fn create_account(ctx: MutableCtx, activate: bool) -> anyhow::Result<()> {
     // In these cases, activate the account now.
     if activate
         || ctx.block.height == GENESIS_BLOCK_HEIGHT
-        || is_sufficient(&ctx.funds, &app_cfg.minimum_deposit)
+        || is_sufficient_deposit(&ctx.funds, &app_cfg.minimum_deposit)
     {
         account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
         // TODO: emit an event?
@@ -231,42 +232,31 @@ pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
         // Reject transfers from any other sender. A sufficient deposit from
         // the gateway flips the account to `Active`.
         AccountStatus::Inactive => {
-            let gateway = ctx.querier.query_gateway()?;
             ensure!(
-                ctx.sender == gateway,
+                {
+                    let gateway = ctx.querier.query_gateway()?;
+                    ctx.sender == gateway
+                },
                 "account {} is not active, only the gateway can deposit into it",
                 ctx.contract
             );
+
             // Activation is based on the account's *balance* after this
             // deposit, not the size of this single deposit. This lets a
             // sequence of sub-minimum gateway deposits accumulate until the
             // threshold is met.
             let minimum = ctx.querier.query_minimum_deposit()?;
-            let sufficient = if minimum.is_empty() {
-                true
-            } else {
-                let mut found = false;
-                for coin in &minimum {
-                    if ctx
-                        .querier
-                        .query_balance(ctx.contract, coin.denom.clone())?
-                        >= *coin.amount
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                found
-            };
-            if sufficient {
+            if has_sufficient_balance(ctx.querier, ctx.contract, &minimum)? {
                 account::STATUS.save(ctx.storage, &AccountStatus::Active)?;
                 // TODO: emit an event?
             }
         },
-        AccountStatus::Frozen => bail!(
-            "account {} is frozen, can't receive transfers",
-            ctx.contract
-        ),
+        AccountStatus::Frozen => {
+            bail!(
+                "account {} is frozen, can't receive transfers",
+                ctx.contract
+            );
+        },
         AccountStatus::Active => { /* nothing to do */ },
     }
 
@@ -276,11 +266,38 @@ pub fn receive_transfer(ctx: MutableCtx) -> anyhow::Result<()> {
 /// A deposit is considered **sufficient** if _either_ of the following is true:
 /// - the minimum deposit is zero;
 /// - _any_ of the coins received has an amount greater than the minimum.
-fn is_sufficient(deposit: &Coins, minimum: &Coins) -> bool {
-    minimum.is_empty()
-        || minimum
-            .iter()
-            .any(|coin| deposit.amount_of(coin.denom) >= *coin.amount)
+fn is_sufficient_deposit(deposit: &Coins, minimum: &Coins) -> bool {
+    if minimum.is_empty() {
+        return true;
+    }
+
+    for coin in minimum {
+        if deposit.amount_of(coin.denom) >= *coin.amount {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// The same as `is_sufficient_deposit`, but checks the account's total balance,
+/// which can be the sum of multiple deposits.
+fn has_sufficient_balance(
+    querier: QuerierWrapper,
+    address: Addr,
+    minimum: &Coins,
+) -> StdResult<bool> {
+    if minimum.is_empty() {
+        return Ok(true);
+    }
+
+    for coin in minimum {
+        if querier.query_balance(address, coin.denom.clone())? >= *coin.amount {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 /// Authenticate a transaction by ensuring:
