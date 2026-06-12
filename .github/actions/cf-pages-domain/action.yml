@@ -81,9 +81,20 @@ runs:
           return 1
         }
 
+        has_error_message() {
+          local response="$1"
+          local message="$2"
+          [ -n "$response" ] || return 1
+          jq -e \
+            --arg message "$message" \
+            'any(.errors[]?; ((.message // "") | contains($message)))' \
+            <<< "$response" >/dev/null
+        }
+
         is_not_found_response() {
           local response="$1"
-          has_error_code "$response" 7003 81044
+          has_error_code "$response" 7003 81044 ||
+            has_error_message "$response" "The domain you have requested does not exist"
         }
 
         is_already_bound_response() {
