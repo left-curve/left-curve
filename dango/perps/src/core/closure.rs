@@ -181,17 +181,28 @@ pub fn compute_user_equity_with_pnl(
     Ok(equity)
 }
 
-/// Compute the bankruptcy price for a position being closed during liquidation.
+/// Compute the bankruptcy price of a position during liquidation.
 ///
 /// This is the fill price at which the user's total equity would be exactly
-/// zero after closing `close_amount` of the position.
+/// zero if the **entire** position were closed at it:
 ///
-/// For longs:  bp = oracle_price - equity / close_amount
-/// For shorts: bp = oracle_price + equity / close_amount
+/// For longs:  bp = oracle_price - equity / |size|
+/// For shorts: bp = oracle_price + equity / |size|
+///
+/// The divisor is always the full current position size, regardless of how
+/// much of the position the close schedule intends to close. A partial close
+/// at this price concedes `equity / |size|` per unit closed, so equity after
+/// closing `c` units is `equity × (1 - c / |size|)` — non-negative whenever
+/// equity is non-negative, and exactly zero when the whole position is
+/// closed.
+///
+/// For a single-position account the offset is bounded: liquidatable means
+/// `equity < |size| × oracle × mmr`, hence `equity / |size| < oracle × mmr`
+/// and the bankruptcy price stays within the maintenance-margin band of the
+/// oracle.
 pub fn compute_bankruptcy_price(
     user_state: &UserState,
     pair_id: &PairId,
-    close_amount: Quantity,
     oracle_prices: &BTreeMap<PairId, UsdPrice>,
     user_pnl: UsdValue,
     user_fees: UsdValue,
@@ -200,7 +211,7 @@ pub fn compute_bankruptcy_price(
 
     let position = &user_state.positions[pair_id];
     let oracle_price = oracle_prices[pair_id];
-    let offset = equity.checked_div(close_amount)?;
+    let offset = equity.checked_div(position.size.checked_abs()?)?;
 
     if position.size.is_positive() {
         oracle_price.checked_sub(offset)
@@ -1058,7 +1069,6 @@ mod tests {
         let bp = compute_bankruptcy_price(
             &user_state,
             &pair_btc(),
-            Quantity::new_int(1),
             &oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
@@ -1090,7 +1100,6 @@ mod tests {
         let bp = compute_bankruptcy_price(
             &user_state,
             &pair_btc(),
-            Quantity::new_int(1),
             &oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
@@ -1108,6 +1117,11 @@ mod tests {
         // Unrealized ETH = 10*(3.2k-3k) = 2k.
         // Equity = 5k + (-4k) + 2k = 3k.
         // bp = 46k - 3k/1 = 43k.
+        //
+        // The offset divides the WHOLE-ACCOUNT equity (including the ETH
+        // position's unrealized PnL) by the BTC position's full size. Under
+        // the pre-fix formula, a 0.1 BTC scheduled close would have produced
+        // bp = 46k - 3k/0.1 = 16k.
         let user_state = UserState {
             margin: UsdValue::new_int(5_000),
             positions: BTreeMap::from([
@@ -1137,7 +1151,6 @@ mod tests {
         let bp = compute_bankruptcy_price(
             &user_state,
             &pair_btc(),
-            Quantity::new_int(1),
             &oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
@@ -1145,5 +1158,94 @@ mod tests {
         .unwrap();
 
         assert_eq!(bp, UsdPrice::new_int(43_000));
+    }
+
+    /// Regression test for the testnet incident at block 32500262 (and the
+    /// mainnet ETH cluster on 2026-06-05): the bankruptcy price of a
+    /// position scheduled for a **partial** close.
+    ///
+    /// The bug: the bankruptcy price divided the account's *whole* equity by
+    /// the scheduled close amount. The close schedule sizes the close to cure
+    /// the maintenance-margin deficit, so for a solvent account it is only a
+    /// fraction of the position; the amplified offset `equity / close_amount`
+    /// threw the price far from the oracle (here: 1,875 − 750/2 = 1,500,
+    /// −20%; on testnet, SOL fills as low as −$0.596944 against a $76.32
+    /// oracle), confiscating the account's entire equity through that one
+    /// partial fill.
+    ///
+    /// The bankruptcy price now divides by the full position size — by
+    /// definition, it is the price at which closing the *whole* position
+    /// zeroes the account's equity — and is independent of how much the
+    /// schedule intends to close.
+    ///
+    /// Setup: long 10 BTC @ $2,000, margin $2,000, oracle $1,875.
+    /// Equity = 2,000 + 10 × (1,875 − 2,000) = 750 (solvent; the
+    /// deficit-curing close for mmr 5% would be 2 of the 10 BTC).
+    ///
+    ///   bp = 1,875 − 750/10 = 1,800
+    #[test]
+    fn bankruptcy_price_partial_close_long() {
+        let user_state = UserState {
+            margin: UsdValue::new_int(2_000),
+            positions: BTreeMap::from([(pair_btc(), Position {
+                size: Quantity::new_int(10),
+                entry_price: UsdPrice::new_int(2_000),
+                entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
+            })]),
+            ..Default::default()
+        };
+
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(1_875))]);
+
+        let bp = compute_bankruptcy_price(
+            &user_state,
+            &pair_btc(),
+            &oracle_prices,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        assert_eq!(bp, UsdPrice::new_int(1_800));
+    }
+
+    /// Short-side mirror of `bankruptcy_price_partial_close_long`.
+    ///
+    /// Setup: short 10 BTC @ $2,000, margin $2,000, oracle $2,125.
+    /// Equity = 2,000 + (−10) × (2,125 − 2,000) = 750 (solvent).
+    ///
+    /// Under the bug, a partial close of 2 would have been priced at
+    /// 2,125 + 750/2 = 2,500 (+17.6% from oracle). With the full position
+    /// size:
+    ///
+    ///   bp = 2,125 + 750/10 = 2,200
+    #[test]
+    fn bankruptcy_price_partial_close_short() {
+        let user_state = UserState {
+            margin: UsdValue::new_int(2_000),
+            positions: BTreeMap::from([(pair_btc(), Position {
+                size: Quantity::new_int(-10),
+                entry_price: UsdPrice::new_int(2_000),
+                entry_funding_per_unit: FundingPerUnit::ZERO,
+                conditional_order_above: None,
+                conditional_order_below: None,
+            })]),
+            ..Default::default()
+        };
+
+        let oracle_prices = BTreeMap::from([(pair_btc(), UsdPrice::new_int(2_125))]);
+
+        let bp = compute_bankruptcy_price(
+            &user_state,
+            &pair_btc(),
+            &oracle_prices,
+            UsdValue::ZERO,
+            UsdValue::ZERO,
+        )
+        .unwrap();
+
+        assert_eq!(bp, UsdPrice::new_int(2_200));
     }
 }

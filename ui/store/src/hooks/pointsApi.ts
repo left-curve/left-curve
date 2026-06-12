@@ -134,6 +134,28 @@ export const openBoxes = async (
   return res.json();
 };
 
+export type HuntedLatestEntry = {
+  user_index: number;
+  username: string | null;
+  loot: HuntedLoot;
+  epoch: number;
+  block_height: number;
+  block_timestamp: string;
+};
+
+export const fetchHuntedLatest = async (
+  baseUrl: string,
+  params?: { limit?: number; start_after?: number },
+): Promise<HuntedLatestEntry[]> => {
+  const url = new URL(`${baseUrl}/boxes/hunted/latest`);
+  if (params?.limit !== undefined) url.searchParams.set("limit", String(params.limit));
+  if (params?.start_after !== undefined)
+    url.searchParams.set("start_after", String(params.start_after));
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Failed to fetch hunted latest: ${res.status}`);
+  return res.json();
+};
+
 export const fetchBoosters = async (
   baseUrl: string,
   userIndex: number,
@@ -174,6 +196,7 @@ export const fetchCurrentEpoch = async (baseUrl: string): Promise<EpochInfo> => 
 export type PointsConfigResponse = {
   boost_config?: {
     pair?: Record<string, Record<string, string>>;
+    hunted?: Partial<Record<HuntedLoot, Record<string, string>>>;
   };
 };
 

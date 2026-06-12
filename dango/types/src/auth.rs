@@ -121,12 +121,18 @@ pub struct StandardCredential {
     pub signature: Signature,
 }
 
+/// A session key is a standrad Secp256k1 public key, of 33 bytes..
+pub type SessionKey = ByteArray<33>;
+
+/// A session signature is a standard Secp256k1 signature, of 64 bytes.
+pub type SessionSignature = ByteArray<64>;
+
 #[grug_types::derive(Serde)]
 pub struct SessionCredential {
     /// The `SessionInfo` that contains data to be signed with user key and otp key.
     pub session_info: SessionInfo,
     /// Signature of the `SignDoc` by the session key.
-    pub session_signature: ByteArray<64>,
+    pub session_signature: SessionSignature,
     /// Signatures of the `SessionInfo` by the user key.
     pub authorization: StandardCredential,
 }
@@ -136,7 +142,7 @@ pub struct SessionInfo {
     /// Chain ID this session is authorized for, preventing cross-chain replay.
     pub chain_id: String,
     /// Public key of the session key.
-    pub session_key: ByteArray<33>,
+    pub session_key: SessionKey,
     /// Expiry time of the session key.
     pub expire_at: Timestamp,
 }

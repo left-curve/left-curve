@@ -20,6 +20,7 @@
     "config": {
       "bank": "0xe0b49f70991ecab05d5d7dc1f71e4ede63c8f2b7",
       "cronjobs": {
+        "0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d": "60",
         "0xc51e2cbe9636a90c86463ac3eb18fbee92b700d1": "86400",
         "0xd04b99adca5d3d31a1e7bc72fd606202f1e2fc69": "60"
       },
@@ -664,52 +665,76 @@
           "msg": {
             "price_sources": {
               "bridge/atom": {
-                "channel": "fixed_rate@200ms",
-                "id": 44
+                "single": {
+                  "channel": "fixed_rate@200ms",
+                  "id": 44
+                }
               },
               "bridge/bch": {
-                "channel": "fixed_rate@200ms",
-                "id": 24
+                "single": {
+                  "channel": "fixed_rate@200ms",
+                  "id": 24
+                }
               },
               "bridge/bnb": {
-                "channel": "fixed_rate@200ms",
-                "id": 15
+                "single": {
+                  "channel": "fixed_rate@200ms",
+                  "id": 15
+                }
               },
               "bridge/btc": {
-                "channel": "real_time",
-                "id": 1
+                "single": {
+                  "channel": "real_time",
+                  "id": 1
+                }
               },
               "bridge/doge": {
-                "channel": "fixed_rate@200ms",
-                "id": 13
+                "single": {
+                  "channel": "fixed_rate@200ms",
+                  "id": 13
+                }
               },
               "bridge/eth": {
-                "channel": "real_time",
-                "id": 2
+                "single": {
+                  "channel": "real_time",
+                  "id": 2
+                }
               },
               "bridge/ltc": {
-                "channel": "fixed_rate@200ms",
-                "id": 26
+                "single": {
+                  "channel": "fixed_rate@200ms",
+                  "id": 26
+                }
               },
               "bridge/sol": {
-                "channel": "real_time",
-                "id": 6
+                "single": {
+                  "channel": "real_time",
+                  "id": 6
+                }
               },
               "bridge/usdc": {
-                "channel": "real_time",
-                "id": 7
+                "single": {
+                  "channel": "real_time",
+                  "id": 7
+                }
               },
               "bridge/xrp": {
-                "channel": "fixed_rate@200ms",
-                "id": 14
+                "single": {
+                  "channel": "fixed_rate@200ms",
+                  "id": 14
+                }
               },
               "perp/btcusd": {
-                "channel": "real_time",
-                "id": 1
+                "single": {
+                  "channel": "real_time",
+                  "id": 1
+                }
               },
               "perp/ethusd": {
-                "channel": "real_time",
-                "id": 2
+                "single": {
+                  "channel": "real_time",
+                  "id": 2
+                }
               }
             },
             "trusted_signers": {

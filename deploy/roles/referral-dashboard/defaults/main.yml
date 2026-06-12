@@ -1,0 +1,31 @@
+---
+referral_dashboard_dir: "{{ deploy_home }}/referral-dashboard"
+referral_dashboard_image: "ghcr.io/left-curve/bots/referral-dashboard"
+referral_dashboard_tag: "0.3.0"
+referral_dashboard_networks: []
+
+# HTTP port the dashboard container listens on. Published on the host's
+# tailscale IP, so reachable as http://<hostname>:<port> from inside tailscale.
+referral_dashboard_http_port: 13200
+
+# from_block per network — only used when the DB is empty.
+referral_dashboard_from_blocks:
+  devnet: 1
+  testnet: 1
+  mainnet: 16847950
+
+# Block fetcher tuning.
+referral_dashboard_block_fetcher_initial_loops: 1
+referral_dashboard_block_fetcher_max_loops: 10
+referral_dashboard_block_fetcher_timeout: "100ms"
+
+# Postgres connection — shared host postgres reachable via the `postgres`
+# external docker network (same pattern as metabase/full-app).
+referral_dashboard_db_host: "postgres"
+referral_dashboard_db_port: 5432
+referral_dashboard_db_user: "referral_dashboard"
+referral_dashboard_db_name: "referral_dashboard"
+# referral_dashboard_db_password: ""  # required, read from the vault
+
+postgres_external_host: "127.0.0.1"
+postgres_port: 5432

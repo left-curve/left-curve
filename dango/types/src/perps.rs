@@ -815,6 +815,11 @@ pub enum MaintainerMsg {
     /// Only callable by the chain owner. Must attach exactly USDC, nonzero.
     Donate {},
 
+    /// Withdraw the entire accumulated protocol-fee treasury into the chain
+    /// owner's margin account, zeroing the treasury.
+    /// Only callable by the chain owner.
+    WithdrawTreasury {},
+
     /// Override a user's fee rate, overriding the tier-based fee rates derived
     /// from the user's recent trading volume.
     ///

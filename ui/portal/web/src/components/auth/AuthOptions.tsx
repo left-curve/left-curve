@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 interface Props {
   action: (method: string) => void;
   isPending: boolean;
@@ -34,7 +35,7 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending }) => {
             fullWidth
             onClick={() => [action(connector.id), setSelectedConnector(connector.id)]}
           >
-            <img src={connector.icon} alt={connector.name} className="w-6 h-6" />
+            <Image src={connector.icon} alt={connector.name} className="w-6 h-6" />
             <p>{connector.name}</p>
           </Button>
         ))

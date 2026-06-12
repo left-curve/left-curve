@@ -11,8 +11,8 @@ use {
         state::{LONGS, PAIR_PARAMS, PAIR_STATES, PARAM, SHORTS, STATE, USER_STATES},
         trade::{
             CancelAllOrdersOutcome, FeeBreakdown, MatchOrderOutcome,
-            compute_cancel_all_orders_outcome, match_order, merge_fee_breakdown, settle_fill,
-            settle_pnls,
+            compute_cancel_all_orders_outcome, match_order, merge_fee_breakdown,
+            resize_reduce_only_orders, settle_fill, settle_pnls,
         },
     },
     anyhow::ensure,
@@ -214,6 +214,23 @@ pub fn liquidate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // -------------------- 8. Apply position index updates --------------------
 
     apply_position_index_updates(ctx.storage, &index_updates)?;
+
+    // ---------- 9. Dynamic re-size of reduce-only orders ---------------------
+    //
+    // Liquidation forcibly reduced the positions of book-fill makers and ADL
+    // counter-parties (the liquidated user's own orders were already cancelled
+    // in step 2), so each of their resting reduce-only orders is re-clamped to
+    // its new position. The affected users are the keys of `maker_states`; the
+    // pairs are those the liquidated user held (`pair_ids`), the only pairs a
+    // fill could have touched. Over-scanning (a maker not on a given pair) is a
+    // safe no-op. We iterate the maps rather than the `index_updates`, because a
+    // pure ADL reduction leaves `(entry_price, side)` — hence the index —
+    // unchanged, which is exactly the case re-sizing must catch.
+    for pair_id in &pair_ids {
+        for maker in maker_states.keys() {
+            resize_reduce_only_orders(ctx.storage, *maker, pair_id, &mut events)?;
+        }
+    }
 
     #[cfg(feature = "tracing")]
     {
@@ -494,18 +511,30 @@ fn execute_close_schedule(
 
         let taker_is_bid = close_size.is_positive();
 
-        // Compute the bankruptcy price BEFORE book fills, using the total
-        // scheduled close amount. This price serves two roles:
+        // Compute the bankruptcy price BEFORE book fills. It divides the
+        // user's total equity by the position's FULL size — not the scheduled
+        // close amount — so a partial close at this price concedes only the
+        // closed fraction's share of equity (`equity / |size|` per unit),
+        // never more. Dividing by a deficit-sized partial close instead would
+        // amplify the offset and let a single small fill confiscate the whole
+        // account's equity, which is the bug behind the testnet block
+        // 32500262 liquidation cascade.
         //
-        // 1. When equity > 0 (timely liquidation): bp sits between oracle and
-        //    the entry price, and is used as both the target_price for book
-        //    matching AND the ADL fill price. This prevents matching against
-        //    absurd resting orders and guarantees equity_after >= 0.
+        // The price serves two roles:
+        //
+        // 1. When equity > 0 (timely liquidation): bp sits within the
+        //    maintenance-margin band below oracle (above for shorts), and is
+        //    used as both the target_price for book matching AND the ADL fill
+        //    price. This prevents matching against absurd resting orders and
+        //    guarantees equity_after >= 0: closing `c` of `|size|` units
+        //    leaves equity × (1 - c/|size|).
         //
         // 2. When equity <= 0 (late liquidation): bp overshoots oracle (above
         //    oracle for longs, below for shorts), which would block valid
         //    oracle-adjacent book fills. In this case we fall back to the
-        //    oracle price as target_price and use bp only for ADL.
+        //    oracle price as target_price and use bp only for ADL. The
+        //    schedule fully closes the position in this case (deficit >= MM),
+        //    so a pure-ADL close at bp zeroes equity exactly — no bad debt.
         //
         // Per-fill settlement inside `match_order` has already applied
         // realized PnLs and fees (zero during liquidation) from earlier
@@ -515,7 +544,6 @@ fn execute_close_schedule(
         let bankruptcy_price = compute_bankruptcy_price(
             user_state,
             pair_id,
-            close_size.checked_abs()?,
             oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,

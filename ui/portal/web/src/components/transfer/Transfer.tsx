@@ -10,16 +10,17 @@ import {
   useWatchEffect,
 } from "@left-curve/applets-kit";
 import {
-  perpsUserStateExtendedStore,
   useAccount,
+  useAppConfig,
   useBalances,
   useConfig,
+  invalidatePerpsAccountResources,
   usePerpsUserStateExtended,
   usePublicClient,
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
@@ -41,16 +42,18 @@ import {
   wait,
   withResolvers,
 } from "@left-curve/utils";
-import { perpsMarginAsset } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 import { WarningTransferAccounts } from "~/components/transfer/WarningTransferAccounts";
+import { Image } from "~/components/foundation/Image";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
 
 type TransferAction = "send" | "spot-perp";
+const usd = MarketPair.USD;
 
 const [TransferProvider, useTransfer] = createContext<{
   action: TransferAction;
@@ -99,12 +102,11 @@ const TransferContainer: React.FC<PropsWithChildren<TransferProps>> = ({
 const TransferSend: React.FC = () => {
   const { action, controllers } = useTransfer();
   const { showModal } = useApp();
-  const queryClient = useQueryClient();
   const [selectedDenom, setSelectedDenom] = useState("bridge/usdc");
 
   const { register, reset, handleSubmit, inputs } = controllers;
 
-  const { account, username, isConnected } = useAccount();
+  const { account, isConnected } = useAccount();
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
   const publicClient = usePublicClient();
@@ -178,14 +180,15 @@ const TransferSend: React.FC = () => {
       onSuccess: () => {
         reset();
         refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", username] });
       },
     },
   });
 
   if (action !== "send") return null;
 
-  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split("{app}");
+  const transferHintParts = m["transfer.warning.transferWithdrawHint"]({ app: "{app}" }).split(
+    "{app}",
+  );
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -193,7 +196,14 @@ const TransferSend: React.FC = () => {
         description={
           <p>
             {transferHintParts[0]}
-            <Button as={Link} to="/bridge" search={{ action: "withdraw" } as any} variant="link" size="xs" className="p-0 h-fit m-0 inline">
+            <Button
+              as={Link}
+              to="/bridge"
+              search={{ action: "withdraw" } as any}
+              variant="link"
+              size="xs"
+              className="p-0 h-fit m-0 inline"
+            >
               {m["transfer.warning.withdraw"]()}
             </Button>
             {transferHintParts[1]}
@@ -267,11 +277,15 @@ const TransferSpotPerp: React.FC = () => {
   const [direction, setDirection] = useState<SpotPerpDirection>("spot-to-perp");
 
   const { account, isConnected } = useAccount();
-  const { coins } = useConfig();
+  const config = useConfig();
+  const { coins } = config;
+  const { data: appConfig } = useAppConfig();
   const { data: signingClient } = useSigningClient();
 
-  usePerpsUserStateExtended();
-  const availableMargin = perpsUserStateExtendedStore((s) => s.availableMargin);
+  const availableMargin = usePerpsUserStateExtended((s) => s.availableMargin, {
+    accountAddress: account?.address,
+    enabled: isConnected,
+  });
 
   const { inputs, reset } = controllers;
 
@@ -282,7 +296,7 @@ const TransferSpotPerp: React.FC = () => {
   const usdcCoin = coins.byDenom["bridge/usdc"];
 
   const spotUsdcBalance = balances["bridge/usdc"] || "0";
-  const availableMarginRaw = parseUnits(availableMargin || "0", perpsMarginAsset.decimals);
+  const availableMarginRaw = parseUnits(availableMargin || "0", usd.decimals);
 
   const isSpotToPerp = direction === "spot-to-perp";
 
@@ -292,8 +306,7 @@ const TransferSpotPerp: React.FC = () => {
   const flipDirection = () => {
     const newDirection = isSpotToPerp ? "perp-to-spot" : "spot-to-perp";
     const newBalance = newDirection === "spot-to-perp" ? spotUsdcBalance : availableMarginRaw;
-    const newDecimals =
-      newDirection === "spot-to-perp" ? usdcCoin.decimals : perpsMarginAsset.decimals;
+    const newDecimals = newDirection === "spot-to-perp" ? usdcCoin.decimals : usd.decimals;
     const maxHuman = formatUnits(newBalance, newDecimals);
     const currentAmount = inputs.amount?.value || "0";
 
@@ -339,6 +352,11 @@ const TransferSpotPerp: React.FC = () => {
       onSuccess: () => {
         reset();
         refreshBalances();
+        invalidatePerpsAccountResources({
+          chainId: config.chain.id,
+          perpsContract: appConfig.addresses.perps,
+          accountAddress: account?.address,
+        });
       },
     },
   });
@@ -382,7 +400,7 @@ const TransferSpotPerp: React.FC = () => {
           <AssetInputWithRange
             name="amount"
             label={m["sendAndReceive.sending"]()}
-            asset={isSpotToPerp ? usdcCoin : { ...usdcCoin, ...perpsMarginAsset }}
+            asset={isSpotToPerp ? usdcCoin : { ...usdcCoin, ...usd }}
             balances={effectiveBalances}
             controllers={controllers}
             isDisabled={isPending || !isConnected}
@@ -406,12 +424,12 @@ const TransferSpotPerp: React.FC = () => {
             startContent={
               <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
                 <div className="flex gap-2 items-center font-semibold">
-                  <img
-                    src={isSpotToPerp ? perpsMarginAsset.logoURI : usdcCoin.logoURI}
-                    alt={isSpotToPerp ? perpsMarginAsset.symbol : usdcCoin.symbol}
+                  <Image
+                    src={isSpotToPerp ? usd.logoURI : usdcCoin.logoURI}
+                    alt={isSpotToPerp ? usd.symbol : usdcCoin.symbol}
                     className="w-8 h-8"
                   />
-                  <p>{isSpotToPerp ? perpsMarginAsset.symbol : usdcCoin.symbol}</p>
+                  <p>{isSpotToPerp ? usd.symbol : usdcCoin.symbol}</p>
                 </div>
               </div>
             }

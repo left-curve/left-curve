@@ -1,5 +1,6 @@
 import { twMerge } from "@left-curve/foundation";
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 type LogoProps = {
   className?: string;
@@ -7,7 +8,7 @@ type LogoProps = {
 
 export const DangoLogo: React.FC<LogoProps> = ({ className }) => {
   return (
-    <img
+    <Image
       src="/dango-logo.svg"
       alt="dango logo"
       className={twMerge(

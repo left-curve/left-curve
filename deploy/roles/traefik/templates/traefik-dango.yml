@@ -66,24 +66,18 @@ entryPoints:
         - fc00::/7
   devnet-dango:
     address: ":{{ traefik.devnet.ports.dango_port }}"
-  devnet-frontend:
-    address: ":{{ traefik.devnet.ports.dango_frontend_port }}"
   devnet-faucet_bot:
     address: ":{{ traefik.devnet.ports.faucet_port }}"
   devnet-graphiql:
     address: ":{{ traefik.devnet.ports.graphiql_port }}"
   testnet-dango:
     address: ":{{ traefik.testnet.ports.dango_port }}"
-  testnet-frontend:
-    address: ":{{ traefik.testnet.ports.dango_frontend_port }}"
   testnet-faucet_bot:
     address: ":{{ traefik.testnet.ports.faucet_port }}"
   testnet-graphiql:
     address: ":{{ traefik.testnet.ports.graphiql_port }}"
   mainnet-dango:
     address: ":{{ traefik.mainnet.ports.dango_port }}"
-  mainnet-frontend:
-    address: ":{{ traefik.mainnet.ports.dango_frontend_port }}"
   mainnet-faucet_bot:
     address: ":{{ traefik.mainnet.ports.faucet_port }}"
   mainnet-graphiql:

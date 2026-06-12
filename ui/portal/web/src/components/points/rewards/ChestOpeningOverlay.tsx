@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Image } from "~/components/foundation/Image";
 import { LootResult } from "./LootResult";
 import { type LootBucket, LootSummary } from "./LootSummary";
 import { NFTCarousel } from "./NFTCarousel";
@@ -58,6 +59,8 @@ type Phase = "chest" | "carousel" | "spinning" | "result" | "bulk-result";
 const SOUND_CHEST = "/sounds/sound_1_chest.mp3";
 const SOUND_SPIN = "/sounds/sound_2_spin.mp3";
 const SOUND_NFT_WIN = "/sounds/sound_3_nft_win.mp3";
+
+const MotionImage = motion.create(Image);
 
 const playSound = (src: string) => {
   const audio = new Audio(src);
@@ -199,7 +202,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
                 exit: { duration: 0.3 },
               }}
             >
-              <motion.img
+              <MotionImage
                 src={FLASH_IMAGE}
                 alt="flash"
                 className="w-full h-full object-contain"
@@ -211,7 +214,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
               <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_0%,transparent_30%,#1a1714_70%)]" />
             </motion.div>
 
-            <motion.img
+            <MotionImage
               src={animationFrames ? animationFrames[currentFrame] : chestImage}
               alt={`${variant} chest`}
               className="relative z-10 w-[426px] h-[426px] lg:w-[646px] lg:h-[646px] object-contain"
@@ -335,7 +338,7 @@ export const ChestOpeningOverlay: React.FC<ChestOpeningOverlayProps> = ({
               animate={{ scale: 0.4, opacity: 1 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              <motion.img
+              <MotionImage
                 src={FLASH_IMAGE2}
                 alt=""
                 className="w-full h-full object-cover"

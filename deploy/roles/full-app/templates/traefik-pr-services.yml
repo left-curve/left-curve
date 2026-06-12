@@ -23,10 +23,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-dango-1:8080"
-    {{ dango_network }}-frontend:
-      loadBalancer:
-        servers:
-          - url: "http://{{ deployment_name }}-dango-frontend-1:80"
     {{ dango_network }}-faucet_bot:
       loadBalancer:
         servers:
@@ -37,19 +33,6 @@ http:
           - url: "http://{{ deployment_name }}-graphiql-1:80"
 
   routers:
-    {{ dango_network }}-main-frontend:
-      rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
-      entryPoints:
-        - "web"
-      service: "{{ dango_network }}-frontend"
-
-    {{ dango_network }}-main-frontend-ssl:
-      rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
-      entryPoints:
-        - "websecure"
-      tls: {}
-      service: "{{ dango_network }}-frontend"
-
     {{ dango_network }}-main-backend:
       rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:

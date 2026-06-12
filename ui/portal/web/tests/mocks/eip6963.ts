@@ -7,10 +7,12 @@ export interface MockWalletOptions {
   walletRdns?: string;
 }
 
+export const DEFAULT_MOCK_WALLET_NAME = "Mock E2E Wallet";
+
 export const getEip6963MockWalletScript = (options: MockWalletOptions = {}) => {
   const accounts = options.accounts || ["0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"];
   const chainId = options.chainId || "0x1"; // Mainnet
-  const walletName = options.walletName || "Mock E2E Wallet";
+  const walletName = options.walletName || DEFAULT_MOCK_WALLET_NAME;
   const walletUuid = options.walletUuid || "350670db-19fa-4704-a166-e52e178b59d2";
   const walletIcon =
     options.walletIcon ||

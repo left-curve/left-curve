@@ -4,19 +4,27 @@ import { useMemo } from "react";
 import { sharesToUsd } from "@left-curve/utils";
 
 import { usePublicClient } from "./usePublicClient.js";
-import { perpsUserStateStore } from "./usePerpsUserState.js";
+import { usePerpsUserState } from "./usePerpsUserState.js";
 
-export function usePerpsVaultUserShares() {
+export type UsePerpsVaultUserSharesParameters = {
+  accountAddress?: string;
+  enabled?: boolean;
+};
+
+export function usePerpsVaultUserShares(parameters: UsePerpsVaultUserSharesParameters) {
+  const { accountAddress, enabled = true } = parameters;
   const publicClient = usePublicClient();
-  const perpsUserState = perpsUserStateStore((s) => s.userState);
+  const userVaultShares = usePerpsUserState((state) => state.userState?.vaultShares ?? "0", {
+    accountAddress,
+    enabled,
+  });
 
   const { data: vaultState } = useQuery({
     queryKey: ["vaultState"],
     queryFn: async () => publicClient.getPerpsVaultState(),
+    enabled,
     refetchInterval: 10_000,
   });
-
-  const userVaultShares = perpsUserState?.vaultShares ?? "0";
 
   const userSharesValue = useMemo(() => {
     const shareSupply = vaultState?.shareSupply ?? "0";

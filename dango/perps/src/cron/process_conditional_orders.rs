@@ -3,7 +3,7 @@ use {
         position_index::apply_position_index_updates,
         referral::{FeeCommissionsOutcome, apply_fee_commissions},
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
-        trade::{SubmitOrderOutcome, compute_submit_order_outcome},
+        trade::{SubmitOrderOutcome, compute_submit_order_outcome, resize_reduce_only_orders},
     },
     dango_order_book::{
         ASKS, BIDS, ConditionalOrderRemoved, ConditionalOrderTriggered, NEXT_FILL_ID,
@@ -495,6 +495,18 @@ fn process_triggered_order(
                 maker_book.remove(storage, order_key)?;
             },
         }
+    }
+
+    // Dynamic re-size of reduce-only orders. The triggered market order closed
+    // (part of) `user`'s position and may have filled makers, so every affected
+    // user's resting reduce-only orders are re-clamped to their new position.
+    // The affected users are exactly the keys of `maker_states` (the triggered
+    // user was inserted above, alongside each filled maker). We iterate the map
+    // rather than the `index_updates`, because a pure reduction leaves
+    // `(entry_price, side)` — hence the index — unchanged; re-sizing an
+    // unchanged user is a harmless no-op.
+    for user in maker_states.keys() {
+        resize_reduce_only_orders(storage, *user, pair_id, events)?;
     }
 
     Ok(TriggeredOrderOutcome { state, pair_state })

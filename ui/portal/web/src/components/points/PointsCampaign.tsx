@@ -1,5 +1,6 @@
 import {
   Button,
+  Dot,
   IconDangoStick,
   IconGift,
   IconStar,
@@ -14,7 +15,7 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 import { PageGlow } from "../foundation/PageGlow";
-import { LeaderboardTable } from "./leaderboard";
+import { LeaderboardTable, RecentHuntDropsTable } from "./leaderboard";
 import { PointsHeader } from "./PointsHeader";
 import { LigueLevels, PointsProfileTable } from "./profile";
 import {
@@ -176,6 +177,22 @@ const LeaderboardSection: React.FC = () => (
   <div className="flex flex-col gap-8">
     <div className="bg-surface-disabled-gray rounded-xl shadow-account-card">
       <PointsHeader />
+    </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <h2 className="h4-bold text-ink-primary-900">
+          {m["points.leaderboard.recentDrops.title"]()}
+        </h2>
+        <span className="inline-flex items-center gap-1 bg-utility-success-25 px-2 py-0.5 rounded-full">
+          <Dot color="success" pulse />
+          <span className="text-utility-success-500 diatype-xs-medium">
+            {m["points.leaderboard.recentDrops.live"]()}
+          </span>
+        </span>
+      </div>
+      <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
+        <RecentHuntDropsTable />
+      </div>
     </div>
     <div className="bg-surface-primary-gray rounded-xl shadow-account-card">
       <LeaderboardTable />

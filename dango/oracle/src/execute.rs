@@ -1,18 +1,19 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceSource},
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceConfig},
     grug_types::{
         Api, AuthCtx, AuthMode, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
         QuerierExt, Response, Storage, Timestamp, Tx,
     },
     pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (denom, price_source) in msg.price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    for (denom, config) in msg.price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
     }
 
     for (public_key, expires_at) in msg.trusted_signers {
@@ -63,6 +64,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
             register_price_sources(ctx, price_sources)
         },
+        ExecuteMsg::RemovePriceSources(denoms) => remove_price_sources(ctx, denoms),
         ExecuteMsg::RegisterTrustedSigner {
             public_key,
             expires_at,
@@ -74,7 +76,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn register_price_sources(
     ctx: MutableCtx,
-    price_sources: BTreeMap<Denom, PriceSource>,
+    price_sources: BTreeMap<Denom, PriceConfig>,
 ) -> anyhow::Result<Response> {
     // Only chain owner can register a denom.
     ensure!(
@@ -82,8 +84,27 @@ fn register_price_sources(
         "you don't have the right, O you don't have the right"
     );
 
-    for (denom, price_source) in price_sources {
-        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    for (denom, config) in price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
+    }
+
+    Ok(Response::new())
+}
+
+fn remove_price_sources(ctx: MutableCtx, denoms: BTreeSet<Denom>) -> anyhow::Result<Response> {
+    // Only chain owner can remove a denom.
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // No check is performed on whether the denoms actually have a price
+    // source; `Map::remove` is a no-op for an absent key. We also trust the
+    // owner to have ensured no other contract still relies on the price
+    // sources being removed, so no usage check either.
+    for denom in denoms {
+        PRICE_SOURCES.remove(ctx.storage, &denom);
     }
 
     Ok(Response::new())

@@ -9,12 +9,15 @@ use {
 };
 
 mod adl_bug_reproduction;
+mod bankruptcy_bug_reproduction;
 mod batch_update_orders;
 mod client_order_id;
 mod conditional_orders;
 mod index_price;
 mod liquidation;
+mod liquidation_spec;
 mod price_band;
+mod reduce_only;
 mod referral;
 mod trading;
 mod vault;

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import type React from "react";
 
 import type { LootDisplay } from "./loot";
+import { Image } from "~/components/foundation/Image";
 
 type LootResultProps = {
   display: LootDisplay;
@@ -83,7 +84,7 @@ export const LootResult: React.FC<LootResultProps> = ({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
         >
-          <img
+          <Image
             src={display.frameSrc}
             alt={display.label}
             crossOrigin="anonymous"

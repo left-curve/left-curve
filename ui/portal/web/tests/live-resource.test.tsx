@@ -1,0 +1,1097 @@
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { useRef } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+import { createBlockStore } from "../../../store/src/hooks/createBlockStore";
+import { useSyncExternalStoreWithTracked } from "../../../store/src/hooks/useSyncExternalStoreWithTRacked";
+import { createLiveResource } from "../../../store/src/live/createLiveResource";
+import {
+  createLiveResourceInvalidator,
+  useLiveResourceInvalidationRevision,
+} from "../../../store/src/live/invalidation";
+import {
+  handlePerpsUserStateError,
+  isPerpsUserStateNotFoundError,
+} from "../../../store/src/hooks/perpsUserStateErrors";
+import { useLiveResource } from "../../../store/src/live/useLiveResource";
+import { subscriptionsStore } from "../../../store/src/subscriptions";
+
+import type { LiveResourceSnapshot } from "../../../store/src/live/types";
+import type { LiveResourceEmitOptions } from "../../../store/src/live/types";
+
+type TestSnapshot = LiveResourceSnapshot & {
+  value: number;
+};
+
+type TrackedSnapshot = {
+  count: number;
+  label: string;
+  onSelect: () => string;
+};
+
+const initialSnapshot: TestSnapshot = {
+  status: "idle",
+  error: null,
+  value: 0,
+};
+
+describe("perps user state error normalization", () => {
+  it("classifies missing perps user state as an empty account state", () => {
+    expect(
+      isPerpsUserStateNotFoundError(
+        new Error(
+          "contract returned error! data not found! type: dango_types::perps::UserState, storage key: user",
+        ),
+      ),
+    ).toBe(true);
+
+    expect(isPerpsUserStateNotFoundError(new Error("contract returned error! unauthorized"))).toBe(
+      false,
+    );
+  });
+
+  it("routes missing perps user state to the empty-state handler", () => {
+    const onNotFound = vi.fn();
+    const onError = vi.fn();
+
+    handlePerpsUserStateError(
+      new Error(
+        "contract returned error! data not found! type: dango_types::perps::UserState, storage key: user",
+      ),
+      { onNotFound, onError },
+    );
+    handlePerpsUserStateError(new Error("contract returned error! unauthorized"), {
+      onNotFound,
+      onError,
+    });
+
+    expect(onNotFound).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+});
+
+function createTrackedStore(initial: TrackedSnapshot) {
+  let snapshot = initial;
+  const listeners = new Set<() => void>();
+
+  return {
+    emit: (nextSnapshot: TrackedSnapshot) => {
+      snapshot = nextSnapshot;
+      for (const listener of listeners) listener();
+    },
+    getSnapshot: () => snapshot,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+describe("createLiveResource", () => {
+  it("starts once for duplicate acquires and stops after the final release", () => {
+    let starts = 0;
+    let stops = 0;
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveDuplicateAcquire",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: () => {
+        starts += 1;
+        return () => {
+          stops += 1;
+        };
+      },
+    });
+
+    const releaseA = resource.acquire({ id: "a" });
+    const releaseB = resource.acquire({ id: "a" });
+
+    expect(starts).toBe(1);
+    expect(stops).toBe(0);
+
+    releaseA();
+    expect(stops).toBe(0);
+
+    releaseB();
+    expect(stops).toBe(1);
+    expect(resource.getDebugState().entries).toHaveLength(0);
+
+    releaseB();
+    expect(stops).toBe(1);
+    expect(resource.getDebugState().entries).toHaveLength(0);
+  });
+
+  it("isolates keys, guards stale versions, applies equality, and honors cache policy", () => {
+    const emitters = new Map<
+      string,
+      (snapshot: TestSnapshot, options?: LiveResourceEmitOptions) => void
+    >();
+    const updates: number[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveVersionEquality",
+      cache: "keep",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      equal: (previous, next) =>
+        previous.status === next.status &&
+        previous.error === next.error &&
+        previous.value === next.value,
+      start: (params, { emit }) => {
+        emitters.set(params.id, emit);
+        return () => {};
+      },
+    });
+
+    const releaseA = resource.acquire({ id: "a" });
+    resource.acquire({ id: "b" });
+    resource.subscribe({ id: "a" }, () => updates.push(resource.getSnapshot({ id: "a" }).value));
+
+    emitters.get("a")?.({ status: "ready", error: null, value: 1 }, { version: 2 });
+    emitters.get("a")?.({ status: "ready", error: null, value: 2 }, { version: 1 });
+    emitters.get("a")?.({ status: "ready", error: null, value: 1 }, { version: 3 });
+    emitters.get("b")?.({ status: "ready", error: null, value: 9 }, { version: 1 });
+
+    expect(resource.getSnapshot({ id: "a" }).value).toBe(1);
+    expect(resource.getSnapshot({ id: "b" }).value).toBe(9);
+    expect(updates).toEqual([1]);
+
+    releaseA();
+    expect(resource.getSnapshot({ id: "a" }).value).toBe(1);
+  });
+
+  it("accepts unversioned emissions after versioned snapshots", () => {
+    let emit: ((snapshot: TestSnapshot, options?: LiveResourceEmitOptions) => void) | undefined;
+    const updates: number[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveUnversionedTransition",
+      cache: "keep",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      equal: (previous, next) =>
+        previous.status === next.status &&
+        previous.error === next.error &&
+        previous.value === next.value,
+      start: (_params, context) => {
+        emit = context.emit;
+        return () => {};
+      },
+    });
+
+    const release = resource.acquire({ id: "a" });
+    const unsubscribe = resource.subscribe({ id: "a" }, () => {
+      updates.push(resource.getSnapshot({ id: "a" }).value);
+    });
+
+    emit?.({ status: "ready", error: null, value: 7 }, { version: 5 });
+    emit?.({ status: "ready", error: null, value: 0 });
+
+    expect(resource.getSnapshot({ id: "a" }).value).toBe(0);
+    expect(updates).toEqual([7, 0]);
+
+    unsubscribe();
+    release();
+  });
+
+  it("stores runtime errors on the latest snapshot and notifies subscribers", () => {
+    let reportError: ((error: unknown) => void) | undefined;
+    const updates: TestSnapshot[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveRuntimeError",
+      cache: "keep",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        context.emit({ status: "ready", error: null, value: 7 });
+        reportError = context.error;
+        return () => {};
+      },
+    });
+
+    const release = resource.acquire({ id: "a" });
+    const unsubscribe = resource.subscribe({ id: "a" }, () => {
+      updates.push(resource.getSnapshot({ id: "a" }));
+    });
+
+    const runtimeError = new Error("boom");
+    reportError?.(runtimeError);
+
+    expect(resource.getSnapshot({ id: "a" })).toEqual({
+      status: "error",
+      error: runtimeError,
+      value: 7,
+    });
+    expect(updates).toEqual([{ status: "error", error: runtimeError, value: 7 }]);
+
+    unsubscribe();
+    release();
+  });
+
+  it("stores start failures as error snapshots without throwing to the caller", () => {
+    const startError = new Error("stream failed to open");
+    const updates: TestSnapshot[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveStartError",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: () => {
+        throw startError;
+      },
+    });
+
+    const unsubscribe = resource.subscribe({ id: "a" }, () => {
+      updates.push(resource.getSnapshot({ id: "a" }));
+    });
+
+    expect(() => resource.acquire({ id: "a" })).not.toThrow();
+    expect(resource.getSnapshot({ id: "a" })).toEqual({
+      status: "error",
+      error: startError,
+      value: 0,
+    });
+    expect(updates).toEqual([
+      {
+        status: "connecting",
+        error: null,
+        value: 0,
+      },
+      {
+        status: "error",
+        error: startError,
+        value: 0,
+      },
+    ]);
+
+    unsubscribe();
+  });
+
+  it("logs and ignores late errors after delete-on-release eviction", () => {
+    let reportError: ((error: unknown) => void) | undefined;
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveLateError",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        reportError = context.error;
+        return () => {};
+      },
+    });
+
+    const release = resource.acquire({ id: "a" });
+    release();
+
+    const lateError = new Error("late");
+    reportError?.(lateError);
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[live-resource:primitiveLateError] dropped error after release",
+      lateError,
+    );
+    expect(resource.getDebugState().entries).toHaveLength(0);
+
+    consoleError.mockRestore();
+  });
+
+  it("supports key-only subscriptions for existing entries without creating missing entries", () => {
+    let emit: ((snapshot: TestSnapshot) => void) | undefined;
+    const listener = vi.fn();
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "primitiveKeyOnlySubscribe",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        emit = context.emit;
+        return () => {};
+      },
+    });
+
+    const unsubscribeMissing = resource.subscribeKey("missing", listener);
+    unsubscribeMissing();
+
+    expect(resource.getDebugState().entries).toHaveLength(0);
+
+    const release = resource.acquire({ id: "a" });
+    const unsubscribe = resource.subscribeKey("a", listener);
+
+    emit?.({ status: "ready", error: null, value: 3 });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    release();
+  });
+});
+
+describe("useLiveResource", () => {
+  it("returns the idle snapshot and does not start when disabled", () => {
+    let starts = 0;
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactDisabled",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: () => {
+        starts += 1;
+        return () => {};
+      },
+    });
+
+    function Consumer() {
+      const value = useLiveResource({
+        resource,
+        params: { id: "" },
+        enabled: false,
+        selector: (snapshot) => snapshot.value,
+      });
+
+      return <div data-testid="disabled">{value}</div>;
+    }
+
+    render(<Consumer />);
+
+    expect(screen.getByTestId("disabled")).toHaveTextContent("0");
+    expect(starts).toBe(0);
+  });
+
+  it("shares one underlying resource across duplicate consumers", async () => {
+    let starts = 0;
+    let stops = 0;
+    let emit: ((snapshot: TestSnapshot) => void) | undefined;
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactDuplicateConsumers",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        starts += 1;
+        emit = context.emit;
+        return () => {
+          stops += 1;
+        };
+      },
+    });
+
+    function Consumer({ label }: { label: string }) {
+      const value = useLiveResource({
+        resource,
+        params: { id: "shared" },
+        enabled: true,
+        selector: (snapshot) => snapshot.value,
+      });
+
+      return <div data-testid={label}>{value}</div>;
+    }
+
+    const rendered = render(
+      <>
+        <Consumer label="a" />
+        <Consumer label="b" />
+      </>,
+    );
+
+    await waitFor(() => expect(starts).toBe(1));
+
+    act(() => {
+      emit?.({ status: "ready", error: null, value: 7 });
+    });
+
+    expect(screen.getByTestId("a")).toHaveTextContent("7");
+    expect(screen.getByTestId("b")).toHaveTextContent("7");
+
+    rendered.rerender(<Consumer label="a" />);
+    expect(stops).toBe(0);
+
+    rendered.unmount();
+    expect(stops).toBe(1);
+  });
+
+  it("throttles React notifications while keeping the latest snapshot", async () => {
+    let starts = 0;
+    let emit: ((snapshot: TestSnapshot) => void) | undefined;
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactThrottledNotifications",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        starts += 1;
+        emit = context.emit;
+        return () => {};
+      },
+    });
+
+    function Consumer() {
+      const value = useLiveResource({
+        resource,
+        params: { id: "throttled" },
+        enabled: true,
+        selector: (snapshot) => snapshot.value,
+        notifyIntervalMs: 100,
+      });
+
+      return <div data-testid="throttled">{value}</div>;
+    }
+
+    const rendered = render(<Consumer />);
+    await waitFor(() => expect(starts).toBe(1));
+
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+
+    try {
+      act(() => {
+        emit?.({ status: "ready", error: null, value: 1 });
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("1");
+
+      act(() => {
+        emit?.({ status: "ready", error: null, value: 2 });
+        emit?.({ status: "ready", error: null, value: 3 });
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("1");
+
+      act(() => {
+        vi.advanceTimersByTime(99);
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("1");
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByTestId("throttled")).toHaveTextContent("3");
+    } finally {
+      rendered.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("lets consumers select error state without re-rendering on data-only updates", async () => {
+    let starts = 0;
+    let emit: ((snapshot: TestSnapshot) => void) | undefined;
+    let reportError: ((error: unknown) => void) | undefined;
+    const renderedErrors: (string | null)[] = [];
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactErrorSelector",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (_params, context) => {
+        starts += 1;
+        emit = context.emit;
+        reportError = context.error;
+        return () => {};
+      },
+    });
+
+    function Consumer() {
+      const errorMessage = useLiveResource({
+        resource,
+        params: { id: "watched" },
+        enabled: true,
+        selector: (snapshot) => snapshot.error?.message ?? null,
+      });
+
+      renderedErrors.push(errorMessage);
+
+      return <div data-testid="resource-error">{errorMessage ?? "ok"}</div>;
+    }
+
+    const rendered = render(<Consumer />);
+    await waitFor(() => expect(starts).toBe(1));
+
+    expect(resource.getDebugState().entries).toEqual([
+      expect.objectContaining({
+        key: "watched",
+        listenerCount: 1,
+      }),
+    ]);
+
+    act(() => {
+      emit?.({ status: "ready", error: null, value: 1 });
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("ok");
+    expect(renderedErrors).toEqual([null]);
+
+    const runtimeError = new Error("boom");
+    act(() => {
+      reportError?.(runtimeError);
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("boom");
+    expect(renderedErrors).toEqual([null, "boom"]);
+
+    act(() => {
+      emit?.({ status: "ready", error: null, value: 2 });
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("ok");
+    expect(renderedErrors).toEqual([null, "boom", null]);
+
+    const secondError = new Error("still broken");
+    act(() => {
+      reportError?.(secondError);
+    });
+    expect(screen.getByTestId("resource-error")).toHaveTextContent("still broken");
+    expect(renderedErrors).toEqual([null, "boom", null, "still broken"]);
+
+    rendered.unmount();
+  });
+
+  it("restarts same-key resources when the restart token changes", async () => {
+    const starts: string[] = [];
+    const stops: string[] = [];
+    const emitters = new Map<string, (snapshot: TestSnapshot) => void>();
+
+    const resource = createLiveResource<{ id: string; source: string }, TestSnapshot>({
+      name: "reactRestartToken",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: (params, context) => {
+        starts.push(params.source);
+        emitters.set(params.source, context.emit);
+        return () => {
+          stops.push(params.source);
+        };
+      },
+    });
+
+    function Consumer({ source }: { source: string }) {
+      const value = useLiveResource({
+        resource,
+        params: { id: "shared", source },
+        enabled: true,
+        selector: (snapshot) => snapshot.value,
+        restartToken: source,
+      });
+
+      return <div data-testid="restart">{value}</div>;
+    }
+
+    const rendered = render(<Consumer source="a" />);
+    await waitFor(() => expect(starts).toEqual(["a"]));
+
+    act(() => {
+      emitters.get("a")?.({ status: "ready", error: null, value: 1 });
+    });
+    expect(screen.getByTestId("restart")).toHaveTextContent("1");
+
+    rendered.rerender(<Consumer source="b" />);
+    await waitFor(() => expect(starts).toEqual(["a", "b"]));
+    expect(stops).toEqual(["a"]);
+
+    act(() => {
+      emitters.get("b")?.({ status: "ready", error: null, value: 2 });
+    });
+    expect(screen.getByTestId("restart")).toHaveTextContent("2");
+
+    rendered.unmount();
+    expect(stops).toEqual(["a", "b"]);
+  });
+
+  it("starts and stops when enabled toggles", async () => {
+    let starts = 0;
+    let stops = 0;
+
+    const resource = createLiveResource<{ id: string }, TestSnapshot>({
+      name: "reactEnabledToggle",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: () => {
+        starts += 1;
+        return () => {
+          stops += 1;
+        };
+      },
+    });
+
+    function Consumer({ enabled }: { enabled: boolean }) {
+      const value = useLiveResource({
+        resource,
+        params: { id: "toggle" },
+        enabled,
+        selector: (snapshot) => snapshot.value,
+      });
+
+      return <div data-testid="toggle">{value}</div>;
+    }
+
+    const rendered = render(<Consumer enabled={false} />);
+
+    expect(screen.getByTestId("toggle")).toHaveTextContent("0");
+    expect(starts).toBe(0);
+
+    rendered.rerender(<Consumer enabled />);
+    await waitFor(() => expect(starts).toBe(1));
+
+    rendered.rerender(<Consumer enabled={false} />);
+    await waitFor(() => expect(stops).toBe(1));
+
+    rendered.rerender(<Consumer enabled />);
+    await waitFor(() => expect(starts).toBe(2));
+
+    rendered.unmount();
+    expect(stops).toBe(2);
+  });
+});
+
+describe("live resource invalidation", () => {
+  it("partitions revisions by key and restarts same-key resources", async () => {
+    const invalidator = createLiveResourceInvalidator();
+    const starts: string[] = [];
+    const stops: string[] = [];
+
+    const resource = createLiveResource<{ id: string; revision: number }, TestSnapshot>({
+      name: "reactInvalidationRestart",
+      getKey: ({ id }) => id,
+      getInitialSnapshot: () => initialSnapshot,
+      start: ({ id, revision }, context) => {
+        starts.push(`${id}:${revision}`);
+        context.emit({ status: "ready", error: null, value: revision });
+        return () => {
+          stops.push(`${id}:${revision}`);
+        };
+      },
+    });
+
+    function Consumer({ scope }: { scope: string }) {
+      const revision = useLiveResourceInvalidationRevision(invalidator, scope);
+      const value = useLiveResource({
+        resource,
+        params: { id: scope, revision },
+        enabled: true,
+        selector: (snapshot) => snapshot.value,
+        restartToken: revision,
+      });
+
+      return (
+        <>
+          <div data-testid={`${scope}-revision`}>{revision}</div>
+          <div data-testid={`${scope}-value`}>{value}</div>
+        </>
+      );
+    }
+
+    render(
+      <>
+        <Consumer scope="a" />
+        <Consumer scope="b" />
+      </>,
+    );
+
+    await waitFor(() => expect(starts).toEqual(["a:0", "b:0"]));
+    expect(screen.getByTestId("a-revision")).toHaveTextContent("0");
+    expect(screen.getByTestId("b-revision")).toHaveTextContent("0");
+
+    act(() => {
+      invalidator.invalidate("a");
+    });
+
+    await waitFor(() => expect(starts).toEqual(["a:0", "b:0", "a:1"]));
+    expect(stops).toEqual(["a:0"]);
+    expect(screen.getByTestId("a-revision")).toHaveTextContent("1");
+    expect(screen.getByTestId("b-revision")).toHaveTextContent("0");
+    expect(screen.getByTestId("a-value")).toHaveTextContent("1");
+    expect(screen.getByTestId("b-value")).toHaveTextContent("0");
+
+    act(() => {
+      invalidator.invalidate("b");
+    });
+
+    await waitFor(() => expect(screen.getByTestId("b-revision")).toHaveTextContent("1"));
+    expect(starts).toEqual(["a:0", "b:0", "a:1", "b:1"]);
+    expect(stops).toEqual(["a:0", "b:0"]);
+  });
+});
+
+describe("useSyncExternalStoreWithTracked", () => {
+  it("rerenders consumers only when accessed object keys change", () => {
+    const store = createTrackedStore({
+      count: 1,
+      label: "first",
+      onSelect: () => "first",
+    });
+
+    function Consumer() {
+      const renders = useRef(0);
+      renders.current += 1;
+
+      const snapshot = useSyncExternalStoreWithTracked(store.subscribe, store.getSnapshot);
+
+      return (
+        <>
+          <div data-testid="count">{snapshot.count}</div>
+          <div data-testid="renders">{renders.current}</div>
+        </>
+      );
+    }
+
+    render(<Consumer />);
+
+    expect(screen.getByTestId("count")).toHaveTextContent("1");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+
+    act(() => {
+      store.emit({
+        count: 1,
+        label: "second",
+        onSelect: () => "second",
+      });
+    });
+
+    expect(screen.getByTestId("count")).toHaveTextContent("1");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+
+    act(() => {
+      store.emit({
+        count: 2,
+        label: "second",
+        onSelect: () => "second",
+      });
+    });
+
+    expect(screen.getByTestId("count")).toHaveTextContent("2");
+    expect(screen.getByTestId("renders")).toHaveTextContent("2");
+  });
+
+  it("does not rerender when only a tracked function identity changes", () => {
+    const store = createTrackedStore({
+      count: 1,
+      label: "first",
+      onSelect: () => "first",
+    });
+
+    function Consumer() {
+      const renders = useRef(0);
+      renders.current += 1;
+
+      const snapshot = useSyncExternalStoreWithTracked(store.subscribe, store.getSnapshot);
+
+      snapshot.onSelect();
+
+      return (
+        <>
+          <div data-testid="label">{snapshot.label}</div>
+          <div data-testid="renders">{renders.current}</div>
+        </>
+      );
+    }
+
+    render(<Consumer />);
+
+    expect(screen.getByTestId("label")).toHaveTextContent("first");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+
+    act(() => {
+      store.emit({
+        count: 1,
+        label: "first",
+        onSelect: () => "second",
+      });
+    });
+
+    expect(screen.getByTestId("label")).toHaveTextContent("first");
+    expect(screen.getByTestId("renders")).toHaveTextContent("1");
+  });
+});
+
+describe("createBlockStore", () => {
+  it("applies only newer block updates and derives previous state before accepted writes", () => {
+    const store = createBlockStore({
+      initialState: {
+        currentPrice: "0",
+        previousPrice: "0",
+      },
+      beforeUpdate: (previous) => ({
+        previousPrice: previous.currentPrice,
+      }),
+    });
+
+    store.getState().setState({
+      blockHeight: 8,
+      currentPrice: "100",
+    });
+
+    expect(store.getState()).toMatchObject({
+      currentPrice: "100",
+      previousPrice: "0",
+      lastUpdatedBlockHeight: 8,
+    });
+
+    store.getState().setState({
+      blockHeight: 7,
+      currentPrice: "90",
+    });
+    store.getState().setState({
+      blockHeight: 8,
+      currentPrice: "101",
+    });
+
+    expect(store.getState()).toMatchObject({
+      currentPrice: "100",
+      previousPrice: "0",
+      lastUpdatedBlockHeight: 8,
+    });
+
+    store.getState().setState({
+      blockHeight: 9,
+      currentPrice: "110",
+    });
+
+    expect(store.getState()).toMatchObject({
+      currentPrice: "110",
+      previousPrice: "100",
+      lastUpdatedBlockHeight: 9,
+    });
+  });
+
+  it("accepts zero-height polling updates even after a block-backed update", () => {
+    const store = createBlockStore({
+      initialState: {
+        liquidityDepth: "empty",
+      },
+    });
+
+    store.getState().setState({
+      blockHeight: 12,
+      liquidityDepth: "block-12",
+    });
+    store.getState().setState({
+      blockHeight: 0,
+      liquidityDepth: "polling-snapshot",
+    });
+
+    expect(store.getState()).toMatchObject({
+      liquidityDepth: "polling-snapshot",
+    });
+  });
+});
+
+describe("subscriptionsStore", () => {
+  it("shares one backend executor for duplicate subscriptions until the final unsubscribe", () => {
+    let emitBlock: ((block: unknown) => void) | undefined;
+    const stop = vi.fn();
+    const client = {
+      blockSubscription: vi.fn(({ next }: { next: (event: { block: unknown }) => void }) => {
+        emitBlock = (block: unknown) => next({ block });
+        return stop;
+      }),
+    };
+    const store = subscriptionsStore(client as never);
+    const firstListener = vi.fn();
+    const secondListener = vi.fn();
+
+    const unsubscribeFirst = store.subscribe("block", {
+      listener: firstListener,
+    });
+    const unsubscribeSecond = store.subscribe("block", {
+      listener: secondListener,
+    });
+
+    expect(client.blockSubscription).toHaveBeenCalledOnce();
+
+    emitBlock?.({ height: 1 });
+
+    expect(firstListener).toHaveBeenCalledWith({ height: 1 });
+    expect(secondListener).toHaveBeenCalledWith({ height: 1 });
+
+    unsubscribeFirst();
+    expect(stop).not.toHaveBeenCalled();
+
+    emitBlock?.({ height: 2 });
+
+    expect(firstListener).toHaveBeenCalledTimes(1);
+    expect(secondListener).toHaveBeenCalledWith({ height: 2 });
+
+    unsubscribeSecond();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it("keeps backend executors isolated by subscription params", () => {
+    const eventsByHeight = new Map<number | undefined, (events: unknown[]) => void>();
+    const stops = new Map<number | undefined, ReturnType<typeof vi.fn>>();
+    const client = {
+      eventsSubscription: vi.fn(
+        ({
+          next,
+          sinceBlockHeight,
+        }: {
+          next: (event: { events: unknown[] }) => void;
+          sinceBlockHeight?: number;
+        }) => {
+          eventsByHeight.set(sinceBlockHeight, (events: unknown[]) => next({ events }));
+          const stop = vi.fn();
+          stops.set(sinceBlockHeight, stop);
+          return stop;
+        },
+      ),
+    };
+    const store = subscriptionsStore(client as never);
+    const firstListener = vi.fn();
+    const secondListener = vi.fn();
+
+    const unsubscribeFirst = store.subscribe("events", {
+      params: {
+        sinceBlockHeight: 10,
+      },
+      listener: firstListener,
+    });
+    const unsubscribeSecond = store.subscribe("events", {
+      params: {
+        sinceBlockHeight: 20,
+      },
+      listener: secondListener,
+    });
+
+    expect(client.eventsSubscription).toHaveBeenCalledTimes(2);
+
+    eventsByHeight.get(10)?.([{ id: "first" }]);
+    eventsByHeight.get(20)?.([{ id: "second" }]);
+
+    expect(firstListener).toHaveBeenCalledWith([{ id: "first" }]);
+    expect(firstListener).not.toHaveBeenCalledWith([{ id: "second" }]);
+    expect(secondListener).toHaveBeenCalledWith([{ id: "second" }]);
+    expect(secondListener).not.toHaveBeenCalledWith([{ id: "first" }]);
+
+    unsubscribeFirst();
+    expect(stops.get(10)).toHaveBeenCalledOnce();
+    expect(stops.get(20)).not.toHaveBeenCalled();
+
+    eventsByHeight.get(20)?.([{ id: "second-after-first-stop" }]);
+    expect(secondListener).toHaveBeenCalledWith([{ id: "second-after-first-stop" }]);
+
+    unsubscribeSecond();
+    expect(stops.get(20)).toHaveBeenCalledOnce();
+  });
+
+  it("removes listener state when executor startup throws", () => {
+    const startupError = new Error("startup failed");
+    let calls = 0;
+    let emitRuntimeError: ((error: unknown) => void) | undefined;
+
+    const store = subscriptionsStore({
+      blockSubscription: ({ error }: { error: (error: unknown) => void }) => {
+        calls += 1;
+        if (calls === 1) throw startupError;
+        emitRuntimeError = error;
+        return () => {};
+      },
+    } as never);
+
+    const firstErrorListener = vi.fn();
+    expect(() =>
+      store.subscribe("block", {
+        listener: vi.fn(),
+        onError: firstErrorListener,
+      }),
+    ).toThrow(startupError);
+
+    const secondErrorListener = vi.fn();
+    const unsubscribe = store.subscribe("block", {
+      listener: vi.fn(),
+      onError: secondErrorListener,
+    });
+
+    emitRuntimeError?.(new Error("runtime failed"));
+
+    expect(firstErrorListener).not.toHaveBeenCalled();
+    expect(secondErrorListener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+  });
+
+  it("removes a subscriber error handler while keeping shared executors alive", () => {
+    let emitRuntimeError: ((error: unknown) => void) | undefined;
+    const stop = vi.fn();
+    const globalError = vi.fn();
+    const client = {
+      blockSubscription: vi.fn(({ error }: { error: (error: unknown) => void }) => {
+        emitRuntimeError = error;
+        return stop;
+      }),
+    };
+    const store = subscriptionsStore(client as never, { onError: globalError });
+    const firstErrorListener = vi.fn();
+    const secondErrorListener = vi.fn();
+
+    const unsubscribeFirst = store.subscribe("block", {
+      listener: vi.fn(),
+      onError: firstErrorListener,
+    });
+    const unsubscribeSecond = store.subscribe("block", {
+      listener: vi.fn(),
+      onError: secondErrorListener,
+    });
+
+    expect(client.blockSubscription).toHaveBeenCalledOnce();
+
+    unsubscribeFirst();
+    expect(stop).not.toHaveBeenCalled();
+
+    const runtimeError = new Error("runtime failed after first unsubscribe");
+    emitRuntimeError?.(runtimeError);
+
+    expect(globalError).toHaveBeenCalledWith(runtimeError);
+    expect(firstErrorListener).not.toHaveBeenCalled();
+    expect(secondErrorListener).toHaveBeenCalledWith(runtimeError);
+
+    unsubscribeSecond();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it("routes listener exceptions through global and subscription error handlers", () => {
+    let emitBlock: ((event: unknown) => void) | undefined;
+    const globalError = vi.fn();
+
+    const store = subscriptionsStore(
+      {
+        blockSubscription: ({ next }: { next: (event: unknown) => void }) => {
+          emitBlock = next;
+          return () => {};
+        },
+      } as never,
+      { onError: globalError },
+    );
+
+    const listenerError = new Error("listener failed");
+    const listenerOnError = vi.fn();
+
+    store.subscribe("block", {
+      listener: () => {
+        throw listenerError;
+      },
+      onError: listenerOnError,
+    });
+
+    emitBlock?.({ block: { height: 1 } });
+
+    expect(globalError).toHaveBeenCalledWith(listenerError);
+    expect(listenerOnError).toHaveBeenCalledWith(listenerError);
+  });
+
+  it("routes emit listener exceptions through global and subscription error handlers", () => {
+    const globalError = vi.fn();
+    const listenerError = new Error("emit listener failed");
+    const listenerOnError = vi.fn();
+
+    const store = subscriptionsStore({} as never, { onError: globalError });
+
+    store.subscribe("submitTx", {
+      listener: () => {
+        throw listenerError;
+      },
+      onError: listenerOnError,
+    });
+
+    store.emit({ key: "submitTx" }, { status: "pending" });
+
+    expect(globalError).toHaveBeenCalledWith(listenerError);
+    expect(listenerOnError).toHaveBeenCalledWith(listenerError);
+  });
+});

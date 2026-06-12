@@ -1,7 +1,7 @@
 import { createContext } from "@left-curve/applets-kit";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
-import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {

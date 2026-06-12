@@ -3,12 +3,15 @@ use {
     dango_testing::{TestAccounts, TestSuiteNaive, setup_test_naive},
     dango_types::{
         constants::{eth, perp_btc},
-        oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryTrustedSignersRequest},
+        oracle::{
+            ExecuteMsg, PriceConfig, PriceSource, QueryPriceRequest, QueryPriceSourceRequest,
+            QueryPriceSourcesRequest, QueryTrustedSignersRequest,
+        },
     },
     grug_math::Dec128_6,
     grug_types::{
-        Addr, Binary, ByteArray, Coins, Duration, NonEmpty, QuerierExt, ResultExt, Timestamp,
-        btree_map,
+        Addr, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, QuerierExt, ResultExt,
+        Timestamp, btree_map, btree_set,
     },
     pyth_types::{Channel, LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
     std::str::FromStr,
@@ -46,8 +49,8 @@ async fn pyth_lazer() {
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RegisterPriceSources(btree_map! {
-                perp_btc::DENOM.clone() => PriceSource { id: 1, channel: Channel::RealTime },
-                eth::DENOM.clone() => PriceSource { id: 2, channel: Channel::RealTime },
+                perp_btc::DENOM.clone() => PriceConfig::Single(PriceSource { id: 1, channel: Channel::RealTime }),
+                eth::DENOM.clone() => PriceConfig::Single(PriceSource { id: 2, channel: Channel::RealTime }),
             }),
             Coins::default(),
         )
@@ -176,4 +179,102 @@ async fn pyth_lazer() {
     );
     assert_eq!(price.timestamp, Timestamp::from_micros(1758539671000000));
     assert_eq!(price.market_session, MarketSession::Other);
+}
+
+#[tokio::test]
+async fn remove_price_sources() {
+    let (mut suite, mut accounts, oracle) = setup_oracle_test();
+
+    let test_denom = Denom::from_str("test").unwrap();
+
+    // Register a price source for a fresh denom, so that we can remove it
+    // later in the test.
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::RegisterPriceSources(btree_map! {
+                test_denom.clone() => PriceConfig::Single(PriceSource {
+                    id: 1,
+                    channel: Channel::RealTime,
+                }),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Sanity check: both the fresh denom and `eth`, which is registered at
+    // genesis, have a price source.
+    for denom in [test_denom.clone(), eth::DENOM.clone()] {
+        suite
+            .query_wasm_smart(oracle, QueryPriceSourceRequest { denom })
+            .should_succeed();
+    }
+
+    // Attempt to remove a price source as a non-owner. Should fail with the
+    // access control error.
+    suite
+        .execute(
+            &mut accounts.user1,
+            oracle,
+            &ExecuteMsg::RemovePriceSources(btree_set! { test_denom.clone() }),
+            Coins::default(),
+        )
+        .await
+        .should_fail_with_error("you don't have the right");
+
+    // The price source should be unaffected by the failed removal.
+    suite
+        .query_wasm_smart(oracle, QueryPriceSourceRequest {
+            denom: test_denom.clone(),
+        })
+        .should_succeed();
+
+    // Remove two price sources as the owner: one registered earlier in this
+    // test, one registered at genesis.
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::RemovePriceSources(btree_set! {
+                test_denom.clone(),
+                eth::DENOM.clone(),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Both price sources should be gone, from both the single-denom query and
+    // the enumeration.
+    for denom in [test_denom.clone(), eth::DENOM.clone()] {
+        suite
+            .query_wasm_smart(oracle, QueryPriceSourceRequest {
+                denom: denom.clone(),
+            })
+            .should_fail_with_error("data not found");
+
+        suite
+            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
+                start_after: None,
+                limit: Some(u32::MAX),
+            })
+            .should_succeed_and(|sources| !sources.contains_key(&denom));
+    }
+
+    // Removing denoms that don't have a price source — one just removed, one
+    // never registered — is a no-op that should succeed silently.
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::RemovePriceSources(btree_set! {
+                test_denom,
+                Denom::from_str("nonexistent").unwrap(),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
 }
