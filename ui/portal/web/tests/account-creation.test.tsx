@@ -190,7 +190,7 @@ describe("AccountCreation.Deposit", () => {
     });
   });
 
-  it("keeps backend user index zero in quest invalidation metadata when registering", async () => {
+  it("does not include legacy quest invalidation metadata when registering", async () => {
     accountCreationMocks.useAccount.mockReturnValue({
       account: { address: "0x7a65726f00000000000000000000000000000000" },
       isConnected: true,
@@ -199,7 +199,7 @@ describe("AccountCreation.Deposit", () => {
     });
     renderDeposit();
 
-    expect(getCapturedSubmitMutation().invalidateKeys).toEqual([["quests", 0]]);
+    expect(getCapturedSubmitMutation().invalidateKeys).toBeUndefined();
 
     fireEvent.change(getAmountInput(), {
       target: { value: "0.75" },

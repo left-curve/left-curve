@@ -67,7 +67,7 @@ describe("portal queryClient", () => {
       meta: {
         invalidateKeys: [
           ["balances", "0x616c696365000000000000000000000000000000"],
-          ["quests", "alice"],
+          ["orders", "alice"],
         ],
       },
       mutationFn: async () => ({ ok: true }),
@@ -79,7 +79,7 @@ describe("portal queryClient", () => {
       {
         keys: [
           ["balances", "0x616c696365000000000000000000000000000000"],
-          ["quests", "alice"],
+          ["orders", "alice"],
         ],
         type: "invalidate",
       },
@@ -128,7 +128,7 @@ describe("portal queryClient", () => {
     const mutation = queryClient.getMutationCache().build(queryClient, {
       meta: {
         invalidateKeys: [
-          ["quests", 0],
+          ["accounts", 0],
           ["boxes", 0],
         ],
       },
@@ -140,7 +140,7 @@ describe("portal queryClient", () => {
     expect(channel.messages).toEqual([
       {
         keys: [
-          ["quests", 0],
+          ["accounts", 0],
           ["boxes", 0],
         ],
         type: "invalidate",
@@ -166,7 +166,7 @@ describe("portal queryClient", () => {
     channel.emit({
       keys: [
         ["balances", "0x616c696365000000000000000000000000000000"],
-        ["quests", "alice"],
+        ["orders", "alice"],
       ],
       type: "invalidate",
     });
@@ -175,7 +175,7 @@ describe("portal queryClient", () => {
       queryKey: ["balances", "0x616c696365000000000000000000000000000000"],
     });
     expect(invalidateQueries).toHaveBeenNthCalledWith(2, {
-      queryKey: ["quests", "alice"],
+      queryKey: ["orders", "alice"],
     });
 
     invalidateQueries.mockClear();

@@ -11,7 +11,6 @@ import { AddressWarning } from "../src/components/modals/AddressWarning";
 import { Authenticate } from "../src/components/modals/Authenticate";
 import { ConfirmAccount } from "../src/components/modals/ConfirmAccount";
 import { RenewSession } from "../src/components/modals/RenewSession";
-import { SignupReminder } from "../src/components/modals/SignupReminder";
 import { WalletSelector } from "../src/components/modals/WalletSelector";
 
 const accountSessionModalMocks = vi.hoisted(() => ({
@@ -392,26 +391,6 @@ describe("account and session modals", () => {
     render(<AddressWarning />);
 
     fireEvent.click(screen.getByRole("button", { name: m["accountCard.addressWarning.button"]() }));
-
-    expect(accountSessionModalMocks.hideModal).toHaveBeenCalledOnce();
-    expect(accountSessionModalMocks.navigate).not.toHaveBeenCalled();
-  });
-
-  it("renders the signup reminder quest link and closes from the modal control", () => {
-    const { container } = render(<SignupReminder />);
-
-    const questLink = container.querySelector<HTMLAnchorElement>(
-      'a[href="https://app.galxe.com/quest/dango/GCNAXt8Tqv"]',
-    );
-    expect(questLink).not.toBeNull();
-    expect(questLink).toHaveAttribute("target", "_blank");
-    expect(questLink).toHaveAttribute("rel", "noreferrer");
-    expect(screen.getByAltText("dango logo")).toHaveAttribute("src", "/favicon.svg");
-
-    const closeButton = container.querySelector("button.absolute");
-    if (!closeButton) throw new Error("Expected signup reminder close button");
-
-    fireEvent.click(closeButton);
 
     expect(accountSessionModalMocks.hideModal).toHaveBeenCalledOnce();
     expect(accountSessionModalMocks.navigate).not.toHaveBeenCalled();

@@ -47,7 +47,6 @@ services:
       - CHAIN_ID=${CHAIN_ID:-localdango-1}
       - INDEXER_URL=${INDEXER_URL:-http://localhost:8080}
       - FAUCET_URL=${FAUCET_URL:-http://localhost:8082/mint}
-      - QUEST_URL=${QUEST_URL:-http://localhost:8081/check_username}
       - UP_URL=${UP_URL:-http://localhost:8080/up}
       - DANGO_CONFIG_JSON=${DANGO_CONFIG_JSON:-}
       # Set to "true" to enable JSON access logs

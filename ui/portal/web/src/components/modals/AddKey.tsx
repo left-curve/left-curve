@@ -85,7 +85,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
   const [publicKeyInput, setPublicKeyInput] = useState("");
   const [publicKey, setPublicKey] = useState<Uint8Array | null>(null);
   const connectors = useConnectors();
-  const { account, username, userIndex } = useAccount();
+  const { account, userIndex } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { hideModal, toast } = useApp();
 
@@ -119,7 +119,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
 
   const { mutateAsync: submitKey, isPending: isAddingKey } = useSubmitTx({
     mutation: {
-      invalidateKeys: [["user_keys"], ["quests", username]],
+      invalidateKeys: [["user_keys"]],
       mutationFn: async (connectorId: string) => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("Connector not found");
@@ -147,7 +147,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
 
   const { mutateAsync: linkEmailKey, isPending: isLinkingEmailKey } = useSubmitTx({
     mutation: {
-      invalidateKeys: [["user_keys"], ["quests", username]],
+      invalidateKeys: [["user_keys"]],
       mutationFn: async () => {
         const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
         if (!connector) throw new Error("Privy connector not found");
@@ -194,7 +194,7 @@ function AddKeyProvider({ children }: { children: React.ReactNode }) {
 
   const { mutateAsync: submitPublicKey, isPending: isAddingPublicKey } = useSubmitTx({
     mutation: {
-      invalidateKeys: [["user_keys"], ["quests", username]],
+      invalidateKeys: [["user_keys"]],
       mutationFn: async (publicKey: Uint8Array) => {
         if (!account || !signingClient) throw new Error("We couldn't process the request");
 
