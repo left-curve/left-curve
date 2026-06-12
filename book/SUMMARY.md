@@ -21,3 +21,4 @@
 - [Referral](perps/6-referral.md)
 - [Risk](perps/7-risk.md)
 - [API reference](perps/8-api.md)
+- [Constants](perps/9-constants.md)
