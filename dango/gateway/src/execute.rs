@@ -28,6 +28,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::SetRoutes(mapping) => set_routes(ctx, mapping),
+        ExecuteMsg::RemoveRoutes(routes) => remove_routes(ctx, routes),
         ExecuteMsg::SetRateLimits(rate_limits) => set_rate_limits(ctx, rate_limits),
         ExecuteMsg::SetWithdrawalFees(withdrawal_fees) => set_withdrawal_fees(ctx, withdrawal_fees),
         ExecuteMsg::ReceiveRemote {
@@ -80,6 +81,43 @@ fn _set_routes(
     }
 
     Ok(())
+}
+
+fn remove_routes(ctx: MutableCtx, routes: BTreeSet<(Addr, Remote)>) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only the owner can remove routes"
+    );
+
+    for (bridge, remote) in routes {
+        // Load the denom of the route. Errors if the route doesn't exist.
+        let denom = ROUTES.load(ctx.storage, (bridge, remote))?;
+
+        // The reserve of the route must be zero: either no entry exists (the
+        // route was never funded, or its denom is local-origin, for which
+        // reserves aren't tracked), or the entry has been drained to exactly
+        // zero. Otherwise, removing the route would make it impossible for
+        // the reserve to be withdrawn, as `transfer_remote` requires the
+        // reverse route to exist.
+        let reserve = RESERVES
+            .may_load(ctx.storage, (bridge, remote))?
+            .unwrap_or(Uint128::ZERO);
+
+        ensure!(
+            reserve.is_zero(),
+            "can't remove route with non-zero reserve! bridge: {bridge}, remote: {remote:?}, reserve: {reserve}"
+        );
+
+        // Delete the route, its reverse mapping, and the (zero-valued)
+        // reserve entry, so that reserve enumeration doesn't show dangling
+        // zeros. If the route is re-added later, `receive_remote` recreates
+        // the reserve entry upon the first inbound transfer.
+        ROUTES.remove(ctx.storage, (bridge, remote));
+        REVERSE_ROUTES.remove(ctx.storage, (&denom, remote));
+        RESERVES.remove(ctx.storage, (bridge, remote));
+    }
+
+    Ok(Response::new())
 }
 
 fn set_rate_limits(

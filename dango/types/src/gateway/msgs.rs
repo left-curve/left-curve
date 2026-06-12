@@ -58,9 +58,25 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     ///
-    /// Not that this is append-only, meaning you can't change or remove an
-    /// existing route.
+    /// Note that this only creates or overwrites routes; to remove an
+    /// existing route, use `RemoveRoutes`.
     SetRoutes(BTreeSet<(Origin, Addr, Remote)>),
+
+    /// Remove existing routes, identified by `(bridge, remote)` tuples.
+    ///
+    /// Can only be called by the chain owner.
+    ///
+    /// Errors if:
+    ///
+    /// - any of the routes doesn't exist;
+    /// - any of the routes still has a non-zero reserve. Removing such a
+    ///   route would make it impossible for the reserve to be withdrawn,
+    ///   as outbound transfers require the route to exist. Local-origin
+    ///   routes never track a reserve, so they can always be removed.
+    ///
+    /// Withdrawal fees and rate limits are configured independently of
+    /// routes, and are not affected by this.
+    RemoveRoutes(BTreeSet<(Addr, Remote)>),
 
     /// Overwrite the global rate-limit configuration.
     ///
