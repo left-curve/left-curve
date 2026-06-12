@@ -5,7 +5,7 @@ github_repo: "left-curve/left-curve"
 ssh_users:
   - penso
   - larry
-  # - rhaki
+  - rhaki
   # - zexsor
   # - j0nl1
   # - michael
