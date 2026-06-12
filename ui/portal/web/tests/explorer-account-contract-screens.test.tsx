@@ -354,7 +354,7 @@ describe("account and contract explorer screens", () => {
       m["explorer.accounts.perps.orders.createdAt"](),
     ]);
     expect(rowText(rows[1])).toEqual([
-      "BTC/USD",
+      "BTCUSD",
       m["explorer.accounts.perps.positions.long"](),
       "0.5",
       "$30,000",
@@ -362,7 +362,7 @@ describe("account and contract explorer screens", () => {
       "$25,000",
     ]);
     expect(rowText(rows[3])).toEqual([
-      "BTC/USD",
+      "BTCUSD",
       m["explorer.accounts.perps.orders.short"](),
       "0.5",
       "$31,000",
@@ -424,7 +424,7 @@ describe("account and contract explorer screens", () => {
     ]);
 
     const shortPosition = rowText(rows[1]).join("|");
-    expect(shortPosition).toContain("ETH/USD");
+    expect(shortPosition).toContain("ETHUSD");
     expect(shortPosition).toContain(m["explorer.accounts.perps.positions.short"]());
     expect(shortPosition).toContain("2");
     expect(shortPosition).toMatch(/\$1,800(?:\.00)?/);
@@ -432,7 +432,7 @@ describe("account and contract explorer screens", () => {
     expect(shortPosition).toContain("N/A");
 
     const longPosition = rowText(rows[2]).join("|");
-    expect(longPosition).toContain("SOL/USD");
+    expect(longPosition).toContain("SOLUSD");
     expect(longPosition).toContain(m["explorer.accounts.perps.positions.long"]());
     expect(longPosition).toContain("3");
     expect(longPosition).toContain("N/A");
@@ -464,7 +464,7 @@ describe("account and contract explorer screens", () => {
     const rows = getTableRows();
 
     expect(rowText(rows[1])).toEqual([
-      "BTC/USD",
+      "BTCUSD",
       m["explorer.accounts.perps.positions.long"](),
       "0.25",
       "$0.00",
@@ -494,7 +494,7 @@ describe("account and contract explorer screens", () => {
     const rows = getTableRows();
 
     expect(rowText(rows[1])).toEqual([
-      "BTC/USD",
+      "BTCUSD",
       m["explorer.accounts.perps.orders.long"](),
       "0.25",
       "$0.00",

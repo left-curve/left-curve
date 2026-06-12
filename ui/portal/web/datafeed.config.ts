@@ -3,8 +3,8 @@ import {
   convertResolutionToCandleInterval,
 } from "~/components/dex/helpers/chartResolution";
 import { fetchFillMarkers } from "~/components/dex/helpers/fillMarkers";
-import { getPerpsPairId, parseTradePairSymbols } from "~/components/dex/helpers/tradePairSymbols";
 
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import type { PerpsCandle } from "@left-curve/types";
 import type { PublicClient } from "@left-curve/sdk";
 import type { useConfig } from "@left-curve/store";
@@ -40,14 +40,33 @@ type CreatePerpsDataFeedParameters = {
   getAccountAddress: () => string | undefined;
 };
 
-function perpsSymbolToPairId(symbolName: string): string {
-  const parsed = parseTradePairSymbols(symbolName);
-  if (!parsed) throw new Error(`Unsupported perps symbol: ${symbolName}`);
-  return getPerpsPairId(parsed);
-}
-
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function pairFromSymbolInfo(symbolInfo: LibrarySymbolInfo): MarketPair | null {
+  return MarketPair.tryFromTicker(symbolInfo.ticker || symbolInfo.name);
+}
+
+function createSymbolInfo(pair: MarketPair): LibrarySymbolInfo {
+  return {
+    name: pair.ticker,
+    ticker: pair.ticker,
+    description: `${pair.ticker} Perp`,
+    session: "24x7",
+    type: "crypto",
+    timezone: "Etc/UTC",
+    has_seconds: true,
+    exchange: "Dango",
+    listed_exchange: "Dango",
+    format: "price",
+    pricescale: 100,
+    minmov: 1,
+    has_intraday: true,
+    supported_resolutions: [...CHART_RESOLUTIONS],
+    volume_precision: 2,
+    data_status: "streaming",
+  };
 }
 
 export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): IBasicDataFeed {
@@ -74,31 +93,16 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
     resolveSymbol: (
       symbolName: string,
       onSymbolResolvedCallback: ResolveCallback,
-      _onResolveErrorCallback: (reason: string) => void,
+      onResolveErrorCallback: (reason: string) => void,
       _extension?: unknown,
     ) => {
-      const [base] = symbolName.split("-");
+      const pair = MarketPair.tryFromTicker(symbolName);
+      if (!pair) {
+        onResolveErrorCallback(`Unknown symbol: ${symbolName}`);
+        return;
+      }
 
-      const symbolInfo: LibrarySymbolInfo = {
-        name: symbolName,
-        ticker: symbolName,
-        description: `${base} / USD Perp`,
-        session: "24x7",
-        type: "crypto",
-        timezone: "Etc/UTC",
-        has_seconds: true,
-        exchange: "Dango",
-        listed_exchange: "Dango",
-        format: "price",
-        pricescale: 100,
-        minmov: 1,
-        has_intraday: true,
-        supported_resolutions: [...CHART_RESOLUTIONS],
-        volume_precision: 2,
-        data_status: "streaming",
-      };
-
-      setTimeout(() => onSymbolResolvedCallback(symbolInfo), 0);
+      setTimeout(() => onSymbolResolvedCallback(createSymbolInfo(pair)), 0);
     },
 
     getBars: (
@@ -108,17 +112,22 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       onHistoryCallback: HistoryCallback,
       onErrorCallback: (reason: string) => void,
     ) => {
+      const pair = pairFromSymbolInfo(symbolInfo);
+      if (!pair) {
+        onErrorCallback(`Unknown symbol: ${symbolInfo.ticker || symbolInfo.name}`);
+        return;
+      }
+
       const { to } = periodParams;
-      const currentPairId = perpsSymbolToPairId(symbolInfo.name);
       const interval = convertResolutionToCandleInterval(resolution);
       const earlierThan = new Date(to * 1000);
 
       queryClient
         .fetchQuery({
-          queryKey: ["perpsCandles", currentPairId, earlierThan, interval],
+          queryKey: ["perpsCandles", pair.id, earlierThan, interval],
           queryFn: () =>
             client.queryPerpsCandles({
-              pairId: currentPairId,
+              pairId: pair.id,
               interval,
               earlierThan: earlierThan.toJSON(),
             }),
@@ -144,12 +153,14 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       onRealtimeCallback: SubscribeBarsCallback,
       _subscriberId: string,
     ) => {
-      const currentPairId = perpsSymbolToPairId(symbolInfo.name);
+      const pair = pairFromSymbolInfo(symbolInfo);
+      if (!pair) return;
+
       const interval = convertResolutionToCandleInterval(resolution);
       unsubscribe();
 
       _unsubscribe = subscriptions.subscribe("perpsCandles", {
-        params: { pairId: currentPairId, interval },
+        params: { pairId: pair.id, interval },
         listener: ({ perpsCandles }) => {
           if (perpsCandles.length > 0) {
             const [newBar] = perpsCandlesToTradingViewBar(perpsCandles);
@@ -167,18 +178,17 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
       resolution: ResolutionString,
     ) => {
       const accountAddress = getAccountAddress();
-      if (!accountAddress) {
+      const pair = pairFromSymbolInfo(symbolInfo);
+      if (!accountAddress || !pair) {
         onDataCallback([]);
         return;
       }
-
-      const currentPairId = perpsSymbolToPairId(symbolInfo.name);
 
       fetchFillMarkers({
         client,
         queryClient,
         accountAddress,
-        pairId: currentPairId,
+        pairId: pair.id,
         resolution,
         from,
         to,
@@ -191,6 +201,8 @@ export function createPerpsDataFeed(parameters: CreatePerpsDataFeedParameters): 
     },
 
     searchSymbols: () => {},
-    unsubscribeBars: () => {},
+    unsubscribeBars: () => {
+      unsubscribe();
+    },
   };
 }

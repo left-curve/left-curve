@@ -259,14 +259,14 @@ describe("points hooks", () => {
     pointsApiMocks.fetchPointsConfig.mockResolvedValue({
       boost_config: {
         pair: {
-          "BTC-USD": {
+          "perp/btcusd": {
             "1-3": "1.000000",
             "4-": "2.500000",
           },
-          "ETH-USD": {
+          "perp/ethusd": {
             "5": "1.500000",
           },
-          "SOL-USD": {
+          "perp/solusd": {
             malformed: "9.000000",
           },
         },
@@ -286,8 +286,8 @@ describe("points hooks", () => {
 
     await waitFor(() =>
       expect(result.current.boostByPairId).toEqual({
-        "BTC-USD": "2.500000",
-        "ETH-USD": "1.500000",
+        "perp/btcusd": "2.500000",
+        "perp/ethusd": "1.500000",
       }),
     );
 
@@ -311,16 +311,16 @@ describe("points hooks", () => {
     pointsApiMocks.fetchPointsConfig.mockResolvedValue({
       boost_config: {
         pair: {
-          "ATOM-USD": {
+          "perp/atomusd": {
             "0": "1.750000",
           },
-          "BTC-USD": {
+          "perp/btcusd": {
             "0-2": "2.250000",
           },
-          "ETH-USD": {
+          "perp/ethusd": {
             "1-": "3.000000",
           },
-          "SOL-USD": {
+          "perp/solusd": {
             "0": "1.000000",
           },
         },
@@ -340,8 +340,8 @@ describe("points hooks", () => {
 
     await waitFor(() =>
       expect(result.current.boostByPairId).toEqual({
-        "ATOM-USD": "1.750000",
-        "BTC-USD": "2.250000",
+        "perp/atomusd": "1.750000",
+        "perp/btcusd": "2.250000",
       }),
     );
 

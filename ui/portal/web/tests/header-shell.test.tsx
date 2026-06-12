@@ -27,7 +27,7 @@ const headerMocks = vi.hoisted(() => ({
   isSearchBarVisible: false,
   isSidebarVisible: false,
   isUserActive: true,
-  pathname: "/trade/BTC-USD",
+  pathname: "/trade/BTCUSD",
   setSidebarVisibility: vi.fn(),
   showModal: vi.fn(),
 }));
@@ -97,7 +97,7 @@ describe("Header shell", () => {
     headerMocks.isSearchBarVisible = false;
     headerMocks.isSidebarVisible = false;
     headerMocks.isUserActive = true;
-    headerMocks.pathname = "/trade/BTC-USD";
+    headerMocks.pathname = "/trade/BTCUSD";
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: vi.fn(() => ({

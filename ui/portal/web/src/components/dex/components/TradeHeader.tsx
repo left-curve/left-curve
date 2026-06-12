@@ -28,9 +28,9 @@ export const TradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
 
-  const { pairId, perpsPairId, onChangePairId } = useProTrade();
+  const { pair, onChangeTicker } = useProTrade();
   const pairStatsData = usePerpsPairStatsByPairId({
-    pairId: perpsPairId,
+    pairId: pair.id,
   });
 
   useEffect(() => {
@@ -38,14 +38,14 @@ export const TradeHeader: React.FC = () => {
   }, [isLg]);
 
   const handleChangePair = (row: SearchTokenRow) => {
-    onChangePairId(`${row.baseCoin.symbol}-${row.quoteCoin.symbol}`);
+    onChangeTicker(row.pair.ticker);
   };
 
   return (
     <div className="flex bg-surface-primary-rice lg:gap-6 px-4 py-3 flex-col lg:flex-row w-full lg:justify-start shadow-account-card z-20 lg:z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-1">
-          <SearchToken pairId={pairId} onChangePairId={handleChangePair} />
+          <SearchToken pair={pair} onChangePair={handleChangePair} />
           <div className="lg:pl-8">
             <Badge text="Perp" color="green" size="s" />
           </div>
@@ -74,7 +74,11 @@ export const TradeHeader: React.FC = () => {
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
             className="lg:flex-1 lg:min-w-0 flex items-center"
           >
-            <HeaderMetricsScroller pairStatsData={pairStatsData} perpsPairId={perpsPairId} />
+            <HeaderMetricsScroller
+              baseDenom={pair.base.denom}
+              pairStatsData={pairStatsData}
+              pairId={pair.id}
+            />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -83,13 +87,15 @@ export const TradeHeader: React.FC = () => {
 };
 
 type HeaderMetricsScrollerProps = {
+  baseDenom: string;
   pairStatsData: NormalizedPerpsPairStats | null;
-  perpsPairId: string;
+  pairId: string;
 };
 
 const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
+  baseDenom,
   pairStatsData,
-  perpsPairId,
+  pairId,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [{ canScrollLeft, canScrollRight }, setScrollState] = useState({
@@ -151,8 +157,8 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
         className="gap-2 xxl:gap-6 grid grid-cols-3 lg:flex lg:flex-nowrap lg:items-center overflow-x-auto overflow-y-hidden diatype-xxs-medium lg:diatype-xs-medium scrollbar-none"
       >
         <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
-        <HeaderPrice perpsPairId={perpsPairId} />
-        <HeaderOraclePrice denom={perpsPairId} />
+        <HeaderPrice pairId={pairId} />
+        <HeaderOraclePrice denom={baseDenom} />
         <Header24hChange
           currentPrice={pairStatsData?.currentPrice}
           price24HAgo={pairStatsData?.price24HAgo}
@@ -175,8 +181,8 @@ const HeaderMetricsScroller: React.FC<HeaderMetricsScrollerProps> = ({
   );
 };
 
-const HeaderPrice: React.FC<{ perpsPairId: string }> = ({ perpsPairId }) => {
-  const { currentPrice, previousPrice } = useCurrentPrice({ perpsPairId });
+const HeaderPrice: React.FC<{ pairId: string }> = ({ pairId }) => {
+  const { currentPrice, previousPrice } = useCurrentPrice({ pairId });
 
   return (
     <div className="flex gap-1 flex-col lg:w-[3.5rem] lg:shrink-0 items-start">

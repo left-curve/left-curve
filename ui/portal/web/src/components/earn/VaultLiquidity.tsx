@@ -14,11 +14,12 @@ import {
   useApp,
   useInputs,
 } from "@left-curve/applets-kit";
-import { perpsMarginAsset, useAccount, useVaultLiquidityState } from "@left-curve/store";
+import { useAccount, useVaultLiquidityState } from "@left-curve/store";
 import { formatNumber } from "@left-curve/utils";
 
 import type { VaultPerformancePeriod } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { MobileTitle } from "../foundation/MobileTitle";
 import { UserWithdrawals } from "./UserWithdrawals";
@@ -31,6 +32,8 @@ const PERIOD_DAYS: Record<VaultPerformancePeriod, number> = {
   "30D": 30,
   "90D": 90,
 };
+
+const usd = MarketPair.USD;
 
 const [VaultLiquidityProvider, useVaultLiquidity] = createContext<{
   state: ReturnType<typeof useVaultLiquidityState>;
@@ -228,11 +231,11 @@ const DepositForm: React.FC = () => {
             startContent={
               <div className="flex items-center gap-2 pl-4">
                 <Image
-                  src={perpsMarginAsset.logoURI}
-                  alt={perpsMarginAsset.symbol}
+                  src={usd.logoURI}
+                  alt={usd.symbol}
                   className="w-8 h-8 rounded-full"
                 />
-                <p className="text-ink-tertiary-500 diatype-lg-medium">{perpsMarginAsset.symbol}</p>
+                <p className="text-ink-tertiary-500 diatype-lg-medium">{usd.symbol}</p>
               </div>
             }
             classNames={{
@@ -442,13 +445,11 @@ const UserPosition: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Image
-              src={perpsMarginAsset.logoURI}
-              alt={perpsMarginAsset.symbol}
+              src={usd.logoURI}
+              alt={usd.symbol}
               className="w-5 h-5 rounded-full"
             />
-            <span className="text-ink-tertiary-500 diatype-m-regular">
-              {perpsMarginAsset.symbol}
-            </span>
+            <span className="text-ink-tertiary-500 diatype-m-regular">{usd.symbol}</span>
           </div>
           <span className="text-ink-tertiary-500 diatype-m-regular">
             {formatNumber(userHasShares ? userSharesValue : "0", {

@@ -97,12 +97,6 @@ vi.mock("@left-curve/foundation", async (importOriginal) => {
 
 vi.mock("@left-curve/store", () => ({
   invalidatePerpsAccountResources: transferMocks.invalidatePerpsAccountResources,
-  perpsMarginAsset: {
-    decimals: 6,
-    denom: "perp/usdc",
-    logoURI: "/perp-usdc.png",
-    symbol: "USDC",
-  },
   useAccount: () => ({
     account: transferMocks.isConnected
       ? { address: "0x73656e6465720000000000000000000000000000" }
@@ -212,6 +206,45 @@ vi.mock("@left-curve/applets-kit", async (importOriginal) => {
         ))}
       </select>
     ),
+    Tab: ({ children, title }: React.PropsWithChildren<{ title: string }>) => (
+      <span>{children ?? title}</span>
+    ),
+    Tabs: ({
+      children,
+      isDisabled,
+      keys,
+      onTabChange,
+      selectedTab,
+    }: React.PropsWithChildren<{
+      isDisabled?: boolean;
+      keys?: string[];
+      onTabChange?: (tab: string) => void;
+      selectedTab?: string;
+    }>) => {
+      const childTabs = React.Children.toArray(children).filter(
+        (child): child is React.ReactElement<{ title: string }> =>
+          React.isValidElement<{ title: string }>(child),
+      );
+      const tabs = keys
+        ? keys.map((title) => ({ title, label: title }))
+        : childTabs.map((child) => ({ title: child.props.title, label: child }));
+
+      return (
+        <div>
+          {tabs.map(({ title, label }) => (
+            <button
+              aria-pressed={title === selectedTab}
+              disabled={isDisabled}
+              key={title}
+              onClick={() => onTabChange?.(title)}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      );
+    },
     useApp: () => ({
       settings: {
         formatNumberOptions: {

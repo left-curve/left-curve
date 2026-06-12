@@ -36,7 +36,7 @@ const tradeApplet: AppletFixture = {
   description: "Trade perpetuals",
   id: "trade",
   img: "/trade.svg",
-  path: "/trade/BTC-USDC",
+  path: "/trade/BTCUSDC",
   title: "Trade",
 };
 
@@ -260,7 +260,7 @@ describe("search menu body", () => {
     expect(screen.getByRole("region", { name: "Contracts" })).toBeInTheDocument();
 
     clickResult("Trade");
-    expect(searchMenuMocks.navigate).toHaveBeenLastCalledWith({ to: "/trade/BTC-USDC" });
+    expect(searchMenuMocks.navigate).toHaveBeenLastCalledWith({ to: "/trade/BTCUSDC" });
     expect(searchMenuMocks.hideMenu).toHaveBeenCalledTimes(1);
 
     clickResult("#42 Block");

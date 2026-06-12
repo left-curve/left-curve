@@ -1,32 +1,27 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 
-import { useConfig } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useHeaderHeight } from "@left-curve/applets-kit";
 import { useCallback } from "react";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 import { ProTrade } from "~/components/dex/components/ProTrade";
-import {
-  getTradeQuoteDenom,
-  parseTradePairSymbols,
-} from "~/components/dex/helpers/tradePairSymbols";
 
-export const Route = createLazyFileRoute("/(app)/_app/trade/$pairSymbols")({
+export const Route = createLazyFileRoute("/(app)/_app/trade/$ticker")({
   component: ProTradeApplet,
 });
 
 function ProTradeApplet() {
   const navigate = useNavigate();
-  const { coins } = useConfig();
-  const { pairSymbols } = Route.useParams();
+  const { ticker } = Route.useParams();
   const { action = "buy", order_type = "market" } = Route.useSearch();
   const headerHeight = useHeaderHeight();
 
-  const onChangePairId = useCallback(
-    (pairSymbols: string) => {
+  const onChangeTicker = useCallback(
+    (ticker: string) => {
       navigate({
-        to: "/trade/$pairSymbols",
-        params: { pairSymbols },
+        to: "/trade/$ticker",
+        params: { ticker },
         replace: true,
       });
     },
@@ -36,33 +31,28 @@ function ProTradeApplet() {
   const onChangeAction = useCallback(
     (action: "buy" | "sell") => {
       navigate({
-        to: "/trade/$pairSymbols",
-        params: { pairSymbols },
+        to: "/trade/$ticker",
+        params: { ticker },
         replace: true,
         search: { order_type, action },
       });
     },
-    [navigate, order_type, pairSymbols],
+    [navigate, order_type, ticker],
   );
 
   const onChangeOrderType = useCallback(
     (order_type: "limit" | "market") => {
       navigate({
-        to: "/trade/$pairSymbols",
-        params: { pairSymbols },
+        to: "/trade/$ticker",
+        params: { ticker },
         replace: true,
         search: { order_type, action },
       });
     },
-    [action, navigate, pairSymbols],
+    [action, navigate, ticker],
   );
 
-  const { baseSymbol = "", quoteSymbol = "" } = parseTradePairSymbols(pairSymbols) ?? {};
-
-  const pairId = {
-    baseDenom: coins.bySymbol[baseSymbol]?.denom ?? "",
-    quoteDenom: getTradeQuoteDenom(quoteSymbol, coins.bySymbol) ?? "",
-  };
+  const pair = MarketPair.tryFromTicker(ticker) ?? MarketPair.default;
 
   return (
     <div
@@ -72,8 +62,8 @@ function ProTradeApplet() {
       }}
     >
       <ProTrade
-        pairId={pairId}
-        onChangePairId={onChangePairId}
+        pair={pair}
+        onChangeTicker={onChangeTicker}
         action={action}
         onChangeAction={onChangeAction}
         orderType={order_type}

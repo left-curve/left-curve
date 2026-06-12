@@ -1070,7 +1070,7 @@ describe("store actions", () => {
         .fn()
         .mockResolvedValue("0x636f64652d68617368000000000000000000000000000000000000000000"),
       getPerpsPairParams: vi.fn().mockResolvedValue({
-        "BTC/USD": {
+        "perp/btcusd": {
           enabled: true,
         },
       }),
@@ -1097,7 +1097,7 @@ describe("store actions", () => {
       },
       owner: "0x6f776e6572000000000000000000000000000000",
       perpsPairs: {
-        "BTC/USD": {
+        "perp/btcusd": {
           enabled: true,
         },
       },

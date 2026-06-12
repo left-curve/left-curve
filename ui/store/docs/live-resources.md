@@ -7,8 +7,8 @@ Rules:
 
 - Components read live data through selector hooks: `useX(selector, params, equalityFn?)`.
 - Selectors are required. The default selector equality is `Object.is`.
-- Hook params carry domain identity explicitly, such as `accountAddress`, `perpsPairId`,
-  `bucketSize`, `limit`, and `enabled`.
+- Hook params carry domain identity explicitly, such as `accountAddress`, `pairId`, `bucketSize`,
+  `limit`, and `enabled`.
 - Missing params or `enabled: false` means the hook does not acquire the resource and reads the
   idle snapshot.
 - Contract addresses and canonical subscription cadence are owned inside each resource hook.

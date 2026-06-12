@@ -538,7 +538,7 @@ describe("runtime hooks", () => {
             contract_event: {
               data: {
                 orderId: "order-1",
-                pairId: "BTC-USD",
+                pairId: "perp/btcusd",
               },
               type: "order_filled",
             },
@@ -575,7 +575,7 @@ describe("runtime hooks", () => {
       blockHeight: 14,
       data: {
         orderId: "order-1",
-        pairId: "BTC-USD",
+        pairId: "perp/btcusd",
       },
       id: "activity-3",
       txHash: "0xorder",

@@ -7,7 +7,7 @@ import { truncateDec } from "@left-curve/utils";
 import type { ChildOrder, PerpsOrderKind, PerpsTimeInForce } from "@left-curve/types";
 
 type UsePerpsSubmissionParameters = {
-  perpsPairId: string;
+  pairId: string;
   action: "buy" | "sell";
   operation: "limit" | "market";
   sizeValue: string;
@@ -23,7 +23,7 @@ type UsePerpsSubmissionParameters = {
 
 export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
   const {
-    perpsPairId,
+    pairId,
     action,
     operation,
     sizeValue,
@@ -66,7 +66,7 @@ export function usePerpsSubmission(parameters: UsePerpsSubmissionParameters) {
 
         await signingClient.submitPerpsOrder({
           sender: account.address,
-          pairId: perpsPairId,
+          pairId,
           size: signedSize,
           kind,
           reduceOnly,

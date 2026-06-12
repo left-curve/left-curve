@@ -8,7 +8,7 @@ import { resetAppletsKitMocks, setAppletsKitUseHeaderHeight } from "./mocks/appl
 const routeMocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   params: {
-    pairSymbols: "ETH-USD",
+    ticker: "ETHUSD",
   },
   redirect: vi.fn((options: unknown) => ({
     options,
@@ -59,11 +59,11 @@ vi.mock("~/components/dex/components/ProTrade", () => {
     children: React.ReactNode;
     onChangeAction: (action: "buy" | "sell") => void;
     onChangeOrderType: (orderType: "limit" | "market") => void;
-    onChangePairId: (pairSymbols: string) => void;
+    onChangeTicker: (ticker: string) => void;
     orderType: "limit" | "market";
-    pairId: {
-      baseDenom: string;
-      quoteDenom: string;
+    pair: {
+      id: string;
+      ticker: string;
     };
   };
 
@@ -72,18 +72,18 @@ vi.mock("~/components/dex/components/ProTrade", () => {
     children,
     onChangeAction,
     onChangeOrderType,
-    onChangePairId,
+    onChangeTicker,
     orderType,
-    pairId,
+    pair,
   }: ProTradeProps) => (
     <section
       data-action={action}
-      data-base-denom={pairId.baseDenom}
       data-order-type={orderType}
-      data-quote-denom={pairId.quoteDenom}
+      data-perps-pair-id={pair.id}
+      data-ticker={pair.ticker}
       data-testid="pro-trade"
     >
-      <button onClick={() => onChangePairId("BTC-USD")} type="button">
+      <button onClick={() => onChangeTicker("BTCUSD")} type="button">
         change pair
       </button>
       <button onClick={() => onChangeAction(action === "buy" ? "sell" : "buy")} type="button">
@@ -124,7 +124,7 @@ type TradeRoute = {
         };
       };
       params: {
-        pairSymbols: string;
+        ticker: string;
       };
     }) => Promise<void>;
     validateSearch: {
@@ -163,7 +163,7 @@ let tradeIndexRoutePromise: Promise<TradeIndexRoute> | undefined;
 async function loadTradeRoute() {
   routeMocks.redirect.mockClear();
 
-  tradeRoutePromise ??= import("../src/pages/(app)/_app.trade.$pairSymbols").then(
+  tradeRoutePromise ??= import("../src/pages/(app)/_app.trade.$ticker").then(
     ({ Route }) => Route as unknown as TradeRoute,
   );
   return tradeRoutePromise;
@@ -172,7 +172,7 @@ async function loadTradeRoute() {
 async function loadTradeLazyRoute() {
   routeMocks.navigate.mockClear();
 
-  tradeLazyRoutePromise ??= import("../src/pages/(app)/_app.trade.$pairSymbols.lazy").then(
+  tradeLazyRoutePromise ??= import("../src/pages/(app)/_app.trade.$ticker.lazy").then(
     ({ Route }) => Route as unknown as TradeLazyRoute,
   );
   return tradeLazyRoutePromise;
@@ -188,10 +188,8 @@ async function loadTradeIndexRoute() {
 }
 
 function createRouteContext({
-  chainName = "Mainnet",
   getPerpsPairParam = vi.fn().mockResolvedValue({ pairId: "perp/btcusd" }),
 }: {
-  chainName?: string;
   getPerpsPairParam?: ReturnType<typeof vi.fn>;
 } = {}) {
   return {
@@ -200,21 +198,21 @@ function createRouteContext({
     },
     config: {
       chain: {
-        name: chainName,
+        name: "Mainnet",
       },
     },
   };
 }
 
 function setLazyRouteState({
-  pairSymbols = "ETH-USD",
+  ticker = "ETHUSD",
   search = {},
 }: {
-  pairSymbols?: string;
+  ticker?: string;
   search?: typeof routeMocks.search;
 } = {}) {
   routeMocks.params = {
-    pairSymbols,
+    ticker,
   };
   routeMocks.search = search;
 }
@@ -250,7 +248,7 @@ describe("trade routes", () => {
       Route.options.beforeLoad({
         context: createRouteContext({ getPerpsPairParam }),
         params: {
-          pairSymbols: "ETH-USD",
+          ticker: "ETHUSD",
         },
       }),
     ).resolves.toBeUndefined();
@@ -261,7 +259,7 @@ describe("trade routes", () => {
     expect(routeMocks.redirect).not.toHaveBeenCalled();
   });
 
-  it("normalizes pair symbols before asking the backend for pair params", async () => {
+  it("normalizes cataloged pair ticker casing before asking the backend for pair params", async () => {
     const Route = await loadTradeRoute();
     const getPerpsPairParam = vi.fn();
 
@@ -269,21 +267,21 @@ describe("trade routes", () => {
       Route.options.beforeLoad({
         context: createRouteContext({ getPerpsPairParam }),
         params: {
-          pairSymbols: "eth",
+          ticker: "ethusd",
         },
       }),
     );
 
     expect(redirect.options).toEqual({
       params: {
-        pairSymbols: "ETH-USD",
+        ticker: "ETHUSD",
       },
-      to: "/trade/$pairSymbols",
+      to: "/trade/$ticker",
     });
     expect(getPerpsPairParam).not.toHaveBeenCalled();
   });
 
-  it("falls back to the chain default when the pair route is malformed", async () => {
+  it("falls back to the route default when the pair route is malformed", async () => {
     const Route = await loadTradeRoute();
     const getPerpsPairParam = vi.fn();
 
@@ -291,44 +289,39 @@ describe("trade routes", () => {
       Route.options.beforeLoad({
         context: createRouteContext({ getPerpsPairParam }),
         params: {
-          pairSymbols: "ETH-USD-EXTRA",
+          ticker: "ETHUSD-EXTRA",
         },
       }),
     );
 
     expect(redirect.options).toEqual({
       params: {
-        pairSymbols: "BTC-USD",
+        ticker: "BTCUSD",
       },
-      to: "/trade/$pairSymbols",
+      to: "/trade/$ticker",
     });
     expect(getPerpsPairParam).not.toHaveBeenCalled();
   });
 
-  it("falls back to the chain default when the backend has no perps pair params", async () => {
+  it("falls back to the route default without querying the backend when the ticker is uncataloged", async () => {
     const Route = await loadTradeRoute();
-    const getPerpsPairParam = vi.fn().mockRejectedValue(new Error("missing pair"));
+    const getPerpsPairParam = vi.fn();
 
     const redirect = await expectRedirect(
       Route.options.beforeLoad({
-        context: createRouteContext({
-          chainName: "Devnet",
-          getPerpsPairParam,
-        }),
+        context: createRouteContext({ getPerpsPairParam }),
         params: {
-          pairSymbols: "DOGE-USD",
+          ticker: "DOGE-USD",
         },
       }),
     );
 
-    expect(getPerpsPairParam).toHaveBeenCalledWith({
-      pairId: "perp/dogeusd",
-    });
+    expect(getPerpsPairParam).not.toHaveBeenCalled();
     expect(redirect.options).toEqual({
       params: {
-        pairSymbols: "ETH-USD",
+        ticker: "BTCUSD",
       },
-      to: "/trade/$pairSymbols",
+      to: "/trade/$ticker",
     });
   });
 
@@ -351,7 +344,7 @@ describe("trade routes", () => {
     expect(() => Route.options.validateSearch.parse({ action: "close" })).toThrow();
   });
 
-  it("redirects the trade index route to the chain default pair", async () => {
+  it("redirects the trade index route to the route default pair", async () => {
     const Route = await loadTradeIndexRoute();
 
     const redirect = await expectRedirect(
@@ -368,15 +361,15 @@ describe("trade routes", () => {
 
     expect(redirect.options).toEqual({
       params: {
-        pairSymbols: "ETH-USD",
+        ticker: "BTCUSD",
       },
-      to: "/trade/$pairSymbols",
+      to: "/trade/$ticker",
     });
   });
 
-  it("maps route pair symbols and search params into the trade screen", async () => {
+  it("maps route ticker and search params into the trade screen", async () => {
     setLazyRouteState({
-      pairSymbols: "ETH-USDC",
+      ticker: "ETHUSD",
       search: {
         action: "sell",
         order_type: "limit",
@@ -388,8 +381,8 @@ describe("trade routes", () => {
     render(<Component />);
 
     const proTrade = screen.getByTestId("pro-trade");
-    expect(proTrade).toHaveAttribute("data-base-denom", "bridge/eth");
-    expect(proTrade).toHaveAttribute("data-quote-denom", "bridge/usdc");
+    expect(proTrade).toHaveAttribute("data-ticker", "ETHUSD");
+    expect(proTrade).toHaveAttribute("data-perps-pair-id", "perp/ethusd");
     expect(proTrade).toHaveAttribute("data-action", "sell");
     expect(proTrade).toHaveAttribute("data-order-type", "limit");
     expect(screen.getByTestId("trade-header")).toBeInTheDocument();
@@ -401,7 +394,7 @@ describe("trade routes", () => {
 
   it("keeps trade screen navigation callbacks on the active pair route", async () => {
     setLazyRouteState({
-      pairSymbols: "ETH-USD",
+      ticker: "ETHUSD",
       search: {
         action: "sell",
         order_type: "limit",
@@ -415,42 +408,42 @@ describe("trade routes", () => {
     fireEvent.click(screen.getByRole("button", { name: "change pair" }));
     expect(routeMocks.navigate).toHaveBeenLastCalledWith({
       params: {
-        pairSymbols: "BTC-USD",
+        ticker: "BTCUSD",
       },
       replace: true,
-      to: "/trade/$pairSymbols",
+      to: "/trade/$ticker",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "change action" }));
     expect(routeMocks.navigate).toHaveBeenLastCalledWith({
       params: {
-        pairSymbols: "ETH-USD",
+        ticker: "ETHUSD",
       },
       replace: true,
       search: {
         action: "buy",
         order_type: "limit",
       },
-      to: "/trade/$pairSymbols",
+      to: "/trade/$ticker",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "change order type" }));
     expect(routeMocks.navigate).toHaveBeenLastCalledWith({
       params: {
-        pairSymbols: "ETH-USD",
+        ticker: "ETHUSD",
       },
       replace: true,
       search: {
         action: "sell",
         order_type: "market",
       },
-      to: "/trade/$pairSymbols",
+      to: "/trade/$ticker",
     });
   });
 
-  it("defaults the lazy trade screen to USD market buys when search params are absent", async () => {
+  it("uses the default pair when rendering with invalid route ticker input", async () => {
     setLazyRouteState({
-      pairSymbols: "ETH",
+      ticker: "ETH",
     });
     const Route = await loadTradeLazyRoute();
     const Component = Route.options.component;
@@ -458,8 +451,8 @@ describe("trade routes", () => {
     render(<Component />);
 
     const proTrade = screen.getByTestId("pro-trade");
-    expect(proTrade).toHaveAttribute("data-base-denom", "bridge/eth");
-    expect(proTrade).toHaveAttribute("data-quote-denom", "usd");
+    expect(proTrade).toHaveAttribute("data-ticker", "BTCUSD");
+    expect(proTrade).toHaveAttribute("data-perps-pair-id", "perp/btcusd");
     expect(proTrade).toHaveAttribute("data-action", "buy");
     expect(proTrade).toHaveAttribute("data-order-type", "market");
   });

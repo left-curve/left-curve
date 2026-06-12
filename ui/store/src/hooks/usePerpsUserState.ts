@@ -12,21 +12,6 @@ import type { PerpsUserResourceParams } from "./createPerpsUserResource.js";
 import type { PerpsUserState, QueryRequest } from "@left-curve/types";
 import type { LiveResourceSnapshot } from "../live/types.js";
 
-export const perpsMarginAsset = {
-  name: "US Dollar",
-  symbol: "USD",
-  logoURI: "/images/coins/usd.svg",
-  decimals: 6,
-} as const;
-
-export type PerpsAssetClass = "crypto" | "commodity";
-
-const PERPS_COMMODITY_BASE_SYMBOLS: ReadonlySet<string> = new Set(["XAU", "XAG", "BRENT", "WTI"]);
-
-export function getPerpsAssetClass(baseSymbol: string): PerpsAssetClass {
-  return PERPS_COMMODITY_BASE_SYMBOLS.has(baseSymbol.toUpperCase()) ? "commodity" : "crypto";
-}
-
 const PERPS_USER_STATE_INTERVAL = 5;
 const PERPS_USER_STATE_HTTP_INTERVAL = 10_000;
 
@@ -84,7 +69,6 @@ export function usePerpsUserState<Selection>(
   const { data: appConfig } = useAppConfig();
   const publicClient = usePublicClient();
   const resourceParams = {
-    chainId: config.chain.id,
     accountAddress: accountAddress ?? "",
     perpsContract: appConfig.addresses.perps,
     publicClient,

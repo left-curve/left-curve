@@ -10,7 +10,6 @@ import type { LiveResourceSnapshot } from "../live/types.js";
 import type { Config } from "../types/store.js";
 
 export type PerpsUserResourceParams = {
-  chainId: Config["chain"]["id"];
   accountAddress: string;
   perpsContract: string;
   publicClient: PublicClient;
@@ -54,8 +53,7 @@ export function createPerpsUserResource<
 }: CreatePerpsUserResourceParameters<Response, Snapshot>) {
   return createLiveResource<PerpsUserResourceParams, Snapshot>({
     name,
-    getKey: ({ chainId, perpsContract, accountAddress }) =>
-      `${name}:${chainId}:${perpsContract}:${accountAddress}`,
+    getKey: ({ perpsContract, accountAddress }) => `${name}:${perpsContract}:${accountAddress}`,
     getInitialSnapshot: () => initialSnapshot,
     equal: (previous, next) => equalLiveResourcePayload(previous, next, payloadKeys),
     start: ({ accountAddress, perpsContract, publicClient, subscriptions }, { emit, error }) => {

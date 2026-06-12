@@ -286,13 +286,13 @@ describe("subscriptions store", () => {
       listener: candlesListener,
       params: {
         interval: "1m",
-        pairId: "BTC-USD",
+        pairId: "perp/btcusd",
       },
     });
     store.subscribe("perpsTrades", {
       listener: tradesListener,
       params: {
-        pairId: "BTC-USD",
+        pairId: "perp/btcusd",
       },
     });
     store.subscribe("allPerpsPairStats", {
@@ -318,12 +318,12 @@ describe("subscriptions store", () => {
       error: expect.any(Function),
       interval: "1m",
       next: expect.any(Function),
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
     });
     expect(client.perpsTradesSubscription).toHaveBeenCalledWith({
       error: expect.any(Function),
       next: expect.any(Function),
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
     });
     expect(client.allPerpsPairStatsSubscription).toHaveBeenCalledWith({
       error: expect.any(Function),
@@ -344,7 +344,7 @@ describe("subscriptions store", () => {
       perpsTrades: { price: "101", size: "2" },
     });
     emitAllPairStats?.({
-      allPerpsPairStats: [{ pairId: "BTC-USD", volume: "1000" }],
+      allPerpsPairStats: [{ pairId: "perp/btcusd", volume: "1000" }],
     });
 
     expect(accountListener).toHaveBeenCalledWith({
@@ -360,7 +360,7 @@ describe("subscriptions store", () => {
       perpsTrades: { price: "101", size: "2" },
     });
     expect(statsListener).toHaveBeenCalledWith({
-      allPerpsPairStats: [{ pairId: "BTC-USD", volume: "1000" }],
+      allPerpsPairStats: [{ pairId: "perp/btcusd", volume: "1000" }],
     });
   });
 

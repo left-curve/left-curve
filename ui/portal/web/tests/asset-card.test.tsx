@@ -37,12 +37,6 @@ vi.mock("@left-curve/foundation", async (importOriginal) => ({
 }));
 
 vi.mock("@left-curve/store", () => ({
-  perpsMarginAsset: {
-    decimals: 6,
-    logoURI: "/images/coins/usd.svg",
-    name: "US Dollar",
-    symbol: "USD",
-  },
   useConfig: () => ({
     coins: {
       getCoinInfo: assetCardMocks.getCoinInfo,
@@ -85,7 +79,7 @@ describe("AssetCard", () => {
             logoURI: "/images/coins/usdc.svg",
             symbol: "USDC",
           },
-          symbol: "BTC/USDC LP",
+          symbol: "BTC-USDC LP",
           type: "lp",
         };
       }
@@ -129,7 +123,7 @@ describe("AssetCard", () => {
       "src",
       "/images/coins/usdc.svg",
     );
-    expect(screen.getByText("BTC/USDC LP")).toBeInTheDocument();
+    expect(screen.getByText("BTC-USDC LP")).toBeInTheDocument();
     expect(screen.getByText("BTC / USDC Pool")).toBeInTheDocument();
     expect(container).toHaveTextContent("$100.00");
     expect(container).toHaveTextContent("2.5");

@@ -29,9 +29,10 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../src/components/dex/components/ProTrade", () => ({
   useProTrade: () => ({
     onChangeAction: tradeButtonMocks.onChangeAction,
-    pairId: {
-      baseDenom: "bridge/btc",
-      quoteDenom: "usd",
+    pair: {
+      base: {
+        symbol: "BTC",
+      },
     },
   }),
 }));
@@ -39,16 +40,6 @@ vi.mock("../src/components/dex/components/ProTrade", () => ({
 vi.mock("@left-curve/store", () => ({
   useAccount: () => ({
     isConnected: tradeButtonMocks.isConnected,
-  }),
-  useTradePairCoins: () => ({
-    baseCoin: {
-      decimals: 8,
-      denom: "bridge/btc",
-      logoURI: "/btc.svg",
-      name: "Bitcoin",
-      symbol: "BTC",
-      type: "native",
-    },
   }),
 }));
 

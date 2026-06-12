@@ -22,7 +22,6 @@ export type UseOraclePricesParameters = {
 };
 
 type OraclePricesResourceParams = {
-  chainId: Config["chain"]["id"];
   oracleContract: string;
   subscriptions: Config["subscriptions"];
 };
@@ -59,7 +58,7 @@ function equalOraclePricesSnapshot(previous: OraclePricesSnapshot, next: OracleP
 
 const oraclePricesResource = createLiveResource<OraclePricesResourceParams, OraclePricesSnapshot>({
   name: "oraclePrices",
-  getKey: ({ chainId, oracleContract }) => `oraclePrices:${chainId}:${oracleContract}`,
+  getKey: ({ oracleContract }) => `oraclePrices:${oracleContract}`,
   getInitialSnapshot: () => initialOraclePricesSnapshot,
   equal: equalOraclePricesSnapshot,
   start: ({ oracleContract, subscriptions }, { emit, error }) =>
@@ -111,7 +110,6 @@ export function useOraclePrices<Selection>(
   return useLiveResource({
     resource: oraclePricesResource,
     params: {
-      chainId: config.chain.id,
       oracleContract: appConfig.addresses.oracle,
       subscriptions: config.subscriptions,
     },
