@@ -95,7 +95,7 @@ describe("useSubmitTx", () => {
         success: (receipt) => `Submitted ${receipt}`,
       },
       mutation: {
-        invalidateKeys: [["positions"], ["quests", "alice"]],
+        invalidateKeys: [["positions"], ["orders", "alice"]],
         mutationFn,
         onSuccess,
       },
@@ -133,7 +133,7 @@ describe("useSubmitTx", () => {
     expect(storeHookMocks.refreshBalances).toHaveBeenCalledOnce();
     expect(onSuccess).toHaveBeenCalledOnce();
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["positions"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["quests", "alice"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["orders", "alice"] });
   });
 
   it("emits static transaction success messages without recomputing them from receipts", async () => {

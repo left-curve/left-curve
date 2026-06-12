@@ -20,7 +20,7 @@ import {
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
@@ -101,12 +101,11 @@ const TransferContainer: React.FC<PropsWithChildren<TransferProps>> = ({
 const TransferSend: React.FC = () => {
   const { action, controllers } = useTransfer();
   const { showModal } = useApp();
-  const queryClient = useQueryClient();
   const [selectedDenom, setSelectedDenom] = useState("bridge/usdc");
 
   const { register, reset, handleSubmit, inputs } = controllers;
 
-  const { account, username, isConnected } = useAccount();
+  const { account, isConnected } = useAccount();
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
   const publicClient = usePublicClient();
@@ -180,7 +179,6 @@ const TransferSend: React.FC = () => {
       onSuccess: () => {
         reset();
         refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", username] });
       },
     },
   });

@@ -134,7 +134,7 @@ describe("AddKey public key flow", () => {
     expect(mocks.setScreen).not.toHaveBeenCalledWith("public-key-summary");
   });
 
-  it("registers key-list and quest invalidation metadata for every add-key mutation", () => {
+  it("registers key-list invalidation metadata for every add-key mutation", () => {
     render(
       <AddKey.Provider>
         <div>add-key metadata probe</div>
@@ -145,7 +145,7 @@ describe("AddKey public key flow", () => {
 
     expect(mutationConfigs).toHaveLength(3);
     for (const mutation of mutationConfigs) {
-      expect(mutation.invalidateKeys).toEqual([["user_keys"], ["quests", "alice"]]);
+      expect(mutation.invalidateKeys).toEqual([["user_keys"]]);
     }
   });
 

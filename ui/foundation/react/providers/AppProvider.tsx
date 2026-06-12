@@ -17,8 +17,6 @@ export type AppState = {
   setSearchBarVisibility: (visibility: boolean) => void;
   isTradeBarVisible: boolean;
   setTradeBarVisibility: (visibility: boolean) => void;
-  isQuestBannerVisible: boolean;
-  setQuestBannerVisibility: (visibility: boolean) => void;
   showModal: (modalName: string, props?: Record<string, unknown>) => void;
   hideModal: () => void;
   modal: { modal: string | undefined; props: Record<string, unknown> };
@@ -28,7 +26,6 @@ export type AppState = {
     timeFormat: "hh:mm a" | "hh:mm aa" | "HH:mm";
     dateFormat: "MM/dd/yyyy" | "dd/MM/yyyy" | "yyyy/MM/dd";
     timeZone: "local" | "utc";
-    showWelcome: boolean;
     isFirstVisit: boolean;
     useSessionKey: boolean;
     formatNumberOptions: FormatNumberOptions;
@@ -51,7 +48,6 @@ const appSettingsStorageOptions = {
   version: 1.8,
   initialValue: {
     chart: "tradingview",
-    showWelcome: true,
     isFirstVisit: true,
     useSessionKey: true,
     timeFormat: "hh:mm a",
@@ -65,7 +61,6 @@ const appSettingsStorageOptions = {
   sync: true,
   migrations: {
     "*": (state: AppState["settings"]) => {
-      state.showWelcome = Object.hasOwn(state, "showWelcome") ? state.showWelcome : true;
       state.chart = "tradingview";
       state.timeFormat = state.timeFormat || "hh:mm a";
       state.dateFormat = state.dateFormat || "MM/dd/yyyy";
@@ -95,8 +90,6 @@ function createAppStore({
     setSearchBarVisibility: (isSearchBarVisible) => set({ isSearchBarVisible }),
     isTradeBarVisible: false,
     setTradeBarVisibility: (isTradeBarVisible) => set({ isTradeBarVisible }),
-    isQuestBannerVisible: true,
-    setQuestBannerVisibility: (isQuestBannerVisible) => set({ isQuestBannerVisible }),
     showModal: (modal, props = {}) => set({ modal: { modal, props } }),
     hideModal: () => set({ modal: { modal: undefined, props: {} } }),
     modal: { modal: undefined, props: {} },
