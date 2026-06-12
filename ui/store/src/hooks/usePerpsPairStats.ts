@@ -33,7 +33,6 @@ export type AllPerpsPairStatsSnapshot = LiveResourceSnapshot & {
 const ALL_PERPS_PAIR_STATS_HTTP_INTERVAL = 5_000;
 
 type AllPerpsPairStatsResourceParams = {
-  chainId: Config["chain"]["id"];
   subscriptions: Config["subscriptions"];
 };
 
@@ -115,7 +114,7 @@ const allPerpsPairStatsResource = createLiveResource<
 >({
   name: "allPerpsPairStats",
   cache: "keep",
-  getKey: ({ chainId }) => `allPerpsPairStats:${chainId}`,
+  getKey: () => "allPerpsPairStats",
   getInitialSnapshot: () => initialAllPerpsPairStatsSnapshot,
   equal: equalAllPerpsPairStatsSnapshot,
   start: ({ subscriptions }, { emit, error }) => {
@@ -151,7 +150,6 @@ export function useAllPerpsPairStats<Selection>(
   return useLiveResource({
     resource: allPerpsPairStatsResource,
     params: {
-      chainId: config.chain.id,
       subscriptions: config.subscriptions,
     },
     enabled,
@@ -168,7 +166,7 @@ export function usePerpsPairStatsByPairId(
 
   return useAllPerpsPairStats(
     (snapshot) => snapshot.perpsPairStatsByPairId[pairId] ?? null,
-    { enabled: enabled && !!pairId },
+    { enabled },
     shallowEqual,
   );
 }

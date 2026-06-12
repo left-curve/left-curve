@@ -363,7 +363,7 @@ describe("points service API adapter", () => {
     const payload = {
       boost_config: {
         pair: {
-          "BTC-USDC": {
+          "BTCUSDC": {
             "1": "1.25",
           },
         },

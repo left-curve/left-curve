@@ -8,12 +8,13 @@ import { useProTrade } from "./ProTrade";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const OpenInterestDisplay: React.FC = () => {
-  const { perpsPairId } = useProTrade();
-  const pairState = usePerpsPairState((s) => s.pairState, { perpsPairId });
+  const { pair } = useProTrade();
+  const pairId = pair.id;
+  const pairState = usePerpsPairState((s) => s.pairState, { pairId });
 
-  const { currentPrice } = useCurrentPrice({ perpsPairId });
+  const { currentPrice } = useCurrentPrice({ pairId });
 
-  const { data: pairParam } = usePerpsPairParam({ pairId: perpsPairId });
+  const { data: pairParam } = usePerpsPairParam({ pairId: pairId });
 
   const { totalOiUsd, isAtLimit } = useMemo(() => {
     if (!pairState || !currentPrice) {

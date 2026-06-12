@@ -15,6 +15,7 @@
     "./inlang/*": "./project.inlang/*",
     "./paraglide/*": "./paraglide/*",
     "./coins": "./coins.ts",
+    "./market-pair": "./market-pair.ts",
     ".": {
       "source": "./react/index.ts",
       "types": "./build/index.d.ts",
@@ -26,8 +27,8 @@
     "inlang": "inlang",
     "machine-translate": "inlang machine translate --project ./project.inlang",
     "ci": "pnpm lint",
-    "lint": "pnpm biome check --write ./react ./tailwind ./coins.ts ./paraglide.ts ./tsup.config.ts",
-    "lint:fix": "pnpm biome ci ./react ./tailwind ./coins.ts ./paraglide.ts ./tsup.config.ts",
+    "lint": "pnpm biome check --write ./react ./tailwind ./coins.ts ./market-pair.ts ./paraglide.ts ./tsup.config.ts",
+    "lint:fix": "pnpm biome ci ./react ./tailwind ./coins.ts ./market-pair.ts ./paraglide.ts ./tsup.config.ts",
     "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
     "dev": "nodemon",

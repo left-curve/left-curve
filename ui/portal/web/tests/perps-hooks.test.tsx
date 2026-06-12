@@ -101,7 +101,7 @@ function getDefaultSubmissionParameters(
     },
     maxSlippage: "0.0123456",
     operation: "market",
-    perpsPairId: "BTC-USD",
+    pairId: "perp/btcusd",
     priceValue: "45123.987654321",
     sizeValue: "1.23456789",
     ...overrides,
@@ -154,7 +154,7 @@ describe("perps hooks", () => {
         equity: "120",
         maintenanceMargin: "25",
         positions: {
-          "BTC-USD": {
+          "perp/btcusd": {
             size: "1",
           },
         },
@@ -220,7 +220,7 @@ describe("perps hooks", () => {
           maxSlippage: "0.0123456",
         },
       },
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
       reduceOnly: true,
       sender: account.address,
       size: "1.234567",
@@ -265,7 +265,7 @@ describe("perps hooks", () => {
           timeInForce: "GTC",
         },
       },
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
       reduceOnly: false,
       sender: account.address,
       size: "-1.234567",
@@ -296,7 +296,7 @@ describe("perps hooks", () => {
           maxSlippage: "0.0123456",
         },
       },
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
       reduceOnly: false,
       sender: account.address,
       size: "1.234567",
@@ -376,7 +376,7 @@ describe("perps hooks", () => {
           timeInForce: "IOC",
         },
       },
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
       reduceOnly: true,
       sender: account.address,
       size: "-0.876543",
@@ -440,7 +440,7 @@ describe("perps hooks", () => {
           maxSlippage: "0.0123456",
         },
       },
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
       reduceOnly: false,
       sender: account.address,
       size: "1.234567",
@@ -449,9 +449,8 @@ describe("perps hooks", () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it("partitions perps account resource revisions by chain, contract, and account", async () => {
+  it("partitions perps account resource revisions by contract and account", async () => {
     const common = {
-      chainId: "dango-dev-1",
       perpsContract: "0x70657270732d696e76616c69646174696f6e0000",
     };
     const { result, rerender } = renderHook(
@@ -481,11 +480,20 @@ describe("perps hooks", () => {
     act(() => {
       invalidatePerpsAccountResources({
         ...common,
+        accountAddress: "0x7065727073616c69636500000000000000000000",
+      });
+    });
+
+    await waitFor(() => expect(result.current).toBe(2));
+
+    act(() => {
+      invalidatePerpsAccountResources({
+        ...common,
         accountAddress: "0x7065727073626f62000000000000000000000000",
       });
     });
 
-    expect(result.current).toBe(1);
+    expect(result.current).toBe(2);
 
     rerender({
       accountAddress: "0x7065727073626f62000000000000000000000000",
@@ -498,7 +506,7 @@ describe("perps hooks", () => {
     expect(result.current).toBe(0);
   });
 
-  it("keeps live backend streams idle when disabled or missing required scope", () => {
+  it("keeps live backend streams idle when disabled or missing account scope", () => {
     const perpsState = renderHook(() => usePerpsState((snapshot) => snapshot, { enabled: false }));
     const oraclePrices = renderHook(() =>
       useOraclePrices((snapshot) => snapshot, { enabled: false }),
@@ -508,7 +516,8 @@ describe("perps hooks", () => {
     );
     const pairState = renderHook(() =>
       usePerpsPairState((snapshot) => snapshot, {
-        perpsPairId: undefined,
+        enabled: false,
+        pairId: "perp/btcusd",
       }),
     );
     const userState = renderHook(() =>
@@ -529,12 +538,14 @@ describe("perps hooks", () => {
     const liquidityDepth = renderHook(() =>
       usePerpsLiquidityDepth((snapshot) => snapshot, {
         bucketSize: "10",
-        perpsPairId: undefined,
+        enabled: false,
+        pairId: "perp/btcusd",
       }),
     );
     const trades = renderHook(() =>
       useLivePerpsTrades((snapshot) => snapshot, {
-        perpsPairId: undefined,
+        enabled: false,
+        pairId: "perp/btcusd",
       }),
     );
 
@@ -612,7 +623,7 @@ describe("perps hooks", () => {
             equity: "140",
             maintenance_margin: "31",
             positions: {
-              "BTC-USD": {
+              "perp/btcusd": {
                 size: "2",
                 unrealized_pnl: "7",
               },
@@ -629,7 +640,7 @@ describe("perps hooks", () => {
         lastUpdatedBlockHeight: 42,
         maintenanceMargin: "31",
         positions: {
-          "BTC-USD": {
+          "perp/btcusd": {
             size: "2",
             unrealizedPnl: "7",
           },
@@ -670,7 +681,7 @@ describe("perps hooks", () => {
             equity: "300",
             maintenance_margin: "40",
             positions: {
-              "ETH-USD": {
+              "perp/ethusd": {
                 size: "4",
               },
             },
@@ -686,7 +697,7 @@ describe("perps hooks", () => {
         lastUpdatedBlockHeight: 88,
         maintenanceMargin: "40",
         positions: {
-          "ETH-USD": {
+          "perp/ethusd": {
             size: "4",
           },
         },
@@ -701,7 +712,7 @@ describe("perps hooks", () => {
           equity: "120",
           maintenanceMargin: "25",
           positions: {
-            "BTC-USD": {
+            "perp/btcusd": {
               size: "1",
             },
           },
@@ -716,7 +727,7 @@ describe("perps hooks", () => {
       lastUpdatedBlockHeight: 88,
       maintenanceMargin: "40",
       positions: {
-        "ETH-USD": {
+        "perp/ethusd": {
           size: "4",
         },
       },
@@ -849,7 +860,7 @@ describe("perps hooks", () => {
           wasm_smart: {
             margin: "125",
             positions: {
-              "BTC-USD": {
+              "perp/btcusd": {
                 size: "1.5",
                 unrealized_pnl: "4",
               },
@@ -866,7 +877,7 @@ describe("perps hooks", () => {
         userState: {
           margin: "125",
           positions: {
-            "BTC-USD": {
+            "perp/btcusd": {
               size: "1.5",
               unrealizedPnl: "4",
             },
@@ -903,7 +914,7 @@ describe("perps hooks", () => {
           wasm_smart: {
             margin: "240",
             positions: {
-              "ETH-USD": {
+              "perp/ethusd": {
                 size: "3",
               },
             },
@@ -919,7 +930,7 @@ describe("perps hooks", () => {
         userState: {
           margin: "240",
           positions: {
-            "ETH-USD": {
+            "perp/ethusd": {
               size: "3",
             },
           },
@@ -932,7 +943,7 @@ describe("perps hooks", () => {
         wasmSmart: {
           margin: "100",
           positions: {
-            "BTC-USD": {
+            "perp/btcusd": {
               size: "1",
             },
           },
@@ -946,7 +957,7 @@ describe("perps hooks", () => {
       userState: {
         margin: "240",
         positions: {
-          "ETH-USD": {
+          "perp/ethusd": {
             size: "3",
           },
         },
@@ -1133,7 +1144,7 @@ describe("perps hooks", () => {
   it("subscribes to pair state, user orders, and liquidity depth with pair-scoped requests", async () => {
     const pairState = renderHook(() =>
       usePerpsPairState((snapshot) => snapshot, {
-        perpsPairId: "ETH-USD",
+        pairId: "perp/ethusd",
       }),
     );
 
@@ -1149,7 +1160,7 @@ describe("perps hooks", () => {
               contract: "0x7065727073000000000000000000000000000000",
               msg: {
                 pair_state: {
-                  pair_id: "ETH-USD",
+                  pair_id: "perp/ethusd",
                 },
               },
             },
@@ -1172,7 +1183,7 @@ describe("perps hooks", () => {
     await waitFor(() =>
       expect(pairState.result.current).toMatchObject({
         lastUpdatedBlockHeight: 12,
-        pairId: "ETH-USD",
+        pairId: "perp/ethusd",
         pairState: {
           openInterest: "18",
         },
@@ -1246,7 +1257,7 @@ describe("perps hooks", () => {
       usePerpsLiquidityDepth((snapshot) => snapshot, {
         bucketSize: "10",
         limit: 5,
-        perpsPairId: "ETH-USD",
+        pairId: "perp/ethusd",
       }),
     );
 
@@ -1264,7 +1275,7 @@ describe("perps hooks", () => {
                 liquidity_depth: {
                   bucket_size: "10",
                   limit: 5,
-                  pair_id: "ETH-USD",
+                  pair_id: "perp/ethusd",
                 },
               },
             },
@@ -1300,7 +1311,7 @@ describe("perps hooks", () => {
   it("accepts pair-state subscription events from backend block height zero", async () => {
     const { result } = renderHook(() =>
       usePerpsPairState((snapshot) => snapshot, {
-        perpsPairId: "BTC-USD",
+        pairId: "perp/btcusd",
       }),
     );
 
@@ -1323,7 +1334,7 @@ describe("perps hooks", () => {
     await waitFor(() =>
       expect(result.current).toMatchObject({
         lastUpdatedBlockHeight: 0,
-        pairId: "BTC-USD",
+        pairId: "perp/btcusd",
         pairState: {
           fundingRate: "0",
           longOi: "0",
@@ -1371,7 +1382,7 @@ describe("perps hooks", () => {
       usePerpsLiquidityDepth((snapshot) => snapshot, {
         bucketSize: "10",
         limit: 5,
-        perpsPairId: "BTC-USD",
+        pairId: "perp/btcusd",
       }),
     );
 
@@ -1404,7 +1415,7 @@ describe("perps hooks", () => {
   it("surfaces pair-scoped subscription failures without dropping latest snapshots", async () => {
     const pairState = renderHook(() =>
       usePerpsPairState((snapshot) => snapshot, {
-        perpsPairId: "ETH-USD",
+        pairId: "perp/ethusd",
       }),
     );
 
@@ -1424,7 +1435,7 @@ describe("perps hooks", () => {
     await waitFor(() =>
       expect(pairState.result.current).toMatchObject({
         lastUpdatedBlockHeight: 12,
-        pairId: "ETH-USD",
+        pairId: "perp/ethusd",
         pairState: {
           openInterest: "18",
         },
@@ -1441,7 +1452,7 @@ describe("perps hooks", () => {
     expect(pairState.result.current).toMatchObject({
       error: pairStateError,
       lastUpdatedBlockHeight: 12,
-      pairId: "ETH-USD",
+      pairId: "perp/ethusd",
       pairState: {
         openInterest: "18",
       },
@@ -1514,7 +1525,7 @@ describe("perps hooks", () => {
       usePerpsLiquidityDepth((snapshot) => snapshot, {
         bucketSize: "10",
         limit: 5,
-        perpsPairId: "ETH-USD",
+        pairId: "perp/ethusd",
       }),
     );
 
@@ -1786,14 +1797,14 @@ describe("perps hooks", () => {
         allPerpsPairStats: [
           {
             currentPrice: "110",
-            pairId: "BTC-USD",
+            pairId: "perp/btcusd",
             price24HAgo: "100",
             priceChange24H: null,
             volume24H: "2500",
           },
           {
             currentPrice: "48",
-            pairId: "ETH-USD",
+            pairId: "perp/ethusd",
             price24HAgo: "50",
             priceChange24H: "-3.5",
             volume24H: "900",
@@ -1807,24 +1818,24 @@ describe("perps hooks", () => {
         perpsPairStats: [
           {
             currentPrice: "110",
-            pairId: "BTC-USD",
+            pairId: "perp/btcusd",
             price24HAgo: "100",
             priceChange24H: "10",
             volume24H: "2500",
           },
           {
             currentPrice: "48",
-            pairId: "ETH-USD",
+            pairId: "perp/ethusd",
             price24HAgo: "50",
             priceChange24H: "-3.5",
             volume24H: "900",
           },
         ],
         perpsPairStatsByPairId: {
-          "BTC-USD": {
+          "perp/btcusd": {
             priceChange24H: "10",
           },
-          "ETH-USD": {
+          "perp/ethusd": {
             priceChange24H: "-3.5",
           },
         },
@@ -1843,7 +1854,7 @@ describe("perps hooks", () => {
         allPerpsPairStats: [
           {
             currentPrice: "75",
-            pairId: "ETH-USD",
+            pairId: "perp/ethusd",
             price24HAgo: "60",
             priceChange24H: "not-a-decimal",
             volume24H: "1234.5",
@@ -1864,7 +1875,7 @@ describe("perps hooks", () => {
         perpsPairStats: [
           {
             currentPrice: "75",
-            pairId: "ETH-USD",
+            pairId: "perp/ethusd",
             price24HAgo: "60",
             priceChange24H: "25",
             volume24H: "1234.5",
@@ -1878,7 +1889,7 @@ describe("perps hooks", () => {
           },
         ],
         perpsPairStatsByPairId: {
-          "ETH-USD": {
+          "perp/ethusd": {
             priceChange24H: "25",
           },
           "ZERO-USD": {
@@ -1908,7 +1919,7 @@ describe("perps hooks", () => {
         allPerpsPairStats: [
           {
             currentPrice: "110",
-            pairId: "BTC-USD",
+            pairId: "perp/btcusd",
             price24HAgo: "100",
             priceChange24H: null,
             volume24H: "2500",
@@ -1922,14 +1933,14 @@ describe("perps hooks", () => {
         perpsPairStats: [
           {
             currentPrice: "110",
-            pairId: "BTC-USD",
+            pairId: "perp/btcusd",
             price24HAgo: "100",
             priceChange24H: "10",
             volume24H: "2500",
           },
         ],
         perpsPairStatsByPairId: {
-          "BTC-USD": {
+          "perp/btcusd": {
             priceChange24H: "10",
           },
         },
@@ -1948,14 +1959,14 @@ describe("perps hooks", () => {
       perpsPairStats: [
         {
           currentPrice: "110",
-          pairId: "BTC-USD",
+          pairId: "perp/btcusd",
           price24HAgo: "100",
           priceChange24H: "10",
           volume24H: "2500",
         },
       ],
       perpsPairStatsByPairId: {
-        "BTC-USD": {
+        "perp/btcusd": {
           priceChange24H: "10",
         },
       },
@@ -2087,21 +2098,19 @@ describe("perps hooks", () => {
     });
   });
 
-  it("does not start single pair stats without an enabled pair id", () => {
+  it("does not start single pair stats while disabled", () => {
     const disabled = renderHook(() =>
       usePerpsPairStatsByPairId({ enabled: false, pairId: "perp/btcusd" }),
     );
-    const emptyPairId = renderHook(() => usePerpsPairStatsByPairId({ pairId: "" }));
 
     expect(hookMocks.subscriptionsSubscribe).not.toHaveBeenCalled();
     expect(disabled.result.current).toBeNull();
-    expect(emptyPairId.result.current).toBeNull();
   });
 
   it("buffers live perps trades, ignores maker echoes, and tracks price direction", async () => {
     const { result } = renderHook(() =>
       useLivePerpsTrades((snapshot) => snapshot, {
-        perpsPairId: "BTC-USD",
+        pairId: "perp/btcusd",
       }),
     );
 
@@ -2110,7 +2119,7 @@ describe("perps hooks", () => {
       "perpsTrades",
       expect.objectContaining({
         params: {
-          pairId: "BTC-USD",
+          pairId: "perp/btcusd",
         },
       }),
     );
@@ -2185,7 +2194,7 @@ describe("perps hooks", () => {
   it("preserves backend zero-valued live trade fields after buffering", async () => {
     const { result } = renderHook(() =>
       useLivePerpsTrades((snapshot) => snapshot, {
-        perpsPairId: "BTC-USD",
+        pairId: "perp/btcusd",
       }),
     );
 
@@ -2224,7 +2233,7 @@ describe("perps hooks", () => {
   it("surfaces live perps trade subscription failures without dropping latest trade state", async () => {
     const { result } = renderHook(() =>
       useLivePerpsTrades((snapshot) => snapshot, {
-        perpsPairId: "BTC-USD",
+        pairId: "perp/btcusd",
       }),
     );
 
@@ -2277,7 +2286,7 @@ describe("perps hooks", () => {
   it("coalesces live perps trade bursts and keeps the newest fifty trades", async () => {
     const { result } = renderHook(() =>
       useLivePerpsTrades((snapshot) => snapshot, {
-        perpsPairId: "ETH-USD",
+        pairId: "perp/ethusd",
       }),
     );
 
@@ -2333,7 +2342,7 @@ describe("perps hooks", () => {
   it("cancels pending live perps trade batches when the stream is released", async () => {
     const { result, unmount } = renderHook(() =>
       useLivePerpsTrades((snapshot) => snapshot, {
-        perpsPairId: "SOL-USD",
+        pairId: "perp/solusd",
       }),
     );
 

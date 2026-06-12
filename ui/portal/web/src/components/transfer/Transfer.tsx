@@ -42,9 +42,9 @@ import {
   wait,
   withResolvers,
 } from "@left-curve/utils";
-import { perpsMarginAsset } from "@left-curve/store";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 import { WarningTransferAccounts } from "~/components/transfer/WarningTransferAccounts";
 import { Image } from "~/components/foundation/Image";
@@ -53,6 +53,7 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 
 type TransferAction = "send" | "spot-perp";
+const usd = MarketPair.USD;
 
 const [TransferProvider, useTransfer] = createContext<{
   action: TransferAction;
@@ -295,7 +296,7 @@ const TransferSpotPerp: React.FC = () => {
   const usdcCoin = coins.byDenom["bridge/usdc"];
 
   const spotUsdcBalance = balances["bridge/usdc"] || "0";
-  const availableMarginRaw = parseUnits(availableMargin || "0", perpsMarginAsset.decimals);
+  const availableMarginRaw = parseUnits(availableMargin || "0", usd.decimals);
 
   const isSpotToPerp = direction === "spot-to-perp";
 
@@ -305,8 +306,7 @@ const TransferSpotPerp: React.FC = () => {
   const flipDirection = () => {
     const newDirection = isSpotToPerp ? "perp-to-spot" : "spot-to-perp";
     const newBalance = newDirection === "spot-to-perp" ? spotUsdcBalance : availableMarginRaw;
-    const newDecimals =
-      newDirection === "spot-to-perp" ? usdcCoin.decimals : perpsMarginAsset.decimals;
+    const newDecimals = newDirection === "spot-to-perp" ? usdcCoin.decimals : usd.decimals;
     const maxHuman = formatUnits(newBalance, newDecimals);
     const currentAmount = inputs.amount?.value || "0";
 
@@ -400,7 +400,7 @@ const TransferSpotPerp: React.FC = () => {
           <AssetInputWithRange
             name="amount"
             label={m["sendAndReceive.sending"]()}
-            asset={isSpotToPerp ? usdcCoin : { ...usdcCoin, ...perpsMarginAsset }}
+            asset={isSpotToPerp ? usdcCoin : { ...usdcCoin, ...usd }}
             balances={effectiveBalances}
             controllers={controllers}
             isDisabled={isPending || !isConnected}
@@ -425,11 +425,11 @@ const TransferSpotPerp: React.FC = () => {
               <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
                 <div className="flex gap-2 items-center font-semibold">
                   <Image
-                    src={isSpotToPerp ? perpsMarginAsset.logoURI : usdcCoin.logoURI}
-                    alt={isSpotToPerp ? perpsMarginAsset.symbol : usdcCoin.symbol}
+                    src={isSpotToPerp ? usd.logoURI : usdcCoin.logoURI}
+                    alt={isSpotToPerp ? usd.symbol : usdcCoin.symbol}
                     className="w-8 h-8"
                   />
-                  <p>{isSpotToPerp ? perpsMarginAsset.symbol : usdcCoin.symbol}</p>
+                  <p>{isSpotToPerp ? usd.symbol : usdcCoin.symbol}</p>
                 </div>
               </div>
             }

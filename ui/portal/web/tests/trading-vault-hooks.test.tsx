@@ -4,11 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { computeLiquidationPrice } from "../../../store/src/hooks/computeLiquidationPrice";
 import { useFeeRateOverride } from "../../../store/src/hooks/useFeeRateOverride";
 import { usePerpsMaxSize } from "../../../store/src/hooks/usePerpsMaxSize";
-import {
-  getPerpsPairIdFromPairId,
-  useTradeAccountCoins,
-  useTradePairCoins,
-} from "../../../store/src/hooks/useTradeCoins";
 import { useVaultLiquidityState } from "../../../store/src/hooks/useVaultLiquidityState";
 import { useVaultSnapshots } from "../../../store/src/hooks/useVaultSnapshots";
 import { sharesToUsd, usdToShares } from "@left-curve/utils";
@@ -52,12 +47,6 @@ vi.mock("../../../store/src/hooks/useConfig.js", () => ({
 }));
 
 vi.mock("../../../store/src/hooks/usePerpsUserState.js", () => ({
-  perpsMarginAsset: {
-    decimals: 6,
-    logoURI: "/images/coins/usd.svg",
-    name: "US Dollar",
-    symbol: "USD",
-  },
   usePerpsUserState: hookMocks.usePerpsUserState,
 }));
 
@@ -261,11 +250,11 @@ describe("trading and vault hooks", () => {
     const liquidationPrice = computeLiquidationPrice({
       entryPrice: 100,
       extendedPositions: {
-        "BTC-USD": {
+        "perp/btcusd": {
           size: "2",
           unrealizedFunding: "10",
         },
-        "ETH-USD": {
+        "perp/ethusd": {
           entryPrice: "50",
           size: "-1",
           unrealizedFunding: "2",
@@ -274,17 +263,17 @@ describe("trading and vault hooks", () => {
       margin: 100,
       mmr: 0.05,
       pairParams: {
-        "ETH-USD": {
+        "perp/ethusd": {
           maintenanceMarginRatio: "0.1",
         },
       },
       pairPrices: {
-        "ETH-USD": {
+        "perp/ethusd": {
           currentPrice: "40",
         },
       },
       size: 2,
-      targetPairId: "BTC-USD",
+      targetPairId: "perp/btcusd",
     });
 
     expect(liquidationPrice).toBeCloseTo(55.789473, 5);
@@ -297,114 +286,9 @@ describe("trading and vault hooks", () => {
         pairParams: {},
         pairPrices: {},
         size: 2,
-        targetPairId: "BTC-USD",
+        targetPairId: "perp/btcusd",
       }),
     ).toBeNull();
-  });
-
-  it("maps trade pair coins from config and account margin from perps user state", () => {
-    const pairId = {
-      baseDenom: bitcoinCoin.denom,
-      quoteDenom: "usd",
-    };
-
-    const pairCoins = renderHook(() => useTradePairCoins({ pairId }));
-    expect(pairCoins.result.current).toMatchObject({
-      baseCoin: {
-        amount: "0",
-        denom: bitcoinCoin.denom,
-        symbol: "BTC",
-      },
-      quoteCoin: {
-        amount: "0",
-        decimals: 6,
-        denom: "usd",
-        symbol: "USD",
-      },
-    });
-
-    const accountCoins = renderHook(() =>
-      useTradeAccountCoins({
-        accountAddress: account.address,
-        enabled: true,
-        pairId,
-      }),
-    );
-
-    expect(accountCoins.result.current.quoteCoin).toMatchObject({
-      amount: "345",
-      denom: "usd",
-      symbol: "USD",
-    });
-    expect(hookMocks.usePerpsUserState).toHaveBeenCalledWith(expect.any(Function), {
-      accountAddress: account.address,
-      enabled: true,
-    });
-  });
-
-  it("derives perps pair ids from configured base assets and fails loudly for unknown bases", () => {
-    expect(
-      getPerpsPairIdFromPairId(
-        {
-          baseDenom: bitcoinCoin.denom,
-          quoteDenom: "usd",
-        },
-        {
-          byDenom: {
-            [bitcoinCoin.denom]: bitcoinCoin,
-          },
-        },
-      ),
-    ).toBe("perp/btcusd");
-
-    expect(
-      getPerpsPairIdFromPairId(
-        {
-          baseDenom: "bridge/unknown",
-          quoteDenom: "usd",
-        },
-        {
-          byDenom: {
-            [bitcoinCoin.denom]: bitcoinCoin,
-          },
-        },
-      ),
-    ).toBe("");
-
-    hookMocks.useConfig.mockReturnValue({
-      coins: {
-        byDenom: {},
-      },
-    });
-
-    expect(() =>
-      renderHook(() =>
-        useTradePairCoins({
-          pairId: {
-            baseDenom: "bridge/unknown",
-            quoteDenom: "usd",
-          },
-        }),
-      ),
-    ).toThrow("[useTradePairCoins] Base coin not found for denom bridge/unknown");
-  });
-
-  it("passes disabled account coin queries through to the perps user-state hook", () => {
-    renderHook(() =>
-      useTradeAccountCoins({
-        accountAddress: undefined,
-        enabled: false,
-        pairId: {
-          baseDenom: bitcoinCoin.denom,
-          quoteDenom: "usd",
-        },
-      }),
-    );
-
-    expect(hookMocks.usePerpsUserState).toHaveBeenCalledWith(expect.any(Function), {
-      accountAddress: undefined,
-      enabled: false,
-    });
   });
 
   it("derives vault liquidity state and submits deposit and withdrawal transactions", async () => {

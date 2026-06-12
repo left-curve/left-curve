@@ -1,13 +1,16 @@
-import { useConfig, usePrices, perpsMarginAsset } from "@left-curve/store";
+import { useConfig, usePrices } from "@left-curve/store";
 
 import { FormattedNumber, PairAssets } from "@left-curve/applets-kit";
 import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
 import { formatUnits } from "@left-curve/utils";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { Image } from "~/components/foundation/Image";
 
 import type { Coin } from "@left-curve/types";
+
+const usd = MarketPair.USD;
 
 interface SpotProps {
   coin: Coin;
@@ -62,13 +65,13 @@ const Perp: React.FC<PerpsProps> = ({ amount }) => {
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
             <Image
-              src={perpsMarginAsset.logoURI}
+              src={usd.logoURI}
               className="h-8 w-8"
-              alt={perpsMarginAsset.symbol}
+              alt={usd.symbol}
             />
           </div>
           <div className="flex flex-col">
-            <p className="text-ink-primary-900 diatype-m-bold">{perpsMarginAsset.name}</p>
+            <p className="text-ink-primary-900 diatype-m-bold">{usd.name}</p>
           </div>
         </div>
         <div className="flex flex-col items-end text-ink-primary-900">
@@ -90,7 +93,7 @@ const Vault: React.FC<VaultProps> = ({ shares, usdValue }) => {
       <div className={twMerge("flex items-center justify-between transition-all")}>
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
-            <Image src={perpsMarginAsset.logoURI} className="h-8 w-8" alt="DLP" />
+            <Image src={usd.logoURI} className="h-8 w-8" alt="DLP" />
           </div>
           <div className="flex flex-col">
             <p className="text-ink-primary-900 diatype-m-bold">DLP</p>

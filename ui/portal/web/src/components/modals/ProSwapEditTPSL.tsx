@@ -73,8 +73,8 @@ export const ProSwapEditTPSL = forwardRef<void, ProSwapEditTPSLProps>(
     // nothing is stored. This matches the logic in TradeMenu.tsx and
     // keeps the two TP/SL entry points consistent.
     const maxLeverage = useMemo(() => {
-      const params = appConfig?.perpsPairs?.[pairId];
-      const ratio = Number(params?.initialMarginRatio ?? 0);
+      const params = appConfig.perpsPairs[pairId];
+      const ratio = Number(params.initialMarginRatio);
       return ratio > 0 ? Math.floor(1 / ratio) : 100;
     }, [appConfig, pairId]);
     const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[pairId]);

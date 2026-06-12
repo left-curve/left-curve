@@ -92,14 +92,14 @@ const deleveragedEvent: PerpsEvent = {
   data: {
     closing_size: "-2",
     fill_price: "2.5",
-    pair_id: "perp/atomusd",
+    pair_id: "perp/xauusd",
     realized_funding: "-0.1",
     realized_pnl: "-3",
     user: "0x7472616465720000000000000000000000000000",
   },
   eventType: "deleveraged",
   idx: 2,
-  pairId: "perp/atomusd",
+  pairId: "perp/xauusd",
   txHash: "0x64656c65766572616765640000000000000000000000000000000000000000",
   userAddr: "0x7472616465720000000000000000000000000000",
 };
@@ -178,7 +178,7 @@ describe("PerpsTradeHistory table", () => {
       expect(tradeHistoryTableMocks.fetchNextPage).toHaveBeenCalledOnce();
     });
 
-    expect(screen.getByText("BTC/USD")).toBeInTheDocument();
+    expect(screen.getByText("BTCUSD")).toBeInTheDocument();
     expect(screen.getByText(m["dex.protrade.tradeHistory.eventType.trade"]())).toBeInTheDocument();
     expectTextStyled(m["dex.protrade.tradeHistory.side.buy"](), "text-green-500");
     expect(getByTextContent("0.5 BTC")).toBeInTheDocument();
@@ -186,10 +186,10 @@ describe("PerpsTradeHistory table", () => {
     expect(getByTextContent("+40").closest(".text-green-500")).not.toBeNull();
     expect(screen.getByText(m["dex.protrade.tradeHistory.maker"]())).toBeInTheDocument();
 
-    expect(screen.getByText("ATOM/USD")).toBeInTheDocument();
+    expect(screen.getByText("XAUUSD")).toBeInTheDocument();
     expect(screen.getByText(m["dex.protrade.tradeHistory.eventType.adl"]())).toBeInTheDocument();
     expectTextStyled(m["dex.protrade.tradeHistory.side.sell"](), "text-red-500");
-    expect(getByTextContent("2 ATOM")).toBeInTheDocument();
+    expect(getByTextContent("2 XAU")).toBeInTheDocument();
     expect(getByTextContent("$5")).toBeInTheDocument();
     expect(getByTextContent("-3").closest(".text-red-500")).not.toBeNull();
 
@@ -209,7 +209,7 @@ describe("PerpsTradeHistory table", () => {
     });
     expect(tradeHistoryTableMocks.navigate).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText("ATOM/USD").closest('[role="button"]')!);
+    fireEvent.click(screen.getByText("XAUUSD").closest('[role="button"]')!);
 
     expect(tradeHistoryTableMocks.navigate).toHaveBeenCalledWith({
       params: {
@@ -230,7 +230,7 @@ describe("PerpsTradeHistory table", () => {
 
     const { container } = render(<PerpsTradeHistory />);
 
-    expect(screen.getByText("BTC/USD")).toBeInTheDocument();
+    expect(screen.getByText("BTCUSD")).toBeInTheDocument();
     expect(screen.getAllByText("N/A")).toHaveLength(2);
     expect(screen.queryByText("7.25")).not.toBeInTheDocument();
     expect(screen.queryByText(m["dex.protrade.tradeHistory.maker"]())).not.toBeInTheDocument();

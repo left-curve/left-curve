@@ -87,13 +87,6 @@ vi.mock("@left-curve/foundation", async (importOriginal) => ({
 }));
 
 vi.mock("@left-curve/store", () => ({
-  perpsMarginAsset: {
-    decimals: 6,
-    denom: "bridge/usdc",
-    logoURI: "/images/coins/usd.svg",
-    name: "USD Coin",
-    symbol: "USDC",
-  },
   useAccount: vaultLiquidityMocks.useAccount,
   useVaultLiquidityState: vaultLiquidityMocks.useVaultLiquidityState,
   useVaultSnapshots: vaultLiquidityMocks.useVaultSnapshots,

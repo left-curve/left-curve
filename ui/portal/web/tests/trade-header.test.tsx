@@ -11,7 +11,30 @@ import { TradeHeader } from "../src/components/dex/components/TradeHeader";
 
 const tradeHeaderMocks = vi.hoisted(() => ({
   isLg: true,
-  onChangePairId: vi.fn(),
+  onChangePair: vi.fn(),
+  pair: {
+    base: {
+      decimals: 8,
+      denom: "bridge/btc",
+      logoURI: "/images/coins/bitcoin.svg",
+      name: "Bitcoin",
+      symbol: "BTC",
+      type: "native",
+    },
+    id: "perp/btcusd",
+    logoURI: "/images/coins/bitcoin.svg",
+    name: "Bitcoin",
+    quote: {
+      decimals: 6,
+      denom: "usd",
+      logoURI: "/images/coins/usd.svg",
+      name: "US Dollar",
+      symbol: "USD",
+      type: "native",
+    },
+    ticker: "BTCUSD",
+    type: "crypto",
+  },
   useAllPerpsPairStats: vi.fn(),
   useCurrentPrice: vi.fn(),
   useOraclePrices: vi.fn(),
@@ -68,36 +91,27 @@ vi.mock("@left-curve/foundation", async (importOriginal) => {
 
 vi.mock("../src/components/dex/components/ProTrade", () => ({
   useProTrade: () => ({
-    onChangePairId: tradeHeaderMocks.onChangePairId,
-    pairId: {
-      baseDenom: "bridge/btc",
-      quoteDenom: "usd",
-    },
-    perpsPairId: "perp/btcusd",
+    onChangeTicker: tradeHeaderMocks.onChangePair,
+    pair: tradeHeaderMocks.pair,
   }),
 }));
 
 vi.mock("../src/components/dex/components/SearchToken", () => ({
   SearchToken: ({
-    onChangePairId,
+    onChangePair,
   }: {
-    pairId: { baseDenom: string; quoteDenom: string };
-    onChangePairId: (row: { baseCoin: { symbol: string }; quoteCoin: { symbol: string } }) => void;
+    pair: typeof tradeHeaderMocks.pair;
+    onChangePair: (row: { pair: typeof tradeHeaderMocks.pair }) => void;
   }) => (
     <button
       onClick={() =>
-        onChangePairId({
-          baseCoin: {
-            symbol: "ETH",
-          },
-          quoteCoin: {
-            symbol: "USD",
-          },
+        onChangePair({
+          pair: { ...tradeHeaderMocks.pair, id: "perp/ethusd", ticker: "ETHUSD" },
         })
       }
       type="button"
     >
-      BTC-USD
+      BTCUSD
     </button>
   ),
 }));
@@ -148,7 +162,7 @@ describe("DEX trade header", () => {
       (selector: (state: { prices: Record<string, { humanizedPrice: string }> }) => unknown) =>
         selector({
           prices: {
-            "perp/btcusd": {
+            "bridge/btc": {
               humanizedPrice: "100.5",
             },
           },
@@ -210,7 +224,7 @@ describe("DEX trade header", () => {
   it("renders backend-fed price, stats, open-interest, and funding metrics", async () => {
     const { container } = render(<TradeHeader />);
 
-    expect(screen.getByText("BTC-USD")).toBeInTheDocument();
+    expect(screen.getByText("BTCUSD")).toBeInTheDocument();
     expect(screen.getByText("Perp")).toBeInTheDocument();
     expect(screen.getByText(m["dex.protrade.spot.lastPrice"]())).toBeInTheDocument();
     expect(screen.getByText("101")).toBeInTheDocument();
@@ -246,12 +260,12 @@ describe("DEX trade header", () => {
     await waitFor(() => expect(screen.getByText("Annualized: 8.76%")).toBeInTheDocument());
   });
 
-  it("routes selected search-token rows as pair symbols", () => {
+  it("routes selected search-token rows as tickers", () => {
     render(<TradeHeader />);
 
-    fireEvent.click(screen.getByRole("button", { name: "BTC-USD" }));
+    fireEvent.click(screen.getByRole("button", { name: "BTCUSD" }));
 
-    expect(tradeHeaderMocks.onChangePairId).toHaveBeenCalledWith("ETH-USD");
+    expect(tradeHeaderMocks.onChangePair).toHaveBeenCalledWith("ETHUSD");
   });
 
   it("collapses and expands metrics on mobile", () => {

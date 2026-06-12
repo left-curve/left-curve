@@ -71,8 +71,8 @@ describe("route metadata", () => {
       title: `Dango | ${m["sendAndReceive.title"]()}`,
     },
     {
-      loader: () => import("../src/pages/(app)/_app.trade.$pairSymbols"),
-      path: "/(app)/_app/trade/$pairSymbols",
+      loader: () => import("../src/pages/(app)/_app.trade.$ticker"),
+      path: "/(app)/_app/trade/$ticker",
       title: `Dango | ${m["applets.trade.title"]()}`,
     },
     {

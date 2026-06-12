@@ -203,7 +203,7 @@ describe("perps trade history helpers", () => {
         csvHeaders.time,
       ].join(","),
       [
-        "BTC/USD",
+        "BTCUSD",
         getPerpsEventLabel("order_filled"),
         getSideLabel(true),
         "0.5 BTC",
@@ -216,7 +216,7 @@ describe("perps trade history helpers", () => {
         "2026-06-08T10:00:00.000Z",
       ].join(","),
       [
-        "ETH/USD",
+        "ETHUSD",
         getPerpsEventLabel("liquidated"),
         getSideLabel(false),
         "1.25 ETH",

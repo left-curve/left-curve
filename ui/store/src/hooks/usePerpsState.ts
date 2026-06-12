@@ -23,7 +23,6 @@ export type UsePerpsStateParameters = {
 };
 
 type PerpsStateResourceParams = {
-  chainId: Config["chain"]["id"];
   perpsContract: string;
   subscriptions: Config["subscriptions"];
 };
@@ -37,7 +36,7 @@ const initialPerpsStateSnapshot: PerpsStateSnapshot = {
 
 const perpsStateResource = createLiveResource<PerpsStateResourceParams, PerpsStateSnapshot>({
   name: "perpsState",
-  getKey: ({ chainId, perpsContract }) => `perpsState:${chainId}:${perpsContract}`,
+  getKey: ({ perpsContract }) => `perpsState:${perpsContract}`,
   getInitialSnapshot: () => initialPerpsStateSnapshot,
   equal: (previous, next) => equalLiveResourcePayload(previous, next, ["state"]),
   start: ({ perpsContract, subscriptions }, { emit, error }) =>
@@ -84,7 +83,6 @@ export function usePerpsState<Selection>(
   return useLiveResource({
     resource: perpsStateResource,
     params: {
-      chainId: config.chain.id,
       perpsContract: appConfig.addresses.perps,
       subscriptions: config.subscriptions,
     },

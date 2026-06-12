@@ -228,7 +228,7 @@ function makePerpDeleveragedActivity(
     data: {
       closing_size: "-9",
       fill_price: "2.45",
-      pair_id: "perp/atomusd",
+      pair_id: "perp/xauusd",
       realized_pnl: "0",
       user: fromAddress,
     },
@@ -419,7 +419,7 @@ describe("activities list", () => {
     const orderFilledTitle = m["activities.activity.perpOrderFilled.title"]();
     expect(await findActivityText(orderFilledTitle)).toBeInTheDocument();
     const orderFilledCard = activityCardFor(orderFilledTitle);
-    expect(within(orderFilledCard).getByText("BTC/USD")).toBeInTheDocument();
+    expect(within(orderFilledCard).getByText("BTCUSD")).toBeInTheDocument();
     expect(within(orderFilledCard).getByText("Long")).toHaveClass("text-status-success");
     expect(within(orderFilledCard).getByText("Maker")).toBeInTheDocument();
     expect(getByTextContent("0.5 BTC", orderFilledCard)).toBeInTheDocument();
@@ -429,7 +429,7 @@ describe("activities list", () => {
     const liquidatedTitle = m["activities.activity.perpLiquidated.title"]();
     expect(await findActivityText(liquidatedTitle)).toHaveClass("text-status-fail");
     const liquidatedCard = activityCardFor(liquidatedTitle);
-    expect(within(liquidatedCard).getByText("ETH/USD")).toBeInTheDocument();
+    expect(within(liquidatedCard).getByText("ETHUSD")).toBeInTheDocument();
     expect(getByTextContent("1.25 ETH", liquidatedCard)).toBeInTheDocument();
     expect(getByTextContent("3,250", liquidatedCard)).toBeInTheDocument();
     const liquidatedPnl = Array.from(liquidatedCard?.querySelectorAll("span") ?? []).find(
@@ -441,8 +441,8 @@ describe("activities list", () => {
     const deleveragedTitle = m["activities.activity.perpDeleveraged.title"]();
     expect(await findActivityText(deleveragedTitle)).toBeInTheDocument();
     const deleveragedCard = activityCardFor(deleveragedTitle);
-    expect(within(deleveragedCard).getByText("ATOM/USD")).toBeInTheDocument();
-    expect(getByTextContent("9 ATOM", deleveragedCard)).toBeInTheDocument();
+    expect(within(deleveragedCard).getByText("XAUUSD")).toBeInTheDocument();
+    expect(getByTextContent("9 XAU", deleveragedCard)).toBeInTheDocument();
     expect(getByTextContent("2.45", deleveragedCard)).toBeInTheDocument();
   });
 

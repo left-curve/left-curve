@@ -5,6 +5,7 @@ import { resetAppletsKitMocks, setAppletsKitUseTheme } from "./mocks/applets-kit
 
 import { TradingView } from "../src/components/dex/components/TradingView";
 import { createQueryClientWrapper } from "./utils/query-client";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 const tradingViewMocks = vi.hoisted(() => ({
   createPerpsDataFeed: vi.fn(),
@@ -188,17 +189,11 @@ describe("TradingView", () => {
 
   it("wires the backend datafeed, saved layout, reconnect invalidation, autosave, and overlay lines", async () => {
     const savedLayout = { panes: [{ sources: ["restored-layout"] }] };
-    localStorage.setItem("tv_v4.ETH-USD_perps", JSON.stringify(savedLayout));
+    localStorage.setItem("tv_v4.ETHUSD_perps", JSON.stringify(savedLayout));
     const Wrapper = createQueryClientWrapper();
+    const ethPair = MarketPair.fromTicker("ETHUSD");
     const { unmount } = render(
-      <TradingView
-        accountAddress="0x1234567890abcdef1234567890abcdef12345678"
-        coins={{
-          base: { symbol: "ETH" },
-          quote: { symbol: "USD" },
-        }}
-        perpsPairId="perp/ethusd"
-      />,
+      <TradingView accountAddress="0x1234567890abcdef1234567890abcdef12345678" pair={ethPair} />,
       { wrapper: Wrapper },
     );
 
@@ -206,7 +201,7 @@ describe("TradingView", () => {
     expect(widget.options).toMatchObject({
       datafeed: tradingViewMocks.datafeed,
       saved_data: savedLayout,
-      symbol: "ETH-USD",
+      symbol: "ETHUSD",
       theme: "dark",
     });
     expect(localStorage.getItem("tradingview.time_hours_format")).toBe("12-hours");
@@ -243,7 +238,7 @@ describe("TradingView", () => {
     )?.[1];
     expect(autosave).toEqual(expect.any(Function));
     autosave();
-    expect(localStorage.getItem("tv_v4.ETH-USD_perps")).toBe(
+    expect(localStorage.getItem("tv_v4.ETHUSD_perps")).toBe(
       JSON.stringify({ panes: [{ sources: ["saved-layout"] }] }),
     );
 
@@ -285,17 +280,12 @@ describe("TradingView", () => {
     expect(widget.remove).toHaveBeenCalledOnce();
   });
 
-  it("switches the active symbol and redraws overlays from the new backend pair without recreating the widget", async () => {
+  it("switches the active symbol without recreating the widget and redraws overlays from the new backend pair", async () => {
     const Wrapper = createQueryClientWrapper();
+    const ethPair = MarketPair.fromTicker("ETHUSD");
+    const btcPair = MarketPair.fromTicker("BTCUSD");
     const { rerender } = render(
-      <TradingView
-        accountAddress="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-        coins={{
-          base: { symbol: "ETH" },
-          quote: { symbol: "USD" },
-        }}
-        perpsPairId="perp/ethusd"
-      />,
+      <TradingView accountAddress="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" pair={ethPair} />,
       { wrapper: Wrapper },
     );
     const widget = tradingViewMocks.widgetInstances[0];
@@ -309,18 +299,13 @@ describe("TradingView", () => {
     widget.chartApi.createShape.mockClear();
 
     rerender(
-      <TradingView
-        accountAddress="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-        coins={{
-          base: { symbol: "BTC" },
-          quote: { symbol: "USD" },
-        }}
-        perpsPairId="perp/btcusd"
-      />,
+      <TradingView accountAddress="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" pair={btcPair} />,
     );
 
     expect(tradingViewMocks.widgetMock).toHaveBeenCalledOnce();
-    expect(widget.chartApi.setSymbol).toHaveBeenCalledWith("BTC-USD", expect.any(Function));
+    expect(widget.remove).not.toHaveBeenCalled();
+    expect(widget.chartApi.setSymbol).toHaveBeenCalledWith("BTCUSD", expect.any(Function));
+    expect(tradingViewMocks.createPerpsDataFeed).toHaveBeenCalledOnce();
 
     await waitFor(() => {
       expect(widget.chartApi.createShape).toHaveBeenCalledWith(

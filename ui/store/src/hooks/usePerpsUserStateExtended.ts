@@ -96,7 +96,6 @@ export function usePerpsUserStateExtended<Selection>(
   const { data: appConfig } = useAppConfig();
   const publicClient = usePublicClient();
   const resourceParams = {
-    chainId: config.chain.id,
     accountAddress: accountAddress ?? "",
     perpsContract: appConfig.addresses.perps,
     publicClient,

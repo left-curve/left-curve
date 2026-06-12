@@ -38,7 +38,7 @@ const reviewedLocalAppletsKitMockFiles = new Set([
 ]);
 const reviewedLocalAppletsKitMockOverrides = [
   "tests/bridge-ui.test.tsx:AssetInputWithRange,CoinSelector,ConnectWalletWithModal,FormattedNumber,IconDisconnect,Input,Modals,NetworkSelector,useApp",
-  "tests/mocks/transfer.tsx:AccountSearchInput,CoinSelector,useApp",
+  "tests/mocks/transfer.tsx:AccountSearchInput,CoinSelector,Tab,Tabs,useApp",
 ].sort();
 const reviewedExplicitSkips = [
   "tests/pages/referral.spec.ts:User is not a referrer - Edit icon not visible (no trading volume)",

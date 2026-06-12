@@ -6,7 +6,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Footer } from "../src/components/foundation/Footer";
 
 const footerMocks = vi.hoisted(() => ({
-  pathname: "/trade/BTC-USD",
+  pathname: "/trade/BTCUSD",
   perpsPairStats: [] as Array<{
     currentPrice: string | null;
     pairId: string;
@@ -61,7 +61,7 @@ function setPerpsPairStats(stats: typeof footerMocks.perpsPairStats) {
 
 describe("Footer shell", () => {
   beforeEach(() => {
-    footerMocks.pathname = "/trade/BTC-USD";
+    footerMocks.pathname = "/trade/BTCUSD";
     class ResizeObserverMock {
       disconnect = vi.fn();
       observe = vi.fn();

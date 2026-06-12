@@ -50,7 +50,9 @@ vi.mock("@left-curve/foundation", async (importOriginal) => {
 
 vi.mock("../src/components/dex/components/ProTrade", () => ({
   useProTrade: () => ({
-    perpsPairId: "perp/btcusd",
+    pair: {
+      id: "perp/btcusd",
+    },
   }),
 }));
 

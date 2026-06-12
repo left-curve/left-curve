@@ -5,6 +5,7 @@ import { resetAppletsKitMocks, setAppletsKitUseAppFactory } from "./mocks/applet
 
 import { Modals } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 import { ProTrade } from "../src/components/dex/components/ProTrade";
 
@@ -13,7 +14,7 @@ const accountAddress = "0x7472616465720000000000000000000000000000";
 const proTradeHistoryMocks = vi.hoisted(() => ({
   onChangeAction: vi.fn(),
   onChangeOrderType: vi.fn(),
-  onChangePairId: vi.fn(),
+  onChangeTicker: vi.fn(),
   showModal: vi.fn(),
   toastDismiss: vi.fn(),
   toastError: vi.fn(),
@@ -176,7 +177,6 @@ vi.mock("@left-curve/store", () => {
   };
 
   return {
-    getPerpsPairIdFromPairId: vi.fn(() => "perp/btcusd"),
     useAccount: () => ({
       account: {
         address: accountAddress,
@@ -228,10 +228,6 @@ vi.mock("@left-curve/store", () => {
         positions: extendedPositions,
         status: "ready",
       }),
-    useTradePairCoins: () => ({
-      baseCoin: coins.byDenom["bridge/btc"],
-      quoteCoin: coins.byDenom.usd,
-    }),
   };
 });
 
@@ -243,12 +239,9 @@ function renderProTradeHistory() {
       action="buy"
       onChangeAction={proTradeHistoryMocks.onChangeAction}
       onChangeOrderType={proTradeHistoryMocks.onChangeOrderType}
-      onChangePairId={proTradeHistoryMocks.onChangePairId}
+      onChangeTicker={proTradeHistoryMocks.onChangeTicker}
       orderType="market"
-      pairId={{
-        baseDenom: "bridge/btc",
-        quoteDenom: "usd",
-      }}
+      pair={MarketPair.fromTicker("BTCUSD")}
     >
       <ProTrade.History />
     </ProTrade>,
@@ -308,9 +301,9 @@ describe("ProTrade history", () => {
   it("maps backend positions into row actions with backend modal payloads", () => {
     renderProTradeHistory();
 
-    const btcRow = rowForText("BTC/USD");
+    const btcRow = rowForText("BTCUSD");
     fireEvent.click(btcRow);
-    expect(proTradeHistoryMocks.onChangePairId).toHaveBeenCalledWith("BTC-USD");
+    expect(proTradeHistoryMocks.onChangeTicker).toHaveBeenCalledWith("BTCUSD");
 
     fireEvent.click(within(btcRow).getByText(m["dex.protrade.positions.edit"]()));
     expect(proTradeHistoryMocks.showModal).toHaveBeenCalledWith(Modals.ProSwapEditedSL, {
@@ -326,7 +319,7 @@ describe("ProTrade history", () => {
       symbol: "BTC",
     });
 
-    proTradeHistoryMocks.onChangePairId.mockClear();
+    proTradeHistoryMocks.onChangeTicker.mockClear();
     const pnlShareButton = within(btcRow)
       .getAllByRole("button")
       .find((button) => button.querySelector("svg") && !button.textContent?.trim());
@@ -334,7 +327,7 @@ describe("ProTrade history", () => {
       throw new Error("Expected position PnL share button");
 
     fireEvent.click(pnlShareButton);
-    expect(proTradeHistoryMocks.onChangePairId).not.toHaveBeenCalled();
+    expect(proTradeHistoryMocks.onChangeTicker).not.toHaveBeenCalled();
     expect(proTradeHistoryMocks.showModal).toHaveBeenCalledWith(Modals.PnlShare, {
       currentPrice: 51000,
       entryPrice: "50000",
@@ -359,7 +352,7 @@ describe("ProTrade history", () => {
   it("opens the add-TP/SL modal for positions without existing conditional orders", () => {
     renderProTradeHistory();
 
-    const ethRow = rowForText("ETH/USD");
+    const ethRow = rowForText("ETHUSD");
     fireEvent.click(within(ethRow).getByText(m["dex.protrade.positions.edit"]()));
 
     expect(proTradeHistoryMocks.showModal).toHaveBeenCalledWith(Modals.ProSwapEditTPSL, {
@@ -378,13 +371,13 @@ describe("ProTrade history", () => {
 
     clickTab(m["dex.protrade.openOrders"]());
 
-    expect(rowForText("BTC/USD")).toBeInTheDocument();
-    expect(rowForText("ETH/USD")).toBeInTheDocument();
+    expect(rowForText("BTCUSD")).toBeInTheDocument();
+    expect(rowForText("ETHUSD")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: m["common.cancelAll"]() }));
     expect(proTradeHistoryMocks.showModal).toHaveBeenCalledWith(Modals.PerpsCloseAll, {});
 
-    const btcOrderRow = rowForText("BTC/USD");
+    const btcOrderRow = rowForText("BTCUSD");
     fireEvent.click(within(btcOrderRow).getByRole("button", { name: m["common.cancel"]() }));
     expect(proTradeHistoryMocks.showModal).toHaveBeenCalledWith(Modals.PerpsCloseOrder, {
       orderId: "order-btc",
@@ -394,7 +387,7 @@ describe("ProTrade history", () => {
       screen.getByRole("checkbox", { name: m["dex.protrade.orders.showAllPairs"]() }),
     );
 
-    expect(rowForText("BTC/USD")).toBeInTheDocument();
-    expect(screen.queryByText("ETH/USD")).not.toBeInTheDocument();
+    expect(rowForText("BTCUSD")).toBeInTheDocument();
+    expect(screen.queryByText("ETHUSD")).not.toBeInTheDocument();
   });
 });

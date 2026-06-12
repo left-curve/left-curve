@@ -12,6 +12,7 @@ import {
 } from "@left-curve/applets-kit";
 import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
@@ -26,7 +27,6 @@ import {
   getPerpsEventLabel,
   getSideLabel,
 } from "../../helpers/perpsEventLabels";
-import { getPerpsPairLabel, getPerpsPairSymbol } from "../../helpers/tradePairSymbols";
 import { type QueryRange, useTradeHistoryFilter } from "./useTradeHistoryFilter";
 import { usePerpsTradeHistory } from "./usePerpsTradeHistory";
 
@@ -56,7 +56,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       header: m["dex.protrade.tradeHistory.pair"](),
       width: "minmax(80px, 1fr)",
       render: (event) => {
-        const pair = getPerpsPairLabel(event.pairId);
+        const pair = MarketPair.fromPairId(event.pairId).ticker;
         return <Cell.Text text={pair} className="diatype-xs-medium" />;
       },
     },
@@ -88,7 +88,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       render: (event, { size }) => {
         if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         const abs = size.startsWith("-") ? size.slice(1) : size;
-        const baseSymbol = getPerpsPairSymbol(event.pairId);
+        const baseSymbol = MarketPair.fromPairId(event.pairId).base.symbol;
         return (
           <Cell.Text
             text={
@@ -279,7 +279,7 @@ export function PerpsTradeHistory() {
     () =>
       buildColumns((event, fields) => {
         if (!fields.size || !fields.price || !fields.pnl) return;
-        const baseSymbol = getPerpsPairSymbol(event.pairId);
+        const baseSymbol = MarketPair.fromPairId(event.pairId).base.symbol;
         showModal(Modals.PnlShare, {
           mode: "fill",
           pairId: event.pairId,

@@ -383,7 +383,7 @@ describe("perps modals", () => {
     };
 
     renderWithQueryClient(
-      <PerpsAdjustLeverage baseSymbol="BTC" maxLeverage={50} perpsPairId="perp/btcusd" />,
+      <PerpsAdjustLeverage baseSymbol="BTC" maxLeverage={50} pairId="perp/btcusd" />,
     );
 
     expect(screen.getByText(m["modals.adjustLeverage.title"]())).toBeInTheDocument();
@@ -407,7 +407,7 @@ describe("perps modals", () => {
 
   it("defaults missing leverage to max leverage and clamps a too-low stored value to one", () => {
     renderWithQueryClient(
-      <PerpsAdjustLeverage baseSymbol="ETH" maxLeverage={25} perpsPairId="perp/ethusd" />,
+      <PerpsAdjustLeverage baseSymbol="ETH" maxLeverage={25} pairId="perp/ethusd" />,
     );
 
     expect(slider()).toHaveAttribute("aria-valuenow", "25");
@@ -419,7 +419,7 @@ describe("perps modals", () => {
     };
 
     renderWithQueryClient(
-      <PerpsAdjustLeverage baseSymbol="ETH" maxLeverage={25} perpsPairId="perp/ethusd" />,
+      <PerpsAdjustLeverage baseSymbol="ETH" maxLeverage={25} pairId="perp/ethusd" />,
     );
 
     expect(slider()).toHaveAttribute("aria-valuenow", "1");
@@ -430,10 +430,10 @@ describe("perps modals", () => {
       "perp/btcusd": "isolated",
     };
 
-    renderWithQueryClient(<PerpsMarginMode pairSymbol="BTC-USD" perpsPairId="perp/btcusd" />);
+    renderWithQueryClient(<PerpsMarginMode ticker="BTCUSD" pairId="perp/btcusd" />);
 
     expect(
-      screen.getByText(m["modals.marginMode.title"]({ symbol: "BTC-USD" })),
+      screen.getByText(m["modals.marginMode.title"]({ symbol: "BTCUSD" })),
     ).toBeInTheDocument();
     expect(screen.getByText(m["modals.marginMode.crossDescription"]())).toBeInTheDocument();
     expect(screen.getByText(m["modals.marginMode.isolatedDescription"]())).toBeInTheDocument();

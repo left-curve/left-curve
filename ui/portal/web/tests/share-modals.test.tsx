@@ -124,7 +124,7 @@ describe("share modals", () => {
     const { container } = render(
       <PnlShare
         mode="position"
-        pairId="BTC-USDC"
+        pairId="BTCUSDC"
         symbol="BTC"
         size="2"
         entryPrice="100"
@@ -164,7 +164,7 @@ describe("share modals", () => {
     const { container } = render(
       <PnlShare
         mode="fill"
-        pairId="ETH-USDC"
+        pairId="ETHUSDC"
         symbol="ETH"
         size="-2"
         fillPrice="2000"
@@ -199,7 +199,7 @@ describe("share modals", () => {
     render(
       <PnlShare
         mode="position"
-        pairId="BTC-USDC"
+        pairId="BTCUSDC"
         symbol="BTC"
         size="1"
         entryPrice="100"
@@ -234,7 +234,7 @@ describe("share modals", () => {
     render(
       <PnlShare
         mode="position"
-        pairId="BTC-USDC"
+        pairId="BTCUSDC"
         symbol="BTC"
         size="1"
         entryPrice="100"

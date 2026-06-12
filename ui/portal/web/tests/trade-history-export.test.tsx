@@ -114,7 +114,7 @@ describe("perps trade history CSV export button", () => {
     const [filename, csv] = tradeHistoryExportMocks.downloadCsv.mock.calls[0];
     expect(filename).toBe("trade-history-perps-test.csv");
     expect(csv).toContain(m["dex.protrade.tradeHistory.pair"]());
-    expect(csv).toContain("BTC/USD");
+    expect(csv).toContain("BTCUSD");
     expect(csv).toContain("0.5 BTC");
     expect(csv).toContain("10000");
     expect(csv).toContain("2026-06-08T10:00:00.000Z");
@@ -161,7 +161,7 @@ describe("perps trade history CSV export button", () => {
     );
 
     expect(rows[1].split(",")).toEqual([
-      "ETH/USD",
+      "ETHUSD",
       m["dex.protrade.tradeHistory.eventType.liquidation"](),
       m["dex.protrade.tradeHistory.side.buy"](),
       "1.2 ETH",
@@ -174,7 +174,7 @@ describe("perps trade history CSV export button", () => {
       "2026-06-08T11:00:00.000Z",
     ]);
     expect(rows[2].split(",")).toEqual([
-      "BTC/USD",
+      "BTCUSD",
       m["dex.protrade.tradeHistory.eventType.adl"](),
       m["dex.protrade.tradeHistory.side.sell"](),
       "0.25 BTC",
@@ -199,6 +199,6 @@ describe("perps trade history CSV export button", () => {
     );
 
     expect(csv).toContain('"Pair, localized","Type ""label""","Direction\nSide"');
-    expect(csv).toContain("BTC/USD");
+    expect(csv).toContain("BTCUSD");
   });
 });

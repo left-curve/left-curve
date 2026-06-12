@@ -62,7 +62,40 @@ describe("TradingView perps datafeed", () => {
     vi.clearAllMocks();
   });
 
-  it("fetches backend candles with normalized pair ids, interval enums, and ascending TradingView bars", async () => {
+  it("resolves cataloged compact tickers and rejects unsupported symbols", async () => {
+    const { datafeed } = createDatafeedFixture();
+    const onResolved = vi.fn();
+    const onError = vi.fn();
+
+    datafeed.resolveSymbol("ETHUSD", onResolved, onError);
+    await vi.runAllTimersAsync();
+
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: "ETHUSD Perp",
+        name: "ETHUSD",
+        ticker: "ETHUSD",
+      }),
+    );
+    expect(onError).not.toHaveBeenCalled();
+
+    datafeed.resolveSymbol("BTCUSD", onResolved, onError);
+    await vi.runAllTimersAsync();
+
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: "BTCUSD Perp",
+        name: "BTCUSD",
+        ticker: "BTCUSD",
+      }),
+    );
+
+    datafeed.resolveSymbol("ETH-USD", onResolved, onError);
+
+    expect(onError).toHaveBeenCalledWith("Unknown symbol: ETH-USD");
+  });
+
+  it("fetches backend candles with the resolved pair id, interval enums, and ascending TradingView bars", async () => {
     const { client, datafeed, queryClient } = createDatafeedFixture();
     client.queryPerpsCandles.mockResolvedValue({
       nodes: [
@@ -88,7 +121,7 @@ describe("TradingView perps datafeed", () => {
     const onError = vi.fn();
 
     datafeed.getBars(
-      { name: "ETH-USD" } as never,
+      { name: "ETHUSD" } as never,
       "15" as never,
       { to: 1_759_453_200 } as never,
       onHistory,
@@ -138,7 +171,7 @@ describe("TradingView perps datafeed", () => {
 
     client.queryPerpsCandles.mockResolvedValueOnce({ nodes: [] });
     datafeed.getBars(
-      { name: "BTC-USD" } as never,
+      { name: "BTCUSD" } as never,
       "1D" as never,
       { to: 1 } as never,
       onHistory,
@@ -156,7 +189,7 @@ describe("TradingView perps datafeed", () => {
 
     client.queryPerpsCandles.mockRejectedValueOnce(new Error("indexer unavailable"));
     datafeed.getBars(
-      { name: "BTC-USD" } as never,
+      { name: "BTCUSD" } as never,
       "1D" as never,
       { to: 2 } as never,
       onHistory,
@@ -183,7 +216,7 @@ describe("TradingView perps datafeed", () => {
       });
     const onRealtime = vi.fn();
 
-    datafeed.subscribeBars({ name: "ETH-USD" } as never, "5" as never, onRealtime, "eth-sub");
+    datafeed.subscribeBars({ name: "ETHUSD" } as never, "5" as never, onRealtime, "eth-sub");
     expect(subscriptions.subscribe).toHaveBeenNthCalledWith(1, "perpsCandles", {
       listener: expect.any(Function),
       params: {
@@ -192,7 +225,7 @@ describe("TradingView perps datafeed", () => {
       },
     });
 
-    datafeed.subscribeBars({ name: "BTC-USD" } as never, "1S" as never, onRealtime, "btc-sub");
+    datafeed.subscribeBars({ name: "BTCUSD" } as never, "1S" as never, onRealtime, "btc-sub");
     expect(firstUnsubscribe).toHaveBeenCalledOnce();
     expect(subscriptions.subscribe).toHaveBeenNthCalledWith(2, "perpsCandles", {
       listener: expect.any(Function),
@@ -264,7 +297,7 @@ describe("TradingView perps datafeed", () => {
     });
 
     datafeed.getMarks(
-      { name: "BTC-USD" } as never,
+      { name: "BTCUSD" } as never,
       Date.parse("2026-06-09T00:00:00.000Z") / 1000,
       Date.parse("2026-06-09T01:00:00.000Z") / 1000,
       onMarks,
@@ -291,7 +324,7 @@ describe("TradingView perps datafeed", () => {
     const { client, datafeed } = createDatafeedFixture();
     const onMarks = vi.fn();
 
-    datafeed.getMarks({ name: "BTC-USD" } as never, 1, 2, onMarks, "5" as never);
+    datafeed.getMarks({ name: "BTCUSD" } as never, 1, 2, onMarks, "5" as never);
 
     expect(onMarks).toHaveBeenCalledWith([]);
     expect(client.queryPerpsEvents).not.toHaveBeenCalled();

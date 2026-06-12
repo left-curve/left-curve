@@ -5,7 +5,6 @@ import { useRouter } from "@tanstack/react-router";
 import {
   useLivePerpsTrades,
   useCurrentPrice,
-  useTradePairCoins,
   useAppConfig,
   useStorage,
   usePerpsLiquidityDepth,
@@ -19,7 +18,7 @@ import { useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
-import type { AnyCoin } from "@left-curve/store/types";
+import type { BaseCoin } from "@left-curve/store/types";
 import type { PerpsLiquidityDepthResponse } from "@left-curve/types";
 
 type OrderBookOverviewProps = {
@@ -33,12 +32,14 @@ const OrderBookOverviewComponent: React.FC<OrderBookOverviewProps> = ({ onSelect
 
   const { isLg, is3XlTall } = useMediaQuery();
 
-  const { pairId, perpsPairId, accountAddress } = useProTrade();
+  const { pair, accountAddress } = useProTrade();
   const { data: appConfig } = useAppConfig();
+  const pairId = pair.id;
 
-  const { baseCoin, quoteCoin } = useTradePairCoins({ pairId });
+  const base = pair.base;
+  const quote = pair.quote;
 
-  const pairInfo = appConfig.perpsPairs[perpsPairId];
+  const pairInfo = appConfig.perpsPairs[pairId];
 
   const bucketSizes: string[] = pairInfo.bucketSizes;
 
@@ -90,18 +91,18 @@ const OrderBookOverviewComponent: React.FC<OrderBookOverviewProps> = ({ onSelect
         <>
           {activeTab === "order book" && (
             <OrderBook
-              baseCoin={baseCoin}
-              quoteCoin={quoteCoin}
+              base={base}
+              quote={quote}
               bucketSizes={bucketSizes}
               bucketSize={bucketSize}
               setBucketSize={setBucketSize}
               bucketRecords={bucketRecords}
-              perpsPairId={perpsPairId}
+              pairId={pairId}
               accountAddress={accountAddress}
               onSelectPrice={onSelectPrice}
             />
           )}
-          {activeTab === "trades" && <LiveTrades baseCoin={baseCoin} perpsPairId={perpsPairId} />}
+          {activeTab === "trades" && <LiveTrades base={base} pairId={pairId} />}
         </>
       )}
       {is3XlTall && (
@@ -114,7 +115,7 @@ const OrderBookOverviewComponent: React.FC<OrderBookOverviewProps> = ({ onSelect
             fullWidth
             classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
           />
-          <LiveTrades baseCoin={baseCoin} perpsPairId={perpsPairId} />
+          <LiveTrades base={base} pairId={pairId} />
         </>
       )}
     </ResizerContainer>
@@ -213,25 +214,25 @@ const OrderRow = memo(OrderRowComponent);
 OrderRow.displayName = "OrderRow";
 
 type OrderBookProps = {
-  baseCoin: AnyCoin & { amount: string };
-  quoteCoin: AnyCoin & { amount: string };
+  base: BaseCoin;
+  quote: BaseCoin;
   bucketSizes: string[];
   bucketSize: string;
   setBucketSize: (size: string) => void;
   bucketRecords: number;
-  perpsPairId: string;
+  pairId: string;
   accountAddress?: string;
   onSelectPrice: (price: string) => void;
 };
 
 const OrderBook: React.FC<OrderBookProps> = ({
-  baseCoin,
-  quoteCoin,
+  base,
+  quote,
   bucketSizes,
   bucketSize,
   setBucketSize,
   bucketRecords,
-  perpsPairId,
+  pairId,
   accountAddress,
   onSelectPrice,
 }) => {
@@ -241,7 +242,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
   );
   const perpsDisplayMode = perpsDisplayModeRaw === "quote" ? "quote" : "base";
 
-  const bucketSizeSymbol = perpsDisplayMode === "quote" ? "USD" : baseCoin.symbol;
+  const bucketSizeSymbol = perpsDisplayMode === "quote" ? "USD" : base.symbol;
 
   const priceFractionDigits = useMemo(() => bucketSizeToFractionDigits(bucketSize), [bucketSize]);
   const handleDisplayModeChange = useCallback(
@@ -265,7 +266,7 @@ const OrderBook: React.FC<OrderBookProps> = ({
           variant="plain"
           classNames={{ listboxWrapper: "right-0 left-auto" }}
         >
-          <Select.Item value="base">{baseCoin.symbol}</Select.Item>
+          <Select.Item value="base">{base.symbol}</Select.Item>
           <Select.Item value="quote">USD</Select.Item>
         </Select>
       </div>
@@ -285,12 +286,12 @@ const OrderBook: React.FC<OrderBookProps> = ({
         </p>
       </div>
       <LiquidityDepth
-        perpsPairId={perpsPairId}
+        pairId={pairId}
         accountAddress={accountAddress}
         bucketSize={bucketSize}
         bucketRecords={bucketRecords}
-        base={baseCoin}
-        quote={quoteCoin}
+        base={base}
+        quote={quote}
         onSelectPrice={onSelectPrice}
         displayMode={perpsDisplayMode}
         priceFractionDigits={priceFractionDigits}
@@ -300,16 +301,16 @@ const OrderBook: React.FC<OrderBookProps> = ({
 };
 
 type LiveTradesProps = {
-  baseCoin: AnyCoin & { amount: string };
-  perpsPairId: string;
+  base: BaseCoin;
+  pairId: string;
 };
 
-const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, perpsPairId }) => {
+const LiveTrades: React.FC<LiveTradesProps> = ({ base, pairId }) => {
   const { navigate } = useRouter();
   const timeFormat = useApp((state) => state.settings.timeFormat);
   const { is3XlTall } = useMediaQuery();
 
-  const livePerps = useLivePerpsTrades((s) => s.trades, { perpsPairId });
+  const livePerps = useLivePerpsTrades((s) => s.trades, { pairId });
   const perpsTrades = useDeferredValue(livePerps);
 
   return (
@@ -321,7 +322,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, perpsPairId }) => {
     >
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
-        <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
+        <p className="text-center">{m["dex.protrade.history.size"]({ symbol: base.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
@@ -362,19 +363,19 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ baseCoin, perpsPairId }) => {
 };
 
 type LiquidityDepthProps = {
-  perpsPairId: string;
+  pairId: string;
   accountAddress?: string;
   bucketSize: string;
   bucketRecords: number;
-  base: AnyCoin;
-  quote: AnyCoin;
+  base: BaseCoin;
+  quote: BaseCoin;
   onSelectPrice: (price: string) => void;
   displayMode: "base" | "quote";
   priceFractionDigits: number;
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
-  perpsPairId,
+  pairId,
   accountAddress,
   bucketSize,
   bucketRecords,
@@ -386,7 +387,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   const { liquidityDepth: perpsDepthData, error: perpsDepthError } = usePerpsLiquidityDepth(
     (s) => ({ liquidityDepth: s.liquidityDepth, error: s.error }),
     {
-      perpsPairId,
+      pairId,
       bucketSize,
       notifyIntervalMs: ORDER_BOOK_VISUAL_UPDATE_MS,
     },
@@ -398,7 +399,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
       if (!s.orders) return [];
       const prices = new Set<string>();
       for (const order of Object.values(s.orders)) {
-        if (order.pairId !== perpsPairId) continue;
+        if (order.pairId !== pairId) continue;
         prices.add(Decimal(order.limitPrice).toFixed(priceFractionDigits));
       }
       return [...prices].sort();
@@ -475,7 +476,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
         ))}
       </div>
 
-      <Spread perpsPairId={perpsPairId} perpsDepth={perpsDepthData} />
+      <Spread pairId={pairId} perpsDepth={perpsDepthData} />
 
       <div className="bid-container flex flex-1 flex-col w-full gap-[2px] order-1 lg:order-3">
         {bids.records.map((bid) => (
@@ -496,12 +497,12 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 };
 
 const Spread: React.FC<{
-  perpsPairId: string;
+  pairId: string;
   perpsDepth: PerpsLiquidityDepthResponse | null;
-}> = ({ perpsPairId, perpsDepth }) => {
+}> = ({ pairId, perpsDepth }) => {
   const formatNumberOptions = useApp((state) => state.settings.formatNumberOptions);
 
-  const { currentPrice, previousPrice } = useCurrentPrice({ perpsPairId });
+  const { currentPrice, previousPrice } = useCurrentPrice({ pairId });
 
   const { spread, spreadPercent } = useMemo(() => {
     if (!perpsDepth) return { spread: null, spreadPercent: null };

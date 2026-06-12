@@ -67,10 +67,7 @@ function nextKey(label: string) {
   return `unit.${label}.${keyIndex}`;
 }
 
-function configureStorage(
-  prefix = nextKey("prefix"),
-  options: { subscribable?: boolean } = {},
-) {
+function configureStorage(prefix = nextKey("prefix"), options: { subscribable?: boolean } = {}) {
   const rawStorage = createRawStorage(options);
   const storage = createStorage({
     key: prefix,
@@ -296,6 +293,28 @@ describe("storage hooks", () => {
     });
   });
 
+  it("migrates favorite pair storage from dashed tickers to compact tickers", async () => {
+    const { storage } = configureStorage();
+    storage.setItem("favorites.pairs", {
+      state: {
+        _hasHydrated: false,
+        value: ["BTC-USD", "ETH-USD", "BTCUSD"],
+        version: 0,
+      },
+      version: 0,
+    } satisfies PersistedValue<string[]>);
+
+    const { result } = renderHook(() => useFavPairs());
+
+    await waitFor(() => expect(result.current.favPairs).toEqual(["BTCUSD", "ETHUSD"]));
+    expect(storage.getItem("favorites.pairs")).toMatchObject({
+      state: {
+        value: ["BTCUSD", "ETHUSD"],
+      },
+      version: 1,
+    });
+  });
+
   it("adds, removes, and toggles favorite pairs without duplicating entries", async () => {
     configureStorage();
     const { result } = renderHook(() => useFavPairs());
@@ -303,25 +322,25 @@ describe("storage hooks", () => {
     await waitFor(() => expect(result.current.favPairs).toEqual([]));
 
     act(() => {
-      result.current.addFavPair("BTC-USD");
-      result.current.addFavPair("BTC-USD");
+      result.current.addFavPair("BTCUSD");
+      result.current.addFavPair("BTCUSD");
     });
 
-    await waitFor(() => expect(result.current.favPairs).toEqual(["BTC-USD"]));
-    expect(result.current.hasFavPair("BTC-USD")).toBe(true);
+    await waitFor(() => expect(result.current.favPairs).toEqual(["BTCUSD"]));
+    expect(result.current.hasFavPair("BTCUSD")).toBe(true);
 
     act(() => {
-      result.current.toggleFavPair("BTC-USD");
+      result.current.toggleFavPair("BTCUSD");
     });
 
     await waitFor(() => expect(result.current.favPairs).toEqual([]));
 
     act(() => {
-      result.current.toggleFavPair("ETH-USD");
+      result.current.toggleFavPair("ETHUSD");
       result.current.removeFavPair("missing");
     });
 
-    await waitFor(() => expect(result.current.favPairs).toEqual(["ETH-USD"]));
+    await waitFor(() => expect(result.current.favPairs).toEqual(["ETHUSD"]));
   });
 
   it("uses the migrated default applet list and supports applet preference edits", async () => {
