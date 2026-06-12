@@ -54,6 +54,8 @@ pub fn clean_up_dex(storage: Box<dyn Storage>) -> AppResult<()> {
 
     for (address, denom) in &lp_balances {
         BALANCES.remove(&mut bank_storage, (address, denom));
+
+        tracing::info!(%address, %denom, "Removed balance record");
     }
 
     // 2. Delete all supplies of LP share tokens.
@@ -67,6 +69,8 @@ pub fn clean_up_dex(storage: Box<dyn Storage>) -> AppResult<()> {
 
     for denom in &lp_supplies {
         SUPPLIES.remove(&mut bank_storage, denom);
+
+        tracing::info!(%denom, "Removed supply record");
     }
 
     // 3. Credit all remaining balances of the DEX contract (dust left behind
@@ -88,6 +92,8 @@ pub fn clean_up_dex(storage: Box<dyn Storage>) -> AppResult<()> {
             .map_err(StdError::from)?;
 
         BALANCES.save(&mut bank_storage, (&config.owner, denom), &balance)?;
+
+        tracing::info!(%denom, %amount, "Swept DEX balance to owner");
     }
 
     // 4. Delete the record of the DEX contract being the owner of the `dex`
@@ -95,6 +101,8 @@ pub fn clean_up_dex(storage: Box<dyn Storage>) -> AppResult<()> {
     let dex_namespace = Part::new_unchecked("dex");
     if NAMESPACE_OWNERS.may_load(&bank_storage, &dex_namespace)? == Some(DEX_ADDRESS) {
         NAMESPACE_OWNERS.remove(&mut bank_storage, &dex_namespace);
+
+        tracing::info!("Removed DEX as namespace owner");
     }
 
     // 5. Wipe the DEX contract's own storage.
