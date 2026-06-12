@@ -292,7 +292,8 @@ fn has_sufficient_balance(
     }
 
     for coin in minimum {
-        if querier.query_balance(address, coin.denom.clone())? >= *coin.amount {
+        let balance = querier.query_balance(address, coin.denom.clone())?;
+        if balance >= *coin.amount {
             return Ok(true);
         }
     }
