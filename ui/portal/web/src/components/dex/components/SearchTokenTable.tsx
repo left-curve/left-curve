@@ -1,9 +1,4 @@
-import {
-  getPerpsPairIdFromPairId,
-  useAllPerpsPairStats,
-  useConfig,
-  useFavPairs,
-} from "@left-curve/store";
+import { useAllPerpsPairStats, useFavPairs } from "@left-curve/store";
 import {
   Badge,
   Cell,
@@ -34,23 +29,21 @@ const TokenImage = memo(({ src, alt }: { src?: string; alt: string }) => (
 const formatMultiplier = (raw: string) => raw.replace(/\.?0+$/, "") || raw;
 
 const PerpsPairNameWithFav: React.FC<{
-  baseCoin: { symbol: string; logoURI?: string };
-  quoteCoin: { symbol: string };
-  pairKey: string;
+  pair: SearchTokenRow["pair"];
   boostMultiplier?: string;
-}> = memo(({ baseCoin, quoteCoin, pairKey, boostMultiplier }) => {
+}> = memo(({ pair, boostMultiplier }) => {
   const { toggleFavPair, hasFavPair } = useFavPairs();
-  const isFav = hasFavPair(pairKey);
+  const isFav = hasFavPair(pair.ticker);
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto min-w-fit pr-2">
       <StarToggleButton
         isActive={isFav}
-        onToggle={() => toggleFavPair(pairKey)}
+        onToggle={() => toggleFavPair(pair.ticker)}
         className={isFav ? "text-primitives-warning-500" : "text-fg-secondary-500"}
       />
-      <TokenImage src={baseCoin.logoURI} alt={baseCoin.symbol} />
-      <p className="whitespace-nowrap">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <TokenImage src={pair.logoURI} alt={pair.base.symbol} />
+      <p className="whitespace-nowrap">{pair.ticker}</p>
       <Badge text="Perp" color="green" size="s" />
       {boostMultiplier ? (
         <Tooltip
@@ -112,20 +105,15 @@ const VolumeCell = memo(({ stats }: { stats?: NormalizedPerpsPairStats }) => {
 type SearchTokenTableProps = {
   classNames?: TableClassNames;
   data: SearchTokenRow[];
-  onChangePairId: (row: SearchTokenRow) => void;
+  onChangePair: (row: SearchTokenRow) => void;
 };
 
 export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
   classNames,
   data: rows,
-  onChangePairId,
+  onChangePair,
 }) => {
-  const { coins } = useConfig();
   const perpStatsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId);
-  const getPerpsPairId = useCallback(
-    (pairId: SearchTokenRow["pairId"]) => getPerpsPairIdFromPairId(pairId, coins),
-    [coins],
-  );
 
   const columns = useMemo<TableColumn<SearchTokenRow>>(
     () => [
@@ -144,20 +132,18 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
         ),
         cell: ({ row }) => (
           <PerpsPairNameWithFav
-            baseCoin={row.original.baseCoin}
-            quoteCoin={row.original.quoteCoin}
-            pairKey={row.original.pairKey}
+            pair={row.original.pair}
             boostMultiplier={row.original.boostMultiplier}
           />
         ),
         filterFn: (row, _, value) => {
           const v = String(value ?? "").toUpperCase();
           return (
-            row.original.baseCoin.symbol.toUpperCase().includes(v) ||
-            row.original.quoteCoin.symbol.toUpperCase().includes(v)
+            row.original.pair.ticker.toUpperCase().includes(v) ||
+            row.original.pair.name.toUpperCase().includes(v)
           );
         },
-        accessorFn: (row) => row.pairKey,
+        accessorFn: (row) => row.pair.ticker,
       },
       {
         id: "price",
@@ -168,11 +154,9 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             toggleSort={ctx.column.toggleSorting}
           />
         ),
-        cell: ({ row }) => (
-          <PriceCell stats={perpStatsByPairId[getPerpsPairId(row.original.pairId)]} />
-        ),
+        cell: ({ row }) => <PriceCell stats={perpStatsByPairId[row.original.pair.id]} />,
         accessorFn: (row) => {
-          const stats = perpStatsByPairId[getPerpsPairId(row.pairId)];
+          const stats = perpStatsByPairId[row.pair.id];
           return Number(stats?.currentPrice ?? 0);
         },
       },
@@ -185,11 +169,9 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             toggleSort={ctx.column.toggleSorting}
           />
         ),
-        cell: ({ row }) => (
-          <ChangeCell stats={perpStatsByPairId[getPerpsPairId(row.original.pairId)]} />
-        ),
+        cell: ({ row }) => <ChangeCell stats={perpStatsByPairId[row.original.pair.id]} />,
         accessorFn: (row) => {
-          const stats = perpStatsByPairId[getPerpsPairId(row.pairId)];
+          const stats = perpStatsByPairId[row.pair.id];
           const value = stats?.priceChange24H;
           return value === null || value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
         },
@@ -204,20 +186,18 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
             className="ml-auto w-full justify-end"
           />
         ),
-        cell: ({ row }) => (
-          <VolumeCell stats={perpStatsByPairId[getPerpsPairId(row.original.pairId)]} />
-        ),
+        cell: ({ row }) => <VolumeCell stats={perpStatsByPairId[row.original.pair.id]} />,
         accessorFn: (row) => {
-          const stats = perpStatsByPairId[getPerpsPairId(row.pairId)];
+          const stats = perpStatsByPairId[row.pair.id];
           const value = stats?.volume24H;
           return value === undefined ? Number.NEGATIVE_INFINITY : Number(value);
         },
       },
     ],
-    [getPerpsPairId, perpStatsByPairId],
+    [perpStatsByPairId],
   );
 
-  const getRowId = useCallback((row: SearchTokenRow) => row.pairKey, []);
+  const getRowId = useCallback((row: SearchTokenRow) => row.pair.ticker, []);
 
   return (
     <Table
@@ -232,7 +212,7 @@ export const SearchTokenTable: React.FC<SearchTokenTableProps> = ({
       }}
       initialColumnVisibility={{ isFavorite: false }}
       onRowPointerDown={(row) => {
-        onChangePairId(row.original);
+        onChangePair(row.original);
       }}
     />
   );

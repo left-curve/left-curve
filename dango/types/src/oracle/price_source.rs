@@ -11,9 +11,9 @@ pub type PriceSource = pyth_types::PythLazerSubscriptionDetails;
 /// Most assets are priced from a single feed. Commodities priced off futures
 /// markets (e.g. WTI, Brent, natural gas) instead roll between two contracts —
 /// the front-month and the next-month — blending their prices over a set of
-/// discrete fixings as the front contract approaches maturity. The blend weight
-/// is a pure function of the block timestamp, so the roll runs on-chain without
-/// a transaction per fixing.
+/// discrete fixings as the front contract approaches its final trading day.
+/// The blend weight is a pure function of the block timestamp, so the roll
+/// runs on-chain without a transaction per fixing.
 #[grug_types::derive(Serde)]
 pub enum PriceConfig {
     /// Priced from a single feed. The common case (crypto, spot).

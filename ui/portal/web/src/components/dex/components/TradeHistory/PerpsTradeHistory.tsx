@@ -12,6 +12,7 @@ import {
 } from "@left-curve/applets-kit";
 import { Decimal } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
@@ -20,8 +21,12 @@ import { isFeatureEnabled } from "../../../../featureFlags";
 import { EmptyPlaceholder } from "../../../foundation/EmptyPlaceholder";
 import { ExportCsvButton } from "./ExportCsvButton";
 import { TradeHistoryToolbar } from "./TradeHistoryToolbar";
-import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
-import { getMakerTakerLabel, getPerpsEventLabel, getSideLabel } from "./perpsEventLabels";
+import { normalizePerpsEvent, type NormalizedFields } from "../../helpers/normalizePerpsEvent";
+import {
+  getMakerTakerLabel,
+  getPerpsEventLabel,
+  getSideLabel,
+} from "../../helpers/perpsEventLabels";
 import { type QueryRange, useTradeHistoryFilter } from "./useTradeHistoryFilter";
 import { usePerpsTradeHistory } from "./usePerpsTradeHistory";
 
@@ -51,7 +56,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       header: m["dex.protrade.tradeHistory.pair"](),
       width: "minmax(80px, 1fr)",
       render: (event) => {
-        const pair = event.pairId.replace("perp/", "").replace("usd", "/USD").toUpperCase();
+        const pair = MarketPair.fromPairId(event.pairId).ticker;
         return <Cell.Text text={pair} className="diatype-xs-medium" />;
       },
     },
@@ -83,7 +88,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
       render: (event, { size }) => {
         if (!size) return <Cell.Text text="-" className="text-ink-tertiary-500" />;
         const abs = size.startsWith("-") ? size.slice(1) : size;
-        const baseSymbol = event.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
+        const baseSymbol = MarketPair.fromPairId(event.pairId).base.symbol;
         return (
           <Cell.Text
             text={
@@ -260,7 +265,7 @@ function buildColumns(onShareFill: ShareFillHandler): ColumnDef[] {
 
 export function PerpsTradeHistory() {
   const navigate = useNavigate();
-  const { showModal } = useApp();
+  const showModal = useApp((state) => state.showModal);
   const { isMd } = useMediaQuery();
   const isAdvancedEnabled = isFeatureEnabled("trade_history_export");
   const { filter, setPreset, setCustomRange, queryRange } = useTradeHistoryFilter();
@@ -274,7 +279,7 @@ export function PerpsTradeHistory() {
     () =>
       buildColumns((event, fields) => {
         if (!fields.size || !fields.price || !fields.pnl) return;
-        const baseSymbol = event.pairId.replace("perp/", "").replace("usd", "").toUpperCase();
+        const baseSymbol = MarketPair.fromPairId(event.pairId).base.symbol;
         showModal(Modals.PnlShare, {
           mode: "fill",
           pairId: event.pairId,
@@ -345,10 +350,7 @@ export function PerpsTradeHistory() {
         )
       ) : null}
 
-      <div
-        ref={scrollRef}
-        className="w-full max-h-[31vh] overflow-auto scrollbar-none"
-      >
+      <div ref={scrollRef} className="w-full max-h-[31vh] overflow-auto scrollbar-none">
         <div
           className="sticky top-0 z-10 grid bg-surface-primary-rice diatype-xs-medium text-ink-tertiary-500 px-1 py-2 border-b border-outline-secondary-gray"
           style={{ gridTemplateColumns: gridTemplate, minWidth: "fit-content" }}

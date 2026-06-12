@@ -3,19 +3,18 @@ discord_username: "Deploy"
 discord_avatar_url: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ansible-light.svg"
 github_repo: "left-curve/left-curve"
 ssh_users:
-  - penso
+  - j0nl1
   - larry
-  # - rhaki
-  # - zexsor
-  # - j0nl1
-  # - michael
+  - penso
+  - rhaki
+  - zexsor
 sudo_users:
+  - larry
   - penso
 dango_domain: "dango.zone"
 ports:
   dango_port: 8080
   faucet_port: 8082
-  quest_port: 8083
   cometbft_p2p_port: 26656
   cometbft_rpc_port: 26657
   cometbft_abci_port: 26658

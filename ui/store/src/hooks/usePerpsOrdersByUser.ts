@@ -24,7 +24,6 @@ export type UsePerpsOrdersByUserParameters = {
 };
 
 type PerpsOrdersByUserResourceParams = {
-  chainId: Config["chain"]["id"];
   accountAddress: string;
   perpsContract: string;
   subscriptions: Config["subscriptions"];
@@ -42,8 +41,8 @@ const perpsOrdersByUserResource = createLiveResource<
   PerpsOrdersByUserSnapshot
 >({
   name: "perpsOrdersByUser",
-  getKey: ({ chainId, perpsContract, accountAddress }) =>
-    `perpsOrdersByUser:${chainId}:${perpsContract}:${accountAddress}`,
+  getKey: ({ perpsContract, accountAddress }) =>
+    `perpsOrdersByUser:${perpsContract}:${accountAddress}`,
   getInitialSnapshot: () => initialPerpsOrdersByUserSnapshot,
   equal: (previous, next) => equalLiveResourcePayload(previous, next, ["orders"]),
   start: ({ accountAddress, perpsContract, subscriptions }, { emit, error }) =>
@@ -90,7 +89,6 @@ export function usePerpsOrdersByUser<Selection>(
   return useLiveResource({
     resource: perpsOrdersByUserResource,
     params: {
-      chainId: config.chain.id,
       accountAddress: accountAddress ?? "",
       perpsContract: appConfig.addresses.perps,
       subscriptions: config.subscriptions,

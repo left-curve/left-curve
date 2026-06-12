@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import { twMerge } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { FormattedNumber } from "@left-curve/applets-kit";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 import { OrderActivity } from "./OrderActivity";
 
@@ -17,8 +18,7 @@ export const ActivityPerpDeleveraged = forwardRef<ActivityRef, ActivityPerpDelev
     const { pair_id, closing_size, fill_price, realized_pnl } = activity.data;
 
     const absSize = closing_size.startsWith("-") ? closing_size.slice(1) : closing_size;
-    const baseSymbol = pair_id.replace("perp/", "").replace("usd", "").toUpperCase();
-    const pairLabel = `${baseSymbol}/USD`;
+    const pair = MarketPair.fromPairId(pair_id);
 
     useImperativeHandle(ref, () => ({
       onClick: () => {},
@@ -33,16 +33,20 @@ export const ActivityPerpDeleveraged = forwardRef<ActivityRef, ActivityPerpDelev
         <div className="flex flex-col items-start">
           <div className="flex flex-col gap-1 text-ink-tertiary-500">
             <div className="flex w-full gap-1">
-              <span>{pairLabel}</span>
+              <span>{pair.ticker}</span>
               <span className="diatype-m-bold">
-                <FormattedNumber number={absSize} as="span" /> {baseSymbol}
+                <FormattedNumber number={absSize} as="span" /> {pair.base.symbol}
               </span>
             </div>
 
             <div className="flex w-full gap-1">
               <span>{m["activities.activity.perpOrderFilled.atPrice"]()}</span>
               <span className="diatype-m-bold">
-                <FormattedNumber number={fill_price} formatOptions={{ currency: "USD" }} as="span" />
+                <FormattedNumber
+                  number={fill_price}
+                  formatOptions={{ currency: "USD" }}
+                  as="span"
+                />
               </span>
             </div>
 

@@ -20,13 +20,12 @@ export type PerpsPairStateSnapshot = LiveResourceSnapshot & {
 };
 
 export type UsePerpsPairStateParameters = {
-  perpsPairId?: string;
+  pairId: string;
   enabled?: boolean;
 };
 
 type PerpsPairStateResourceParams = {
-  chainId: Config["chain"]["id"];
-  perpsPairId: string;
+  pairId: string;
   perpsContract: string;
   subscriptions: Config["subscriptions"];
 };
@@ -44,11 +43,10 @@ const perpsPairStateResource = createLiveResource<
   PerpsPairStateSnapshot
 >({
   name: "perpsPairState",
-  getKey: ({ chainId, perpsContract, perpsPairId }) =>
-    `perpsPairState:${chainId}:${perpsContract}:${perpsPairId}`,
+  getKey: ({ perpsContract, pairId }) => `perpsPairState:${perpsContract}:${pairId}`,
   getInitialSnapshot: () => initialPerpsPairStateSnapshot,
   equal: (previous, next) => equalLiveResourcePayload(previous, next, ["pairState", "pairId"]),
-  start: ({ perpsPairId, perpsContract, subscriptions }, { emit, error }) =>
+  start: ({ pairId, perpsContract, subscriptions }, { emit, error }) =>
     subscriptions.subscribe("queryApp", {
       params: {
         interval: PERPS_PAIR_STATE_INTERVAL,
@@ -56,7 +54,7 @@ const perpsPairStateResource = createLiveResource<
         request: snakeCaseJsonSerialization<QueryRequest>({
           wasmSmart: {
             contract: perpsContract,
-            msg: { pairState: { pairId: perpsPairId } },
+            msg: { pairState: { pairId } },
           },
         }),
       },
@@ -71,7 +69,7 @@ const perpsPairStateResource = createLiveResource<
             status: "ready",
             error: null,
             pairState: response.wasmSmart,
-            pairId: perpsPairId,
+            pairId,
             lastUpdatedBlockHeight: blockHeight,
           },
           { version: blockHeight },
@@ -86,19 +84,18 @@ export function usePerpsPairState<Selection>(
   parameters: UsePerpsPairStateParameters,
   equalityFn?: (previous: Selection, next: Selection) => boolean,
 ): Selection {
-  const { perpsPairId, enabled = true } = parameters;
+  const { pairId, enabled = true } = parameters;
   const config = useConfig();
   const { data: appConfig } = useAppConfig();
 
   return useLiveResource({
     resource: perpsPairStateResource,
     params: {
-      chainId: config.chain.id,
-      perpsPairId: perpsPairId ?? "",
+      pairId,
       perpsContract: appConfig.addresses.perps,
       subscriptions: config.subscriptions,
     },
-    enabled: enabled && !!perpsPairId,
+    enabled,
     selector,
     equalityFn,
     restartToken: config.subscriptions,

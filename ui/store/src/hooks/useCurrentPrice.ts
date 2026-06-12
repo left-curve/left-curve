@@ -1,7 +1,7 @@
 import { useLivePerpsTrades } from "./useLivePerpsTrades.js";
 
 export type UseCurrentPriceParameters = {
-  perpsPairId?: string;
+  pairId: string;
   enabled?: boolean;
 };
 

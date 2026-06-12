@@ -1,10 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { getStoredFavorites, waitForStorageHydration } from "../utils/indexeddb";
+import { message } from "../utils/messages";
 
-const SEARCH_INPUT_LABEL = "Search for apps";
+const SEARCH_BUTTON_LABEL = message("searchBar.placeholder.title");
+const SEARCH_INPUT_LABEL = `${SEARCH_BUTTON_LABEL} ${message("searchBar.placeholder.apps")}`;
 
 async function openSearchMenu(page: Page) {
-  await page.getByRole("button", { name: /^Search for/ }).click();
+  await page.getByRole("button", { name: new RegExp(`^${SEARCH_BUTTON_LABEL}`) }).click();
 }
 
 function getSearchInput(page: Page) {

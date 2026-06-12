@@ -8,14 +8,16 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import { useAccount, useConfig, useSigningClient, useStorage, useSubmitTx } from "@left-curve/store";
+import { useAccount, useSigningClient, useStorage, useSubmitTx } from "@left-curve/store";
 import { PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { Decimal } from "@left-curve/utils";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { Image } from "~/components/foundation/Image";
+import { perpsTradeHistoryKeys } from "../dex/helpers/perpsTradeHistoryKeys";
 
 type PerpsClosePositionProps = {
   pairId: string;
@@ -26,7 +28,6 @@ type PerpsClosePositionProps = {
 export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ pairId, size }) => {
   const { hideModal } = useApp();
   const { account } = useAccount();
-  const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();
   const [maxSlippage] = useStorage<string>("perps-max-slippage", {
@@ -36,10 +37,9 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
   const sizeNum = Math.abs(Number(size));
   const isLong = Number(size) > 0;
 
-  const baseSymbol = pairId.replace("perp/", "").replace(/usd$/i, "");
-  const baseCoin = Object.values(coins.byDenom).find((c) => c.symbol.toLowerCase() === baseSymbol);
-  const symbol = baseCoin?.symbol ?? baseSymbol.toUpperCase();
-  const logoURI = baseCoin?.logoURI;
+  const pair = MarketPair.fromPairId(pairId);
+  const symbol = pair.base.symbol;
+  const logoURI = pair.base.logoURI;
 
   const [inputValue, setInputValue] = useState(sizeNum.toString());
   const closeAmount = Math.min(Number(inputValue) || 0, sizeNum);
@@ -85,7 +85,9 @@ export const PerpsClosePosition = forwardRef<void, PerpsClosePositionProps>(({ p
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["prices"] });
-        queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+        queryClient.invalidateQueries({
+          queryKey: perpsTradeHistoryKeys.account(account?.address),
+        });
         hideModal();
       },
     },

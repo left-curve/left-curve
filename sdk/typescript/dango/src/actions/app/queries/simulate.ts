@@ -11,7 +11,7 @@ export type SimulateParameters = {
 export type SimulateReturnType = Promise<SimulateResponse>;
 
 export async function simulate(client: Client, parameters: SimulateParameters): SimulateReturnType {
-  const { simulate, scale = 1.3, height = 0 } = parameters;
+  const { simulate, scale = 1.3 } = parameters;
 
   const document = `
     query simulateResult($tx: String!)  {

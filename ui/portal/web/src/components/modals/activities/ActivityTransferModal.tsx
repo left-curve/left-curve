@@ -30,7 +30,10 @@ type ActivityTransferModalProps = {
 };
 
 export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModalProps>(
-  ({ action = "received", from, to, time, txHash, coins, blockHeight, navigate: _navigate_ }) => {
+  (
+    { action = "received", from, to, time, txHash, coins, blockHeight, navigate: _navigate_ },
+    _ref,
+  ) => {
     const { hideModal, setSidebarVisibility, settings } = useApp();
     const config = useConfig();
     const { getPrice } = usePrices();

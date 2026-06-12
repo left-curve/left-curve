@@ -19,15 +19,15 @@ export type PerpsLiquidityDepthSnapshot = LiveResourceSnapshot & {
 };
 
 export type UsePerpsLiquidityDepthParameters = {
-  perpsPairId?: string;
+  pairId: string;
   bucketSize: string;
   limit?: number;
   enabled?: boolean;
+  notifyIntervalMs?: number;
 };
 
 type PerpsLiquidityDepthResourceParams = {
-  chainId: Config["chain"]["id"];
-  perpsPairId: string;
+  pairId: string;
   bucketSize: string;
   limit: number;
   perpsContract: string;
@@ -46,11 +46,11 @@ const perpsLiquidityDepthResource = createLiveResource<
   PerpsLiquidityDepthSnapshot
 >({
   name: "perpsLiquidityDepth",
-  getKey: ({ chainId, perpsContract, perpsPairId, bucketSize, limit }) =>
-    `perpsLiquidityDepth:${chainId}:${perpsContract}:${perpsPairId}:${bucketSize}:${limit}`,
+  getKey: ({ perpsContract, pairId, bucketSize, limit }) =>
+    `perpsLiquidityDepth:${perpsContract}:${pairId}:${bucketSize}:${limit}`,
   getInitialSnapshot: () => initialPerpsLiquidityDepthSnapshot,
   equal: (previous, next) => equalLiveResourcePayload(previous, next, ["liquidityDepth"]),
-  start: ({ perpsPairId, bucketSize, limit, perpsContract, subscriptions }, { emit, error }) =>
+  start: ({ pairId, bucketSize, limit, perpsContract, subscriptions }, { emit, error }) =>
     subscriptions.subscribe("queryApp", {
       params: {
         interval: PERPS_LIQUIDITY_DEPTH_INTERVAL,
@@ -60,7 +60,7 @@ const perpsLiquidityDepthResource = createLiveResource<
             contract: perpsContract,
             msg: {
               liquidityDepth: {
-                pairId: perpsPairId,
+                pairId,
                 bucketSize,
                 limit,
               },
@@ -96,23 +96,23 @@ export function usePerpsLiquidityDepth<Selection>(
   parameters: UsePerpsLiquidityDepthParameters,
   equalityFn?: (previous: Selection, next: Selection) => boolean,
 ): Selection {
-  const { perpsPairId, bucketSize, limit = 20, enabled = true } = parameters;
+  const { pairId, bucketSize, limit = 20, enabled = true, notifyIntervalMs } = parameters;
   const config = useConfig();
   const { data: appConfig } = useAppConfig();
 
   return useLiveResource({
     resource: perpsLiquidityDepthResource,
     params: {
-      chainId: config.chain.id,
-      perpsPairId: perpsPairId ?? "",
+      pairId,
       bucketSize,
       limit,
       perpsContract: appConfig.addresses.perps,
       subscriptions: config.subscriptions,
     },
-    enabled: enabled && !!perpsPairId && !!bucketSize,
+    enabled,
     selector,
     equalityFn,
+    notifyIntervalMs,
     restartToken: config.subscriptions,
   });
 }

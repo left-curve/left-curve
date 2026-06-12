@@ -1220,7 +1220,6 @@ jobs:
               chain: ($chain[0] | .id = $chain_id | .url = $api_url),
               urls: {
                 faucetUrl: $faucet_url,
-                questUrl: "http://localhost:8081/check_username",
                 upUrl: ($api_url + "/up"),
                 pointsUrl: "http://localhost:8083/points-api"
               },
