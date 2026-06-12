@@ -511,18 +511,30 @@ fn execute_close_schedule(
 
         let taker_is_bid = close_size.is_positive();
 
-        // Compute the bankruptcy price BEFORE book fills, using the total
-        // scheduled close amount. This price serves two roles:
+        // Compute the bankruptcy price BEFORE book fills. It divides the
+        // user's total equity by the position's FULL size — not the scheduled
+        // close amount — so a partial close at this price concedes only the
+        // closed fraction's share of equity (`equity / |size|` per unit),
+        // never more. Dividing by a deficit-sized partial close instead would
+        // amplify the offset and let a single small fill confiscate the whole
+        // account's equity, which is the bug behind the testnet block
+        // 32500262 liquidation cascade.
         //
-        // 1. When equity > 0 (timely liquidation): bp sits between oracle and
-        //    the entry price, and is used as both the target_price for book
-        //    matching AND the ADL fill price. This prevents matching against
-        //    absurd resting orders and guarantees equity_after >= 0.
+        // The price serves two roles:
+        //
+        // 1. When equity > 0 (timely liquidation): bp sits within the
+        //    maintenance-margin band below oracle (above for shorts), and is
+        //    used as both the target_price for book matching AND the ADL fill
+        //    price. This prevents matching against absurd resting orders and
+        //    guarantees equity_after >= 0: closing `c` of `|size|` units
+        //    leaves equity × (1 - c/|size|).
         //
         // 2. When equity <= 0 (late liquidation): bp overshoots oracle (above
         //    oracle for longs, below for shorts), which would block valid
         //    oracle-adjacent book fills. In this case we fall back to the
-        //    oracle price as target_price and use bp only for ADL.
+        //    oracle price as target_price and use bp only for ADL. The
+        //    schedule fully closes the position in this case (deficit >= MM),
+        //    so a pure-ADL close at bp zeroes equity exactly — no bad debt.
         //
         // Per-fill settlement inside `match_order` has already applied
         // realized PnLs and fees (zero during liquidation) from earlier
@@ -532,7 +544,6 @@ fn execute_close_schedule(
         let bankruptcy_price = compute_bankruptcy_price(
             user_state,
             pair_id,
-            close_size.checked_abs()?,
             oracle_prices,
             UsdValue::ZERO,
             UsdValue::ZERO,
