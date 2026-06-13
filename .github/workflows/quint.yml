@@ -7,10 +7,10 @@ on:
     branches:
       - main
     paths:
-      - "grug/jellyfish-merkle/spec/**"
+      - "dango/grug/jellyfish-merkle/spec/**"
   pull_request:
     paths:
-      - "grug/jellyfish-merkle/spec/**"
+      - "dango/grug/jellyfish-merkle/spec/**"
 
 jobs:
   lmt-check:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec
+        working-directory: ./dango/grug/jellyfish-merkle/spec
     steps:
       # Step 1: Checkout the repository
       - name: Checkout code
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec
+        working-directory: ./dango/grug/jellyfish-merkle/spec
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec
+        working-directory: ./dango/grug/jellyfish-merkle/spec
     env:
       MAX_SAMPLES: 100
     steps:
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/grug/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3
@@ -117,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/grug/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3
@@ -138,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/grug/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3
@@ -159,7 +159,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/grug/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3

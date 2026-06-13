@@ -32,7 +32,7 @@ install-node:
 
 # Compile and install the Dango client CLI
 install-client:
-  cargo install --path sdk/rust/cli --locked
+  cargo install --path dango/sdk/cli --locked
 
 # Run all tests
 test:
@@ -76,7 +76,7 @@ fmt:
 # Build schema
 build-graphql-schema:
   cargo run -p indexer-httpd --bin build_graphql_schema -- \
-    ./indexer/graphql-types/src/schemas/schema.graphql
+    ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book
 book:
