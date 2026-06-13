@@ -14,6 +14,16 @@ git-fetch-main:
 git-clear-branches:
   git branch | grep -v "main" | xargs git branch -D
 
+# Create a tag at the given commit and push only that tag to origin
+create-and-push-tag commit-hash tag:
+  git tag {{tag}} {{commit-hash}}
+  git push origin {{tag}}
+
+# Create a branch off the given commit and push only that branch to origin
+create-and-push-branch commit-hash branch:
+  git branch {{branch}} {{commit-hash}}
+  git push origin {{branch}}
+
 # ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Dango node software
