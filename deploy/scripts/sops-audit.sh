@@ -52,12 +52,6 @@ else
   status=1
 fi
 
-if [ -f "$REPO_ROOT/.sops.yaml.example" ]; then
-  printf 'example: .sops.yaml.example present\n'
-else
-  printf 'example: .sops.yaml.example missing\n'
-fi
-
 printf '\nExpected SOPS files\n'
 status=0
 while IFS= read -r rel; do

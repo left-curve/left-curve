@@ -15,7 +15,6 @@ Phase 1 keeps the model simple:
 - `.sops.yaml` is committed at the repo root with invalid placeholder
   recipients. The next ceremony step is replacing those placeholders with real
   public age/YubiKey recipients.
-- `.sops.yaml.example` remains as a reference copy of the same path policy.
 - Existing Ansible Vault files continue to serve deploy workflows until the
   migration phase changes playbooks and helpers.
 - `community.sops` is available for the later Ansible integration phase.

@@ -50,11 +50,4 @@ else
   missing=1
 fi
 
-if [ -f "$REPO_ROOT/.sops.yaml.example" ]; then
-  printf 'ok: .sops.yaml.example exists\n'
-else
-  printf 'missing: .sops.yaml.example is not present\n' >&2
-  missing=1
-fi
-
 exit "$missing"
