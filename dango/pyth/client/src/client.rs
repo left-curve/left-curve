@@ -4,7 +4,8 @@ use {
     crate::PythClientTrait,
     anyhow::bail,
     async_stream::stream,
-    grug_types::{Inner, Lengthy, NonEmpty},
+    dango_primitives::{Inner, Lengthy, NonEmpty},
+    dango_pyth_types::{ExponentialBackoff, PriceUpdate, PythLazerSubscriptionDetails},
     pyth_lazer_client::{
         stream_client::{PythLazerStreamClient, PythLazerStreamClientBuilder},
         ws_connection::AnyResponse,
@@ -17,7 +18,6 @@ use {
         },
         message::Message,
     },
-    pyth_types::{ExponentialBackoff, PriceUpdate, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         collections::{HashMap, HashSet},
@@ -102,7 +102,7 @@ impl PythClient {
         subscribe_requests: Vec<SubscribeRequest>,
     ) {
         #[cfg(feature = "metrics")]
-        counter!(pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS).increment(1);
+        counter!(dango_pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS).increment(1);
 
         info!(
             subscribe_requests = subscribe_requests.len(),
@@ -335,7 +335,7 @@ impl PythClient {
     fn analyze_data(
         received_data: &mut Vec<AnyResponse>,
         subscription_ids: &Vec<u64>,
-        subscriptions_data: &mut HashMap<u64, pyth_types::LeEcdsaMessage>,
+        subscriptions_data: &mut HashMap<u64, dango_pyth_types::LeEcdsaMessage>,
         last_data_received: &mut HashMap<u64, Instant>,
     ) {
         for data in received_data.drain(..) {
@@ -353,7 +353,7 @@ impl PythClient {
                     }
 
                     #[cfg(feature = "metrics")]
-                    histogram!(pyth_types::metrics::PYTH_MESSAGES_RECEIVED)
+                    histogram!(dango_pyth_types::metrics::PYTH_MESSAGES_RECEIVED)
                         .record(update.messages.len() as f64);
 
                     // Analyze the messages received.
@@ -515,7 +515,7 @@ impl PythClientTrait for PythClient {
                     let uptime = start_uptime.elapsed();
 
                     #[cfg(feature = "metrics")]
-                    histogram!(pyth_types::metrics::PYTH_UPTIME).record(uptime.as_secs_f64());
+                    histogram!(dango_pyth_types::metrics::PYTH_UPTIME).record(uptime.as_secs_f64());
 
                     info!(
                         uptime_s = uptime.as_secs(),
@@ -542,7 +542,7 @@ impl PythClientTrait for PythClient {
                                 );
 
                                 #[cfg(feature = "metrics")]
-                                histogram!(pyth_types::metrics::PYTH_RECONNECTION_TIME)
+                                histogram!(dango_pyth_types::metrics::PYTH_RECONNECTION_TIME)
                                     .record(reconnection_time.as_secs_f64());
 
                                 start_uptime = Instant::now();
@@ -595,7 +595,7 @@ impl PythClientTrait for PythClient {
                 };
 
                 #[cfg(feature = "metrics")]
-                counter!(pyth_types::metrics::PYTH_DATA_READ).increment(1);
+                counter!(dango_pyth_types::metrics::PYTH_DATA_READ).increment(1);
 
                 // Analyze the data received.
                 Self::analyze_data(
@@ -660,27 +660,27 @@ impl PythClientTrait for PythClient {
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     describe_counter!(
-        pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS,
+        dango_pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS,
         "Number of reconnection attempts made by the Pyth Lazer client"
     );
 
     describe_histogram!(
-        pyth_types::metrics::PYTH_RECONNECTION_TIME,
+        dango_pyth_types::metrics::PYTH_RECONNECTION_TIME,
         "Time (in seconds) it took to reconnect to Pyth Lazer after a disconnection"
     );
 
     describe_histogram!(
-        pyth_types::metrics::PYTH_UPTIME,
+        dango_pyth_types::metrics::PYTH_UPTIME,
         "Uptime (in seconds) of the Pyth Lazer connection without interruptions"
     );
 
     describe_histogram!(
-        pyth_types::metrics::PYTH_MESSAGES_RECEIVED,
+        dango_pyth_types::metrics::PYTH_MESSAGES_RECEIVED,
         "Number of data messages received from Pyth Lazer"
     );
 
     describe_counter!(
-        pyth_types::metrics::PYTH_DATA_READ,
+        dango_pyth_types::metrics::PYTH_DATA_READ,
         "Number of times data was read from Pyth Lazer"
     );
 }
@@ -689,8 +689,8 @@ pub fn init_metrics() {
 mod tests {
     use {
         super::*,
+        dango_pyth_types::PythLazerSubscriptionDetails,
         pyth_lazer_protocol::{api::Channel, time::FixedRate},
-        pyth_types::PythLazerSubscriptionDetails,
     };
 
     fn test_client() -> PythClient {

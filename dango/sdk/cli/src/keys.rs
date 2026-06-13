@@ -4,8 +4,8 @@ use {
     bip32::{Language, Mnemonic},
     clap::Subcommand,
     colored::Colorize,
+    dango_primitives::JsonDeExt,
     dango_sdk::{Keystore, Secp256k1, Secret},
-    grug_types::JsonDeExt,
     rand::rngs::OsRng,
     std::{
         collections::BTreeMap,

@@ -2,8 +2,8 @@ use {
     crate::{entity, error::IndexerError},
     anyhow::{anyhow, ensure},
     async_graphql::{dataloader::Loader, *},
-    grug_types::{Cache, Tx, TxOutcome},
-    indexer_cache::{IndexerPath, cache_file::CacheFile},
+    dango_indexer_cache::{IndexerPath, cache_file::CacheFile},
+    dango_primitives::{Cache, Tx, TxOutcome},
     std::{collections::HashMap, sync::Arc},
 };
 

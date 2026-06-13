@@ -1,7 +1,7 @@
 use {
+    dango_math::MathResult,
     dango_order_book::{Dimensionless, Quantity, UsdPrice, UsdValue},
     dango_types::perps::PairParam,
-    grug_math::MathResult,
 };
 
 /// A single quote (one side of the vault's market-making order).

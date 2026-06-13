@@ -2,6 +2,10 @@ use {
     crate::{CODE_HASH, MAX_ACCOUNTS_PER_USER, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
+    dango_primitives::{
+        Addr, AuthCtx, AuthMode, Coins, Hash256, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
+        Op, QuerierExt, Response, StdResult, Storage, Tx, btree_map,
+    },
     dango_types::{
         DangoQuerier, account,
         account_factory::{
@@ -11,10 +15,6 @@ use {
         },
         auth::{Key, Signature},
         perps,
-    },
-    grug_types::{
-        Addr, AuthCtx, AuthMode, Coins, Hash256, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
-        Op, QuerierExt, Response, StdResult, Storage, Tx, btree_map,
     },
 };
 

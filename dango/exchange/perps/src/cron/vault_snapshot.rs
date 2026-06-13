@@ -5,8 +5,8 @@ use {
         state::{STATE, USER_STATES, VAULT_SNAPSHOTS},
     },
     dango_order_book::round_to_day,
+    dango_primitives::{Addr, Storage, Timestamp},
     dango_types::perps::VaultSnapshot,
-    grug_types::{Addr, Storage, Timestamp},
 };
 
 /// Take a daily snapshot of the market-making vault's `(equity, share_supply)`.
@@ -63,10 +63,10 @@ mod tests {
     use {
         super::*,
         crate::state::PAIR_STATES,
+        dango_math::Uint128,
         dango_order_book::{FundingPerUnit, PairId, Quantity, UsdPrice},
+        dango_primitives::{MockStorage, Order},
         dango_types::perps::{PairState, Position, State, UserState},
-        grug_math::Uint128,
-        grug_types::{MockStorage, Order},
         std::collections::BTreeMap,
     };
 

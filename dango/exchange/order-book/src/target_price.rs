@@ -1,6 +1,6 @@
 use {
     crate::{Dimensionless, OrderKind, UsdPrice},
-    grug_math::MathResult,
+    dango_math::MathResult,
 };
 
 /// Compute the target price of an order. The order must be executed at a price

@@ -1,10 +1,10 @@
 use {
     crate::USER_STATES,
     anyhow::ensure,
+    dango_math::IsZero,
     dango_order_book::Quantity,
+    dango_primitives::{Addr, MutableCtx, Response},
     dango_types::perps::{Deposited, SETTLEMENT_CURRENCY_PRICE, settlement_currency},
-    grug_math::IsZero,
-    grug_types::{Addr, MutableCtx, Response},
 };
 
 /// Deposit settlement currency into the trader's margin account.
@@ -62,9 +62,9 @@ mod tests {
     use {
         super::*,
         crate::USER_STATES,
+        dango_math::Uint128,
         dango_order_book::UsdValue,
-        grug_math::Uint128,
-        grug_types::{Addr, Coins, MockContext, ResultExt},
+        dango_primitives::{Addr, Coins, MockContext, ResultExt},
     };
 
     const SENDER: Addr = Addr::mock(1);

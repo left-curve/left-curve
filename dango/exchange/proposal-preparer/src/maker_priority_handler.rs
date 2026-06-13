@@ -1,10 +1,10 @@
 use {
     dango_order_book::{OrderKind, TimeInForce},
+    dango_primitives::{Addr, Inner, JsonDeExt, Message, QuerierExt, QuerierWrapper, StdError, Tx},
     dango_types::{
         config::AppConfig,
         perps::{self, SubmitOrCancelOrderRequest, TraderMsg},
     },
-    grug_types::{Addr, Inner, JsonDeExt, Message, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
 };
 
@@ -29,7 +29,7 @@ use {
 #[derive(Default, Clone, Copy)]
 pub struct MakerPriorityHandler;
 
-impl grug_app::ProposalPreparer for MakerPriorityHandler {
+impl dango_app::ProposalPreparer for MakerPriorityHandler {
     type Error = StdError;
 
     fn prepare_proposal(
@@ -197,10 +197,12 @@ fn is_post_only(kind: &OrderKind) -> bool {
 mod tests {
     use {
         super::*,
+        dango_math::Uint64,
         dango_order_book::{
             ChildOrder, Dimensionless, OrderKind, Quantity, TimeInForce, TriggerDirection,
             UsdPrice, UsdValue,
         },
+        dango_primitives::{Coins, Json, JsonSerExt, MsgExecute, NonEmpty},
         dango_types::{
             constants::perp_btc,
             perps::{
@@ -208,8 +210,6 @@ mod tests {
                 ReferralMsg, SubmitOrCancelOrderRequest, SubmitOrderRequest, TraderMsg,
             },
         },
-        grug_math::Uint64,
-        grug_types::{Coins, Json, JsonSerExt, MsgExecute, NonEmpty},
         test_case::test_case,
     };
 

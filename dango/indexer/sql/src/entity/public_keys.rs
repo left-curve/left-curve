@@ -1,7 +1,7 @@
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, Context, Result, SimpleObject},
-    grug_types::Timestamp,
+    dango_primitives::Timestamp,
 };
 use {
     dango_types::auth,

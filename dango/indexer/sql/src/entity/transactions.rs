@@ -6,9 +6,9 @@ use {
         transaction_messages::TransactionMessagesDataLoader,
     },
     async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
-    grug_types::{JsonSerExt, Timestamp, Tx, TxOutcome},
+    dango_primitives::{JsonSerExt, Timestamp, Tx, TxOutcome},
 };
-use {grug_types::FlatCategory, sea_orm::entity::prelude::*, serde::Deserialize};
+use {dango_primitives::FlatCategory, sea_orm::entity::prelude::*, serde::Deserialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, Deserialize)]
 #[sea_orm(table_name = "transactions")]

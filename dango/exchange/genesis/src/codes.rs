@@ -1,8 +1,8 @@
 use {
     crate::Codes,
+    dango_primitives::{Binary, Empty, StdResult},
     dango_types::config::Hyperlane,
-    grug_types::{Binary, Empty, StdResult},
-    grug_vm_rust::{ContractBuilder, ContractWrapper, RustVm},
+    dango_vm_rust::{ContractBuilder, ContractWrapper, RustVm},
 };
 
 /// Get the binary codes for Dango smart contracts, for use in building the
@@ -54,19 +54,19 @@ impl GenesisCodes for RustVm {
             .with_cron_execute(Box::new(dango_gateway::cron_execute))
             .build();
 
-        let ism = ContractBuilder::new(Box::new(hyperlane_ism::instantiate))
-            .with_execute(Box::new(hyperlane_ism::execute))
-            .with_query(Box::new(hyperlane_ism::query))
+        let ism = ContractBuilder::new(Box::new(dango_hyperlane_ism::instantiate))
+            .with_execute(Box::new(dango_hyperlane_ism::execute))
+            .with_query(Box::new(dango_hyperlane_ism::query))
             .build();
 
-        let mailbox = ContractBuilder::new(Box::new(hyperlane_mailbox::instantiate))
-            .with_execute(Box::new(hyperlane_mailbox::execute))
-            .with_query(Box::new(hyperlane_mailbox::query))
+        let mailbox = ContractBuilder::new(Box::new(dango_hyperlane_mailbox::instantiate))
+            .with_execute(Box::new(dango_hyperlane_mailbox::execute))
+            .with_query(Box::new(dango_hyperlane_mailbox::query))
             .build();
 
-        let va = ContractBuilder::new(Box::new(hyperlane_va::instantiate))
-            .with_execute(Box::new(hyperlane_va::execute))
-            .with_query(Box::new(hyperlane_va::query))
+        let va = ContractBuilder::new(Box::new(dango_hyperlane_va::instantiate))
+            .with_execute(Box::new(dango_hyperlane_va::execute))
+            .with_query(Box::new(dango_hyperlane_va::query))
             .build();
 
         let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))

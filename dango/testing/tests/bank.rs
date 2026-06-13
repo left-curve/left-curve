@@ -1,4 +1,8 @@
 use {
+    dango_primitives::{
+        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded, Part,
+        QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
+    },
     dango_testing::{BalanceChange, setup_test_naive},
     dango_types::{
         bank::{
@@ -7,10 +11,6 @@ use {
             TransferOrphaned,
         },
         constants::{dango, eth, usdc},
-    },
-    grug_types::{
-        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded, Part,
-        QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
     },
     std::collections::BTreeSet,
 };
@@ -396,7 +396,7 @@ async fn set_namespace_owner_works() {
             namespace: Part::new_unchecked("testing"),
         })
         .should_fail_with_error(
-            "msg: data not found! type: grug_types::encoded_bytes::EncodedBytes",
+            "msg: data not found! type: dango_primitives::encoded_bytes::EncodedBytes",
         );
 
     // Set user1 as namespace owner of testing

@@ -1,8 +1,8 @@
 use {
     anyhow::ensure,
+    dango_math::IsZero,
+    dango_primitives::{MutableCtx, QuerierExt, Response},
     dango_types::perps::settlement_currency,
-    grug_math::IsZero,
-    grug_types::{MutableCtx, QuerierExt, Response},
 };
 
 /// Accept a USDC donation to the perps contract.
@@ -38,12 +38,12 @@ pub fn donate(mut ctx: MutableCtx) -> anyhow::Result<Response> {
 mod tests {
     use {
         super::*,
-        dango_types::constants::usdc,
-        grug_math::Uint128,
-        grug_types::{
+        dango_math::Uint128,
+        dango_primitives::{
             Addr, Coins, Config, Denom, Duration, MockContext, MockQuerier, Permission,
             Permissions, ResultExt,
         },
+        dango_types::constants::usdc,
         std::collections::BTreeMap,
     };
 

@@ -16,7 +16,7 @@ pattern:
   proofs. Keys and values are hashed before insertion.
 
 Both stores are backed by a single RocksDB instance using separate column families
-(`dango/grug/db/disk/src/db.rs`):
+(`dango/core/db/disk/src/db.rs`):
 
 | Column Family      | Purpose                               |
 | ------------------ | ------------------------------------- |
@@ -30,7 +30,7 @@ They share the same `Batch` of pending writes; the DB routes each key to the cor
 CF based on its prefix:
 
 ```rust
-// dango/grug/db/disk/src/db.rs
+// dango/core/db/disk/src/db.rs
 fn is_wasm_key(key: &[u8]) -> bool {
     key.starts_with(CONTRACT_NAMESPACE) && key.len() >= WASM_PREFIX_LEN
 }
@@ -58,7 +58,7 @@ faster prefix-scoped iteration.
 ### DiskDb
 
 ```rust
-// dango/grug/db/disk/src/db.rs
+// dango/core/db/disk/src/db.rs
 pub struct DiskDb<T> {
     data: Arc<RwLock<Data>>,          // RocksDB handle + priority data
     pending: Arc<RwLock<Option<PendingData>>>,  // Staged but uncommitted writes
@@ -81,7 +81,7 @@ Key properties:
 ### MemDb (testing)
 
 ```rust
-// dango/grug/db/memory/src/db.rs
+// dango/core/db/memory/src/db.rs
 pub struct MemDb<T = SimpleCommitment> {
     inner: Shared<MemDbInner>,
     _commitment: PhantomData<T>,
@@ -94,7 +94,7 @@ Supports snapshot/recovery via `dump()` and `recover()` for mainnet forking in t
 ### Db trait
 
 ```rust
-// dango/grug/app/src/traits/db.rs
+// dango/core/app/src/traits/db.rs
 pub trait Db {
     type StateStorage: Storage + Clone + 'static;
     type StateCommitment: Storage + Clone + 'static;
@@ -117,7 +117,7 @@ pub trait Db {
 ## 2. Jellyfish Merkle Tree (JMT)
 
 State commitment uses a binary Jellyfish Merkle Tree adapted from Diem
-(`dango/grug/jellyfish-merkle/`). The tree provides:
+(`dango/core/jellyfish-merkle/`). The tree provides:
 
 - **Cryptographic state root** (SHA-256) included in the ABCI `app_hash` signed by
   validators.
@@ -153,7 +153,7 @@ pub struct LeafNode {
 ### Proof verification
 
 ```rust
-// dango/grug/jellyfish-merkle/src/proof.rs
+// dango/core/jellyfish-merkle/src/proof.rs
 pub fn verify_membership_proof(
     root_hash: Hash256,
     key_hash: Hash256,
@@ -171,7 +171,7 @@ pub fn verify_non_membership_proof(
 ### Commitment trait
 
 ```rust
-// dango/grug/app/src/traits/commitment.rs
+// dango/core/app/src/traits/commitment.rs
 pub trait Commitment {
     type Proof;
     fn root_hash(storage: &dyn Storage, version: u64) -> StdResult<Option<Hash256>>;
@@ -187,7 +187,7 @@ Two implementations: `MerkleTree` (production, full JMT) and `SimpleCommitment`
 
 ## 3. Storage Layer
 
-`dango/grug/storage/` provides type-safe, namespace-aware abstractions over raw key-value
+`dango/core/storage/` provides type-safe, namespace-aware abstractions over raw key-value
 storage.
 
 ### Abstractions
@@ -216,7 +216,7 @@ delimiters for unambiguous parsing. Tuple keys like `(Addr, u64)` are encoded as
 
 ### Contract storage isolation
 
-Each contract's storage is wrapped in a `StorageProvider` (`dango/grug/app/src/providers/storage.rs`):
+Each contract's storage is wrapped in a `StorageProvider` (`dango/core/app/src/providers/storage.rs`):
 
 ```rust
 pub struct StorageProvider {
@@ -233,7 +233,7 @@ any combination of key manipulation. The `StorageProvider` is opaque to contract
 
 ## 4. The App (ABCI Interface)
 
-The `App` struct (`dango/grug/app/src/app.rs`) is the state machine's entry point. It
+The `App` struct (`dango/core/app/src/app.rs`) is the state machine's entry point. It
 connects the database, VM, indexer, and proposal preparer:
 
 ```rust
@@ -301,7 +301,7 @@ chain panics (conservative: prevents state corruption).
 State changes are accumulated in nested `Buffer<S>` layers:
 
 ```rust
-// dango/grug/types/src/buffer.rs
+// dango/core/types/src/buffer.rs
 pub struct Buffer<S> {
     base: S,
     pending: Batch,  // BTreeMap<Vec<u8>, Op<Vec<u8>>>
@@ -318,7 +318,7 @@ Reads check `pending` first (most recent write wins), then fall through to `base
 ### Gas metering
 
 ```rust
-// dango/grug/app/src/gas/tracker.rs
+// dango/core/app/src/gas/tracker.rs
 pub struct GasTracker {
     inner: Shared<GasTrackerInner>,  // Shared<T> = Arc<RwLock<T>>
 }
@@ -332,7 +332,7 @@ struct GasTrackerInner {
 Gas is consumed on every operation. Exceeding the limit returns `StdError::OutOfGas`
 and aborts execution (state changes discarded, fee still collected).
 
-Gas costs (`dango/grug/app/src/gas/costs.rs`):
+Gas costs (`dango/core/app/src/gas/costs.rs`):
 
 | Operation                 | Cost                         |
 | ------------------------- | ---------------------------- |
@@ -354,7 +354,7 @@ See [Gas](../notes/gas.md) for benchmark methodology.
 Two VM implementations share the same trait:
 
 ```rust
-// dango/grug/app/src/traits/vm.rs
+// dango/core/app/src/traits/vm.rs
 pub trait Vm: Sized {
     type Instance: Instance;
     fn build_instance(
@@ -382,7 +382,7 @@ state leakage between invocations.
 ### RustVm (native execution)
 
 ```rust
-// dango/grug/vm/rust/src/vm.rs
+// dango/core/vm/rust/src/vm.rs
 pub struct RustVm;
 ```
 
@@ -397,7 +397,7 @@ the state machine.
 ### WasmVm (sandboxed execution)
 
 ```rust
-// dango/grug/vm/wasm/src/vm.rs
+// dango/core/vm/wasm/src/vm.rs
 pub struct WasmVm {
     cache: Option<Cache>,  // LRU cache of compiled Wasmer modules
 }
@@ -405,7 +405,7 @@ pub struct WasmVm {
 
 Executes third-party WASM bytecode via the Wasmer runtime. Key protections:
 
-**Gatekeeper middleware** (`dango/grug/vm/wasm/src/gatekeeper.rs`): Validates WASM
+**Gatekeeper middleware** (`dango/core/vm/wasm/src/gatekeeper.rs`): Validates WASM
 modules at compilation time. Allowed/denied features:
 
 | Feature            | Allowed | Rationale                         |
@@ -424,7 +424,7 @@ Wasmer op).
 
 **Query depth limit:** Maximum 3 levels of nested cross-contract queries.
 
-**Host functions** (`dango/grug/vm/wasm/src/imports.rs`): The WASM guest can call these
+**Host functions** (`dango/core/vm/wasm/src/imports.rs`): The WASM guest can call these
 host-provided functions:
 
 - Storage: `db_read`, `db_write`, `db_remove`, `db_scan`, `db_next`

@@ -1,5 +1,5 @@
 use {
-    identity::Identity256,
+    dango_identity::Identity256,
     sha3::{Digest, Keccak256},
 };
 

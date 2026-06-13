@@ -1,11 +1,11 @@
 use {
     crate::utils::{setup_client_test, setup_client_test_with_port},
+    dango_primitives::{
+        BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
+    },
     dango_sdk::{SubscribeBlock, WsClient, subscribe_block},
     dango_types::constants::usdc,
     futures::StreamExt,
-    grug_types::{
-        BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
-    },
     std::time::Duration,
 };
 

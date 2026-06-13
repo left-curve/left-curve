@@ -5,9 +5,11 @@ use {
     },
     bip32::{Mnemonic, PublicKey, XPrv},
     dango_auth::EIP155_CHAIN_ID,
+    dango_identity::Identity256,
+    dango_primitives::{
+        Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json,
+    },
     dango_types::auth::{Eip712Signature, Key, SignDoc, Signature},
-    grug_types::{Addr, ByteArray, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt, SignData, json},
-    identity::Identity256,
     k256::{ecdsa::signature::DigestSigner, schnorr::CryptoRngCore},
     rand::rngs::OsRng,
 };
@@ -129,7 +131,7 @@ impl Secret for Secp256k1 {
 pub struct Eip712 {
     inner: Secp256k1,
     // This means the Ethereum address, not the Dango address.
-    pub address: eth_utils::Address,
+    pub address: dango_eth_utils::Address,
 }
 
 impl Secret for Eip712 {
@@ -206,14 +208,14 @@ impl Secret for Eip712 {
 
         Ok(Signature::Eip712(Eip712Signature {
             typed_data: data.to_json_vec()?.into(),
-            sig: eth_utils::pack_signature(signature, recovery_id).into(),
+            sig: dango_eth_utils::pack_signature(signature, recovery_id).into(),
         }))
     }
 }
 
 impl From<Secp256k1> for Eip712 {
     fn from(inner: Secp256k1) -> Self {
-        let address = eth_utils::derive_address(inner.inner.verifying_key());
+        let address = dango_eth_utils::derive_address(inner.inner.verifying_key());
         Self { inner, address }
     }
 }

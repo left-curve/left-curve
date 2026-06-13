@@ -1,6 +1,6 @@
 use {
     crate::{Context, cache_file::CacheFile, error::Result, indexer_path::IndexerPath},
-    grug_types::BlockAndBlockOutcomeWithHttpDetails,
+    dango_primitives::BlockAndBlockOutcomeWithHttpDetails,
     serde::{Deserialize, Serialize},
     std::{
         collections::HashMap,
@@ -23,7 +23,7 @@ use {
 };
 
 #[cfg(feature = "http-request-details")]
-use grug_types::{Hash256, HttpRequestDetails};
+use dango_primitives::{Hash256, HttpRequestDetails};
 
 const HIGHEST_BLOCK_FILENAME: &str = "last_block.json";
 
@@ -98,15 +98,15 @@ impl Cache {
     #[cfg(feature = "http-request-details")]
     fn set_http_request_details(
         &self,
-        block: &grug_types::Block,
-    ) -> grug_app::IndexerResult<HashMap<Hash256, HttpRequestDetails>> {
+        block: &dango_primitives::Block,
+    ) -> dango_app::IndexerResult<HashMap<Hash256, HttpRequestDetails>> {
         let mut http_request_details: HashMap<Hash256, HttpRequestDetails> = HashMap::new();
 
         let mut transaction_hash_details = self
             .context
             .transactions_http_request_details
             .lock()
-            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?;
+            .map_err(|_| dango_app::IndexerError::mutex_poisoned())?;
 
         http_request_details.extend(block.txs.iter().filter_map(|tx| {
             transaction_hash_details
@@ -437,8 +437,8 @@ impl Cache {
 impl Cache {
     pub async fn start(
         &mut self,
-        _storage: &dyn grug_types::Storage,
-    ) -> grug_app::IndexerResult<()> {
+        _storage: &dyn dango_primitives::Storage,
+    ) -> dango_app::IndexerResult<()> {
         #[cfg(feature = "s3")]
         if self.context.s3.enabled {
             let context = self.context.clone();
@@ -503,7 +503,7 @@ impl Cache {
         Ok(())
     }
 
-    pub async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    pub async fn shutdown(&mut self) -> dango_app::IndexerResult<()> {
         #[cfg(feature = "s3")]
         Self::store_bitmap(&self.context, self.s3_bitmap.clone())?;
 
@@ -511,7 +511,7 @@ impl Cache {
     }
 
     /// No-op kept for symmetry with the other indexers' `wait_for_finish`.
-    pub async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+    pub async fn wait_for_finish(&self) -> dango_app::IndexerResult<()> {
         Ok(())
     }
 
@@ -520,7 +520,7 @@ impl Cache {
     /// `pre_indexing` phase, and during `reindex` to populate the in-memory
     /// hop that `post_indexing` later drains.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn pre_indexing(&self, block_height: u64) -> grug_app::IndexerResult<()> {
+    pub async fn pre_indexing(&self, block_height: u64) -> dango_app::IndexerResult<()> {
         let file_path = self.context.indexer_path.block_path(block_height);
 
         // This is used when reindexing existing blocks, since `index_block` won't be called.
@@ -529,7 +529,7 @@ impl Cache {
 
             self.blocks
                 .lock()
-                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+                .map_err(|_| dango_app::IndexerError::mutex_poisoned())?
                 .insert(block_height, cache_file.data);
         }
 
@@ -542,9 +542,9 @@ impl Cache {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn index_block(
         &self,
-        block: &grug_types::Block,
-        block_outcome: &grug_types::BlockOutcome,
-    ) -> grug_app::IndexerResult<()> {
+        block: &dango_primitives::Block,
+        block_outcome: &dango_primitives::BlockOutcome,
+    ) -> dango_app::IndexerResult<()> {
         let file_path = self.context.indexer_path.block_path(block.info.height);
 
         if CacheFile::exists(file_path.clone()) {
@@ -560,7 +560,7 @@ impl Cache {
 
             self.blocks
                 .lock()
-                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+                .map_err(|_| dango_app::IndexerError::mutex_poisoned())?
                 .insert(block.info.height, cache_file.data);
         } else {
             #[cfg(feature = "tracing")]
@@ -581,7 +581,7 @@ impl Cache {
 
             self.blocks
                 .lock()
-                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+                .map_err(|_| dango_app::IndexerError::mutex_poisoned())?
                 .insert(block.info.height, cache_file.data);
         }
 
@@ -595,14 +595,14 @@ impl Cache {
     pub async fn post_indexing(
         &self,
         block_height: u64,
-    ) -> grug_app::IndexerResult<BlockAndBlockOutcomeWithHttpDetails> {
+    ) -> dango_app::IndexerResult<BlockAndBlockOutcomeWithHttpDetails> {
         let Some(data) = self
             .blocks
             .lock()
-            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+            .map_err(|_| dango_app::IndexerError::mutex_poisoned())?
             .remove(&block_height)
         else {
-            return Err(grug_app::IndexerError::hook(format!(
+            return Err(dango_app::IndexerError::hook(format!(
                 "Block data for height {block_height} not found in cache indexer",
             )));
         };

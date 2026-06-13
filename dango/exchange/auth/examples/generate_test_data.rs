@@ -1,5 +1,10 @@
 use {
     dango_auth::MAX_NONCE_INCREASE,
+    dango_identity::Identity256,
+    dango_primitives::{
+        Addr, Binary, ByteArray, Hash256, HashExt, Inner, JsonSerExt, MOCK_CHAIN_ID, Message,
+        NonEmpty, SignData, Timestamp, Tx, coins,
+    },
     dango_types::{
         account_factory::RegisterUserData,
         auth::{
@@ -8,11 +13,6 @@ use {
         },
     },
     data_encoding::BASE64URL_NOPAD,
-    grug_types::{
-        Addr, Binary, ByteArray, Hash256, HashExt, Inner, JsonSerExt, MOCK_CHAIN_ID, Message,
-        NonEmpty, SignData, Timestamp, Tx, coins,
-    },
-    identity::Identity256,
     k256::ecdsa::signature::DigestSigner,
     rand::{Rng, RngCore},
     sha2::{Digest, Sha256},
@@ -281,7 +281,7 @@ fn generate_random_secp256k1_key_pair()
 /// Generate a random Ethereum key pair, returning (signing_key, 20-byte address).
 fn generate_random_ethereum_key_pair() -> (k256::ecdsa::SigningKey, [u8; 20]) {
     let sk = k256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng);
-    let addr = eth_utils::derive_address(sk.verifying_key());
+    let addr = dango_eth_utils::derive_address(sk.verifying_key());
     (sk, addr)
 }
 
@@ -313,7 +313,7 @@ where
 /// how the frontend `composeArbitraryTypedData` works for arbitrary messages.
 fn eip712_sign_arbitrary(
     sk: &k256::ecdsa::SigningKey,
-    message: grug_types::Json,
+    message: dango_primitives::Json,
 ) -> anyhow::Result<Eip712Signature> {
     // Build the EIP-712 "Message" type from the message keys.
     // All fields are typed as "string" (matching the frontend pattern).
@@ -381,7 +381,7 @@ fn eip712_sign_arbitrary(
     let signing_hash = typed_data.eip712_signing_hash()?;
 
     // Sign with Ethereum-style recoverable signature.
-    let sig_bytes = eth_utils::sign_digest(signing_hash.0, sk);
+    let sig_bytes = dango_eth_utils::sign_digest(signing_hash.0, sk);
 
     Ok(Eip712Signature {
         typed_data: Binary::from(typed_data_str.as_bytes().to_vec()),

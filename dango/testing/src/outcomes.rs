@@ -1,4 +1,4 @@
-use grug_types::{Addr, BlockOutcome, Hash256, ResultExt, Tx, TxError, TxOutcome, TxSuccess};
+use dango_primitives::{Addr, BlockOutcome, Hash256, ResultExt, Tx, TxError, TxOutcome, TxSuccess};
 
 #[must_use = "`UploadOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
 pub struct UploadOutcome {

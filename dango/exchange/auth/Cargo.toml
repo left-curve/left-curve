@@ -14,16 +14,16 @@ alloy         = { workspace = true, features = ["dyn-abi", "eip712"] }
 anyhow        = { workspace = true }
 dango-types   = { workspace = true }
 data-encoding = { workspace = true }
-grug-storage  = { workspace = true }
-grug-types    = { workspace = true }
+dango-storage  = { workspace = true }
+dango-primitives    = { workspace = true }
 hex           = { workspace = true }
 sha2          = { workspace = true }
 
 [dev-dependencies]
 data-encoding = { workspace = true }
-eth-utils     = { workspace = true }
+dango-eth-utils     = { workspace = true }
 hex-literal   = { workspace = true }
-identity      = { workspace = true }
+dango-identity      = { workspace = true }
 k256          = { workspace = true }
 p256          = { workspace = true }
 rand          = { workspace = true }

@@ -8,8 +8,8 @@ use {
     },
     async_graphql::futures_util::TryFutureExt,
     chrono::{Duration, Utc},
-    grug_types::{BlockInfo, GIT_COMMIT},
-    indexer_sql::entity,
+    dango_indexer_sql::entity,
+    dango_primitives::{BlockInfo, GIT_COMMIT},
     sea_orm::{EntityTrait, Order, QueryOrder},
     std::env::var,
 };
@@ -40,7 +40,7 @@ pub async fn up(app_ctx: web::Data<FullContext>) -> Result<impl Responder, Error
     // This ensures that grug is working
     let block = app_ctx
         .base
-        .grug_app
+        .dango_app
         .last_finalized_block()
         .map_err(ErrorInternalServerError)
         .await?;
@@ -73,7 +73,7 @@ pub async fn up(app_ctx: web::Data<FullContext>) -> Result<impl Responder, Error
 #[get("/up")]
 pub async fn minimal_up(app_ctx: web::Data<MinimalContext>) -> Result<impl Responder, Error> {
     let block = app_ctx
-        .grug_app
+        .dango_app
         .last_finalized_block()
         .map_err(ErrorInternalServerError)
         .await?;

@@ -1,14 +1,14 @@
 use {
+    dango_primitives::{Addr, Coins, Empty, Hash256, QuerierExt, ResultExt},
     dango_testing::{ContractBuilder, TestOption, setup_test_naive},
-    grug_types::{Addr, Coins, Empty, Hash256, QuerierExt, ResultExt},
 };
 
 mod query_maker {
-    use grug_types::{
+    use dango_primitives::{
         Addr, Empty, Hash256, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult,
     };
 
-    #[grug_types::derive(Serde, Borsh, QueryRequest)]
+    #[dango_primitives::derive(Serde, Borsh, QueryRequest)]
     pub enum QueryMsg {
         #[returns(String)]
         Foo { bar: u64 },

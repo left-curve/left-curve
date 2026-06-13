@@ -1,8 +1,8 @@
 use {
     super::error,
     borsh::{BorshDeserialize, BorshSerialize},
-    disk_saver::persistence::DiskPersistence,
-    grug_types::{Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome},
+    dango_disk_saver::persistence::DiskPersistence,
+    dango_primitives::{Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome},
     serde::{Deserialize, Serialize},
     std::{
         collections::HashMap,
@@ -101,7 +101,7 @@ mod tests {
     use {
         super::*,
         assertor::*,
-        grug_types::{BlockInfo, Hash},
+        dango_primitives::{BlockInfo, Hash},
         tempfile::NamedTempFile,
     };
 

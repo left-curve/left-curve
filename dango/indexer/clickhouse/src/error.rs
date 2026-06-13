@@ -1,6 +1,6 @@
-use {error_backtrace::Backtraceable, indexer_sql::pubsub::error::PubSubError};
+use {dango_backtrace::Backtraceable, dango_indexer_sql::pubsub::error::PubSubError};
 
-#[error_backtrace::backtrace]
+#[dango_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum IndexerError {
     #[error(transparent)]
@@ -8,10 +8,10 @@ pub enum IndexerError {
     Io(std::io::Error),
 
     #[error(transparent)]
-    Std(grug_types::StdError),
+    Std(dango_primitives::StdError),
 
     #[error(transparent)]
-    Math(grug_math::MathError),
+    Math(dango_math::MathError),
 
     #[error(transparent)]
     #[backtrace(new)]
@@ -31,14 +31,14 @@ pub enum IndexerError {
 
 macro_rules! parse_error {
     ($variant:ident, $e:expr) => {
-        grug_app::IndexerError::$variant {
+        dango_app::IndexerError::$variant {
             error: $e.to_string(),
             backtrace: $e.backtrace,
         }
     };
 }
 
-impl From<IndexerError> for grug_app::IndexerError {
+impl From<IndexerError> for dango_app::IndexerError {
     fn from(error: IndexerError) -> Self {
         match error {
             IndexerError::Clickhouse(error) => parse_error!(Database, error),

@@ -6,7 +6,7 @@ use {
         },
     },
     async_graphql::{connection::*, *},
-    indexer_sql::entity,
+    dango_indexer_sql::entity,
     sea_orm::{ColumnTrait, Condition, Iterable, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };

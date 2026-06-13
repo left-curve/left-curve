@@ -24,7 +24,7 @@ use {
         ReasonForOrderRemoval, TriggerDirection, UsdPrice, check_price_band, decompose_fill,
         is_price_constraint_violated, may_invert_price,
     },
-    grug_types::{Addr, Order as IterationOrder, StdResult, Storage},
+    dango_primitives::{Addr, Order as IterationOrder, StdResult, Storage},
     std::collections::BTreeMap,
 };
 

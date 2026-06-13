@@ -41,7 +41,7 @@ register their entry points directly as Rust function pointers.
 Each entry point receives a context that controls what the contract can do.
 
 ```rust
-// dango/grug/types/src/context.rs
+// dango/core/types/src/context.rs
 
 // Read-only access (queries)
 pub struct ImmutableCtx<'a> {
@@ -195,7 +195,7 @@ pub type Coins = BTreeMap<Denom, Uint128>;
 
 ### Math types
 
-`dango/grug/math/` provides overflow-safe fixed-point arithmetic:
+`dango/core/math/` provides overflow-safe fixed-point arithmetic:
 
 | Type                 | Description                           |
 | -------------------- | ------------------------------------- |
@@ -350,7 +350,7 @@ let balance: Coin = ctx.querier.query_balance(addr, denom)?;
 let all: Coins = ctx.querier.query_balances(addr)?;
 ```
 
-There is also `StorageQuerier::query_wasm_path` (`dango/grug/storage/src/querier.rs`), which
+There is also `StorageQuerier::query_wasm_path` (`dango/core/storage/src/querier.rs`), which
 combines the low gas cost of `query_wasm_raw` with the ergonomics of `query_wasm_smart`.
 It takes a typed storage `Path` (produced by `Item::path()` or `Map::path(key)`),
 performs a raw KV lookup, and automatically deserializes the result using the storage
@@ -447,7 +447,7 @@ Inactive accounts are activated on sufficient deposit (≥ `min_deposit` from ap
 
 ## 8. FFI Layer
 
-`dango/grug/ffi/` bridges WASM guests and the host:
+`dango/core/ffi/` bridges WASM guests and the host:
 
 - **Exports** (`ffi/src/exports.rs`): `do_instantiate`, `do_execute`, `do_query`, etc.
   These deserialize context and message from WASM memory, call the contract function,
@@ -462,7 +462,7 @@ Inactive accounts are activated on sufficient deposit (≥ `min_deposit` from ap
 
 ### TestSuite
 
-`dango/grug/testing/` provides a high-level integration test harness:
+`dango/core/testing/` provides a high-level integration test harness:
 
 ```rust
 let suite = TestBuilder::new()
@@ -503,7 +503,7 @@ block. This enables end-to-end tests that exercise inter-contract interactions.
 
 ## 10. Procedural Macros
 
-`dango/grug/macros/` provides:
+`dango/core/macros/` provides:
 
 - **`#[grug::export]`** -- Generates WASM FFI wrappers for entry points. Only needed
   for WasmVm contracts; RustVm contracts register entry points directly.

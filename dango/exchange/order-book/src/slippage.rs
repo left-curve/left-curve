@@ -32,7 +32,7 @@ pub fn validate_slippage(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::ResultExt};
+    use {super::*, dango_primitives::ResultExt};
 
     /// A generous default cap used across the legacy-style bound tests.
     /// The cap is `>= 1`... wait, cap must be `< 1` at configure time.

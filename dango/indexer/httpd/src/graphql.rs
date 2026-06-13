@@ -8,7 +8,7 @@ use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
     crate::context::FullContext,
     async_graphql::{Schema, dataloader::DataLoader},
-    indexer_sql::dataloaders::{
+    dango_indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
         transaction_events::TransactionEventsDataLoader,

@@ -10,9 +10,9 @@
 
 use {
     crate::{core::compute_user_equity, querier::NoCachePerpQuerier},
+    dango_math::MathResult,
     dango_order_book::{Dimensionless, PairId, Quantity, UsdValue},
     dango_types::perps::UserState,
-    grug_math::MathResult,
 };
 
 /// Order side entering the trade form.
@@ -156,11 +156,11 @@ mod tests {
         super::*,
         crate::core::check_margin,
         dango_order_book::{FundingPerUnit, UsdPrice},
+        dango_primitives::{btree_map, hash_map},
         dango_types::{
             constants::{perp_btc, perp_eth},
             perps::{PairParam, PairState, Position},
         },
-        grug_types::{btree_map, hash_map},
         test_case::test_case,
     };
 

@@ -1,11 +1,11 @@
 use {
     crate::{CODE_HASH, NEXT_ACCOUNT_INDEX, NEXT_USER_INDEX, USERS},
-    dango_types::account_factory::{
-        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexOrName,
-    },
-    grug_types::{
+    dango_primitives::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Storage,
+    },
+    dango_types::account_factory::{
+        Account, AccountIndex, QueryMsg, User, UserIndex, UserIndexOrName,
     },
     std::collections::BTreeMap,
 };

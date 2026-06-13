@@ -6,12 +6,12 @@ use {
         trade::{CancelAllOrdersOutcome, compute_cancel_all_orders_outcome},
     },
     anyhow::ensure,
+    dango_math::{Number as _, NumberConst, Uint64},
     dango_order_book::{
         ASKS, BIDS, LimitOrder, NEXT_ORDER_ID, Quantity, ReasonForOrderRemoval, UsdValue,
         increase_liquidity_depths, may_invert_price,
     },
-    grug_math::{Number as _, NumberConst, Uint64},
-    grug_types::{MutableCtx, Order as IterationOrder, QuerierExt, Response},
+    dango_primitives::{MutableCtx, Order as IterationOrder, QuerierExt, Response},
 };
 
 /// Entry point for vault market-making, triggered at the beginning of each
@@ -240,11 +240,11 @@ pub fn refresh_vault_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 mod tests {
     use {
         super::*,
-        dango_types::config::AppConfig,
-        grug_types::{
+        dango_primitives::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt,
         },
+        dango_types::config::AppConfig,
         std::collections::BTreeMap,
     };
 

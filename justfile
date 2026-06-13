@@ -75,7 +75,7 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p indexer-httpd --bin build_graphql_schema -- \
+  cargo run -p dango-indexer-httpd --bin build_graphql_schema -- \
     ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book
@@ -84,7 +84,7 @@ book:
 
 # Update wasm artifacts used in tests
 update-testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm dango/testing/testdata/
+  cp -v artifacts/dango_tester.wasm dango/testing/testdata/
 
 # ---------------------------------- Frontend ----------------------------------
 

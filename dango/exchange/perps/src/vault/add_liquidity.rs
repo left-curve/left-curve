@@ -6,10 +6,10 @@ use {
         state::{PARAM, STATE, USER_STATES},
     },
     anyhow::ensure,
+    dango_math::{IsZero, MultiplyRatio, Number as _, Signed, Uint128},
     dango_order_book::UsdValue,
+    dango_primitives::{MutableCtx, Response},
     dango_types::perps::{LiquidityAdded, Param, State, UserState},
-    grug_math::{IsZero, MultiplyRatio, Number as _, Signed, Uint128},
-    grug_types::{MutableCtx, Response},
 };
 
 /// Add liquidity to the counterparty vault by transferring margin to the vault.
@@ -186,13 +186,13 @@ fn _add_liquidity(
 mod tests {
     use {
         super::*,
+        dango_math::{NumberConst, Uint128},
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice},
+        dango_primitives::{MockStorage, btree_map, hash_map},
         dango_types::{
             constants::eth,
             perps::{PairParam, PairState, Position, UserState},
         },
-        grug_math::{NumberConst, Uint128},
-        grug_types::{MockStorage, btree_map, hash_map},
     };
 
     fn default_param() -> Param {

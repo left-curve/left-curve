@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "indexer-httpd"
+name          = "dango-indexer-httpd"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -14,7 +14,7 @@ path = "src/lib.rs"
 
 [features]
 metrics = ["dep:actix-web-metrics", "dep:metrics"]
-tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
+tracing = ["dep:tracing", "dango-app/tracing", "dango-indexer-sql/tracing"]
 
 [dependencies]
 actix-cors              = { workspace = true }
@@ -27,14 +27,14 @@ async-graphql-actix-web = { workspace = true }
 async-trait             = { workspace = true }
 chrono                  = { workspace = true }
 dango-types             = { workspace = true, features = ["async-graphql"] }
-error-backtrace         = { workspace = true }
+dango-backtrace         = { workspace = true }
 futures                 = { workspace = true }
 futures-util            = { workspace = true }
-grug-app                = { workspace = true, features = ["tracing"] }
-grug-types              = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
-indexer-cache           = { workspace = true }
-indexer-clickhouse      = { workspace = true, features = ["async-graphql"] }
-indexer-sql             = { workspace = true, features = ["async-graphql"] }
+dango-app                = { workspace = true, features = ["tracing"] }
+dango-primitives              = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
+dango-indexer-cache           = { workspace = true }
+dango-indexer-clickhouse      = { workspace = true, features = ["async-graphql"] }
+dango-indexer-sql             = { workspace = true, features = ["async-graphql"] }
 itertools               = { workspace = true }
 metrics                 = { workspace = true, optional = true }
 num_cpus                = { workspace = true }

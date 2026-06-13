@@ -4,7 +4,7 @@ use {
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{connection::*, *},
-    indexer_sql::entity,
+    dango_indexer_sql::entity,
     sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };

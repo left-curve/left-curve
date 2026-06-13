@@ -1,10 +1,10 @@
 use {
     crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
-    grug_types::{
+    dango_hyperlane_types::va::QueryMsg,
+    dango_primitives::{
         Addr, Bound, Coin, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
         StdResult, UniqueVec,
     },
-    hyperlane_types::va::QueryMsg,
     std::collections::{BTreeMap, BTreeSet},
 };
 

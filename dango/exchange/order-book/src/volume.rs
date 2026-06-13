@@ -1,6 +1,6 @@
 use {
     crate::{UsdValue, VOLUMES},
-    grug_types::{Addr, Bound, Order as IterationOrder, StdResult, Storage, Timestamp},
+    dango_primitives::{Addr, Bound, Order as IterationOrder, StdResult, Storage, Timestamp},
     std::collections::BTreeMap,
 };
 

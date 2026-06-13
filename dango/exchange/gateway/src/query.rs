@@ -1,12 +1,12 @@
 use {
     crate::{PERSONAL_QUOTAS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES, rate_limit},
+    dango_math::Uint128,
+    dango_primitives::{
+        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
+    },
     dango_types::gateway::{
         PersonalQuota, QueryMsg, QueryPersonalQuotasResponseItem, QueryReservesResponseItem,
         QueryRoutesResponseItem, QueryWithdrawalFeesResponseItem, Remote,
-    },
-    grug_math::Uint128,
-    grug_types::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
     },
 };
 

@@ -8,7 +8,7 @@ use {
         },
     },
     clickhouse::Client,
-    indexer_sql::pubsub::{self, PubSub},
+    dango_indexer_sql::pubsub::{self, PubSub},
     std::sync::Arc,
     tokio::sync::RwLock,
 };

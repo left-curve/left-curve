@@ -1,13 +1,13 @@
 use {
     crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
-    grug_math::Uint128,
-    grug_storage::StorageQuerier,
-    grug_types::{HexByteArray, Inner, MutableCtx, Response, StdError},
-    hyperlane_types::{
+    dango_hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash, is_canonical_ecdsa_signature,
         va::{Announce, ExecuteMsg, Initialize, InstantiateMsg, VA_DOMAIN_KEY},
     },
+    dango_math::Uint128,
+    dango_primitives::{HexByteArray, Inner, MutableCtx, Response, StdError},
+    dango_storage::StorageQuerier,
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
@@ -54,7 +54,7 @@ fn announce(
 
     let local_domain = ctx
         .querier
-        .query_wasm_path(mailbox, hyperlane_mailbox::CONFIG.path())?
+        .query_wasm_path(mailbox, dango_hyperlane_mailbox::CONFIG.path())?
         .local_domain;
 
     let message_hash = eip191_hash(announcement_hash(

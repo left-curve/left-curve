@@ -1,9 +1,9 @@
 use {
     async_trait::async_trait,
-    grug_app::{
+    dango_app::{
         App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
     },
-    grug_types::{BlockInfo, BroadcastClient, Query, QueryResponse, TxOutcome, UnsignedTx},
+    dango_primitives::{BlockInfo, BroadcastClient, Query, QueryResponse, TxOutcome, UnsignedTx},
 };
 
 pub trait ConsensusClient: BroadcastClient<Error = anyhow::Error> {}

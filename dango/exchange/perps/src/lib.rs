@@ -15,18 +15,18 @@ pub mod vault;
 use {
     crate::state::{FEE_RATE_OVERRIDES, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     anyhow::{bail, ensure},
+    dango_math::{NumberConst, Uint128},
     dango_order_book::{FillId, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, UsdValue},
+    dango_primitives::{
+        Addr, AuthCtx, AuthMode, Duration, EventBuilder, ImmutableCtx, Json, JsonDeExt, JsonSerExt,
+        Message, MsgExecute, MutableCtx, Response, SudoCtx, Tx,
+    },
     dango_types::{
         DangoQuerier,
         perps::{
             CancelConditionalOrderRequest, CancelOrderRequest, ExecuteMsg, InstantiateMsg,
             MaintainerMsg, QueryMsg, ReferralMsg, State, SubmitOrderRequest, TraderMsg, VaultMsg,
         },
-    },
-    grug_math::{NumberConst, Uint128},
-    grug_types::{
-        Addr, AuthCtx, AuthMode, Duration, EventBuilder, ImmutableCtx, Json, JsonDeExt, JsonSerExt,
-        Message, MsgExecute, MutableCtx, Response, SudoCtx, Tx,
     },
 };
 
@@ -56,7 +56,7 @@ fn oracle(querier: impl DangoQuerier) -> Addr {
     #[cfg(not(debug_assertions))]
     {
         let _ = querier;
-        grug_types::addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d")
+        dango_primitives::addr!("cedc5f73cbb963a48471b849c3650e6e34cd3b6d")
     }
 
     #[cfg(debug_assertions)]
@@ -70,7 +70,7 @@ fn account_factory(querier: impl DangoQuerier) -> Addr {
     #[cfg(not(debug_assertions))]
     {
         let _ = querier;
-        grug_types::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
+        dango_primitives::addr!("18d28bafcdf9d4574f920ea004dea2d13ec16f6b")
     }
 
     #[cfg(debug_assertions)]
@@ -411,7 +411,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
 mod tests {
     use {
         super::*,
-        grug_types::{Coins, Json, MockContext, NonEmpty, ResultExt},
+        dango_primitives::{Coins, Json, MockContext, NonEmpty, ResultExt},
         std::collections::BTreeMap,
     };
 

@@ -1,8 +1,7 @@
 use {
     crate::{CONFIG, DELIVERIES, MERKLE_TREE, NONCE},
     anyhow::{anyhow, ensure},
-    grug_types::{Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
-    hyperlane_types::{
+    dango_hyperlane_types::{
         Addr32, IncrementalMerkleTree,
         isms::{IsmQuery, QueryIsmRequest},
         mailbox::{
@@ -11,6 +10,7 @@ use {
         },
         recipients::{self, QueryRecipientRequest, RecipientMsg, RecipientQuery},
     },
+    dango_primitives::{Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
@@ -148,7 +148,7 @@ fn process(
     DELIVERIES.insert(ctx.storage, message_id)?;
 
     Ok(Response::new()
-        .add_message(grug_types::Message::execute(
+        .add_message(dango_primitives::Message::execute(
             recipient,
             &recipients::ExecuteMsg::Recipient(RecipientMsg::Handle {
                 origin_domain: message.origin_domain,

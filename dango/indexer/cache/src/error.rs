@@ -1,6 +1,6 @@
-use {grug_app::AppError, grug_types::StdError};
+use {dango_app::AppError, dango_primitives::StdError};
 
-#[error_backtrace::backtrace]
+#[dango_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum IndexerError {
     #[error("join error: {0}")]
@@ -37,7 +37,7 @@ pub enum IndexerError {
     Persist(tempfile::PersistError),
 
     #[error(transparent)]
-    Persistence(disk_saver::error::Error),
+    Persistence(dango_disk_saver::error::Error),
 
     #[error(transparent)]
     #[backtrace(new)]
@@ -60,20 +60,20 @@ pub type Result<T> = core::result::Result<T, IndexerError>;
 
 macro_rules! parse_error {
     ($variant:ident, $e:expr) => {
-        grug_app::IndexerError::$variant {
+        dango_app::IndexerError::$variant {
             error: $e.to_string(),
             backtrace: $e.backtrace,
         }
     };
     ($variant:ident, $e:expr, $bt:expr) => {
-        grug_app::IndexerError::$variant {
+        dango_app::IndexerError::$variant {
             error: $e.to_string(),
             backtrace: $bt,
         }
     };
 }
 
-impl From<IndexerError> for grug_app::IndexerError {
+impl From<IndexerError> for dango_app::IndexerError {
     fn from(err: IndexerError) -> Self {
         match err {
             IndexerError::StripPrefixError(e) => parse_error!(Generic, e),
@@ -88,7 +88,7 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::TryFromInt(e) => parse_error!(Generic, e),
             IndexerError::App(be) => {
                 // For App errors, just wrap as generic since it's already processed
-                grug_app::IndexerError::Generic {
+                dango_app::IndexerError::Generic {
                     error: "nested app error".to_string(),
                     backtrace: be.backtrace,
                 }
@@ -104,7 +104,7 @@ impl From<IndexerError> for grug_app::IndexerError {
                 block_height,
                 key,
                 backtrace,
-            } => grug_app::IndexerError::Generic {
+            } => dango_app::IndexerError::Generic {
                 error: format!("s3 upload failed after retries: block {block_height}, key {key}"),
                 backtrace,
             },

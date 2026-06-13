@@ -1,7 +1,21 @@
 use {
     assertor::*,
+    dango_app::Indexer,
     dango_genesis::Contracts,
+    dango_indexer_clickhouse::{
+        entities::{
+            CandleInterval,
+            perps_candle::PerpsCandle,
+            perps_candle_query::{PerpsCandleQueryBuilder, PerpsCandleResult},
+            perps_pair_price::PerpsPairPrice,
+        },
+        indexer::perps_candles::cache::{PerpsCandleCache, PerpsCandleCacheKey},
+    },
+    dango_math::{NumberConst, Udec128_6, Uint128},
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice},
+    dango_primitives::{
+        BlockInfo, Coins, Denom, Duration, Hash256, ResultExt, Timestamp, btree_map,
+    },
     dango_testing::{
         OracleTestEntry, Preset, TestAccounts, TestOption, TestSuiteNaiveWithIndexer,
         create_perps_fill, pair_id, setup_perps_env, setup_test_naive_with_indexer,
@@ -10,18 +24,6 @@ use {
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, RateSchedule},
-    },
-    grug_app::Indexer,
-    grug_math::{NumberConst, Udec128_6, Uint128},
-    grug_types::{BlockInfo, Coins, Denom, Duration, Hash256, ResultExt, Timestamp, btree_map},
-    indexer_clickhouse::{
-        entities::{
-            CandleInterval,
-            perps_candle::PerpsCandle,
-            perps_candle_query::{PerpsCandleQueryBuilder, PerpsCandleResult},
-            perps_pair_price::PerpsPairPrice,
-        },
-        indexer::perps_candles::cache::{PerpsCandleCache, PerpsCandleCacheKey},
     },
     std::collections::HashMap,
 };
@@ -248,7 +250,7 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
 async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_pp_and_custom_genesis(
-            grug_app::NaiveProposalPreparer,
+            dango_app::NaiveProposalPreparer,
             TestOption {
                 block_time: Duration::from_seconds(20),
                 genesis_block: BlockInfo {
@@ -445,7 +447,7 @@ async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
 async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_pp_and_custom_genesis(
-            grug_app::NaiveProposalPreparer,
+            dango_app::NaiveProposalPreparer,
             TestOption {
                 block_time: Duration::from_seconds(10),
                 genesis_block: BlockInfo {
@@ -726,7 +728,7 @@ async fn index_perps_candles_preload_rebuilds_current_bucket_from_clickhouse() -
 
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_pp_and_custom_genesis(
-            grug_app::NaiveProposalPreparer,
+            dango_app::NaiveProposalPreparer,
             TestOption {
                 genesis_block: BlockInfo {
                     height: 0,

@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "indexer-cache"
+name          = "dango-indexer-cache"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -23,10 +23,10 @@ aws-config           = { workspace = true, optional = true }
 aws-credential-types = { workspace = true, optional = true }
 aws-sdk-s3           = { workspace = true, optional = true }
 borsh                = { workspace = true }
-disk-saver           = { workspace = true, features = ["tracing"] }
-error-backtrace      = { workspace = true }
-grug-app             = { workspace = true }
-grug-types           = { workspace = true, features = ["chrono", "sea-orm"] }
+dango-disk-saver           = { workspace = true, features = ["tracing"] }
+dango-backtrace      = { workspace = true }
+dango-app             = { workspace = true }
+dango-primitives           = { workspace = true, features = ["chrono", "sea-orm"] }
 metrics              = { workspace = true, optional = true }
 roaring              = { workspace = true }
 serde                = { workspace = true }

@@ -1,6 +1,6 @@
 use {
     crate::entity::events::Model as EventModel,
-    grug_types::Addr,
+    dango_primitives::Addr,
     std::{
         collections::{BTreeSet, HashMap},
         marker::PhantomData,

@@ -2,6 +2,8 @@ use {
     dango_order_book::{
         ConditionalOrderId, Dimensionless, PairId, TriggerDirection, UsdPrice, UsdValue,
     },
+    dango_primitives::{Addr, Timestamp},
+    dango_storage::{IndexedMap, Item, Map, MultiIndex, Set},
     dango_types::{
         account_factory::UserIndex,
         perps::{
@@ -9,8 +11,6 @@ use {
             Referrer, State, UserReferralData, UserState, VaultSnapshot,
         },
     },
-    grug_storage::{IndexedMap, Item, Map, MultiIndex, Set},
-    grug_types::{Addr, Timestamp},
     std::collections::BTreeSet,
 };
 
@@ -87,7 +87,7 @@ pub const REFERRER_TO_REFEREE_STATISTICS: IndexedMap<
 
 // ----------------------------------- types -----------------------------------
 
-#[grug_storage::index_list(Addr, UserState)]
+#[dango_storage::index_list(Addr, UserState)]
 pub struct UserStateIndexes<'a> {
     /// If the user state has one or more pending unlocks, the earliest ending
     /// time of those unlocks; otherwise, `Timestamp::MAX`.
@@ -148,7 +148,7 @@ impl UserStateIndexes<'static> {
     }
 }
 
-#[grug_storage::index_list((Referrer, Referee), RefereeStats)]
+#[dango_storage::index_list((Referrer, Referee), RefereeStats)]
 pub struct ReferrerStatisticsIndex<'a> {
     pub registered_at: MultiIndex<'a, (Referrer, Referee), (Referrer, Timestamp), RefereeStats>,
     pub volume: MultiIndex<'a, (Referrer, Referee), (Referrer, UsdValue), RefereeStats>,

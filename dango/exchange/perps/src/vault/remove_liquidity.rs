@@ -6,10 +6,10 @@ use {
         state::{PARAM, STATE, USER_STATES},
     },
     anyhow::ensure,
+    dango_math::{Dec128_6, Int128, IsZero, MultiplyRatio, Number as _, Uint128},
     dango_order_book::UsdValue,
+    dango_primitives::{MutableCtx, Response, Timestamp},
     dango_types::perps::{LiquidityUnlocking, Param, State, Unlock, UserState},
-    grug_math::{Dec128_6, Int128, IsZero, MultiplyRatio, Number as _, Uint128},
-    grug_types::{MutableCtx, Response, Timestamp},
 };
 
 /// Request to withdraw liquidity from the counterparty vault.
@@ -184,9 +184,9 @@ fn _remove_liquidity(
 mod tests {
     use {
         super::*,
+        dango_math::Uint128,
         dango_order_book::UsdValue,
-        grug_math::Uint128,
-        grug_types::{Duration, MockStorage},
+        dango_primitives::{Duration, MockStorage},
         std::collections::VecDeque,
     };
 

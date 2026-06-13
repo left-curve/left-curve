@@ -15,6 +15,7 @@ use {
         trade::resize_reduce_only_orders,
     },
     anyhow::{bail, ensure},
+    dango_math::{MathResult, Number, NumberConst},
     dango_order_book::{
         ASKS, BIDS, ChildOrder, ClientOrderId, ConditionalOrder, ConditionalOrderPlaced,
         Dimensionless, FillId, LimitOrder, NEXT_FILL_ID, NEXT_ORDER_ID, OrderId, OrderKind,
@@ -24,12 +25,11 @@ use {
         decrease_liquidity_depths, flush_volumes, increase_liquidity_depths, may_invert_price,
         validate_slippage, walk_book,
     },
-    dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
-    grug_math::{MathResult, Number, NumberConst},
-    grug_types::{
+    dango_primitives::{
         Addr, EventBuilder, MutableCtx, Order as IterationOrder, QuerierWrapper, Response,
         StdResult, Storage, Timestamp,
     },
+    dango_types::perps::{OrderFilled, PairParam, PairState, Param, State, UserState},
     std::collections::{BTreeMap, btree_map::Entry},
 };
 
@@ -1197,7 +1197,7 @@ pub fn settle_fill(
         FillId,
         bool,
     )>,
-) -> grug_types::StdResult<FillSettlement> {
+) -> dango_primitives::StdResult<FillSettlement> {
     let (closing, opening) = {
         let current_pos = user_state
             .positions
@@ -1695,10 +1695,10 @@ mod tests {
     use {
         super::*,
         crate::USER_STATES,
+        dango_math::Uint64,
         dango_order_book::{Dimensionless, FundingPerUnit},
+        dango_primitives::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp},
         dango_types::perps::{Position, RateSchedule},
-        grug_math::Uint64,
-        grug_types::{Coins, EventName, JsonDeExt, MockContext, ResultExt, Timestamp},
     };
 
     const CONTRACT: Addr = Addr::mock(0);

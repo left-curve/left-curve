@@ -1,5 +1,7 @@
 use {
     assertor::*,
+    dango_indexer_graphql_types::{Messages, SubscribeMessages, messages, subscribe_messages},
+    dango_primitives::{Addressable, Coins, Message, NonEmpty, ResultExt},
     dango_testing::{
         GraphQLCustomRequest, PaginationDirection, TestOption, build_app_service,
         call_graphql_query, call_ws_graphql_stream, messages_query, paginate_messages,
@@ -7,8 +9,6 @@ use {
     },
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
-    grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
-    indexer_graphql_types::{Messages, SubscribeMessages, messages, subscribe_messages},
     tokio::sync::mpsc,
 };
 

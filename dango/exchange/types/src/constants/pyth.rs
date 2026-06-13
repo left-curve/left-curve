@@ -5,8 +5,8 @@ use {
         constants::{eth, perp_btc, perp_eth, perp_hype, perp_sol, usdc},
         oracle::{PriceConfig, PriceSource},
     },
-    grug_types::{Denom, btree_map},
-    pyth_types::constants::{BTC_USD_ID, ETH_USD_ID, HYPE_USD_ID, SOL_USD_ID, USDC_USD_ID},
+    dango_primitives::{Denom, btree_map},
+    dango_pyth_types::constants::{BTC_USD_ID, ETH_USD_ID, HYPE_USD_ID, SOL_USD_ID, USDC_USD_ID},
     std::{collections::BTreeMap, sync::LazyLock},
 };
 

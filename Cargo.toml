@@ -1,6 +1,20 @@
 [workspace]
 members = [
   "dango/cli",
+  "dango/core/app",
+  "dango/core/crypto",
+  "dango/core/db/disk",
+  "dango/core/db/memory",
+  "dango/core/ffi",
+  "dango/core/jellyfish-merkle",
+  "dango/core/macros",
+  "dango/core/math",
+  "dango/core/storage",
+  "dango/core/tester",
+  "dango/core/types",
+  "dango/core/vm/hybrid",
+  "dango/core/vm/rust",
+  "dango/core/vm/wasm",
   "dango/exchange/account",
   "dango/exchange/account-factory",
   "dango/exchange/auth",
@@ -16,20 +30,6 @@ members = [
   "dango/exchange/upgrade",
   "dango/exchange/vesting",
   "dango/exchange/warp",
-  "dango/grug/app",
-  "dango/grug/crypto",
-  "dango/grug/db/disk",
-  "dango/grug/db/memory",
-  "dango/grug/ffi",
-  "dango/grug/jellyfish-merkle",
-  "dango/grug/macros",
-  "dango/grug/math",
-  "dango/grug/storage",
-  "dango/grug/tester",
-  "dango/grug/types",
-  "dango/grug/vm/hybrid",
-  "dango/grug/vm/rust",
-  "dango/grug/vm/wasm",
   "dango/hyperlane/isms/multisig",
   "dango/hyperlane/mailbox",
   "dango/hyperlane/types",
@@ -46,11 +46,11 @@ members = [
   "dango/sdk",
   "dango/sdk/cli",
   "dango/testing",
+  "dango/utils/backtrace",
+  "dango/utils/backtrace/derive",
   "dango/utils/config-parser",
   "dango/utils/disk-saver",
   "dango/utils/dyn-event",
-  "dango/utils/error-backtrace",
-  "dango/utils/error-backtrace/derive",
   "dango/utils/eth",
   "dango/utils/identity",
   "dango/utils/temp-rocksdb",
@@ -180,59 +180,59 @@ wasmer                      = "7"
 wasmer-middlewares          = "7"
 
 # Left curve packages
-dango-account           = { path = "dango/exchange/account" }
-dango-account-factory   = { path = "dango/exchange/account-factory" }
-dango-auth              = { path = "dango/exchange/auth" }
-dango-bank              = { path = "dango/exchange/bank" }
-dango-gateway           = { path = "dango/exchange/gateway" }
-dango-genesis           = { path = "dango/exchange/genesis" }
-dango-oracle            = { path = "dango/exchange/oracle" }
-dango-order-book        = { path = "dango/exchange/order-book" }
-dango-perps             = { path = "dango/exchange/perps" }
-dango-proposal-preparer = { path = "dango/exchange/proposal-preparer" }
-dango-sdk               = { path = "dango/sdk" }
-dango-taxman            = { path = "dango/exchange/taxman" }
-dango-testing           = { path = "dango/testing" }
-dango-types             = { path = "dango/exchange/types" }
-dango-upgrade           = { path = "dango/exchange/upgrade" }
-dango-vesting           = { path = "dango/exchange/vesting" }
-dango-warp              = { path = "dango/exchange/warp" }
-grug-app                = { path = "dango/grug/app" }
-grug-crypto             = { path = "dango/grug/crypto" }
-grug-db-disk            = { path = "dango/grug/db/disk" }
-grug-db-memory          = { path = "dango/grug/db/memory" }
-grug-ffi                = { path = "dango/grug/ffi" }
-grug-jmt                = { path = "dango/grug/jellyfish-merkle" }
-grug-macros             = { path = "dango/grug/macros" }
-grug-math               = { path = "dango/grug/math" }
-grug-storage            = { path = "dango/grug/storage" }
-grug-tester             = { path = "dango/grug/tester" }
-grug-types              = { path = "dango/grug/types" }
-grug-vm-hybrid          = { path = "dango/grug/vm/hybrid" }
-grug-vm-rust            = { path = "dango/grug/vm/rust" }
-grug-vm-wasm            = { path = "dango/grug/vm/wasm" }
-hyperlane-ism           = { path = "dango/hyperlane/isms/multisig" }
-hyperlane-mailbox       = { path = "dango/hyperlane/mailbox" }
-hyperlane-types         = { path = "dango/hyperlane/types" }
-hyperlane-va            = { path = "dango/hyperlane/va" }
-indexer-cache           = { path = "dango/indexer/cache" }
-indexer-clickhouse      = { path = "dango/indexer/clickhouse" }
-indexer-graphql-types   = { path = "dango/indexer/graphql-types" }
-indexer-hooked          = { path = "dango/indexer/hooked" }
-indexer-httpd           = { path = "dango/indexer/httpd", features = ["tracing"] }
-indexer-metrics         = { path = "dango/indexer/metrics" }
-indexer-sql             = { path = "dango/indexer/sql" }
-pyth-client             = { path = "dango/pyth/client" }
-pyth-types              = { path = "dango/pyth/types" }
+dango-account               = { path = "dango/exchange/account" }
+dango-account-factory       = { path = "dango/exchange/account-factory" }
+dango-app                   = { path = "dango/core/app" }
+dango-auth                  = { path = "dango/exchange/auth" }
+dango-bank                  = { path = "dango/exchange/bank" }
+dango-crypto                = { path = "dango/core/crypto" }
+dango-db-disk               = { path = "dango/core/db/disk" }
+dango-db-memory             = { path = "dango/core/db/memory" }
+dango-ffi                   = { path = "dango/core/ffi" }
+dango-gateway               = { path = "dango/exchange/gateway" }
+dango-genesis               = { path = "dango/exchange/genesis" }
+dango-hyperlane-ism         = { path = "dango/hyperlane/isms/multisig" }
+dango-hyperlane-mailbox     = { path = "dango/hyperlane/mailbox" }
+dango-hyperlane-types       = { path = "dango/hyperlane/types" }
+dango-hyperlane-va          = { path = "dango/hyperlane/va" }
+dango-indexer-cache         = { path = "dango/indexer/cache" }
+dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
+dango-indexer-graphql-types = { path = "dango/indexer/graphql-types" }
+dango-indexer-hooked        = { path = "dango/indexer/hooked" }
+dango-indexer-httpd         = { path = "dango/indexer/httpd", features = ["tracing"] }
+dango-indexer-metrics       = { path = "dango/indexer/metrics" }
+dango-indexer-sql           = { path = "dango/indexer/sql" }
+dango-jmt                   = { path = "dango/core/jellyfish-merkle" }
+dango-macros                = { path = "dango/core/macros" }
+dango-math                  = { path = "dango/core/math" }
+dango-oracle                = { path = "dango/exchange/oracle" }
+dango-order-book            = { path = "dango/exchange/order-book" }
+dango-perps                 = { path = "dango/exchange/perps" }
+dango-primitives            = { path = "dango/core/types" }
+dango-proposal-preparer     = { path = "dango/exchange/proposal-preparer" }
+dango-pyth-client           = { path = "dango/pyth/client" }
+dango-pyth-types            = { path = "dango/pyth/types" }
+dango-sdk                   = { path = "dango/sdk" }
+dango-storage               = { path = "dango/core/storage" }
+dango-taxman                = { path = "dango/exchange/taxman" }
+dango-tester                = { path = "dango/core/tester" }
+dango-testing               = { path = "dango/testing" }
+dango-types                 = { path = "dango/exchange/types" }
+dango-upgrade               = { path = "dango/exchange/upgrade" }
+dango-vesting               = { path = "dango/exchange/vesting" }
+dango-vm-hybrid             = { path = "dango/core/vm/hybrid" }
+dango-vm-rust               = { path = "dango/core/vm/rust" }
+dango-vm-wasm               = { path = "dango/core/vm/wasm" }
+dango-warp                  = { path = "dango/exchange/warp" }
 
 # Utilities
-config-parser   = { path = "dango/utils/config-parser" }
-disk-saver      = { path = "dango/utils/disk-saver" }
-dyn-event       = { path = "dango/utils/dyn-event" }
-error-backtrace = { path = "dango/utils/error-backtrace" }
-eth-utils       = { path = "dango/utils/eth" }
-identity        = { path = "dango/utils/identity" }
-temp-rocksdb    = { path = "dango/utils/temp-rocksdb" }
+dango-backtrace     = { path = "dango/utils/backtrace" }
+dango-config-parser = { path = "dango/utils/config-parser" }
+dango-disk-saver    = { path = "dango/utils/disk-saver" }
+dango-dyn-event     = { path = "dango/utils/dyn-event" }
+dango-eth-utils     = { path = "dango/utils/eth" }
+dango-identity      = { path = "dango/utils/identity" }
+dango-temp-rocksdb  = { path = "dango/utils/temp-rocksdb" }
 
 [profile.release]
 codegen-units    = 1

@@ -1,6 +1,6 @@
 use {
     anyhow::ensure,
-    grug_types::{Hash256, hash},
+    dango_primitives::{Hash256, hash},
     sha3::{Digest, Keccak256},
 };
 
@@ -45,7 +45,7 @@ pub const ZERO_HASHES: [Hash256; TREE_DEPTH] = [
 
 /// Reference:
 /// <https://medium.com/@josephdelong/ethereum-2-0-deposit-merkle-tree-13ec8404ca4f>
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct IncrementalMerkleTree {
     pub branch: [Hash256; TREE_DEPTH],
     pub count: u128,

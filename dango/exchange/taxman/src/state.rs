@@ -1,4 +1,4 @@
-use {dango_types::taxman::Config, grug_math::Uint128, grug_storage::Item};
+use {dango_math::Uint128, dango_storage::Item, dango_types::taxman::Config};
 
 pub const CONFIG: Item<Config> = Item::new("config");
 

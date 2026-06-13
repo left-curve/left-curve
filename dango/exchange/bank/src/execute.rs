@@ -1,13 +1,13 @@
 use {
     crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
     anyhow::{anyhow, bail, ensure},
-    dango_types::bank::{
-        Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
-    },
-    grug_math::{IsZero, Number, NumberConst, Uint128},
-    grug_types::{
+    dango_math::{IsZero, Number, NumberConst, Uint128},
+    dango_primitives::{
         Addr, BankMsg, Coins, Denom, EventBuilder, MutableCtx, Part, QuerierExt, Response,
         StdError, StdResult, Storage, SudoCtx,
+    },
+    dango_types::bank::{
+        Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
     std::collections::HashMap,
 };

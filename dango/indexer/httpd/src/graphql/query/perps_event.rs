@@ -5,7 +5,7 @@ use {
     },
     async_graphql::{types::connection::*, *},
     chrono::{DateTime, Utc},
-    indexer_sql::entity,
+    dango_indexer_sql::entity,
     sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };

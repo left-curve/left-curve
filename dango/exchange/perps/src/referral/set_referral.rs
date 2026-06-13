@@ -9,11 +9,11 @@ use {
     },
     anyhow::ensure,
     dango_order_book::round_to_day,
+    dango_primitives::{MutableCtx, QuerierExt, Response},
     dango_types::{
         account_factory::{self, UserIndex},
         perps::{RefereeStats, ReferralSet},
     },
-    grug_types::{MutableCtx, QuerierExt, Response},
 };
 
 /// Register a referral relationship between a referrer and a referee.
@@ -109,14 +109,14 @@ pub fn set_referral(
 mod tests {
     use {
         super::*,
+        dango_primitives::{
+            Addr, Coins, Config, Duration, EventName, JsonDeExt, JsonSerExt, MockContext,
+            MockQuerier, Permission, Permissions, ResultExt, Storage, Timestamp,
+        },
         dango_types::{
             account_factory::Account,
             config::{AppAddresses, AppConfig},
             perps::{FeeShareRatio, UserReferralData},
-        },
-        grug_types::{
-            Addr, Coins, Config, Duration, EventName, JsonDeExt, JsonSerExt, MockContext,
-            MockQuerier, Permission, Permissions, ResultExt, Storage, Timestamp,
         },
         std::collections::BTreeMap,
     };

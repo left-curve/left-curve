@@ -4,13 +4,13 @@ use {
     async_graphql::{ComplexObject, SimpleObject},
     bigdecimal::BigDecimal,
     bigdecimal::num_bigint::BigInt,
-    grug_types::{Inner, Timestamp},
+    dango_primitives::{Inner, Timestamp},
 };
 use {
     crate::entities::{CandleInterval, perps_pair_price::PerpsPairPrice},
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug_math::{NumberConst, Udec128_6},
+    dango_math::{NumberConst, Udec128_6},
     serde::{Deserialize, Serialize},
 };
 

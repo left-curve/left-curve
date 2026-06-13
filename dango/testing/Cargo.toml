@@ -24,38 +24,38 @@ dango-genesis           = { workspace = true }
 dango-order-book        = { workspace = true }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true, features = ["async-graphql"] }
-error-backtrace         = { workspace = true }
-eth-utils               = { workspace = true }
+dango-backtrace         = { workspace = true }
+dango-eth-utils               = { workspace = true }
 futures                 = { workspace = true }
 futures-util            = { workspace = true }
 graphql_client          = { workspace = true }
-grug-app                = { workspace = true, features = ["abci", "testing", "tracing"] }
-grug-crypto             = { workspace = true }
-grug-db-disk            = { workspace = true }
-grug-db-memory          = { workspace = true }
-grug-math               = { workspace = true }
-grug-types              = { workspace = true, features = ["async-graphql"] }
-grug-vm-rust            = { workspace = true }
+dango-app                = { workspace = true, features = ["abci", "testing", "tracing"] }
+dango-crypto             = { workspace = true }
+dango-db-disk            = { workspace = true }
+dango-db-memory          = { workspace = true }
+dango-math               = { workspace = true }
+dango-primitives              = { workspace = true, features = ["async-graphql"] }
+dango-vm-rust            = { workspace = true }
 hex-literal             = { workspace = true }
-hyperlane-types         = { workspace = true }
-identity                = { workspace = true }
-indexer-cache           = { workspace = true, features = ["http-request-details", "metrics", "tracing"] }
-indexer-clickhouse      = { workspace = true, features = ["metrics", "testing", "tracing"] }
-indexer-graphql-types   = { workspace = true }
-indexer-hooked          = { workspace = true, features = ["tracing"] }
-indexer-httpd           = { workspace = true, features = ["metrics", "tracing"] }
-indexer-metrics         = { workspace = true }
-indexer-sql             = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }
+dango-hyperlane-types         = { workspace = true }
+dango-identity                = { workspace = true }
+dango-indexer-cache           = { workspace = true, features = ["http-request-details", "metrics", "tracing"] }
+dango-indexer-clickhouse      = { workspace = true, features = ["metrics", "testing", "tracing"] }
+dango-indexer-graphql-types   = { workspace = true }
+dango-indexer-hooked          = { workspace = true, features = ["tracing"] }
+dango-indexer-httpd           = { workspace = true, features = ["metrics", "tracing"] }
+dango-indexer-metrics         = { workspace = true }
+dango-indexer-sql             = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }
 k256                    = { workspace = true }
-pyth-client             = { workspace = true }
+dango-pyth-client             = { workspace = true }
 pyth-lazer-protocol     = { workspace = true }
-pyth-types              = { workspace = true }
+dango-pyth-types              = { workspace = true }
 rand                    = { workspace = true }
 sea-orm                 = { workspace = true }
 serde                   = { workspace = true }
 serde_json              = { workspace = true }
 sha2                    = { workspace = true }
-temp-rocksdb            = { workspace = true }
+dango-temp-rocksdb            = { workspace = true }
 tokio                   = { workspace = true }
 tracing                 = { workspace = true }
 tracing-subscriber      = { workspace = true }
@@ -75,13 +75,13 @@ dango-gateway               = { workspace = true }
 dango-sdk                   = { workspace = true }
 dango-taxman                = { workspace = true }
 ed25519-dalek               = { workspace = true, features = ["batch", "digest"] }
-error-backtrace             = { workspace = true }
-eth-utils                   = { workspace = true }
+dango-backtrace             = { workspace = true }
+dango-eth-utils                   = { workspace = true }
 graphql_client              = { workspace = true }
-grug-storage                = { workspace = true }
-grug-tester                 = { workspace = true, features = ["library"] }
-grug-vm-hybrid              = { workspace = true }
-grug-vm-wasm                = { workspace = true }
+dango-storage                = { workspace = true }
+dango-tester                 = { workspace = true, features = ["library"] }
+dango-vm-hybrid              = { workspace = true }
+dango-vm-wasm                = { workspace = true }
 hex                         = { workspace = true }
 itertools                   = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }

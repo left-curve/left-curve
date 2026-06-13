@@ -1,13 +1,13 @@
 use {
-    dango_testing::{TestOption, setup_test_naive},
-    dango_types::constants::usdc,
-    grug_app::{AppError, CHAIN_ID, CONFIG, CONTRACTS, GasTracker, HaltReason, TraceOption},
-    grug_math::{Bytable, NextNumber, Uint128, Uint256},
-    grug_types::{
+    dango_app::{AppError, CHAIN_ID, CONFIG, CONTRACTS, GasTracker, HaltReason, TraceOption},
+    dango_math::{Bytable, NextNumber, Uint128, Uint256},
+    dango_primitives::{
         Addr, Addressable, BorshSerExt, Coins, Duration, Empty, JsonSerExt, MsgExecute,
         NextUpgrade, PastUpgrade, QuerierExt, ResultExt, StdError, btree_map,
     },
-    grug_vm_rust::ContractBuilder,
+    dango_testing::{TestOption, setup_test_naive},
+    dango_types::constants::usdc,
+    dango_vm_rust::ContractBuilder,
     std::sync::Arc,
 };
 
@@ -147,9 +147,9 @@ async fn upgrading_without_calling_contract() {
 async fn upgrading_with_calling_contract() {
     mod new_bank {
         use {
-            grug_math::{NextNumber, Uint256},
-            grug_storage::Map,
-            grug_types::{Addr, Denom, Empty, MutableCtx, Order, Response, StdResult},
+            dango_math::{NextNumber, Uint256},
+            dango_primitives::{Addr, Denom, Empty, MutableCtx, Order, Response, StdResult},
+            dango_storage::Map,
         };
 
         // NOTE: using `Uint256` here instead of `Uint128`.
@@ -240,14 +240,14 @@ async fn upgrading_with_calling_contract() {
                 .build();
 
             // Update the bank contract's code.
-            grug_app::CODES.update(&mut storage, bank_contract.code_hash, |mut code| {
+            dango_app::CODES.update(&mut storage, bank_contract.code_hash, |mut code| {
                 code.code = new_bank_code.to_bytes().into();
                 Ok::<_, StdError>(code)
             })?;
 
             // Call the bank contract's `execute` function to update the balances
             // to 256-bit.
-            grug_app::do_execute(
+            dango_app::do_execute(
                 vm,
                 storage,
                 GasTracker::new_limitless(),

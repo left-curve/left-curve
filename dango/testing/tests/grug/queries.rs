@@ -1,13 +1,13 @@
 use {
+    dango_primitives::{Coins, Empty, ResultExt},
     dango_testing::{ContractBuilder, TestOption, setup_test_naive},
-    grug_types::{Coins, Empty, ResultExt},
 };
 
 mod query_maker {
     use {
+        dango_math::IsZero,
+        dango_primitives::{Empty, MutableCtx, QuerierExt, Query, Response, StdResult},
         dango_types::constants::usdc,
-        grug_math::IsZero,
-        grug_types::{Empty, MutableCtx, QuerierExt, Query, Response, StdResult},
     };
 
     pub fn instantiate(ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {

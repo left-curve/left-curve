@@ -2,10 +2,10 @@
 use {
     crate::dataloaders::event_transaction::EventTransactionDataLoader,
     async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject, dataloader::DataLoader},
-    grug_types::Timestamp,
+    dango_primitives::Timestamp,
 };
 use {
-    grug_types::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
+    dango_primitives::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
     sea_orm::entity::prelude::*,
     serde::Deserialize,
 };

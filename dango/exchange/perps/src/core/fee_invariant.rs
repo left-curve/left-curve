@@ -2,8 +2,8 @@ use {
     crate::state::FEE_RATE_OVERRIDES,
     anyhow::ensure,
     dango_order_book::Dimensionless,
+    dango_primitives::{Addr, Order as IterationOrder, Storage},
     dango_types::perps::{Param, RateSchedule},
-    grug_types::{Addr, Order as IterationOrder, Storage},
 };
 
 /// The pending fee-rate-override edit being validated, if any.
@@ -88,7 +88,7 @@ mod tests {
     use {
         super::*,
         dango_order_book::UsdValue,
-        grug_types::{MockStorage, btree_map},
+        dango_primitives::{MockStorage, btree_map},
         std::collections::BTreeMap,
     };
 

@@ -11,16 +11,16 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug_types::NonEmpty,
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    dango_primitives::NonEmpty,
+    dango_pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    dango_pyth_types::{
+        PythLazerSubscriptionDetails,
+        constants::{BTC_USD_ID, ETH_USD_ID, HYPE_USD_ID, LAZER_ENDPOINTS_TEST, SOL_USD_ID},
+    },
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
         binary_update::BinaryWsUpdate,
         message::Message as PythMessage,
-    },
-    pyth_types::{
-        PythLazerSubscriptionDetails,
-        constants::{BTC_USD_ID, ETH_USD_ID, HYPE_USD_ID, LAZER_ENDPOINTS_TEST, SOL_USD_ID},
     },
     rand::Rng,
     reqwest::StatusCode,
@@ -247,7 +247,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         .into_iter()
         .map(|id| PythLazerSubscriptionDetails {
             id: id.0,
-            channel: pyth_types::Channel::RealTime,
+            channel: dango_pyth_types::Channel::RealTime,
         })
         .collect::<Vec<_>>();
 

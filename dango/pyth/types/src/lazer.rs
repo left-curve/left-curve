@@ -1,5 +1,5 @@
 use {
-    grug_types::{Binary, ByteArray, Inner, NonEmpty},
+    dango_primitives::{Binary, ByteArray, Inner, NonEmpty},
     pyth_lazer_protocol::{
         api::{Channel, MarketSession as LazerMarketSession},
         message::LeEcdsaMessage as LazerLeEcdsaMessage,
@@ -10,14 +10,14 @@ pub type PythId = u32;
 
 pub type PriceUpdate = NonEmpty<Vec<LeEcdsaMessage>>;
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct PythLazerSubscriptionDetails {
     pub id: PythId,
     pub channel: Channel,
 }
 
 /// LE-ECDSA format envelope.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct LeEcdsaMessage {
     pub payload: Binary,
     pub signature: ByteArray<64>,
@@ -50,7 +50,7 @@ impl From<LazerLeEcdsaMessage> for LeEcdsaMessage {
 /// (`Regular`, `PreMarket`, `PostMarket`, `OverNight`, `Closed`). Dango
 /// only needs to know whether trading is currently in the regular session;
 /// every non-regular state collapses into a single `Other` variant.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Copy)]
 pub enum MarketSession {
     Regular,

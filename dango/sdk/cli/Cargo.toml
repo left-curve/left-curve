@@ -16,12 +16,12 @@ bip32         = { workspace = true }
 clap          = { workspace = true, features = ["derive", "wrap_help"] }
 colored       = { workspace = true }
 colored_json  = { workspace = true }
-config-parser = { workspace = true }
+dango-config-parser = { workspace = true }
 dango-sdk     = { workspace = true }
 dango-types   = { workspace = true }
 dialoguer     = { workspace = true }
-grug-app      = { workspace = true }
-grug-types    = { workspace = true }
+dango-app      = { workspace = true }
+dango-primitives    = { workspace = true }
 hex           = { workspace = true }
 home          = { workspace = true }
 rand          = { workspace = true }

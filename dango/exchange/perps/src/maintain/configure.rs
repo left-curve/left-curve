@@ -7,10 +7,10 @@ use {
     anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_order_book::{Dimensionless, FundingRate, PairId, UsdPrice, UsdValue},
-    dango_types::perps::{PairParam, PairState, Param, RateSchedule},
-    grug_types::{
+    dango_primitives::{
         Duration, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER, MutableCtx, QuerierExt, Response,
     },
+    dango_types::perps::{PairParam, PairState, Param, RateSchedule},
     std::collections::BTreeMap,
 };
 
@@ -439,9 +439,9 @@ fn validate_rate_schedule(
 mod tests {
     use {
         super::*,
+        dango_math::Number as _,
         dango_order_book::{FundingRate, Quantity},
-        grug_math::Number as _,
-        grug_types::{Duration, btree_map, btree_set},
+        dango_primitives::{Duration, btree_map, btree_set},
     };
 
     /// A `Param` that passes validation. Individual tests mutate one field to

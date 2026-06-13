@@ -1,11 +1,11 @@
 use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
-    grug_types::{HexByteArray, MutableCtx, QuerierExt, Response},
-    hyperlane_types::{
+    dango_hyperlane_types::{
         isms::multisig::{ExecuteMsg, InstantiateMsg, ValidatorSet},
         mailbox::Domain,
     },
+    dango_primitives::{HexByteArray, MutableCtx, QuerierExt, Response},
     std::collections::BTreeSet,
 };
 
@@ -74,7 +74,7 @@ fn set_validators(
 mod tests {
     use {
         super::*,
-        grug_types::{
+        dango_primitives::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt, btree_set,
         },

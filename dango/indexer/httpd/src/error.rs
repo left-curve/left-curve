@@ -1,6 +1,6 @@
-use {indexer_sql::error::IndexerError, std::io};
+use {dango_indexer_sql::error::IndexerError, std::io};
 
-#[error_backtrace::backtrace]
+#[dango_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]

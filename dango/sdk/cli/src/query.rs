@@ -1,12 +1,12 @@
 use {
     crate::{config::ClientConfig, home_directory::HomeDirectory, prompt::print_json_pretty},
     clap::{Parser, Subcommand},
-    config_parser::parse_config,
-    dango_sdk::HttpClient,
-    grug_types::{
+    dango_config_parser::parse_config,
+    dango_primitives::{
         Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, Proof, Query,
         QueryClient, QueryWasmSmartRequest, SearchTxClient,
     },
+    dango_sdk::HttpClient,
     serde::Serialize,
     std::str::FromStr,
 };

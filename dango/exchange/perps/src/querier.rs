@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use {
     crate::state::{PAIR_PARAMS, PAIR_STATES},
     dango_order_book::PairId,
+    dango_primitives::Storage,
     dango_types::perps::{PairParam, PairState},
-    grug_types::Storage,
 };
 
 /// An abstraction for querying perps contract state.

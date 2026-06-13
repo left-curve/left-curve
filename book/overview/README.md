@@ -18,7 +18,7 @@ blockchain and DeFi experience. It covers:
 
 | Directory        | Contents                                                                                                                                                        |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dango/grug/`    | State machine: `app`, `db/disk`, `db/memory`, `vm/rust`, `vm/wasm`, `types`, `storage`, `jellyfish-merkle`, `ffi`, `macros`, `crypto`, `math`, `std`, `testing` |
+| `dango/core/`    | State machine: `app`, `db/disk`, `db/memory`, `vm/rust`, `vm/wasm`, `types`, `storage`, `jellyfish-merkle`, `ffi`, `macros`, `crypto`, `math`, `std`, `testing` |
 | `dango/`         | Smart contracts: `bank`, `account`, `account-factory`, `auth`, `oracle`, `perps`, `taxman`, `gateway`, `vesting`, `warp`, `upgrade`, `types`, `cli`             |
 | `dango/indexer/` | Indexing: `hooked`, `sql`, `sql-migration`, `cache`, `httpd`, `client`                                                                                          |
 | `ui/`            | TypeScript frontend (out of scope for this guide)                                                                                                               |
@@ -29,17 +29,17 @@ blockchain and DeFi experience. It covers:
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │  TRUSTED: Node Binary                                        │
-│   dango/grug/app (ABCI + state transitions)                  │
-│   dango/grug/db  (RocksDB persistence)                       │
-│   dango/grug/vm/rust (native contract execution, no sandbox) │
-│   dango/grug/jellyfish-merkle (state commitment)             │
+│   dango/core/app (ABCI + state transitions)                  │
+│   dango/core/db  (RocksDB persistence)                       │
+│   dango/core/vm/rust (native contract execution, no sandbox) │
+│   dango/core/jellyfish-merkle (state commitment)             │
 │   dango/* system contracts (bank, taxman, accounts, etc.)    │
 │   dango/indexer/* (read-only; cannot affect consensus)       │
 └────────────────────── ▼ ─────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
 │  UNTRUSTED: Third-Party WASM Contracts                       │
-│   Executed inside dango/grug/vm/wasm (Wasmer sandbox)        │
+│   Executed inside dango/core/vm/wasm (Wasmer sandbox)        │
 │   All storage access namespaced via StorageProvider          │
 │   All operations metered via gas tracker                     │
 │   Host function calls go through Gatekeeper middleware       │

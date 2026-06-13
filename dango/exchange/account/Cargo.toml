@@ -13,4 +13,4 @@ version       = { workspace = true }
 anyhow      = { workspace = true }
 dango-auth  = { workspace = true }
 dango-types = { workspace = true }
-grug-types  = { workspace = true }
+dango-primitives  = { workspace = true }

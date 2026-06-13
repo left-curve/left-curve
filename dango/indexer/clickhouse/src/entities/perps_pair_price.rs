@@ -2,13 +2,13 @@ use {
     crate::error::Result,
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug_math::Udec128_6,
+    dango_math::Udec128_6,
     serde::{Deserialize, Serialize},
 };
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, SimpleObject},
-    grug_types::Timestamp,
+    dango_primitives::Timestamp,
 };
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -113,8 +113,8 @@ impl PerpsPairPrice {
 
 pub mod dec {
     use {
-        grug_math::{Dec, Int},
-        grug_types::Inner,
+        dango_math::{Dec, Int},
+        dango_primitives::Inner,
         serde::{
             de::{self, Deserializer},
             ser::{Serialize, Serializer},

@@ -1,10 +1,10 @@
 use {
     crate::{CONFIG, DELIVERIES, MERKLE_TREE, NONCE},
-    grug_types::{Hash256, ImmutableCtx, Json, JsonSerExt, StdResult},
-    hyperlane_types::{
+    dango_hyperlane_types::{
         IncrementalMerkleTree,
         mailbox::{Config, QueryMsg},
     },
+    dango_primitives::{Hash256, ImmutableCtx, Json, JsonSerExt, StdResult},
 };
 
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

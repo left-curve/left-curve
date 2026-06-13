@@ -1,12 +1,12 @@
 use {
     crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceConfig},
-    grug_types::{
+    dango_primitives::{
         Api, AuthCtx, AuthMode, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
         QuerierExt, Response, Storage, Timestamp, Tx,
     },
-    pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
+    dango_pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceConfig},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -211,8 +211,8 @@ fn verify_pyth_lazer_message(
 mod tests {
     use {
         super::*,
-        grug_types::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
-        pyth_types::{LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
+        dango_primitives::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
+        dango_pyth_types::{LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
 

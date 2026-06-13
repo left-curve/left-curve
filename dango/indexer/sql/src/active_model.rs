@@ -1,6 +1,6 @@
 use {
     crate::{entity, error::Result},
-    grug_types::{
+    dango_primitives::{
         Addr, Block, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventId, Extractable,
         FlatCategory, FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },

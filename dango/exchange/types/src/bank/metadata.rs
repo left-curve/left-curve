@@ -1,7 +1,7 @@
-use grug_types::LengthBounded;
+use dango_primitives::LengthBounded;
 
 /// Metadata of a token.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct Metadata {
     // The length limits were arbitrarily chosen and can be adjusted.
     pub name: LengthBounded<String, 1, 32>,

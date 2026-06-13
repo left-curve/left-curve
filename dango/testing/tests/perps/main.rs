@@ -1,11 +1,11 @@
 use {
     dango_order_book::{Dimensionless, Quantity, UsdPrice},
+    dango_primitives::{Duration, btree_map},
     dango_testing::{OracleTestEntry, TestAccounts, TestSuiteNaive, pair_id},
     dango_types::{
         constants::usdc,
         perps::{PairParam, Param, RateSchedule},
     },
-    grug_types::{Duration, btree_map},
 };
 
 mod adl_bug_reproduction;

@@ -1,0 +1,27 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-storage"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+default = ["macros"]
+macros  = ["dep:dango-macros"]
+
+[dependencies]
+bnum        = { workspace = true }
+borsh       = { workspace = true }
+dango-macros = { workspace = true, optional = true }
+dango-math   = { workspace = true }
+dango-primitives  = { workspace = true }
+prost       = { workspace = true }
+serde       = { workspace = true }
+
+[dev-dependencies]
+dango-backtrace = { workspace = true }
+test-case       = { workspace = true }

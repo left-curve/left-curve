@@ -1,10 +1,10 @@
 use {
-    grug_storage::{PrimaryKey, RawKey},
-    grug_types::{Binary, Inner, StdError, StdResult},
-    hyperlane_types::{Addr32, mailbox::Domain},
+    dango_hyperlane_types::{Addr32, mailbox::Domain},
+    dango_primitives::{Binary, Inner, StdError, StdResult},
+    dango_storage::{PrimaryKey, RawKey},
 };
 
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Copy, PartialOrd, Ord)]
 pub enum Remote {
     /// Indicates the token was received through Hyperlane's Warp protocol.

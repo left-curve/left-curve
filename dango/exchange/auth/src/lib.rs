@@ -4,6 +4,12 @@ use {
         primitives::{U160, U256, address, uint},
     },
     anyhow::{anyhow, bail, ensure},
+    dango_primitives::{
+        Addr, Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt,
+        JsonSerExt, MutableCtx, QuerierExt, QuerierWrapper, SignData, StdError, StdResult, Storage,
+        Tx,
+    },
+    dango_storage::StorageQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::{RegisterUserData, User},
@@ -13,12 +19,6 @@ use {
         },
     },
     data_encoding::BASE64URL_NOPAD,
-    grug_storage::StorageQuerier,
-    grug_types::{
-        Addr, Api, AuthCtx, AuthMode, ByteArray, Coins, GENESIS_BLOCK_HEIGHT, Inner, JsonDeExt,
-        JsonSerExt, MutableCtx, QuerierExt, QuerierWrapper, SignData, StdError, StdResult, Storage,
-        Tx,
-    },
     sha2::Sha256,
     std::collections::BTreeSet,
 };
@@ -26,8 +26,8 @@ use {
 /// The expected storage layout of the account factory contract.
 pub mod account_factory {
     use {
+        dango_storage::Map,
         dango_types::account_factory::{User, UserIndex},
-        grug_storage::Map,
     };
 
     pub const USERS: Map<UserIndex, User> = Map::new("user");
@@ -36,8 +36,8 @@ pub mod account_factory {
 /// The expected storage layout of the account contract.
 pub mod account {
     use {
+        dango_storage::{Item, Map},
         dango_types::auth::{AccountStatus, Nonce, SessionKey},
-        grug_storage::{Item, Map},
         std::collections::BTreeSet,
     };
 
@@ -717,13 +717,13 @@ mod tests {
     use {
         super::*,
         crate::account_factory::USERS,
+        dango_primitives::{
+            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
+            btree_map, hash,
+        },
         dango_types::{
             account_factory::Username,
             config::{AppAddresses, AppConfig},
-        },
-        grug_types::{
-            Addr, AuthMode, Hash256, MockContext, MockQuerier, MockStorage, ResultExt, addr,
-            btree_map, hash,
         },
         hex_literal::hex,
         std::str::FromStr,

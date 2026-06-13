@@ -1,6 +1,12 @@
 use {
     assert_json_diff::assert_json_eq,
     assertor::*,
+    dango_app::Indexer,
+    dango_indexer_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
+    dango_primitives::{
+        Addressable, Coin, Coins, Inner, Json, JsonDeExt, JsonSerExt, QuerierExt, Query,
+        QueryBalanceRequest, QueryResponse, QueryWasmSmartRequest, ResultExt,
+    },
     dango_testing::{
         Accounts, GraphQLCustomRequest, HyperlaneTestSuite, PaginationDirection, TestOption,
         accounts_query, add_account_with_existing_user, build_app_service,
@@ -13,12 +19,6 @@ use {
         constants::dango,
     },
     graphql_client::GraphQLQuery,
-    grug_app::Indexer,
-    grug_types::{
-        Addressable, Coin, Coins, Inner, Json, JsonDeExt, JsonSerExt, QuerierExt, Query,
-        QueryBalanceRequest, QueryResponse, QueryWasmSmartRequest, ResultExt,
-    },
-    indexer_graphql_types::{QueryApp, SubscribeAccounts, query_app, subscribe_accounts},
     std::collections::BTreeSet,
     tokio::{sync::mpsc, time::sleep},
 };
@@ -568,7 +568,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
         .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
         .should_succeed_and_equal((0..20).collect());
 
-    let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
+    let body_request = dango_primitives::Query::WasmSmart(QueryWasmSmartRequest {
         contract: accounts.owner.address(),
         msg: (QueryMsg::SeenNonces {}).to_json_value()?,
     })
@@ -635,7 +635,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let body_request = grug_types::Query::Balance(QueryBalanceRequest {
+    let body_request = dango_primitives::Query::Balance(QueryBalanceRequest {
         address: accounts.user1.address(),
         denom: dango::DENOM.clone(),
     })

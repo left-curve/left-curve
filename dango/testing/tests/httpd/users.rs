@@ -1,12 +1,12 @@
 use {
     assertor::*,
+    dango_app::Indexer,
+    dango_indexer_graphql_types::{User, Users, user, users},
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_user_public_key, call_graphql_query_with_context,
         create_user_and_account, setup_test_with_indexer,
     },
     graphql_client::GraphQLQuery,
-    grug_app::Indexer,
-    indexer_graphql_types::{User, Users, user, users},
 };
 
 #[tokio::test(flavor = "multi_thread")]

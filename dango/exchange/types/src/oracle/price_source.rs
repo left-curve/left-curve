@@ -1,10 +1,11 @@
 use {
-    anyhow::ensure, dango_order_book::Dimensionless, grug_math::MathResult, grug_types::Timestamp,
+    anyhow::ensure, dango_math::MathResult, dango_order_book::Dimensionless,
+    dango_primitives::Timestamp,
 };
 
 /// A single Pyth Lazer price feed subscription (feed id + channel). Identical in
 /// shape to the upstream type, so we alias it directly.
-pub type PriceSource = pyth_types::PythLazerSubscriptionDetails;
+pub type PriceSource = dango_pyth_types::PythLazerSubscriptionDetails;
 
 /// How a denom's price is derived from one or more Pyth feeds.
 ///
@@ -14,7 +15,7 @@ pub type PriceSource = pyth_types::PythLazerSubscriptionDetails;
 /// discrete fixings as the front contract approaches its final trading day.
 /// The blend weight is a pure function of the block timestamp, so the roll
 /// runs on-chain without a transaction per fixing.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum PriceConfig {
     /// Priced from a single feed. The common case (crypto, spot).
     Single(PriceSource),
@@ -31,7 +32,7 @@ pub enum PriceConfig {
 /// This mirrors trade.xyz's per-session step roll, with no intraday
 /// interpolation. Rolling forward to the next pair of contracts is done by
 /// re-registering the config.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct RollState {
     /// The contract being rolled out of (the front month).
     pub current: PriceSource,
@@ -47,7 +48,7 @@ pub struct RollState {
 
 /// A single roll fixing: at or after `at`, the weight on the next contract
 /// becomes `next_weight`.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct Fixing {
     pub at: Timestamp,
     pub next_weight: Dimensionless,
@@ -168,7 +169,7 @@ fn validate_fixings(fixings: &[Fixing]) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::JsonSerExt, pyth_types::Channel};
+    use {super::*, dango_primitives::JsonSerExt, dango_pyth_types::Channel};
 
     fn src(id: u32) -> PriceSource {
         PriceSource {

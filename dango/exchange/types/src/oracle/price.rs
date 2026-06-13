@@ -1,11 +1,11 @@
 use {
+    dango_math::Dec128_6,
     dango_order_book::UsdPrice,
-    grug_math::Dec128_6,
-    grug_types::Timestamp,
-    pyth_types::{MarketSession, PayloadFeedData, PayloadPropertyValue},
+    dango_primitives::Timestamp,
+    dango_pyth_types::{MarketSession, PayloadFeedData, PayloadPropertyValue},
 };
 
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct Price {
     /// The price of the token in its humanized form. I.e. the price of 1 ATOM,
     /// rather than 1 uatom.

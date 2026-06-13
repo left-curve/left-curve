@@ -1,6 +1,6 @@
 use {
+    dango_math::MathResult,
     dango_order_book::{Days, Dimensionless, FundingPerUnit, FundingRate, UsdPrice},
-    grug_math::MathResult,
 };
 
 /// Compute the premium from the midpoint of the two impact prices relative
@@ -64,7 +64,7 @@ mod tests {
     use {
         super::*,
         dango_order_book::{Days, Dimensionless, FundingPerUnit, FundingRate, UsdPrice},
-        grug_types::Duration,
+        dango_primitives::Duration,
         test_case::test_case,
     };
 

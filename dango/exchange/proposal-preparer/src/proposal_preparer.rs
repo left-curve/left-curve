@@ -3,10 +3,10 @@ use {
         maker_priority_handler::MakerPriorityHandler,
         pyth_handler::{PythHandler, QueryPythId},
     },
-    grug_types::{Lengthy, NonEmpty, QuerierWrapper, StdError},
+    dango_primitives::{Lengthy, NonEmpty, QuerierWrapper, StdError},
+    dango_pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    dango_pyth_types::constants::LAZER_ENDPOINTS_TEST,
     prost::bytes::Bytes,
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::constants::LAZER_ENDPOINTS_TEST,
     reqwest::IntoUrl,
     std::fmt::Debug,
 };
@@ -58,7 +58,7 @@ impl ProposalPreparer<PythClientCache> {
     }
 }
 
-impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
+impl<P> dango_app::ProposalPreparer for ProposalPreparer<P>
 where
     P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: Debug,

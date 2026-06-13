@@ -1,14 +1,14 @@
 use {
     crate::{context::Context, entities::perps_fees::PerpsFees, error::Result, indexer::Indexer},
     chrono::{DateTime, Utc},
+    dango_math::{IsZero, Number as _, NumberConst, Sign, Signed, Udec128_6},
     dango_order_book::{Quantity, UsdPrice, UsdValue},
-    dango_types::perps::{Deleveraged, FeeDistributed, OrderFilled},
-    grug_math::{IsZero, Number as _, NumberConst, Sign, Signed, Udec128_6},
-    grug_types::{
+    dango_primitives::{
         Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
         EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, JsonDeExt,
         NaiveFlatten, SearchEvent,
     },
+    dango_types::perps::{Deleveraged, FeeDistributed, OrderFilled},
 };
 
 impl Indexer {
@@ -174,7 +174,7 @@ struct FeesAccumulator {
 }
 
 fn process_fee_distributed(
-    contract_event: &grug_types::CheckedContractEvent,
+    contract_event: &dango_primitives::CheckedContractEvent,
     acc: &mut FeesAccumulator,
     block_height: u64,
 ) {
@@ -267,7 +267,7 @@ fn process_fee_distributed(
 /// positive side to avoid double-counting. Same convention as
 /// `perps_candles/mod.rs::process_order_filled`.
 fn process_order_filled(
-    contract_event: &grug_types::CheckedContractEvent,
+    contract_event: &dango_primitives::CheckedContractEvent,
     acc: &mut FeesAccumulator,
     #[cfg_attr(not(feature = "tracing"), allow(unused_variables))] block_height: u64,
 ) {
@@ -308,7 +308,7 @@ fn process_order_filled(
 /// `Liquidated.adl_size`, so summing both would double-count the ADL
 /// contribution.
 fn process_deleveraged(
-    contract_event: &grug_types::CheckedContractEvent,
+    contract_event: &dango_primitives::CheckedContractEvent,
     acc: &mut FeesAccumulator,
     #[cfg_attr(not(feature = "tracing"), allow(unused_variables))] block_height: u64,
 ) {
@@ -464,9 +464,9 @@ fn to_non_negative(
 mod tests {
     use {
         super::*,
+        dango_math::Uint64,
         dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
-        grug_math::Uint64,
-        grug_types::Denom,
+        dango_primitives::Denom,
         std::str::FromStr,
     };
 
@@ -503,8 +503,11 @@ mod tests {
         }
     }
 
-    fn checked_event<T: serde::Serialize>(ty: &str, data: &T) -> grug_types::CheckedContractEvent {
-        grug_types::CheckedContractEvent::new(Addr::mock(0), ty, data).unwrap()
+    fn checked_event<T: serde::Serialize>(
+        ty: &str,
+        data: &T,
+    ) -> dango_primitives::CheckedContractEvent {
+        dango_primitives::CheckedContractEvent::new(Addr::mock(0), ty, data).unwrap()
     }
 
     fn expected_volume(size: i128, price: i128) -> Udec128_6 {
@@ -517,7 +520,7 @@ mod tests {
             .unwrap()
             .checked_mul(1_000_000)
             .unwrap();
-        Udec128_6::raw(grug_math::Uint128::new(raw))
+        Udec128_6::raw(dango_math::Uint128::new(raw))
     }
 
     /// `OrderFilled` events come in pairs (maker/taker) sharing one
@@ -593,7 +596,7 @@ mod tests {
     #[test]
     fn malformed_event_payload_is_ignored() {
         let mut acc = FeesAccumulator::default();
-        let bogus = grug_types::CheckedContractEvent::new(
+        let bogus = dango_primitives::CheckedContractEvent::new(
             Addr::mock(0),
             "order_filled",
             serde_json::json!({"not": "an OrderFilled"}),

@@ -1,8 +1,8 @@
 use {
     crate::{config::Config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
-    config_parser::parse_config,
-    indexer_cache::{IndexerPath, cache_file::CacheFile},
+    dango_config_parser::parse_config,
+    dango_indexer_cache::{IndexerPath, cache_file::CacheFile},
     metrics_exporter_prometheus::PrometheusBuilder,
     std::{
         sync::{Arc, Mutex},
@@ -145,7 +145,7 @@ impl IndexerCmd {
                 );
 
                 // Run the metrics HTTP server
-                indexer_metrics::run_metrics_server(
+                dango_indexer_metrics::run_metrics_server(
                     &cfg.metrics_httpd.ip,
                     cfg.metrics_httpd.port,
                     metrics_handler,
@@ -155,12 +155,13 @@ impl IndexerCmd {
             SubCmd::S3Sync { timeout_secs } => {
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
-                let mut indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
+                let mut indexer_cache =
+                    dango_indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
                 indexer_cache.context.s3 = cfg.indexer.s3.clone();
 
                 // Read the last synced height from disk
                 let last_synced_height =
-                    indexer_cache::Cache::read_last_s3_block_height(&indexer_cache.context)?
+                    dango_indexer_cache::Cache::read_last_s3_block_height(&indexer_cache.context)?
                         .unwrap_or(0);
 
                 let start = Instant::now();
@@ -176,7 +177,7 @@ impl IndexerCmd {
                 // leaking them on the runtime.
                 let new_height = match tokio::time::timeout(
                     Duration::from_secs(timeout_secs),
-                    indexer_cache::Cache::sync_to_s3(
+                    dango_indexer_cache::Cache::sync_to_s3(
                         &indexer_cache.context,
                         indexer_cache.s3_bitmap.clone(),
                         last_synced_height,
@@ -194,7 +195,7 @@ impl IndexerCmd {
 
                 // Only store the new height if sync succeeded and made progress
                 if let Some(height) = new_height {
-                    indexer_cache::Cache::store_last_s3_block_height(
+                    dango_indexer_cache::Cache::store_last_s3_block_height(
                         &indexer_cache.context,
                         height,
                     )?;
@@ -215,15 +216,15 @@ impl IndexerCmd {
                 // Both are fine.
 
                 let on_disk_s3_bitmap =
-                    indexer_cache::Cache::s3_bitmap(&indexer_cache.context.indexer_path);
+                    dango_indexer_cache::Cache::s3_bitmap(&indexer_cache.context.indexer_path);
 
                 let s3_bitmap = indexer_cache.s3_bitmap.lock().map_err(|err| {
-                    indexer_cache::error::IndexerError::mutex_poisoned(err.to_string())
+                    dango_indexer_cache::error::IndexerError::mutex_poisoned(err.to_string())
                 })?;
 
                 let merged = &on_disk_s3_bitmap | &*s3_bitmap;
 
-                indexer_cache::Cache::store_bitmap(
+                dango_indexer_cache::Cache::store_bitmap(
                     &indexer_cache.context,
                     Arc::new(Mutex::new(merged)),
                 )?;

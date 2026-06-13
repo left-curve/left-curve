@@ -12,9 +12,9 @@ version       = { workspace = true }
 [dependencies]
 anyhow       = { workspace = true }
 borsh        = { workspace = true }
-grug-math    = { workspace = true }
-grug-storage = { workspace = true }
-grug-types   = { workspace = true }
+dango-math    = { workspace = true }
+dango-storage = { workspace = true }
+dango-primitives   = { workspace = true }
 serde        = { workspace = true }
 typenum      = { workspace = true }
 

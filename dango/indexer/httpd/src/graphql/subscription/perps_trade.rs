@@ -3,8 +3,8 @@ use {crate::metrics::GaugeGuard, std::sync::Arc};
 use {
     crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
+    dango_indexer_sql::entity::perps_trade::PerpsTrade,
     futures_util::stream::{self, StreamExt},
-    indexer_sql::entity::perps_trade::PerpsTrade,
 };
 
 #[derive(Default)]

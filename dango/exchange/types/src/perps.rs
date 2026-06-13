@@ -1,12 +1,12 @@
 use {
     crate::account_factory::UserIndex,
+    dango_math::{MathResult, Uint128},
     dango_order_book::{
         ChildOrder, ClientOrderId, ConditionalOrder, Dimensionless, FillId, FundingPerUnit,
         FundingRate, LiquidityDepthResponse, OrderId, OrderKind, PairId, Quantity,
         QueryOrderResponse, QueryOrdersByUserResponseItem, TriggerDirection, UsdPrice, UsdValue,
     },
-    grug_math::{MathResult, Uint128},
-    grug_types::{Addr, Duration, NonEmpty, Op, Order as IterationOrder, Part, Timestamp},
+    dango_primitives::{Addr, Duration, NonEmpty, Op, Order as IterationOrder, Part, Timestamp},
     std::{
         collections::{BTreeMap, BTreeSet, VecDeque},
         sync::LazyLock,
@@ -41,7 +41,7 @@ pub type FeeShareRatio = Dimensionless;
 pub type CommissionRate = Dimensionless;
 
 /// Referrer settings for a referrer.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 #[derive(Copy)]
 pub struct ReferrerSettings {
     pub commission_rate: CommissionRate,
@@ -49,7 +49,7 @@ pub struct ReferrerSettings {
 }
 
 /// Per-referee statistics tracked from the referrer's perspective.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct RefereeStats {
     /// Timestamp when the referee registered with the referral.
@@ -66,7 +66,7 @@ pub struct RefereeStats {
 }
 
 /// Ordering options for querying per-referee statistics.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct ReferrerStatsOrderBy {
     pub order: IterationOrder,
     pub limit: Option<u32>,
@@ -74,7 +74,7 @@ pub struct ReferrerStatsOrderBy {
 }
 
 /// Which index to use when querying per-referee statistics.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum ReferrerStatsOrderIndex {
     Commission { start_after: Option<UsdValue> },
     RegisterAt { start_after: Option<Timestamp> },
@@ -85,7 +85,7 @@ pub enum ReferrerStatsOrderIndex {
 ///
 /// The highest qualifying tier (by volume threshold) wins;
 /// if no tier is met, the base rate applies.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct RateSchedule {
     /// The rate applied when no volume tier qualifies.
@@ -108,7 +108,7 @@ impl RateSchedule {
 }
 
 /// Global parameters that concerns the counterparty vault and all trading pairs.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct Param {
     /// Maximum number of unlock requests a single user may have.
@@ -222,7 +222,7 @@ pub struct Param {
 }
 
 /// Global state that concerns the counterparty vault and all trading pairs.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct State {
     /// Timestamp of the most recent funding collection.
@@ -242,7 +242,7 @@ pub struct State {
 }
 
 /// Parameters that apply to an individual trading pair.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct PairParam {
     /// Minimum price increment for limit orders in this pair. All limit order
@@ -435,7 +435,7 @@ impl PairParam {
 }
 
 /// State of an individual trading pair.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct PairState {
     /// The sum of the sizes of all long positions.
@@ -469,7 +469,7 @@ pub struct PairState {
 }
 
 /// State of a specific user. Saved in contract storage.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct UserState {
     /// The user's deposited margin, denominated in USD.
@@ -500,7 +500,7 @@ impl UserState {
 
 /// State of a specific user, containing a few fields not saved in contract
 /// storage but rather computed on-the-fly at query time. Used in query response.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct UserStateExtended {
     // These are the same fields from the raw `UserState`, except for `positions`
     // which is replaced with `PositionExtended` (see below).
@@ -558,7 +558,7 @@ pub struct UserStateExtended {
 }
 
 /// A user's position in a specific trading pair.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct Position {
     /// The position's size. Position = long, negative = short.
     pub size: Quantity,
@@ -583,7 +583,7 @@ pub struct Position {
 ///
 /// Contains all fields from `Position` plus optional position-level metrics
 /// computed on-the-fly at query time.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct PositionExtended {
     // These are the same data from the raw `Position`.
     pub size: Quantity,
@@ -625,7 +625,7 @@ pub struct PositionExtended {
 
 /// A pending withdrawal of liquidity from the counterparty vault, awaiting the
 /// cooldown period to elapse.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct Unlock {
     /// The time when cooldown completes.
     pub end_time: Timestamp,
@@ -639,7 +639,7 @@ pub struct Unlock {
 ///
 /// Each day-bucket stores running totals that can be differenced to compute
 /// rolling-window values (e.g. 30-day referees volume).
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Default)]
 pub struct UserReferralData {
     /// The user's own trading volume (cumulative).
@@ -693,7 +693,7 @@ impl UserReferralData {
 /// Parameters for submitting an order. Shared between
 /// `TraderMsg::SubmitOrder` and (upcoming) `TraderMsg::BatchUpdateOrders`
 /// so the two message variants carry exactly the same shape.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct SubmitOrderRequest {
     pub pair_id: PairId,
 
@@ -719,7 +719,7 @@ pub struct SubmitOrderRequest {
     pub sl: Option<ChildOrder>,
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum CancelOrderRequest {
     /// Cancel a single order by its system-assigned `OrderId`.
     One(OrderId),
@@ -737,14 +737,14 @@ pub enum CancelOrderRequest {
 ///
 /// Conditional (TP/SL) orders are intentionally out of scope for
 /// batching — use `SubmitConditionalOrder` / `CancelConditionalOrder`.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 #[allow(clippy::large_enum_variant)]
 pub enum SubmitOrCancelOrderRequest {
     Submit(SubmitOrderRequest),
     Cancel(CancelOrderRequest),
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum CancelConditionalOrderRequest {
     /// Cancel a single conditional order identified by pair and direction.
     One {
@@ -764,7 +764,7 @@ pub enum CancelConditionalOrderRequest {
 /// Stored daily by the cron handler. The ratio `equity / share_supply` is the
 /// redemption value of one vault share, and how it varies over time describes
 /// the vault's historical profitability.
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct VaultSnapshot {
     pub equity: UsdValue,
     pub share_supply: Uint128,
@@ -772,13 +772,13 @@ pub struct VaultSnapshot {
 
 // --------------------------------- Messages ----------------------------------
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct InstantiateMsg {
     pub param: Param,
     pub pair_params: BTreeMap<PairId, PairParam>,
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 #[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     /// Messages for contract maintenance (owner/admin).
@@ -794,7 +794,7 @@ pub enum ExecuteMsg {
     Referral(ReferralMsg),
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 #[allow(clippy::large_enum_variant)]
 pub enum MaintainerMsg {
     /// Update global and/or per-pair parameters.
@@ -841,7 +841,7 @@ pub enum MaintainerMsg {
     RefreshVaultOrders {},
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum TraderMsg {
     /// Deposit settlement currency into the trader's margin account.
     /// The deposited tokens are converted to USD at the current oracle price
@@ -892,7 +892,7 @@ pub enum TraderMsg {
     CancelConditionalOrder(CancelConditionalOrderRequest),
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum VaultMsg {
     /// Add liquidity to the counterparty vault by transferring margin to the vault.
     AddLiquidity {
@@ -907,7 +907,7 @@ pub enum VaultMsg {
     RemoveLiquidity { shares_to_burn: Uint128 },
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 #[allow(clippy::enum_variant_names)]
 pub enum ReferralMsg {
     /// Register a referral relationship between a referrer and a referee.
@@ -951,7 +951,7 @@ pub enum ReferralMsg {
     },
 }
 
-#[grug_types::derive(Serde, QueryRequest)]
+#[dango_primitives::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the global parameters.
     #[returns(Param)]
@@ -1203,8 +1203,8 @@ pub enum QueryMsg {
 // the ADL portion by `Liquidated`, and counter-party impact by `Deleveraged`.
 
 /// Event indicating a user has deposited margin into his perp account.
-#[grug_types::event("deposited")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("deposited")]
+#[dango_primitives::derive(Serde)]
 pub struct Deposited {
     /// This means the user whose perp account received the deposit, who is
     /// usually, but not necessarily always, the user who makes the deposit.
@@ -1213,8 +1213,8 @@ pub struct Deposited {
 }
 
 /// Event indicating a user has withdrawn margin from his perp account.
-#[grug_types::event("withdrew")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("withdrew")]
+#[dango_primitives::derive(Serde)]
 pub struct Withdrew {
     pub user: Addr,
     pub amount: UsdValue,
@@ -1222,8 +1222,8 @@ pub struct Withdrew {
 
 /// Event indicating a user has deposited liquidity from his perp account margin
 /// into the vault.
-#[grug_types::event("liquidity_added")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("liquidity_added")]
+#[dango_primitives::derive(Serde)]
 pub struct LiquidityAdded {
     pub user: Addr,
     pub amount: UsdValue,
@@ -1231,8 +1231,8 @@ pub struct LiquidityAdded {
 }
 
 /// Event indicating a user has initiated unlocking of liquidity from the vault.
-#[grug_types::event("liquidity_unlocking")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("liquidity_unlocking")]
+#[dango_primitives::derive(Serde)]
 pub struct LiquidityUnlocking {
     pub user: Addr,
     pub amount: UsdValue,
@@ -1242,8 +1242,8 @@ pub struct LiquidityUnlocking {
 
 /// Event indicating a user's vault unlock has matured and the released USD
 /// value has been credited back to their trading margin.
-#[grug_types::event("liquidity_released")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("liquidity_released")]
+#[dango_primitives::derive(Serde)]
 pub struct LiquidityReleased {
     pub user: Addr,
     pub amount: UsdValue,
@@ -1262,8 +1262,8 @@ pub struct LiquidityReleased {
 /// - sell 10 → fill_size = -10, closing_size = -10, opening_size =  0
 /// - sell 15 → fill_size = -15, closing_size = -10, opening_size = -5 (flip to short 5)
 /// - buy  5  → fill_size =  5,  closing_size =  0,  opening_size =  5 (increase long)
-#[grug_types::event("order_filled")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("order_filled")]
+#[dango_primitives::derive(Serde)]
 pub struct OrderFilled {
     pub order_id: OrderId,
     pub pair_id: PairId,
@@ -1340,8 +1340,8 @@ pub struct OrderFilled {
 /// Emitted once per pair closed during liquidation. The market-order portion's
 /// PnL is captured by `OrderFilled` events; this event reports the ADL
 /// (off-book) portion.
-#[grug_types::event("liquidated")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("liquidated")]
+#[dango_primitives::derive(Serde)]
 pub struct Liquidated {
     pub user: Addr,
     pub pair_id: PairId,
@@ -1377,8 +1377,8 @@ pub struct Liquidated {
 /// Event indicating a counter-party's position was reduced during ADL.
 ///
 /// Emitted for each counter-party hit during a liquidation's ADL step.
-#[grug_types::event("deleveraged")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("deleveraged")]
+#[dango_primitives::derive(Serde)]
 pub struct Deleveraged {
     pub user: Addr,
     pub pair_id: PairId,
@@ -1409,8 +1409,8 @@ pub struct Deleveraged {
 }
 
 /// Event indicating the insurance fund absorbed bad debt from a liquidation.
-#[grug_types::event("bad_debt_covered")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("bad_debt_covered")]
+#[dango_primitives::derive(Serde)]
 pub struct BadDebtCovered {
     pub liquidated_user: Addr,
     pub amount: UsdValue,
@@ -1421,8 +1421,8 @@ pub struct BadDebtCovered {
 ///
 /// `commissions[0]` is the payer (referee), `commissions[1]` is the first referrer,
 /// and so on up the chain. Zero entries indicate no commission at that level.
-#[grug_types::event("fee_distributed")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("fee_distributed")]
+#[dango_primitives::derive(Serde)]
 pub struct FeeDistributed {
     /// User index of the fee payer.
     pub payer: UserIndex,
@@ -1441,8 +1441,8 @@ pub struct FeeDistributed {
 }
 
 /// Event indicating a referral relationship has been registered.
-#[grug_types::event("referral_set")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("referral_set")]
+#[dango_primitives::derive(Serde)]
 pub struct ReferralSet {
     pub referrer: UserIndex,
     pub referee: UserIndex,

@@ -6,7 +6,7 @@
 /// Copied from:
 /// <https://github.com/tokio-rs/tracing/issues/2730#issuecomment-1943022805>
 #[macro_export]
-macro_rules! dyn_event {
+macro_rules! dango_dyn_event {
     ($level:expr, $($arg:tt)+) => {
         match $level {
             ::tracing::Level::ERROR => ::tracing::error!($($arg)+),

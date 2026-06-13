@@ -4,9 +4,9 @@ use {
     super::MAX_PAST_BLOCKS,
     crate::subscription_limiter::{acquire_subscription, guard_subscription_stream},
     async_graphql::{futures_util::stream::Stream, *},
+    dango_indexer_sql::entity,
+    dango_primitives::Addr,
     futures_util::stream::{StreamExt, once},
-    grug_types::Addr,
-    indexer_sql::entity,
     itertools::Itertools,
     sea_orm::{
         ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, prelude::Expr,

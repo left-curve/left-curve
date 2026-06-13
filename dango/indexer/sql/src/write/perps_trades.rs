@@ -3,8 +3,8 @@ use {
         entity::{perps_events, perps_trade::PerpsTrade},
         error::IndexerError,
     },
+    dango_primitives::{EventName, Timestamp},
     dango_types::perps::OrderFilled,
-    grug_types::{EventName, Timestamp},
     sea_orm::{
         ColumnTrait, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect,
     },

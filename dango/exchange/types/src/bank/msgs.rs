@@ -1,10 +1,10 @@
 use {
     crate::bank::Metadata,
-    grug_types::{Addr, Coins, Denom, Part},
+    dango_primitives::{Addr, Coins, Denom, Part},
     std::collections::BTreeMap,
 };
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct InstantiateMsg {
     /// Initial account balances.
     pub balances: BTreeMap<Addr, Coins>,
@@ -14,7 +14,7 @@ pub struct InstantiateMsg {
     pub metadatas: BTreeMap<Denom, Metadata>,
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum ExecuteMsg {
     /// Grant the control of a namespace to an account.
     /// Can only be called by the chain owner.
@@ -50,7 +50,7 @@ pub enum ExecuteMsg {
     RecoverTransfer { sender: Addr, recipient: Addr },
 }
 
-#[grug_types::derive(Serde, QueryRequest)]
+#[dango_primitives::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the owner of a namespace.
     #[returns(Addr)]
@@ -95,13 +95,13 @@ pub enum QueryMsg {
     },
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct OrphanedTransferPageParam {
     pub sender: Addr,
     pub recipient: Addr,
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct OrphanedTransferResponseItem {
     pub sender: Addr,
     pub recipient: Addr,

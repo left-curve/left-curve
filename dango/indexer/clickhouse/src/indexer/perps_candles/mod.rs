@@ -4,13 +4,13 @@ use {
         indexer::Indexer,
     },
     chrono::{DateTime, Utc},
-    dango_types::perps::OrderFilled,
-    grug_math::{Number, NumberConst, Sign, Signed, Udec128_6},
-    grug_types::{
+    dango_math::{Number, NumberConst, Sign, Signed, Udec128_6},
+    dango_primitives::{
         Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
         EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, JsonDeExt,
         NaiveFlatten, SearchEvent,
     },
+    dango_types::perps::OrderFilled,
     std::collections::HashMap,
 };
 
@@ -141,7 +141,7 @@ struct PerpsPairPriceAccumulator {
 }
 
 fn process_order_filled(
-    contract_event: &grug_types::CheckedContractEvent,
+    contract_event: &dango_primitives::CheckedContractEvent,
     fills_by_pair: &mut HashMap<String, PerpsPairPriceAccumulator>,
 ) -> Result<()> {
     let order_filled = contract_event

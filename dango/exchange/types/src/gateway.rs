@@ -19,15 +19,15 @@ mod origin;
 mod remote;
 
 pub use {
-    hyperlane_types::{Addr32, mailbox::Domain},
+    dango_hyperlane_types::{Addr32, mailbox::Domain},
     msgs::*,
     origin::*,
     remote::*,
 };
 
 use {
-    grug_math::Udec128,
-    grug_types::{Bounded, Part, ZeroInclusiveOneExclusive},
+    dango_math::Udec128,
+    dango_primitives::{Bounded, Part, ZeroInclusiveOneExclusive},
     std::sync::LazyLock,
 };
 

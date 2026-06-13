@@ -16,7 +16,7 @@ use {
 pub fn compute_position_unrealized_pnl(
     position: &Position,
     oracle_price: UsdPrice,
-) -> grug_math::MathResult<UsdValue> {
+) -> dango_math::MathResult<UsdValue> {
     let delta = oracle_price.checked_sub(position.entry_price)?;
     position.size.checked_mul(delta)
 }
@@ -38,7 +38,7 @@ pub fn compute_position_unrealized_pnl(
 pub fn compute_position_unrealized_funding(
     position: &Position,
     pair_state: &PairState,
-) -> grug_math::MathResult<UsdValue> {
+) -> dango_math::MathResult<UsdValue> {
     let delta = (pair_state.funding_per_unit).checked_sub(position.entry_funding_per_unit)?;
     position.size.checked_mul(delta)
 }
@@ -177,7 +177,7 @@ pub fn compute_required_margin(
     opening_size: Quantity,
     limit_price: UsdPrice,
     pair_param: &PairParam,
-) -> grug_math::MathResult<UsdValue> {
+) -> dango_math::MathResult<UsdValue> {
     opening_size
         .checked_abs()?
         .checked_mul(limit_price)?
@@ -274,11 +274,11 @@ mod tests {
     use {
         super::*,
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
+        dango_primitives::{btree_map, hash_map},
         dango_types::{
             constants::{perp_btc, perp_eth},
             perps::{PairParam, PairState, Position, RateSchedule},
         },
-        grug_types::{btree_map, hash_map},
         test_case::test_case,
     };
 

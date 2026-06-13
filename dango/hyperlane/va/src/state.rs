@@ -1,6 +1,6 @@
 use {
-    grug_storage::{Item, Map},
-    grug_types::{Addr, Coin, HexByteArray, UniqueVec},
+    dango_primitives::{Addr, Coin, HexByteArray, UniqueVec},
+    dango_storage::{Item, Map},
 };
 
 pub const MAILBOX: Item<Addr> = Item::new("mailbox");

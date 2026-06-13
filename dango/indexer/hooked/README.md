@@ -9,8 +9,8 @@ The HookedIndexer implements the standard `Indexer` trait and acts as a coordina
 ## Basic Usage
 
 ```rust
-use indexer_hooked::HookedIndexer;
-use grug_app::Indexer;
+use dango_indexer_hooked::HookedIndexer;
+use dango_app::Indexer;
 
 // Create your indexers
 let sql_indexer = SqlIndexer::new();
@@ -31,7 +31,7 @@ hooked_indexer.index_block(&block, &block_outcome)?;
 
 ## Features
 
-- **Standard Compatibility**: Uses the existing `grug_app::Indexer` trait
+- **Standard Compatibility**: Uses the existing `dango_app::Indexer` trait
 - **Simple Composition**: Just add indexers and they'll all be called
 - **Independent Operation**: Each indexer operates independently
 - **Error Propagation**: If any indexer fails, the entire operation fails

@@ -1,18 +1,18 @@
 use {
     anyhow::{anyhow, bail, ensure},
     async_trait::async_trait,
-    error_backtrace::BacktracedError,
-    graphql_client::{GraphQLQuery, Response},
-    grug_types::{
+    dango_backtrace::BacktracedError,
+    dango_indexer_graphql_types::{
+        PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
+        query_store, search_tx, simulate, transactions, transfers,
+    },
+    dango_primitives::{
         Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
         BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
         UnsignedTx,
     },
-    indexer_graphql_types::{
-        PageInfo, Variables, accounts, blocks, broadcast_tx_sync, events, messages, query_app,
-        query_store, search_tx, simulate, transactions, transfers,
-    },
+    graphql_client::{GraphQLQuery, Response},
     reqwest::IntoUrl,
     serde::Serialize,
     std::{fmt::Debug, str::FromStr},
@@ -46,7 +46,7 @@ impl HttpClient {
     ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
     where
         V: Variables + Serialize + std::fmt::Debug,
-        <<V as indexer_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
+        <<V as dango_indexer_graphql_types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
             std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);
@@ -258,7 +258,7 @@ impl_paginate_method!(paginate_messages, messages, messages, MessagesMessagesNod
 #[async_trait]
 impl QueryClient for HttpClient {
     type Error = anyhow::Error;
-    type Proof = grug_types::Proof;
+    type Proof = dango_primitives::Proof;
 
     async fn query_app(
         &self,

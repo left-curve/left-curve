@@ -4,9 +4,9 @@ use {
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
-    grug_types::JsonSerExt,
-    grug_types::Timestamp,
-    indexer_cache::{IndexerPath, cache_file::CacheFile},
+    dango_indexer_cache::{IndexerPath, cache_file::CacheFile},
+    dango_primitives::JsonSerExt,
+    dango_primitives::Timestamp,
 };
 
 use {

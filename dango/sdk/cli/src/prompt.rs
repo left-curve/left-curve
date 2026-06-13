@@ -1,4 +1,4 @@
-use {colored_json::ToColoredJson, grug_types::JsonSerExt, serde::Serialize};
+use {colored_json::ToColoredJson, dango_primitives::JsonSerExt, serde::Serialize};
 
 pub fn print_json_pretty<T>(data: T) -> anyhow::Result<()>
 where

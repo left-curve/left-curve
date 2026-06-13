@@ -1,8 +1,8 @@
 use {
     anyhow::ensure,
-    grug_math::{Bytable, NextNumber, PrevNumber, Uint128, Uint256},
-    grug_types::{HexBinary, Inner},
-    hyperlane_types::Addr32,
+    dango_hyperlane_types::Addr32,
+    dango_math::{Bytable, NextNumber, PrevNumber, Uint128, Uint256},
+    dango_primitives::{HexBinary, Inner},
 };
 
 /// The message to be sent via Hyperlane mailbox.

@@ -1,9 +1,9 @@
 use {
     crate::{POSITIONS, UNLOCKING_SCHEDULE},
-    dango_types::vesting::{PositionResponse, QueryMsg},
-    grug_types::{
+    dango_primitives::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
     },
+    dango_types::vesting::{PositionResponse, QueryMsg},
     std::collections::BTreeMap,
 };
 

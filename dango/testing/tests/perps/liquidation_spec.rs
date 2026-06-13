@@ -28,7 +28,12 @@
 
 use {
     crate::{default_pair_param, default_param},
+    dango_math::Uint128,
     dango_order_book::{Dimensionless, OrderKind, Quantity, TimeInForce, UsdPrice, UsdValue},
+    dango_primitives::{
+        Addr, Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, QuerierExt, ResultExt,
+        SearchEvent, TxEvents, btree_map,
+    },
     dango_testing::{
         OracleTestEntry, TestAccount, TestAccounts, TestOption, TestSuiteNaive, pair_id,
         setup_test_naive,
@@ -36,11 +41,6 @@ use {
     dango_types::{
         constants::usdc,
         perps::{self, BadDebtCovered, Deleveraged, Liquidated, Param, RateSchedule, UserState},
-    },
-    grug_math::Uint128,
-    grug_types::{
-        Addr, Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, TxEvents, btree_map,
     },
 };
 

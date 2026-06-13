@@ -1,20 +1,21 @@
 use {
     crate::{MockClient, OracleTestEntry, TestSuite},
     byteorder::LE,
+    dango_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
+    dango_db_memory::MemDb,
+    dango_identity::Identity256,
+    dango_math::Fraction,
     dango_order_book::UsdPrice,
+    dango_primitives::{
+        Addr, Binary, BroadcastClient, ByteArray, Coins, Denom, Message, NonEmpty, ResultExt,
+        Signer, Timestamp,
+    },
+    dango_pyth_types::{Channel, LeEcdsaMessage, MarketSession, PythId},
     dango_types::{
         oracle::{self, PriceConfig, PriceSource},
         perps,
     },
-    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
-    grug_db_memory::MemDb,
-    grug_math::Fraction,
-    grug_types::{
-        Addr, Binary, BroadcastClient, ByteArray, Coins, Denom, Message, NonEmpty, ResultExt,
-        Signer, Timestamp,
-    },
-    grug_vm_rust::RustVm,
-    identity::Identity256,
+    dango_vm_rust::RustVm,
     k256::ecdsa::SigningKey,
     pyth_lazer_protocol::{
         ChannelId, Price as LazerPrice, PriceFeedId,
@@ -22,7 +23,6 @@ use {
         payload::{PayloadData, PayloadFeedData, PayloadPropertyValue},
         time::TimestampUs,
     },
-    pyth_types::{Channel, LeEcdsaMessage, MarketSession, PythId},
     std::collections::BTreeMap,
 };
 
@@ -77,7 +77,7 @@ impl MockPythSigner {
             .serialize::<LE>(&mut payload_bytes)
             .expect("payload serialization");
 
-        let hash = grug_crypto::keccak256(&payload_bytes);
+        let hash = dango_crypto::keccak256(&payload_bytes);
         let (sig, recovery_id) = self
             .signing_key
             .sign_digest_recoverable(Identity256::from(hash))

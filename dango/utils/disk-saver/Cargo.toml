@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "disk-saver"
+name          = "dango-disk-saver"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -17,7 +17,7 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
-error-backtrace = { workspace = true }
+dango-backtrace = { workspace = true }
 lzma-rs         = { workspace = true }
 tempfile        = { workspace = true }
 thiserror       = { workspace = true }

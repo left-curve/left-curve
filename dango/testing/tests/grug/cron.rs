@@ -1,10 +1,10 @@
 use {
-    dango_testing::{ContractBuilder, TestOption, setup_test_naive},
-    dango_types::constants::{dango, eth, usdc},
-    grug_types::{
+    dango_primitives::{
         Addressable, Binary, Coin, Coins, Duration, Empty, Json, QuerierExt, ResultExt, btree_map,
         coins,
     },
+    dango_testing::{ContractBuilder, TestOption, setup_test_naive},
+    dango_types::constants::{dango, eth, usdc},
 };
 
 /// A contract that implements the `cron_execute` export function. Used for
@@ -15,8 +15,8 @@ use {
 mod tester {
     use {
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_storage::Item,
-        grug_types::{Addr, Coin, Message, MutableCtx, Response, StdResult, SudoCtx},
+        dango_primitives::{Addr, Coin, Message, MutableCtx, Response, StdResult, SudoCtx},
+        dango_storage::Item,
         serde::{Deserialize, Serialize},
     };
 
@@ -45,8 +45,8 @@ mod tester {
 /// testing whether the app can correctly handle revert failing cronjobs state changes.
 mod failing_tester {
     use {
-        grug_math::{Number, NumberConst, Uint128},
-        grug_types::{Empty, MutableCtx, Response, StdResult, SudoCtx},
+        dango_math::{Number, NumberConst, Uint128},
+        dango_primitives::{Empty, MutableCtx, Response, StdResult, SudoCtx},
     };
 
     pub fn instantiate(ctx: MutableCtx, _: Empty) -> StdResult<Response> {

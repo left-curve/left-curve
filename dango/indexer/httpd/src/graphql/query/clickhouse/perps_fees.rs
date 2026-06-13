@@ -1,7 +1,7 @@
 use {
     async_graphql::*,
     chrono::{DateTime, Utc},
-    indexer_clickhouse::{context::Context, entities::perps_fees::PerpsFeesAndRevenue},
+    dango_indexer_clickhouse::{context::Context, entities::perps_fees::PerpsFeesAndRevenue},
 };
 
 #[derive(Default, Debug)]

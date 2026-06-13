@@ -1,7 +1,7 @@
 use {
-    grug_storage::{Counter, Item, Set},
-    grug_types::Hash256,
-    hyperlane_types::{IncrementalMerkleTree, mailbox::Config},
+    dango_hyperlane_types::{IncrementalMerkleTree, mailbox::Config},
+    dango_primitives::Hash256,
+    dango_storage::{Counter, Item, Set},
 };
 
 pub const CONFIG: Item<Config> = Item::new("config");

@@ -4,15 +4,15 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "hyperlane-va"
+name          = "dango-hyperlane-va"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
 anyhow            = { workspace = true }
-grug-math         = { workspace = true }
-grug-storage      = { workspace = true }
-grug-types        = { workspace = true }
-hyperlane-mailbox = { workspace = true }
-hyperlane-types   = { workspace = true }
+dango-math         = { workspace = true }
+dango-storage      = { workspace = true }
+dango-primitives        = { workspace = true }
+dango-hyperlane-mailbox = { workspace = true }
+dango-hyperlane-types   = { workspace = true }

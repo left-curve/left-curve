@@ -6,12 +6,12 @@ use {
     },
     dango_oracle::OracleQuerier,
     dango_order_book::{ASKS, BIDS, PairId, compute_impact_price, may_invert_price},
+    dango_primitives::{Order as IterationOrder, Storage, Timestamp},
+    dango_pyth_types::MarketSession,
     dango_types::{
         oracle::Price,
         perps::{PairParam, PairState},
     },
-    grug_types::{Order as IterationOrder, Storage, Timestamp},
-    pyth_types::MarketSession,
 };
 
 /// Update `PairState::index_price` for every active pair.
@@ -137,9 +137,9 @@ mod tests {
     use {
         super::*,
         anyhow::anyhow,
+        dango_math::Uint64,
         dango_order_book::{LimitOrder, OrderKey, Quantity, UsdPrice, UsdValue},
-        grug_math::Uint64,
-        grug_types::{Addr, Duration, MockStorage},
+        dango_primitives::{Addr, Duration, MockStorage},
     };
 
     const T: Timestamp = Timestamp::from_seconds(1_700_000_000);

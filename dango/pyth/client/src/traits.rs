@@ -1,7 +1,7 @@
 use {
     async_trait::async_trait,
-    grug_types::{Lengthy, NonEmpty},
-    pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
+    dango_primitives::{Lengthy, NonEmpty},
+    dango_pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     std::{fmt::Display, pin::Pin},
 };
 
