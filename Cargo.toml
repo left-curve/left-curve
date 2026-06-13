@@ -1,7 +1,6 @@
 [workspace]
 members = [
   "dango/cli",
-  "dango/testing",
   "dango/exchange/account",
   "dango/exchange/account-factory",
   "dango/exchange/auth",
@@ -46,6 +45,7 @@ members = [
   "dango/pyth/types",
   "dango/sdk",
   "dango/sdk/cli",
+  "dango/testing",
   "dango/utils/config-parser",
   "dango/utils/disk-saver",
   "dango/utils/dyn-event",
