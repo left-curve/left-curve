@@ -108,7 +108,7 @@ impl PythClientCache {
             .expect("Workspace root not found");
 
         workspace_root
-            .join("pyth/client/testdata")
+            .join("dango/pyth/client/testdata")
             .join(id.to_string())
     }
 }
