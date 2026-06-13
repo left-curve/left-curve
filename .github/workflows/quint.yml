@@ -66,6 +66,9 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
       - run: npm install -g @informalsystems/quint@0.30.0
       - run: bash scripts/quint-forall.sh typecheck quint/**/*.qnt
 
@@ -86,6 +89,9 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
       - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint test --max-samples=$MAX_SAMPLES quint/test/test_all.qnt
 
@@ -107,6 +113,9 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
       - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy apply_state_machine.qnt
 
@@ -128,6 +137,9 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
       - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple apply_state_machine.qnt
 
@@ -149,6 +161,9 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
       - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple pruning_state_machine.qnt
 
@@ -170,5 +185,8 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
       - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy pruning_state_machine.qnt
