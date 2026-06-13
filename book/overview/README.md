@@ -29,17 +29,17 @@ blockchain and DeFi experience. It covers:
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │  TRUSTED: Node Binary                                        │
-│   dango/grug/app (ABCI + state transitions)                        │
-│   dango/grug/db  (RocksDB persistence)                             │
-│   dango/grug/vm/rust (native contract execution, no sandbox)       │
-│   dango/grug/jellyfish-merkle (state commitment)                   │
+│   dango/grug/app (ABCI + state transitions)                  │
+│   dango/grug/db  (RocksDB persistence)                       │
+│   dango/grug/vm/rust (native contract execution, no sandbox) │
+│   dango/grug/jellyfish-merkle (state commitment)             │
 │   dango/* system contracts (bank, taxman, accounts, etc.)    │
-│   dango/indexer/* (read-only; cannot affect consensus)             │
+│   dango/indexer/* (read-only; cannot affect consensus)       │
 └────────────────────── ▼ ─────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
 │  UNTRUSTED: Third-Party WASM Contracts                       │
-│   Executed inside dango/grug/vm/wasm (Wasmer sandbox)              │
+│   Executed inside dango/grug/vm/wasm (Wasmer sandbox)        │
 │   All storage access namespaced via StorageProvider          │
 │   All operations metered via gas tracker                     │
 │   Host function calls go through Gatekeeper middleware       │
