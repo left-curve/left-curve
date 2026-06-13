@@ -4012,11 +4012,8 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
- "dango-bank",
  "grug-app",
- "grug-math",
  "grug-types",
- "serde_json",
  "tracing",
 ]
 
