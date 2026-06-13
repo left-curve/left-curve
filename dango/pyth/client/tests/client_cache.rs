@@ -20,7 +20,7 @@ async fn test_lazer_stream() {
 }
 
 // This test is used to create the cache files for Pyth Lazer.
-// To update the cache files, delete the cached files in pyth/client/testdata/lazer/*.
+// To update the cache files, delete the cached files in dango/pyth/client/testdata/lazer/*.
 #[ignore = "rely on network calls"]
 #[test]
 fn create_cache() {

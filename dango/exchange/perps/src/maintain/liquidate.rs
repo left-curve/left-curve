@@ -300,7 +300,7 @@ pub struct LiquidateOutcome {
 /// locals. Inner helpers `execute_close_schedule`, `execute_adl`,
 /// `settle_pnls`, and `settle_fill` continue to take `&mut` parameters
 /// — they are leaf helpers operating on `_liquidate`'s own local
-/// buffers, so the pragmatic exception in `dango/perps/purity.md`
+/// buffers, so the pragmatic exception in `dango/exchange/perps/purity.md`
 /// applies and the bug class is still impossible.
 fn _liquidate(
     storage: &dyn Storage,

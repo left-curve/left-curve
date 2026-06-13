@@ -32,7 +32,7 @@ use {
 /// this pass. Order-book and liquidity-depth writes happen *inside* the function
 /// — storage has tx-level rollback, so they need not be deferred — but the
 /// caller-persistable `UserState` is taken by `&` and returned owned, per
-/// `dango/perps/purity.md`.
+/// `dango/exchange/perps/purity.md`.
 #[derive(Debug)]
 pub struct ResizeReduceOnlyOutcome {
     pub user_state: UserState,

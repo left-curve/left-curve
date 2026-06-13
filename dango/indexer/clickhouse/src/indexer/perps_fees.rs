@@ -233,7 +233,7 @@ fn process_fee_distributed(
     }
 
     // The contract emits `vault_fee` already net of referral commissions
-    // (see `apply_fee_commissions` in `dango/perps`), so we store it as-is.
+    // (see `apply_fee_commissions` in `dango/exchange/perps`), so we store it as-is.
     // `referee_rebate` and `referrer_payout` are kept as informational
     // breakdowns of the commissions distributed alongside.
     if acc.protocol_fee.checked_add_assign(protocol_fee).is_err()

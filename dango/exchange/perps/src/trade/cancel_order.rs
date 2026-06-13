@@ -200,7 +200,7 @@ pub struct CancelAllOrdersOutcome {
 /// Pure w.r.t. the caller's `UserState`: takes `&UserState`, clones
 /// internally, and returns the updated copy in the outcome. The
 /// caller is responsible for saving or removing
-/// `outcome.user_state`. See `dango/perps/purity.md` for the full
+/// `outcome.user_state`. See `dango/exchange/perps/purity.md` for the full
 /// rationale.
 pub fn compute_cancel_all_orders_outcome(
     storage: &mut dyn Storage,

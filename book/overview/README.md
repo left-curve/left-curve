@@ -16,30 +16,30 @@ blockchain and DeFi experience. It covers:
 
 ## Repository layout
 
-| Directory  | Contents                                                                                                                                                        |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `grug/`    | State machine: `app`, `db/disk`, `db/memory`, `vm/rust`, `vm/wasm`, `types`, `storage`, `jellyfish-merkle`, `ffi`, `macros`, `crypto`, `math`, `std`, `testing` |
-| `dango/`   | Smart contracts: `bank`, `account`, `account-factory`, `auth`, `oracle`, `perps`, `taxman`, `gateway`, `vesting`, `warp`, `upgrade`, `types`, `cli`             |
-| `indexer/` | Indexing: `hooked`, `sql`, `sql-migration`, `cache`, `httpd`, `client`                                                                                          |
-| `ui/`      | TypeScript frontend (out of scope for this guide)                                                                                                               |
-| `deploy/`  | Ansible playbooks (out of scope)                                                                                                                                |
+| Directory        | Contents                                                                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dango/grug/`    | State machine: `app`, `db/disk`, `db/memory`, `vm/rust`, `vm/wasm`, `types`, `storage`, `jellyfish-merkle`, `ffi`, `macros`, `crypto`, `math`, `std`, `testing` |
+| `dango/`         | Smart contracts: `bank`, `account`, `account-factory`, `auth`, `oracle`, `perps`, `taxman`, `gateway`, `vesting`, `warp`, `upgrade`, `types`, `cli`             |
+| `dango/indexer/` | Indexing: `hooked`, `sql`, `sql-migration`, `cache`, `httpd`, `client`                                                                                          |
+| `ui/`            | TypeScript frontend (out of scope for this guide)                                                                                                               |
+| `deploy/`        | Ansible playbooks (out of scope)                                                                                                                                |
 
 ## Trust model at a glance
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │  TRUSTED: Node Binary                                        │
-│   grug/app (ABCI + state transitions)                        │
-│   grug/db  (RocksDB persistence)                             │
-│   grug/vm/rust (native contract execution, no sandbox)       │
-│   grug/jellyfish-merkle (state commitment)                   │
+│   dango/grug/app (ABCI + state transitions)                        │
+│   dango/grug/db  (RocksDB persistence)                             │
+│   dango/grug/vm/rust (native contract execution, no sandbox)       │
+│   dango/grug/jellyfish-merkle (state commitment)                   │
 │   dango/* system contracts (bank, taxman, accounts, etc.)    │
-│   indexer/* (read-only; cannot affect consensus)             │
+│   dango/indexer/* (read-only; cannot affect consensus)             │
 └────────────────────── ▼ ─────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
 │  UNTRUSTED: Third-Party WASM Contracts                       │
-│   Executed inside grug/vm/wasm (Wasmer sandbox)              │
+│   Executed inside dango/grug/vm/wasm (Wasmer sandbox)              │
 │   All storage access namespaced via StorageProvider          │
 │   All operations metered via gas tracker                     │
 │   Host function calls go through Gatekeeper middleware       │

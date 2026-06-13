@@ -1,5 +1,5 @@
 /**
- * Referral types matching the Rust perps contract (dango/types/src/perps.rs).
+ * Referral types matching the Rust perps contract (dango/exchange/types/src/perps.rs).
  *
  * Note: Field names use camelCase because responses pass through
  * `camelCaseJsonDeserialization` which converts the on-chain snake_case.

@@ -48,7 +48,7 @@ impl Tx {
 /// - Gas limit
 /// - Cryptographic signature
 ///
-/// See [Tx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+/// See [Tx](https://github.com/left-curve/left-curve/blob/main/dango/grug/types/src/tx.rs).
 #[cfg(feature = "async-graphql")]
 #[Scalar(name = "Tx")]
 impl ScalarType for Tx {
@@ -86,7 +86,7 @@ pub struct UnsignedTx {
 /// - Sender address
 /// - List of messages to execute
 ///
-/// See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+/// See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/dango/grug/types/src/tx.rs).
 #[cfg(feature = "async-graphql")]
 #[Scalar(name = "UnsignedTx")]
 impl ScalarType for UnsignedTx {

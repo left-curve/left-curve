@@ -19,7 +19,7 @@ pub type PairId = Denom;
 ///    are allocated in incremental order, so orders with smaller IDs are more senior.
 ///    It's also for this reason, that the order ID is included as a sub-key in
 ///    the `BIDS` and `ASKS` maps, as well as in the index key of `UserStateIndex::conditional_orders`
-///    (see `dango/perps/src/state.rs`).
+///    (see `dango/exchange/perps/src/state.rs`).
 ///    Timestamp doesn't work for this case, because two orders submitted in the
 ///    same block have the same timestamp.
 pub type OrderId = Uint64;

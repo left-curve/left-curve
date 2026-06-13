@@ -333,7 +333,7 @@ pub(crate) fn _submit_order(
 /// this struct, so that a failed call can discard everything at once
 /// simply by dropping the `Err` variant — no partial mutations can leak
 /// into the caller's `&mut` parameters. See
-/// [`dango/perps/purity.md`](../../purity.md) for the full rationale.
+/// [`dango/exchange/perps/purity.md`](../../purity.md) for the full rationale.
 #[derive(Debug)]
 pub struct SubmitOrderOutcome {
     pub state: State,
@@ -354,7 +354,7 @@ pub struct SubmitOrderOutcome {
 /// shared reference, clones them at entry, and returns the updated
 /// copies in [`SubmitOrderOutcome`] alongside the deferred order-book
 /// mutations and PnL/fee accumulators. A failed call leaves the
-/// caller's inputs untouched — see `dango/perps/purity.md`.
+/// caller's inputs untouched — see `dango/exchange/perps/purity.md`.
 ///
 /// `apply_fee_commissions` is still called by the entry point on the
 /// returned `maker_states`; moving it inside is left as a follow-up
@@ -726,7 +726,7 @@ pub struct MatchOrderOutcome {
 /// `&UserState`, `&BTreeMap<Addr, UserState>`, and an owned
 /// `next_order_id`; clones each at entry and returns the updated copies
 /// in [`MatchOrderOutcome`]. A failed call drops the locals and leaves
-/// the caller's inputs untouched — see `dango/perps/purity.md`.
+/// the caller's inputs untouched — see `dango/exchange/perps/purity.md`.
 ///
 /// Self-trade prevention (EXPIRE_MAKER): if a resting order belongs to
 /// the taker, the order is cancelled and the taker continues matching
