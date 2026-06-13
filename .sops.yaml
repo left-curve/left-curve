@@ -17,7 +17,7 @@
 # - age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce  # rhaki
 # - age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh  # zexsor
 # - age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0  # j0nl1
-# - age1PLACEHOLDER_KYAR1S_YUBIKEY     # kyar1s
+# - age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h  # kyar1s
 # - age1PLACEHOLDER_DEPLOY_CI_DESKTOP  # deploy-ci public recipient
 
 creation_rules:
@@ -29,7 +29,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/all/deploy_key\.sops$
@@ -39,7 +39,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/dango-assistant/vault\.sops\.yml$
@@ -49,7 +49,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/hyperlane/vault\.sops\.yml$
@@ -59,7 +59,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/perps-bot/vault\.sops\.yml$
@@ -69,7 +69,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?group_vars/points-bot/vault\.sops\.yml$
@@ -79,7 +79,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?host_vars/100\.107\.248\.71/vault\.sops\.yml$
@@ -89,7 +89,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?host_vars/100\.122\.37\.57/main\.sops\.yml$
@@ -99,7 +99,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   - path_regex: ^(deploy/)?host_vars/100\.96\.253\.40/vault\.sops\.yml$
@@ -109,7 +109,7 @@ creation_rules:
       age1yubikey1qtwrakqqgzc4pue7fg5xp2d6vnna8xvd7vh7vtzvk37jvcc8zawnjvzcyce,
       age1yubikey1q2ltwfyvzecj9nfr862nql2z67rwejwr6rjnzn8aspc8la3ax5gkkn5upmh,
       age1yubikey1qg8wygtvmr5hyx5njmpar8n35xjcvsh29dzug989hmyn3vd7atj85rft8d0,
-      age1PLACEHOLDER_KYAR1S_YUBIKEY,
+      age1yubikey1q2y2eshvcqgyuuxd8kch54mdhf96znghyf99rd3yxqcrw4g5l9vpcs03x5h,
       age1PLACEHOLDER_DEPLOY_CI_DESKTOP
 
   # Root/debian files: penso, larry, j0nl1 only. No deploy-ci in phase 1.
