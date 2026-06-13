@@ -25,11 +25,6 @@ on:
       - "deploy/**"
       - "dango/**"
       - "docker/**"
-      - "grug/**"
-      - "hyperlane/**"
-      - "indexer/**"
-      - "pyth/**"
-      - "sdk/rust/**"
       - "sdk/typescript/**"
       - "ui/**"
       - "package.json"
@@ -56,11 +51,6 @@ on:
       - "deploy/**"
       - "dango/**"
       - "docker/**"
-      - "grug/**"
-      - "hyperlane/**"
-      - "indexer/**"
-      - "pyth/**"
-      - "sdk/rust/**"
       - "sdk/typescript/**"
       - "ui/**"
       - "package.json"
@@ -104,10 +94,6 @@ jobs:
           filters: |
             backend:
               - 'dango/**'
-              - 'grug/**'
-              - 'hyperlane/**'
-              - 'indexer/**'
-              - 'pyth/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'clippy.toml'
@@ -452,12 +438,12 @@ jobs:
 
       - name: Build GraphQL schema
         if: env.BACKEND_CHANGED == 'true'
-        run: cargo run -p indexer-httpd --bin build_graphql_schema -- ./indexer/graphql-types/src/schemas/schema.graphql
+        run: cargo run -p indexer-httpd --bin build_graphql_schema -- ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
       - name: Check if schema is up-to-date
         if: env.BACKEND_CHANGED == 'true'
         run: |
-          if ! git diff --exit-code ./indexer/graphql-types/src/schemas/schema.graphql; then
+          if ! git diff --exit-code ./dango/indexer/graphql-types/src/schemas/schema.graphql; then
             echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
             exit 1
           fi
@@ -632,9 +618,9 @@ jobs:
       - name: Set GIT_COMMIT
         if: env.BACKEND_CHANGED == 'true'
         run: |
-          cp grug/types/src/git_info.rs grug/types/src/git_info.rs.in
-          sed "s/{{GIT_COMMIT}}/$GIT_COMMIT/" grug/types/src/git_info.rs.in > grug/types/src/git_info.rs
-          rm grug/types/src/git_info.rs.in
+          cp dango/grug/types/src/git_info.rs dango/grug/types/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/$GIT_COMMIT/" dango/grug/types/src/git_info.rs.in > dango/grug/types/src/git_info.rs
+          rm dango/grug/types/src/git_info.rs.in
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         if: env.BACKEND_CHANGED == 'true'

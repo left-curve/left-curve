@@ -38,7 +38,7 @@ exchange.liquidate(Addr("0xunderwater"))
 ## Notes
 
 - No client-side validation: the chain's liquidatable-or-not check is authoritative.
-- The contract handler at `dango/perps/src/maintain/liquidate.rs` does NOT check the caller's identity — any signer can submit this message for any trader.
+- The contract handler at `dango/exchange/perps/src/maintain/liquidate.rs` does NOT check the caller's identity — any signer can submit this message for any trader.
 
 ## See also
 

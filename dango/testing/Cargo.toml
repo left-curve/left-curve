@@ -72,6 +72,7 @@ dango-account-factory       = { workspace = true }
 dango-auth                  = { workspace = true }
 dango-bank                  = { workspace = true }
 dango-gateway               = { workspace = true }
+dango-sdk                   = { workspace = true }
 dango-taxman                = { workspace = true }
 ed25519-dalek               = { workspace = true, features = ["batch", "digest"] }
 error-backtrace             = { workspace = true }

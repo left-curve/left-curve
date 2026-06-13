@@ -29,8 +29,8 @@
 //! cases. A comment that says "user2 sells/buys …" means user2 is acting as the
 //! taker, even though user2 is the maker of the reduce-only order being asserted.
 //!
-//! See `dango/perps/src/trade/resize_reduce_only.rs`, `submit_order.rs`, and
-//! `dango/order-book/src/matching_engine.rs`.
+//! See `dango/exchange/perps/src/trade/resize_reduce_only.rs`, `submit_order.rs`, and
+//! `dango/exchange/order-book/src/matching_engine.rs`.
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},

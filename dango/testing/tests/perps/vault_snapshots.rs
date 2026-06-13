@@ -16,7 +16,7 @@ use {
 /// inclusive bounds.
 ///
 /// Note: the perps cron is scheduled with a 1-minute interval (see
-/// `dango/genesis/src/builder.rs`), so back-to-back tx blocks (250ms apart)
+/// `dango/exchange/genesis/src/builder.rs`), so back-to-back tx blocks (250ms apart)
 /// do not trigger it. We rely on `increase_time(1 day)` to push past the
 /// scheduling boundary and produce one snapshot per call.
 #[tokio::test]

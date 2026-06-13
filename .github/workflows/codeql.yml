@@ -33,10 +33,6 @@ jobs:
           filters: |
             rust:
               - 'dango/**'
-              - 'grug/**'
-              - 'hyperlane/**'
-              - 'indexer/**'
-              - 'pyth/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
             javascript:

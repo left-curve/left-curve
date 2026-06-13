@@ -2209,7 +2209,7 @@ async fn conditional_order_trigger_fills_carry_fill_id() {
 
 /// Two TP orders that fire in the same `process_conditional_orders`
 /// invocation must produce consecutive fill ids. This pins the storage
-/// round-trip at `dango/perps/src/cron/process_conditional_orders.rs`:
+/// round-trip at `dango/exchange/perps/src/cron/process_conditional_orders.rs`:
 /// after the first triggered order saves its advanced `NEXT_FILL_ID`,
 /// the second triggered order must load the updated value rather than
 /// the pre-cron one.

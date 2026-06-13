@@ -48,7 +48,7 @@ export function getChartResolutionBarTime(
 ): number | undefined {
   if (!Number.isFinite(fillTimeMs)) return undefined;
 
-  // Keep in sync with indexer/clickhouse/src/entities/candle_interval.rs::interval_start.
+  // Keep in sync with dango/indexer/clickhouse/src/entities/candle_interval.rs::interval_start.
   if (resolution.includes("W")) {
     const fillDate = new Date(fillTimeMs);
     const dayStartMs = Date.UTC(
