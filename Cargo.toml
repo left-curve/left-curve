@@ -102,7 +102,7 @@ borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
-clickhouse                  = "0.14"
+clickhouse                  = "0.15"
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
