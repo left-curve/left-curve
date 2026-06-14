@@ -1,15 +1,15 @@
-# Grug
+# Dango Core
 
 An execution environment for blockchains.
 
-[Whitepaper][grug]
+[Whitepaper][whitepaper]
 
 ## Contents
 
 | Crate                                         | Description                                                                |
 | --------------------------------------------- | -------------------------------------------------------------------------- |
 | [app](./crates/app)                           | State machine transition logics and [Tendermint ABCI][abci] implementation |
-| [client](./crates/client/)                    | HTTP client for interacting with Grug via Tendermint RPC                   |
+| [client](./crates/client/)                    | HTTP client for interacting with Dango via Tendermint RPC                   |
 | [crypto](./crates/crypto)                     | Cryptography functionalities                                               |
 | [db/disk](./crates/db/disk)                   | An on-disk, persisted DB backend                                           |
 | [db/memory](./crates/db/memory)               | An in-memory, ephemeral DB backend; used for testing                       |
@@ -24,6 +24,6 @@ An execution environment for blockchains.
 | [vm/wasm](./crates/vm/wasm)                   | A VM that runs WebAssembly byte codes                                      |
 
 [abci]:   https://github.com/tendermint/tendermint/tree/main/spec/abci
-[grug]:   https://leftcurve.software/grug.html
+[whitepaper]: https://docs.dango.exchange/
 [ffi]:    https://en.wikipedia.org/wiki/Foreign_function_interface
 [jmt]:    https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/

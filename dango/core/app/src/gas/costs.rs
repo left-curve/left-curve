@@ -11,8 +11,8 @@ pub const GAS_COSTS: GasCosts = GasCosts {
     // Following the conversion:
     // - 1 Cosmos SDK gas = 100 CosmWasm gas
     // - 170 CosmWasm gas = 1 Wasmer point
-    // - 1 Wasmer point = 1 Grug gas
-    // This means: 1 Cosmos SDK gas = 0.588 Grug gas
+    // - 1 Wasmer point = 1 Dango gas
+    // This means: 1 Cosmos SDK gas = 0.588 Dango gas
     db_read: LinearGasCost::new(588, 2),
     db_scan: 588,
     db_next: 18,

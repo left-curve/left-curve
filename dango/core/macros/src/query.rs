@@ -9,7 +9,7 @@ use {
 /// based on the following example:
 ///
 /// ```rust ignore
-/// #[derive(grug::QueryRequest)]
+/// #[derive(dango_primitives::QueryRequest)]
 /// enum QueryMsg {
 ///     #[returns(String)]
 ///     Foo { bar: u64 },

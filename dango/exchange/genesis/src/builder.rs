@@ -25,7 +25,7 @@ where
 {
     let mut msgs = Vec::new();
 
-    // Certain tests in `dango/testing/tests/grug/taxman.rs` use an alternative
+    // Certain tests in `dango/testing/tests/core/taxman.rs` use an alternative
     // taxman implementation.
     let taxman_code = opt
         .taxman

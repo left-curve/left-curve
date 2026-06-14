@@ -533,7 +533,7 @@ impl Indexer {
             "`post_indexing` async work started"
         );
 
-        // 1. Grug-side writes (blocks, transactions, messages, events).
+        // 1. Dango-side writes (blocks, transactions, messages, events).
         //    Preserve the existing "log and bail early on failure" behavior so a
         //    save_block error does not propagate up and abort the rest of the
         //    indexer pipeline. The dango-side writes below depend on the rows

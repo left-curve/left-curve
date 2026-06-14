@@ -32,7 +32,7 @@ const CRYPTO_SETTINGS: Settings = Settings {
 
 /// Lengths of messages for benchmarking hashers.
 ///
-/// In Grug contracts, the largest data that may need to hashed are transactions
+/// In Dango contracts, the largest data that may need to hashed are transactions
 /// that contain `Message::Upload` messages. Contract size are usually a few
 /// hundred kilobytes, so here we choose messages of up to 1 MiB.
 const HASH_MSG_LENS: [usize; 5] = [200_000, 400_000, 600_000, 800_000, 1_000_000];

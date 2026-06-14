@@ -1,6 +1,6 @@
 use {
     account::AccountQuery, async_graphql::MergedObject, block::BlockQuery,
-    clickhouse::ClickhouseQuery, event::EventQuery, grug::GrugQuery, message::MessageQuery,
+    clickhouse::ClickhouseQuery, core::CoreQuery, event::EventQuery, message::MessageQuery,
     perps_event::PerpsEventQuery, transaction::TransactionQuery, transfer::TransferQuery,
     user::UserQuery,
 };
@@ -8,8 +8,8 @@ use {
 pub mod account;
 pub mod block;
 pub mod clickhouse;
+pub mod core;
 pub mod event;
-pub mod grug;
 pub mod message;
 pub mod pagination;
 pub mod perps_event;
@@ -23,7 +23,7 @@ pub struct IndexerQuery(
     TransactionQuery,
     MessageQuery,
     EventQuery,
-    GrugQuery,
+    CoreQuery,
 );
 
 #[derive(MergedObject, Default)]

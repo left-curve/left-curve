@@ -1,6 +1,6 @@
 # Smart Contract Semantics
 
-This chapter documents the programming model for Grug smart contracts: entry points,
+This chapter documents the programming model for Dango smart contracts: entry points,
 context types, message passing, storage, authentication, and the testing framework.
 
 ## 1. Entry Points
@@ -30,7 +30,7 @@ lifecycle. Each entry point receives a typed context and returns a typed respons
 | `bank_query`   | `ImmutableCtx` | `fn(ImmutableCtx, BankQuery) -> Result<BankQueryResponse>` | Balance queries (bank only)           |
 | `cron_execute` | `SudoCtx`      | `fn(SudoCtx) -> Result<Response>`                          | Periodic automation                   |
 
-Entry points are defined using the `#[grug::export]` attribute macro, which generates
+Entry points are defined using the `#[dango_ffi::export]` attribute macro, which generates
 the WASM FFI boilerplate (extern C functions, memory marshaling via `Region` structs).
 This macro is only necessary when building contracts for the **WasmVm**. Contracts
 targeting the **RustVm** (all first-party Dango contracts) do not need it -- they
@@ -248,7 +248,7 @@ surprise.
 
 ### Bounded types
 
-Grug encourages declarative validation via `Bounded<T, B>` and `LengthBounded<T>`:
+Dango encourages declarative validation via `Bounded<T, B>` and `LengthBounded<T>`:
 
 ```rust
 struct FeeRateBounds;
@@ -388,7 +388,7 @@ let response = Response::new()
 
 ## 7. Authentication and Account Model
 
-Grug uses **account abstraction** -- every user has a dedicated smart contract instance
+Dango uses **account abstraction** -- every user has a dedicated smart contract instance
 that handles authentication.
 
 ### Account lifecycle
@@ -505,10 +505,10 @@ block. This enables end-to-end tests that exercise inter-contract interactions.
 
 `dango/core/macros/` provides:
 
-- **`#[grug::export]`** -- Generates WASM FFI wrappers for entry points. Only needed
+- **`#[dango_ffi::export]`** -- Generates WASM FFI wrappers for entry points. Only needed
   for WasmVm contracts; RustVm contracts register entry points directly.
-- **`#[grug::derive(Serde, Borsh)]`** -- Derives standard traits (Serialize,
+- **`#[dango_primitives::derive(Serde, Borsh)]`** -- Derives standard traits (Serialize,
   Deserialize, BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq).
-- **`#[grug::event("name")]`** -- Registers an event type with a canonical name.
-- **`#[grug::index_list(PK, T)]`** -- Implements `IndexList` trait for IndexedMap
+- **`#[dango_primitives::event("name")]`** -- Registers an event type with a canonical name.
+- **`#[dango_primitives::index_list(PK, T)]`** -- Implements `IndexList` trait for IndexedMap
   secondary indexes.

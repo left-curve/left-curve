@@ -43,7 +43,7 @@ pub enum QueryMsg {
     Loop { iterations: u64 },
     /// Attempt to write a key-value pair to the contract storage.
     ///
-    /// If using the Grug library, this is impossible to do, because the
+    /// If using the Dango library, this is impossible to do, because the
     /// contract is given an `ImmutableCtx` in the `query` function, which
     /// doesn't come with state mutable methods.
     ///

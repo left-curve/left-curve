@@ -1,7 +1,7 @@
 use {
     dango_db_memory::MemDb,
     dango_primitives::{
-        Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
+        Addr, Binary, Coins, Denom, Duration as CoreDuration, NonEmpty, QuerierExt, ResultExt,
         btree_map,
     },
     dango_proposal_preparer::{ProposalPreparer, QueryPythId},
@@ -78,7 +78,7 @@ async fn proposal_pyth() {
             oracle,
             &ExecuteMsg::RegisterTrustedSigner {
                 public_key: pubkey,
-                expires_at: current_time + GrugDuration::from_minutes(10),
+                expires_at: current_time + CoreDuration::from_minutes(10),
             },
             Coins::new(),
         )

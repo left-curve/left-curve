@@ -1,13 +1,13 @@
-# Grug Architecture
+# Architecture
 
-Grug is a custom blockchain state machine that runs on top of CometBFT consensus.
+Dango is a custom blockchain state machine that runs on top of CometBFT consensus.
 It is inspired by CosmWasm but differs in several key ways: native Rust contract
 execution, account abstraction at the protocol level, a dual-storage model (ADR-065
 style), and simplified gas metering.
 
 ## 1. Database Layer
 
-Grug separates storage into two independent stores following the Cosmos SDK ADR-065
+Dango separates storage into two independent stores following the Cosmos SDK ADR-065
 pattern:
 
 - **State Storage (SS):** Flat key-value store for raw, prehashed data. This is what
@@ -44,7 +44,7 @@ The two CFs exist so that each can have **specialized RocksDB options**:
 | Option           | `wasm_storage`                                          | `state_storage`                                                     |
 | ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------- |
 | Memtable size    | 16 MiB (fewer flushes; contracts are less delete-heavy) | 2 MiB (frequent flushes; chain state is delete-heavy from cronjobs) |
-| Prefix extractor | 24 bytes (`b"wasm"` + 20-byte address)                  | 4 bytes (grug namespace length)                                     |
+| Prefix extractor | 24 bytes (`b"wasm"` + 20-byte address)                  | 4 bytes (namespace length)                                     |
 
 Both CFs share a common base configuration: 256 MiB LRU block cache, bloom filters
 (10 bits/key), L0 filter/index pinning, and level-style compaction.

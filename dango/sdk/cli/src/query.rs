@@ -23,7 +23,7 @@ pub struct QueryCmd {
 
 #[derive(Subcommand)]
 enum SubCmd {
-    /// Grug status
+    /// Dango status
     Status,
     /// Query the chain's global configuration
     Config,

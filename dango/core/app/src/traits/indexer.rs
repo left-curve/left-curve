@@ -8,7 +8,7 @@ use {
 /// Result type for indexer operations
 pub type IndexerResult<T> = Result<T, IndexerError>;
 
-/// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
+/// This is the trait that the indexer must implement. It is used by the Dango core to index blocks
 #[async_trait]
 pub trait Indexer: Send + Sync {
     fn name(&self) -> &'static str {

@@ -146,7 +146,7 @@ pub struct PerpsOption {
 
 pub struct TaxmanOption {
     /// An alternative code to use as the taxman contract.
-    /// Exclusively for use when setting up the `dango/testing/tests/grug/taxman.rs` tests.
+    /// Exclusively for use when setting up the `dango/testing/tests/core/taxman.rs` tests.
     pub alternative_code: Option<Binary>,
 }
 

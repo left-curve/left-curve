@@ -28,7 +28,7 @@ the SDK exposes `Uint128`/`Uint256` for amounts. Convert to display units at the
 `Addr` is a 20-byte fixed array, hex-encoded with the `0x` prefix in display form.
 
 ```rust
-use {grug::Addr, std::str::FromStr};
+use {dango_primitives::Addr, std::str::FromStr};
 
 let addr = Addr::from_str("0x0000000000000000000000000000000000000000")?;
 println!("{addr}");          // 0x0000...
@@ -41,7 +41,7 @@ let bytes: [u8; 20] = addr.into_inner();
 `Hash256` is a 32-byte hash, hex-encoded. Used for transaction hashes, key hashes, and content hashes.
 
 ```rust
-use {grug::Hash256, std::str::FromStr};
+use {dango_primitives::Hash256, std::str::FromStr};
 let hash = Hash256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000")?;
 // Ok::<(), anyhow::Error>(())
 ```
@@ -74,7 +74,7 @@ Indexer queries return Relay-style connections: `{ nodes, page_info: PageInfo }`
 Smart-contract calls and queries are JSON-encoded. the SDK provides `JsonSerExt` / `JsonDeExt` for typed encode/decode of any `Serialize`/`Deserialize` value:
 
 ```rust
-use grug::JsonSerExt;
+use dango_primitives::JsonSerExt;
 let json = my_struct.to_json_value()?;
 // Ok::<(), anyhow::Error>(())
 ```

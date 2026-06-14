@@ -8,5 +8,5 @@
 mod utils;
 
 mod client;
-mod grug;
+mod core;
 mod smoke;

@@ -4,7 +4,7 @@ use {
     dango_primitives::{BorshDeExt, BorshSerExt, Context, Hash256, MockApi},
 };
 
-/// Names of export functions supported by Grug.
+/// Names of export functions supported by Dango.
 ///
 /// This doesn't include `allocate` and `deallocate`, which are only relevant
 /// for the `WasmVm`.

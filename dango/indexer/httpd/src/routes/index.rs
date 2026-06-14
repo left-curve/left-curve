@@ -37,7 +37,7 @@ pub struct UpResponse<'a> {
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/up")]
 pub async fn up(app_ctx: web::Data<FullContext>) -> Result<impl Responder, Error> {
-    // This ensures that grug is working
+    // This ensures that the chain is working
     let block = app_ctx
         .base
         .dango_app

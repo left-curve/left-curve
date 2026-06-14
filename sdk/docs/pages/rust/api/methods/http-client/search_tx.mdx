@@ -5,7 +5,7 @@ Look up a transaction outcome by hash.
 ## Signature
 
 ```rust
-async fn search_tx(&self, hash: grug::Hash256) -> Result<grug::SearchTxOutcome, anyhow::Error>;
+async fn search_tx(&self, hash: dango_primitives::Hash256) -> Result<dango_primitives::SearchTxOutcome, anyhow::Error>;
 ```
 
 From `impl SearchTxClient for HttpClient`.
@@ -16,7 +16,7 @@ From `impl SearchTxClient for HttpClient`.
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::{Hash256, SearchTxClient},
+    dango_primitives::{Hash256, SearchTxClient},
     std::str::FromStr,
 };
 

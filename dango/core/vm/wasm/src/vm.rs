@@ -43,7 +43,7 @@ pub const MAX_MEMORY_MEBI: usize = 32;
 /// In WebAssembly, a memory page is 64 KiB. There can be a maximum of 65,536
 /// pages.
 ///
-/// In Grug, we limit each contract instance's memory to 32 MiB or 512 pages,
+/// In Dango, we limit each contract instance's memory to 32 MiB or 512 pages,
 /// consistent with [CosmWasm](https://github.com/CosmWasm/wasmd/blob/v0.53.0/x/wasm/keeper/keeper.go#L38-L40).
 pub const MAX_MEMORY_PAGES: u32 = (MAX_MEMORY_MEBI * 1024 * 1024 / WASM_PAGE_SIZE) as u32;
 

@@ -4,7 +4,7 @@ use uuid::Uuid;
 use {crate::statistics, dango_primitives::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
-    dango_app::{CONTRACT_NAMESPACE, Commitment, Db, GRUG_NAMESPACE_LEN},
+    dango_app::{CONTRACT_NAMESPACE, Commitment, Db, NAMESPACE_LEN},
     dango_primitives::{Addr, Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     itertools::Itertools,
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
@@ -328,7 +328,7 @@ where
             return Err(DbError::pending_data_already_set());
         }
 
-        // We assume Grug App has the following behavior: for each key that is
+        // We assume Dango App has the following behavior: for each key that is
         // prefixed with `b"wasm"`, it must be a wasm key. See the comments of
         // `WASM_PREFIX_LEN` and the `is_wasm_key` function for explanation.
         if let Some(key) = batch
@@ -1174,7 +1174,7 @@ pub fn new_storage_cf_options(mut opts: Options) -> Options {
     // iterator construction time. With a 2MB memtable we flush frequently,
     // minimizing the worst-case "ramp-up" in iterator latency.
     opts.set_write_buffer_size(2 * 1024 * 1024); // Default is 64MB
-    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(GRUG_NAMESPACE_LEN));
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(NAMESPACE_LEN));
     opts
 }
 
@@ -1223,9 +1223,9 @@ pub fn new_storage_read_options(
     max: Option<&[u8]>,
 ) -> ReadOptions {
     if let (Some(min), Some(max)) = (min, max)
-        && min.len() >= GRUG_NAMESPACE_LEN
-        && max.len() >= GRUG_NAMESPACE_LEN
-        && min[..GRUG_NAMESPACE_LEN] == max[..GRUG_NAMESPACE_LEN]
+        && min.len() >= NAMESPACE_LEN
+        && max.len() >= NAMESPACE_LEN
+        && min[..NAMESPACE_LEN] == max[..NAMESPACE_LEN]
     {
         opts.set_prefix_same_as_start(true);
     }
@@ -1417,7 +1417,7 @@ mod tests_jmt {
 
     #[test]
     fn disk_db_works() {
-        let path = TempDataDir::new("_grug_disk_db_works");
+        let path = TempDataDir::new("_dango_disk_db_works");
         let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
         // Version 0
@@ -1625,7 +1625,7 @@ mod tests_jmt {
 
     #[test]
     fn disk_db_pruning_works() {
-        let path = TempDataDir::new("_grug_disk_db_pruning_works");
+        let path = TempDataDir::new("_dango_disk_db_pruning_works");
         let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
         // Apply a few batches. Same test data as used in the JMT test.
@@ -1719,7 +1719,7 @@ mod tests_simple {
 
     #[test]
     fn disk_db_lite_works() {
-        let path = TempDataDir::new("_grug_disk_db_lite_works");
+        let path = TempDataDir::new("_dango_disk_db_lite_works");
         let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
 
         // Write a 1st batch.
@@ -1779,7 +1779,7 @@ mod tests_simple {
 
     #[test]
     fn priority_data() {
-        let path = TempDataDir::new("_grug_disk_db_priority_data");
+        let path = TempDataDir::new("_dango_disk_db_priority_data");
 
         // First, open the DB _without_ priority data, and write some records.
         let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
@@ -1915,7 +1915,7 @@ mod tests_simple {
 
     #[test]
     fn priority_data_new_db() {
-        let path = TempDataDir::new("_grug_disk_db_priority_data_new_db");
+        let path = TempDataDir::new("_dango_disk_db_priority_data_new_db");
 
         // Open a brand new DB with priority data. Should succeed.
         let _db =
@@ -2004,7 +2004,7 @@ mod tests_simple {
         let not_wasm = concat(&[CONTRACT_NAMESPACE, &[0; 10], b"foo"]);
         assert!(!is_wasm_key(&not_wasm));
 
-        let path = TempDataDir::new("_grug_disk_db_lite_iterator_works");
+        let path = TempDataDir::new("_dango_disk_db_lite_iterator_works");
         let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
 
         db.flush_but_not_commit(btree_map! { not_wasm.clone() => Op::Delete })
@@ -2028,7 +2028,7 @@ mod tests_simple {
             b"xxxfoo".to_vec(), // A record bigger than "wasn".
         };
 
-        let path = TempDataDir::new("_grug_disk_db_lite_iterator_works");
+        let path = TempDataDir::new("_dango_disk_db_lite_iterator_works");
         let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
 
         let batch = keys
@@ -2178,7 +2178,7 @@ mod test_deadlock {
     }
 
     fn run_deadlock_test() {
-        let path = TempDataDir::new("_grug_disk_db_deadlock_problem");
+        let path = TempDataDir::new("_dango_disk_db_deadlock_problem");
         let db = DiskDb::<SimpleCommitment>::open_with_priority(
             &path,
             Some(([0], [255])), // Simply use 0..255 as the priority range, so ALL data in the state storage is loaded into priority data.

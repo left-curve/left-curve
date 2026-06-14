@@ -1,6 +1,6 @@
 //! Generic order-book primitives, shared between perpetual, spot, and
 //! prediction markets. This crate is the bottom layer of the Dango stack —
-//! it depends only on `grug` and external crates, never on `dango-types`
+//! it depends only on `dango-primitives` and external crates, never on `dango-types`
 //! or any contract crate.
 
 mod cancel;

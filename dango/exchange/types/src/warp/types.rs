@@ -9,7 +9,7 @@ use {
 #[derive(Debug)]
 pub struct TokenMessage {
     pub recipient: Addr32,
-    // Note: In Grug we use `Uint128` to represent token amounts, but the Warp
+    // Note: In Dango we use `Uint128` to represent token amounts, but the Warp
     // token message uses a 256-bit number to conform to EVM standard. Make sure
     // to account for this when encoding/decoding.
     //

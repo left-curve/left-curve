@@ -1,10 +1,10 @@
 # Security Audit Guide
 
-This guide documents the architecture of **Grug** (the blockchain state machine) and
-**Dango** (the smart contract system built on Grug), targeting security auditors with
+This guide documents the architecture of **Dango** -- both the blockchain state machine
+and the smart contract system built on top of it, targeting security auditors with
 blockchain and DeFi experience. It covers:
 
-1. **[Grug Architecture](1-grug-architecture.md)** -- Database, Jellyfish Merkle Tree,
+1. **[Architecture](1-architecture.md)** -- Database, Jellyfish Merkle Tree,
    storage layer, the App/ABCI interface, virtual machines, and gas metering.
 2. **[Smart Contract Semantics](2-contract-semantics.md)** -- Entry points, context types,
    message passing, storage abstractions, authentication model, and the testing framework.

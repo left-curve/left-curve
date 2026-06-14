@@ -101,7 +101,7 @@ fn generate_secp256k1_session_test_data() -> anyhow::Result<()> {
 fn generate_eip712_session_test_data() -> anyhow::Result<()> {
     // Main key is an Ethereum key; session key is secp256k1.
     let (sk1, eth_addr) = generate_random_ethereum_key_pair();
-    let eth_addr_grug = Addr::from_inner(eth_addr);
+    let eth_addr_dango = Addr::from_inner(eth_addr);
     let eth_addr_key_hash = eth_addr.hash256();
 
     let (sk2, vk2, _) = generate_random_secp256k1_key_pair()?;
@@ -143,7 +143,7 @@ fn generate_eip712_session_test_data() -> anyhow::Result<()> {
     println!("user_address = {}", sign_doc.sender);
     println!("user_index   = {}", sign_doc.data.user_index);
     println!("user_keyhash = {}", hex::encode(eth_addr_key_hash));
-    println!("user_key     = ethereum:{}", eth_addr_grug);
+    println!("user_key     = ethereum:{}", eth_addr_dango);
     println!("tx:\n{}", tx.to_json_string_pretty()?);
 
     Ok(())
@@ -151,12 +151,12 @@ fn generate_eip712_session_test_data() -> anyhow::Result<()> {
 
 fn generate_eip712_onboard_test_data() -> anyhow::Result<()> {
     let (sk, eth_addr) = generate_random_ethereum_key_pair();
-    let eth_addr_grug = Addr::from_inner(eth_addr);
+    let eth_addr_dango = Addr::from_inner(eth_addr);
     let eth_addr_key_hash = eth_addr.hash256();
 
     let register_data = RegisterUserData {
         chain_id: MOCK_CHAIN_ID.to_string(),
-        key: dango_types::auth::Key::Ethereum(eth_addr_grug),
+        key: dango_types::auth::Key::Ethereum(eth_addr_dango),
         key_hash: eth_addr_key_hash,
         seed: 0,
         referrer: None,
@@ -167,7 +167,7 @@ fn generate_eip712_onboard_test_data() -> anyhow::Result<()> {
 
     let signature_json = Signature::Eip712(eip712_sig).to_json_string_pretty()?;
 
-    println!("user_key     = ethereum:{}", eth_addr_grug);
+    println!("user_key     = ethereum:{}", eth_addr_dango);
     println!("user_keyhash = {}", hex::encode(eth_addr_key_hash));
     println!("chain_id     = {}", MOCK_CHAIN_ID);
     println!("signature:\n{}", signature_json);
@@ -360,7 +360,7 @@ fn eip712_sign_arbitrary(
         }
     }
 
-    // Convert the grug::Json message to serde_json::Value for the typed data.
+    // Convert the dango_primitives::Json message to serde_json::Value for the typed data.
     let msg_value: serde_json::Value = serde_json::from_str(&message.to_string())?;
 
     let typed_data_json = serde_json::json!({

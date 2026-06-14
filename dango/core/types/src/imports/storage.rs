@@ -85,7 +85,7 @@ pub trait Storage: DynClone + Send + Sync {
 // A boxed `Storage` is also a `Storage`.
 //
 // We need to use dynamic dispatch (i.e. `&dyn Storage` and `Box<dyn Storage>`)
-// very often in Grug, because of the use of recursive in handling submessages.
+// very often in Dango, because of the use of recursive in handling submessages.
 // Each layer of recursion, the storage is wrapped in a `CachedStore<T>`. If
 // using static dispatch, the compiler will go into infinite nesting:
 // `CachedStore<CachedStore<CachedStore<...>>>` until it reaches the recursion
