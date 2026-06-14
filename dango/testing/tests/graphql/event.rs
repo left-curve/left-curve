@@ -1,5 +1,9 @@
 use {
     assertor::*,
+    dango_indexer_graphql_types::{
+        Events, SubscribeEvents, Transactions, events, subscribe_events, transactions,
+    },
+    dango_primitives::{Addressable, Coins, Message, NonEmpty, ResultExt},
     dango_testing::{
         GraphQLCustomRequest, PaginationDirection, TestOption, build_app_service,
         call_graphql_query, call_ws_graphql_stream, events_query, paginate_events,
@@ -7,10 +11,6 @@ use {
     },
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
-    grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
-    indexer_graphql_types::{
-        Events, SubscribeEvents, Transactions, events, subscribe_events, transactions,
-    },
     itertools::Itertools,
     sea_orm::{EntityTrait, PaginatorTrait},
     tokio::sync::mpsc,
@@ -92,7 +92,7 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
     )
     .await;
 
-    let events_total_count = indexer_sql::entity::events::Entity::find()
+    let events_total_count = dango_indexer_sql::entity::events::Entity::find()
         .count(&httpd_context.db)
         .await?;
 

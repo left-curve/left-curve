@@ -2,19 +2,19 @@ use {
     criterion::{
         AxisScale, BatchSize, Criterion, PlotConfiguration, criterion_group, criterion_main,
     },
+    dango_app::{AppError, Db, ProposalPreparer, Vm},
     dango_genesis::{Codes, Contracts},
+    dango_primitives::{
+        Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins,
+    },
+    dango_temp_rocksdb::TempDataDir,
     dango_testing::{TestAccounts, TestSuite, setup_benchmark_rust},
     dango_types::{
         account_factory::{self, Salt},
         constants::usdc,
     },
-    grug_app::{AppError, Db, ProposalPreparer, Vm},
-    grug_types::{
-        Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins,
-    },
     rand::{Rng, distributions::Alphanumeric},
     std::time::Duration,
-    temp_rocksdb::TempDataDir,
 };
 
 const MEASUREMENT_TIME: Duration = Duration::from_secs(90);

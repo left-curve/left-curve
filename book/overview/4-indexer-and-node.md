@@ -13,7 +13,7 @@ commitment.
 ### Indexer trait
 
 ```rust
-// dango/grug/app/src/traits/indexer.rs
+// dango/core/app/src/traits/indexer.rs
 #[async_trait]
 pub trait Indexer: Send + Sync {
     async fn start(&mut self, storage: &dyn Storage) -> IndexerResult<()>;
@@ -52,9 +52,9 @@ pub trait Indexer: Send + Sync {
 
 ```rust
 pub struct HookedIndexer {
-    pub file:       indexer_cache::Cache,
-    pub sql:        indexer_sql::Indexer,
-    pub clickhouse: indexer_clickhouse::Indexer,
+    pub file:       dango_indexer_cache::Cache,
+    pub sql:        dango_indexer_sql::Indexer,
+    pub clickhouse: dango_indexer_clickhouse::Indexer,
     // …plus an `is_running` flag and a per-block `post_indexing` task map.
 }
 ```

@@ -18,7 +18,7 @@ use {
         web::{self, ServiceConfig},
     },
     async_graphql::{EmptyMutation, EmptySubscription},
-    grug_types::HttpdConfig,
+    dango_primitives::HttpdConfig,
     sentry_actix::Sentry,
     std::{
         sync::{Arc, atomic::AtomicBool, mpsc},

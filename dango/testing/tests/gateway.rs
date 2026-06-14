@@ -1,4 +1,10 @@
 use {
+    dango_hyperlane_types::{Addr32, isms},
+    dango_math::{MathError, NumberConst, Udec128, Uint128},
+    dango_primitives::{
+        Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
+        coins,
+    },
     dango_testing::{
         BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite, mock_arbitrum,
         mock_ethereum, setup_test,
@@ -7,12 +13,6 @@ use {
         constants::{dango, usdc},
         gateway::{self, Origin, RateLimit, Remote, SetPersonalQuotaRequest},
     },
-    grug_math::{MathError, NumberConst, Udec128, Uint128},
-    grug_types::{
-        Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
-        coins,
-    },
-    hyperlane_types::{Addr32, isms},
 };
 
 /// USDC withdrawal fee charged on the Arbitrum Warp route. This mirrors the

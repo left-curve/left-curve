@@ -1,12 +1,12 @@
 pub mod multisig;
 
-use grug_types::HexBinary;
+use dango_primitives::HexBinary;
 
 pub const HYPERLANE_DOMAIN_KEY: &str = "HYPERLANE";
 
 // ----------------------------------- types -----------------------------------
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum IsmQuery {
     /// Verify a message.
     /// Return nothing is succeeds; throw error if fails.
@@ -16,7 +16,7 @@ pub enum IsmQuery {
     },
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum IsmQueryResponse {
     Verify(()),
 }
@@ -31,7 +31,7 @@ impl IsmQueryResponse {
 
 // --------------------------------- messages ----------------------------------
 
-#[grug_types::derive(Serde, QueryRequest)]
+#[dango_primitives::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     #[returns(IsmQueryResponse)]
     Ism(IsmQuery),

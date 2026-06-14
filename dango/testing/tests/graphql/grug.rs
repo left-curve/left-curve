@@ -1,6 +1,11 @@
 use {
     assert_json_diff::assert_json_eq,
     assertor::*,
+    dango_indexer_graphql_types::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
+    dango_primitives::{
+        Addressable, Coins, Inner, Json, JsonSerExt, Message, NonEmpty, Query,
+        QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
+    },
     dango_testing::{
         GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query,
         call_graphql_with_headers, call_ws_graphql_stream, parse_graphql_subscription_response,
@@ -8,11 +13,6 @@ use {
     },
     dango_types::constants::usdc,
     graphql_client::GraphQLQuery,
-    grug_types::{
-        Addressable, Coins, Inner, Json, JsonSerExt, Message, NonEmpty, Query,
-        QueryAppConfigRequest, QueryBalanceRequest, ResultExt,
-    },
-    indexer_graphql_types::{QueryApp, SubscribeQueryApp, query_app, subscribe_query_app},
     serde_json::json,
     tokio::sync::mpsc,
 };

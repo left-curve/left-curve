@@ -2,10 +2,10 @@ pub mod common_function;
 
 use {
     crate::common_function::test_stream,
-    disk_saver::persistence::DiskPersistence,
-    grug_types::NonEmpty,
-    pyth_client::{PYTH_CACHE_SAMPLES, PythClientCache},
-    pyth_types::{
+    dango_disk_saver::persistence::DiskPersistence,
+    dango_primitives::NonEmpty,
+    dango_pyth_client::{PYTH_CACHE_SAMPLES, PythClientCache},
+    dango_pyth_types::{
         LeEcdsaMessage,
         constants::{BTC_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_ID_ALL, SOL_USD_ID},
     },

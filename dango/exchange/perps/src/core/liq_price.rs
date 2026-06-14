@@ -99,11 +99,11 @@ mod tests {
     use {
         super::*,
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
+        dango_primitives::{btree_map, hash_map},
         dango_types::{
             constants::{perp_btc, perp_eth},
             perps::{PairParam, PairState, Position},
         },
-        grug_types::{btree_map, hash_map},
     };
 
     fn pair_param_with_mmr(mmr_permille: i128) -> PairParam {

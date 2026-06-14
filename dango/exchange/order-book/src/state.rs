@@ -1,7 +1,7 @@
 use {
     crate::{ClientOrderId, FillId, LimitOrder, OrderId, PairId, Quantity, UsdPrice, UsdValue},
-    grug_storage::{IndexedMap, Item, Map, MultiIndex, UniqueIndex},
-    grug_types::{Addr, Timestamp},
+    dango_primitives::{Addr, Timestamp},
+    dango_storage::{IndexedMap, Item, Map, MultiIndex, UniqueIndex},
 };
 
 // --------------------------------- constants ---------------------------------
@@ -33,7 +33,7 @@ pub const VOLUMES: Map<(Addr, Timestamp), UsdValue> = Map::new("vol");
 
 pub type OrderKey = (PairId, UsdPrice, OrderId);
 
-#[grug_storage::index_list(OrderKey, LimitOrder)]
+#[dango_storage::index_list(OrderKey, LimitOrder)]
 pub struct OrderIndexes<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
 

@@ -1,0 +1,372 @@
+#[cfg(feature = "tendermint")]
+use crate::{StdResult, serializers::JsonDeExt};
+use {
+    crate::{
+        CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
+        EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
+    },
+    borsh::{BorshDeserialize, BorshSerialize},
+    dango_backtrace::BacktracedError,
+    serde::{Deserialize, Serialize},
+    std::fmt::{self, Display},
+};
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{
+        OutputType, Positioned, ServerResult, context::ContextSelectionSet, parser::types::Field,
+        registry::Registry,
+    },
+    std::borrow::Cow,
+};
+
+/// Outcome of performing an operation that is not a full tx. These include:
+///
+/// - processing a message;
+/// - executing a cronjob;
+/// - performing a `CheckTx` call.
+///
+/// Includes the events emitted, and gas consumption.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+#[must_use = "`Outcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
+pub struct CheckTxOutcome {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub result: GenericResult<()>,
+    pub events: CheckTxEvents,
+}
+
+/// The success case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CheckTxSuccess {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub events: CheckTxEvents,
+}
+
+/// The error case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, PartialEq, Eq)]
+pub struct CheckTxError {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub error: String,
+    pub events: CheckTxEvents,
+}
+
+// `TxError` must implement `ToString`, such that it satisfies that trait bound
+// required by `ResultExt::should_fail_with_error`.
+impl Display for CheckTxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}",)
+    }
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+#[must_use = "`Outcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
+pub struct CronOutcome {
+    // `None` means the call was done with unlimited gas, such as cronjobs.
+    pub gas_limit: Option<u64>,
+    pub gas_used: u64,
+    pub cron_event: CommitmentStatus<EventStatus<EvtCron>>,
+}
+
+impl CronOutcome {
+    pub fn new(
+        gas_limit: Option<u64>,
+        gas_used: u64,
+        cron_event: CommitmentStatus<EventStatus<EvtCron>>,
+    ) -> Self {
+        Self {
+            gas_limit,
+            gas_used,
+            cron_event,
+        }
+    }
+}
+
+#[cfg(feature = "tendermint")]
+impl CronOutcome {
+    pub fn from_tm_event(tm_event: tendermint::abci::Event) -> StdResult<Self> {
+        tm_event
+            .attributes
+            .first()
+            .unwrap()
+            .value_bytes()
+            .deserialize_json()
+    }
+}
+
+/// Outcome of processing a transaction.
+///
+/// Different from `Outcome`, which can either succeed or fail, a transaction
+/// can partially succeed. A typical such scenario is:
+///
+/// - `withhold_fee` succeeds
+/// - `authenticate` succeeds,
+/// - one of the messages fail
+/// - `finalize_fee` succeeds
+///
+/// In this case, state changes from fee handling (e.g. deducting the fee from
+/// the sender account) and authentication (e.g. incrementing the sender account's
+/// sequence number) will be committed, and relevant events emitted to reflect
+/// this. However, state changes and events from the messages are discarded.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+#[must_use = "`TxOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
+pub struct TxOutcome {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub result: GenericResult<()>,
+    pub events: TxEvents,
+}
+
+#[cfg(feature = "tendermint")]
+impl TxOutcome {
+    pub fn from_tm_tx_result(
+        tm_tx_result: tendermint::abci::types::ExecTxResult,
+    ) -> StdResult<Self> {
+        tm_tx_result.log.deserialize_json()
+    }
+}
+
+#[cfg(feature = "async-graphql")]
+impl OutputType for TxOutcome {
+    fn type_name() -> Cow<'static, str> {
+        "TxOutcome".into()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        <async_graphql::types::Json<serde_json::Value> as OutputType>::create_type_info(registry)
+    }
+
+    async fn resolve(
+        &self,
+        ctx: &ContextSelectionSet<'_>,
+        field: &Positioned<Field>,
+    ) -> ServerResult<async_graphql::Value> {
+        async_graphql::types::Json(self.clone())
+            .resolve(ctx, field)
+            .await
+    }
+}
+
+/// The success case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, PartialEq, Eq)]
+pub struct TxSuccess {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub events: TxEvents,
+}
+
+/// The error case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, PartialEq, Eq)]
+pub struct TxError {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub error: BacktracedError<String>,
+    pub events: TxEvents,
+}
+
+// `TxError` must implement `ToString`, such that it satisfies that trait bound
+// required by `ResultExt::should_fail_with_error`.
+impl Display for TxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}",)
+    }
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct TxEvents {
+    pub withhold: CommitmentStatus<EventStatus<EvtWithhold>>,
+    pub authenticate: CommitmentStatus<EventStatus<EvtAuthenticate>>,
+    pub msgs_and_backrun: CommitmentStatus<MsgsAndBackrunEvents>,
+    pub finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
+}
+
+impl TxEvents {
+    pub fn new(withhold: CommitmentStatus<EventStatus<EvtWithhold>>) -> Self {
+        Self {
+            withhold,
+            authenticate: CommitmentStatus::NotReached,
+            msgs_and_backrun: CommitmentStatus::NotReached,
+            finalize: CommitmentStatus::NotReached,
+        }
+    }
+
+    pub fn finalize_fails(
+        self,
+        finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
+        cause: &BacktracedError<String>,
+    ) -> Self {
+        fn update<T>(
+            evt: CommitmentStatus<T>,
+            cause: &BacktracedError<String>,
+        ) -> CommitmentStatus<T> {
+            if let CommitmentStatus::Committed(event) = evt {
+                CommitmentStatus::Reverted {
+                    event,
+                    revert_by: cause.clone(),
+                }
+            } else {
+                evt
+            }
+        }
+
+        TxEvents {
+            withhold: update(self.withhold, cause),
+            authenticate: update(self.authenticate, cause),
+            msgs_and_backrun: update(self.msgs_and_backrun, cause),
+            finalize,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CheckTxEvents {
+    pub withhold: CommitmentStatus<EventStatus<EvtWithhold>>,
+    pub authenticate: CommitmentStatus<EventStatus<EvtAuthenticate>>,
+}
+
+impl CheckTxEvents {
+    pub fn new(withhold: CommitmentStatus<EventStatus<EvtWithhold>>) -> Self {
+        Self {
+            withhold,
+            authenticate: CommitmentStatus::NotReached,
+        }
+    }
+}
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct MsgsAndBackrunEvents {
+    pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
+    // FIXME: The transaction backrunning mechanism has been removed. For all
+    // historical blocks on mainnet and testnet, this field is exclusively
+    // `EventStatus::NotReached`. A future migration should rewrite cached
+    // block files to drop this field and remove the `MsgsAndBackrunEvents`
+    // wrapper, collapsing `TxEvents.msgs_and_backrun` to
+    // `msgs: CommitmentStatus<Vec<EventStatus<Event>>>`.
+    pub backrun: EventStatus<EvtBackrun>,
+}
+
+impl MsgsAndBackrunEvents {
+    pub fn base() -> Self {
+        Self {
+            msgs: vec![],
+            backrun: EventStatus::NotReached,
+        }
+    }
+}
+
+impl Default for TxEvents {
+    fn default() -> Self {
+        Self {
+            withhold: CommitmentStatus::NotReached,
+            authenticate: CommitmentStatus::NotReached,
+            msgs_and_backrun: CommitmentStatus::NotReached,
+            finalize: CommitmentStatus::NotReached,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+/// Outcome of executing a block.
+pub struct BlockOutcome {
+    /// The block height.
+    pub height: u64,
+    /// The Merkle root hash after executing this block.
+    pub app_hash: Hash256,
+    /// Results of executing the cronjobs.
+    pub cron_outcomes: Vec<CronOutcome>,
+    /// Results of executing the transactions.
+    pub tx_outcomes: Vec<TxOutcome>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BroadcastTxOutcome {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxOutcome,
+}
+
+impl BroadcastTxOutcome {
+    #[allow(clippy::result_large_err)]
+    pub fn into_result(self) -> Result<BroadcastTxSuccess, BroadcastTxError> {
+        match &self.check_tx.result {
+            Ok(_) => Ok(BroadcastTxSuccess {
+                tx_hash: self.tx_hash,
+                check_tx: self.check_tx.should_succeed(),
+            }),
+            Err(_) => Err(BroadcastTxError {
+                tx_hash: self.tx_hash,
+                check_tx: self.check_tx.should_fail(),
+            }),
+        }
+    }
+}
+
+#[cfg(feature = "async-graphql")]
+impl OutputType for BroadcastTxOutcome {
+    fn type_name() -> Cow<'static, str> {
+        "BroadcastTxOutcome".into()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        <async_graphql::types::Json<serde_json::Value> as OutputType>::create_type_info(registry)
+    }
+
+    async fn resolve(
+        &self,
+        ctx: &ContextSelectionSet<'_>,
+        field: &Positioned<Field>,
+    ) -> ServerResult<async_graphql::Value> {
+        async_graphql::types::Json(self.clone())
+            .resolve(ctx, field)
+            .await
+    }
+}
+
+#[cfg(feature = "tendermint")]
+impl BroadcastTxOutcome {
+    pub fn from_tm_broadcast_response(
+        response: tendermint_rpc::endpoint::broadcast::tx_sync::Response,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            tx_hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
+            check_tx: response.log.deserialize_json()?,
+        })
+    }
+}
+
+pub struct BroadcastTxError {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxError,
+}
+
+#[derive(Debug, Clone)]
+pub struct BroadcastTxSuccess {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxSuccess,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SearchTxOutcome {
+    pub hash: Hash256,
+    pub height: u64,
+    pub index: u32,
+    pub tx: Tx,
+    pub outcome: TxOutcome,
+}
+
+#[cfg(feature = "tendermint")]
+impl SearchTxOutcome {
+    pub fn from_tm_query_tx_response(
+        response: tendermint_rpc::endpoint::tx::Response,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
+            height: response.height.into(),
+            index: response.index,
+            tx: response.tx.deserialize_json()?,
+            outcome: TxOutcome::from_tm_tx_result(response.tx_result)?,
+        })
+    }
+}

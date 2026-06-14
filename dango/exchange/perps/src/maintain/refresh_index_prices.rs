@@ -2,7 +2,7 @@ use {
     crate::{index_price::process_index_price, oracle, state::LAST_INDEX_PRICE_UPDATE},
     anyhow::ensure,
     dango_oracle::OracleQuerier,
-    grug_types::{MutableCtx, QuerierExt, Response},
+    dango_primitives::{MutableCtx, QuerierExt, Response},
 };
 
 pub fn refresh_index_prices(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -36,11 +36,11 @@ mod tests {
     use {
         super::*,
         crate::state::PAIR_IDS,
-        dango_types::config::AppConfig,
-        grug_types::{
+        dango_primitives::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt,
         },
+        dango_types::config::AppConfig,
         std::collections::BTreeMap,
     };
 

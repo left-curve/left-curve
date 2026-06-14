@@ -5,7 +5,7 @@ description   = "A temporary RocksDB directory for testing purpose"
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "temp-rocksdb"
+name          = "dango-temp-rocksdb"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }

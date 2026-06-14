@@ -438,7 +438,7 @@ jobs:
 
       - name: Build GraphQL schema
         if: env.BACKEND_CHANGED == 'true'
-        run: cargo run -p indexer-httpd --bin build_graphql_schema -- ./dango/indexer/graphql-types/src/schemas/schema.graphql
+        run: cargo run -p dango-indexer-httpd --bin build_graphql_schema -- ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
       - name: Check if schema is up-to-date
         if: env.BACKEND_CHANGED == 'true'
@@ -618,9 +618,9 @@ jobs:
       - name: Set GIT_COMMIT
         if: env.BACKEND_CHANGED == 'true'
         run: |
-          cp dango/grug/types/src/git_info.rs dango/grug/types/src/git_info.rs.in
-          sed "s/{{GIT_COMMIT}}/$GIT_COMMIT/" dango/grug/types/src/git_info.rs.in > dango/grug/types/src/git_info.rs
-          rm dango/grug/types/src/git_info.rs.in
+          cp dango/core/types/src/git_info.rs dango/core/types/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/$GIT_COMMIT/" dango/core/types/src/git_info.rs.in > dango/core/types/src/git_info.rs
+          rm dango/core/types/src/git_info.rs.in
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         if: env.BACKEND_CHANGED == 'true'

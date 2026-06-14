@@ -1,12 +1,12 @@
 use {
+    dango_math::{MultiplyFraction, Udec128, Uint128},
+    dango_primitives::{
+        Addr, Addressable, Coin, Coins, Duration, Inner, QuerierExt, ResultExt, StdError, Timestamp,
+    },
     dango_testing::{TestAccounts, TestSuiteNaive, setup_test_naive},
     dango_types::{
         constants::{dango, usdc},
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
-    },
-    grug_math::{MultiplyFraction, Udec128, Uint128},
-    grug_types::{
-        Addr, Addressable, Coin, Coins, Duration, Inner, QuerierExt, ResultExt, StdError, Timestamp,
     },
     std::sync::LazyLock,
 };

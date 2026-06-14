@@ -2,7 +2,7 @@ use {
     crate::state::{STATE, USER_STATES},
     anyhow::ensure,
     dango_order_book::UsdValue,
-    grug_types::{MutableCtx, QuerierExt, Response},
+    dango_primitives::{MutableCtx, QuerierExt, Response},
 };
 
 /// Withdraw the entire accumulated protocol-fee treasury into the chain owner's
@@ -48,11 +48,11 @@ pub fn withdraw_treasury(ctx: MutableCtx) -> anyhow::Result<Response> {
 mod tests {
     use {
         super::*,
-        dango_types::perps::{State, UserState},
-        grug_types::{
+        dango_primitives::{
             Addr, Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions,
             ResultExt, Storage,
         },
+        dango_types::perps::{State, UserState},
         std::collections::BTreeMap,
     };
 

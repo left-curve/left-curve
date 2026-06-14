@@ -1,6 +1,6 @@
 use {
     async_graphql::*,
-    indexer_clickhouse::{context::Context, entities::perps_pair_stats::PerpsPairStats},
+    dango_indexer_clickhouse::{context::Context, entities::perps_pair_stats::PerpsPairStats},
 };
 
 #[derive(Default, Debug)]

@@ -1,11 +1,7 @@
 use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
-    grug_types::{
-        Bound, DEFAULT_PAGE_LIMIT, HashExt, HexByteArray, ImmutableCtx, Inner, Json, JsonSerExt,
-        Order, StdResult,
-    },
-    hyperlane_types::{
+    dango_hyperlane_types::{
         domain_hash, eip191_hash, is_canonical_ecdsa_signature,
         isms::{
             HYPERLANE_DOMAIN_KEY, IsmQuery, IsmQueryResponse,
@@ -13,6 +9,10 @@ use {
         },
         mailbox::{Domain, Message},
         multisig_hash,
+    },
+    dango_primitives::{
+        Bound, DEFAULT_PAGE_LIMIT, HashExt, HexByteArray, ImmutableCtx, Inner, Json, JsonSerExt,
+        Order, StdResult,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -150,10 +150,10 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
 mod tests {
     use {
         super::*,
-        grug_types::{Inner, MockContext, ResultExt, btree_set},
+        dango_hyperlane_types::{Addr32, IncrementalMerkleTree, addr32, mailbox::MAILBOX_VERSION},
+        dango_identity::Identity256,
+        dango_primitives::{Inner, MockContext, ResultExt, btree_set},
         hex_literal::hex,
-        hyperlane_types::{Addr32, IncrementalMerkleTree, addr32, mailbox::MAILBOX_VERSION},
-        identity::Identity256,
         rand::rngs::OsRng,
         test_case::test_case,
     };

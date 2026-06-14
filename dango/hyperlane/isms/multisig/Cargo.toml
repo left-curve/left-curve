@@ -4,20 +4,20 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "hyperlane-ism"
+name          = "dango-hyperlane-ism"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow          = { workspace = true }
-grug-storage    = { workspace = true }
-grug-types      = { workspace = true }
-hyperlane-types = { workspace = true }
+anyhow                = { workspace = true }
+dango-hyperlane-types = { workspace = true }
+dango-primitives      = { workspace = true }
+dango-storage         = { workspace = true }
 
 [dev-dependencies]
-hex-literal = { workspace = true }
-identity    = { workspace = true }
-k256        = { workspace = true }
-rand        = { workspace = true }
-test-case   = { workspace = true }
+dango-identity = { workspace = true }
+hex-literal    = { workspace = true }
+k256           = { workspace = true }
+rand           = { workspace = true }
+test-case      = { workspace = true }

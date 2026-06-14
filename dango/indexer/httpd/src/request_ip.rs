@@ -1,7 +1,7 @@
 use {
     actix_web::{HttpRequest, http::header::HeaderMap},
     async_graphql::SimpleObject,
-    grug_types::HttpRequestDetails,
+    dango_primitives::HttpRequestDetails,
     serde::Serialize,
     std::net::{IpAddr, SocketAddr},
 };

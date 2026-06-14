@@ -5,7 +5,7 @@ description   = "A macro that allows for dynamically choosing tracing level when
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "dyn-event"
+name          = "dango-dyn-event"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }

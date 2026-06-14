@@ -1,0 +1,23 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+description   = "A minimalist implementation of Jellyfish Merkle tree (JMT)"
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-jmt"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+borsh            = { workspace = true, features = ["de_strict_order", "derive"] }
+dango-app        = { workspace = true }
+dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
+thiserror        = { workspace = true }
+
+[dev-dependencies]
+hex-literal = { workspace = true }
+proptest    = { workspace = true }
+test-case   = { workspace = true }

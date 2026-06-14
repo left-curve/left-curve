@@ -12,7 +12,7 @@ use {
         entity, error,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_types::{
+    dango_primitives::{
         BlockAndBlockOutcomeWithHttpDetails, Config, Defined, Json, MaybeDefined, Storage,
         Undefined,
     },
@@ -465,24 +465,24 @@ impl Indexer {
 }
 
 impl Indexer {
-    pub async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+    pub async fn last_indexed_block_height(&self) -> dango_app::IndexerResult<Option<u64>> {
         let last_indexed_block_height =
             entity::blocks::Entity::find_last_block_height(&self.context.db)
                 .await
-                .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+                .map_err(|e| dango_app::IndexerError::hook(e.to_string()))?;
 
         Ok(last_indexed_block_height.map(|h| h as u64))
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
+    pub async fn start(&mut self, _storage: &dyn Storage) -> dango_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
         self.context
             .migrate_db()
             .await
-            .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
+            .map_err(|e| dango_app::IndexerError::database(e.to_string()))?;
 
         self.indexing = true;
 
@@ -490,7 +490,7 @@ impl Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    pub async fn shutdown(&mut self) -> dango_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -504,7 +504,7 @@ impl Indexer {
     /// No-op kept for symmetry with the other indexers' `wait_for_finish`.
     /// The SQL writer commits inline at the end of `post_indexing`, so there
     /// is no background work to drain here.
-    pub async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+    pub async fn wait_for_finish(&self) -> dango_app::IndexerResult<()> {
         Ok(())
     }
 
@@ -515,9 +515,9 @@ impl Indexer {
         _cfg: Config,
         app_cfg: Json,
         block: &BlockAndBlockOutcomeWithHttpDetails,
-    ) -> grug_app::IndexerResult<()> {
+    ) -> dango_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::not_running());
+            return Err(dango_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -659,7 +659,7 @@ impl Drop for Indexer {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::MockStorage};
+    use {super::*, dango_primitives::MockStorage};
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async

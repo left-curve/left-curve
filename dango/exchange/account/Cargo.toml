@@ -10,7 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow      = { workspace = true }
-dango-auth  = { workspace = true }
-dango-types = { workspace = true }
-grug-types  = { workspace = true }
+anyhow           = { workspace = true }
+dango-auth       = { workspace = true }
+dango-primitives = { workspace = true }
+dango-types      = { workspace = true }

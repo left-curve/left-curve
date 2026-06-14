@@ -1,20 +1,20 @@
 use {
     anyhow::ensure,
-    grug_storage::{PrimaryKey, RawKey},
-    grug_types::{Addr, EncodedBytes, HexEncoder, Inner, StdResult},
+    dango_primitives::{Addr, EncodedBytes, HexEncoder, Inner, StdResult},
+    dango_storage::{PrimaryKey, RawKey},
     std::fmt::{self, Display},
 };
 
 #[macro_export]
 macro_rules! addr32 {
     ($hex_str:literal) => {
-        $crate::Addr32::from_inner(::grug_types::__private::hex_literal::hex!($hex_str))
+        $crate::Addr32::from_inner(::dango_primitives::__private::hex_literal::hex!($hex_str))
     };
 }
 
 /// Hyperlane addresses are left-padded to 32 bytes. See:
 /// <https://docs.hyperlane.xyz/docs/reference/messaging/send#:~:text=Recipient%20addresses%20are%20left%2Dpadded>
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 #[derive(Copy, PartialOrd, Ord)]
 pub struct Addr32(EncodedBytes<[u8; 32], HexEncoder>);
 

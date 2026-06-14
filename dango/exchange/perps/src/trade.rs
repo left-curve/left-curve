@@ -14,8 +14,8 @@ pub use {
 
 use {
     crate::USER_STATES,
+    dango_primitives::{Addr, StdResult, Storage},
     dango_types::perps::UserState,
-    grug_types::{Addr, StdResult, Storage},
 };
 
 /// 1. Load the user's state.

@@ -1,6 +1,6 @@
 use {
     crate::{Quantity, UsdPrice, UsdValue},
-    grug_types::StdResult,
+    dango_primitives::StdResult,
 };
 
 /// Walk an ordered sequence of `(limit_price, size)` pairs and compute the
@@ -48,7 +48,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::Quantity, grug_types::StdResult};
+    use {super::*, crate::Quantity, dango_primitives::StdResult};
 
     #[test]
     fn impact_price_empty_book() {

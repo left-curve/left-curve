@@ -1,5 +1,11 @@
 use {
     crate::{TestSuite, create_signature},
+    dango_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
+    dango_primitives::{
+        Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
+        MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
+        ResultExt, SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
+    },
     dango_types::{
         DangoQuerier, account,
         account_factory::{
@@ -8,12 +14,6 @@ use {
         },
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
         signer::SequencedSigner,
-    },
-    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
-    grug_types::{
-        Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, QuerierWrapper, QueryClient, QueryClientExt,
-        ResultExt, SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
     },
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
     sha2::Sha256,

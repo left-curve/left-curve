@@ -1,7 +1,7 @@
 use {
+    dango_primitives::Addr,
+    dango_storage::{Item, Map},
     dango_types::vesting::{Position, Schedule},
-    grug_storage::{Item, Map},
-    grug_types::Addr,
 };
 
 pub const UNLOCKING_SCHEDULE: Item<Schedule> = Item::new("unlocking_schedule");

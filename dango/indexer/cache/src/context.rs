@@ -2,7 +2,7 @@
 use crate::S3Config;
 use {
     crate::IndexerPath,
-    grug_types::TransactionsHttpdRequest,
+    dango_primitives::TransactionsHttpdRequest,
     std::sync::{Arc, Mutex},
 };
 

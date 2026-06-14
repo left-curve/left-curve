@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "indexer-metrics"
+name          = "dango-indexer-metrics"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }

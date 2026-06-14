@@ -1,12 +1,12 @@
 use {
     crate::{POSITIONS, UNLOCKING_SCHEDULE},
     anyhow::{bail, ensure},
+    dango_math::{IsZero, Number, NumberConst, Uint128},
+    dango_primitives::{Addr, Coin, Message, MutableCtx, QuerierExt, Response},
     dango_types::{
         constants::dango,
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
-    grug_math::{IsZero, Number, NumberConst, Uint128},
-    grug_types::{Addr, Coin, Message, MutableCtx, QuerierExt, Response},
 };
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {

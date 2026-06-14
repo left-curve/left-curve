@@ -1,7 +1,7 @@
 use {
+    dango_math::MathResult,
     dango_order_book::{Dimensionless, Quantity},
     dango_types::perps::PairParam,
-    grug_math::MathResult,
 };
 
 /// Compute the funding premium directly from the vault's inventory skew.

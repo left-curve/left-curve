@@ -6,14 +6,14 @@ use {
     },
     clap::{Parser, Subcommand},
     colored::Colorize,
-    config_parser::parse_config,
-    dango_sdk::{HttpClient, Keystore, Secp256k1, Secret, SingleSigner},
-    dango_types::{account_factory::UserIndex, config::AppConfig},
-    grug_app::GAS_COSTS,
-    grug_types::{
+    dango_app::GAS_COSTS,
+    dango_config_parser::parse_config,
+    dango_primitives::{
         Addr, BroadcastClientExt, Coins, GasOption, Hash256, Json, JsonDeExt, Message, NonEmpty,
         QueryClient, Signer,
     },
+    dango_sdk::{HttpClient, Keystore, Secp256k1, Secret, SingleSigner},
+    dango_types::{account_factory::UserIndex, config::AppConfig},
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
 

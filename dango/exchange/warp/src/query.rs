@@ -1,8 +1,8 @@
 use {
     crate::MAILBOX,
+    dango_hyperlane_types::recipients::{RecipientQuery, RecipientQueryResponse},
+    dango_primitives::{Addr, ImmutableCtx, Json, JsonSerExt, StdResult},
     dango_types::warp::QueryMsg,
-    grug_types::{Addr, ImmutableCtx, Json, JsonSerExt, StdResult},
-    hyperlane_types::recipients::{RecipientQuery, RecipientQueryResponse},
 };
 
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

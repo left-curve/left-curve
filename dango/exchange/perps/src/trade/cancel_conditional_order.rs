@@ -2,7 +2,7 @@ use {
     crate::USER_STATES,
     anyhow::anyhow,
     dango_order_book::{ConditionalOrderRemoved, PairId, ReasonForOrderRemoval, TriggerDirection},
-    grug_types::{MutableCtx, Response},
+    dango_primitives::{MutableCtx, Response},
 };
 
 pub fn cancel_one_conditional_order(
@@ -114,13 +114,13 @@ mod tests {
     use {
         super::*,
         crate::{PARAM, USER_STATES},
+        dango_math::{NumberConst, Uint64},
         dango_order_book::{
             ConditionalOrder, Dimensionless, FundingPerUnit, NEXT_ORDER_ID, OrderId, PairId,
             Quantity, TriggerDirection, UsdPrice, UsdValue,
         },
+        dango_primitives::{Addr, Coins, MockContext, ResultExt, Storage},
         dango_types::perps::{Param, Position, UserState},
-        grug_math::{NumberConst, Uint64},
-        grug_types::{Addr, Coins, MockContext, ResultExt, Storage},
         std::collections::BTreeMap,
     };
 

@@ -1,7 +1,7 @@
 use {
     crate::serde_iso8601,
     async_graphql::{InputValueError, InputValueResult, Scalar, ScalarType, Value},
-    grug_types::Timestamp,
+    dango_primitives::Timestamp,
     sqlx::types::chrono,
 };
 

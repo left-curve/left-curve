@@ -1,5 +1,8 @@
 use {
+    dango_hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
+    dango_math::Uint128,
     dango_order_book::PairId,
+    dango_primitives::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, HashExt, Timestamp},
     dango_types::{
         account_factory::{NewUserSalt, UserIndex},
         bank,
@@ -9,13 +12,10 @@ use {
         perps::{self, PairParam},
         taxman,
     },
-    grug_math::Uint128,
-    grug_types::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, HashExt, Timestamp},
-    hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     std::collections::{BTreeMap, BTreeSet, HashSet},
 };
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct Contracts {
     pub account_factory: Addr,
     pub bank: Addr,

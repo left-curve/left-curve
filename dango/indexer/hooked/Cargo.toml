@@ -6,7 +6,7 @@ edition.workspace       = true
 homepage.workspace      = true
 keywords.workspace      = true
 license.workspace       = true
-name                    = "indexer-hooked"
+name                    = "dango-indexer-hooked"
 repository.workspace    = true
 rust-version.workspace  = true
 version.workspace       = true
@@ -18,11 +18,11 @@ path = "src/lib.rs"
 tracing = ["dep:tracing"]
 
 [dependencies]
-async-trait        = { workspace = true }
-grug-app           = { workspace = true }
-grug-types         = { workspace = true }
-indexer-cache      = { workspace = true }
-indexer-clickhouse = { workspace = true }
-indexer-sql        = { workspace = true }
-tokio              = { workspace = true }
-tracing            = { workspace = true, optional = true }
+async-trait              = { workspace = true }
+dango-app                = { workspace = true }
+dango-indexer-cache      = { workspace = true }
+dango-indexer-clickhouse = { workspace = true }
+dango-indexer-sql        = { workspace = true }
+dango-primitives         = { workspace = true }
+tokio                    = { workspace = true }
+tracing                  = { workspace = true, optional = true }

@@ -1,4 +1,4 @@
-use {async_graphql::SimpleObject, grug_types::QueryResponse};
+use {async_graphql::SimpleObject, dango_primitives::QueryResponse};
 
 #[derive(SimpleObject)]
 pub struct QueryResponseWithBlockHeight {

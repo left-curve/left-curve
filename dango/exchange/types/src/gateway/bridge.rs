@@ -1,13 +1,13 @@
-use {super::Remote, grug_math::Uint128, hyperlane_types::Addr32};
+use {super::Remote, dango_hyperlane_types::Addr32, dango_math::Uint128};
 
 /// Each bridge contract must implement this execute API.
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum ExecuteMsg {
     // NOTE: Bridge contract must ensure only the Gateway contract can call this.
     Bridge(BridgeMsg),
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum BridgeMsg {
     TransferRemote {
         remote: Remote,

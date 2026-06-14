@@ -1,6 +1,6 @@
 use {
     crate::{entity, error::IndexerError, indexer::MAX_ROWS_INSERT},
-    grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
+    dango_primitives::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
     std::collections::HashMap,

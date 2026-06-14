@@ -1,12 +1,12 @@
 use {
     anyhow::bail,
+    dango_indexer_graphql_types::Variables,
     futures::{
         SinkExt, Stream, StreamExt,
         channel::mpsc,
         stream::{SplitSink, SplitStream},
     },
     graphql_client::{GraphQLQuery, Response},
-    indexer_graphql_types::Variables,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     std::{
         collections::HashMap,
@@ -516,15 +516,18 @@ pub trait SubscriptionVariables: Variables {
 }
 
 // Implement SubscriptionVariables for all subscription variable types
-impl SubscriptionVariables for indexer_graphql_types::subscribe_block::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_accounts::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_transfers::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_transactions::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_messages::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_events::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_event_by_addresses::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_perps_candles::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_perps_trades::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_query_app::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_query_store::Variables {}
-impl SubscriptionVariables for indexer_graphql_types::subscribe_query_status::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_block::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_accounts::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_transfers::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_transactions::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_messages::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_events::Variables {}
+impl SubscriptionVariables
+    for dango_indexer_graphql_types::subscribe_event_by_addresses::Variables
+{
+}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_perps_candles::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_perps_trades::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_query_app::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_query_store::Variables {}
+impl SubscriptionVariables for dango_indexer_graphql_types::subscribe_query_status::Variables {}

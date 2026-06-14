@@ -1,14 +1,14 @@
 use {
     crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
-    dango_types::bank::{
-        Metadata, OrphanedTransferPageParam, OrphanedTransferResponseItem, QueryMsg,
-    },
-    grug_math::{NumberConst, Uint128},
-    grug_storage::PrefixBound,
-    grug_types::{
+    dango_math::{NumberConst, Uint128},
+    dango_primitives::{
         Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, DEFAULT_PAGE_LIMIT, Denom,
         ImmutableCtx, Json, JsonSerExt, Order, Part, QueryBalanceRequest, QueryBalancesRequest,
         QuerySuppliesRequest, QuerySupplyRequest, StdResult,
+    },
+    dango_storage::PrefixBound,
+    dango_types::bank::{
+        Metadata, OrphanedTransferPageParam, OrphanedTransferResponseItem, QueryMsg,
     },
     std::collections::BTreeMap,
 };

@@ -1,5 +1,11 @@
 use {
+    dango_math::Dec128_6,
     dango_order_book::UsdPrice,
+    dango_primitives::{
+        Addr, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, QuerierExt, ResultExt,
+        Timestamp, btree_map, btree_set,
+    },
+    dango_pyth_types::{Channel, LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
     dango_testing::{TestAccounts, TestSuiteNaive, setup_test_naive},
     dango_types::{
         constants::{eth, perp_btc},
@@ -8,12 +14,6 @@ use {
             QueryPriceSourcesRequest, QueryTrustedSignersRequest,
         },
     },
-    grug_math::Dec128_6,
-    grug_types::{
-        Addr, Binary, ByteArray, Coins, Denom, Duration, NonEmpty, QuerierExt, ResultExt,
-        Timestamp, btree_map, btree_set,
-    },
-    pyth_types::{Channel, LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
     std::str::FromStr,
 };
 

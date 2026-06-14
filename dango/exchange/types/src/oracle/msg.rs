@@ -1,11 +1,11 @@
 use {
     crate::oracle::{Price, PriceConfig},
-    grug_types::{Binary, Denom, Timestamp},
-    pyth_types::PriceUpdate,
+    dango_primitives::{Binary, Denom, Timestamp},
+    dango_pyth_types::PriceUpdate,
     std::collections::{BTreeMap, BTreeSet},
 };
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct InstantiateMsg {
     pub price_sources: BTreeMap<Denom, PriceConfig>,
 
@@ -13,7 +13,7 @@ pub struct InstantiateMsg {
     pub trusted_signers: BTreeMap<Binary, Timestamp>,
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceConfig>),
@@ -39,7 +39,7 @@ pub enum ExecuteMsg {
     FeedPrices(PriceUpdate),
 }
 
-#[grug_types::derive(Serde, QueryRequest)]
+#[dango_primitives::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query Pyth Lazer trusted signers and their expiration times.
     #[returns(BTreeMap<Binary, Timestamp>)]

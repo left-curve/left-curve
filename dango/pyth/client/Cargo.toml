@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "pyth-client"
+name          = "dango-pyth-client"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -16,12 +16,12 @@ metrics = ["dep:metrics"]
 anyhow              = { workspace = true }
 async-stream        = { workspace = true }
 async-trait         = { workspace = true }
-disk-saver          = { workspace = true }
-grug-types          = { workspace = true }
+dango-disk-saver    = { workspace = true }
+dango-primitives    = { workspace = true }
+dango-pyth-types    = { workspace = true }
 metrics             = { workspace = true, optional = true }
 pyth-lazer-client   = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
-pyth-types          = { workspace = true }
 reqwest             = { workspace = true }
 tokio               = { workspace = true }
 tokio-stream        = { workspace = true }

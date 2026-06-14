@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait,
-    grug_types::{BroadcastClient, BroadcastTxOutcome, JsonSerExt, Tx},
+    dango_primitives::{BroadcastClient, BroadcastTxOutcome, JsonSerExt, Tx},
     tendermint_rpc::{Client, HttpClient},
 };
 

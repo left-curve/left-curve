@@ -1,12 +1,12 @@
 use {
     crate::{entity, error::IndexerError, indexer::MAX_ROWS_INSERT},
+    dango_primitives::{
+        BlockAndBlockOutcomeWithHttpDetails, EventName, FlatCommitmentStatus, FlatEvent, Json,
+        JsonDeExt, SearchEvent,
+    },
     dango_types::{
         account_factory::{AccountRegistered, KeyDisowned, KeyOwned, UserRegistered},
         config::AppConfig,
-    },
-    grug_types::{
-        BlockAndBlockOutcomeWithHttpDetails, EventName, FlatCommitmentStatus, FlatEvent, Json,
-        JsonDeExt, SearchEvent,
     },
     itertools::Itertools,
     sea_orm::{

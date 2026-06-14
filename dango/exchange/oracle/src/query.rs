@@ -1,10 +1,10 @@
 use {
     crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_TRUSTED_SIGNERS},
-    dango_types::oracle::{Price, PriceConfig, QueryMsg},
-    grug_types::{
+    dango_primitives::{
         Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Timestamp,
     },
+    dango_types::oracle::{Price, PriceConfig, QueryMsg},
     std::collections::BTreeMap,
 };
 

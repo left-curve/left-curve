@@ -3,14 +3,14 @@ use {
         entity, entity::perps_trade::PerpsTrade, error::IndexerError, indexer::MAX_ROWS_INSERT,
         write::perps_trades::KEEP_PER_PAIR,
     },
+    dango_primitives::{
+        Addr, BlockAndBlockOutcomeWithHttpDetails, CheckedContractEvent, CommitmentStatus, Denom,
+        EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo,
+        FlatEventStatus, Inner, Json, JsonDeExt, NaiveFlatten, SearchEvent, Timestamp,
+    },
     dango_types::{
         config::AppConfig,
         perps::{Deleveraged, Liquidated, OrderFilled},
-    },
-    grug_types::{
-        BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus, EvtCron,
-        FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, Inner, Json, JsonDeExt,
-        NaiveFlatten, SearchEvent, Timestamp,
     },
     itertools::Itertools,
     sea_orm::{EntityTrait, Set, TransactionTrait},
@@ -214,7 +214,7 @@ pub(crate) async fn save_perps_events(
 /// Try to deserialize a contract event into a perps `OrderFilled` and build a
 /// `PerpsTrade` suitable for the pubsub + cache.
 fn try_build_perps_trade(
-    event: &grug_types::CheckedContractEvent,
+    event: &CheckedContractEvent,
     block_height: u64,
     created_at: &str,
     trade_idx: u32,
@@ -247,16 +247,15 @@ fn try_build_perps_trade(
 ///
 /// All perps events contain `user: Addr` and `pair_id: PairId` fields,
 /// so we partially deserialize to extract them.
-fn extract_user_and_pair(
-    event: &grug_types::CheckedContractEvent,
-) -> Result<(String, String), IndexerError> {
+fn extract_user_and_pair(event: &CheckedContractEvent) -> Result<(String, String), IndexerError> {
     #[derive(serde::Deserialize)]
     struct UserAndPair {
-        user: grug_types::Addr,
-        pair_id: grug_types::Denom,
+        user: Addr,
+        pair_id: Denom,
     }
 
     let parsed: UserAndPair = event.data.clone().deserialize_json()?;
+
     Ok((parsed.user.to_string(), parsed.pair_id.to_string()))
 }
 

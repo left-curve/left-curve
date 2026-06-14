@@ -16,15 +16,15 @@ async-graphql = ["dep:async-graphql"]
 sea-orm = ["dep:sea-orm"]
 
 [dependencies]
-anyhow           = { workspace = true }
-async-graphql    = { workspace = true, optional = true }
-async-trait      = { workspace = true }
-dango-order-book = { workspace = true }
-grug-math        = { workspace = true }
-grug-storage     = { workspace = true }
-grug-types       = { workspace = true }
-hyperlane-types  = { workspace = true }
-pyth-types       = { workspace = true }
-sea-orm          = { workspace = true, optional = true }
-serde            = { workspace = true }
-sha2             = { workspace = true }
+anyhow                = { workspace = true }
+async-graphql         = { workspace = true, optional = true }
+async-trait           = { workspace = true }
+dango-hyperlane-types = { workspace = true }
+dango-math            = { workspace = true }
+dango-order-book      = { workspace = true }
+dango-primitives      = { workspace = true }
+dango-pyth-types      = { workspace = true }
+dango-storage         = { workspace = true }
+sea-orm               = { workspace = true, optional = true }
+serde                 = { workspace = true }
+sha2                  = { workspace = true }

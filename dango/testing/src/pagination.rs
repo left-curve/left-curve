@@ -1,4 +1,4 @@
-pub use indexer_graphql_types::{
+pub use dango_indexer_graphql_types::{
     Accounts, Blocks, Events, Messages, PageInfo, Transactions, Transfers,
     accounts as accounts_query, blocks as blocks_query, events as events_query,
     messages as messages_query, transactions as transactions_query, transfers as transfers_query,
@@ -18,14 +18,14 @@ pub enum PaginationDirection {
 ///
 /// This is the base macro that can be used with any context type by providing
 /// an app builder expression. Use `impl_indexer_paginate!` for the common case
-/// with `indexer_httpd::context::FullContext`.
+/// with `dango_indexer_httpd::context::FullContext`.
 ///
 /// ## Arguments
 ///
 /// - `$fn_name` - The name of the generated function
-/// - `$context_type` - The context type (e.g., `indexer_httpd::context::FullContext`)
+/// - `$context_type` - The context type (e.g., `dango_indexer_httpd::context::FullContext`)
 /// - `$query_type` - The GraphQL query type (e.g., `Blocks`)
-/// - `$module` - The module containing the query types (e.g., `indexer_graphql_types::blocks`)
+/// - `$module` - The module containing the query types (e.g., `dango_indexer_graphql_types::blocks`)
 /// - `$field` - The response field name (e.g., `blocks`)
 /// - `$node_type` - The node type returned by the query
 /// - `$app_builder` - Expression to build the app from context
@@ -115,7 +115,7 @@ macro_rules! impl_indexer_paginate {
     ($fn_name:ident, $query_type:ty, $module:ident, $field:ident, $node_type:ident) => {
         $crate::impl_paginate!(
             $fn_name,
-            indexer_httpd::context::FullContext,
+            dango_indexer_httpd::context::FullContext,
             $query_type,
             $module,
             $field,

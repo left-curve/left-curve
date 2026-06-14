@@ -1,6 +1,6 @@
 use {
+    dango_primitives::{Querier, Query, ResultExt},
     dango_testing::setup_test_naive,
-    grug_types::{Querier, Query, ResultExt},
 };
 
 /// Multi queries cannot be nested at all: a `Query::Multi` may only contain
@@ -42,7 +42,7 @@ fn multi_query_rejects_any_nesting() {
 /// Security regression: a deeply nested `Query::Multi` must not overflow the
 /// node's stack.
 ///
-/// `grug_app::process_query` recurses into every child of a `Query::Multi`
+/// `dango_app::process_query` recurses into every child of a `Query::Multi`
 /// without a depth limit, so a query shaped like `Multi([Multi([Multi([...])])])`
 /// used to abort the whole process via stack overflow. The overflow is not a
 /// catchable panic — there is no `catch_unwind` on the query path — so the node

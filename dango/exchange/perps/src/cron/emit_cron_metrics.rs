@@ -4,7 +4,7 @@ use {
         querier::NoCachePerpQuerier,
         state::{STATE, USER_STATES},
     },
-    grug_types::{Addr, Inner, Storage},
+    dango_primitives::{Addr, Inner, Storage},
     std::time::Instant,
 };
 

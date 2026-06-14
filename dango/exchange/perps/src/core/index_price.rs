@@ -1,7 +1,7 @@
 use {
+    dango_math::MathResult,
     dango_order_book::{Dimensionless, UsdPrice},
-    grug_math::MathResult,
-    grug_types::Duration,
+    dango_primitives::Duration,
 };
 
 /// EWMA time constant (tau): 30 minutes. Controls how quickly the index price

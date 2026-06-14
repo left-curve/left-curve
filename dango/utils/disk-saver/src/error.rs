@@ -1,4 +1,4 @@
-#[error_backtrace::backtrace]
+#[dango_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]

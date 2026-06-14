@@ -12,7 +12,7 @@ Decentralized perpetual futures exchange. Trade: [dango.exchange](https://dango.
 | ---------------------------------------- | ---------- | ----------------------------------------------------------------------- |
 | [`book/`](./book/)                       | Markdown   | documentation, built with [mdBook](https://rust-lang.github.io/mdBook/) |
 | [`dango/`](./dango/)                     | Rust       | suite of DeFi application smart contracts                               |
-| [`dango/grug/`](./dango/grug/)           | Rust       | execution environment for blockchains                                   |
+| [`dango/core/`](./dango/core/)           | Rust       | execution environment for blockchains                                   |
 | [`dango/hyperlane/`](./dango/hyperlane/) | Rust       | [Hyperlane](https://hyperlane.xyz/) cross-chain messaging protocol      |
 | [`dango/indexer/`](./dango/indexer/)     | Rust       | indexer and GraphQL API server                                          |
 | [`dango/pyth/`](./dango/pyth/)           | Rust       | client for the [Pyth](https://www.pyth.network/) price oracle           |

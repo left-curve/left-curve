@@ -4,7 +4,7 @@ use {
         state::{PAIR_IDS, PAIR_PARAMS, PAIR_STATES, PARAM, STATE, USER_STATES},
     },
     dango_order_book::{Days, PairId, Quantity},
-    grug_types::{Addr, Storage, Timestamp},
+    dango_primitives::{Addr, Storage, Timestamp},
 };
 
 /// Compute and apply funding deltas for each trading pair using the vault's
@@ -136,8 +136,8 @@ mod tests {
     use {
         super::*,
         dango_order_book::{Dimensionless, FundingPerUnit, FundingRate, UsdPrice},
+        dango_primitives::{Duration, MockStorage},
         dango_types::perps::{PairParam, PairState, Param, Position, State, UserState},
-        grug_types::{Duration, MockStorage},
         std::collections::{BTreeMap, BTreeSet},
     };
 

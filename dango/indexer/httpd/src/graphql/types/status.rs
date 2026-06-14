@@ -7,8 +7,8 @@ pub struct BlockInfo {
     pub hash: String,
 }
 
-impl From<grug_types::BlockInfo> for BlockInfo {
-    fn from(item: grug_types::BlockInfo) -> Self {
+impl From<dango_primitives::BlockInfo> for BlockInfo {
+    fn from(item: dango_primitives::BlockInfo) -> Self {
         Self {
             block_height: item.height,
             timestamp: item.timestamp.to_naive_date_time(),

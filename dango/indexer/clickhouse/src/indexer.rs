@@ -1,8 +1,8 @@
 use {
     crate::context::Context,
+    dango_primitives::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, JsonDeExt, Storage},
     dango_types::config::AppConfig,
     futures::try_join,
-    grug_types::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, JsonDeExt},
 };
 #[cfg(feature = "metrics")]
 use {
@@ -28,16 +28,13 @@ impl Indexer {
         }
     }
 
-    pub async fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+    pub async fn last_indexed_block_height(&self) -> dango_app::IndexerResult<Option<u64>> {
         // TODO: Implement last_indexed_block_height using `pair_prices` table.
         Ok(None)
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn start(
-        &mut self,
-        _storage: &dyn grug_types::Storage,
-    ) -> grug_app::IndexerResult<()> {
+    pub async fn start(&mut self, _storage: &dyn Storage) -> dango_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
             #[cfg(feature = "tracing")]
@@ -63,7 +60,7 @@ impl Indexer {
                 .execute()
                 .await
                 .map_err(|e| {
-                    grug_app::IndexerError::database(format!("Failed to run migration: {e}"))
+                    dango_app::IndexerError::database(format!("Failed to run migration: {e}"))
                 })?;
 
             #[cfg(feature = "tracing")]
@@ -79,7 +76,7 @@ impl Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+    pub async fn wait_for_finish(&self) -> dango_app::IndexerResult<()> {
         if !self.indexing {
             return Ok(());
         }
@@ -101,7 +98,7 @@ impl Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+    pub async fn shutdown(&mut self) -> dango_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -130,9 +127,9 @@ impl Indexer {
         _cfg: Config,
         app_cfg: Json,
         block: &BlockAndBlockOutcomeWithHttpDetails,
-    ) -> grug_app::IndexerResult<()> {
+    ) -> dango_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::not_running());
+            return Err(dango_app::IndexerError::not_running());
         }
 
         // Symmetric with `start` / `wait_for_finish`: a mocked Clickhouse
@@ -154,13 +151,13 @@ impl Indexer {
 
         let app_cfg: AppConfig = app_cfg
             .deserialize_json()
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+            .map_err(|e| dango_app::IndexerError::hook(e.to_string()))?;
 
         try_join!(
             Self::store_perps_candles(&app_cfg.addresses.perps, block, &context),
             Self::store_perps_fees(&app_cfg.addresses.perps, block, &context)
         )
-        .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+        .map_err(|e| dango_app::IndexerError::hook(e.to_string()))?;
 
         // Refresh perps pair-stats cache so subscription consumers read from memory.
         let clickhouse_client = context.clickhouse_client();

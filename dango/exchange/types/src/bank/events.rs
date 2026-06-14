@@ -1,8 +1,8 @@
-use grug_types::{Addr, Coins};
+use dango_primitives::{Addr, Coins};
 
 /// An event indicating a user has sent a transfer of coins.
-#[grug_types::derive(Serde)]
-#[grug_types::event("sent")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("sent")]
 pub struct Sent {
     pub user: Addr,
     pub to: Addr,
@@ -10,8 +10,8 @@ pub struct Sent {
 }
 
 /// An event indicating a user has received a transfer of coins.
-#[grug_types::derive(Serde)]
-#[grug_types::event("received")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("received")]
 pub struct Received {
     pub user: Addr,
     pub from: Addr,
@@ -19,8 +19,8 @@ pub struct Received {
 }
 
 /// An event indicating a user has received newly minted coins.
-#[grug_types::derive(Serde)]
-#[grug_types::event("minted")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("minted")]
 pub struct Minted {
     pub user: Addr,
     /// The account that initiated the minting.
@@ -33,8 +33,8 @@ pub struct Minted {
 }
 
 /// An event indicating a user's coins have been burned from his wallet.
-#[grug_types::derive(Serde)]
-#[grug_types::event("burned")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("burned")]
 pub struct Burned {
     pub user: Addr,
     pub burner: Addr,
@@ -46,8 +46,8 @@ pub struct Burned {
 ///
 /// The funds are temporarily held in the Dango bank contract, and can be
 /// claimed either by the sender or the recipient (once it's been created).
-#[grug_types::derive(Serde)]
-#[grug_types::event("transfer_orphaned")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("transfer_orphaned")]
 pub struct TransferOrphaned {
     pub from: Addr,
     pub to: Addr,

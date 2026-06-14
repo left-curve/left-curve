@@ -1,10 +1,10 @@
 use {
     crate::gateway::NAMESPACE,
-    grug_types::{Denom, Part},
+    dango_primitives::{Denom, Part},
     std::slice,
 };
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 #[derive(PartialOrd, Ord)]
 pub enum Origin {
     /// Token is issued natively on Dango.

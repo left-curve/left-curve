@@ -1,0 +1,20 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-ffi"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+default = ["macros"]
+macros  = ["dep:dango-macros"]
+
+[dependencies]
+dango-backtrace  = { workspace = true }
+dango-macros     = { workspace = true, optional = true }
+dango-primitives = { workspace = true }
+serde            = { workspace = true }

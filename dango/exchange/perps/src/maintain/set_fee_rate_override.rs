@@ -5,7 +5,7 @@ use {
     },
     anyhow::ensure,
     dango_order_book::Dimensionless,
-    grug_types::{Addr, MutableCtx, Op, QuerierExt, Response},
+    dango_primitives::{Addr, MutableCtx, Op, QuerierExt, Response},
 };
 
 pub fn set_fee_rate_override(
@@ -66,11 +66,11 @@ pub fn set_fee_rate_override(
 mod tests {
     use {
         super::*,
-        dango_types::perps::{Param, RateSchedule},
-        grug_types::{
+        dango_primitives::{
             Coins, Config, Duration, MockContext, MockQuerier, Permission, Permissions, ResultExt,
             Storage,
         },
+        dango_types::perps::{Param, RateSchedule},
         std::collections::BTreeMap,
     };
 

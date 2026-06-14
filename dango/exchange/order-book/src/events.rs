@@ -1,11 +1,11 @@
 use {
     crate::{ClientOrderId, Dimensionless, OrderId, PairId, Quantity, TriggerDirection, UsdPrice},
-    grug_types::Addr,
+    dango_primitives::Addr,
 };
 
 /// Event indicating an order have been inserted into the order book.
-#[grug_types::event("order_persisted")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("order_persisted")]
+#[dango_primitives::derive(Serde)]
 pub struct OrderPersisted {
     pub order_id: OrderId,
     pub pair_id: PairId,
@@ -25,8 +25,8 @@ pub struct OrderPersisted {
 /// sizes sum to no more than the new position. An order whose clamped size is
 /// still non-zero is rewritten with the smaller size rather than removed (a
 /// clamp to zero removes it instead, emitting `OrderRemoved`).
-#[grug_types::event("order_resized")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("order_resized")]
+#[dango_primitives::derive(Serde)]
 pub struct OrderResized {
     pub order_id: OrderId,
     pub pair_id: PairId,
@@ -45,8 +45,8 @@ pub struct OrderResized {
 }
 
 /// Event indicating an order has been removed from the order book.
-#[grug_types::event("order_removed")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("order_removed")]
+#[dango_primitives::derive(Serde)]
 pub struct OrderRemoved {
     pub order_id: OrderId,
     pub pair_id: PairId,
@@ -59,8 +59,8 @@ pub struct OrderRemoved {
 }
 
 /// Event indicating a conditional (TP/SL) order has been placed.
-#[grug_types::event("conditional_order_placed")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("conditional_order_placed")]
+#[dango_primitives::derive(Serde)]
 pub struct ConditionalOrderPlaced {
     pub pair_id: PairId,
     pub user: Addr,
@@ -71,8 +71,8 @@ pub struct ConditionalOrderPlaced {
 }
 
 /// Event indicating a conditional order was triggered by an oracle price move.
-#[grug_types::event("conditional_order_triggered")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("conditional_order_triggered")]
+#[dango_primitives::derive(Serde)]
 pub struct ConditionalOrderTriggered {
     pub pair_id: PairId,
     pub user: Addr,
@@ -82,8 +82,8 @@ pub struct ConditionalOrderTriggered {
 }
 
 /// Event indicating a conditional order was removed.
-#[grug_types::event("conditional_order_removed")]
-#[grug_types::derive(Serde)]
+#[dango_primitives::event("conditional_order_removed")]
+#[dango_primitives::derive(Serde)]
 pub struct ConditionalOrderRemoved {
     pub pair_id: PairId,
     pub user: Addr,
@@ -91,7 +91,7 @@ pub struct ConditionalOrderRemoved {
     pub reason: ReasonForOrderRemoval,
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 #[derive(Copy)]
 pub enum ReasonForOrderRemoval {
     /// The order was fully filled.

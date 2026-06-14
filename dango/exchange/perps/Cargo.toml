@@ -10,21 +10,21 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dep:metrics", "grug-types/metrics"]
-tracing = ["dep:tracing", "grug-types/chrono"]
+metrics = ["dango-primitives/metrics", "dep:metrics"]
+tracing = ["dango-primitives/chrono", "dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }
 dango-account-factory = { workspace = true }
+dango-math            = { workspace = true }
 dango-oracle          = { workspace = true }
 dango-order-book      = { workspace = true }
+dango-primitives      = { workspace = true }
+dango-pyth-types      = { workspace = true }
+dango-storage         = { workspace = true }
 dango-types           = { workspace = true }
-grug-math             = { workspace = true }
-grug-storage          = { workspace = true }
-grug-types            = { workspace = true }
 metrics               = { workspace = true, optional = true }
-pyth-types            = { workspace = true }
 tracing               = { workspace = true, optional = true }
 
 [dev-dependencies]
-test-case  = { workspace = true }
+test-case = { workspace = true }

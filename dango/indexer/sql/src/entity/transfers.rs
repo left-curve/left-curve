@@ -1,7 +1,7 @@
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject},
-    grug_types::Timestamp,
+    dango_primitives::Timestamp,
 };
 use {
     sea_orm::entity::prelude::*,

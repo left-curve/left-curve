@@ -5,11 +5,11 @@ use {
         state::{COMMISSION_RATE_OVERRIDES, FEE_SHARE_RATIO, PARAM},
     },
     anyhow::ensure,
+    dango_primitives::{MutableCtx, QuerierExt, Response},
     dango_types::{
         account_factory::{self},
         perps::FeeShareRatio,
     },
-    grug_types::{MutableCtx, QuerierExt, Response},
 };
 
 /// Maximum fee share ratio a referrer can set.

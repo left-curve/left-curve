@@ -11,22 +11,22 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow        = { workspace = true }
-bip32         = { workspace = true }
-clap          = { workspace = true, features = ["derive", "wrap_help"] }
-colored       = { workspace = true }
-colored_json  = { workspace = true }
-config-parser = { workspace = true }
-dango-sdk     = { workspace = true }
-dango-types   = { workspace = true }
-dialoguer     = { workspace = true }
-grug-app      = { workspace = true }
-grug-types    = { workspace = true }
-hex           = { workspace = true }
-home          = { workspace = true }
-rand          = { workspace = true }
-serde         = { workspace = true }
-tokio         = { workspace = true }
+anyhow              = { workspace = true }
+bip32               = { workspace = true }
+clap                = { workspace = true, features = ["derive", "wrap_help"] }
+colored             = { workspace = true }
+colored_json        = { workspace = true }
+dango-app           = { workspace = true }
+dango-config-parser = { workspace = true }
+dango-primitives    = { workspace = true }
+dango-sdk           = { workspace = true }
+dango-types         = { workspace = true }
+dialoguer           = { workspace = true }
+hex                 = { workspace = true }
+home                = { workspace = true }
+rand                = { workspace = true }
+serde               = { workspace = true }
+tokio               = { workspace = true }
 
 [[bin]]
 name = "dango-client"

@@ -3,9 +3,9 @@ use {
         core::{compute_maintenance_margin, compute_user_equity},
         querier::NoCachePerpQuerier,
     },
+    dango_math::MathResult,
     dango_order_book::{PairId, Quantity, UsdPrice, UsdValue},
     dango_types::perps::{PairParam, UserState},
-    grug_math::MathResult,
     std::collections::BTreeMap,
 };
 
@@ -227,11 +227,11 @@ mod tests {
     use {
         super::*,
         dango_order_book::{Dimensionless, FundingPerUnit, Quantity, UsdPrice, UsdValue},
+        dango_primitives::{btree_map, hash_map},
         dango_types::{
             constants::eth,
             perps::{PairParam, PairState, Position},
         },
-        grug_types::{btree_map, hash_map},
     };
 
     fn pair_btc() -> PairId {

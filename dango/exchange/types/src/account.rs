@@ -1,10 +1,10 @@
 use {
     crate::auth::{AccountStatus, Nonce},
-    grug_types::ByteArray,
+    dango_primitives::ByteArray,
     std::collections::BTreeSet,
 };
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct InstantiateMsg {
     /// Whether this account is to be activated upon instantiation.
     /// If not, a minimum deposit is required to activate the account.
@@ -12,7 +12,7 @@ pub struct InstantiateMsg {
 }
 
 /// Query messages for the single-signature account
-#[grug_types::derive(Serde, QueryRequest)]
+#[dango_primitives::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the account's status.
     #[returns(AccountStatus)]

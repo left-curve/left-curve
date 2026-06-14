@@ -1,11 +1,11 @@
 use {
     assertor::*,
+    dango_app::Indexer,
+    dango_indexer_sql::entity,
     dango_testing::{
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
-    grug_app::Indexer,
-    indexer_sql::entity,
     itertools::Itertools,
     sea_orm::EntityTrait,
 };
@@ -20,19 +20,19 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish().await?;
 
-    let users = indexer_sql::entity::users::Entity::find()
+    let users = dango_indexer_sql::entity::users::Entity::find()
         .all(&dango_context.db)
         .await?;
 
-    let accounts = indexer_sql::entity::accounts::Entity::find()
+    let accounts = dango_indexer_sql::entity::accounts::Entity::find()
         .all(&dango_context.db)
         .await?;
 
-    let account_users = indexer_sql::entity::accounts_users::Entity::find()
+    let account_users = dango_indexer_sql::entity::accounts_users::Entity::find()
         .all(&dango_context.db)
         .await?;
 
-    let public_keys = indexer_sql::entity::public_keys::Entity::find()
+    let public_keys = dango_indexer_sql::entity::public_keys::Entity::find()
         .all(&dango_context.db)
         .await?;
 
@@ -66,8 +66,8 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
-        indexer_sql::entity::accounts::Entity::find()
-            .find_with_related(indexer_sql::entity::users::Entity)
+        dango_indexer_sql::entity::accounts::Entity::find()
+            .find_with_related(dango_indexer_sql::entity::users::Entity)
             .all(&dango_context.db)
             .await?;
 
@@ -101,8 +101,8 @@ async fn index_single_user_multiple_single_signature_accounts() -> anyhow::Resul
     suite.app.indexer.wait_for_finish().await?;
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
-        indexer_sql::entity::accounts::Entity::find()
-            .find_with_related(indexer_sql::entity::users::Entity)
+        dango_indexer_sql::entity::accounts::Entity::find()
+            .find_with_related(dango_indexer_sql::entity::users::Entity)
             .all(&dango_context.db)
             .await?;
 

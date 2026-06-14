@@ -9,6 +9,7 @@ use {
         subscription_limiter::{acquire_subscription, guard_subscription_stream},
     },
     async_graphql::{futures_util::stream::Stream, *},
+    dango_primitives::Query,
     futures_util::stream::{StreamExt, once},
 };
 
@@ -20,7 +21,7 @@ impl GrugSubscription {
     async fn query_app<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
-        #[graphql(desc = "Request as JSON")] request: grug_types::Query,
+        #[graphql(desc = "Request as JSON")] request: Query,
         #[graphql(
             default = 10,
             desc = "Receive updates every N blocks from the initial block height when subscription starts"
@@ -173,7 +174,7 @@ impl GrugSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response = GrugQuery::_query_status(&app_ctx.base).await;
-        let latest_block_height = app_ctx.base.grug_app.last_finalized_block().await?.height;
+        let latest_block_height = app_ctx.base.dango_app.last_finalized_block().await?.height;
 
         Ok(guard_subscription_stream(
             once({

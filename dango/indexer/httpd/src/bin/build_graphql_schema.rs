@@ -1,6 +1,6 @@
 use {
     async_graphql::Schema,
-    indexer_httpd::graphql::{
+    dango_indexer_httpd::graphql::{
         mutation::IndexerMutation, query::FullQuery, subscription::FullSubscription,
     },
 };

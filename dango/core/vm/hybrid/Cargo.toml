@@ -1,0 +1,18 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-vm-hybrid"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+dango-app        = { workspace = true }
+dango-backtrace  = { workspace = true }
+dango-primitives = { workspace = true }
+dango-vm-rust    = { workspace = true }
+dango-vm-wasm    = { workspace = true }
+thiserror        = { workspace = true }

@@ -4,7 +4,7 @@
 
 ## Where types live
 
-`dango-sdk` is thin: most user-facing types are re-exported by the SDK, `dango_types`, and `indexer_graphql_types`.
+`dango-sdk` is thin: most user-facing types are re-exported by the SDK, `dango_types`, and `dango_indexer_graphql_types`.
 
 | Type | Crate | Notes |
 |------|-------|-------|
@@ -13,8 +13,8 @@
 | `Coins`, `Denom`, `Coin`, `Uint128`, `Uint256` | Core | Bank balances and unsigned integers. |
 | `NonEmpty<T>`, `Defined<T>`, `Undefined<T>`, `MaybeDefined<T>` | Core | Typestate helpers. |
 | `Key`, `Signature`, `SignDoc`, `Nonce`, `UserIndex` | `dango_types::auth` / `dango_types::account_factory` | Account-factory primitives. |
-| `PageInfo`, `<query>::Variables`, `<query>::ResponseData`, generated `*Nodes`/`*Edges` | `indexer_graphql_types` | GraphQL codegen surface, re-exported at the `dango_sdk` crate root. |
-| `SubscribeBlock`, …, `SubscribeQueryStatus` (×14) | `indexer_graphql_types` | One marker struct per subscription. Each has a snake-case module of `Variables`/`ResponseData`. |
+| `PageInfo`, `<query>::Variables`, `<query>::ResponseData`, generated `*Nodes`/`*Edges` | `dango_indexer_graphql_types` | GraphQL codegen surface, re-exported at the `dango_sdk` crate root. |
+| `SubscribeBlock`, …, `SubscribeQueryStatus` (×14) | `dango_indexer_graphql_types` | One marker struct per subscription. Each has a snake-case module of `Variables`/`ResponseData`. |
 | `WsError` | `dango_sdk` | The only public typed error in the crate. |
 
 ## Base units, not human units

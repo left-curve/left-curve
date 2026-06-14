@@ -1,6 +1,6 @@
 use {
     async_graphql::*,
-    grug_types::{BroadcastTxOutcome, HttpRequestDetails, Inner, JsonSerExt, Tx},
+    dango_primitives::{BroadcastTxOutcome, HttpRequestDetails, Inner, JsonSerExt, Tx},
     sentry::configure_scope,
 };
 

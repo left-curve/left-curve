@@ -5,7 +5,7 @@ description   = "A wrapper over fixed-size arrays that implements the `digest::D
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "identity"
+name          = "dango-identity"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }

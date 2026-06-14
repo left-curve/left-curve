@@ -1,7 +1,7 @@
 use {
     crate::{Addr32, IncrementalMerkleTree},
     anyhow::ensure,
-    grug_types::{Addr, Hash256, HexBinary, Inner},
+    dango_primitives::{Addr, Hash256, HexBinary, Inner},
 };
 
 pub const MAILBOX_VERSION: u8 = 3;
@@ -10,7 +10,7 @@ pub type Domain = u32;
 
 // ----------------------------------- types -----------------------------------
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct Message {
     pub version: u8,
     pub nonce: u32,
@@ -53,7 +53,7 @@ impl Message {
     }
 }
 
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct Config {
     // Domain registry: https://github.com/hyperlane-xyz/hyperlane-registry
     pub local_domain: Domain,
@@ -63,12 +63,12 @@ pub struct Config {
 
 // --------------------------------- messages ----------------------------------
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub struct InstantiateMsg {
     pub config: Config,
 }
 
-#[grug_types::derive(Serde)]
+#[dango_primitives::derive(Serde)]
 pub enum ExecuteMsg {
     /// Send a message.
     Dispatch {
@@ -83,7 +83,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[grug_types::derive(Serde, QueryRequest)]
+#[dango_primitives::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the mailbox configuration.
     #[returns(Config)]
@@ -101,12 +101,12 @@ pub enum QueryMsg {
 
 // ---------------------------------- events -----------------------------------
 
-#[grug_types::derive(Serde)]
-#[grug_types::event("mailbox_dispatch")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("mailbox_dispatch")]
 pub struct Dispatch(pub Message);
 
-#[grug_types::derive(Serde)]
-#[grug_types::event("mailbox_dispatch_v2")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("mailbox_dispatch_v2")]
 pub struct DispatchV2 {
     pub message: Message,
     pub message_id: Hash256,
@@ -114,35 +114,35 @@ pub struct DispatchV2 {
     pub index: u128,
 }
 
-#[grug_types::derive(Serde)]
-#[grug_types::event("mailbox_dispatch_id")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("mailbox_dispatch_id")]
 pub struct DispatchId {
     pub message_id: Hash256,
 }
 
-#[grug_types::derive(Serde)]
-#[grug_types::event("mailbox_process")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("mailbox_process")]
 pub struct Process {
     pub origin_domain: Domain,
     pub sender: Addr32,
     pub recipient: Addr32,
 }
 
-#[grug_types::derive(Serde)]
-#[grug_types::event("mailbox_process_id")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("mailbox_process_id")]
 pub struct ProcessId {
     pub message_id: Hash256,
 }
 
-#[grug_types::derive(Serde)]
-#[grug_types::event("post_dispatch")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("post_dispatch")]
 pub struct PostDispatch {
     pub message_id: Hash256,
     pub index: u128,
 }
 
-#[grug_types::derive(Serde)]
-#[grug_types::event("inserted_into_tree")]
+#[dango_primitives::derive(Serde)]
+#[dango_primitives::event("inserted_into_tree")]
 pub struct InsertedIntoTree {
     pub index: u128,
 }

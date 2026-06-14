@@ -1,6 +1,6 @@
-use {crate::pubsub::error::PubSubError, grug_app::AppError, grug_types::StdError};
+use {crate::pubsub::error::PubSubError, dango_app::AppError, dango_primitives::StdError};
 
-#[error_backtrace::backtrace]
+#[dango_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum IndexerError {
     #[error("sea_orm error: {0}")]
@@ -39,7 +39,7 @@ pub enum IndexerError {
     Persist(tempfile::PersistError),
 
     #[error(transparent)]
-    Persistence(disk_saver::error::Error),
+    Persistence(dango_disk_saver::error::Error),
 
     #[error("wrong event type")]
     WrongEventType,
@@ -62,20 +62,20 @@ pub enum IndexerError {
 
 macro_rules! parse_error {
     ($variant:ident, $e:expr) => {
-        grug_app::IndexerError::$variant {
+        dango_app::IndexerError::$variant {
             error: $e.to_string(),
             backtrace: $e.backtrace,
         }
     };
     ($variant:ident, $e:expr, $bt:expr) => {
-        grug_app::IndexerError::$variant {
+        dango_app::IndexerError::$variant {
             error: $e.to_string(),
             backtrace: $bt,
         }
     };
 }
 
-impl From<IndexerError> for grug_app::IndexerError {
+impl From<IndexerError> for dango_app::IndexerError {
     fn from(err: IndexerError) -> Self {
         match err {
             IndexerError::SeaOrm(e) => parse_error!(Database, e),
@@ -86,7 +86,7 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::TryFromInt(e) => parse_error!(Generic, e),
             IndexerError::App(be) => {
                 // For App errors, just wrap as generic since it's already processed
-                grug_app::IndexerError::Generic {
+                dango_app::IndexerError::Generic {
                     error: "nested app error".to_string(),
                     backtrace: be.backtrace,
                 }
@@ -95,7 +95,7 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::Io(e) => parse_error!(Io, e),
             IndexerError::Persist(e) => parse_error!(Io, e),
             IndexerError::Persistence(e) => parse_error!(Storage, e),
-            IndexerError::WrongEventType(backtrace) => grug_app::IndexerError::Hook {
+            IndexerError::WrongEventType(backtrace) => dango_app::IndexerError::Hook {
                 error: "wrong event type".to_string(),
                 backtrace,
             },

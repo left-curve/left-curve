@@ -7,26 +7,26 @@ use {
             user8, user9,
         },
     },
+    dango_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
+    dango_db_disk::DiskDb,
+    dango_db_memory::MemDb,
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
+    dango_hyperlane_types::{Addr32, mailbox},
+    dango_indexer_hooked::HookedIndexer,
+    dango_indexer_httpd::TendermintRpcClient,
+    dango_math::Uint128,
+    dango_primitives::{
+        Addr, Addressable, Binary, BlockInfo, Coins, Duration, Message, ResultExt, Timestamp, coins,
+    },
     dango_proposal_preparer::ProposalPreparer,
+    dango_temp_rocksdb::TempDataDir,
     dango_types::{
         constants::usdc,
         gateway::{Domain, Remote},
         warp,
     },
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
-    grug_db_disk::DiskDb,
-    grug_db_memory::MemDb,
-    grug_math::Uint128,
-    grug_types::{
-        Addr, Addressable, Binary, BlockInfo, Coins, Duration, Message, ResultExt, Timestamp, coins,
-    },
-    grug_vm_rust::RustVm,
-    hyperlane_types::{Addr32, mailbox},
-    indexer_hooked::HookedIndexer,
-    indexer_httpd::TendermintRpcClient,
+    dango_vm_rust::RustVm,
     std::sync::Arc,
-    temp_rocksdb::TempDataDir,
 };
 
 /// Configurable options for setting up a test.
@@ -151,8 +151,8 @@ pub async fn setup_test_naive_with_indexer_and_create_blocks(
 ) -> (
     TestSuiteNaiveWithIndexer,
     TestAccounts,
-    indexer_httpd::context::FullContext,
-    indexer_sql::TestDatabaseGuard,
+    dango_indexer_httpd::context::FullContext,
+    dango_indexer_sql::TestDatabaseGuard,
 ) {
     let (mut suite, mut accounts, _, _, _, httpd_context, _, _, db_guard) =
         setup_test_naive_with_indexer(test_opt).await;
@@ -181,10 +181,10 @@ pub async fn setup_test_naive_with_indexer(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::FullContext,
-    indexer_cache::context::Context,
-    indexer_clickhouse::context::Context,
-    indexer_sql::TestDatabaseGuard,
+    dango_indexer_httpd::context::FullContext,
+    dango_indexer_cache::context::Context,
+    dango_indexer_clickhouse::context::Context,
+    dango_indexer_sql::TestDatabaseGuard,
 ) {
     setup_test_with_indexer_pp_and_custom_genesis(
         NaiveProposalPreparer,
@@ -202,10 +202,10 @@ pub async fn setup_test_with_indexer(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::FullContext,
-    indexer_cache::context::Context,
-    indexer_clickhouse::context::Context,
-    indexer_sql::TestDatabaseGuard,
+    dango_indexer_httpd::context::FullContext,
+    dango_indexer_cache::context::Context,
+    dango_indexer_clickhouse::context::Context,
+    dango_indexer_sql::TestDatabaseGuard,
 ) {
     setup_test_with_indexer_and_custom_genesis(test_opt, GenesisOption::preset_test()).await
 }
@@ -224,10 +224,10 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::FullContext,
-    indexer_cache::context::Context,
-    indexer_clickhouse::context::Context,
-    indexer_sql::TestDatabaseGuard,
+    dango_indexer_httpd::context::FullContext,
+    dango_indexer_cache::context::Context,
+    dango_indexer_clickhouse::context::Context,
+    dango_indexer_sql::TestDatabaseGuard,
 ) {
     setup_test_with_indexer_pp_and_custom_genesis(
         ProposalPreparer::new_with_cache(),
@@ -247,19 +247,19 @@ pub async fn setup_test_with_indexer_pp_and_custom_genesis<PP>(
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    indexer_httpd::context::FullContext,
-    indexer_cache::context::Context,
-    indexer_clickhouse::context::Context,
-    indexer_sql::TestDatabaseGuard,
+    dango_indexer_httpd::context::FullContext,
+    dango_indexer_cache::context::Context,
+    dango_indexer_clickhouse::context::Context,
+    dango_indexer_sql::TestDatabaseGuard,
 )
 where
-    PP: grug_app::ProposalPreparer + Clone + Send + Sync + 'static,
+    PP: dango_app::ProposalPreparer + Clone + Send + Sync + 'static,
     AppError: From<<MemDb as Db>::Error> + From<<RustVm as Vm>::Error> + From<PP::Error>,
 {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or("postgres://postgres@localhost/grug_test".to_string());
 
-    let (builder, db_guard) = indexer_sql::IndexerBuilder::default()
+    let (builder, db_guard) = dango_indexer_sql::IndexerBuilder::default()
         .with_database_url(database_url)
         // Keep pool small to avoid exhausting server connections when tests run in parallel
         .with_database_max_connections(5)
@@ -270,10 +270,10 @@ where
 
     let sql_context = indexer.context.clone();
 
-    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache = dango_indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
-    let mut clickhouse_context = indexer_clickhouse::context::Context::new(
+    let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         format!(
             "http://{}:{}",
             std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
@@ -290,7 +290,8 @@ where
         clickhouse_context = clickhouse_context.with_mock();
     }
 
-    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
+    let clickhouse_indexer =
+        dango_indexer_clickhouse::indexer::Indexer::new(clickhouse_context.clone());
 
     let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
 
@@ -310,7 +311,7 @@ where
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
-    let httpd_context = indexer_httpd::context::FullContext::new(
+    let httpd_context = dango_indexer_httpd::context::FullContext::new(
         indexer_cache_context.clone(),
         sql_context,
         clickhouse_context.clone(),
@@ -380,7 +381,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     C: Clone + Into<Binary>,
     ID: Indexer,
-    PP: grug_app::ProposalPreparer,
+    PP: dango_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     let local_domain = genesis_opt.hyperlane.local_domain;

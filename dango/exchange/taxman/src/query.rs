@@ -1,7 +1,7 @@
 use {
     crate::CONFIG,
+    dango_primitives::{ImmutableCtx, Json, JsonSerExt, StdResult},
     dango_types::taxman::{Config, QueryMsg},
-    grug_types::{ImmutableCtx, Json, JsonSerExt, StdResult},
 };
 
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {

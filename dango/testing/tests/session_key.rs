@@ -1,20 +1,20 @@
 use {
+    dango_primitives::{Addressable, Coin, Coins, Duration, ResultExt},
     dango_testing::setup_test_naive,
     dango_types::constants::usdc,
-    grug_types::{Addressable, Coin, Coins, Duration, ResultExt},
     session_account::SessionAccount,
 };
 
 mod session_account {
     use {
+        dango_primitives::{
+            Addr, Addressable, ByteArray, Defined, JsonSerExt, Message, NonEmpty, SignData, Signer,
+            StdResult, Timestamp, Tx, Undefined, UnsignedTx,
+        },
         dango_testing::{TestAccount, create_signature, generate_random_key},
         dango_types::auth::{
             Credential, Metadata, Nonce, SessionCredential, SessionInfo, SignDoc, Signature,
             StandardCredential,
-        },
-        grug_types::{
-            Addr, Addressable, ByteArray, Defined, JsonSerExt, Message, NonEmpty, SignData, Signer,
-            StdResult, Timestamp, Tx, Undefined, UnsignedTx,
         },
         k256::ecdsa::SigningKey,
         std::ops::{Deref, DerefMut},

@@ -1,7 +1,7 @@
 use {
     async_trait::async_trait,
-    grug_app::{APP_CONFIG, CONFIG, Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
-    grug_types::{Config, Json},
+    dango_app::{APP_CONFIG, CONFIG, Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
+    dango_primitives::{Block, BlockOutcome, Config, Json, Storage},
     std::{
         collections::HashMap,
         sync::{
@@ -14,10 +14,10 @@ use {
 };
 
 // Re-export for convenience
-pub use grug_app::IndexerError;
+pub use dango_app::IndexerError;
 
 /// Composite indexer that owns the three production indexer components and
-/// orchestrates their per-block work as a single `grug_app::Indexer`.
+/// orchestrates their per-block work as a single `dango_app::Indexer`.
 ///
 /// The "Hooked" name is historical — earlier revisions of this crate held a
 /// dynamic `Arc<RwLock<Vec<Box<dyn Indexer>>>>` and broadcasted each trait
@@ -32,9 +32,9 @@ pub use grug_app::IndexerError;
 /// the per-block task map before letting the binary exit.
 #[derive(Clone)]
 pub struct HookedIndexer {
-    pub file: indexer_cache::Cache,
-    pub sql: indexer_sql::Indexer,
-    pub clickhouse: indexer_clickhouse::Indexer,
+    pub file: dango_indexer_cache::Cache,
+    pub sql: dango_indexer_sql::Indexer,
+    pub clickhouse: dango_indexer_clickhouse::Indexer,
     /// Set to true between `start` and `shutdown`.
     is_running: Arc<AtomicBool>,
     /// One join handle per in-flight `post_indexing` block. Inserted when the
@@ -44,9 +44,9 @@ pub struct HookedIndexer {
 
 impl HookedIndexer {
     pub fn new(
-        file: indexer_cache::Cache,
-        sql: indexer_sql::Indexer,
-        clickhouse: indexer_clickhouse::Indexer,
+        file: dango_indexer_cache::Cache,
+        sql: dango_indexer_sql::Indexer,
+        clickhouse: dango_indexer_clickhouse::Indexer,
     ) -> Self {
         Self {
             file,
@@ -68,7 +68,7 @@ impl HookedIndexer {
     /// `pre_indexing` reloads the payload and `post_indexing` flushes it to
     /// the SQL and Clickhouse stores.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn reindex(&self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
+    pub async fn reindex(&self, storage: &dyn Storage) -> IndexerResult<()> {
         let block = match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
                 // This happens when the chain starts at genesis
@@ -143,7 +143,7 @@ impl HookedIndexer {
 #[async_trait]
 impl Indexer for HookedIndexer {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn start(&mut self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
+    async fn start(&mut self, storage: &dyn Storage) -> IndexerResult<()> {
         if self.is_running.load(Ordering::Relaxed) {
             return Err(IndexerError::already_running());
         }
@@ -212,11 +212,7 @@ impl Indexer for HookedIndexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn index_block(
-        &self,
-        block: &grug_types::Block,
-        block_outcome: &grug_types::BlockOutcome,
-    ) -> IndexerResult<()> {
+    async fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
             return Err(IndexerError::not_running());
         }

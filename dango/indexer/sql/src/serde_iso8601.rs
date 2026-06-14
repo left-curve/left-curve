@@ -1,5 +1,5 @@
 use {
-    grug_types::Timestamp,
+    dango_primitives::Timestamp,
     sea_orm::entity::prelude::DateTime,
     serde::{Deserialize, Deserializer, Serializer},
     sqlx::types::chrono,

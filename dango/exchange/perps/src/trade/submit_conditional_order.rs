@@ -1,12 +1,12 @@
 use {
     crate::{PAIR_PARAMS, USER_STATES},
     anyhow::{anyhow, ensure},
+    dango_math::NumberConst,
     dango_order_book::{
         ConditionalOrder, ConditionalOrderId, ConditionalOrderPlaced, Dimensionless, NEXT_ORDER_ID,
         PairId, Quantity, TriggerDirection, UsdPrice, validate_slippage,
     },
-    grug_math::NumberConst,
-    grug_types::{MutableCtx, Response},
+    dango_primitives::{MutableCtx, Response},
 };
 
 pub fn submit_conditional_order(
@@ -89,13 +89,13 @@ mod tests {
     use {
         super::*,
         crate::{PAIR_PARAMS, PARAM, USER_STATES},
+        dango_math::{NumberConst, Uint64},
         dango_order_book::{
             Dimensionless, FundingPerUnit, NEXT_ORDER_ID, OrderId, Quantity, TriggerDirection,
             UsdPrice, UsdValue,
         },
+        dango_primitives::{Addr, Coins, MockContext, ResultExt, Storage},
         dango_types::perps::{PairParam, Param, Position, UserState},
-        grug_math::{NumberConst, Uint64},
-        grug_types::{Addr, Coins, MockContext, ResultExt, Storage},
         std::collections::BTreeMap,
     };
 

@@ -1,12 +1,12 @@
 use {
     anyhow::{anyhow, ensure},
-    dango_types::gateway::{RateLimit, RateLimitStatus},
-    grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Uint128},
-    grug_storage::{Item, Map},
-    grug_types::{
+    dango_math::{IsZero, MultiplyFraction, Number, NumberConst, Uint128},
+    dango_primitives::{
         Bound, DEFAULT_PAGE_LIMIT, Denom, Duration, ImmutableCtx, Inner, Order, QuerierExt,
         QuerierWrapper, StdError, StdResult, Storage, Timestamp,
     },
+    dango_storage::{Item, Map},
+    dango_types::gateway::{RateLimit, RateLimitStatus},
     std::collections::BTreeMap,
 };
 

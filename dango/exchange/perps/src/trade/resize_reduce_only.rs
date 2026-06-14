@@ -23,8 +23,8 @@ use {
         ReasonForOrderRemoval, decrease_liquidity_depths, increase_liquidity_depths,
         may_invert_price,
     },
+    dango_primitives::{Addr, EventBuilder, Order as IterationOrder, StdResult, Storage},
     dango_types::perps::UserState,
-    grug_types::{Addr, EventBuilder, Order as IterationOrder, StdResult, Storage},
 };
 
 /// Owned outcome of [`compute_resize_reduce_only_outcome`]. Carries the updated
@@ -257,10 +257,10 @@ pub fn resize_reduce_only_orders(
 mod tests {
     use {
         super::*,
+        dango_math::Uint64,
         dango_order_book::{FundingPerUnit, UsdPrice, UsdValue},
+        dango_primitives::{MockContext, Timestamp},
         dango_types::perps::{PairParam, Position},
-        grug_math::Uint64,
-        grug_types::{MockContext, Timestamp},
         std::collections::{BTreeMap, VecDeque},
     };
 

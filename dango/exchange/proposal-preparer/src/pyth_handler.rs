@@ -1,16 +1,16 @@
 use {
+    dango_primitives::{
+        Addr, Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper,
+        Shared, StdError, StdResult, Tx,
+    },
+    dango_pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    dango_pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     dango_types::{
         config::AppConfig,
         oracle::{ExecuteMsg, QueryPriceSourcesRequest},
         perps,
     },
-    grug_types::{
-        Addr, Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper,
-        Shared, StdError, StdResult, Tx,
-    },
     prost::bytes::Bytes,
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         fmt::Debug,
@@ -178,7 +178,7 @@ where
     }
 }
 
-impl<P> grug_app::ProposalPreparer for PythHandler<P>
+impl<P> dango_app::ProposalPreparer for PythHandler<P>
 where
     P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: Debug,
@@ -463,7 +463,7 @@ pub fn init_metrics() {
 mod tests {
     use {
         super::*,
-        grug_app::{NaiveQuerier, ProposalPreparer as _},
+        dango_app::{NaiveQuerier, ProposalPreparer as _},
     };
 
     /// Disabled handler must short-circuit `prepare_proposal` before touching

@@ -547,7 +547,7 @@ mod tests {
         super::*,
         assertor::*,
         chrono::NaiveDateTime,
-        grug_math::{NumberConst, Udec128_6},
+        dango_math::{NumberConst, Udec128_6},
         itertools::Itertools,
         std::{collections::VecDeque, str::FromStr},
     };
@@ -569,11 +569,11 @@ mod tests {
     ) -> crate::error::Result<PerpsPairPrice> {
         Ok(PerpsPairPrice {
             pair_id: pair_id.to_string(),
-            high: Udec128_6::raw(grug_math::Int::new(high)),
-            low: Udec128_6::raw(grug_math::Int::new(low)),
-            close: Udec128_6::raw(grug_math::Int::new(close)),
-            volume: Udec128_6::raw(grug_math::Int::new(volume)),
-            volume_usd: Udec128_6::raw(grug_math::Int::new(volume_usd)),
+            high: Udec128_6::raw(dango_math::Int::new(high)),
+            low: Udec128_6::raw(dango_math::Int::new(low)),
+            close: Udec128_6::raw(dango_math::Int::new(close)),
+            volume: Udec128_6::raw(dango_math::Int::new(volume)),
+            volume_usd: Udec128_6::raw(dango_math::Int::new(volume_usd)),
             created_at: NaiveDateTime::parse_from_str(created_at, "%Y-%m-%d %H:%M:%S%.f")?
                 .and_utc(),
             block_height,

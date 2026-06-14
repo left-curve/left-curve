@@ -4,8 +4,8 @@ use {
         graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{types::connection::*, *},
+    dango_indexer_sql::entity,
     dango_types::account_factory::UserIndex,
-    indexer_sql::entity,
     sea_orm::{
         ColumnTrait, Condition, JoinType, Order, QueryFilter, QueryOrder, QuerySelect,
         RelationTrait, Select,

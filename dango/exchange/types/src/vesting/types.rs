@@ -1,10 +1,10 @@
 use {
-    grug_math::{MathResult, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
-    grug_types::{Duration, Timestamp},
+    dango_math::{MathResult, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
+    dango_primitives::{Duration, Timestamp},
     std::cmp::min,
 };
 
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct Schedule {
     pub start_time: Timestamp,
     pub cliff: Duration,
@@ -32,7 +32,7 @@ impl Schedule {
     }
 }
 
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub enum VestingStatus {
     /// Position is actively being vested.
     Active(Schedule),
@@ -52,7 +52,7 @@ impl VestingStatus {
     }
 }
 
-#[grug_types::derive(Serde, Borsh)]
+#[dango_primitives::derive(Serde, Borsh)]
 pub struct Position {
     pub vesting_status: VestingStatus,
     pub total: Uint128,

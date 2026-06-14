@@ -1,18 +1,18 @@
 use {
+    dango_primitives::{Addressable, Coins, Empty, QuerierExt, ResultExt},
     dango_testing::{
         ContractBuilder, TestOption, UploadAndInstantiateOutcomeSuccess, setup_test_naive,
     },
-    grug_types::{Addressable, Coins, Empty, QuerierExt, ResultExt},
     tester::{MigrateMsg, QueryV1, QueryV2RequestV1, QueryV2RequestV2},
 };
 
 mod tester {
     use {
-        grug_storage::Item,
-        grug_types::{
+        dango_primitives::{
             Empty, ImmutableCtx, Json, JsonSerExt, MutableCtx, QueryRequest, Response, StdError,
             StdResult, SudoCtx,
         },
+        dango_storage::Item,
         serde::{Deserialize, Serialize},
     };
 

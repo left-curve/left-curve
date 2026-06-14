@@ -1,17 +1,17 @@
 use {
+    dango_primitives::{Addr, Coins, Empty, QuerierExt, ReplyOn, ResultExt},
     dango_testing::{ContractBuilder, TestAccounts, TestOption, TestSuiteNaive, setup_test_naive},
-    grug_types::{Addr, Coins, Empty, QuerierExt, ReplyOn, ResultExt},
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
 };
 
 mod replier {
     use {
-        grug_storage::Set,
-        grug_types::{
+        dango_primitives::{
             Coins, Empty, ImmutableCtx, Json, JsonSerExt, Message, MutableCtx, Order, QueryRequest,
             ReplyOn, Response, StdError, StdResult, SubMessage, SubMsgResult, SudoCtx,
         },
+        dango_storage::Set,
         serde::{Deserialize, Serialize},
     };
 

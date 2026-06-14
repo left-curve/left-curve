@@ -1,16 +1,16 @@
 use {
     crate::Secret,
     anyhow::anyhow,
+    dango_primitives::{
+        Addr, Addressable, Defined, JsonSerExt, MaybeDefined, Message, NonEmpty, QueryClient,
+        QueryClientExt, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx,
+    },
     dango_types::{
         account,
         account_factory::{self, UserIndex, UserIndexOrName},
         auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         config::AppConfig,
         signer::SequencedSigner,
-    },
-    grug_types::{
-        Addr, Addressable, Defined, JsonSerExt, MaybeDefined, Message, NonEmpty, QueryClient,
-        QueryClientExt, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx,
     },
 };
 
@@ -338,13 +338,13 @@ mod tests {
         crate::{Eip712, Secp256k1},
         dango_account_factory::USERS,
         dango_auth::{account::STATUS, authenticate_tx},
+        dango_primitives::{
+            AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, btree_map,
+        },
         dango_types::{
             account_factory::{User, Username},
             auth::AccountStatus,
             config::{AppAddresses, AppConfig},
-        },
-        grug_types::{
-            AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, btree_map,
         },
     };
 

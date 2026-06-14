@@ -2,8 +2,8 @@ use {
     crate::home_directory::HomeDirectory,
     clap::Subcommand,
     colored::Colorize,
-    grug_app::{Db, SimpleCommitment},
-    grug_db_disk::DiskDb,
+    dango_app::{Db, SimpleCommitment},
+    dango_db_disk::DiskDb,
     std::fs,
 };
 

@@ -7,8 +7,8 @@ use {
         },
     },
     anyhow::ensure,
+    dango_primitives::{EventBuilder, Inner, MutableCtx, NonEmpty, Response},
     dango_types::perps::{CancelOrderRequest, SubmitOrCancelOrderRequest, SubmitOrderRequest},
-    grug_types::{EventBuilder, Inner, MutableCtx, NonEmpty, Response},
 };
 
 /// Execute a sequence of submit / cancel actions atomically.

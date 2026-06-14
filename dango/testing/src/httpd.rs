@@ -4,13 +4,13 @@ use {
         setup_suite_with_db_and_vm,
     },
     anyhow::bail,
+    dango_app::SimpleCommitment,
+    dango_db_memory::MemDb,
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption},
+    dango_indexer_hooked::HookedIndexer,
+    dango_primitives::HttpdConfig,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::SimpleCommitment,
-    grug_db_memory::MemDb,
-    grug_types::HttpdConfig,
-    grug_vm_rust::{ContractWrapper, RustVm},
-    indexer_hooked::HookedIndexer,
+    dango_vm_rust::{ContractWrapper, RustVm},
     std::{
         collections::HashSet,
         net::TcpListener,
@@ -80,11 +80,11 @@ where
             Codes<ContractWrapper>,
             Contracts,
             MockValidatorSets,
-            indexer_sql::context::Context,
+            dango_indexer_sql::context::Context,
         ) + Send
         + Sync,
 {
-    let indexer = indexer_sql::IndexerBuilder::default();
+    let indexer = dango_indexer_sql::IndexerBuilder::default();
 
     let indexer = if let Some(url) = database_url {
         indexer.with_database_url(url)
@@ -98,14 +98,14 @@ where
 
     let sql_context = indexer.context.clone();
 
-    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache = dango_indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
     let indexer_context_callback = indexer.context.clone();
 
     // The mock httpd doesn't talk to a real Clickhouse — wire up a mocked
     // context so `HookedIndexer` can hold a real `ClickhouseIndexer` value.
-    let indexer_clickhouse_context = indexer_clickhouse::context::Context::new(
+    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         "http://localhost:8123".to_string(),
         "default".to_string(),
         "default".to_string(),
@@ -113,7 +113,7 @@ where
     )
     .with_mock();
     let clickhouse_indexer =
-        indexer_clickhouse::indexer::Indexer::new(indexer_clickhouse_context.clone());
+        dango_indexer_clickhouse::indexer::Indexer::new(indexer_clickhouse_context.clone());
 
     let hooked_indexer = HookedIndexer::new(indexer_cache, indexer, clickhouse_indexer);
 
@@ -141,7 +141,7 @@ where
 
     let app = suite.read().await.app.clone_without_indexer();
 
-    let dango_httpd_context = indexer_httpd::context::FullContext::new(
+    let dango_httpd_context = dango_indexer_httpd::context::FullContext::new(
         indexer_cache_context,
         sql_context,
         indexer_clickhouse_context,
@@ -158,7 +158,7 @@ where
     };
 
     let shutdown_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    indexer_httpd::server::run_server(
+    dango_indexer_httpd::server::run_server(
         &httpd_config,
         dango_httpd_context,
         shutdown_flag,

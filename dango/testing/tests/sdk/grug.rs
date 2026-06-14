@@ -1,13 +1,13 @@
 use {
     assertor::*,
     dango_genesis::GenesisOption,
+    dango_primitives::QueryClientExt,
     dango_sdk::HttpClient,
     dango_testing::{
         BlockCreation, Preset, TestOption, mock_httpd_get_socket_addr,
         mock_httpd_wait_for_server_ready,
     },
     dango_types::config::AppConfig,
-    grug_types::QueryClientExt,
 };
 
 #[tokio::test]

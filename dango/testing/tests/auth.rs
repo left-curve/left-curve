@@ -1,8 +1,8 @@
 use {
     dango_auth::MAX_NONCE_INCREASE,
+    dango_primitives::{Addressable, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
     dango_testing::setup_test_naive,
     dango_types::constants::dango,
-    grug_types::{Addressable, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
 };
 
 /// An account's first ever transaction typically have a nonce of 0. However, we

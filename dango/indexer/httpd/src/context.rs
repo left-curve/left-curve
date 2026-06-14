@@ -1,6 +1,6 @@
 use {
     crate::traits::{ConsensusClient, QueryApp},
-    indexer_sql::{
+    dango_indexer_sql::{
         EventCacheReader, entity::perps_trade::PerpsTrade, pubsub::PubSub,
         write::perps_trades::PerpsTradeCache,
     },
@@ -14,20 +14,20 @@ use {
 /// `base` field so `GrugQuery` resolvers work in either schema.
 #[derive(Clone)]
 pub struct MinimalContext {
-    pub grug_app: Arc<dyn QueryApp + Send + Sync>,
+    pub dango_app: Arc<dyn QueryApp + Send + Sync>,
 }
 
 impl MinimalContext {
-    pub fn new(grug_app: Arc<dyn QueryApp + Send + Sync>) -> Self {
-        Self { grug_app }
+    pub fn new(dango_app: Arc<dyn QueryApp + Send + Sync>) -> Self {
+        Self { dango_app }
     }
 }
 
 #[derive(Clone)]
 pub struct FullContext {
-    pub sql_context: indexer_sql::Context,
-    pub indexer_cache_context: indexer_cache::Context,
-    pub clickhouse_context: indexer_clickhouse::context::Context,
+    pub sql_context: dango_indexer_sql::Context,
+    pub indexer_cache_context: dango_indexer_cache::Context,
+    pub clickhouse_context: dango_indexer_clickhouse::context::Context,
     pub base: MinimalContext,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
@@ -40,10 +40,10 @@ pub struct FullContext {
 
 impl FullContext {
     pub fn new(
-        indexer_cache_context: indexer_cache::Context,
-        ctx: indexer_sql::Context,
-        clickhouse_context: indexer_clickhouse::context::Context,
-        grug_app: Arc<dyn QueryApp + Send + Sync>,
+        indexer_cache_context: dango_indexer_cache::Context,
+        ctx: dango_indexer_sql::Context,
+        clickhouse_context: dango_indexer_clickhouse::context::Context,
+        dango_app: Arc<dyn QueryApp + Send + Sync>,
         consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
         static_files_path: Option<String>,
     ) -> Self {
@@ -56,19 +56,21 @@ impl FullContext {
             perps_trade_cache: ctx.perps_trade_cache.clone(),
             event_cache: ctx.event_cache.as_reader(),
             sql_context: ctx,
-            base: MinimalContext::new(grug_app),
+            base: MinimalContext::new(dango_app),
             consensus_client,
             static_files_path,
         }
     }
 
-    pub fn grug_app(&self) -> &Arc<dyn QueryApp + Send + Sync> {
-        &self.base.grug_app
+    pub fn dango_app(&self) -> &Arc<dyn QueryApp + Send + Sync> {
+        &self.base.dango_app
     }
 
     /// Preload the perps trade cache from existing DB data so that new
     /// GraphQL subscribers immediately receive recent trades.
-    pub async fn start_perps_trade_cache(&self) -> Result<(), indexer_sql::error::IndexerError> {
+    pub async fn start_perps_trade_cache(
+        &self,
+    ) -> Result<(), dango_indexer_sql::error::IndexerError> {
         let mut cache = self.perps_trade_cache.write().await;
         cache.preload(&self.db).await
     }

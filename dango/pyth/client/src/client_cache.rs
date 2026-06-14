@@ -2,9 +2,9 @@ use {
     crate::{PythClient, PythClientTrait},
     async_stream::stream,
     async_trait::async_trait,
-    disk_saver::persistence::DiskPersistence,
-    grug_types::{Inner, Lengthy, NonEmpty},
-    pyth_types::{LeEcdsaMessage, PriceUpdate, PythId, PythLazerSubscriptionDetails},
+    dango_disk_saver::persistence::DiskPersistence,
+    dango_primitives::{Inner, Lengthy, NonEmpty},
+    dango_pyth_types::{LeEcdsaMessage, PriceUpdate, PythId, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         collections::HashMap,

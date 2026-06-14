@@ -5,10 +5,10 @@ use {
         ASKS, BIDS, ClientOrderId, LimitOrder, OrderId, OrderKey, PairId, ReasonForOrderRemoval,
         remove_order,
     },
-    dango_types::perps::{PairParam, UserState},
-    grug_types::{
+    dango_primitives::{
         Addr, EventBuilder, MutableCtx, Order as IterationOrder, Response, StdResult, Storage,
     },
+    dango_types::perps::{PairParam, UserState},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -269,15 +269,15 @@ mod tests {
     use {
         super::*,
         crate::state::{PAIR_PARAMS, USER_STATES},
+        dango_math::Uint64,
         dango_order_book::{
             ASKS, BIDS, FundingPerUnit, LimitOrder, OrderKey, OrderRemoved, PairId, Quantity,
             UsdPrice, UsdValue,
         },
-        dango_types::perps::{PairParam, Position, UserState},
-        grug_math::Uint64,
-        grug_types::{
+        dango_primitives::{
             Addr, Coins, EventName, JsonDeExt, MockContext, ResultExt, Storage, Timestamp,
         },
+        dango_types::perps::{PairParam, Position, UserState},
         std::collections::{BTreeMap, VecDeque},
     };
 

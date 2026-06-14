@@ -1,7 +1,7 @@
-use grug_types::{Duration, Timestamp};
+use dango_primitives::{Duration, Timestamp};
 
 // Re-use the same mock chain ID from Grug test suite.
-pub use grug_types::MOCK_CHAIN_ID;
+pub use dango_primitives::MOCK_CHAIN_ID;
 
 pub const MOCK_GENESIS_TIMESTAMP: Timestamp = Timestamp::from_days(365);
 

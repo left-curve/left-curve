@@ -12,9 +12,9 @@
 
 use {
     anyhow::{Context, Result},
+    dango_primitives::EventName,
     dango_sdk::{HttpClient, PageInfo, perps_events},
     dango_types::perps::OrderFilled,
-    grug_types::EventName,
     serde::Serialize,
 };
 
