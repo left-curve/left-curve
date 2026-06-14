@@ -1,7 +1,7 @@
 #[cfg(feature = "metrics")]
 use crate::{
     graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics},
-    metrics::init_grug_query_metrics,
+    metrics::init_core_query_metrics,
 };
 #[cfg(feature = "tracing")]
 use async_graphql::extensions as AsyncGraphqlExtensions;
@@ -33,7 +33,7 @@ pub fn build_full_schema(app_ctx: FullContext) -> FullSchema {
     #[cfg(feature = "metrics")]
     {
         init_graphql_metrics();
-        init_grug_query_metrics();
+        init_core_query_metrics();
     }
 
     let block_transactions_loader = DataLoader::new(

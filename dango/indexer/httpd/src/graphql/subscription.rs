@@ -1,6 +1,6 @@
 use {
     account::AccountSubscription, async_graphql::*, block::BlockSubscription,
-    clickhouse::ClickhouseSubscription, event::EventSubscription, grug::GrugSubscription,
+    clickhouse::ClickhouseSubscription, core::CoreSubscription, event::EventSubscription,
     message::MessageSubscription, perps_trade::PerpsTradeSubscription,
     transaction::TransactionSubscription, transfer::TransferSubscription,
 };
@@ -8,8 +8,8 @@ use {
 pub mod account;
 pub mod block;
 pub mod clickhouse;
+pub mod core;
 pub mod event;
-pub mod grug;
 pub mod message;
 pub mod perps_trade;
 pub mod transaction;
@@ -23,7 +23,7 @@ pub struct IndexerSubscription(
     TransactionSubscription,
     MessageSubscription,
     EventSubscription,
-    GrugSubscription,
+    CoreSubscription,
 );
 
 #[derive(MergedSubscription, Default)]

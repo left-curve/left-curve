@@ -2,7 +2,7 @@ use {crate::VmError, std::mem, wasmer::ValueType};
 
 /// Descriptor of a region in a Wasm instance's memory.
 ///
-/// In Grug's Wasm VM, this is used for calling a contract with dynamically-sized
+/// In Dango's Wasm VM, this is used for calling a contract with dynamically-sized
 /// input data. To achieve this,
 ///
 /// - The host first calls the contract's `allocate` function, informing the

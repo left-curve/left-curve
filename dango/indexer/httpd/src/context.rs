@@ -11,7 +11,7 @@ use {
 
 /// Chain-only context — what `cfg.indexer.enabled = false` mode runs against.
 /// Holds just the chain query app. `FullContext` embeds one of these as its
-/// `base` field so `GrugQuery` resolvers work in either schema.
+/// `base` field so `CoreQuery` resolvers work in either schema.
 #[derive(Clone)]
 pub struct MinimalContext {
     pub dango_app: Arc<dyn QueryApp + Send + Sync>,

@@ -1,6 +1,6 @@
-# Grug/Dango Monorepo
+# Dango Monorepo
 
-Rust + TypeScript monorepo: smart contracts (Dango), node (Grug), indexers, SDK, and UI.
+Rust + TypeScript monorepo: smart contracts (Dango), node, indexers, SDK, and UI.
 
 ## Build & Test
 

@@ -11,7 +11,7 @@ impl<S: Secret> Signer for SingleSigner<S> {
         msgs: NonEmpty<Vec<Message>>,
         chain_id: &str,
         gas_limit: u64,
-    ) -> grug::StdResult<grug::Tx>;
+    ) -> dango_primitives::StdResult<dango_primitives::Tx>;
 }
 ```
 
@@ -23,7 +23,7 @@ From `impl Signer` (requires `Defined<UserIndex> + Defined<Nonce>`).
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, SingleSigner},
-    grug::{BroadcastClient, Coins, Message, NonEmpty, Signer},
+    dango_primitives::{BroadcastClient, Coins, Message, NonEmpty, Signer},
 };
 
 async fn submit(
@@ -31,7 +31,7 @@ async fn submit(
     signer: &mut SingleSigner<impl dango_sdk::Secret>,
 ) -> Result<()> {
     let messages = NonEmpty::new(vec![
-        Message::transfer(grug::Addr::mock(1), Coins::one("bridge/usdc", 100_u128)?)?,
+        Message::transfer(dango_primitives::Addr::mock(1), Coins::one("bridge/usdc", 100_u128)?)?,
     ])?;
     let tx = signer.sign_transaction(messages, "dango-1", 1_000_000)?;
     let _  = http.broadcast_tx(tx).await?;

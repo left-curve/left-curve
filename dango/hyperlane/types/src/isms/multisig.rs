@@ -11,7 +11,7 @@ pub struct ValidatorSet {
     pub threshold: u32,
     // A validator is identified by an Ethereum address. However we avoid using
     // the `Addr` type here (although we use the same address format as Ethereum)
-    // to avoid confusion, as it's not a Grug/Dango address.
+    // to avoid confusion, as it's not a Dango address.
     pub validators: BTreeSet<HexByteArray<20>>,
 }
 

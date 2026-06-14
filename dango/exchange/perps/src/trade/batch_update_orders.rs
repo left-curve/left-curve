@@ -15,9 +15,9 @@ use {
 ///
 /// Each action is applied sequentially to a single shared `&mut dyn
 /// Storage`; later actions observe the state written by earlier ones
-/// (grug's `Buffer` makes in-call writes visible to subsequent reads).
+/// (the engine's `Buffer` makes in-call writes visible to subsequent reads).
 /// If any action returns `Err`, the `?` propagation bubbles the error
-/// out of `execute`, grug drops the buffer without flushing, and every
+/// out of `execute`, the engine drops the buffer without flushing, and every
 /// prior write in this batch is discarded — no partial state persists.
 ///
 /// Events accumulate into a single `EventBuilder` in action order and

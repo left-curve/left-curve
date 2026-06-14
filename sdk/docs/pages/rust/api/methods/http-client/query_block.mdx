@@ -5,7 +5,7 @@ Fetch a block by height. Hits the REST endpoint `GET /block/info[/{height}]`.
 ## Signature
 
 ```rust
-async fn query_block(&self, height: Option<u64>) -> Result<grug::Block, anyhow::Error>;
+async fn query_block(&self, height: Option<u64>) -> Result<dango_primitives::Block, anyhow::Error>;
 ```
 
 From `impl BlockClient for HttpClient`.
@@ -16,7 +16,7 @@ From `impl BlockClient for HttpClient`.
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::BlockClient,
+    dango_primitives::BlockClient,
 };
 
 #[tokio::main]

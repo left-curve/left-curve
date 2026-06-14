@@ -1,21 +1,21 @@
 #[cfg(feature = "metrics")]
 use crate::{
     graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics},
-    metrics::init_grug_query_metrics,
+    metrics::init_core_query_metrics,
 };
 #[cfg(feature = "tracing")]
 use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
     crate::{
         context::MinimalContext,
-        graphql::{query::grug::GrugQuery, telemetry::SentryExtension},
+        graphql::{query::core::CoreQuery, telemetry::SentryExtension},
     },
     async_graphql::{EmptyMutation, EmptySubscription, MergedObject, Schema},
 };
 
 #[derive(MergedObject, Default)]
 #[graphql(name = "Query")] // renamed for backward compatibility
-pub struct MinimalQuery(pub GrugQuery);
+pub struct MinimalQuery(pub CoreQuery);
 
 pub type MinimalSchema = Schema<MinimalQuery, EmptyMutation, EmptySubscription>;
 
@@ -23,7 +23,7 @@ pub fn build_minimal_schema(app_ctx: MinimalContext) -> MinimalSchema {
     #[cfg(feature = "metrics")]
     {
         init_graphql_metrics();
-        init_grug_query_metrics();
+        init_core_query_metrics();
     }
 
     #[allow(unused_mut)]

@@ -31,7 +31,7 @@ Each layer has a fixed signature contract and a fixed role:
   `Result<()>`; side effects are written to the passed-in `storage` and
   `events`. The caller assembles the `Response`. Called by other outer
   or intermediate functions — in particular, `batch_update_orders`'s
-  outer calls several intermediates in a loop, and the grug `Buffer`
+  outer calls several intermediates in a loop, and the engine's `Buffer`
   provides atomic rollback if any one returns `Err`.
 
 - **inner**: pure logic. Takes caller-persistable state by shared
@@ -64,7 +64,7 @@ fields each. The clone cost at function entry is negligible.
 
 ### Explicitly NOT "caller-persistable state"
 
-- **`&mut dyn Storage`** — grug handles transaction-level rollback at
+- **`&mut dyn Storage`** — the engine handles transaction-level rollback at
   the block boundary, so storage writes that occur before an `Err` are
   discarded automatically. `&mut dyn Storage` stays.
 - **`&mut OracleQuerier`** — it's a query cache, not caller state. A

@@ -1495,7 +1495,7 @@ mod cosmwasm_tests {
         // This is similar to calling range() directly, but added here for completeness / prefix
         // type checks
 
-        // Grug note:
+        // Dango note:
         // we changed this. This test doesn't make sense now.
         // it's like to call only range. With prefix, the IK::Prefix in this case is ().
         let all = DATA
@@ -1812,8 +1812,8 @@ mod cosmwasm_tests {
         let pk4 = ("2", "2", "5630");
         map.save(&mut storage, pk4, &data4).unwrap();
 
-        // Grug implementation:
-        // on grug the prefix for (A, B, C) is A.
+        // Dango implementation:
+        // in the store, the prefix for (A, B, C) is A.
         // Cosmwasm has (A, B) as prefix.
 
         // let's prefix-range and iterate

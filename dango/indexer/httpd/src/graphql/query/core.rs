@@ -14,9 +14,9 @@ use {
 use {metrics::histogram, std::time::Instant};
 
 #[derive(Default, Debug)]
-pub struct GrugQuery {}
+pub struct CoreQuery {}
 
-impl GrugQuery {
+impl CoreQuery {
     pub async fn _query_app(
         app_ctx: &MinimalContext,
         request: Query,
@@ -85,7 +85,7 @@ impl GrugQuery {
 }
 
 #[Object]
-impl GrugQuery {
+impl CoreQuery {
     async fn query_app(
         &self,
         ctx: &async_graphql::Context<'_>,

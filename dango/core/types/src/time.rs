@@ -118,7 +118,7 @@ impl Duration {
         self.into_days() / DAYS_PER_WEEK
     }
 
-    /// Convert the `grug::Duration` to a `std::time::Duration`.
+    /// Convert the `Duration` to a `std::time::Duration`.
     ///
     /// ## Panics
     ///
@@ -151,7 +151,7 @@ impl Duration {
 
 #[cfg(feature = "chrono")]
 impl Timestamp {
-    /// Convert the `grug::Timestamp` to a `chrono::DateTime<Utc>`.
+    /// Convert the `Timestamp` to a `chrono::DateTime<Utc>`.
     ///
     /// ## Panics
     ///

@@ -173,7 +173,7 @@ async fn batch_atomic_replace() {
 
 /// Within one batch, a `Cancel(OneByClientOrderId(42))` releases the
 /// client id so a subsequent `Submit` carrying the same client id
-/// succeeds — the two actions see each other's writes via grug's
+/// succeeds — the two actions see each other's writes via the engine's
 /// in-call `Buffer`.
 #[tokio::test]
 async fn batch_reuse_client_order_id() {

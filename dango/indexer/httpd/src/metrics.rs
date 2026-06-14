@@ -30,22 +30,22 @@ impl Drop for GaugeGuard {
     }
 }
 
-/// Register the chain-side query histograms emitted by `GrugQuery` resolvers.
+/// Register the chain-side query histograms emitted by `CoreQuery` resolvers.
 ///
 /// Distinct from `crate::graphql::extensions::metrics::init_graphql_metrics`,
 /// which registers async-graphql operation-level histograms. Both are
 /// idempotent describe-only calls.
-pub fn init_grug_query_metrics() {
+pub fn init_core_query_metrics() {
     describe_histogram!(
         "http.grug.query_app.duration",
-        "Grug query_app duration in seconds"
+        "Dango query_app duration in seconds"
     );
     describe_histogram!(
         "http.grug.query_store.duration",
-        "Grug query_store duration in seconds"
+        "Dango query_store duration in seconds"
     );
     describe_histogram!(
         "http.grug.query_status.duration",
-        "Grug query_status duration in seconds"
+        "Dango query_status duration in seconds"
     );
 }

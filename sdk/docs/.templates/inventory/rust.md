@@ -32,7 +32,7 @@ Macro-generated per-query paginators (each: `pub async fn(&self, page_size: i64,
 - `paginate_messages` → `messages::MessagesMessagesNodes`
 
 Trait methods reachable on `HttpClient` (via `#[async_trait]` impls of grug traits — these are the canonical "Client actions"):
-- `impl QueryClient` (`type Error = anyhow::Error; type Proof = grug::Proof;`)
+- `impl QueryClient` (`type Error = anyhow::Error; type Proof = dango_primitives::Proof;`)
   - `async fn query_app(&self, query: Query, height: Option<u64>) -> Result<QueryResponse, Self::Error>`
   - `async fn query_store(&self, key: Binary, height: Option<u64>, prove: bool) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error>`
   - `async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>`
@@ -131,7 +131,7 @@ Implementors:
 Encrypted-on-disk container for a 32-byte private key (AES-256-GCM + PBKDF2-HMAC-SHA256, 600 000 iters, 16-byte salt, 12-byte nonce). Source: `dango/sdk/src/keystore.rs`
 
 Type:
-- `pub struct Keystore` (derives `grug::derive(Serde)`) with public fields `pk: ByteArray<33>`, `salt: ByteArray<16>`, `nonce: ByteArray<12>`, `ciphertext: Binary`
+- `pub struct Keystore` (derives `dango_primitives::derive(Serde)`) with public fields `pk: ByteArray<33>`, `salt: ByteArray<16>`, `nonce: ByteArray<12>`, `ciphertext: Binary`
 
 Static methods (no `impl Secret` here — `Keystore` is just a file format):
 - `pub fn from_file<F, P>(filename: F, password: P) -> anyhow::Result<[u8; 32]> where F: AsRef<Path>, P: AsRef<[u8]>` — reads the file, decrypts, returns the raw 32-byte private key (caller wraps it in `Secp256k1::from_bytes` / `Eip712::from_bytes`)
@@ -166,7 +166,7 @@ Everywhere else the SDK returns `anyhow::Result<T>` / `Result<T, anyhow::Error>`
 - `examples/subscribe_order_filled.rs`, `examples/trade_history_csv.rs` — examples, not crate API
 - `dango/sdk/cli/` — separate `dango-sdk-cli` binary crate, out of scope for the library inventory
 - `tests/*.rs` — integration tests, not API
-- `dango_auth::EIP155_CHAIN_ID`, `dango_types::auth::*`, `grug::*` — used in signatures but owned by other crates; document those crates in their own context if needed (the docs site only exposes `dango-sdk`'s own re-exports)
+- `dango_auth::EIP155_CHAIN_ID`, `dango_types::auth::*`, `dango_primitives::*` — used in signatures but owned by other crates; document those crates in their own context if needed (the docs site only exposes `dango-sdk`'s own re-exports)
 
 ## Verification TODOs (drafters must confirm before writing)
 - `SubscriptionStream<T>` is `Send` but the trait bound says `dyn Stream<...> + Send` (no `Sync`). Confirm whether `tokio::spawn(stream.for_each(...))` works in practice (it should, since `Send` is sufficient for `tokio::spawn`'s future). Also note streams are **`Pin<Box<dyn ...>>`** — drafters writing `let mut stream = ...; while let Some(x) = stream.next().await {}` do not need to manually `Box::pin`.

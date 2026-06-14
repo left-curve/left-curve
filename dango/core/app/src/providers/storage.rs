@@ -2,7 +2,7 @@ use dango_primitives::{Order, Record, Storage, concat, increment_last_byte, trim
 
 /// Provides access to an account's storage to the VM.
 ///
-/// Essentially, this is a prefixed key-value storage. In Grug, the prefix is
+/// Essentially, this is a prefixed key-value storage. In Dango, the prefix is
 /// the single byte `b"w"` (referring to Wasm) followed by the account address.
 #[derive(Clone)]
 pub struct StorageProvider {

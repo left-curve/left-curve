@@ -3,7 +3,7 @@ use {crate::metrics::GaugeGuard, std::sync::Arc};
 use {
     crate::{
         graphql::{
-            query::grug::GrugQuery,
+            query::core::CoreQuery,
             types::{query_response::QueryResponseWithBlockHeight, status::Status, store::Store},
         },
         subscription_limiter::{acquire_subscription, guard_subscription_stream},
@@ -14,10 +14,10 @@ use {
 };
 
 #[derive(Default)]
-pub struct GrugSubscription;
+pub struct CoreSubscription;
 
 #[Subscription]
-impl GrugSubscription {
+impl CoreSubscription {
     async fn query_app<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
@@ -44,7 +44,7 @@ impl GrugSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
-        let initial_response = GrugQuery::_query_app(&app_ctx.base, request.clone(), None).await?;
+        let initial_response = CoreQuery::_query_app(&app_ctx.base, request.clone(), None).await?;
         let latest_block_height = initial_response.block_height;
 
         Ok(guard_subscription_stream(
@@ -73,7 +73,7 @@ impl GrugSubscription {
                         let _guard = gauge_guard.clone();
                         let request = request.clone();
 
-                        async move { GrugQuery::_query_app(&app_ctx.base, request, None).await }
+                        async move { CoreQuery::_query_app(&app_ctx.base, request, None).await }
                     }),
             ),
             sub_guard,
@@ -108,7 +108,7 @@ impl GrugSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response =
-            GrugQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await?;
+            CoreQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await?;
         let latest_block_height = initial_response.block_height;
 
         Ok(
@@ -139,7 +139,7 @@ impl GrugSubscription {
                             let key = key.clone();
 
                             async move {
-                                GrugQuery::_query_store(&app_ctx.base, key, None, prove).await
+                                CoreQuery::_query_store(&app_ctx.base, key, None, prove).await
                             }
                         }),
                 ),
@@ -173,7 +173,7 @@ impl GrugSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
-        let initial_response = GrugQuery::_query_status(&app_ctx.base).await;
+        let initial_response = CoreQuery::_query_status(&app_ctx.base).await;
         let latest_block_height = app_ctx.base.dango_app.last_finalized_block().await?.height;
 
         Ok(guard_subscription_stream(
@@ -201,7 +201,7 @@ impl GrugSubscription {
                         #[cfg(feature = "metrics")]
                         let _guard = gauge_guard.clone();
 
-                        async { GrugQuery::_query_status(&app_ctx.base).await }
+                        async { CoreQuery::_query_status(&app_ctx.base).await }
                     }),
             ),
             sub_guard,

@@ -6,7 +6,7 @@ use {
 /// When serializing to JSON, gives an pair of brackets: `{}`.
 /// When serializing with Borsh, gives empty bytes: ``.
 /// Useful for use in contract messages when there isn't any intended inputs, or
-/// in contract storage to represent empty value (e.g. in `grug::Set`).
+/// in contract storage to represent empty value (e.g. in `dango_storage::Set`).
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
 )]

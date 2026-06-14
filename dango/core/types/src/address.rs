@@ -17,7 +17,7 @@ macro_rules! addr {
 
 /// An account address.
 ///
-/// In Grug, addresses are of 20-byte length, in Hex encoding and the `0x` prefix.
+/// In Dango, addresses are of 20-byte length, in Hex encoding and the `0x` prefix.
 /// In comparison, in the "vanilla" CosmWasm, addresses are either 20- or 32-byte,
 /// in Bech32 encoding. The last 6 ASCII characters are the checksum.
 ///
@@ -30,7 +30,7 @@ macro_rules! addr {
 /// versions of the same type, one "unchecked" version with `String`s, one
 /// "checked" version with `Addr`s.
 ///
-/// In Grug, addresses are validated during deserialization. If deserialization
+/// In Dango, addresses are validated during deserialization. If deserialization
 /// doesn't throw an error, you can be sure the address is valid. Therefore it
 /// is safe to use `Addr`s in JSON messages.
 pub type Addr = EncodedBytes<[u8; 20], AddrEncoder>;
