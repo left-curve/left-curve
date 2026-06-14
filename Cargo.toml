@@ -149,8 +149,8 @@ roaring                     = "0.11"
 rocksdb                     = "0.24"
 sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
 sea-orm-migration           = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"] }
-sentry                      = { version = "0.47", features = ["log", "logs", "tracing"] }
-sentry-actix                = "0.47"
+sentry                      = { version = "0.48", features = ["log", "logs", "tracing"] }
+sentry-actix                = "0.48"
 serde                       = "1"
 serde_json                  = "1"
 serde_with                  = "3"
