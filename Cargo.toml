@@ -70,6 +70,7 @@ rust-version  = "1.89" # clickhouse-rs 0.14 requires rust 1.89+
 version       = "0.0.0"
 
 [workspace.dependencies]
+# --------------------------- External dependencies ----------------------------
 actix-codec                 = "0.5"
 actix-cors                  = "0.7"
 actix-files                 = "0"
@@ -178,16 +179,20 @@ url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "7"
 wasmer-middlewares          = "7"
-
-# Left curve packages
+# ----------------------------- Local dependencies -----------------------------
 dango-account               = { path = "dango/exchange/account" }
 dango-account-factory       = { path = "dango/exchange/account-factory" }
 dango-app                   = { path = "dango/core/app" }
 dango-auth                  = { path = "dango/exchange/auth" }
+dango-backtrace             = { path = "dango/utils/backtrace" }
 dango-bank                  = { path = "dango/exchange/bank" }
+dango-config-parser         = { path = "dango/utils/config-parser" }
 dango-crypto                = { path = "dango/core/crypto" }
 dango-db-disk               = { path = "dango/core/db/disk" }
 dango-db-memory             = { path = "dango/core/db/memory" }
+dango-disk-saver            = { path = "dango/utils/disk-saver" }
+dango-dyn-event             = { path = "dango/utils/dyn-event" }
+dango-eth-utils             = { path = "dango/utils/eth" }
 dango-ffi                   = { path = "dango/core/ffi" }
 dango-gateway               = { path = "dango/exchange/gateway" }
 dango-genesis               = { path = "dango/exchange/genesis" }
@@ -195,6 +200,7 @@ dango-hyperlane-ism         = { path = "dango/hyperlane/isms/multisig" }
 dango-hyperlane-mailbox     = { path = "dango/hyperlane/mailbox" }
 dango-hyperlane-types       = { path = "dango/hyperlane/types" }
 dango-hyperlane-va          = { path = "dango/hyperlane/va" }
+dango-identity              = { path = "dango/utils/identity" }
 dango-indexer-cache         = { path = "dango/indexer/cache" }
 dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-graphql-types = { path = "dango/indexer/graphql-types" }
@@ -215,6 +221,7 @@ dango-pyth-types            = { path = "dango/pyth/types" }
 dango-sdk                   = { path = "dango/sdk" }
 dango-storage               = { path = "dango/core/storage" }
 dango-taxman                = { path = "dango/exchange/taxman" }
+dango-temp-rocksdb          = { path = "dango/utils/temp-rocksdb" }
 dango-tester                = { path = "dango/core/tester" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/exchange/types" }
@@ -224,15 +231,6 @@ dango-vm-hybrid             = { path = "dango/core/vm/hybrid" }
 dango-vm-rust               = { path = "dango/core/vm/rust" }
 dango-vm-wasm               = { path = "dango/core/vm/wasm" }
 dango-warp                  = { path = "dango/exchange/warp" }
-
-# Utilities
-dango-backtrace     = { path = "dango/utils/backtrace" }
-dango-config-parser = { path = "dango/utils/config-parser" }
-dango-disk-saver    = { path = "dango/utils/disk-saver" }
-dango-dyn-event     = { path = "dango/utils/dyn-event" }
-dango-eth-utils     = { path = "dango/utils/eth" }
-dango-identity      = { path = "dango/utils/identity" }
-dango-temp-rocksdb  = { path = "dango/utils/temp-rocksdb" }
 
 [profile.release]
 codegen-units    = 1
