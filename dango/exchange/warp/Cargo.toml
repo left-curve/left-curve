@@ -10,9 +10,9 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow          = { workspace = true }
-dango-types     = { workspace = true }
-dango-math       = { workspace = true }
-dango-storage    = { workspace = true }
-dango-primitives      = { workspace = true }
+anyhow                = { workspace = true }
 dango-hyperlane-types = { workspace = true }
+dango-math            = { workspace = true }
+dango-primitives      = { workspace = true }
+dango-storage         = { workspace = true }
+dango-types           = { workspace = true }

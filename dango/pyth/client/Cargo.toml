@@ -16,12 +16,12 @@ metrics = ["dep:metrics"]
 anyhow              = { workspace = true }
 async-stream        = { workspace = true }
 async-trait         = { workspace = true }
-dango-disk-saver          = { workspace = true }
-dango-primitives          = { workspace = true }
+dango-disk-saver    = { workspace = true }
+dango-primitives    = { workspace = true }
+dango-pyth-types    = { workspace = true }
 metrics             = { workspace = true, optional = true }
 pyth-lazer-client   = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
-dango-pyth-types          = { workspace = true }
 reqwest             = { workspace = true }
 tokio               = { workspace = true }
 tokio-stream        = { workspace = true }

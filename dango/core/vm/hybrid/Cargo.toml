@@ -10,10 +10,9 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-dango-backtrace = { workspace = true }
 dango-app        = { workspace = true }
-dango-primitives      = { workspace = true }
+dango-backtrace  = { workspace = true }
+dango-primitives = { workspace = true }
 dango-vm-rust    = { workspace = true }
 dango-vm-wasm    = { workspace = true }
-thiserror       = { workspace = true }
-
+thiserror        = { workspace = true }

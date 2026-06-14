@@ -10,13 +10,13 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-elsa            = { workspace = true }
-dango-backtrace = { workspace = true }
 dango-app        = { workspace = true }
-dango-primitives      = { workspace = true }
-serde           = { workspace = true }
-thiserror       = { workspace = true }
+dango-backtrace  = { workspace = true }
+dango-primitives = { workspace = true }
+elsa             = { workspace = true }
+serde            = { workspace = true }
+thiserror        = { workspace = true }
 
 [dev-dependencies]
 dango-math = { workspace = true }
-test-case = { workspace = true }
+test-case  = { workspace = true }

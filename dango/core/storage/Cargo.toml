@@ -14,13 +14,13 @@ default = ["macros"]
 macros  = ["dep:dango-macros"]
 
 [dependencies]
-bnum        = { workspace = true }
-borsh       = { workspace = true }
-dango-macros = { workspace = true, optional = true }
-dango-math   = { workspace = true }
-dango-primitives  = { workspace = true }
-prost       = { workspace = true }
-serde       = { workspace = true }
+bnum             = { workspace = true }
+borsh            = { workspace = true }
+dango-macros     = { workspace = true, optional = true }
+dango-math       = { workspace = true }
+dango-primitives = { workspace = true }
+prost            = { workspace = true }
+serde            = { workspace = true }
 
 [dev-dependencies]
 dango-backtrace = { workspace = true }

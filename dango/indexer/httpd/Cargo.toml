@@ -14,37 +14,37 @@ path = "src/lib.rs"
 
 [features]
 metrics = ["dep:actix-web-metrics", "dep:metrics"]
-tracing = ["dep:tracing", "dango-app/tracing", "dango-indexer-sql/tracing"]
+tracing = ["dango-app/tracing", "dango-indexer-sql/tracing", "dep:tracing"]
 
 [dependencies]
-actix-cors              = { workspace = true }
-actix-files             = { workspace = true }
-actix-web               = { workspace = true }
-actix-web-metrics       = { workspace = true, optional = true }
-anyhow                  = { workspace = true }
-async-graphql           = { workspace = true, features = ["bigdecimal"] }
-async-graphql-actix-web = { workspace = true }
-async-trait             = { workspace = true }
-chrono                  = { workspace = true }
-dango-types             = { workspace = true, features = ["async-graphql"] }
-dango-backtrace         = { workspace = true }
-futures                 = { workspace = true }
-futures-util            = { workspace = true }
+actix-cors               = { workspace = true }
+actix-files              = { workspace = true }
+actix-web                = { workspace = true }
+actix-web-metrics        = { workspace = true, optional = true }
+anyhow                   = { workspace = true }
+async-graphql            = { workspace = true, features = ["bigdecimal"] }
+async-graphql-actix-web  = { workspace = true }
+async-trait              = { workspace = true }
+chrono                   = { workspace = true }
 dango-app                = { workspace = true, features = ["tracing"] }
-dango-primitives              = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
-dango-indexer-cache           = { workspace = true }
-dango-indexer-clickhouse      = { workspace = true, features = ["async-graphql"] }
-dango-indexer-sql             = { workspace = true, features = ["async-graphql"] }
-itertools               = { workspace = true }
-metrics                 = { workspace = true, optional = true }
-num_cpus                = { workspace = true }
-sea-orm                 = { workspace = true }
-sentry                  = { workspace = true }
-sentry-actix            = { workspace = true }
-serde                   = { workspace = true }
-serde_json              = { workspace = true }
-tendermint              = { workspace = true }
-tendermint-rpc          = { workspace = true, features = ["http-client"] }
-thiserror               = { workspace = true }
-tokio                   = { workspace = true }
-tracing                 = { workspace = true, optional = true }
+dango-backtrace          = { workspace = true }
+dango-indexer-cache      = { workspace = true }
+dango-indexer-clickhouse = { workspace = true, features = ["async-graphql"] }
+dango-indexer-sql        = { workspace = true, features = ["async-graphql"] }
+dango-primitives         = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
+dango-types              = { workspace = true, features = ["async-graphql"] }
+futures                  = { workspace = true }
+futures-util             = { workspace = true }
+itertools                = { workspace = true }
+metrics                  = { workspace = true, optional = true }
+num_cpus                 = { workspace = true }
+sea-orm                  = { workspace = true }
+sentry                   = { workspace = true }
+sentry-actix             = { workspace = true }
+serde                    = { workspace = true }
+serde_json               = { workspace = true }
+tendermint               = { workspace = true }
+tendermint-rpc           = { workspace = true, features = ["http-client"] }
+thiserror                = { workspace = true }
+tokio                    = { workspace = true }
+tracing                  = { workspace = true, optional = true }

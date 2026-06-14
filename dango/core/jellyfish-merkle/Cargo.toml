@@ -11,11 +11,11 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
-dango-app     = { workspace = true }
-dango-storage = { workspace = true }
-dango-primitives   = { workspace = true }
-thiserror    = { workspace = true }
+borsh            = { workspace = true, features = ["de_strict_order", "derive"] }
+dango-app        = { workspace = true }
+dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
+thiserror        = { workspace = true }
 
 [dev-dependencies]
 hex-literal = { workspace = true }

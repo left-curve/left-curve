@@ -12,5 +12,5 @@ version       = { workspace = true }
 
 [dependencies]
 dango-identity = { workspace = true }
-k256     = { workspace = true }
-sha3     = { workspace = true }
+k256           = { workspace = true }
+sha3           = { workspace = true }

@@ -18,11 +18,11 @@ path = "src/lib.rs"
 tracing = ["dep:tracing"]
 
 [dependencies]
-async-trait        = { workspace = true }
-dango-app           = { workspace = true }
-dango-primitives         = { workspace = true }
+async-trait              = { workspace = true }
+dango-app                = { workspace = true }
 dango-indexer-cache      = { workspace = true }
 dango-indexer-clickhouse = { workspace = true }
 dango-indexer-sql        = { workspace = true }
-tokio              = { workspace = true }
-tracing            = { workspace = true, optional = true }
+dango-primitives         = { workspace = true }
+tokio                    = { workspace = true }
+tracing                  = { workspace = true, optional = true }

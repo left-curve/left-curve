@@ -11,29 +11,29 @@ version       = { workspace = true }
 
 [dependencies]
 clru               = { workspace = true }
-data-encoding      = { workspace = true }
+dango-app          = { workspace = true }
 dango-backtrace    = { workspace = true }
-dango-app           = { workspace = true }
-dango-crypto        = { workspace = true }
-dango-primitives         = { workspace = true }
+dango-crypto       = { workspace = true }
+dango-primitives   = { workspace = true }
+data-encoding      = { workspace = true }
 thiserror          = { workspace = true }
 tracing            = { workspace = true }
 wasmer             = { workspace = true, features = ["singlepass"] }
 wasmer-middlewares = { workspace = true }
 
 [dev-dependencies]
-criterion     = { workspace = true }
-ed25519-dalek = { workspace = true, features = ["batch", "digest"] }
+criterion      = { workspace = true }
 dango-app      = { workspace = true, features = ["tracing"] }
 dango-crypto   = { workspace = true }
+dango-identity = { workspace = true }
 dango-math     = { workspace = true }
 dango-tester   = { workspace = true, features = ["library"] }
-dango-identity      = { workspace = true }
-k256          = { workspace = true }
-p256          = { workspace = true }
-rand          = { workspace = true }
-test-case     = { workspace = true }
-tokio         = { workspace = true }
+ed25519-dalek  = { workspace = true, features = ["batch", "digest"] }
+k256           = { workspace = true }
+p256           = { workspace = true }
+rand           = { workspace = true }
+test-case      = { workspace = true }
+tokio          = { workspace = true }
 
 [[bench]]
 harness = false

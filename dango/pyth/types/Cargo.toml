@@ -10,5 +10,5 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-dango-primitives          = { workspace = true }
+dango-primitives    = { workspace = true }
 pyth-lazer-protocol = { workspace = true }

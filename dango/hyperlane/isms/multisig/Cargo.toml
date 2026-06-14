@@ -10,14 +10,14 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow          = { workspace = true }
-dango-storage    = { workspace = true }
-dango-primitives      = { workspace = true }
+anyhow                = { workspace = true }
 dango-hyperlane-types = { workspace = true }
+dango-primitives      = { workspace = true }
+dango-storage         = { workspace = true }
 
 [dev-dependencies]
-hex-literal = { workspace = true }
-dango-identity    = { workspace = true }
-k256        = { workspace = true }
-rand        = { workspace = true }
-test-case   = { workspace = true }
+dango-identity = { workspace = true }
+hex-literal    = { workspace = true }
+k256           = { workspace = true }
+rand           = { workspace = true }
+test-case      = { workspace = true }

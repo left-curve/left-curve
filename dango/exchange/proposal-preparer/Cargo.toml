@@ -10,22 +10,22 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dep:metrics", "dango-pyth-client/metrics"]
+metrics = ["dango-pyth-client/metrics", "dep:metrics"]
 
 [dependencies]
-dango-order-book = { workspace = true }
-dango-types      = { workspace = true }
 dango-app         = { workspace = true }
 dango-math        = { workspace = true }
-dango-primitives       = { workspace = true }
-metrics          = { workspace = true, optional = true }
-prost            = { workspace = true }
-dango-pyth-client      = { workspace = true }
-dango-pyth-types       = { workspace = true }
-reqwest          = { workspace = true }
-tokio            = { workspace = true }
-tokio-stream     = { workspace = true }
-tracing          = { workspace = true }
+dango-order-book  = { workspace = true }
+dango-primitives  = { workspace = true }
+dango-pyth-client = { workspace = true }
+dango-pyth-types  = { workspace = true }
+dango-types       = { workspace = true }
+metrics           = { workspace = true, optional = true }
+prost             = { workspace = true }
+reqwest           = { workspace = true }
+tokio             = { workspace = true }
+tokio-stream      = { workspace = true }
+tracing           = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

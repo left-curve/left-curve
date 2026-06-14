@@ -14,7 +14,7 @@ default = ["macros"]
 macros  = ["dep:dango-macros"]
 
 [dependencies]
-dango-backtrace = { workspace = true }
+dango-backtrace  = { workspace = true }
 dango-macros     = { workspace = true, optional = true }
-dango-primitives      = { workspace = true }
-serde           = { workspace = true }
+dango-primitives = { workspace = true }
+serde            = { workspace = true }

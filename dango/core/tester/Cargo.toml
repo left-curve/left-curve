@@ -18,7 +18,7 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-dango-backtrace = { workspace = true }
+dango-backtrace  = { workspace = true }
 dango-ffi        = { workspace = true }
 dango-math       = { workspace = true }
-dango-primitives      = { workspace = true }
+dango-primitives = { workspace = true }

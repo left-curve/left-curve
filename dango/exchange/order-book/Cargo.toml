@@ -10,13 +10,13 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow       = { workspace = true }
-borsh        = { workspace = true }
-dango-math    = { workspace = true }
-dango-storage = { workspace = true }
-dango-primitives   = { workspace = true }
-serde        = { workspace = true }
-typenum      = { workspace = true }
+anyhow           = { workspace = true }
+borsh            = { workspace = true }
+dango-math       = { workspace = true }
+dango-primitives = { workspace = true }
+dango-storage    = { workspace = true }
+serde            = { workspace = true }
+typenum          = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

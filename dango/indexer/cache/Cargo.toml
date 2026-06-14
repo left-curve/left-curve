@@ -23,10 +23,10 @@ aws-config           = { workspace = true, optional = true }
 aws-credential-types = { workspace = true, optional = true }
 aws-sdk-s3           = { workspace = true, optional = true }
 borsh                = { workspace = true }
-dango-disk-saver           = { workspace = true, features = ["tracing"] }
+dango-app            = { workspace = true }
 dango-backtrace      = { workspace = true }
-dango-app             = { workspace = true }
-dango-primitives           = { workspace = true, features = ["chrono", "sea-orm"] }
+dango-disk-saver     = { workspace = true, features = ["tracing"] }
+dango-primitives     = { workspace = true, features = ["chrono", "sea-orm"] }
 metrics              = { workspace = true, optional = true }
 roaring              = { workspace = true }
 serde                = { workspace = true }
