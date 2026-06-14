@@ -452,17 +452,17 @@ macro_rules! generate_dec_constructor {
     ) => {
         paste::paste! {
             impl<const S: u32> Dec<$inner, S> {
-                // / Create a new [`Dec`] adding decimal places.
-                // /
-                // / ```rust
-                // / use {
-                // /     dango_math::{Udec128, Uint128},
-                // /     std::str::FromStr,
-                // / };
-                // /
-                // / let decimal = Udec128::new(100);
-                // / assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
-                // / ```
+                /// Create a new [`Dec`] adding decimal places.
+                ///
+                /// ```rust
+                /// use {
+                ///     dango_math::{Udec128, Uint128},
+                ///     std::str::FromStr,
+                /// };
+                ///
+                /// let decimal = Udec128::new(100);
+                /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
+                /// ```
                 pub const fn new(x: $base_constructor) -> Self {
                     Self($constructor(x * [<10_$base_constructor>].pow(S)))
                 }

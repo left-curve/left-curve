@@ -1,7 +1,7 @@
 use {
     async_trait::async_trait,
     dango_app::{APP_CONFIG, CONFIG, Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
-    dango_primitives::{Config, Json},
+    dango_primitives::{Block, BlockOutcome, Config, Json, Storage},
     std::{
         collections::HashMap,
         sync::{
@@ -68,7 +68,7 @@ impl HookedIndexer {
     /// `pre_indexing` reloads the payload and `post_indexing` flushes it to
     /// the SQL and Clickhouse stores.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn reindex(&self, storage: &dyn dango_primitives::Storage) -> IndexerResult<()> {
+    pub async fn reindex(&self, storage: &dyn Storage) -> IndexerResult<()> {
         let block = match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
                 // This happens when the chain starts at genesis
@@ -143,7 +143,7 @@ impl HookedIndexer {
 #[async_trait]
 impl Indexer for HookedIndexer {
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn start(&mut self, storage: &dyn dango_primitives::Storage) -> IndexerResult<()> {
+    async fn start(&mut self, storage: &dyn Storage) -> IndexerResult<()> {
         if self.is_running.load(Ordering::Relaxed) {
             return Err(IndexerError::already_running());
         }
@@ -212,11 +212,7 @@ impl Indexer for HookedIndexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    async fn index_block(
-        &self,
-        block: &dango_primitives::Block,
-        block_outcome: &dango_primitives::BlockOutcome,
-    ) -> IndexerResult<()> {
+    async fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
             return Err(IndexerError::not_running());
         }

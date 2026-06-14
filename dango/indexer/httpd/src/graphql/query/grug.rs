@@ -7,7 +7,7 @@ use {
         request_ip::RequesterIp,
     },
     async_graphql::*,
-    dango_primitives::{Binary, Inner, QueryResponse, TxOutcome},
+    dango_primitives::{Binary, Inner, Query, QueryResponse, TxOutcome, UnsignedTx},
     std::str::FromStr,
 };
 #[cfg(feature = "metrics")]
@@ -19,7 +19,7 @@ pub struct GrugQuery {}
 impl GrugQuery {
     pub async fn _query_app(
         app_ctx: &MinimalContext,
-        request: dango_primitives::Query,
+        request: Query,
         height: Option<u64>,
     ) -> Result<QueryResponseWithBlockHeight, Error> {
         #[cfg(feature = "metrics")]
@@ -89,7 +89,7 @@ impl GrugQuery {
     async fn query_app(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Request as JSON")] request: dango_primitives::Query,
+        #[graphql(desc = "Request as JSON")] request: Query,
         height: Option<u64>,
     ) -> Result<QueryResponse, Error> {
         let app_ctx = ctx.data::<MinimalContext>()?;
@@ -126,7 +126,7 @@ impl GrugQuery {
     async fn simulate(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Transaction as Json")] tx: dango_primitives::UnsignedTx,
+        #[graphql(desc = "Transaction as Json")] tx: UnsignedTx,
     ) -> Result<TxOutcome, Error> {
         let app_ctx = ctx.data::<MinimalContext>()?;
 

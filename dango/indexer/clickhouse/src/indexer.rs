@@ -1,6 +1,6 @@
 use {
     crate::context::Context,
-    dango_primitives::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, JsonDeExt},
+    dango_primitives::{BlockAndBlockOutcomeWithHttpDetails, Config, Json, JsonDeExt, Storage},
     dango_types::config::AppConfig,
     futures::try_join,
 };
@@ -34,10 +34,7 @@ impl Indexer {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
-    pub async fn start(
-        &mut self,
-        _storage: &dyn dango_primitives::Storage,
-    ) -> dango_app::IndexerResult<()> {
+    pub async fn start(&mut self, _storage: &dyn Storage) -> dango_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
             #[cfg(feature = "tracing")]

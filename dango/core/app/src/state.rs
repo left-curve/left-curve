@@ -80,7 +80,7 @@ mod tests {
     use {
         crate::CODES,
         dango_primitives::{
-            Binary, Code, CodeStatus, Duration, Hash256, MockStorage, StdResult, Timestamp,
+            Binary, Code, CodeStatus, Duration, Hash256, MockStorage, Order, StdResult, Timestamp,
         },
         dango_storage::PrefixBound,
     };
@@ -126,7 +126,7 @@ mod tests {
             let res = CODES
                 .idx
                 .status
-                .prefix_keys(&storage, None, None, dango_primitives::Order::Ascending)
+                .prefix_keys(&storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
 
@@ -167,7 +167,7 @@ mod tests {
                     Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                         since: Duration::from_seconds(100),
                     })),
-                    dango_primitives::Order::Ascending,
+                    Order::Ascending,
                 )
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();
@@ -199,7 +199,7 @@ mod tests {
                     Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                         since: Duration::from_seconds(30),
                     })),
-                    dango_primitives::Order::Ascending,
+                    Order::Ascending,
                 )
                 .collect::<StdResult<Vec<_>>>()
                 .unwrap();

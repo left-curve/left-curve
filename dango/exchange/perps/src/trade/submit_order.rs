@@ -1197,7 +1197,7 @@ pub fn settle_fill(
         FillId,
         bool,
     )>,
-) -> dango_primitives::StdResult<FillSettlement> {
+) -> StdResult<FillSettlement> {
     let (closing, opening) = {
         let current_pos = user_state
             .positions

@@ -4,13 +4,14 @@ use {
         UploadOutcome,
     },
     dango_app::{
-        App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
-        ProposalPreparer, StorageProvider, UpgradeHandler, Vm,
+        App, AppError, AppResult, CONTRACT_NAMESPACE, Db, Indexer, NaiveProposalPreparer,
+        NullIndexer, ProposalPreparer, StorageProvider, UpgradeHandler, Vm,
     },
     dango_backtrace::Backtraceable,
     dango_db_memory::MemDb,
     dango_genesis::Contracts,
     dango_indexer_hooked::HookedIndexer,
+    dango_indexer_httpd::traits::QueryApp,
     dango_math::Uint128,
     dango_primitives::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
@@ -21,7 +22,7 @@ use {
     dango_pyth_client::PythClientCache,
     dango_vm_rust::RustVm,
     serde::ser::Serialize,
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, fmt::Debug},
 };
 
 type PythProposalPreparer = dango_proposal_preparer::ProposalPreparer<PythClientCache>;
@@ -767,13 +768,10 @@ where
     /// Return a `Storage` object representing the storage of a given contract.
     pub fn contract_storage(&self, address: Addr) -> StorageProvider
     where
-        <DB as dango_app::Db>::Error: std::fmt::Debug,
+        <DB as Db>::Error: Debug,
     {
         let storage = self.app.db.state_storage(None).unwrap();
-        StorageProvider::new(Box::new(storage), &[
-            dango_app::CONTRACT_NAMESPACE,
-            &address,
-        ])
+        StorageProvider::new(Box::new(storage), &[CONTRACT_NAMESPACE, &address])
     }
 }
 
@@ -845,19 +843,19 @@ where
 // ---- impl QueryApp for TestSuite ----
 
 #[async_trait::async_trait]
-impl<DB, VM, PP, ID> dango_indexer_httpd::traits::QueryApp for TestSuite<DB, VM, PP, ID>
+impl<DB, VM, PP, ID> QueryApp for TestSuite<DB, VM, PP, ID>
 where
     DB: Db + Send + Sync + 'static,
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer + Send + Sync + 'static,
     ID: Indexer + Send + Sync + 'static,
-    App<DB, VM, PP, ID>: dango_indexer_httpd::traits::QueryApp,
+    App<DB, VM, PP, ID>: QueryApp,
 {
     async fn query_app(
         &self,
-        raw_req: dango_primitives::Query,
+        raw_req: Query,
         height: Option<u64>,
-    ) -> AppResult<(dango_primitives::QueryResponse, u64)> {
+    ) -> AppResult<(QueryResponse, u64)> {
         self.app.query_app(raw_req, height).await
     }
 
@@ -870,10 +868,7 @@ where
         self.app.query_store(key, height, prove).await
     }
 
-    async fn simulate(
-        &self,
-        unsigned_tx: dango_primitives::UnsignedTx,
-    ) -> AppResult<dango_primitives::TxOutcome> {
+    async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
         self.app.simulate(unsigned_tx).await
     }
 
@@ -881,7 +876,7 @@ where
         self.app.chain_id().await
     }
 
-    async fn last_finalized_block(&self) -> AppResult<dango_primitives::BlockInfo> {
+    async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
         self.app.last_finalized_block().await
     }
 }

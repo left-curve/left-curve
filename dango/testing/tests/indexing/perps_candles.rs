@@ -1,6 +1,6 @@
 use {
     assertor::*,
-    dango_app::Indexer,
+    dango_app::{Indexer, NaiveProposalPreparer},
     dango_genesis::Contracts,
     dango_indexer_clickhouse::{
         entities::{
@@ -250,7 +250,7 @@ async fn index_perps_candles_changing_prices() -> anyhow::Result<()> {
 async fn index_perps_candles_across_minute_boundary() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_pp_and_custom_genesis(
-            dango_app::NaiveProposalPreparer,
+            NaiveProposalPreparer,
             TestOption {
                 block_time: Duration::from_seconds(20),
                 genesis_block: BlockInfo {
@@ -447,7 +447,7 @@ async fn index_perps_candles_one_second_interval() -> anyhow::Result<()> {
 async fn index_perps_candles_full_timeline() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_pp_and_custom_genesis(
-            dango_app::NaiveProposalPreparer,
+            NaiveProposalPreparer,
             TestOption {
                 block_time: Duration::from_seconds(10),
                 genesis_block: BlockInfo {
@@ -728,7 +728,7 @@ async fn index_perps_candles_preload_rebuilds_current_bucket_from_clickhouse() -
 
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context, _db_guard) =
         setup_test_with_indexer_pp_and_custom_genesis(
-            dango_app::NaiveProposalPreparer,
+            NaiveProposalPreparer,
             TestOption {
                 genesis_block: BlockInfo {
                     height: 0,

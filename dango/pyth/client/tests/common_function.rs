@@ -1,7 +1,9 @@
 use {
     dango_primitives::{Inner, Lengthy, NonEmpty, btree_map},
     dango_pyth_client::PythClientTrait,
-    dango_pyth_types::{LeEcdsaMessage, PayloadData, PythLazerSubscriptionDetails},
+    dango_pyth_types::{
+        LeEcdsaMessage, PayloadData, PayloadPropertyValue, PythLazerSubscriptionDetails,
+    },
     std::{collections::BTreeMap, fmt::Debug, time::Duration},
     tokio_stream::StreamExt,
 };
@@ -42,7 +44,7 @@ impl VaasChecker {
                 let mut new_price = None;
                 for property in price_feed.properties {
                     // Update price if the property is Price.
-                    if let dango_pyth_types::PayloadPropertyValue::Price(price) = property {
+                    if let PayloadPropertyValue::Price(price) = property {
                         new_price = price;
                     }
                 }
