@@ -1,6 +1,6 @@
 # Dango Contract System
 
-Dango is a suite of smart contracts deployed on Dango that together form a perpetual
+Dango is a suite of smart contracts that together form a perpetual
 futures exchange, oracle, token ledger, bridge aggregator, and account system. All
 contracts are first-party and execute natively via `RustVm`.
 

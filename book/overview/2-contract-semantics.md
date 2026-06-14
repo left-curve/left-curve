@@ -510,5 +510,5 @@ block. This enables end-to-end tests that exercise inter-contract interactions.
 - **`#[dango_primitives::derive(Serde, Borsh)]`** -- Derives standard traits (Serialize,
   Deserialize, BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq).
 - **`#[dango_primitives::event("name")]`** -- Registers an event type with a canonical name.
-- **`#[dango_primitives::index_list(PK, T)]`** -- Implements `IndexList` trait for IndexedMap
+- **`#[dango_storage::index_list(PK, T)]`** -- Implements `IndexList` trait for IndexedMap
   secondary indexes.
