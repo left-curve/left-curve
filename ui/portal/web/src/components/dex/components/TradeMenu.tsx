@@ -6,10 +6,7 @@
 import {
   useAccount,
   useAppConfig,
-  useConfig,
   usePrices,
-  useTradeAccountCoins,
-  useTradePairCoins,
   usePerpsMaxSize,
   usePerpsSubmission,
   perpsTradeSettingsStore,
@@ -55,6 +52,7 @@ import { Decimal, formatNumber, resolveRateSchedule, shallowEqual } from "@left-
 import { FEE_VOLUME_LOOKBACK_SECONDS, PERPS_DEFAULT_SLIPPAGE } from "~/constants";
 import type { PerpsTimeInForce } from "@left-curve/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { useGeoblock } from "~/components/foundation/hooks/useGeoblock";
 import { computeOtherPairsUsedMargin } from "../helpers/math";
 import { perpsTradeHistoryKeys } from "../helpers/perpsTradeHistoryKeys";
@@ -134,13 +132,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 
   const { data: appConfig } = useAppConfig();
 
-  const { pairId, perpsPairId, action, orderType: operation, accountAddress } = useProTrade();
-
-  const { baseCoin, quoteCoin } = useTradeAccountCoins({
-    pairId,
-    accountAddress,
-    enabled: isConnected,
-  });
+  const { pair, action, orderType: operation, accountAddress } = useProTrade();
+  const pairId = pair.id;
+  const base = pair.base;
   const { getPrice } = usePrices();
   const { account } = useAccount();
 
@@ -166,18 +160,18 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     setSizeCoinDenom("usd");
   }, [pairId]);
 
-  const isBaseSize = sizeCoinDenom === baseCoin.denom;
+  const isBaseSize = sizeCoinDenom === base.denom;
 
-  const activePairStats = usePerpsPairStatsByPairId({ pairId: perpsPairId });
+  const activePairStats = usePerpsPairStatsByPairId({ pairId });
 
   const currentPrice = useMemo(() => {
     const fromStats = Number(activePairStats?.currentPrice ?? 0);
     if (fromStats > 0) return fromStats;
-    const oraclePrice = Number(getPrice(1, baseCoin.denom) ?? 0);
+    const oraclePrice = Number(getPrice(1, base.denom) ?? 0);
     return Number.isFinite(oraclePrice) ? oraclePrice : 0;
-  }, [activePairStats?.currentPrice, getPrice, baseCoin.denom]);
+  }, [activePairStats?.currentPrice, getPrice, base.denom]);
 
-  const params = appConfig.perpsPairs[perpsPairId];
+  const params = appConfig.perpsPairs[pairId];
 
   const accountState = usePerpsUserState(
     (s) => ({
@@ -192,8 +186,9 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     shallowEqual,
   );
   const hasOtherPairPositions = useMemo(
-    () => Object.keys(accountState.positions ?? {}).some((pairId) => pairId !== perpsPairId),
-    [accountState.positions, perpsPairId],
+    () =>
+      Object.keys(accountState.positions ?? {}).some((positionPairId) => positionPairId !== pairId),
+    [accountState.positions, pairId],
   );
   const statsByPairId = useAllPerpsPairStats((s) => s.perpsPairStatsByPairId, {
     enabled: isConnected && hasOtherPairPositions,
@@ -209,40 +204,34 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const extendedPositions = extendedState.positions;
   const equity = extendedState.equity ?? "0";
   const reservedMargin = accountState.reservedMargin;
-
-  const { coins: allCoins } = useConfig();
+  const quote = useMemo(
+    () => ({ ...pair.quote, amount: accountState.margin }),
+    [pair.quote, accountState.margin],
+  );
 
   const otherPairsUsedMargin = useMemo(() => {
     const positions = accountState.positions;
     if (!positions) return 0;
 
-    return computeOtherPairsUsedMargin(positions, perpsPairId, appConfig.perpsPairs, (pid) => {
+    return computeOtherPairsUsedMargin(positions, pairId, appConfig.perpsPairs, (pid) => {
       const statsPrice = Decimal(statsByPairId[pid]?.currentPrice ?? 0);
       if (statsPrice.gt(0)) return statsPrice;
-      const symbol = pid.match(/^perp\/(.+)usd$/)?.[1]?.toUpperCase();
-      const denom = symbol ? allCoins.bySymbol[symbol]?.denom : undefined;
-      return denom ? Decimal(getPrice(1, denom) ?? 0) : Decimal(0);
+      const otherPair = MarketPair.fromPairId(pid);
+      return Decimal(getPrice(1, otherPair.base.denom) ?? 0);
     });
-  }, [
-    accountState.positions,
-    perpsPairId,
-    appConfig.perpsPairs,
-    statsByPairId,
-    allCoins.bySymbol,
-    getPrice,
-  ]);
+  }, [accountState.positions, pairId, appConfig.perpsPairs, statsByPairId, getPrice]);
 
   const position = useMemo(() => {
-    if (!accountState.positions?.[perpsPairId]) return null;
-    return accountState.positions[perpsPairId];
-  }, [accountState.positions, perpsPairId]);
+    if (!accountState.positions?.[pairId]) return null;
+    return accountState.positions[pairId];
+  }, [accountState.positions, pairId]);
 
   const maxLeverage = useMemo(() => {
     const ratio = Number(params.initialMarginRatio);
     return ratio > 0 ? Math.floor(1 / ratio) : 100;
   }, [params]);
 
-  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[perpsPairId]);
+  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[pairId]);
   const selectedLeverage = useMemo(() => {
     if (!storedLeverage) return maxLeverage;
     return Math.min(Math.max(Math.round(storedLeverage), 1), maxLeverage);
@@ -367,7 +356,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
   const queryClient = useQueryClient();
 
   const submission = usePerpsSubmission({
-    perpsPairId,
+    pairId,
     action,
     operation,
     sizeValue,
@@ -423,7 +412,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
       size: newSize,
       entryPrice,
       mmr: Number(params.maintenanceMarginRatio ?? 0),
-      targetPairId: perpsPairId,
+      targetPairId: pairId,
       extendedPositions,
       pairPrices: statsByPairId,
       pairParams: appConfig.perpsPairs,
@@ -440,7 +429,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
     accountState.margin,
     extendedPositions,
     statsByPairId,
-    perpsPairId,
+    pairId,
     appConfig.perpsPairs,
   ]);
 
@@ -482,7 +471,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
             label={m["dex.protrade.perps.currentPosition"]()}
             value={
               <>
-                <FormattedNumber number={currentPositionSize} as="span" /> {baseCoin.symbol}
+                <FormattedNumber number={currentPositionSize} as="span" /> {base.symbol}
               </>
             }
           />
@@ -509,7 +498,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
               classNames={{ trigger: "text-ink-tertiary-500" }}
               onChange={changeSizeCoin}
               value={sizeCoinDenom}
-              coins={[baseCoin, quoteCoin]}
+              coins={[base, quote]}
             />
           }
         />
@@ -623,7 +612,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
         <TradeSubmitButton
           action={action}
-          label={`${m["dex.protrade.perps.triggerAction"]({ action })} ${baseCoin.symbol}`}
+          label={`${m["dex.protrade.perps.triggerAction"]({ action })} ${base.symbol}`}
           isDisabled={
             Decimal(size).lte(0) ||
             (operation === "limit" && Decimal(priceValue).lte(0)) ||
@@ -767,37 +756,38 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ controllers }) => {
 const PerpsTopPills: React.FC = () => {
   const showModal = useApp((state) => state.showModal);
   const { data: appConfig } = useAppConfig();
-  const { pairId, perpsPairId } = useProTrade();
-  const { baseCoin, quoteCoin } = useTradePairCoins({ pairId });
+  const { pair } = useProTrade();
+  const pairId = pair.id;
+  const base = pair.base;
 
-  const params = appConfig.perpsPairs[perpsPairId];
+  const params = appConfig.perpsPairs[pairId];
 
   const maxLeverage = useMemo(() => {
-    const ratio = Number(params?.initialMarginRatio);
+    const ratio = Number(params.initialMarginRatio);
     return ratio > 0 ? Math.floor(1 / ratio) : 100;
   }, [params]);
 
-  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[perpsPairId]);
+  const storedLeverage = perpsTradeSettingsStore((s) => s.leverageByPair[pairId]);
   const selectedLeverage = useMemo(() => {
     if (!storedLeverage) return maxLeverage;
     return Math.min(Math.max(Math.round(storedLeverage), 1), maxLeverage);
   }, [storedLeverage, maxLeverage]);
 
-  const marginMode = perpsTradeSettingsStore((s) => s.marginModeByPair[perpsPairId]) ?? "cross";
+  const marginMode = perpsTradeSettingsStore((s) => s.marginModeByPair[pairId]) ?? "cross";
 
-  const pairSymbol = `${baseCoin.symbol}-${quoteCoin.symbol}`;
+  const ticker = pair.ticker;
 
   const openMarginModeModal = useCallback(() => {
-    showModal(Modals.PerpsMarginMode, { perpsPairId, pairSymbol });
-  }, [showModal, perpsPairId, pairSymbol]);
+    showModal(Modals.PerpsMarginMode, { pairId, ticker });
+  }, [showModal, pairId, ticker]);
 
   const openAdjustLeverageModal = useCallback(() => {
     showModal(Modals.PerpsAdjustLeverage, {
-      perpsPairId,
-      baseSymbol: baseCoin.symbol,
+      pairId,
+      baseSymbol: base.symbol,
       maxLeverage,
     });
-  }, [showModal, perpsPairId, baseCoin.symbol, maxLeverage]);
+  }, [showModal, pairId, base.symbol, maxLeverage]);
 
   return (
     <div className="w-full flex items-center gap-2 px-4">

@@ -231,11 +231,11 @@ difference, not a formula difference.
 
 ## Chain-side reference
 
-- `dango/perps/src/core/decompose.rs` — decomposition into closing and
+- `dango/exchange/perps/src/core/decompose.rs` — decomposition into closing and
   opening portions.
-- `dango/perps/src/core/margin.rs` (`check_margin`) — the pre-match
+- `dango/exchange/perps/src/core/margin.rs` (`check_margin`) — the pre-match
   margin check the UI formula mirrors.
-- `dango/perps/src/trade/submit_order.rs` — reduce-only short-circuit
+- `dango/exchange/perps/src/trade/submit_order.rs` — reduce-only short-circuit
   (zeros the opening portion, skips the margin check).
 - Spec: `book/perps/2-order-matching.md` §2 (decomposition), §5
   (pre-match margin check).

@@ -121,6 +121,10 @@ max_subscriptions_global = 15000
 # Subscriptions (WebSocket) are long-lived and unaffected by this.
 graphql_request_timeout_secs = 30
 
+# Maximum HTTP request body size in bytes for GraphQL operations.
+# Requests larger than this are rejected before parsing.
+graphql_max_body_bytes = 131072
+
 [metrics_httpd]
 
 # Whether to enable the HTTP server.

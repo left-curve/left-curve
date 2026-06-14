@@ -26,7 +26,7 @@ Top-level SDK package: clients, transports, actions, chains, signers, and Hyperl
 - `mainnet` — chain config for mainnet (`dango-1`) | source: `sdk/typescript/dango/src/chains/definitions/mainnet.ts`
 
 #### Account helpers
-- `computeAddress` — derive a contract address from deployer + codeHash + salt (mirrors `grug::Addr::derive`) | source: `sdk/typescript/dango/src/account/address.ts`
+- `computeAddress` — derive a contract address from deployer + codeHash + salt (mirrors `dango_primitives::Addr::derive`) | source: `sdk/typescript/dango/src/account/address.ts`
 - `isValidAddress` — check if a string is a syntactically valid hex address | source: `sdk/typescript/dango/src/account/address.ts`
 - `createAccountSalt` — build the salt used when registering a new user account | source: `sdk/typescript/dango/src/account/salt.ts`
 - `createKeyHash` — sha256 a public key / credential id and uppercase-hex it | source: `sdk/typescript/dango/src/account/key.ts`

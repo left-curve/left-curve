@@ -1,6 +1,15 @@
 use {
     assertor::*,
+    dango_app::Indexer,
     dango_gateway::REVERSE_ROUTES,
+    dango_hyperlane_types::{
+        Addr32, IncrementalMerkleTree, addr32,
+        mailbox::{self, MAILBOX_VERSION, Message},
+    },
+    dango_math::{NumberConst, Uint128},
+    dango_primitives::{
+        Addr, Addressable, HashExt, QuerierExt, ResultExt, StdError, btree_map, coins,
+    },
     dango_testing::{
         BalanceChange, HyperlaneTestSuite, MOCK_HYPERLANE_LOCAL_DOMAIN, TestOption, mock_arbitrum,
         mock_ethereum, setup_test, setup_test_with_indexer,
@@ -9,13 +18,6 @@ use {
         constants::{eth, usdc},
         gateway::{self, Remote},
         warp::TokenMessage,
-    },
-    grug_app::Indexer,
-    grug_math::{NumberConst, Uint128},
-    grug_types::{Addr, Addressable, HashExt, QuerierExt, ResultExt, StdError, btree_map, coins},
-    hyperlane_types::{
-        Addr32, IncrementalMerkleTree, addr32,
-        mailbox::{self, MAILBOX_VERSION, Message},
     },
     sea_orm::EntityTrait,
 };
@@ -140,14 +142,14 @@ async fn sending_remote() {
         .expect("Can't wait for indexer to finish");
 
     // The transfers should have been indexed.
-    let blocks = indexer_sql::entity::blocks::Entity::find()
+    let blocks = dango_indexer_sql::entity::blocks::Entity::find()
         .all(&context.db)
         .await
         .expect("Can't fetch blocks");
 
     assert_that!(blocks).has_length(1);
 
-    let transfers = indexer_sql::entity::transfers::Entity::find()
+    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
         .all(&context.db)
         .await
         .expect("Can't fetch transfers");

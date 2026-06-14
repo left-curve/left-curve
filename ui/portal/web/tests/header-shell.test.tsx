@@ -27,7 +27,7 @@ const headerMocks = vi.hoisted(() => ({
   isSearchBarVisible: false,
   isSidebarVisible: false,
   isUserActive: true,
-  pathname: "/trade/BTC-USD",
+  pathname: "/trade/BTCUSD",
   setSidebarVisibility: vi.fn(),
   showModal: vi.fn(),
 }));
@@ -97,7 +97,7 @@ describe("Header shell", () => {
     headerMocks.isSearchBarVisible = false;
     headerMocks.isSidebarVisible = false;
     headerMocks.isUserActive = true;
-    headerMocks.pathname = "/trade/BTC-USD";
+    headerMocks.pathname = "/trade/BTCUSD";
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: vi.fn(() => ({
@@ -135,7 +135,7 @@ describe("Header shell", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("geoblock banner");
     expect(screen.getByTestId("testnet-banner")).toBeInTheDocument();
     expect(screen.getByTestId("search-menu")).toBeInTheDocument();
-    expect(document.querySelector("#quest-banner")).not.toBeNull();
+    expect(document.querySelector("#quest-banner")).toBeNull();
     expect(document.querySelector("#trade-buttons")).not.toBeNull();
     expect(screen.getByRole("link", { name: "dango logo" })).toHaveAttribute("href", "/");
   });

@@ -85,7 +85,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         location.pathname === "/" ? "lg:fixed h-fit" : "lg:sticky flex flex-col items-center",
       )}
     >
-      {isLg ? <div id="quest-banner" className="w-full" /> : null}
       {isLg && isProSwap && isGeoblocked ? <GeoblockBanner /> : null}
       {isLg ? <TestnetBanner /> : null}
 

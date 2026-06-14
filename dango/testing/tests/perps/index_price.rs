@@ -1,22 +1,19 @@
 use {
     crate::register_oracle_prices,
+    dango_math::Uint128,
     dango_order_book::{OrderKind, Quantity, TimeInForce, UsdPrice},
-    dango_testing::{TestOption, pair_id, setup_test_naive},
+    dango_primitives::{Addr, Coins, Duration, QuerierExt, ResultExt, Timestamp},
+    dango_pyth_types::MarketSession,
+    dango_testing::{TestOption, TestSuiteNaive, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairState},
     },
-    grug_math::Uint128,
-    grug_types::{Coins, Duration, QuerierExt, ResultExt, Timestamp},
-    pyth_types::MarketSession,
 };
 
 const ETH_PYTH_ID: u32 = 2;
 
-async fn query_index_price(
-    suite: &dango_testing::TestSuiteNaive,
-    perps_addr: grug_types::Addr,
-) -> UsdPrice {
+async fn query_index_price(suite: &TestSuiteNaive, perps_addr: Addr) -> UsdPrice {
     let pair_state: Option<PairState> = suite
         .query_wasm_smart(perps_addr, perps::QueryPairStateRequest {
             pair_id: pair_id(),

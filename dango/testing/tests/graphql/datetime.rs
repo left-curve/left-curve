@@ -1,10 +1,10 @@
 use {
+    dango_indexer_graphql_types::{Block, block},
     dango_testing::{
         TestOption, build_app_service, call_graphql_query,
         setup_test_naive_with_indexer_and_create_blocks,
     },
     graphql_client::GraphQLQuery,
-    indexer_graphql_types::{Block, block},
 };
 
 #[tokio::test(flavor = "multi_thread")]

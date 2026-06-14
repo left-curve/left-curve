@@ -423,7 +423,7 @@ describe("explorer hooks", () => {
       equity: "1200",
       margin: "900",
       positions: {
-        "BTC-USD": {
+        "perp/btcusd": {
           size: "2",
           unrealizedPnl: "15",
         },
@@ -433,7 +433,7 @@ describe("explorer hooks", () => {
       orders: [
         {
           id: "order-1",
-          pairId: "BTC-USD",
+          pairId: "perp/btcusd",
         },
       ],
     };

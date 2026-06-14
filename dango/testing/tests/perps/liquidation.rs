@@ -1,8 +1,13 @@
 use {
     crate::{default_pair_param, register_oracle_prices},
+    dango_math::Uint128,
     dango_order_book::{
         Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         TriggerDirection, UsdPrice, UsdValue,
+    },
+    dango_primitives::{
+        Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, QuerierExt, ResultExt,
+        SearchEvent, btree_map,
     },
     dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
@@ -10,11 +15,6 @@ use {
         perps::{
             self, Deleveraged, Liquidated, OrderFilled, PairParam, Param, RateSchedule, UserState,
         },
-    },
-    grug_math::Uint128,
-    grug_types::{
-        Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, btree_map,
     },
     std::collections::BTreeMap,
 };
@@ -232,7 +232,7 @@ async fn liquidation_on_order_book() {
     // Partial liquidation: deficit = MM - equity = $362.50 - $240 = $122.50
     // close_amount = ceil($122.50 / ($1,450 * 5%)) = 1.689656 ETH
     // (ceil rounding guarantees at least one ULP of progress; see
-    // `compute_close_schedule` in `dango/perps/src/core/closure.rs`).
+    // `compute_close_schedule` in `dango/exchange/perps/src/core/closure.rs`).
     //
     // Matched against bidder's bid at $1,450 (zero taker/maker fee for liq fills).
     // Realized PnL = 1.689656 * ($1,450 - $2,000) = -$929.310800

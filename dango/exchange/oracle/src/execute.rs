@@ -1,0 +1,289 @@
+use {
+    crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
+    anyhow::{bail, ensure},
+    dango_primitives::{
+        Api, AuthCtx, AuthMode, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
+        QuerierExt, Response, Storage, Timestamp, Tx,
+    },
+    dango_pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, Price, PriceConfig},
+    std::collections::{BTreeMap, BTreeSet},
+};
+
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    for (denom, config) in msg.price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
+    }
+
+    for (public_key, expires_at) in msg.trusted_signers {
+        PYTH_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
+    }
+
+    Ok(Response::new())
+}
+
+/// The oracle can be used as sender when:
+///
+/// - Auth mode must be `Finalize`. This ensures such transactions are only
+///   inserted by the block proposer during ABCI++ `PrepareProposal`, not by
+///   regular users.
+/// - The transaction contains exactly one message.
+/// - This one message is an `Execute`.
+/// - The contract being executed must be the oracle itself.
+/// - the execute message must be `FeedPrices`.
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<Response> {
+    // Authenticate can only be called during finalize.
+    ensure!(
+        ctx.mode == AuthMode::Finalize,
+        "you don't have the right, O you don't have the right"
+    );
+
+    let mut msgs = tx.msgs.iter();
+
+    // Assert the transaction contains exactly 1 MsgExecute.
+    let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
+        (msgs.next(), msgs.next())
+    else {
+        bail!("transaction must contain exactly one message");
+    };
+
+    // Assert the contract is the oracle.
+    ensure!(contract == ctx.contract, "contract must be the oracle");
+
+    // Assert the message is `ExecuteMsg::FeedPrices`.
+    let Ok(ExecuteMsg::FeedPrices(..)) = msg.clone().deserialize_json() else {
+        bail!("the execute message must be feed prices");
+    };
+
+    Ok(Response::new())
+}
+
+pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    match msg {
+        ExecuteMsg::RegisterPriceSources(price_sources) => {
+            register_price_sources(ctx, price_sources)
+        },
+        ExecuteMsg::RemovePriceSources(denoms) => remove_price_sources(ctx, denoms),
+        ExecuteMsg::RegisterTrustedSigner {
+            public_key,
+            expires_at,
+        } => register_trusted_signer(ctx, public_key, expires_at),
+        ExecuteMsg::RemoveTrustedSigner { public_key } => remove_trusted_signer(ctx, public_key),
+        ExecuteMsg::FeedPrices(price_update) => feed_prices(ctx, price_update),
+    }
+}
+
+fn register_price_sources(
+    ctx: MutableCtx,
+    price_sources: BTreeMap<Denom, PriceConfig>,
+) -> anyhow::Result<Response> {
+    // Only chain owner can register a denom.
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    for (denom, config) in price_sources {
+        config.validate()?;
+        PRICE_SOURCES.save(ctx.storage, &denom, &config)?;
+    }
+
+    Ok(Response::new())
+}
+
+fn remove_price_sources(ctx: MutableCtx, denoms: BTreeSet<Denom>) -> anyhow::Result<Response> {
+    // Only chain owner can remove a denom.
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // No check is performed on whether the denoms actually have a price
+    // source; `Map::remove` is a no-op for an absent key. We also trust the
+    // owner to have ensured no other contract still relies on the price
+    // sources being removed, so no usage check either.
+    for denom in denoms {
+        PRICE_SOURCES.remove(ctx.storage, &denom);
+    }
+
+    Ok(Response::new())
+}
+
+fn register_trusted_signer(
+    ctx: MutableCtx,
+    public_key: Binary,
+    expires_at: Timestamp,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    PYTH_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
+
+    Ok(Response::new())
+}
+
+fn remove_trusted_signer(ctx: MutableCtx, public_key: Binary) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    PYTH_TRUSTED_SIGNERS.remove(ctx.storage, &public_key);
+
+    Ok(Response::new())
+}
+
+fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Response> {
+    for message in price_update.into_inner() {
+        verify_pyth_lazer_message(ctx.storage, ctx.block.timestamp, ctx.api, &message)?;
+
+        // Deserialize the payload.
+        let payload = PayloadData::deserialize_slice_le(&message.payload)?;
+        let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
+
+        // Store the prices from each feed.
+        for feed in payload.feeds {
+            let id = feed.feed_id.0;
+            let price = Price::try_from((feed, timestamp))?;
+
+            PYTH_PRICES.may_update(ctx.storage, id, |current| -> anyhow::Result<_> {
+                match current {
+                    // Do not update the price if a price already exists and it's
+                    // newer than the price being fed.
+                    Some(current_price) if current_price.timestamp > timestamp => Ok(current_price),
+                    // Otherwise, update the price, and emit metrics.
+                    _ => {
+                        #[cfg(feature = "metrics")]
+                        {
+                            let price_f64: f64 = price.humanized_price.to_string().parse()?;
+
+                            metrics::histogram!(crate::metrics::LABEL_PRICE, "id" => id.to_string())
+                                .record(price_f64);
+                        }
+
+                        Ok(price)
+                    },
+                }
+            })?;
+        }
+    }
+
+    Ok(Response::new())
+}
+
+fn verify_pyth_lazer_message(
+    storage: &dyn Storage,
+    current_time: Timestamp,
+    api: &dyn Api,
+    message: &LeEcdsaMessage,
+) -> anyhow::Result<()> {
+    // Recover the signer public key from the message.
+    let pk = api.secp256k1_pubkey_recover(
+        &api.keccak256(&message.payload),
+        &message.signature,
+        message.recovery_id,
+        true,
+    )?;
+
+    // Ensure the signer is trusted.
+    match PYTH_TRUSTED_SIGNERS.may_load(storage, &pk)? {
+        Some(expiration) => {
+            ensure!(
+                expiration > current_time,
+                "signer is no longer trusted! public key: {}, expired at: {}, current time: {}",
+                hex::encode(&pk),
+                expiration.to_rfc3339_string(),
+                current_time.to_rfc3339_string()
+            );
+        },
+        None => bail!("signer is not trusted! public key: {}", hex::encode(&pk)),
+    }
+
+    Ok(())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_primitives::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
+        dango_pyth_types::{LeEcdsaMessage, MarketSession, constants::LAZER_TRUSTED_SIGNER},
+        std::str::FromStr,
+    };
+
+    #[test]
+    fn test_verify_pyth_lazer_message() {
+        let mut storage = MockStorage::default();
+        let api = MockApi;
+        let current_time = Timestamp::from_seconds(1000);
+
+        let trusted_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
+
+        let message = LeEcdsaMessage {
+            payload: Binary::from_inner(vec![
+                117, 211, 199, 147, 144, 174, 214, 146, 181, 60, 6, 0, 1, 2, 1, 0, 0, 0, 1, 0, 212,
+                148, 165, 115, 126, 10, 0, 0, 2, 0, 0, 0, 1, 0, 177, 175, 142, 195, 99, 0, 0, 0,
+            ]),
+            signature: ByteArray::from_inner([
+                52, 175, 197, 246, 133, 14, 148, 65, 91, 0, 180, 102, 248, 223, 46, 31, 118, 26,
+                20, 175, 7, 25, 83, 195, 13, 207, 197, 56, 214, 149, 21, 131, 122, 198, 58, 56, 87,
+                57, 92, 85, 12, 226, 100, 89, 148, 98, 146, 187, 168, 111, 67, 248, 246, 131, 53,
+                107, 143, 164, 144, 23, 112, 196, 10, 250,
+            ]),
+            recovery_id: 0,
+        };
+
+        verify_pyth_lazer_message(&storage, current_time, &api, &message.clone())
+            .should_fail_with_error("signer is not trusted");
+
+        // Store trusted signer to storage with timestamp in the past.
+        PYTH_TRUSTED_SIGNERS
+            .save(
+                &mut storage,
+                &trusted_signer,
+                &(current_time - Duration::from_seconds(60)), // 1 minute ago
+            )
+            .unwrap();
+
+        verify_pyth_lazer_message(&storage, current_time, &api, &message.clone())
+            .should_fail_with_error("signer is no longer trusted");
+
+        // Store trusted signer to storage with timestamp in the future.
+        PYTH_TRUSTED_SIGNERS
+            .save(
+                &mut storage,
+                &trusted_signer,
+                &(current_time + Duration::from_seconds(60)), // 1 minute from now
+            )
+            .unwrap();
+
+        verify_pyth_lazer_message(&storage, current_time, &api, &message).should_succeed();
+    }
+
+    #[test]
+    fn test_conversion() {
+        let payload = Binary::from_str(
+            "ddPHk4Bp8MUnRgYAAwYsAAAAAgB1xiIMAAAAAAT4/xgAAAACAC8y2AkNAAAABPj/DwAAAAIAp+8pChQAAAAE+P8NAAAAAgD30cgAAAAAAAT4/xoAAAACAOLRj9cBAAAABPj/DgAAAAIAn6Z8CwAAAAAE+P8=",
+        )
+        .unwrap();
+
+        // Deserialize the payload.
+        let payload = PayloadData::deserialize_slice_le(payload.inner()).unwrap();
+        let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
+
+        for feed in payload.feeds {
+            let price = Price::try_from((feed, timestamp)).unwrap();
+            let _price_f64: f64 = price.humanized_price.to_string().parse().unwrap();
+
+            // This payload was captured before we requested `MarketSession`
+            // in the subscription, so the property is absent and `try_from`
+            // falls back to `Other`.
+            assert_eq!(price.market_session, MarketSession::Other);
+        }
+    }
+}

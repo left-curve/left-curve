@@ -1,8 +1,13 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_math::{Uint64, Uint128},
     dango_order_book::{
         Dimensionless, OrderId, OrderKind, OrderRemoved, Quantity, QueryOrdersByUserResponseItem,
         ReasonForOrderRemoval, TimeInForce, UsdPrice,
+    },
+    dango_primitives::{
+        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, QuerierExt,
+        ResultExt, SearchEvent, btree_map,
     },
     dango_testing::{OracleTestEntry, TestOption, pair_id, setup_test_naive},
     dango_types::{
@@ -11,11 +16,6 @@ use {
             self, CancelOrderRequest, Param, SubmitOrCancelOrderRequest, SubmitOrderRequest,
             UserReferralData,
         },
-    },
-    grug_math::{Uint64, Uint128},
-    grug_types::{
-        Addressable, CheckedContractEvent, Coins, Denom, JsonDeExt, NonEmpty, QuerierExt,
-        ResultExt, SearchEvent, btree_map,
     },
     std::collections::BTreeMap,
 };
@@ -173,7 +173,7 @@ async fn batch_atomic_replace() {
 
 /// Within one batch, a `Cancel(OneByClientOrderId(42))` releases the
 /// client id so a subsequent `Submit` carrying the same client id
-/// succeeds — the two actions see each other's writes via grug's
+/// succeeds — the two actions see each other's writes via the engine's
 /// in-call `Buffer`.
 #[tokio::test]
 async fn batch_reuse_client_order_id() {

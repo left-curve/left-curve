@@ -158,7 +158,6 @@ describe("DEX chart lines", () => {
     expect(chart.createShape).toHaveBeenCalledWith(
       {
         price: 30000,
-        time: expect.any(Number),
       },
       expect.objectContaining({
         disableSave: true,

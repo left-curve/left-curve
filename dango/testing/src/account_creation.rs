@@ -1,13 +1,13 @@
 use {
     crate::{ContractWrapper, HyperlaneTestSuite, TestAccount, TestAccounts, mock_ethereum},
+    dango_db_memory::MemDb,
     dango_genesis::{Codes, Contracts},
+    dango_indexer_hooked::HookedIndexer,
+    dango_primitives::{Coins, Hash256, HashExt, JsonSerExt, Op, ResultExt},
     dango_proposal_preparer::ProposalPreparer,
+    dango_pyth_client::PythClientCache,
     dango_types::{account_factory, auth::Key, constants::usdc},
-    grug_db_memory::MemDb,
-    grug_types::{Coins, Hash256, HashExt, JsonSerExt, Op, ResultExt},
-    grug_vm_rust::RustVm,
-    indexer_hooked::HookedIndexer,
-    pyth_client::PythClientCache,
+    dango_vm_rust::RustVm,
     std::ops::DerefMut,
 };
 

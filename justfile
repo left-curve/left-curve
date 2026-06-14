@@ -14,6 +14,16 @@ git-fetch-main:
 git-clear-branches:
   git branch | grep -v "main" | xargs git branch -D
 
+# Create a tag at the given commit and push only that tag to origin
+create-and-push-tag commit-hash tag:
+  git tag {{tag}} {{commit-hash}}
+  git push origin {{tag}}
+
+# Create a branch off the given commit and push only that branch to origin
+create-and-push-branch commit-hash branch:
+  git branch {{branch}} {{commit-hash}}
+  git push origin {{branch}}
+
 # ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Dango node software
@@ -22,7 +32,7 @@ install-node:
 
 # Compile and install the Dango client CLI
 install-client:
-  cargo install --path sdk/rust/cli --locked
+  cargo install --path dango/sdk/cli --locked
 
 # Run all tests
 test:
@@ -65,8 +75,8 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p indexer-httpd --bin build_graphql_schema -- \
-    ./indexer/graphql-types/src/schemas/schema.graphql
+  cargo run -p dango-indexer-httpd --bin build_graphql_schema -- \
+    ./dango/indexer/graphql-types/src/schemas/schema.graphql
 
 # Build the Dango Book
 book:
@@ -74,7 +84,7 @@ book:
 
 # Update wasm artifacts used in tests
 update-testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm dango/testing/testdata/
+  cp -v artifacts/dango_tester.wasm dango/testing/testdata/
 
 # ---------------------------------- Frontend ----------------------------------
 

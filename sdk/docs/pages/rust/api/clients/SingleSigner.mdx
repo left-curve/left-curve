@@ -8,7 +8,7 @@ A typestate builder for signing transactions against Dango's single-signature ac
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
-    grug::Addr,
+    dango_primitives::Addr,
     std::str::FromStr,
 };
 
@@ -108,7 +108,7 @@ This is a common Rust idiom for builders that must reach a complete state before
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
-    grug::{Addr, BroadcastClient, Coins, Message, NonEmpty, QueryClient, Signer},
+    dango_primitives::{Addr, BroadcastClient, Coins, Message, NonEmpty, QueryClient, Signer},
     std::str::FromStr,
 };
 

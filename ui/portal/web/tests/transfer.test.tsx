@@ -98,7 +98,7 @@ describe("Transfer applet behavior", () => {
       }),
     );
     expect(mocks.refreshBalances).toHaveBeenCalledOnce();
-    expect(mocks.queryInvalidate).toHaveBeenCalledWith({ queryKey: ["quests", "alice"] });
+    expect(mocks.queryInvalidate).not.toHaveBeenCalled();
     expect(getInputByName("amount")).toHaveValue("");
     expect(getInputByName("address")).toHaveValue("");
   });
@@ -156,7 +156,7 @@ describe("Transfer applet behavior", () => {
       }),
     );
     expect(mocks.refreshBalances).toHaveBeenCalledOnce();
-    expect(mocks.queryInvalidate).toHaveBeenCalledWith({ queryKey: ["quests", "alice"] });
+    expect(mocks.queryInvalidate).not.toHaveBeenCalled();
   });
 
   it("enables recipient account lookup only after an address is entered", async () => {

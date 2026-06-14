@@ -132,6 +132,12 @@ provision:
       --skip-tags setup \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-provision.log"
 
+# Apply the users role (create accounts, sync SSH authorized_keys) on all servers
+provision-users:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook users.yml \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-provision-users.log"
+
 # ---------------------------------- Devnet ------------------------------------
 
 deploy-devnet:

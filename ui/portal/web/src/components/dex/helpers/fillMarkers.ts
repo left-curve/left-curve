@@ -1,10 +1,10 @@
 import { Decimal, truncateAddress } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { getChartResolutionBarTime } from "./chartResolution";
 import { normalizePerpsEvent, type NormalizedFields } from "./normalizePerpsEvent";
 import { getMakerTakerLabel, getSideLabel } from "./perpsEventLabels";
 import { perpsTradeHistoryKeys } from "./perpsTradeHistoryKeys";
-import { getPerpsPairSymbol } from "./tradePairSymbols";
 
 import type { PerpsEvent } from "@left-curve/types";
 import type { PublicClient } from "@left-curve/sdk";
@@ -48,9 +48,9 @@ function buildMarkerText(
   size: DecimalValue,
   price: DecimalValue,
 ): string[] {
-  const pairSymbol = getPerpsPairSymbol(event.pairId);
+  const baseSymbol = MarketPair.fromPairId(event.pairId).base.symbol;
   const sideLabel = getSideLabel(size.lt(0));
-  const text = [`${sideLabel} ${size.abs().toFixed()} ${pairSymbol} at $${price.toFixed()}`];
+  const text = [`${sideLabel} ${size.abs().toFixed()} ${baseSymbol} at $${price.toFixed()}`];
 
   if (fields.fee !== undefined) {
     text.push(`${m["dex.protrade.tradeHistory.fees"]()}: $${fields.fee}`);

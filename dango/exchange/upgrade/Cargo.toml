@@ -1,0 +1,14 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-upgrade"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+
+[dependencies]
+dango-app        = { workspace = true }
+dango-primitives = { workspace = true }
+tracing          = { workspace = true }

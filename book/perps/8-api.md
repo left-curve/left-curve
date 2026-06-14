@@ -2431,7 +2431,7 @@ For liquidation and ADL mechanics, see [Liquidation & ADL](4-liquidation-and-adl
 
 ### 10.1 Numeric types
 
-All numeric types are **signed fixed-point decimals with 6 decimal places**, built on [`dango_types::Number`](https://github.com/left-curve/left-curve/blob/main/dango/types/src/typed_number.rs). They are serialized as strings:
+All numeric types are **signed fixed-point decimals with 6 decimal places**, built on [`dango_types::Number`](https://github.com/left-curve/left-curve/blob/main/dango/exchange/types/src/typed_number.rs). They are serialized as strings:
 
 | Type alias       | Dimension      | Example usage                          | Example value    |
 | ---------------- | -------------- | -------------------------------------- | ---------------- |

@@ -14,11 +14,11 @@ use {
     anyhow::{anyhow, bail, ensure},
     awc::BoxedSocket,
     core::str,
-    futures_util::{sink::SinkExt, stream::StreamExt},
-    indexer_httpd::{
+    dango_indexer_httpd::{
         context::FullContext, graphql::build_full_schema, routes::graphql::GraphqlRequestTimeout,
         server::config_app, subscription_limiter::SubscriptionLimiter,
     },
+    futures_util::{sink::SinkExt, stream::StreamExt},
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
@@ -554,7 +554,7 @@ where
     G: Clone + 'static,
 {
     build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
-        config_app(app_ctx, graphql_schema)
+        config_app(app_ctx, graphql_schema, 128 * 1024)
     })
 }
 

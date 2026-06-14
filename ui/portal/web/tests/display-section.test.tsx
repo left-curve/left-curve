@@ -21,7 +21,6 @@ type DisplaySettings = {
     mask: number;
   };
   isFirstVisit: boolean;
-  showWelcome: boolean;
   timeFormat: string;
   timeZone: "local" | "utc";
   useSessionKey: boolean;
@@ -35,7 +34,6 @@ const defaultSettings = (): DisplaySettings => ({
     mask: 1,
   },
   isFirstVisit: true,
-  showWelcome: true,
   timeFormat: "hh:mm a",
   timeZone: "local",
   useSessionKey: true,
@@ -52,7 +50,6 @@ const displayMocks = vi.hoisted(() => ({
       mask: 1,
     },
     isFirstVisit: true,
-    showWelcome: true,
     timeFormat: "hh:mm a",
     timeZone: "local",
     useSessionKey: true,

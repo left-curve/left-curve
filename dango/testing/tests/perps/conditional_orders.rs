@@ -1,18 +1,18 @@
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_math::Uint128,
     dango_order_book::{
         ChildOrder, Dimensionless, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem,
         TimeInForce, TriggerDirection, UsdPrice, UsdValue,
+    },
+    dango_primitives::{
+        Addressable, CheckedContractEvent, Coins, Duration, Inner, JsonDeExt, QuerierExt,
+        ResultExt, SearchEvent, btree_map,
     },
     dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, OrderFilled, PairParam, UserState},
-    },
-    grug_math::Uint128,
-    grug_types::{
-        Addressable, CheckedContractEvent, Coins, Duration, Inner, JsonDeExt, QuerierExt,
-        ResultExt, SearchEvent, btree_map,
     },
     std::collections::BTreeMap,
 };
@@ -2209,7 +2209,7 @@ async fn conditional_order_trigger_fills_carry_fill_id() {
 
 /// Two TP orders that fire in the same `process_conditional_orders`
 /// invocation must produce consecutive fill ids. This pins the storage
-/// round-trip at `dango/perps/src/cron/process_conditional_orders.rs`:
+/// round-trip at `dango/exchange/perps/src/cron/process_conditional_orders.rs`:
 /// after the first triggered order saves its advanced `NEXT_FILL_ID`,
 /// the second triggered order must load the updated value rather than
 /// the pre-cron one.

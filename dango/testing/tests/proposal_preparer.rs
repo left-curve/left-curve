@@ -1,5 +1,15 @@
 use {
+    dango_db_memory::MemDb,
+    dango_primitives::{
+        Addr, Binary, Coins, Denom, Duration as CoreDuration, NonEmpty, QuerierExt, ResultExt,
+        btree_map,
+    },
     dango_proposal_preparer::{ProposalPreparer, QueryPythId},
+    dango_pyth_client::{PythClientCache, PythClientTrait},
+    dango_pyth_types::{
+        Channel, FixedRate, PythLazerSubscriptionDetails,
+        constants::{BTC_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER},
+    },
     dango_testing::{TestSuite, setup_test},
     dango_types::{
         constants::perp_btc,
@@ -7,17 +17,7 @@ use {
             ExecuteMsg, PriceConfig, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest,
         },
     },
-    grug_db_memory::MemDb,
-    grug_types::{
-        Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
-        btree_map,
-    },
-    grug_vm_rust::RustVm,
-    pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::{
-        Channel, FixedRate, PythLazerSubscriptionDetails,
-        constants::{BTC_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER},
-    },
+    dango_vm_rust::RustVm,
     std::{
         str::FromStr,
         thread::{self, sleep},
@@ -78,7 +78,7 @@ async fn proposal_pyth() {
             oracle,
             &ExecuteMsg::RegisterTrustedSigner {
                 public_key: pubkey,
-                expires_at: current_time + GrugDuration::from_minutes(10),
+                expires_at: current_time + CoreDuration::from_minutes(10),
             },
             Coins::new(),
         )

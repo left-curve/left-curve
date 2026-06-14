@@ -1,5 +1,5 @@
 use {
-    grug_types::{HexBinary, HttpdConfig},
+    dango_primitives::{HexBinary, HttpdConfig},
     serde::{Deserialize, Serialize},
 };
 
@@ -67,7 +67,7 @@ pub struct IndexerConfig {
     pub keep_blocks: bool,
     pub database: IndexerDatabaseConfig,
     pub clickhouse: ClickhouseConfig,
-    pub s3: indexer_cache::S3Config,
+    pub s3: dango_indexer_cache::S3Config,
 }
 
 #[derive(Serialize, Deserialize)]

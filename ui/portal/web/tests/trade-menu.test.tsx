@@ -26,6 +26,29 @@ const tradeMenuMocks = vi.hoisted(() => ({
   onChangeAction: vi.fn(),
   onChangeOrderType: vi.fn(),
   orderType: "market" as "market" | "limit",
+  pair: {
+    base: {
+      decimals: 8,
+      denom: "bridge/btc",
+      logoURI: "/btc.svg",
+      name: "Bitcoin",
+      symbol: "BTC",
+      type: "native",
+    },
+    id: "perp/btcusd",
+    logoURI: "/btc.svg",
+    name: "Bitcoin",
+    quote: {
+      decimals: 6,
+      denom: "usd",
+      logoURI: "/usd.svg",
+      name: "US Dollar",
+      symbol: "USD",
+      type: "native",
+    },
+    ticker: "BTCUSD",
+    type: "crypto",
+  },
   setSidebarVisibility: vi.fn(),
   setTradeBarVisibility: vi.fn(),
   showModal: vi.fn(),
@@ -74,13 +97,11 @@ vi.mock("@left-curve/foundation", async (importOriginal) => {
     useApp: () => ({
       changeSettings: vi.fn(),
       hideModal: tradeMenuMocks.hideModal,
-      isQuestBannerVisible: true,
       isSearchBarVisible: false,
       isSidebarVisible: false,
       isTradeBarVisible: true,
       modal: { modal: undefined, props: {} },
       navigate: vi.fn(),
-      setQuestBannerVisibility: vi.fn(),
       setSearchBarVisibility: vi.fn(),
       setSidebarVisibility: tradeMenuMocks.setSidebarVisibility,
       setTradeBarVisibility: tradeMenuMocks.setTradeBarVisibility,
@@ -92,7 +113,6 @@ vi.mock("@left-curve/foundation", async (importOriginal) => {
           mask: 1,
         },
         isFirstVisit: false,
-        showWelcome: false,
         timeFormat: "hh:mm a",
         timeZone: "local",
         useSessionKey: true,
@@ -122,24 +142,16 @@ vi.mock("~/components/foundation/hooks/useGeoblock", () => ({
   useGeoblock: () => tradeMenuMocks.isGeoblocked,
 }));
 
-vi.mock("../src/components/dex/components/ProTrade", () => {
-  const pairId = {
-    baseDenom: "bridge/btc",
-    quoteDenom: "usd",
-  };
-
-  return {
-    useProTrade: () => ({
-      accountAddress,
-      action: tradeMenuMocks.action,
-      onChangeAction: tradeMenuMocks.onChangeAction,
-      onChangeOrderType: tradeMenuMocks.onChangeOrderType,
-      orderType: tradeMenuMocks.orderType,
-      pairId,
-      perpsPairId: "perp/btcusd",
-    }),
-  };
-});
+vi.mock("../src/components/dex/components/ProTrade", () => ({
+  useProTrade: () => ({
+    accountAddress,
+    action: tradeMenuMocks.action,
+    onChangeAction: tradeMenuMocks.onChangeAction,
+    onChangeOrderType: tradeMenuMocks.onChangeOrderType,
+    orderType: tradeMenuMocks.orderType,
+    pair: tradeMenuMocks.pair,
+  }),
+}));
 
 vi.mock("@left-curve/store", () => {
   const baseCoin = {
@@ -148,14 +160,6 @@ vi.mock("@left-curve/store", () => {
     logoURI: "/btc.svg",
     name: "Bitcoin",
     symbol: "BTC",
-    type: "native",
-  };
-  const quoteCoin = {
-    decimals: 6,
-    denom: "usd",
-    logoURI: "/usd.svg",
-    name: "USD",
-    symbol: "USD",
     type: "native",
   };
   const appConfig = {
@@ -258,14 +262,6 @@ vi.mock("@left-curve/store", () => {
       getPrice: () => 50000,
     }),
     useStorage: () => [tradeMenuMocks.maxSlippage, vi.fn()],
-    useTradeAccountCoins: () => ({
-      baseCoin,
-      quoteCoin,
-    }),
-    useTradePairCoins: () => ({
-      baseCoin,
-      quoteCoin,
-    }),
     useVolume: () => ({
       volume: "0",
     }),
@@ -413,7 +409,7 @@ describe("DEX trade menu", () => {
           action: "buy",
           maxSlippage: "0.0125",
           operation: "market",
-          perpsPairId: "perp/btcusd",
+          pairId: "perp/btcusd",
           priceValue: "0",
           reduceOnly: false,
           sizeValue: "0.005000",
@@ -444,15 +440,15 @@ describe("DEX trade menu", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "isolated" }));
     expect(tradeMenuMocks.showModal).toHaveBeenCalledWith(Modals.PerpsMarginMode, {
-      pairSymbol: "BTC-USD",
-      perpsPairId: "perp/btcusd",
+      pairId: "perp/btcusd",
+      ticker: "BTCUSD",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "50x" }));
     expect(tradeMenuMocks.showModal).toHaveBeenCalledWith(Modals.PerpsAdjustLeverage, {
       baseSymbol: "BTC",
       maxLeverage: 50,
-      perpsPairId: "perp/btcusd",
+      pairId: "perp/btcusd",
     });
   });
 
@@ -474,7 +470,7 @@ describe("DEX trade menu", () => {
         expect.objectContaining({
           action: "buy",
           operation: "market",
-          perpsPairId: "perp/btcusd",
+          pairId: "perp/btcusd",
           reduceOnly: true,
           sizeValue: "0.005000",
         }),

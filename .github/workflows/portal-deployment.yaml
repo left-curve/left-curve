@@ -39,10 +39,6 @@ on:
       - "deploy/**"
       - "dango/**"
       - "docker/dango/**"
-      - "grug/**"
-      - "hyperlane/**"
-      - "indexer/**"
-      - "pyth/**"
       - "sdk/typescript/**"
       - "ui/**"
       - "package.json"
@@ -232,7 +228,6 @@ jobs:
               },
               urls: {
                 faucetUrl: $faucet_url,
-                questUrl: "https://quest-bot-devnet.dango.zone/check_username",
                 upUrl: $up_url,
                 pointsUrl: "https://points-devnet.dango.zone"
               },

@@ -7,10 +7,10 @@ on:
     branches:
       - main
     paths:
-      - "grug/jellyfish-merkle/spec/**"
+      - "dango/core/jellyfish-merkle/spec/**"
   pull_request:
     paths:
-      - "grug/jellyfish-merkle/spec/**"
+      - "dango/core/jellyfish-merkle/spec/**"
 
 jobs:
   lmt-check:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec
+        working-directory: ./dango/core/jellyfish-merkle/spec
     steps:
       # Step 1: Checkout the repository
       - name: Checkout code
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec
+        working-directory: ./dango/core/jellyfish-merkle/spec
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -66,7 +66,10 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
-      - run: npm install -g @informalsystems/quint
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
+      - run: npm install -g @informalsystems/quint@0.30.0
       - run: bash scripts/quint-forall.sh typecheck quint/**/*.qnt
 
   quint-test:
@@ -76,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec
+        working-directory: ./dango/core/jellyfish-merkle/spec
     env:
       MAX_SAMPLES: 100
     steps:
@@ -86,7 +89,10 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
-      - run: npm install -g @informalsystems/quint
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
+      - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint test --max-samples=$MAX_SAMPLES quint/test/test_all.qnt
 
   quint-simulations-fancy:
@@ -96,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/core/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3
@@ -107,7 +113,10 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
-      - run: npm install -g @informalsystems/quint
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
+      - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy apply_state_machine.qnt
 
   quint-simulations-simple:
@@ -117,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/core/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3
@@ -128,7 +137,10 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
-      - run: npm install -g @informalsystems/quint
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
+      - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple apply_state_machine.qnt
 
   quint-simulations-prune-simple:
@@ -138,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/core/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3
@@ -149,7 +161,10 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
-      - run: npm install -g @informalsystems/quint
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
+      - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple pruning_state_machine.qnt
 
   quint-simulations-prune-fancy:
@@ -159,7 +174,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./grug/jellyfish-merkle/spec/quint
+        working-directory: ./dango/core/jellyfish-merkle/spec/quint
     env:
       MAX_SAMPLES: 100
       MAX_STEPS: 3
@@ -170,5 +185,8 @@ jobs:
       - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # v3
         with:
           node-version: "18"
-      - run: npm install -g @informalsystems/quint
+      # Pinned to 0.30.0: quint 0.31.0 switched the default `quint test`/`run` backend to
+      # Rust (informalsystems/quint#1919), which miscomputes the unchanged JMT spec and
+      # fails `bigInsertionUpdateDeleteTest`; 0.30.0's TypeScript backend passes. Keep pinned.
+      - run: npm install -g @informalsystems/quint@0.30.0
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy pruning_state_machine.qnt

@@ -27,9 +27,10 @@ function candle(overrides: Partial<PerpsCandle>): PerpsCandle {
   };
 }
 
-function createDatafeedFixture() {
+function createDatafeedFixture({ accountAddress }: { accountAddress?: string } = {}) {
   const client = {
     queryPerpsCandles: vi.fn(),
+    queryPerpsEvents: vi.fn(),
   };
   const queryClient = {
     fetchQuery: vi.fn(async ({ queryFn }: { queryFn: () => Promise<unknown> }) => queryFn()),
@@ -42,6 +43,7 @@ function createDatafeedFixture() {
     client,
     datafeed: createPerpsDataFeed({
       client: client as never,
+      getAccountAddress: () => accountAddress,
       queryClient: queryClient as never,
       subscriptions: subscriptions as never,
     }),
@@ -60,7 +62,40 @@ describe("TradingView perps datafeed", () => {
     vi.clearAllMocks();
   });
 
-  it("fetches backend candles with normalized pair ids, interval enums, and ascending TradingView bars", async () => {
+  it("resolves cataloged compact tickers and rejects unsupported symbols", async () => {
+    const { datafeed } = createDatafeedFixture();
+    const onResolved = vi.fn();
+    const onError = vi.fn();
+
+    datafeed.resolveSymbol("ETHUSD", onResolved, onError);
+    await vi.runAllTimersAsync();
+
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: "ETHUSD Perp",
+        name: "ETHUSD",
+        ticker: "ETHUSD",
+      }),
+    );
+    expect(onError).not.toHaveBeenCalled();
+
+    datafeed.resolveSymbol("BTCUSD", onResolved, onError);
+    await vi.runAllTimersAsync();
+
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: "BTCUSD Perp",
+        name: "BTCUSD",
+        ticker: "BTCUSD",
+      }),
+    );
+
+    datafeed.resolveSymbol("ETH-USD", onResolved, onError);
+
+    expect(onError).toHaveBeenCalledWith("Unknown symbol: ETH-USD");
+  });
+
+  it("fetches backend candles with the resolved pair id, interval enums, and ascending TradingView bars", async () => {
     const { client, datafeed, queryClient } = createDatafeedFixture();
     client.queryPerpsCandles.mockResolvedValue({
       nodes: [
@@ -86,7 +121,7 @@ describe("TradingView perps datafeed", () => {
     const onError = vi.fn();
 
     datafeed.getBars(
-      { name: "ETH-USD" } as never,
+      { name: "ETHUSD" } as never,
       "15" as never,
       { to: 1_759_453_200 } as never,
       onHistory,
@@ -136,7 +171,7 @@ describe("TradingView perps datafeed", () => {
 
     client.queryPerpsCandles.mockResolvedValueOnce({ nodes: [] });
     datafeed.getBars(
-      { name: "BTC-USD" } as never,
+      { name: "BTCUSD" } as never,
       "1D" as never,
       { to: 1 } as never,
       onHistory,
@@ -154,7 +189,7 @@ describe("TradingView perps datafeed", () => {
 
     client.queryPerpsCandles.mockRejectedValueOnce(new Error("indexer unavailable"));
     datafeed.getBars(
-      { name: "BTC-USD" } as never,
+      { name: "BTCUSD" } as never,
       "1D" as never,
       { to: 2 } as never,
       onHistory,
@@ -181,7 +216,7 @@ describe("TradingView perps datafeed", () => {
       });
     const onRealtime = vi.fn();
 
-    datafeed.subscribeBars({ name: "ETH-USD" } as never, "5" as never, onRealtime, "eth-sub");
+    datafeed.subscribeBars({ name: "ETHUSD" } as never, "5" as never, onRealtime, "eth-sub");
     expect(subscriptions.subscribe).toHaveBeenNthCalledWith(1, "perpsCandles", {
       listener: expect.any(Function),
       params: {
@@ -190,7 +225,7 @@ describe("TradingView perps datafeed", () => {
       },
     });
 
-    datafeed.subscribeBars({ name: "BTC-USD" } as never, "1S" as never, onRealtime, "btc-sub");
+    datafeed.subscribeBars({ name: "BTCUSD" } as never, "1S" as never, onRealtime, "btc-sub");
     expect(firstUnsubscribe).toHaveBeenCalledOnce();
     expect(subscriptions.subscribe).toHaveBeenNthCalledWith(2, "perpsCandles", {
       listener: expect.any(Function),
@@ -226,5 +261,72 @@ describe("TradingView perps datafeed", () => {
       volume: 5000,
     });
     expect(secondUnsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("returns fill marks only for connected accounts and order_filled events", async () => {
+    const { client, datafeed } = createDatafeedFixture({
+      accountAddress: "0xuser",
+    });
+    const onMarks = vi.fn();
+    client.queryPerpsEvents.mockResolvedValue({
+      nodes: [
+        {
+          blockHeight: 123,
+          createdAt: "2026-06-09T00:07:12.000Z",
+          data: {
+            closing_size: "0.000000",
+            fee: "6.500000",
+            fill_id: "17",
+            fill_price: "65000.000000",
+            fill_size: "0.100000",
+            is_maker: false,
+            opening_size: "0.100000",
+            order_id: "42",
+            pair_id: "perp/btcusd",
+            realized_funding: "0.000000",
+            realized_pnl: "0.000000",
+            user: "0xuser",
+          },
+          eventType: "order_filled",
+          idx: 7,
+          pairId: "perp/btcusd",
+          txHash: "0x1234567890abcdef1234567890abcdef12345678",
+          userAddr: "0xuser",
+        },
+      ],
+    });
+
+    datafeed.getMarks(
+      { name: "BTCUSD" } as never,
+      Date.parse("2026-06-09T00:00:00.000Z") / 1000,
+      Date.parse("2026-06-09T01:00:00.000Z") / 1000,
+      onMarks,
+      "5" as never,
+    );
+    await vi.runAllTimersAsync();
+
+    expect(client.queryPerpsEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "order_filled",
+        pairId: "perp/btcusd",
+        userAddr: "0xuser",
+      }),
+    );
+    expect(onMarks).toHaveBeenCalledWith([
+      expect.objectContaining({
+        label: "B",
+        time: Date.parse("2026-06-09T00:05:00.000Z") / 1000,
+      }),
+    ]);
+  });
+
+  it("returns no fill marks when there is no connected account", () => {
+    const { client, datafeed } = createDatafeedFixture();
+    const onMarks = vi.fn();
+
+    datafeed.getMarks({ name: "BTCUSD" } as never, 1, 2, onMarks, "5" as never);
+
+    expect(onMarks).toHaveBeenCalledWith([]);
+    expect(client.queryPerpsEvents).not.toHaveBeenCalled();
   });
 });

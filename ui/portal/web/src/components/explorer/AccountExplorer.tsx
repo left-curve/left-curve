@@ -14,7 +14,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Badge, Cell, FormattedNumber, Table, TextCopy } from "@left-curve/applets-kit";
 import { Decimal, sharesToUsd } from "@left-curve/utils";
 import { AccountCard } from "../foundation/AccountCard";
-import { getPerpsPairLabel } from "../dex/helpers/tradePairSymbols";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 
@@ -236,7 +236,10 @@ const PerpsPositions: React.FC = () => {
     {
       header: m["explorer.accounts.perps.positions.pair"](),
       cell: ({ row }) => (
-        <Cell.Text text={getPerpsPairLabel(row.original.pairId)} className="diatype-xs-medium" />
+        <Cell.Text
+          text={MarketPair.fromPairId(row.original.pairId).ticker}
+          className="diatype-xs-medium"
+        />
       ),
     },
     {
@@ -356,7 +359,10 @@ const PerpsOrders: React.FC = () => {
     {
       header: m["explorer.accounts.perps.orders.pair"](),
       cell: ({ row }) => (
-        <Cell.Text text={getPerpsPairLabel(row.original.pairId)} className="diatype-xs-medium" />
+        <Cell.Text
+          text={MarketPair.fromPairId(row.original.pairId).ticker}
+          className="diatype-xs-medium"
+        />
       ),
     },
     {

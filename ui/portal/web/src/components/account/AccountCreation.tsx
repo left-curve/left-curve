@@ -70,7 +70,7 @@ export const Deposit: React.FC = () => {
 
   const { toast, showModal, subscriptions } = useApp();
   const { coins } = useConfig();
-  const { username, userIndex, account, isConnected } = useAccount();
+  const { userIndex, account, isConnected } = useAccount();
   const { data: signingClient } = useSigningClient();
 
   const { data: balances = {} } = useBalances({
@@ -92,7 +92,6 @@ export const Deposit: React.FC = () => {
       success: m["accountCreation.accountCreated"](),
     },
     mutation: {
-      invalidateKeys: [["quests", userIndex]],
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
         const funds = fundsAmount || "0";
@@ -124,7 +123,7 @@ export const Deposit: React.FC = () => {
         });
       },
     });
-  }, [subscriptions, username, fundsAmount, coinInfo]);
+  }, [subscriptions, userIndex, fundsAmount, coinInfo]);
 
   return (
     <form

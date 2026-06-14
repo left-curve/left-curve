@@ -29,25 +29,25 @@
 //! cases. A comment that says "user2 sells/buys …" means user2 is acting as the
 //! taker, even though user2 is the maker of the reduce-only order being asserted.
 //!
-//! See `dango/perps/src/trade/resize_reduce_only.rs`, `submit_order.rs`, and
-//! `dango/order-book/src/matching_engine.rs`.
+//! See `dango/exchange/perps/src/trade/resize_reduce_only.rs`, `submit_order.rs`, and
+//! `dango/exchange/order-book/src/matching_engine.rs`.
 
 use {
     crate::{default_pair_param, default_param, register_oracle_prices},
+    dango_math::Uint128,
     dango_order_book::{
         ChildOrder, Dimensionless, OrderId, OrderKind, OrderRemoved, OrderResized, PairId,
         Quantity, QueryOrdersByUserResponseItem, ReasonForOrderRemoval, TimeInForce,
         TriggerDirection, UsdPrice,
     },
+    dango_primitives::{
+        Addr, Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, NonEmpty, QuerierExt,
+        ResultExt, SearchEvent, btree_map, btree_set,
+    },
     dango_testing::{TestAccount, TestOption, TestSuiteNaive, pair_id, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, PairParam, PairState, UserState},
-    },
-    grug_math::Uint128,
-    grug_types::{
-        Addr, Addressable, CheckedContractEvent, Coins, Duration, JsonDeExt, NonEmpty, QuerierExt,
-        ResultExt, SearchEvent, btree_map, btree_set,
     },
     std::collections::BTreeMap,
 };

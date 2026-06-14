@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetAppletsKitMocks, setAppletsKitUseMediaQueryFactory } from "./mocks/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { MarketPair } from "@left-curve/foundation/market-pair";
 
 import type React from "react";
 
@@ -11,8 +12,6 @@ import { SearchToken } from "../src/components/dex/components/SearchToken";
 import { SearchTokenTable } from "../src/components/dex/components/SearchTokenTable";
 
 const searchTokenMocks = vi.hoisted(() => ({
-  getPerpsAssetClass: vi.fn(),
-  getPerpsPairIdFromPairId: vi.fn(),
   hasFavPair: vi.fn(),
   isLg: true,
   toggleFavPair: vi.fn(),
@@ -70,16 +69,6 @@ vi.mock("@left-curve/foundation", async (importOriginal) => ({
 }));
 
 vi.mock("@left-curve/store", () => ({
-  getPerpsAssetClass: searchTokenMocks.getPerpsAssetClass,
-  getPerpsPairIdFromPairId: searchTokenMocks.getPerpsPairIdFromPairId,
-  perpsMarginAsset: {
-    decimals: 6,
-    denom: "usd",
-    logoURI: "/images/coins/usd.svg",
-    name: "USD",
-    symbol: "USD",
-    type: "native",
-  },
   useAllPerpsPairStats: searchTokenMocks.useAllPerpsPairStats,
   useAppConfig: searchTokenMocks.useAppConfig,
   useBoostedPairs: searchTokenMocks.useBoostedPairs,
@@ -106,38 +95,15 @@ const ethCoin = {
   type: "native",
 };
 
-const goldCoin = {
-  decimals: 6,
-  denom: "oracle/gold",
-  logoURI: "/gold.svg",
-  name: "Gold",
-  symbol: "XAU",
-  type: "native",
-};
-
-const pairId = {
-  baseDenom: btcCoin.denom,
-  quoteDenom: "usd",
-};
+const pair = MarketPair.fromTicker("BTCUSD");
 
 function createRow(
   overrides: Partial<React.ComponentProps<typeof SearchTokenTable>["data"][number]> = {},
 ) {
   return {
-    baseCoin: btcCoin,
     boostMultiplier: undefined,
     isFavorite: false,
-    pairId,
-    pairKey: "BTC-USD",
-    perpsPairId: "perp/btcusd",
-    quoteCoin: {
-      decimals: 6,
-      denom: "usd",
-      logoURI: "/images/coins/usd.svg",
-      name: "USD",
-      symbol: "USD",
-      type: "native",
-    },
+    pair,
     ...overrides,
   } as React.ComponentProps<typeof SearchTokenTable>["data"][number];
 }
@@ -149,7 +115,7 @@ function rowForText(text: string, container: HTMLElement = document.body) {
 }
 
 function openDesktopSearchMenu() {
-  const trigger = screen.getByRole("button", { name: /BTC-USD/ });
+  const trigger = screen.getByRole("button", { name: /BTCUSD/ });
   fireEvent.click(trigger);
 
   const panelId = trigger.getAttribute("aria-controls");
@@ -177,18 +143,7 @@ describe("DEX search token picker", () => {
       isLg: searchTokenMocks.isLg,
     }));
     searchTokenMocks.isLg = true;
-    searchTokenMocks.hasFavPair.mockImplementation((pairKey: string) => pairKey === "BTC-USD");
-    searchTokenMocks.getPerpsAssetClass.mockImplementation((symbol: string) =>
-      symbol === "XAU" ? "commodity" : "crypto",
-    );
-    searchTokenMocks.getPerpsPairIdFromPairId.mockImplementation(
-      ({ baseDenom }: { baseDenom: string }) => {
-        if (baseDenom === "bridge/btc") return "perp/btcusd";
-        if (baseDenom === "bridge/eth") return "perp/ethusd";
-        if (baseDenom === "oracle/gold") return "perp/xauusd";
-        return "";
-      },
-    );
+    searchTokenMocks.hasFavPair.mockImplementation((pairKey: string) => pairKey === "BTCUSD");
     searchTokenMocks.useAllPerpsPairStats.mockImplementation(
       (selector: (state: { perpsPairStatsByPairId: Record<string, unknown> }) => unknown) =>
         selector({
@@ -211,7 +166,6 @@ describe("DEX search token picker", () => {
         perpsPairs: {
           "perp/btcusd": {},
           "perp/ethusd": {},
-          "perp/missingusd": {},
           "perp/xauusd": {},
         },
       },
@@ -226,12 +180,10 @@ describe("DEX search token picker", () => {
         byDenom: {
           [btcCoin.denom]: btcCoin,
           [ethCoin.denom]: ethCoin,
-          [goldCoin.denom]: goldCoin,
         },
         bySymbol: {
           BTC: btcCoin,
           ETH: ethCoin,
-          XAU: goldCoin,
         },
       },
     });
@@ -239,7 +191,7 @@ describe("DEX search token picker", () => {
       currentEpoch: 9,
     });
     searchTokenMocks.useFavPairs.mockReturnValue({
-      favPairs: ["BTC-USD"],
+      favPairs: ["BTCUSD"],
       hasFavPair: searchTokenMocks.hasFavPair,
       toggleFavPair: searchTokenMocks.toggleFavPair,
     });
@@ -260,20 +212,19 @@ describe("DEX search token picker", () => {
   });
 
   it("builds rows from configured perps pairs, filters search text, and selects a pair", async () => {
-    const onChangePairId = vi.fn();
+    const onChangePair = vi.fn();
 
-    render(<SearchToken pairId={pairId} onChangePairId={onChangePairId} />);
+    render(<SearchToken pair={pair} onChangePair={onChangePair} />);
 
     const menu = openDesktopSearchMenu();
-    expect(within(menu).getByText("BTC-USD")).toBeInTheDocument();
-    expect(within(menu).getByText("ETH-USD")).toBeInTheDocument();
-    expect(within(menu).getByText("XAU-USD")).toBeInTheDocument();
-    expect(within(menu).queryByText("MISSING-USD")).not.toBeInTheDocument();
+    expect(within(menu).getByText("BTCUSD")).toBeInTheDocument();
+    expect(within(menu).getByText("ETHUSD")).toBeInTheDocument();
+    expect(within(menu).getByText("XAUUSD")).toBeInTheDocument();
     expect(searchTokenMocks.useBoostedPairs).toHaveBeenCalledWith({
       currentEpoch: 9,
       pointsUrl: "https://points.test",
     });
-    await expectBoostTooltip(rowForText("BTC-USD", menu), "2x points");
+    await expectBoostTooltip(rowForText("BTCUSD", menu), "2x points");
 
     fireEvent.change(screen.getByRole("textbox"), {
       target: {
@@ -281,26 +232,20 @@ describe("DEX search token picker", () => {
       },
     });
 
-    expect(within(menu).queryByText("BTC-USD")).not.toBeInTheDocument();
-    expect(within(menu).getByText("ETH-USD")).toBeInTheDocument();
+    expect(within(menu).queryByText("BTCUSD")).not.toBeInTheDocument();
+    expect(within(menu).getByText("ETHUSD")).toBeInTheDocument();
 
-    fireEvent.pointerDown(rowForText("ETH-USD", menu), { button: 0 });
+    fireEvent.pointerDown(rowForText("ETHUSD", menu), { button: 0 });
 
-    expect(onChangePairId).toHaveBeenCalledWith(
+    expect(onChangePair).toHaveBeenCalledWith(
       expect.objectContaining({
-        baseCoin: ethCoin,
-        pairId: {
-          baseDenom: "bridge/eth",
-          quoteDenom: "usd",
-        },
-        pairKey: "ETH-USD",
-        perpsPairId: "perp/ethusd",
+        pair: MarketPair.fromTicker("ETHUSD"),
       }),
     );
   });
 
   it("filters favorites and asset-class tabs using store-backed state", () => {
-    render(<SearchToken pairId={pairId} onChangePairId={vi.fn()} />);
+    render(<SearchToken pair={pair} onChangePair={vi.fn()} />);
 
     const menu = openDesktopSearchMenu();
 
@@ -310,9 +255,9 @@ describe("DEX search token picker", () => {
       }),
     );
 
-    expect(within(menu).getByText("BTC-USD")).toBeInTheDocument();
-    expect(within(menu).queryByText("ETH-USD")).not.toBeInTheDocument();
-    expect(within(menu).queryByText("XAU-USD")).not.toBeInTheDocument();
+    expect(within(menu).getByText("BTCUSD")).toBeInTheDocument();
+    expect(within(menu).queryByText("ETHUSD")).not.toBeInTheDocument();
+    expect(within(menu).queryByText("XAUUSD")).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -320,8 +265,8 @@ describe("DEX search token picker", () => {
       }),
     );
 
-    expect(within(menu).getByText("XAU-USD")).toBeInTheDocument();
-    expect(within(menu).queryByText("BTC-USD")).not.toBeInTheDocument();
+    expect(within(menu).getByText("XAUUSD")).toBeInTheDocument();
+    expect(within(menu).queryByText("BTCUSD")).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -329,9 +274,9 @@ describe("DEX search token picker", () => {
       }),
     );
 
-    expect(within(menu).getByText("BTC-USD")).toBeInTheDocument();
-    expect(within(menu).getByText("ETH-USD")).toBeInTheDocument();
-    expect(within(menu).queryByText("XAU-USD")).not.toBeInTheDocument();
+    expect(within(menu).getByText("BTCUSD")).toBeInTheDocument();
+    expect(within(menu).getByText("ETHUSD")).toBeInTheDocument();
+    expect(within(menu).queryByText("XAUUSD")).not.toBeInTheDocument();
   });
 
   it("shows the favorites empty state only when the user has no favorite pairs", () => {
@@ -341,7 +286,7 @@ describe("DEX search token picker", () => {
       toggleFavPair: searchTokenMocks.toggleFavPair,
     });
 
-    render(<SearchToken pairId={pairId} onChangePairId={vi.fn()} />);
+    render(<SearchToken pair={pair} onChangePair={vi.fn()} />);
     openDesktopSearchMenu();
 
     fireEvent.click(
@@ -356,7 +301,7 @@ describe("DEX search token picker", () => {
   });
 
   it("renders table stats and lets users toggle favorites without selecting the row", async () => {
-    const onChangePairId = vi.fn();
+    const onChangePair = vi.fn();
 
     render(
       <SearchTokenTable
@@ -365,7 +310,7 @@ describe("DEX search token picker", () => {
             boostMultiplier: "2.500000",
           }),
         ]}
-        onChangePairId={onChangePairId}
+        onChangePair={onChangePair}
       />,
     );
 
@@ -373,8 +318,9 @@ describe("DEX search token picker", () => {
     expect(screen.getByText(m["dex.protrade.searchPairTable.price"]())).toBeInTheDocument();
     expect(screen.getByText(m["dex.protrade.searchPairTable.24hChange"]())).toBeInTheDocument();
     expect(screen.getByText(m["dex.protrade.searchPairTable.volume"]())).toBeInTheDocument();
-    const btcRow = rowForText("BTC-USD");
-    expect(btcRow).toHaveTextContent("BTC-USD");
+    const btcRow = rowForText("BTCUSD");
+    expect(btcRow).toHaveTextContent("BTCUSD");
+    expect(within(btcRow).getByText("Perp")).toBeInTheDocument();
     expect(btcRow).toHaveTextContent("$65,000");
     expect(btcRow).toHaveTextContent("+4.2%");
     expect(btcRow).toHaveTextContent("$987,654");
@@ -382,14 +328,14 @@ describe("DEX search token picker", () => {
 
     fireEvent.click(screen.getByRole("button", { name: m["common.starToggle.remove"]() }));
 
-    expect(searchTokenMocks.toggleFavPair).toHaveBeenCalledWith("BTC-USD");
-    expect(onChangePairId).not.toHaveBeenCalled();
+    expect(searchTokenMocks.toggleFavPair).toHaveBeenCalledWith("BTCUSD");
+    expect(onChangePair).not.toHaveBeenCalled();
 
     fireEvent.pointerDown(btcRow, { button: 0 });
 
-    expect(onChangePairId).toHaveBeenCalledWith(
+    expect(onChangePair).toHaveBeenCalledWith(
       expect.objectContaining({
-        pairKey: "BTC-USD",
+        pair,
       }),
     );
   });

@@ -107,7 +107,7 @@ Legitimate. Confirmed by inspecting `sdk/rust/src/lib.rs`
 (exports `client`, `keystore`, `secret`, `signer`, `subscription`
 only) and `sdk/rust/examples/` (two read-only examples:
 `subscribe_order_filled.rs`, `trade_history_csv.rs`). The Rust SDK
-ships a low-level transport (HTTP + GraphQL via `indexer_graphql_types`)
+ships a low-level transport (HTTP + GraphQL via `dango_indexer_graphql_types`)
 plus signing/keystore primitives — no perps mutation wrappers
 (`deposit_margin`, `submit_limit_order`, `vault_add_liquidity`, etc.)
 exist, so there are no protocol-touching Rust pages to enrich. The

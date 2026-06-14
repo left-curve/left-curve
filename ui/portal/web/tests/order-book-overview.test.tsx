@@ -15,6 +15,29 @@ import { OrderBookOverview } from "../src/components/dex/components/OrderBookOve
 
 const orderBookMocks = vi.hoisted(() => ({
   accountAddress: "0x6f72646572626f6f6b0000000000000000000000",
+  pair: {
+    base: {
+      decimals: 8,
+      denom: "bridge/btc",
+      logoURI: "/btc.svg",
+      name: "Bitcoin",
+      symbol: "BTC",
+      type: "native",
+    },
+    id: "perp/btcusd",
+    logoURI: "/btc.svg",
+    name: "Bitcoin",
+    quote: {
+      decimals: 6,
+      denom: "usd",
+      logoURI: "/usd.svg",
+      name: "US Dollar",
+      symbol: "USD",
+      type: "native",
+    },
+    ticker: "BTCUSD",
+    type: "crypto",
+  },
   depthSnapshot: {
     error: null as Error | null,
     liquidityDepth: null as {
@@ -49,11 +72,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../src/components/dex/components/ProTrade", () => ({
   useProTrade: () => ({
     accountAddress: orderBookMocks.accountAddress,
-    pairId: {
-      baseDenom: "bridge/btc",
-      quoteDenom: "usd",
-    },
-    perpsPairId: "perp/btcusd",
+    pair: orderBookMocks.pair,
   }),
 }));
 
@@ -138,7 +157,7 @@ vi.mock("@left-curve/store", () => ({
     selector: (state: typeof orderBookMocks.depthSnapshot) => unknown,
     _parameters: {
       bucketSize: string;
-      perpsPairId: string;
+      pairId: string;
     },
   ) => selector(orderBookMocks.depthSnapshot),
   usePerpsOrdersByUser: (
@@ -151,26 +170,6 @@ vi.mock("@left-curve/store", () => ({
       orders: orderBookMocks.userOrders,
     }),
   useStorage: () => [orderBookMocks.displayMode, orderBookMocks.setDisplayMode],
-  useTradePairCoins: () => ({
-    baseCoin: {
-      amount: "0",
-      decimals: 8,
-      denom: "bridge/btc",
-      logoURI: "/btc.svg",
-      name: "Bitcoin",
-      symbol: "BTC",
-      type: "native",
-    },
-    quoteCoin: {
-      amount: "0",
-      decimals: 6,
-      denom: "usd",
-      logoURI: "/usd.svg",
-      name: "USD",
-      symbol: "USD",
-      type: "native",
-    },
-  }),
 }));
 
 function renderOrderBook() {

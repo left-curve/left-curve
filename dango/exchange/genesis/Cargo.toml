@@ -1,0 +1,35 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-genesis"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+metrics = ["dango-oracle/metrics", "dango-perps/metrics"]
+
+[dependencies]
+anyhow                  = { workspace = true }
+dango-account           = { workspace = true }
+dango-account-factory   = { workspace = true }
+dango-bank              = { workspace = true }
+dango-gateway           = { workspace = true }
+dango-hyperlane-ism     = { workspace = true }
+dango-hyperlane-mailbox = { workspace = true }
+dango-hyperlane-types   = { workspace = true }
+dango-hyperlane-va      = { workspace = true }
+dango-math              = { workspace = true }
+dango-oracle            = { workspace = true }
+dango-order-book        = { workspace = true }
+dango-perps             = { workspace = true, features = ["tracing"] }
+dango-primitives        = { workspace = true }
+dango-taxman            = { workspace = true }
+dango-types             = { workspace = true }
+dango-vesting           = { workspace = true }
+dango-vm-rust           = { workspace = true }
+dango-warp              = { workspace = true }
+serde                   = { workspace = true }

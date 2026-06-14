@@ -154,13 +154,6 @@ export {
   useSubmitTx,
 } from "./hooks/useSubmitTx.js";
 
-export {
-  getPerpsPairIdFromPairId,
-  useTradeAccountCoins,
-  useTradePairCoins,
-  type UseTradeAccountCoinsParameters,
-  type UseTradePairCoinsParameters,
-} from "./hooks/useTradeCoins.js";
 export { useCurrentPrice } from "./hooks/useCurrentPrice.js";
 export { usePerpsSubmission } from "./hooks/usePerpsSubmission.js";
 export { usePerpsMaxSize } from "./hooks/usePerpsMaxSize.js";
@@ -245,10 +238,7 @@ export { useSigningClient } from "./hooks/useSigningClient.js";
 
 export {
   usePerpsUserState,
-  perpsMarginAsset,
-  getPerpsAssetClass,
   type PerpsUserStateSnapshot,
-  type PerpsAssetClass,
   type UsePerpsUserStateParameters,
 } from "./hooks/usePerpsUserState.js";
 export {

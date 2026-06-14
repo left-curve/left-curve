@@ -8,7 +8,7 @@ A five-minute hello-world that queries chain status with `HttpClient`.
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::BlockClient,
+    dango_primitives::BlockClient,
 };
 
 #[tokio::main]
@@ -41,7 +41,7 @@ Most "what's my balance" calls go through the `QueryClientExt` blanket trait, wh
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::{Addr, Denom, QueryClientExt},
+    dango_primitives::{Addr, Denom, QueryClientExt},
     std::str::FromStr,
 };
 

@@ -16,13 +16,13 @@ From `impl QueryClient for HttpClient`. `UnsignedTx` and `TxOutcome` are re-expo
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, SingleSigner},
-    grug::{NonEmpty, QueryClient, Signer},
+    dango_primitives::{NonEmpty, QueryClient, Signer},
 };
 
 async fn estimate_gas(
     http: &HttpClient,
     signer: &SingleSigner<impl dango_sdk::Secret>,
-    messages: NonEmpty<Vec<grug::Message>>,
+    messages: NonEmpty<Vec<dango_primitives::Message>>,
 ) -> Result<u64> {
     let unsigned = signer.unsigned_transaction(messages, "dango-1")?;
     let outcome  = http.simulate(unsigned).await?;

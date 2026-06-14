@@ -21,7 +21,7 @@ Read endpoint and key material from the environment. Keep secrets out of source 
 use {
     anyhow::{Context, Result},
     dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner, WsClient},
-    grug::Addr,
+    dango_primitives::Addr,
     std::{env, str::FromStr},
 };
 

@@ -320,7 +320,7 @@ describe("app layout route", () => {
   });
 
   it("drives header scroll state from locked sidebar scroll on trade routes", () => {
-    layoutRouteMocks.pathname = "/trade/ETH-USD";
+    layoutRouteMocks.pathname = "/trade/ETHUSD";
     layoutRouteMocks.isSidebarVisible = true;
     document.body.dataset.scrollLockY = "2";
     const Component = LayoutComponent();
@@ -331,7 +331,7 @@ describe("app layout route", () => {
   });
 
   it("uses the trade route scroll threshold when the window scrolls", () => {
-    layoutRouteMocks.pathname = "/trade/ETH-USD";
+    layoutRouteMocks.pathname = "/trade/ETHUSD";
     const Component = LayoutComponent();
 
     render(<Component />);
@@ -352,7 +352,7 @@ describe("app layout route", () => {
   it("shows the geoblock banner only for geoblocked mobile trade routes", () => {
     layoutRouteMocks.isGeoblocked = true;
     layoutRouteMocks.isLg = false;
-    layoutRouteMocks.pathname = "/trade/ETH-USD";
+    layoutRouteMocks.pathname = "/trade/ETHUSD";
     const Component = LayoutComponent();
 
     const { rerender } = render(<Component />);
@@ -364,7 +364,7 @@ describe("app layout route", () => {
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-    layoutRouteMocks.pathname = "/trade/ETH-USD";
+    layoutRouteMocks.pathname = "/trade/ETHUSD";
     layoutRouteMocks.isLg = true;
     rerender(<Component />);
 

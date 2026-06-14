@@ -1,7 +1,7 @@
 use {
-    grug_types::HexByteArray,
+    dango_hyperlane_types::{Addr32, addr32, mailbox::Domain},
+    dango_primitives::HexByteArray,
     hex_literal::hex,
-    hyperlane_types::{Addr32, addr32, mailbox::Domain},
 };
 
 pub const MOCK_HYPERLANE_LOCAL_DOMAIN: Domain = 88888888;
@@ -13,7 +13,7 @@ pub const MOCK_HYPERLANE_REMOTE_MERKLE_TREE: Addr32 =
 ///
 /// See commenst for the seed phrases used to generate these keys. Do not use
 /// these keys in production!
-pub const MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS: [eth_utils::SigningKey; 3] = [
+pub const MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS: [dango_eth_utils::SigningKey; 3] = [
     // swift slow expire warfare tired foster stable knife gasp wrong legal liquid tell obvious horror shadow margin various fiction chief cargo horse gravity goose
     hex!("b326ef3ac58801ce41e5318bbfa889ec21f829a3fc2c94f25203f9d0c4989c55"),
     // captain pluck round present sad galaxy ridge chat struggle under cinnamon diagram plate modify clever boost depart ordinary salmon liberty kite glide reduce you

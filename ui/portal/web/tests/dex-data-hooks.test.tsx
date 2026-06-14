@@ -104,24 +104,21 @@ describe("DEX data hooks", () => {
     expect(result.current.data).toBeUndefined();
   });
 
-  it("queries pair params only when a pair id is available and enabled", async () => {
+  it("queries pair params for the requested backend pair id and respects disabled state", async () => {
     hookMocks.getPerpsPairParam.mockResolvedValue(pairParam);
 
-    const { result } = renderHook(() => usePerpsPairParam({ pairId: "BTC-USD" }), {
+    const { result } = renderHook(() => usePerpsPairParam({ pairId: "perp/btcusd" }), {
       wrapper: createQueryClientWrapper(),
     });
 
     await waitFor(() => expect(result.current.data).toEqual(pairParam));
     expect(hookMocks.getPerpsPairParam).toHaveBeenCalledWith({
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
     });
 
     vi.clearAllMocks();
 
-    renderHook(() => usePerpsPairParam({ pairId: "" }), {
-      wrapper: createQueryClientWrapper(),
-    });
-    renderHook(() => usePerpsPairParam({ enabled: false, pairId: "ETH-USD" }), {
+    renderHook(() => usePerpsPairParam({ enabled: false, pairId: "perp/ethusd" }), {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -140,34 +137,34 @@ describe("DEX data hooks", () => {
       initialMarginRatio: "0.2",
     };
     hookMocks.getPerpsPairParam.mockImplementation(async ({ pairId }: { pairId: string }) =>
-      pairId === "BTC-USD" ? btcParam : ethParam,
+      pairId === "perp/btcusd" ? btcParam : ethParam,
     );
 
     const wrapper = createQueryClientWrapper();
-    const btc = renderHook(() => usePerpsPairParam({ pairId: "BTC-USD" }), { wrapper });
-    const eth = renderHook(() => usePerpsPairParam({ pairId: "ETH-USD" }), { wrapper });
+    const btc = renderHook(() => usePerpsPairParam({ pairId: "perp/btcusd" }), { wrapper });
+    const eth = renderHook(() => usePerpsPairParam({ pairId: "perp/ethusd" }), { wrapper });
 
     await waitFor(() => {
       expect(btc.result.current.data).toEqual(btcParam);
       expect(eth.result.current.data).toEqual(ethParam);
     });
 
-    expect(hookMocks.getPerpsPairParam).toHaveBeenCalledWith({ pairId: "BTC-USD" });
-    expect(hookMocks.getPerpsPairParam).toHaveBeenCalledWith({ pairId: "ETH-USD" });
+    expect(hookMocks.getPerpsPairParam).toHaveBeenCalledWith({ pairId: "perp/btcusd" });
+    expect(hookMocks.getPerpsPairParam).toHaveBeenCalledWith({ pairId: "perp/ethusd" });
   });
 
   it("surfaces pair param backend failures for the requested pair", async () => {
     const queryError = new Error("pair params unavailable");
     hookMocks.getPerpsPairParam.mockRejectedValueOnce(queryError);
 
-    const { result } = renderHook(() => usePerpsPairParam({ pairId: "BTC-USD" }), {
+    const { result } = renderHook(() => usePerpsPairParam({ pairId: "perp/btcusd" }), {
       wrapper: createQueryClientWrapper(),
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(hookMocks.getPerpsPairParam).toHaveBeenCalledWith({
-      pairId: "BTC-USD",
+      pairId: "perp/btcusd",
     });
     expect(result.current.error).toBe(queryError);
     expect(result.current.data).toBeUndefined();
@@ -259,7 +256,7 @@ describe("DEX data hooks", () => {
       capturedEquality = equalityFn;
       expect(parameters).toEqual({
         enabled: true,
-        perpsPairId: "BTC-USD",
+        pairId: "perp/btcusd",
       });
       return selector({
         currentPrice: "101",
@@ -273,7 +270,7 @@ describe("DEX data hooks", () => {
     const { result } = renderHook(() =>
       useCurrentPrice({
         enabled: true,
-        perpsPairId: "BTC-USD",
+        pairId: "perp/btcusd",
       }),
     );
 
@@ -299,7 +296,7 @@ describe("DEX data hooks", () => {
     hookMocks.useLivePerpsTrades.mockImplementation((selector, parameters, equalityFn) => {
       expect(parameters).toEqual({
         enabled: false,
-        perpsPairId: undefined,
+        pairId: "perp/btcusd",
       });
       expect(
         equalityFn?.(
@@ -323,7 +320,7 @@ describe("DEX data hooks", () => {
     const { result } = renderHook(() =>
       useCurrentPrice({
         enabled: false,
-        perpsPairId: undefined,
+        pairId: "perp/btcusd",
       }),
     );
 

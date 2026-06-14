@@ -1,8 +1,8 @@
 # Rust SDK Inventory
 
-Single crate: `dango-sdk` at `sdk/rust/`. `lib.rs` glob-re-exports
+Single crate: `dango-sdk` at `dango/sdk/`. `lib.rs` glob-re-exports
 `client::*`, `keystore::*`, `secret::*`, `signer::*`, `subscription::*`, and
-the whole `indexer_graphql_types` crate. Everything below is reachable from
+the whole `dango_indexer_graphql_types` crate. Everything below is reachable from
 the crate root unqualified.
 
 ## Summary
@@ -15,7 +15,7 @@ the crate root unqualified.
 ## Public surface
 
 ### `HttpClient`
-GraphQL+REST client over `reqwest`; implements grug's `QueryClient`, `BlockClient`, `BroadcastClient`, `SearchTxClient` traits. Source: `sdk/rust/src/client.rs`
+GraphQL+REST client over `reqwest`; implements grug's `QueryClient`, `BlockClient`, `BroadcastClient`, `SearchTxClient` traits. Source: `dango/sdk/src/client.rs`
 
 Constructors:
 - `pub fn new<U>(url: U) -> Result<Self, anyhow::Error> where U: IntoUrl` — wraps a `reqwest::Client` around the given Dango HTTP endpoint
@@ -32,7 +32,7 @@ Macro-generated per-query paginators (each: `pub async fn(&self, page_size: i64,
 - `paginate_messages` → `messages::MessagesMessagesNodes`
 
 Trait methods reachable on `HttpClient` (via `#[async_trait]` impls of grug traits — these are the canonical "Client actions"):
-- `impl QueryClient` (`type Error = anyhow::Error; type Proof = grug::Proof;`)
+- `impl QueryClient` (`type Error = anyhow::Error; type Proof = dango_primitives::Proof;`)
   - `async fn query_app(&self, query: Query, height: Option<u64>) -> Result<QueryResponse, Self::Error>`
   - `async fn query_store(&self, key: Binary, height: Option<u64>, prove: bool) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error>`
   - `async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>`
@@ -50,13 +50,13 @@ convenience methods such as `query_app_config`, `query_wasm_smart`,
 but they appear in the SDK's example code (`signer.rs`).
 
 ### `WsClient` / `Session` / subscription helpers
-GraphQL-over-WebSocket client speaking `graphql-transport-ws` on top of `tokio-tungstenite`, with a fixed-cadence (15 s) keepalive ping. Source: `sdk/rust/src/subscription.rs`
+GraphQL-over-WebSocket client speaking `graphql-transport-ws` on top of `tokio-tungstenite`, with a fixed-cadence (15 s) keepalive ping. Source: `dango/sdk/src/subscription.rs`
 
 Types:
 - `pub struct WsClient { url: Url }` — `Debug + Clone`; cheap value, no live connection
 - `pub struct Session { inner: Arc<SessionInner> }` — `Debug + Clone`; cloneable handle to a live WS session, drops the connection when last clone + every derived stream is gone
 - `pub type SubscriptionStream<T> = Pin<Box<dyn Stream<Item = Result<Response<T>, WsError>> + Send>>` — `Send` boxed stream (no `Sync` requirement)
-- `pub trait SubscriptionVariables: Variables` — extension trait pre-implemented for the 13 `indexer_graphql_types::subscribe_*::Variables` types so users can call `vars.subscribe(&client)` instead of `client.subscribe::<Q>(vars)`
+- `pub trait SubscriptionVariables: Variables` — extension trait pre-implemented for the 13 `dango_indexer_graphql_types::subscribe_*::Variables` types so users can call `vars.subscribe(&client)` instead of `client.subscribe::<Q>(vars)`
 
 `WsClient` methods:
 - `pub fn new(url: impl Into<String>) -> Result<Self, anyhow::Error>` — accepts `ws://` / `wss://`, errors on any other scheme
@@ -70,10 +70,10 @@ Types:
 `SubscriptionVariables` (provided method):
 - `fn subscribe(self, client: &WsClient) -> impl Future<Output = Result<SubscriptionStream<<Self::Query as GraphQLQuery>::ResponseData>, anyhow::Error>> + Send` — sugar over `WsClient::subscribe::<Self::Query>(self)`
 
-Pre-implemented for these `indexer_graphql_types` `Variables` types: `subscribe_block`, `subscribe_accounts`, `subscribe_transfers`, `subscribe_transactions`, `subscribe_messages`, `subscribe_events`, `subscribe_event_by_addresses`, `subscribe_candles`, `subscribe_perps_candles`, `subscribe_trades`, `subscribe_perps_trades`, `subscribe_query_app`, `subscribe_query_store`, `subscribe_query_status`. (13 impls — note that `SubscribeBlock`/`SubscribeAccounts`/etc. are the corresponding `GraphQLQuery` types.)
+Pre-implemented for these `dango_indexer_graphql_types` `Variables` types: `subscribe_block`, `subscribe_accounts`, `subscribe_transfers`, `subscribe_transactions`, `subscribe_messages`, `subscribe_events`, `subscribe_event_by_addresses`, `subscribe_candles`, `subscribe_perps_candles`, `subscribe_trades`, `subscribe_perps_trades`, `subscribe_query_app`, `subscribe_query_store`, `subscribe_query_status`. (13 impls — note that `SubscribeBlock`/`SubscribeAccounts`/etc. are the corresponding `GraphQLQuery` types.)
 
 ### `SingleSigner` / signing surface
-Type-state builder for Dango's single-signature accounts; `S: Secret`, plus two phantom-state generics for `UserIndex` (defined/undefined) and `Nonce` (defined/undefined). Source: `sdk/rust/src/signer.rs`
+Type-state builder for Dango's single-signature accounts; `S: Secret`, plus two phantom-state generics for `UserIndex` (defined/undefined) and `Nonce` (defined/undefined). Source: `dango/sdk/src/signer.rs`
 
 Constants:
 - `pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0"` — Ethereum coin type, used as the documentation default
@@ -107,7 +107,7 @@ Trait impls:
   - `async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>`
 
 ### `Secret` trait + concrete secrets
-Source: `sdk/rust/src/secret.rs`
+Source: `dango/sdk/src/secret.rs`
 
 Trait `pub trait Secret: Sized` with associated types `Private`, `Public`, `Signature`:
 - `fn new_random() -> Self` (provided; uses `OsRng`)
@@ -122,23 +122,23 @@ Trait `pub trait Secret: Sized` with associated types `Private`, `Public`, `Sign
 
 Implementors:
 - `pub struct Secp256k1` (`Debug + Clone`) — `Private = [u8; 32]`, `Public = [u8; 33]`, `Signature = [u8; 64]`; raw secp256k1 over SHA-256 of `SignDoc`
-- `pub struct Eip712 { inner: Secp256k1, pub address: eth_utils::Address }` (`Debug + Clone`) — same private/public byte sizes as `Secp256k1`, `Signature = [u8; 65]` (sig + recovery id); signs the SignDoc as EIP-712 typed data with domain `{ name: "dango", chain_id: EIP155_CHAIN_ID, verifying_contract: <sender as U160> }`; `key()` returns `Key::Ethereum(address)`; `key_hash()` is `sha256(addr.to_string())` (string form, not raw bytes)
+- `pub struct Eip712 { inner: Secp256k1, pub address: dango_eth_utils::Address }` (`Debug + Clone`) — same private/public byte sizes as `Secp256k1`, `Signature = [u8; 65]` (sig + recovery id); signs the SignDoc as EIP-712 typed data with domain `{ name: "dango", chain_id: EIP155_CHAIN_ID, verifying_contract: <sender as U160> }`; `key()` returns `Key::Ethereum(address)`; `key_hash()` is `sha256(addr.to_string())` (string form, not raw bytes)
 - `impl From<Secp256k1> for Eip712` — derives Ethereum address from the verifying key
 
 (`// TODO: Secp256r1 secret.` comment exists in source — Secp256r1 is **not** implemented.)
 
 ### `Keystore`
-Encrypted-on-disk container for a 32-byte private key (AES-256-GCM + PBKDF2-HMAC-SHA256, 600 000 iters, 16-byte salt, 12-byte nonce). Source: `sdk/rust/src/keystore.rs`
+Encrypted-on-disk container for a 32-byte private key (AES-256-GCM + PBKDF2-HMAC-SHA256, 600 000 iters, 16-byte salt, 12-byte nonce). Source: `dango/sdk/src/keystore.rs`
 
 Type:
-- `pub struct Keystore` (derives `grug::derive(Serde)`) with public fields `pk: ByteArray<33>`, `salt: ByteArray<16>`, `nonce: ByteArray<12>`, `ciphertext: Binary`
+- `pub struct Keystore` (derives `dango_primitives::derive(Serde)`) with public fields `pk: ByteArray<33>`, `salt: ByteArray<16>`, `nonce: ByteArray<12>`, `ciphertext: Binary`
 
 Static methods (no `impl Secret` here — `Keystore` is just a file format):
 - `pub fn from_file<F, P>(filename: F, password: P) -> anyhow::Result<[u8; 32]> where F: AsRef<Path>, P: AsRef<[u8]>` — reads the file, decrypts, returns the raw 32-byte private key (caller wraps it in `Secp256k1::from_bytes` / `Eip712::from_bytes`)
 - `pub fn write_to_file<S, F, P>(secret: &S, filename: F, password: P) -> anyhow::Result<Self> where S: Secret, S::Private: AsRef<[u8]>, S::Public: Into<ByteArray<33>>, F: AsRef<Path>, P: AsRef<[u8]>` — encrypts `secret.private_key()` and writes a pretty-printed JSON file; returns the in-memory `Keystore`
 
-### Re-exported `indexer_graphql_types` surface
-`pub use indexer_graphql_types::*` re-exports (source: `indexer/graphql-types/src/lib.rs`):
+### Re-exported `dango_indexer_graphql_types` surface
+`pub use dango_indexer_graphql_types::*` re-exports (source: `dango/indexer/graphql-types/src/lib.rs`):
 
 - `pub trait Variables { type Query: GraphQLQuery<Variables = Self>; }` — links a `*::Variables` struct to its parent `GraphQLQuery` type; implemented by macro for every query and subscription module
 - `pub struct PageInfo { pub start_cursor, pub end_cursor: Option<String>, pub has_next_page, pub has_previous_page: bool }` (`Debug + Clone + Default + Serialize + Deserialize`)
@@ -151,7 +151,7 @@ Static methods (no `impl Secret` here — `Keystore` is just a file format):
 None at the crate top level. Every operation hangs off one of the types above. (The internal `error_for_status` helper in `client.rs` and `run_session` task in `subscription.rs` are not `pub`.)
 
 ### Errors
-- `pub enum WsError` (`Debug + Clone + thiserror::Error`) — variants `Closed(String)`, `Transport(String)`, `Subscription(serde_json::Value)`, `Decode(String)`. Returned **only** inside subscription stream items (`Result<Response<T>, WsError>`). Source: `sdk/rust/src/subscription.rs`
+- `pub enum WsError` (`Debug + Clone + thiserror::Error`) — variants `Closed(String)`, `Transport(String)`, `Subscription(serde_json::Value)`, `Decode(String)`. Returned **only** inside subscription stream items (`Result<Response<T>, WsError>`). Source: `dango/sdk/src/subscription.rs`
 
 Everywhere else the SDK returns `anyhow::Result<T>` / `Result<T, anyhow::Error>` and uses `anyhow!` / `bail!` / `ensure!` to construct errors. The grug traits (`QueryClient`, `BroadcastClient`, …) keep `type Error = anyhow::Error` for `HttpClient`. There is no public typed error enum analogous to TS's `BaseError`/`HttpRequestError`.
 
@@ -164,9 +164,9 @@ Everywhere else the SDK returns `anyhow::Result<T>` / `Result<T, anyhow::Error>`
 - `ClientMessage`, `ServerMessage`, `Command`, `SubscriptionStreamInner`, `WsStream`, `ResponseSender`, `ResponseReceiver`, `SessionInner`, `KEEP_ALIVE_INTERVAL` — private types/aliases/consts in `subscription.rs`
 - `SECP256K1_COMPRESSED_PUBKEY_LEN`, `PBKDF2_ITERATIONS`, `PBKDF2_SALT_LEN`, `PBKDF2_KEY_LEN`, `AES256GCM_NONCE_LEN` (`keystore.rs:12-16`) — private consts; the field types use the numeric literals directly via `ByteArray<N>`
 - `examples/subscribe_order_filled.rs`, `examples/trade_history_csv.rs` — examples, not crate API
-- `sdk/rust/cli/` — separate `dango-sdk-cli` binary crate, out of scope for the library inventory
+- `dango/sdk/cli/` — separate `dango-sdk-cli` binary crate, out of scope for the library inventory
 - `tests/*.rs` — integration tests, not API
-- `dango_auth::EIP155_CHAIN_ID`, `dango_types::auth::*`, `grug::*` — used in signatures but owned by other crates; document those crates in their own context if needed (the docs site only exposes `dango-sdk`'s own re-exports)
+- `dango_auth::EIP155_CHAIN_ID`, `dango_types::auth::*`, `dango_primitives::*` — used in signatures but owned by other crates; document those crates in their own context if needed (the docs site only exposes `dango-sdk`'s own re-exports)
 
 ## Verification TODOs (drafters must confirm before writing)
 - `SubscriptionStream<T>` is `Send` but the trait bound says `dyn Stream<...> + Send` (no `Sync`). Confirm whether `tokio::spawn(stream.for_each(...))` works in practice (it should, since `Send` is sufficient for `tokio::spawn`'s future). Also note streams are **`Pin<Box<dyn ...>>`** — drafters writing `let mut stream = ...; while let Some(x) = stream.next().await {}` do not need to manually `Box::pin`.
@@ -177,5 +177,5 @@ Everywhere else the SDK returns `anyhow::Result<T>` / `Result<T, anyhow::Error>`
 - `HttpClient::paginate_all` requires **exactly one** of `first` / `last` to be `Some` (errors otherwise). Note this in its Action page.
 - `Keystore::from_file` returns the raw `[u8; 32]` private key, not a `Secret`. Drafters must show users how to wrap it (`Secp256k1::from_bytes(bytes)?`).
 - The grug `QueryClientExt` blanket trait gives `HttpClient` many convenience methods (`query_app_config`, `query_wasm_smart`, `query_balance`, …) that are **not** re-exported by `dango-sdk` but are used in the SDK's own examples. Decide whether to document them in the `Client` page or link out to grug.
-- `indexer_graphql_types` generates **dozens** of nested `*Nodes`, `*Edges`, `*PageInfo` structs per query. Type pages must pick a small set of user-facing types (`PageInfo`, `*::Variables`, `*::ResponseData`) and not try to document every generated record.
-- Confirm whether the `subscriptions` submodule re-export (`indexer_graphql_types::subscriptions`) shows up at the `dango-sdk` crate root via the glob re-export — it should, but verify in `cargo doc`.
+- `dango_indexer_graphql_types` generates **dozens** of nested `*Nodes`, `*Edges`, `*PageInfo` structs per query. Type pages must pick a small set of user-facing types (`PageInfo`, `*::Variables`, `*::ResponseData`) and not try to document every generated record.
+- Confirm whether the `subscriptions` submodule re-export (`dango_indexer_graphql_types::subscriptions`) shows up at the `dango-sdk` crate root via the glob re-export — it should, but verify in `cargo doc`.

@@ -19,7 +19,7 @@ The standard call shape is `Result<T, anyhow::Error>`. A 429 surfaces as `error_
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::BlockClient,
+    dango_primitives::BlockClient,
     std::time::Duration,
     tokio::time::sleep,
 };
@@ -79,7 +79,7 @@ The `tx-sync` broadcast flow polls `search_tx` until the transaction is included
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::{Hash256, SearchTxClient},
+    dango_primitives::{Hash256, SearchTxClient},
     std::time::Duration,
     tokio::time::sleep,
 };

@@ -1,4 +1,10 @@
 use {
+    dango_hyperlane_types::{Addr32, isms},
+    dango_math::{MathError, NumberConst, Udec128, Uint128},
+    dango_primitives::{
+        Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
+        coins,
+    },
     dango_testing::{
         BalanceChange, HyperlaneTestSuite, MockValidatorSet, TestOption, TestSuite, mock_arbitrum,
         mock_ethereum, setup_test,
@@ -7,12 +13,6 @@ use {
         constants::{dango, usdc},
         gateway::{self, Origin, RateLimit, Remote, SetPersonalQuotaRequest},
     },
-    grug_math::{MathError, NumberConst, Udec128, Uint128},
-    grug_types::{
-        Addr, Addressable, Coin, Coins, Duration, Op, QuerierExt, ResultExt, btree_map, btree_set,
-        coins,
-    },
-    hyperlane_types::{Addr32, isms},
 };
 
 /// USDC withdrawal fee charged on the Arbitrum Warp route. This mirrors the
@@ -2717,6 +2717,409 @@ async fn query_rate_limit_status() {
         .should_succeed()
         .expect("rate-limited");
     assert_eq!(aged.used_in_last_24h, Uint128::ZERO);
+}
+
+#[tokio::test]
+async fn remove_routes() {
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    suite.block_time = Duration::ZERO;
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+
+    let remote_recipient: Addr32 = Addr::mock(201).into();
+
+    let arb_usdc = Remote::Warp {
+        domain: mock_arbitrum::DOMAIN,
+        contract: mock_arbitrum::USDC_WARP,
+    };
+    let eth_usdc = Remote::Warp {
+        domain: mock_ethereum::DOMAIN,
+        contract: mock_ethereum::USDC_WARP,
+    };
+    let eth_eth = Remote::Warp {
+        domain: mock_ethereum::DOMAIN,
+        contract: mock_ethereum::ETH_WARP,
+    };
+
+    // Attempt to remove a route as a non-owner. Should fail with the access
+    // control error.
+    suite
+        .execute(
+            &mut accounts.user3,
+            contracts.gateway,
+            &gateway::ExecuteMsg::RemoveRoutes(btree_set! { (contracts.warp, arb_usdc) }),
+            Coins::default(),
+        )
+        .await
+        .should_fail_with_error("only the owner can remove routes");
+
+    // Attempt to remove a route that doesn't exist. Should fail at the route
+    // lookup.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::RemoveRoutes(btree_set! {
+                (contracts.warp, Remote::Warp {
+                    domain: 999,
+                    contract: Addr::mock(99).into(),
+                }),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_fail_with_error("data not found");
+
+    // Remove a route that exists but was never funded, so it has no reserve
+    // entry at all. Should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::RemoveRoutes(btree_set! { (contracts.warp, eth_eth) }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
+            bridge: contracts.warp,
+            remote: eth_eth,
+        })
+        .should_succeed_and_equal(None);
+
+    // Fund the arbitrum USDC route with 100M, plus the ethereum USDC route
+    // with just enough to cover the arbitrum withdrawal fee, so that the
+    // arbitrum reserve can later be drained to exactly zero.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
+            receiver,
+            ARBITRUM_USDC_WITHDRAWAL_FEE,
+        )
+        .await
+        .should_succeed();
+
+    // Attempt to remove the arbitrum route while its reserve is non-zero.
+    // Should fail with the reserve check error.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::RemoveRoutes(btree_set! { (contracts.warp, arb_usdc) }),
+            Coins::default(),
+        )
+        .await
+        .should_fail_with_error("can't remove route with non-zero reserve!");
+
+    // Drain the arbitrum reserve to exactly zero: send the full 100M back,
+    // with the fee covered by the ethereum top-up. The reserve entry remains
+    // in storage afterwards, with a value of zero.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: arb_usdc,
+                recipient: remote_recipient,
+            },
+            Coin::new(
+                usdc::DENOM.clone(),
+                100_000_000 + ARBITRUM_USDC_WITHDRAWAL_FEE,
+            )
+            .unwrap(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
+            bridge: contracts.warp,
+            remote: arb_usdc,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // With the reserve drained to zero, the removal should now succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::RemoveRoutes(btree_set! { (contracts.warp, arb_usdc) }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // The route and its reverse mapping should be gone.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
+            bridge: contracts.warp,
+            remote: arb_usdc,
+        })
+        .should_succeed_and_equal(None);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryReverseRouteRequest {
+            denom: usdc::DENOM.clone(),
+            remote: arb_usdc,
+        })
+        .should_succeed_and_equal(None);
+
+    // The zero-valued reserve entry should have been deleted as well.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
+            bridge: contracts.warp,
+            remote: arb_usdc,
+        })
+        .should_fail_with_error("data not found");
+
+    // The sibling ethereum USDC route — same alloyed denom, different remote
+    // — should be unaffected.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
+            bridge: contracts.warp,
+            remote: eth_usdc,
+        })
+        .should_succeed_and_equal(Some(usdc::DENOM.clone()));
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryReverseRouteRequest {
+            denom: usdc::DENOM.clone(),
+            remote: eth_usdc,
+        })
+        .should_succeed_and_equal(Some(contracts.warp));
+
+    // Inbound transfers through the removed route should fail.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            receiver,
+            1_000_000,
+        )
+        .await
+        .should_fail_with_error("data not found");
+
+    // Outbound transfers through the removed route should fail as well. Top
+    // the receiver up through the still-alive ethereum route first, so it has
+    // tokens to attempt the transfer with.
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_ethereum::DOMAIN,
+            mock_ethereum::USDC_WARP,
+            receiver,
+            50_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: arb_usdc,
+                recipient: remote_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 50_000).unwrap(),
+        )
+        .await
+        .should_fail_with_error("data not found");
+
+    // Re-add the removed route, and verify it's functional again: an inbound
+    // transfer recreates the reserve entry from scratch.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRoutes(btree_set! {
+                (Origin::Remote(usdc::SUBDENOM.clone()), contracts.warp, arb_usdc),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .receive_warp_transfer(
+            relayer,
+            mock_arbitrum::DOMAIN,
+            mock_arbitrum::USDC_WARP,
+            receiver,
+            70_000,
+        )
+        .await
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
+            bridge: contracts.warp,
+            remote: arb_usdc,
+        })
+        .should_succeed_and_equal(Uint128::new(70_000));
+}
+
+#[tokio::test]
+async fn remove_native_route() {
+    let (mut suite, mut accounts, _, contracts, mut valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    let remote_domain = 123;
+    let remote_warp = Addr::mock(123);
+    let dango_remote = Remote::Warp {
+        domain: remote_domain,
+        contract: remote_warp.into(),
+    };
+
+    // Register a route with a native denom in the gateway.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRoutes(btree_set! {
+                (Origin::Local(dango::DENOM.clone()), contracts.warp, dango_remote),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // Register the validator set for the remote domain.
+    {
+        let validator_set = MockValidatorSet::new_preset(remote_domain, false);
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.hyperlane.ism,
+                &isms::multisig::ExecuteMsg::SetValidators {
+                    domain: remote_domain,
+                    threshold: 2,
+                    validators: validator_set.validator_addresses(),
+                },
+                Coins::default(),
+            )
+            .await
+            .should_succeed();
+
+        valset.insert(remote_domain, validator_set);
+    }
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    // Send 100 dango to the remote domain. The tokens stay in the gateway
+    // contract; no reserve entry is written, as reserves are only tracked
+    // for remote denoms.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: dango_remote,
+                recipient: Addr::mock(124).into(),
+            },
+            coins! { dango::DENOM.clone() => 100 },
+        )
+        .await
+        .should_succeed();
+
+    // Even though 100 dango are currently bridged out, the route can be
+    // removed: local-origin routes never track a reserve, so the reserve
+    // check passes vacuously. The tokens stay in the gateway contract and
+    // remain recoverable by re-adding the route, as demonstrated below.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::RemoveRoutes(btree_set! { (contracts.warp, dango_remote) }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    // The route and its reverse mapping should be gone.
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryRouteRequest {
+            bridge: contracts.warp,
+            remote: dango_remote,
+        })
+        .should_succeed_and_equal(None);
+
+    suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryReverseRouteRequest {
+            denom: dango::DENOM.clone(),
+            remote: dango_remote,
+        })
+        .should_succeed_and_equal(None);
+
+    // Receiving the tokens back now fails at the route lookup. (Contrast
+    // with `native_denom`, where receiving on a route that exists but whose
+    // gateway holds no balance fails with a balance subtraction error.)
+    suite
+        .receive_warp_transfer(
+            &mut accounts.user3,
+            remote_domain,
+            remote_warp.into(),
+            &accounts.user2,
+            100,
+        )
+        .await
+        .should_fail_with_error("data not found");
+
+    // Re-add the route. The bridged-out tokens can then be received back.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRoutes(btree_set! {
+                (Origin::Local(dango::DENOM.clone()), contracts.warp, dango_remote),
+            }),
+            Coins::default(),
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().record(&accounts.user2);
+
+    suite
+        .receive_warp_transfer(
+            &mut accounts.user3,
+            remote_domain,
+            remote_warp.into(),
+            &accounts.user2,
+            100,
+        )
+        .await
+        .should_succeed();
+
+    suite.balances().should_change(&accounts.user2, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(100),
+    });
 }
 
 async fn advance_to_next_day(suite: &mut TestSuite) {

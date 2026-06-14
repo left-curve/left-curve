@@ -33,7 +33,7 @@ Most flows use `Message::transfer` (bank send) or `Message::execute` (smart cont
 
 ```rust
 use {
-    grug::{Addr, Coins, Message, NonEmpty},
+    dango_primitives::{Addr, Coins, Message, NonEmpty},
     std::str::FromStr,
 };
 
@@ -51,7 +51,7 @@ For a smart-contract call, encode the contract's typed `ExecuteMsg`:
 ```rust
 use {
     dango_types::dex,
-    grug::{Coins, Message},
+    dango_primitives::{Coins, Message},
 };
 
 let msg = Message::execute(
@@ -69,7 +69,7 @@ let msg = Message::execute(
 ```rust
 use {
     dango_sdk::{HttpClient, SingleSigner},
-    grug::{QueryClient, Signer},
+    dango_primitives::{QueryClient, Signer},
 };
 
 let unsigned = signer.unsigned_transaction(messages.clone(), "dango-1")?;
@@ -83,7 +83,7 @@ Apply your own buffer — `simulate` reports actual usage, not a recommended lim
 ## Sign
 
 ```rust
-use grug::Signer;
+use dango_primitives::Signer;
 
 let tx = signer.sign_transaction(messages, "dango-1", gas_limit)?;
 // Ok::<(), anyhow::Error>(())
@@ -98,7 +98,7 @@ the nonce is incremented even when broadcast eventually fails. After a broadcast
 ## Broadcast
 
 ```rust
-use grug::BroadcastClient;
+use dango_primitives::BroadcastClient;
 
 let result = http.broadcast_tx(tx).await?;
 println!("hash={}", result.tx_hash);
@@ -111,7 +111,7 @@ Broadcast is `tx-sync`: the node accepts or rejects the transaction (mempool dec
 
 ```rust
 use {
-    grug::SearchTxClient,
+    dango_primitives::SearchTxClient,
     std::time::Duration,
     tokio::time::sleep,
 };
@@ -135,7 +135,7 @@ Wrap this loop in a bounded retry helper (`tokio-retry`, `backon`, …) — the 
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, Secp256k1, Secret, SingleSigner},
-    grug::{Addr, BroadcastClient, Coins, Message, NonEmpty, QueryClient, SearchTxClient, Signer},
+    dango_primitives::{Addr, BroadcastClient, Coins, Message, NonEmpty, QueryClient, SearchTxClient, Signer},
     std::{str::FromStr, time::Duration},
     tokio::time::sleep,
 };

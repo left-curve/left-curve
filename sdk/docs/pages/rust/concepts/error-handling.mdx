@@ -16,7 +16,7 @@ Use `?` to propagate. When you need to react to a specific failure, downcast:
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::QueryClient,
+    dango_primitives::QueryClient,
 };
 
 async fn try_query(http: &HttpClient) -> Result<()> {
@@ -33,7 +33,7 @@ async fn try_query(http: &HttpClient) -> Result<()> {
     }
     Ok(())
 }
-// fn my_unsigned_tx() -> grug::UnsignedTx { ... }
+// fn my_unsigned_tx() -> dango_primitives::UnsignedTx { ... }
 ```
 
 The `:#` format spec prints the full cause chain. Prefer `tracing::error!(?err)` in production.
@@ -100,12 +100,12 @@ The SDK does not retry. Wrap calls with `tokio-retry`, `backon`, or a hand-rolle
 use {
     anyhow::Result,
     dango_sdk::HttpClient,
-    grug::SearchTxClient,
+    dango_primitives::SearchTxClient,
     std::time::Duration,
     tokio::time::sleep,
 };
 
-async fn wait_for(http: &HttpClient, hash: grug::Hash256) -> Result<()> {
+async fn wait_for(http: &HttpClient, hash: dango_primitives::Hash256) -> Result<()> {
     for attempt in 0..40 {
         match http.search_tx(hash).await {
             Ok(_) => return Ok(()),
