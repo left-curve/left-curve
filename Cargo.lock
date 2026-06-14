@@ -4496,8 +4496,15 @@ dependencies = [
 name = "dango-upgrade"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "dango-app",
+ "dango-bank",
+ "dango-math",
+ "dango-order-book",
+ "dango-perps",
  "dango-primitives",
+ "dango-types",
+ "serde_json",
  "tracing",
 ]
 
