@@ -1,5 +1,5 @@
 #[cfg(feature = "tracing")]
-use dango_dyn_event::dango_dyn_event;
+use dango_dyn_event::dyn_event;
 use {
     crate::{
         AppError, AppResult, CODES, CONFIG, EventResult, GasTracker, MeteredItem, MeteredMap,
@@ -28,7 +28,7 @@ pub fn do_upload(
     match _do_upload(storage, gas_tracker, block, uploader, msg, code_hash) {
         Ok(_) => {
             #[cfg(feature = "tracing")]
-            dango_dyn_event!(
+            dyn_event!(
                 trace_opt.ok_level.into(),
                 code_hash = code_hash.to_string(),
                 "Uploaded code"
@@ -38,7 +38,7 @@ pub fn do_upload(
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            dango_dyn_event!(
+            dyn_event!(
                 trace_opt.error_level.into(),
                 err = err.to_string(),
                 "Failed to upload code"

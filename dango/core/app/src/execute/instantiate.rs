@@ -1,5 +1,5 @@
 #[cfg(feature = "tracing")]
-use dango_dyn_event::dango_dyn_event;
+use dango_dyn_event::dyn_event;
 use {
     crate::{
         _do_transfer, AppError, CHAIN_ID, CODES, CONFIG, CONTRACTS, EventResult, GasTracker,
@@ -40,7 +40,7 @@ where
     #[cfg(feature = "tracing")]
     evt.debug(
         |evt| {
-            dango_dyn_event!(
+            dyn_event!(
                 trace_opt.ok_level.into(),
                 address = evt.contract.to_string(),
                 "Instantiated contract"

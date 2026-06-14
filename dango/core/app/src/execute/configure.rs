@@ -1,5 +1,5 @@
 #[cfg(feature = "tracing")]
-use dango_dyn_event::dango_dyn_event;
+use dango_dyn_event::dyn_event;
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CONFIG, EventResult, NEXT_CRONJOBS, TraceOption,
@@ -20,13 +20,13 @@ pub fn do_configure(
     match _do_configure(storage, block, sender, msg) {
         Ok(_) => {
             #[cfg(feature = "tracing")]
-            dango_dyn_event!(trace_opt.ok_level.into(), "Config updated");
+            dyn_event!(trace_opt.ok_level.into(), "Config updated");
 
             EventResult::Ok(evt)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            dango_dyn_event!(
+            dyn_event!(
                 trace_opt.error_level.into(),
                 err = err.to_string(),
                 "Failed to update config"

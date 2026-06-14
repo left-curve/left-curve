@@ -1,5 +1,5 @@
 #[cfg(feature = "tracing")]
-use dango_dyn_event::dango_dyn_event;
+use dango_dyn_event::dyn_event;
 use {
     crate::{
         AppError, AppResult, CONFIG, EventResult, GasTracker, MeteredItem, NEXT_UPGRADE,
@@ -26,7 +26,7 @@ pub fn do_upgrade(
         Ok(_) => {
             #[cfg(feature = "tracing")]
             {
-                dango_dyn_event!(
+                dyn_event!(
                     trace_opt.ok_level.into(),
                     height = upgrade.height,
                     cargo_version = upgrade.cargo_version,
@@ -39,7 +39,7 @@ pub fn do_upgrade(
         Err(err) => {
             #[cfg(feature = "tracing")]
             {
-                dango_dyn_event!(trace_opt.error_level.into(), %err, "Failed to schedule chain upgrade");
+                dyn_event!(trace_opt.error_level.into(), %err, "Failed to schedule chain upgrade");
             }
 
             EventResult::err(evt, err)

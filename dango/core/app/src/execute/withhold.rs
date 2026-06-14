@@ -1,5 +1,5 @@
 #[cfg(feature = "tracing")]
-use dango_dyn_event::dango_dyn_event;
+use dango_dyn_event::dyn_event;
 use {
     crate::{
         AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
@@ -26,7 +26,7 @@ where
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            dango_dyn_event!(
+            dyn_event!(
                 trace_opt.ok_level.into(),
                 sender = tx.sender.to_string(),
                 "Withheld fee"

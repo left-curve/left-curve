@@ -1,5 +1,5 @@
 #[cfg(feature = "tracing")]
-use dango_dyn_event::dango_dyn_event;
+use dango_dyn_event::dyn_event;
 use {
     crate::AppError,
     dango_backtrace::Backtraceable,
@@ -97,7 +97,7 @@ impl<T> EventResult<T> {
                 ok_closure(val);
             },
             EventResult::Err { error, .. } | EventResult::NestedErr { error, .. } => {
-                dango_dyn_event!(error_level, err = error.to_string(), error_msg);
+                dyn_event!(error_level, err = error.to_string(), error_msg);
             },
         }
     }
