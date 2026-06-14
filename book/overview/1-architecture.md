@@ -44,7 +44,7 @@ The two CFs exist so that each can have **specialized RocksDB options**:
 | Option           | `wasm_storage`                                          | `state_storage`                                                     |
 | ---------------- | ------------------------------------------------------- | ------------------------------------------------------------------- |
 | Memtable size    | 16 MiB (fewer flushes; contracts are less delete-heavy) | 2 MiB (frequent flushes; chain state is delete-heavy from cronjobs) |
-| Prefix extractor | 24 bytes (`b"wasm"` + 20-byte address)                  | 4 bytes (namespace length)                                     |
+| Prefix extractor | 24 bytes (`b"wasm"` + 20-byte address)                  | 4 bytes (namespace length)                                          |
 
 Both CFs share a common base configuration: 256 MiB LRU block cache, bloom filters
 (10 bits/key), L0 filter/index pinning, and level-style compaction.
