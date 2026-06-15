@@ -16,7 +16,7 @@ impl<S: Secret> SingleSigner<S, Undefined<UserIndex>, Undefined<Nonce>> {
 use {
     anyhow::Result,
     dango_sdk::{Secp256k1, Secret, SingleSigner},
-    grug::Addr,
+    dango_primitives::Addr,
     std::str::FromStr,
 };
 

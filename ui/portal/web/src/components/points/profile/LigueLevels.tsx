@@ -3,6 +3,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount } from "@left-curve/store";
 import type React from "react";
 import { useUserPoints, type UserLeague } from "../useUserPoints";
+import { Image } from "~/components/foundation/Image";
 
 type LigueLevelKey = UserLeague;
 
@@ -70,13 +71,13 @@ const LigueLevelItem: React.FC<LigueLevelItemProps> = ({ level, state }) => {
   return (
     <div className="relative flex flex-col items-center justify-end flex-1 min-w-0 overflow-visible">
       {isCurrent && (
-        <img
+        <Image
           src="/images/points/league-shine.png"
           alt=""
           className="absolute bottom-full left-1/2 -translate-x-[48%] translate-y-1/2 lg:translate-y-[45%] w-[120px] h-[120px] lg:w-[260px] lg:h-[260px] object-contain z-0 drag-none select-none max-w-none"
         />
       )}
-      <img
+      <Image
         src={level.image}
         alt={`${level.key} badge`}
         className={twMerge(

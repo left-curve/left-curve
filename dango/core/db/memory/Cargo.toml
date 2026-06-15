@@ -1,0 +1,24 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-db-memory"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+# Add utilities to dump the entire DB to a single file, or recover the DB from it.
+snapshot = ["dep:anyhow", "dep:borsh"]
+
+[dependencies]
+anyhow           = { workspace = true, optional = true }
+borsh            = { workspace = true, optional = true }
+dango-app        = { workspace = true }
+dango-backtrace  = { workspace = true }
+dango-primitives = { workspace = true }
+ouroboros        = { workspace = true }
+parking_lot      = { workspace = true }
+thiserror        = { workspace = true }

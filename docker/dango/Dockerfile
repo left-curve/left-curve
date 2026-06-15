@@ -12,13 +12,14 @@ ENV GIT_COMMIT=$GIT_COMMIT
 # ENV USERNAME=${USERNAME}
 
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y libssl-dev pkg-config libsqlite3-0 ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
 
 # RUN useradd --create-home --shell /bin/bash $USERNAME
 
 COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/
-COPY indexer/httpd/static /app/www
+COPY dango/indexer/httpd/static /app/www
 # RUN chown $USERNAME:$USERNAME /usr/local/bin/dango
 
 # USER $USERNAME

@@ -191,44 +191,6 @@ services:
       # moved off the HTTP-bind critical path.
       start_period: 180s
 
-  dango-frontend:
-    image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
-    pull_policy: missing
-    restart: unless-stopped
-    ulimits:
-      nofile:
-        soft: 200000
-        hard: 200000
-    labels:
-      <<: *common-labels
-      service_name: "dango-frontend"
-    depends_on:
-      dango:
-        condition: service_healthy
-{% if expose_ports %}
-    ports:
-      - "${DANGO_FRONTEND_PORT:-0}:80"
-{% endif %}
-    networks:
-      - default
-      - traefik
-    environment:
-      INDEXER_URL: ${INDEXER_URL}
-      FAUCET_URL: ${FAUCET_URL}
-      UP_URL: ${UP_URL}
-      QUEST_URL: ${QUEST_URL}
-      POINTS_URL: ${POINTS_URL}
-      BANNER: ${FRONTEND_BANNER}
-      FRONTEND_ENABLED_FEATURES: ${FRONTEND_ENABLED_FEATURES}
-      CHAIN_ID: ${CHAIN_ID}
-      NGINX_JSON_LOGS: ${NGINX_JSON_LOGS}
-    tty: true
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
 {% if faucet_bot_enabled %}
   faucet-bot:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_BOT_TAG:-latest}

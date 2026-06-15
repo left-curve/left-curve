@@ -3,12 +3,13 @@ import { twMerge, useTheme } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
+import { Image } from "~/components/foundation/Image";
 
 export const Maintenance: React.FC = () => {
   const { theme } = useTheme();
   return (
     <div className="w-full flex flex-1 justify-center items-center p-4 flex-col gap-6 text-center pb-[76px] min-h-svh text-ink-primary-900">
-      <img
+      <Image
         src={`/images/union${theme === "dark" ? "-dark" : ""}.png`}
         alt="bg-image"
         className={twMerge(
@@ -17,14 +18,14 @@ export const Maintenance: React.FC = () => {
       />
       <div className="fixed p-4 top-0 left-0 w-full">
         <div className="max-w-[76rem] mx-auto flex items-center justify-center w-full">
-          <img
+          <Image
             src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
             alt="Dango"
             className="max-w-[12rem] lg:max-w-[18rem] select-none"
           />
         </div>
       </div>
-      <img
+      <Image
         src="/images/characters/grugo.svg"
         alt="Maintenance"
         className="w-full max-w-[14.75rem] md:max-w-[22.5rem] opacity-80"

@@ -4,6 +4,7 @@ export {
   capitalize,
   truncateAddress,
   camelToTitleCase,
+  formatUsername,
 } from "./strings.js";
 
 export {
@@ -20,9 +21,11 @@ export {
   assertNumber,
   assertArray,
   assertDeepEqual,
+  deepEqual,
   assertNotEmpty,
   assertObject,
   assertSet,
+  shallowEqual,
 } from "./asserts.js";
 
 export {

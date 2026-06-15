@@ -1,10 +1,10 @@
 # Dango Contract System
 
-Dango is a suite of smart contracts deployed on Grug that together form a perpetual
+Dango is a suite of smart contracts that together form a perpetual
 futures exchange, oracle, token ledger, bridge aggregator, and account system. All
 contracts are first-party and execute natively via `RustVm`.
 
-## 1. Shared Types (`dango/types/`)
+## 1. Shared Types (`dango/exchange/types/`)
 
 All contracts reference a central `AppConfig` that stores addresses of every system
 contract:
@@ -23,10 +23,10 @@ pub struct AppAddresses {
 ```
 
 Other shared types include authentication types (`Key`, `Signature`, `Credential`,
-`SignDoc`, `Metadata`), fee types (`FeeType`), and price types
+`SignDoc`, `Metadata`) and price types
 (`PrecisionlessPrice`, `PrecisionedPrice`).
 
-## 2. Bank (`dango/bank/`)
+## 2. Bank (`dango/exchange/bank/`)
 
 The bank contract manages all token balances, transfers, mints, and burns.
 
@@ -64,7 +64,7 @@ For example, the perps contract owns the `perp/` namespace.
   mint/burn/force-transfer. A bug in the perps contract could allow unlimited minting
   of `perp/*` tokens.
 
-## 3. Account Factory (`dango/account-factory/`)
+## 3. Account Factory (`dango/exchange/account-factory/`)
 
 Creates and manages user accounts.
 
@@ -105,7 +105,7 @@ pub struct User {
 - Maximum 5 accounts per user.
 - Nonce jump limited to 100 (prevents DoS on the nonce set).
 
-## 4. Account (`dango/account/`)
+## 4. Account (`dango/exchange/account/`)
 
 Single-signature account contract, one instance per user account.
 
@@ -126,7 +126,7 @@ When the host receives a transaction, it calls the sender account's `authenticat
 4. Verify the signature against the signing key registered in the factory.
 5. Return `Response`.
 
-## 5. Taxman (`dango/taxman/`)
+## 5. Taxman (`dango/exchange/taxman/`)
 
 Handles gas fee collection.
 
@@ -145,7 +145,7 @@ Handles gas fee collection.
    based on `gas_used * fee_rate`, refunds the difference, and transfers the fee
    to the treasury.
 
-## 6. Oracle (`dango/oracle/`)
+## 6. Oracle (`dango/exchange/oracle/`)
 
 Price feed aggregation for derivatives trading.
 
@@ -175,7 +175,7 @@ pub struct Price {
   intervention is required.
 - Consuming contracts (perps) enforce staleness checks before using prices.
 
-## 7. Perpetual Futures Exchange (`dango/perps/`)
+## 7. Perpetual Futures Exchange (`dango/exchange/perps/`)
 
 The primary audit target. A leveraged perpetual futures exchange with a vault-based
 counterparty (market maker).
@@ -187,7 +187,7 @@ counterparty (market maker).
 ### Source files
 
 ```text
-dango/perps/src/
+dango/exchange/perps/src/
 ├── lib.rs                  # Entry points (instantiate, execute, query, cron_execute)
 ├── state.rs                # All storage definitions
 ├── query.rs                # Query implementations
@@ -393,7 +393,7 @@ skew = vault_inventory / vault_max_skew_size  [clamped to [-1, 1]]
 | `AddLiquidity`, `RemoveLiquidity`    | Any active account      |
 | `cron_execute`                       | Chain (automatic)       |
 
-## 8. Gateway (`dango/gateway/`)
+## 8. Gateway (`dango/exchange/gateway/`)
 
 Bridge aggregator for cross-chain token transfers.
 
@@ -427,7 +427,7 @@ RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>
 Trusts Hyperlane validators/ISM. Governance controls bridge configuration, fees, and
 rate limits.
 
-## 9. Vesting (`dango/vesting/`)
+## 9. Vesting (`dango/exchange/vesting/`)
 
 Token vesting with linear schedules and optional cliffs.
 
@@ -438,7 +438,7 @@ Token vesting with linear schedules and optional cliffs.
 | `UNLOCKING_SCHEDULE` | --     | `Schedule` |
 | `POSITIONS`          | `Addr` | `Position` |
 
-## 10. Upgrade (`dango/upgrade/`)
+## 10. Upgrade (`dango/exchange/upgrade/`)
 
 Handles state migrations during chain upgrades. Example: migrating `PairParam` to add
 new vault skew fields with zero defaults.

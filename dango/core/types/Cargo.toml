@@ -1,0 +1,76 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-primitives"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+# `strum` looks unused, but the `strum_macros::EnumDiscriminants` derive in
+# `src/events/flat.rs` expands to references to the `strum` crate.
+[package.metadata.cargo-machete]
+ignored = ["strum"]
+
+[features]
+default = ["macros"]
+
+# Re-export procedural macros from dango-macros (derive, event, QueryRequest).
+macros = ["dep:dango-macros"]
+
+# Derive async-graphql traits for certain types.
+async-graphql = ["dep:async-graphql"]
+
+# Include methods to convert `Timestamp` to:
+# - a `chrono::NaiveDateTime`, which is used in SQL databases;
+# - an RFC-3339 string, used in tracing output.
+chrono = ["dep:chrono"]
+
+# Derive sea-orm traits for certain types.
+sea-orm = ["dep:sea-orm"]
+
+# Include methods to cast Tendermint types to Grug types. These include:
+# - tendermint::abci::types::ExecTxResult -> TxOutcome
+# - tendermint::abci::Event -> CronOutcome
+# - tendermint_rpc::endpoint::tx::Response -> SearchTxOutcome
+tendermint = ["dep:tendermint", "tendermint-rpc"]
+
+# Abstractions and trait implementations related to emitting metrics.
+metrics = ["dep:metrics"]
+
+[dependencies]
+async-graphql   = { workspace = true, optional = true }
+borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
+chrono          = { workspace = true, optional = true }
+dango-backtrace = { workspace = true }
+dango-macros    = { workspace = true, optional = true }
+dango-math      = { workspace = true }
+data-encoding   = { workspace = true }
+dyn-clone       = { workspace = true }
+hex-literal     = { workspace = true }
+metrics         = { workspace = true, optional = true }
+ouroboros       = { workspace = true }
+parking_lot     = { workspace = true }
+paste           = { workspace = true }
+prost           = { workspace = true }
+ripemd          = { workspace = true }
+sea-orm         = { workspace = true, optional = true }
+serde           = { workspace = true, features = ["derive"] }
+serde_json      = { workspace = true }
+serde_with      = { workspace = true }
+sha2            = { workspace = true }
+sha3            = { workspace = true }
+strum           = { workspace = true }
+strum_macros    = { workspace = true }
+tendermint      = { workspace = true, optional = true }
+tendermint-rpc  = { workspace = true, optional = true }
+thiserror       = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+async-trait  = { workspace = true }
+dango-crypto = { workspace = true }
+
+[dev-dependencies]
+test-case = { workspace = true }

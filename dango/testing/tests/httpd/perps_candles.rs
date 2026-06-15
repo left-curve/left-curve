@@ -1,16 +1,16 @@
 use {
     assertor::*,
+    dango_app::Indexer,
+    dango_indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
+    dango_indexer_graphql_types::{
+        PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles,
+    },
     dango_testing::{
         GraphQLCustomRequest, TestOption, build_app_service, call_graphql_query_with_context,
         call_ws_graphql_stream, create_perps_fill, pair_id, parse_graphql_subscription_response,
         setup_perps_env, setup_test_naive_with_indexer,
     },
     graphql_client::GraphQLQuery,
-    grug_app::Indexer,
-    indexer_clickhouse::indexer::perps_candles::cache::PerpsCandleCache,
-    indexer_graphql_types::{
-        PerpsCandles, SubscribePerpsCandles, perps_candles, subscribe_perps_candles,
-    },
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, mpsc},
 };
@@ -172,10 +172,11 @@ async fn graphql_subscribe_to_perps_candles() -> anyhow::Result<()> {
 
     // Verify cache consistency after subscription
     let mut fresh_cache = PerpsCandleCache::default();
-    let pair_ids = indexer_clickhouse::entities::perps_pair_price::PerpsPairPrice::all_pair_ids(
-        context.clickhouse_context.clickhouse_client(),
-    )
-    .await?;
+    let pair_ids =
+        dango_indexer_clickhouse::entities::perps_pair_price::PerpsPairPrice::all_pair_ids(
+            context.clickhouse_context.clickhouse_client(),
+        )
+        .await?;
 
     fresh_cache
         .preload_pairs(&pair_ids, context.clickhouse_context.clickhouse_client())

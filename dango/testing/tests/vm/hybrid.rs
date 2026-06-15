@@ -1,15 +1,15 @@
 use {
+    dango_app::{NaiveProposalPreparer, NullIndexer},
+    dango_backtrace::Backtraceable,
+    dango_db_memory::MemDb,
     dango_genesis::{GenesisCodes, GenesisOption},
-    dango_testing::{Preset, TestAccounts, TestSuite, setup_suite_with_db_and_vm},
-    error_backtrace::Backtraceable,
-    grug_app::{NaiveProposalPreparer, NullIndexer},
-    grug_db_memory::MemDb,
-    grug_tester::{
+    dango_primitives::{Addr, Binary, Coins, HashExt, QuerierExt, Query, ResultExt},
+    dango_tester::{
         BacktraceQueryResponse, QueryBacktraceRequest, QueryFailingQueryRequest, QueryMsg,
     },
-    grug_types::{Addr, Binary, Coins, HashExt, QuerierExt, Query, ResultExt},
-    grug_vm_hybrid::HybridVm,
-    grug_vm_rust::{ContractBuilder, RustVm},
+    dango_testing::{Preset, TestAccounts, TestSuite, setup_suite_with_db_and_vm},
+    dango_vm_hybrid::HybridVm,
+    dango_vm_rust::{ContractBuilder, RustVm},
 };
 
 use super::{WASM_CACHE_CAPACITY, read_wasm_file};
@@ -20,8 +20,8 @@ pub async fn setup_test() -> (
     Addr,
     Addr,
 ) {
-    let rust_tester: Binary = ContractBuilder::new(Box::new(grug_tester::instantiate))
-        .with_query(Box::new(grug_tester::query))
+    let rust_tester: Binary = ContractBuilder::new(Box::new(dango_tester::instantiate))
+        .with_query(Box::new(dango_tester::query))
         .build()
         .into();
 
@@ -47,8 +47,8 @@ pub async fn setup_test() -> (
         .upload_and_instantiate_with_gas(
             &mut accounts.owner,
             320_000_000,
-            read_wasm_file("grug_tester.wasm"),
-            &grug_tester::InstantiateMsg {},
+            read_wasm_file("dango_tester.wasm"),
+            &dango_tester::InstantiateMsg {},
             "tester",
             Some("tester"),
             None,
@@ -63,7 +63,7 @@ pub async fn setup_test() -> (
             &mut accounts.owner,
             100_000,
             rust_tester,
-            &grug_tester::InstantiateMsg {},
+            &dango_tester::InstantiateMsg {},
             "tester",
             Some("tester"),
             None,
@@ -108,7 +108,7 @@ async fn do_backtrace_test() {
         .to_string();
 
     assert!(!backtrace.is_empty());
-    assert!(!backtrace.contains("grug_tester::query::failing_query"));
+    assert!(!backtrace.contains("dango_tester::query::failing_query"));
 
     let backtrace = suite
         .query_wasm_smart(rust_tester, QueryFailingQueryRequest {
@@ -120,7 +120,7 @@ async fn do_backtrace_test() {
         .to_string();
 
     assert!(!backtrace.is_empty());
-    assert!(backtrace.contains("grug_tester::query::failing_query"));
+    assert!(backtrace.contains("dango_tester::query::failing_query"));
 }
 
 #[test]

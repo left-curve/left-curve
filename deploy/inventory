@@ -110,6 +110,20 @@ points-bot-devnet
 points-bot-testnet
 points-bot-mainnet
 
+[referral-dashboard-devnet]
+100.107.248.71 # ovh2
+
+[referral-dashboard-testnet]
+100.109.200.70 # hetzner4
+
+[referral-dashboard-mainnet]
+100.76.197.30  # hetzner3
+
+[referral-dashboard:children]
+referral-dashboard-devnet
+referral-dashboard-testnet
+referral-dashboard-mainnet
+
 [perps-bot]
 100.126.8.2    # hetzner1
 

@@ -2,14 +2,14 @@ use {
     crate::{MakeBlockOutcome, suite::TestSuite},
     anyhow::anyhow,
     async_trait::async_trait,
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
-    grug_db_memory::MemDb,
-    grug_types::{
+    dango_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
+    dango_db_memory::MemDb,
+    dango_primitives::{
         Binary, Block, BlockClient, BlockInfo, BlockOutcome, BorshDeExt, BroadcastClient,
         BroadcastTxOutcome, Hash256, Query, QueryClient, QueryResponse, SearchTxClient,
         SearchTxOutcome, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
-    grug_vm_rust::RustVm,
+    dango_vm_rust::RustVm,
     std::{collections::BTreeMap, ops::DerefMut, sync::Arc, thread, time::Duration},
     tokio::{
         runtime::Runtime,
@@ -101,7 +101,7 @@ where
         self.suite.write().await.block.timestamp = timestamp;
     }
 
-    pub async fn set_block_time(&self, block_time: grug_types::Duration) {
+    pub async fn set_block_time(&self, block_time: dango_primitives::Duration) {
         self.suite.write().await.block_time = block_time;
     }
 
@@ -134,7 +134,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = anyhow::Error;
-    type Proof = grug_types::Proof;
+    type Proof = dango_primitives::Proof;
 
     async fn query_app(
         &self,

@@ -1,13 +1,13 @@
 use {
     crate::register_oracle_prices,
+    dango_math::{Uint64, Uint128},
     dango_order_book::{
         ClientOrderId, OrderId, OrderKind, Quantity, QueryOrdersByUserResponseItem, TimeInForce,
         UsdPrice,
     },
+    dango_primitives::{Addressable, Coins, QuerierExt, ResultExt},
     dango_testing::{TestOption, pair_id, setup_test_naive},
     dango_types::{constants::usdc, perps},
-    grug_math::{Uint64, Uint128},
-    grug_types::{Addressable, Coins, QuerierExt, ResultExt},
     std::collections::BTreeMap,
 };
 

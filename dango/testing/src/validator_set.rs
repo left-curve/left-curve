@@ -1,12 +1,12 @@
 use {
     crate::constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
-    grug_types::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared},
-    hyperlane_types::{
+    dango_hyperlane_types::{
         Addr32, IncrementalMerkleTree, domain_hash, eip191_hash,
         isms::{HYPERLANE_DOMAIN_KEY, multisig::Metadata},
         mailbox::{self, Domain, MAILBOX_VERSION},
         multisig_hash,
     },
+    dango_primitives::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared},
     k256::ecdsa::SigningKey,
     rand::Rng,
     std::collections::{BTreeSet, HashMap},
@@ -78,7 +78,7 @@ impl MockValidatorSet {
         random_nonce: bool,
     ) -> Self
     where
-        I: IntoIterator<Item = eth_utils::SigningKey>,
+        I: IntoIterator<Item = dango_eth_utils::SigningKey>,
     {
         // Parse the raw signing key bytes, and derive the corresponding
         // Ethereum addresses.
@@ -137,7 +137,7 @@ impl MockValidatorSet {
             .validators
             .iter()
             .map(|sk| {
-                let signature = eth_utils::sign_digest(multisig_hash.into_inner(), sk);
+                let signature = dango_eth_utils::sign_digest(multisig_hash.into_inner(), sk);
                 HexByteArray::from_inner(signature)
             })
             .collect();
@@ -157,7 +157,7 @@ impl MockValidatorSet {
     pub fn validator_addresses(&self) -> BTreeSet<HexByteArray<20>> {
         self.validators
             .iter()
-            .map(|sk| HexByteArray::from_inner(eth_utils::derive_address(sk.verifying_key())))
+            .map(|sk| HexByteArray::from_inner(dango_eth_utils::derive_address(sk.verifying_key())))
             .collect()
     }
 

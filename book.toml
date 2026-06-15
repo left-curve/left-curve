@@ -1,9 +1,9 @@
 [book]
-authors      = ["Left Curve Software Ltd. (https://grug.build/about)"]
-description  = "Everything about Dango"
-language     = "en"
-src          = "book/"
-title        = "The Dango Book"
+authors     = ["Left Curve Software Ltd."]
+description = "Everything about Dango"
+language    = "en"
+src         = "book/"
+title       = "The Dango Book"
 
 [output.html]
 git-repository-url = "https://github.com/left-curve/left-curve"

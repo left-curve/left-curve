@@ -15,6 +15,9 @@ import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 import { pluginSourceBuild } from "@rsbuild/plugin-source-build";
 
+import { configurePortalAssets, copyPortalPublicAssets } from "./rsbuild.assets";
+import { getHyperlaneConfig } from "./hyperlane.config";
+
 import devnet from "@left-curve/sdk/chains/devnet.json" with { type: "json" };
 import local from "@left-curve/sdk/chains/local.json" with { type: "json" };
 import mainnet from "@left-curve/sdk/chains/mainnet.json" with { type: "json" };
@@ -50,6 +53,18 @@ const gitCommit = (() => {
 
 const r2AssetsPrefix = process.env.R2_ASSETS_PREFIX || "/";
 const useR2Assets = r2AssetsPrefix !== "/";
+const stableR2AssetsPrefix = (() => {
+  if (!useR2Assets) return "/";
+  try {
+    return new URL("/", r2AssetsPrefix).toString();
+  } catch (error) {
+    throw new Error(
+      `Invalid R2_ASSETS_PREFIX "${r2AssetsPrefix}": ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+})();
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
@@ -67,39 +82,7 @@ const tvVersion = (
     : "unknown"
 ).replace(/\./g, "_");
 
-fs.copySync(
-  path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
-  path.resolve(__dirname, "public/images"),
-  { overwrite: true },
-);
-
-const hyperlaneConfig = async () => {
-  const mainFiles = {
-    config: "./config/hyperlane/config.json",
-    deployment: "./config/hyperlane/deployments.json",
-  };
-
-  const testFiles = {
-    config: "./config/hyperlane/config.testnet.json",
-    deployment: "./config/hyperlane/deployments-testnet.json",
-  };
-
-  const files = environment === "prod" ? mainFiles : testFiles;
-
-  const config = await import(files.config);
-  const deployments = await import(files.deployment);
-
-  Object.entries(deployments.evm).forEach(([chainId, deployment]: [string, any]) => {
-    config.evm[chainId].warp_routes = deployment.warp_routes.map(
-      ([warp_route_type, route]: [string, object]) => ({
-        warp_route_type,
-        ...route,
-      }),
-    );
-  });
-
-  return config;
-};
+copyPortalPublicAssets(__dirname);
 
 const chain = {
   local: local,
@@ -111,25 +94,21 @@ const chain = {
 const urls = {
   local: {
     faucetUrl: "http://localhost:8082/mint",
-    questUrl: "http://localhost:8081/check_username",
     upUrl: "http://localhost:8080/up",
     pointsUrl: "http://localhost:8083/points-api",
   },
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
-    questUrl: "https://quest-bot-devnet.dango.zone/check_username",
     upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-devnet.dango.zone",
   },
   test: {
     faucetUrl: "https://faucet-testnet-hetzner4.dango.zone/mint",
-    questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-testnet.dango.zone",
   },
   prod: {
     faucetUrl: "/faucet",
-    questUrl: "/quest",
     upUrl: `${chain.url}/up`,
     pointsUrl: "https://points-mainnet.dango.zone",
   },
@@ -140,28 +119,27 @@ const banner = {
   test: "You are using testnet",
 }[environment];
 
-const envConfig = `window.dango = ${JSON.stringify(
-  {
-    chain: isLocal
-      ? {
-          ...chain,
-          url: `http://localhost:${PORT}`,
-        }
-      : chain,
-    urls: isLocal
-      ? {
-          faucetUrl: `http://localhost:${PORT}/faucet`,
-          questUrl: `http://localhost:${PORT}/quest`,
-          upUrl: `http://localhost:${PORT}/up`,
-          pointsUrl: `http://localhost:${PORT}/points-api`,
-        }
-      : urls,
-    banner,
-    enabledFeatures,
-  },
-  null,
-  2,
-)};`;
+const defaultDangoConfig = {
+  chain: isLocal
+    ? {
+        ...chain,
+        url: `http://localhost:${PORT}`,
+      }
+    : chain,
+  urls: isLocal
+    ? {
+        faucetUrl: `http://localhost:${PORT}/faucet`,
+        upUrl: `http://localhost:${PORT}/up`,
+        pointsUrl: `http://localhost:${PORT}/points-api`,
+      }
+    : urls,
+  banner,
+  enabledFeatures,
+};
+
+const envConfig = `window.dango = ${
+  process.env.DANGO_CONFIG_JSON || JSON.stringify(defaultDangoConfig, null, 2)
+};`;
 
 const configHash = crypto.createHash("md5").update(envConfig).digest("hex").slice(0, 8);
 
@@ -224,7 +202,7 @@ export default defineConfig({
     define: {
       ...publicVars,
       "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
-      "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(await hyperlaneConfig()),
+      "import.meta.env.HYPERLANE_CONFIG": JSON.stringify(getHyperlaneConfig(environment)),
       "import.meta.env.GIT_COMMIT": `"${gitCommit}"`,
       "import.meta.env.TV_VERSION": `"${tvVersion}"`,
       "import.meta.env.R2_ASSETS_PREFIX": JSON.stringify(r2AssetsPrefix),
@@ -245,11 +223,6 @@ export default defineConfig({
         target: urls.faucetUrl,
         changeOrigin: true,
         pathRewrite: { "^/faucet": "" },
-      },
-      "/quest": {
-        target: urls.questUrl,
-        changeOrigin: true,
-        pathRewrite: { "^/quest": "" },
       },
       "/up": {
         target: `${chain.url}/up`,
@@ -289,10 +262,12 @@ export default defineConfig({
     ],
   },
   performance: {
-    prefetch: {
-      type: "all-assets",
-      include: [/.*\.woff2$/],
-    },
+    prefetch: useR2Assets
+      ? undefined
+      : {
+          type: "all-assets",
+          include: [/.*\.woff2$/],
+        },
   },
   output: {
     assetPrefix: r2AssetsPrefix,
@@ -319,6 +294,14 @@ export default defineConfig({
   ],
   tools: {
     rspack: (config, { rspack }) => {
+      configurePortalAssets(config, {
+        portalRoot: __dirname,
+        workspaceRoot,
+        r2AssetsPrefix,
+        stableR2AssetsPrefix,
+        useR2Assets,
+      });
+
       config.plugins ??= [];
 
       config.plugins.push(

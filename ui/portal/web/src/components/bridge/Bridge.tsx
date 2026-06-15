@@ -5,7 +5,6 @@ import {
   useBridgeEvmDeposit,
   useBridgeState,
   useBridgeWithdraw,
-  useConfig,
   useEvmBalances,
   usePrices,
 } from "@left-curve/store";
@@ -26,6 +25,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Decimal, formatUnits, parseUnits } from "@left-curve/utils";
+import { Image } from "~/components/foundation/Image";
 
 import {
   Button,
@@ -111,10 +111,9 @@ const BridgeDeposit: React.FC = () => {
 
 const BridgeSelectors: React.FC = () => {
   const { isConnected } = useAccount();
-  const { chain } = useConfig();
 
   const { state } = useBridge();
-  const { coin, changeCoin, coins, network, setNetwork, networks, action } = state;
+  const { coin, changeCoin, coins, network, setNetwork, networks } = state;
 
   return (
     <>
@@ -126,11 +125,7 @@ const BridgeSelectors: React.FC = () => {
         classNames={{ base: "w-full", trigger: "h-[56px]", listboxWrapper: "top-[4rem]" }}
         value={coin?.denom}
         onChange={changeCoin}
-        coins={coins.filter(
-          (c) =>
-            (chain.id === "dango-1" && c.name !== "Ether" && action === "deposit") ||
-            action === "withdraw",
-        )}
+        coins={coins}
         withName
         withPrice
       />
@@ -186,6 +181,7 @@ const EvmDeposit: React.FC = () => {
   const { data: balances = {}, refetch: refreshBalances } = useEvmBalances({
     chain: config.chain,
     address: evmAddress,
+    rpcUrl: config.bridger?.rpcUrl,
   });
 
   if (!connector || !coin) {
@@ -233,7 +229,7 @@ const EvmDeposit: React.FC = () => {
               </p>
 
               <div className="flex gap-2 items-center">
-                <img src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
+                <Image src={connector.icon} alt={connector.name} className="w-4 h-4 inline-block" />
                 <TruncateText
                   start={4}
                   end={4}
@@ -268,7 +264,7 @@ const EvmDeposit: React.FC = () => {
           startContent={
             <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
               <div className="flex gap-2 items-center font-semibold">
-                <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+                <Image src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
                 <p>{coin.symbol}</p>
               </div>
             </div>
@@ -403,7 +399,7 @@ const BridgeWithdraw: React.FC = () => {
                     {destinationAddress.walletName && (
                       <>
                         {destinationAddress.walletIcon && (
-                          <img
+                          <Image
                             src={destinationAddress.walletIcon}
                             alt={destinationAddress.walletName}
                             className="w-4 h-4 inline-block"
@@ -467,7 +463,7 @@ const BridgeWithdraw: React.FC = () => {
                 startContent={
                   <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
                     <div className="flex gap-2 items-center font-semibold">
-                      <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
+                      <Image src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
                       <p>{coin.symbol}</p>
                     </div>
                   </div>

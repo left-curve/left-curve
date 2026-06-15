@@ -305,6 +305,8 @@ export type {
   Remote,
   WarpRemote,
   HyperlaneConfig,
+  HyperlaneEvmChainConfig,
+  HyperlaneWarpRoute,
 } from "./hyperlane.js";
 
 export type {

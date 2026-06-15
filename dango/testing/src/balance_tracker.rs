@@ -1,7 +1,7 @@
 use {
     crate::TestSuite,
-    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
-    grug_types::{Addressable, Denom, Inner},
+    dango_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
+    dango_primitives::{Addressable, Denom, Inner},
     std::{
         cmp::Ordering,
         collections::{BTreeMap, BTreeSet},

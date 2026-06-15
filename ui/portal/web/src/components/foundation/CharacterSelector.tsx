@@ -1,5 +1,6 @@
 import { IconChecked, twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { Image } from "~/components/foundation/Image";
 
 export const CHARACTERS = [
   "frog1",
@@ -45,7 +46,7 @@ export function CharacterSelector({
                 : "border-outline-secondary-gray hover:border-ink-tertiary-500",
             )}
           >
-            <img
+            <Image
               src={`/images/pnl-modal-thumb/${img}.png`}
               alt={img}
               className="w-full h-full object-cover"

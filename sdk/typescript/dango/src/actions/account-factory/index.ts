@@ -15,6 +15,12 @@ export {
 } from "./queries/getAccountSeenNonces.js";
 
 export {
+  type GetAccountSessionSeenNoncesParameters,
+  type GetAccountSessionSeenNoncesReturnType,
+  getAccountSessionSeenNonces,
+} from "./queries/getAccountSessionSeenNonces.js";
+
+export {
   type GetCodeHashParameters,
   type GetCodeHashReturnType,
   getCodeHash,

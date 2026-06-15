@@ -1,6 +1,15 @@
 use {
     assertor::*,
+    dango_app::Indexer,
     dango_gateway::REVERSE_ROUTES,
+    dango_hyperlane_types::{
+        Addr32, IncrementalMerkleTree, addr32,
+        mailbox::{self, MAILBOX_VERSION, Message},
+    },
+    dango_math::{NumberConst, Uint128},
+    dango_primitives::{
+        Addr, Addressable, HashExt, QuerierExt, ResultExt, StdError, btree_map, coins,
+    },
     dango_testing::{
         BalanceChange, HyperlaneTestSuite, MOCK_HYPERLANE_LOCAL_DOMAIN, TestOption, mock_arbitrum,
         mock_ethereum, setup_test, setup_test_with_indexer,
@@ -9,13 +18,6 @@ use {
         constants::{eth, usdc},
         gateway::{self, Remote},
         warp::TokenMessage,
-    },
-    grug_app::Indexer,
-    grug_math::{NumberConst, Uint128},
-    grug_types::{Addr, Addressable, HashExt, QuerierExt, ResultExt, StdError, btree_map, coins},
-    hyperlane_types::{
-        Addr32, IncrementalMerkleTree, addr32,
-        mailbox::{self, MAILBOX_VERSION, Message},
     },
     sea_orm::EntityTrait,
 };
@@ -71,7 +73,7 @@ async fn sending_remote() {
 
     suite
         .balances()
-        .record_many([&accounts.user1.address(), &contracts.taxman]);
+        .record_many([&accounts.user1.address(), &accounts.owner.address()]);
 
     // User1 sends USDC to Ethereum.
     suite
@@ -119,12 +121,10 @@ async fn sending_remote() {
         usdc::DENOM.clone() => BalanceChange::Decreased(SEND_AMOUNT),
     });
 
-    // Taxman should have received the fee.
-    suite
-        .balances()
-        .should_change(&contracts.taxman, btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
-        });
+    // The chain owner should have received the fee.
+    suite.balances().should_change(&accounts.owner, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Increased(ETHEREUM_USDC_WITHDRAWAL_FEE),
+    });
 
     // Gateway contract should not hold any of the synth token (should be burned).
     suite
@@ -142,21 +142,21 @@ async fn sending_remote() {
         .expect("Can't wait for indexer to finish");
 
     // The transfers should have been indexed.
-    let blocks = indexer_sql::entity::blocks::Entity::find()
+    let blocks = dango_indexer_sql::entity::blocks::Entity::find()
         .all(&context.db)
         .await
         .expect("Can't fetch blocks");
 
     assert_that!(blocks).has_length(1);
 
-    let transfers = indexer_sql::entity::transfers::Entity::find()
+    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
         .all(&context.db)
         .await
         .expect("Can't fetch transfers");
 
     // There should have been two transfers:
     // 1. Before fee amount from user to Gateway;
-    // 2. Withdrawal fee from Gateway to taxman.
+    // 2. Withdrawal fee from Gateway to the chain owner.
     assert_that!(transfers).has_length(2);
 
     assert_that!(

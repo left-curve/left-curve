@@ -1,16 +1,21 @@
 import type { Page } from "@playwright/test";
-import type { Hex } from "viem";
-import { injectMockWallet } from "./injectWallet";
+import { DEFAULT_MOCK_WALLET_NAME } from "../mocks/eip6963";
+import { injectMockWallet, type WalletInjectionOptions } from "./injectWallet";
+import { message } from "./messages";
 
-export interface RegisterUserOptions {
-  privateKey?: Hex;
-}
+export type RegisterUserOptions = WalletInjectionOptions;
 
-export async function dismissActivateAccountModal(
-  page: Page,
-  timeout = 2_000,
-): Promise<void> {
-  const heading = page.getByRole("heading", { name: "Activate Account" });
+const registrationLabels = {
+  activateAccount: message("signup.deposit.title"),
+  connectWallet: message("common.connectWallet"),
+  continue: message("common.continue"),
+  doThisLater: message("signup.doThisLater"),
+  usernamePrefix: `${message("common.account")} #`,
+  usernamesFound: message("signin.usernamesFound"),
+};
+
+export async function dismissActivateAccountModal(page: Page, timeout = 2_000): Promise<void> {
+  const heading = page.getByRole("heading", { name: registrationLabels.activateAccount });
 
   const isVisible = await heading
     .waitFor({ state: "visible", timeout })
@@ -21,12 +26,14 @@ export async function dismissActivateAccountModal(
     return;
   }
 
-  await page.getByText("do this later", { exact: false }).click();
+  const laterButton = page.getByRole("button", { name: registrationLabels.doThisLater });
+  await laterButton.waitFor({ state: "visible", timeout: 10_000 });
+  await laterButton.dispatchEvent("click");
   await heading.waitFor({ state: "hidden", timeout: 10_000 });
 }
 
 /**
- * Registers a new user using the Mock E2E Wallet.
+ * Registers a new user using the test EIP-6963 wallet.
  * This utility handles the full registration flow:
  * 1. Injects the mock wallet
  * 2. Navigates to the app
@@ -47,18 +54,18 @@ export async function registerUser(page: Page, options: RegisterUserOptions = {}
   // Click on login button in the header
   await page.locator("[dng-connect-button]").click();
 
-  // Click "Connect Wallet" on the welcome screen
-  await page.getByText("Connect Wallet", { exact: true }).click();
+  // Continue from the welcome screen.
+  await page.getByText(registrationLabels.connectWallet, { exact: true }).click();
 
-  // Select "Mock E2E Wallet" from the wallet list
-  await page.getByText("Mock E2E Wallet").click();
+  // Select the injected wallet from the wallet list.
+  await page.getByText(options.walletName ?? DEFAULT_MOCK_WALLET_NAME).click();
 
   // After wallet authentication, the flow shows either:
-  // 1) "create-account" screen (new wallet) with a "Continue" button, or
+  // 1) "create-account" screen (new wallet) with a continue button, or
   // 2) "account-picker" screen (existing wallet) with username list.
   const modal = page.locator(".fixed.z-\\[60\\]");
-  const continueButton = modal.getByRole("button", { name: "Continue" });
-  const usernamesHeading = modal.getByRole("heading", { name: "Usernames found" });
+  const continueButton = modal.getByRole("button", { name: registrationLabels.continue });
+  const usernamesHeading = modal.getByRole("heading", { name: registrationLabels.usernamesFound });
 
   const authOutcome = await Promise.race([
     continueButton.waitFor({ state: "visible", timeout: 30_000 }).then(() => "create"),
@@ -74,16 +81,19 @@ export async function registerUser(page: Page, options: RegisterUserOptions = {}
   }
 
   // Wait for login to complete (header shows account info)
-  await page.locator("[dng-connect-button]").filter({ hasText: /Account #/ }).waitFor({
-    state: "visible",
-    timeout: 30_000,
-  });
+  await page
+    .locator("[dng-connect-button]")
+    .filter({ hasText: registrationLabels.usernamePrefix })
+    .waitFor({
+      state: "visible",
+      timeout: 30_000,
+    });
 
   // Auto-dismiss ActivateAccount modal whenever it appears.
   // The modal re-triggers on every full navigation (page.goto) because the
   // React ref that guards it resets on remount, so a one-time check is not enough.
   await page.addLocatorHandler(
-    page.getByRole("heading", { name: "Activate Account" }),
+    page.getByRole("heading", { name: registrationLabels.activateAccount }),
     async () => {
       await dismissActivateAccountModal(page, 10_000);
     },

@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
 
 ## Implementations
 
-`SubscriptionVariables` is implemented for the 13 codegen `Variables` types under `indexer_graphql_types`. Each variant maps to a `GraphQLQuery` marker struct (`SubscribeBlock`, `SubscribeAccounts`, …) via `impl Variables for <module>::Variables`.
+`SubscriptionVariables` is implemented for the 13 codegen `Variables` types under `dango_indexer_graphql_types`. Each variant maps to a `GraphQLQuery` marker struct (`SubscribeBlock`, `SubscribeAccounts`, …) via `impl Variables for <module>::Variables`.
 
 | Variant module                       | Query type                  | What it streams |
 |--------------------------------------|-----------------------------|-----------------|

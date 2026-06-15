@@ -20,6 +20,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { Image } from "~/components/foundation/Image";
 
 type BlockExplorerProps = {
   height: string;
@@ -72,7 +73,7 @@ const BlockSkeleton: React.FC = () => {
           {m["explorer.block.details.blockDetails"]({ height: "#" })}
         </h1>
         <Skeleton className="h-full w-full max-w-[75%]" />
-        <img
+        <Image
           src="/images/emojis/detailed/map-explorer.svg"
           alt="map-emoji"
           className="hidden md:block w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem]"
@@ -167,7 +168,7 @@ const FutureBlock: React.FC = () => {
             </span>
           </div>
         </div>
-        <img
+        <Image
           src="/images/emojis/detailed/map-explorer.svg"
           alt="map-emoji"
           className="w-[16.25rem] h-[16.25rem] opacity-40 absolute right-[2rem] hidden lg:flex"
@@ -281,7 +282,7 @@ const BlockDetails: React.FC = () => {
             <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
           </div>
         </div>
-        <img
+        <Image
           src="/images/emojis/detailed/map-explorer.svg"
           alt="map-emoji"
           className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] hidden md:flex"

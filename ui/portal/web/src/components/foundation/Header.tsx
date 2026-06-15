@@ -21,6 +21,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { GeoblockBanner } from "./GeoblockBanner";
 import { useGeoblock } from "./hooks/useGeoblock";
 import { TestnetBanner } from "./TestnetBanner";
+import { Image } from "~/components/foundation/Image";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -84,13 +85,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         location.pathname === "/" ? "lg:fixed h-fit" : "lg:sticky flex flex-col items-center",
       )}
     >
-      {isLg ? <div id="quest-banner" className="w-full" /> : null}
       {isLg && isProSwap && isGeoblocked ? <GeoblockBanner /> : null}
       {isLg ? <TestnetBanner /> : null}
 
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit drag-none">
-          <img
+          <Image
             src="/dango-logo.svg"
             alt="dango logo"
             className="h-11 order-1 cursor-pointer drag-none hidden lg:flex rounded-full shadow-account-card select-none bg-surface-secondary-rice"

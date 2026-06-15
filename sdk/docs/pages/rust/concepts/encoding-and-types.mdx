@@ -4,7 +4,7 @@
 
 ## Where types live
 
-`dango-sdk` is thin: most user-facing types are re-exported by the SDK, `dango_types`, and `indexer_graphql_types`.
+`dango-sdk` is thin: most user-facing types are re-exported by the SDK, `dango_types`, and `dango_indexer_graphql_types`.
 
 | Type | Crate | Notes |
 |------|-------|-------|
@@ -13,8 +13,8 @@
 | `Coins`, `Denom`, `Coin`, `Uint128`, `Uint256` | Core | Bank balances and unsigned integers. |
 | `NonEmpty<T>`, `Defined<T>`, `Undefined<T>`, `MaybeDefined<T>` | Core | Typestate helpers. |
 | `Key`, `Signature`, `SignDoc`, `Nonce`, `UserIndex` | `dango_types::auth` / `dango_types::account_factory` | Account-factory primitives. |
-| `PageInfo`, `<query>::Variables`, `<query>::ResponseData`, generated `*Nodes`/`*Edges` | `indexer_graphql_types` | GraphQL codegen surface, re-exported at the `dango_sdk` crate root. |
-| `SubscribeBlock`, …, `SubscribeQueryStatus` (×14) | `indexer_graphql_types` | One marker struct per subscription. Each has a snake-case module of `Variables`/`ResponseData`. |
+| `PageInfo`, `<query>::Variables`, `<query>::ResponseData`, generated `*Nodes`/`*Edges` | `dango_indexer_graphql_types` | GraphQL codegen surface, re-exported at the `dango_sdk` crate root. |
+| `SubscribeBlock`, …, `SubscribeQueryStatus` (×14) | `dango_indexer_graphql_types` | One marker struct per subscription. Each has a snake-case module of `Variables`/`ResponseData`. |
 | `WsError` | `dango_sdk` | The only public typed error in the crate. |
 
 ## Base units, not human units
@@ -28,7 +28,7 @@ the SDK exposes `Uint128`/`Uint256` for amounts. Convert to display units at the
 `Addr` is a 20-byte fixed array, hex-encoded with the `0x` prefix in display form.
 
 ```rust
-use {grug::Addr, std::str::FromStr};
+use {dango_primitives::Addr, std::str::FromStr};
 
 let addr = Addr::from_str("0x0000000000000000000000000000000000000000")?;
 println!("{addr}");          // 0x0000...
@@ -41,7 +41,7 @@ let bytes: [u8; 20] = addr.into_inner();
 `Hash256` is a 32-byte hash, hex-encoded. Used for transaction hashes, key hashes, and content hashes.
 
 ```rust
-use {grug::Hash256, std::str::FromStr};
+use {dango_primitives::Hash256, std::str::FromStr};
 let hash = Hash256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000")?;
 // Ok::<(), anyhow::Error>(())
 ```
@@ -74,7 +74,7 @@ Indexer queries return Relay-style connections: `{ nodes, page_info: PageInfo }`
 Smart-contract calls and queries are JSON-encoded. the SDK provides `JsonSerExt` / `JsonDeExt` for typed encode/decode of any `Serialize`/`Deserialize` value:
 
 ```rust
-use grug::JsonSerExt;
+use dango_primitives::JsonSerExt;
 let json = my_struct.to_json_value()?;
 // Ok::<(), anyhow::Error>(())
 ```

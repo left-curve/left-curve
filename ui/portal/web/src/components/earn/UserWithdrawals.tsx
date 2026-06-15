@@ -2,6 +2,7 @@ import { Table, useApp, type TableColumn } from "@left-curve/applets-kit";
 import { formatNumber } from "@left-curve/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { PerpsUnlock } from "@left-curve/types";
+import { Image } from "~/components/foundation/Image";
 
 type UserWithdrawalsProps = {
   unlocks: PerpsUnlock[];
@@ -72,7 +73,7 @@ export const UserWithdrawals: React.FC<UserWithdrawalsProps> = ({ unlocks }) => 
         </>
       ) : (
         <div className="flex flex-col items-center gap-2 py-4">
-          <img
+          <Image
             src="/images/notifications/no-notifications.svg"
             alt="No withdrawals"
             className="w-[120px] h-auto"

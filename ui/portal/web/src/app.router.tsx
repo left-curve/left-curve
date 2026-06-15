@@ -49,5 +49,7 @@ export const AppRouter: React.FC = () => {
   const client = usePublicClient();
   const theme = useTheme();
 
-  return <RouterProvider router={router} context={{ account, config, client, theme, queryClient }} />;
+  return (
+    <RouterProvider router={router} context={{ account, config, client, theme, queryClient }} />
+  );
 };

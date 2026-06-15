@@ -13,7 +13,7 @@ export function usePerpsPairParam(parameters: UsePerpsPairParamParameters) {
   const client = usePublicClient();
 
   return useQuery({
-    enabled: enabled && !!pairId,
+    enabled,
     queryKey: ["perps_pair_param", pairId],
     queryFn: async (): Promise<PerpsPairParam | null> => {
       return await client.getPerpsPairParam({ pairId });

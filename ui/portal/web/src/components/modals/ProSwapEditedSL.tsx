@@ -13,6 +13,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef, useMemo, useState } from "react";
+import { perpsTradeHistoryKeys } from "../dex/helpers/perpsTradeHistoryKeys";
 
 import type { ConditionalOrder, TriggerDirection } from "@left-curve/types";
 
@@ -89,7 +90,9 @@ export const ProSwapEditedSL = forwardRef<void, ProSwapEditedSLProps>(
         onSuccess: () => {
           setCancelingDirection(null);
           queryClient.invalidateQueries({ queryKey: ["prices"] });
-          queryClient.invalidateQueries({ queryKey: ["perpsTradeHistory", account?.address] });
+          queryClient.invalidateQueries({
+            queryKey: perpsTradeHistoryKeys.account(account?.address),
+          });
         },
         onError: () => {
           setCancelingDirection(null);

@@ -5,7 +5,7 @@ Submit a signed transaction with `tx-sync` semantics: the node accepts or reject
 ## Signature
 
 ```rust
-async fn broadcast_tx(&self, tx: grug::Tx) -> Result<grug::BroadcastTxOutcome, anyhow::Error>;
+async fn broadcast_tx(&self, tx: dango_primitives::Tx) -> Result<dango_primitives::BroadcastTxOutcome, anyhow::Error>;
 ```
 
 From `impl BroadcastClient for HttpClient`.
@@ -16,15 +16,15 @@ From `impl BroadcastClient for HttpClient`.
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, SingleSigner},
-    grug::{BroadcastClient, NonEmpty, Signer},
+    dango_primitives::{BroadcastClient, NonEmpty, Signer},
 };
 
 async fn submit(
     http: &HttpClient,
     signer: &mut SingleSigner<impl dango_sdk::Secret>,
-    messages: NonEmpty<Vec<grug::Message>>,
+    messages: NonEmpty<Vec<dango_primitives::Message>>,
     gas: u64,
-) -> Result<grug::Hash256> {
+) -> Result<dango_primitives::Hash256> {
     let tx     = signer.sign_transaction(messages, "dango-1", gas)?;
     let result = http.broadcast_tx(tx).await?;
     Ok(result.tx_hash)

@@ -22,7 +22,7 @@ impl<S: Secret, N: MaybeDefined<Nonce>> SingleSigner<S, Undefined<UserIndex>, N>
 use {
     anyhow::Result,
     dango_sdk::{HttpClient, Secp256k1, SingleSigner},
-    grug::Addr,
+    dango_primitives::Addr,
     std::str::FromStr,
 };
 

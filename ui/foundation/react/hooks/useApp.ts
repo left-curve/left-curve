@@ -1,12 +1,23 @@
-import { useRemoteApp as useAppRemoteProvider } from "../providers/AppRemoteProvider";
-import { useApp as useAppProvider } from "../providers/AppProvider";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { useAppStore } from "../providers/AppProvider";
 
-export function useApp(): ReturnType<typeof useAppProvider> {
-  try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: intentional call for AppProvider
-    return useAppProvider();
-  } catch {
-    // biome-ignore lint/correctness/useHookAtTopLevel: intentional fallback when AppProvider is absent
-    return useAppRemoteProvider();
-  }
+import type { AppState } from "../providers/AppProvider";
+
+const selectAppState = (state: AppState) => state;
+
+export function useApp(): AppState;
+export function useApp<Selection>(
+  selector: (state: AppState) => Selection,
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+): Selection;
+export function useApp<Selection>(
+  selector?: (state: AppState) => Selection,
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+) {
+  const store = useAppStore();
+  return useStoreWithEqualityFn(
+    store,
+    (selector ?? selectAppState) as (state: AppState) => Selection,
+    equalityFn,
+  );
 }

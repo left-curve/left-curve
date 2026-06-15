@@ -1,11 +1,11 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
+    dango_primitives::{Block, BlockOutcome},
     dango_testing::{
         TestOption, build_app_service, call_api, call_api_with_headers,
         setup_test_naive_with_indexer, setup_test_naive_with_indexer_and_create_blocks,
     },
-    grug_types::{Block, BlockOutcome},
     serde_json::json,
 };
 

@@ -1,13 +1,13 @@
 use {
     crate::register_oracle_prices,
+    dango_math::{NumberConst, Uint128},
     dango_order_book::{UsdValue, round_to_day},
+    dango_primitives::{Coins, Duration, QuerierExt, ResultExt, Timestamp},
     dango_testing::{TestOption, setup_test_naive},
     dango_types::{
         constants::usdc,
         perps::{self, VaultSnapshot},
     },
-    grug_math::{NumberConst, Uint128},
-    grug_types::{Coins, Duration, QuerierExt, ResultExt, Timestamp},
     std::collections::BTreeMap,
 };
 
@@ -16,7 +16,7 @@ use {
 /// inclusive bounds.
 ///
 /// Note: the perps cron is scheduled with a 1-minute interval (see
-/// `dango/genesis/src/builder.rs`), so back-to-back tx blocks (250ms apart)
+/// `dango/exchange/genesis/src/builder.rs`), so back-to-back tx blocks (250ms apart)
 /// do not trigger it. We rely on `increase_time(1 day)` to push past the
 /// scheduling boundary and produce one snapshot per call.
 #[tokio::test]

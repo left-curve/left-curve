@@ -4,6 +4,7 @@ import { APPLETS } from "~/constants";
 
 import { IconAddCross, useApp } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
+import { Image } from "~/components/foundation/Image";
 
 export function AppletsSection() {
   const { favApplets } = useFavApplets();
@@ -24,7 +25,7 @@ export function AppletsSection() {
                 to={applet.path}
                 className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-surface-primary-red hover:bg-surface-secondary-red transition-all rounded-xl p-[10px]"
               >
-                <img src={applet.img} alt={applet.title} className="w-full h-full" />
+                <Image src={applet.img} alt={applet.title} className="w-full h-full" />
               </Link>
               <div className="md:w-[5rem] h-[36.41px] relative">
                 <p className="text-sm font-bold text-center">{applet.title}</p>

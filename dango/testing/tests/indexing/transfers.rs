@@ -1,9 +1,9 @@
 use {
     assertor::*,
+    dango_app::Indexer,
+    dango_primitives::{Addressable, Coins, Message, NonEmpty, ResultExt},
     dango_testing::{TestOption, setup_test_with_indexer},
     dango_types::{account_factory, constants::usdc},
-    grug_app::Indexer,
-    grug_types::{Addressable, Coins, Message, NonEmpty, ResultExt},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
 };
 
@@ -35,13 +35,13 @@ async fn index_transfer_events() -> anyhow::Result<()> {
 
     // The 2 transfers should have been indexed.
 
-    let blocks = indexer_sql::entity::blocks::Entity::find()
+    let blocks = dango_indexer_sql::entity::blocks::Entity::find()
         .all(&dango_context.db)
         .await?;
 
     assert_that!(blocks).has_length(1);
 
-    let transfers = indexer_sql::entity::transfers::Entity::find()
+    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
         .all(&dango_context.db)
         .await?;
 
@@ -74,14 +74,14 @@ async fn index_transfer_events() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish().await?;
 
     // The transfer should have been indexed.
-    let blocks = indexer_sql::entity::blocks::Entity::find()
+    let blocks = dango_indexer_sql::entity::blocks::Entity::find()
         .all(&dango_context.db)
         .await?;
 
     assert_that!(blocks).has_length(2);
 
-    let transfers = indexer_sql::entity::transfers::Entity::find()
-        .filter(indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
+    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+        .filter(dango_indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
         .all(&dango_context.db)
         .await?;
 

@@ -46,7 +46,7 @@ presentation.
 | ------------- | ------------------------------------------------------------------------- |
 | `equity`      | Total user equity (from the extended perps user-state).                   |
 | `reserved`    | USD margin locked by the user's open GTC limit orders (`userState.reservedMargin`, summed across both sides). Clamped ≥ 0. |
-| `otherIM`     | `Σ(j ≠ currentPair) abs(pos_j) · price_j · IMR_pair_j` — IM held by positions in pairs other than the one being traded, at each pair's fixed on-chain `initialMarginRatio`. Sourced from `userState.positions` × `allPerpsPairStatsStore` (with oracle price fallback) × `appConfig.perpsPairs[pid].initialMarginRatio`. Clamped ≥ 0. |
+| `otherIM`     | `Σ(j ≠ currentPair) abs(pos_j) · price_j · IMR_pair_j` — IM held by positions in pairs other than the one being traded, at each pair's fixed on-chain `initialMarginRatio`. Sourced from live perps user-state positions × all-pair stats (with oracle price fallback) × `appConfig.perpsPairs[pid].initialMarginRatio`. Clamped ≥ 0. |
 | `pos`         | Signed base-unit size of the position in the traded pair.                 |
 | `mark`        | Mark price (pair stats first, oracle fallback).                           |
 | `L`           | User-selected leverage in the UI (not the pair's max).                    |
@@ -231,11 +231,11 @@ difference, not a formula difference.
 
 ## Chain-side reference
 
-- `dango/perps/src/core/decompose.rs` — decomposition into closing and
+- `dango/exchange/perps/src/core/decompose.rs` — decomposition into closing and
   opening portions.
-- `dango/perps/src/core/margin.rs` (`check_margin`) — the pre-match
+- `dango/exchange/perps/src/core/margin.rs` (`check_margin`) — the pre-match
   margin check the UI formula mirrors.
-- `dango/perps/src/trade/submit_order.rs` — reduce-only short-circuit
+- `dango/exchange/perps/src/trade/submit_order.rs` — reduce-only short-circuit
   (zeros the opening portion, skips the margin check).
 - Spec: `book/perps/2-order-matching.md` §2 (decomposition), §5
   (pre-match margin check).

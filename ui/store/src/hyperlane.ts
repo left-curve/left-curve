@@ -1,4 +1,4 @@
-import { sepolia, mainnet, base, arbitrum } from "viem/chains";
+import { sepolia, mainnet, base, arbitrum, arbitrumSepolia } from "viem/chains";
 
 export const chains = {
   "11155111": {
@@ -69,6 +69,20 @@ export const chains = {
         {
           symbol: "USDC",
           address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+          decimals: 6,
+          targetDenom: "bridge/usdc",
+        },
+      ],
+    },
+  },
+  "421614": {
+    ...arbitrumSepolia,
+    contracts: {
+      ...arbitrumSepolia.contracts,
+      erc20: [
+        {
+          symbol: "USDC",
+          address: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
           decimals: 6,
           targetDenom: "bridge/usdc",
         },

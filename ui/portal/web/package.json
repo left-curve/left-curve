@@ -1,6 +1,6 @@
 {
   "name": "@left-curve/portal-web",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,10 +9,12 @@
     "preview": "rsbuild preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretest:e2e": "pnpm -F @left-curve/foundation exec node paraglide.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
     "@left-curve/applets-kit": "workspace:^",
+    "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/foundation": "workspace:^",
     "@left-curve/sdk": "workspace:^",

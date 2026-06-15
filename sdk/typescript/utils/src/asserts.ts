@@ -160,3 +160,21 @@ export function assertDeepEqual(a: any, b: any) {
   // biome-ignore lint/suspicious/noSelfCompare: it uses self-comparison to check for NaN
   return a !== a && b !== b;
 }
+
+export const deepEqual: typeof assertDeepEqual = assertDeepEqual;
+
+export function shallowEqual<T extends object>(
+  previous: T | null | undefined,
+  next: T | null | undefined,
+) {
+  if (Object.is(previous, next)) return true;
+  if (!previous || !next) return false;
+
+  const previousKeys = Object.keys(previous) as (keyof T)[];
+  const nextKeys = Object.keys(next) as (keyof T)[];
+  if (previousKeys.length !== nextKeys.length) return false;
+
+  return previousKeys.every(
+    (key) => Object.hasOwn(next, key) && Object.is(previous[key], next[key]),
+  );
+}

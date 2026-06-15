@@ -17,6 +17,7 @@ import { TransactionsTable } from "./TransactionsTable";
 import type { Address, IndexedTransaction } from "@left-curve/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { Image } from "~/components/foundation/Image";
 
 type UserExplorerContextType = {
   username: string;
@@ -90,7 +91,11 @@ const Header: React.FC = () => {
   return (
     <div className="flex flex-col md:flex-row gap-4">
       <div className="flex items-start gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card min-h-[10rem] md:min-w-[21.7rem]">
-        <img src="/images/avatar.png" alt="avatar" className="w-16 h-16 rounded-lg object-cover" />
+        <Image
+          src="/images/avatar.png"
+          alt="avatar"
+          className="w-16 h-16 rounded-lg object-cover"
+        />
         <div className="flex flex-col gap-2 items-start">
           <p className="h4-bold text-ink-primary-900">{userData.user.name}</p>
           <Badge color="gradient-rice" text={m["explorer.user.dangoTrader"]()} />
@@ -194,7 +199,7 @@ const AccountsStack: React.FC = () => {
 
 const KeyTypeTranslation = {
   secp256r1: "Passkey",
-  secp256k1: "Wallet",
+  secp256k1: "Secp256k1 Public Key",
   ethereum: "Ethereum Wallet",
 } as const;
 
