@@ -1,0 +1,46 @@
+- hosts: full-app
+  remote_user: "{{ deploy_user }}"
+  tasks:
+    - name: List deployments with age and size
+      shell: |
+        # Collect all sizes in one du call (much faster than per-directory)
+        declare -A sizes
+        while IFS=$'\t' read -r size path; do
+          sizes["$(basename "$path")"]="$size"
+        done < <(du -sh ~/deployments/*/ 2>/dev/null)
+
+        for dir in ~/deployments/*/; do
+          [ -d "$dir" ] || continue
+          name=$(basename "$dir")
+          label="$name"
+          env_file="$dir/.env"
+          data_size=""
+          if [ -f "$env_file" ]; then
+            network=$(grep -oP '^DANGO_NETWORK=\K.*' "$env_file" 2>/dev/null || true)
+            if [ -n "$network" ] && [ "$network" != "$name" ]; then
+              label="${name} (${network})"
+            fi
+            # For system_wide_directories deploys, data lives at ~/<network>/<timestamp>/
+            dango_dir=$(grep -oP '^DANGO_DIRECTORY=\K.*' "$env_file" 2>/dev/null || true)
+            if [ -n "$dango_dir" ]; then
+              # Data root is two levels up from the dango directory
+              data_root=$(dirname "$dango_dir")
+              if [ -d "$data_root" ]; then
+                data_size=$(du -sh "$data_root" 2>/dev/null | cut -f1)
+              fi
+            fi
+          fi
+          age_days=$(( ($(date +%s) - $(stat -c %Y "$dir")) / 86400 ))
+          if [ -n "$data_size" ]; then
+            echo "${label}  ${sizes[$name]:-?} (data: ${data_size})  ${age_days}d old"
+          else
+            echo "${label}  ${sizes[$name]:-?}  ${age_days}d old"
+          fi
+        done
+      args:
+        executable: /bin/bash
+      register: deploys
+
+    - name: Show deployments
+      debug:
+        msg: "{{ deploys.stdout_lines if deploys.stdout_lines | length > 0 else ['No deployments found'] }}"
