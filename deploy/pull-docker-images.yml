@@ -44,14 +44,19 @@
           image: ghcr.io/left-curve/bots/faucet
           tag: "{{ faucet_bot_tag }}"
           enabled: "{{ faucet_bot_enabled | default(false) }}"
+        # perps-bot is deployed/stopped manually (just deploy-perps-bot /
+        # stop-perps-bot), independent of perps_bot_enabled, so warm its image
+        # on every host regardless of the current deploy's gating.
         - name: perps-bot
           image: ghcr.io/left-curve/bots/perps
           tag: "{{ perps_bot_tag }}"
-          enabled: "{{ (perps_bot_enabled | default(false)) and inventory_hostname == perps_bot_host }}"
+          enabled: true
+        # perp-liquidator is also deployed manually (just
+        # deploy-perp-liquidator), so warm its image on every host too.
         - name: perp-liquidator
           image: ghcr.io/left-curve/bots/perps-liquidator
           tag: "{{ perp_liquidator_tag }}"
-          enabled: "{{ inventory_hostname in (groups['perp-liquidator-' ~ dango_network] | default(groups['perp-liquidator-devnet'] | default([]))) }}"
+          enabled: true
       when: item.enabled | bool
       register: bot_pull
       retries: 3
