@@ -309,6 +309,20 @@ remove-deploy-lock-testnet:
       --limit {{hetzner2}},{{hetzner4}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-testnet.log"
 
+# Pull testnet docker images on every host without restarting anything.
+# Layers already present locally are not re-downloaded, so this is cheap to
+# re-run and safe to use as a warm-up before `deploy-testnet`.
+pull-docker-images-testnet dango_image_tag bots_image_tag:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook pull-docker-images.yml \
+      -e dango_network=testnet \
+      -e dango_image_tag={{dango_image_tag}} \
+      -e faucet_bot_tag={{bots_image_tag}} \
+      -e perps_bot_tag={{bots_image_tag}} \
+      -e perp_liquidator_tag={{bots_image_tag}} \
+      --limit {{hetzner2}},{{hetzner4}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-testnet.log"
+
 # ---------------------------------- Mainnet -----------------------------------
 
 # Note: the `reset-and-deploy-mainnet` command has been deleted.
@@ -346,6 +360,20 @@ remove-deploy-lock-mainnet:
       -e dango_network=mainnet \
       --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
       2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-remove-deploy-lock-mainnet.log"
+
+# Pull mainnet docker images on every host without restarting anything.
+# Layers already present locally are not re-downloaded, so this is cheap to
+# re-run and safe to use as a warm-up before `deploy-mainnet`.
+pull-docker-images-mainnet dango_image_tag bots_image_tag:
+  mkdir -p "{{justfile_directory()}}/logs" \
+    && uv run ansible-playbook pull-docker-images.yml \
+      -e dango_network=mainnet \
+      -e dango_image_tag={{dango_image_tag}} \
+      -e faucet_bot_tag={{bots_image_tag}} \
+      -e perps_bot_tag={{bots_image_tag}} \
+      -e perp_liquidator_tag={{bots_image_tag}} \
+      --limit {{hetzner5}},{{hetzner6}},{{hetzner1}},{{hetzner3}} \
+      2>&1 | tee "{{justfile_directory()}}/logs/$(date -u +%Y%m%d%H%M%S)-pull-docker-images-mainnet.log"
 
 # ---------------------------------- Preview -----------------------------------
 
