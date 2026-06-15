@@ -7,7 +7,7 @@ import { useSubmitTx } from "./useSubmitTx.js";
 
 import { parseUnits } from "@left-curve/utils";
 
-import { ERC20_ABI, HYPERLANE_ROUTER_ABI, INFURA_URLS, toAddr32 } from "@left-curve/sdk/hyperlane";
+import { ERC20_ABI, HYPERLANE_ROUTER_ABI, toAddr32 } from "@left-curve/sdk/hyperlane";
 
 import type { Connector } from "../types/connector.js";
 import type { Chain as ViemChain } from "viem";
@@ -31,7 +31,9 @@ export type UseBridgeEvmDepositParameters = {
 
 export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
   const { connector, coin, amount, config } = parameters;
-  if (!config || !config.router) throw new BridgeConfigError("Unexpected missing router config");
+  if (!config || !config.bridger || !config.router) {
+    throw new BridgeConfigError("Unexpected missing router config");
+  }
 
   const { bridger, router, chain } = config;
 
@@ -43,7 +45,7 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
 
   const publicClient = createPublicClient({
     chain: chain as ViemChain,
-    transport: http(INFURA_URLS[chain.id]),
+    transport: http(bridger.rpcUrl),
   });
 
   const wallet = useQuery({
@@ -122,7 +124,7 @@ export function useBridgeEvmDeposit(parameters: UseBridgeEvmDepositParameters) {
         const { data: client } = wallet;
         const { localDomain } = mailboxConfig;
         const recipientAddress = toAddr32(account.address);
-        const protocolFee = BigInt(bridger.hyperlane_protocol_fee);
+        const protocolFee = BigInt(bridger.protocolFee);
 
         const value = router.coin === "native" ? depositAmount + protocolFee : protocolFee;
 

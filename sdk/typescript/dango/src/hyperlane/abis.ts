@@ -17,6 +17,7 @@ export const INFURA_URLS = {
   "11155111": "https://sepolia.infura.io/v3/2de96f6db6d34eccaa8935cabb9b29c8",
   "8453": "base",
   "42161": "arbitrum",
+  "421614": "https://arbitrum-sepolia.infura.io/v3/2de96f6db6d34eccaa8935cabb9b29c8",
 };
 
 export const ERC20_ABI = [
